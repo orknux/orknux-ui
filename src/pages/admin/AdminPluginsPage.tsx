@@ -96,7 +96,7 @@ function Face({ icon, iconDark, size }: { icon: string | null; iconDark?: string
     return <span aria-hidden="true">🧩</span>;
   }
   const held = chosen.trim();
-  if (held.startsWith('<svg') || held.startsWith('<?xml')) {
+  if (isDrawing(held)) {
     return (
       <img
         src={`data:image/svg+xml;utf8,${encodeURIComponent(held)}`}
@@ -110,6 +110,42 @@ function Face({ icon, iconDark, size }: { icon: string | null; iconDark?: string
     return <img src={held} alt="" width={size} height={size} />;
   }
   return <span aria-hidden="true">{held}</span>;
+}
+
+/**
+ * Whether this is an SVG rather than an emoji.
+ *
+ * Not `startsWith('<svg')`: a real SVG file may open with anything a document
+ * is allowed to open with before its root element - whitespace, an XML
+ * declaration, a doctype, a licence comment - and one that did was drawn as
+ * its own source, a paragraph of markup where a glyph should have been.
+ *
+ * A sanity check rather than a safety one. What makes somebody else's markup
+ * safe to draw is the `<img>` below: a browser renders an SVG behind one as a
+ * picture and runs nothing in it.
+ */
+function isDrawing(held: string): boolean {
+  let at = 0;
+  while (at < held.length) {
+    if (/\s/.test(held[at] ?? '')) {
+      at += 1;
+    } else if (held.startsWith('<?', at)) {
+      const ends = held.indexOf('?>', at);
+      if (ends < 0) return false;
+      at = ends + 2;
+    } else if (held.startsWith('<!--', at)) {
+      const ends = held.indexOf('-->', at);
+      if (ends < 0) return false;
+      at = ends + 3;
+    } else if (held.startsWith('<!', at)) {
+      const ends = held.indexOf('>', at);
+      if (ends < 0) return false;
+      at = ends + 1;
+    } else {
+      return held.startsWith('<svg', at);
+    }
+  }
+  return false;
 }
 
 /** Which half of the screen is being read. */
@@ -511,15 +547,14 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
             */}
             {plugin.summary !== null && <span className={styles.summary}>{plugin.summary}</span>}
             {/*
-             * What it declares, under the name. A plugin is worth listing for
-             * what it offers, and "declares 2 functions" answers less than
-             * saying which.
+             * What it declares is not here.
+             *
+             * A row of signatures is reference rather than reading: fourteen
+             * of them on one line, clipped where the column ends, told nobody
+             * what the plugin is - and the summary above already does. Where
+             * the signatures are actually wanted is the Functions list, which
+             * shows them whole and can be sieved to one plugin.
              */}
-            <span className={styles.declares}>
-              {plugin.declaredFunctions.length === 0
-                ? 'declares no functions'
-                : plugin.declaredFunctions.map((one) => `${one.name}${one.signature}`).join('  ·  ')}
-            </span>
             {/*
               What it asks to be told. Listed here because it is the whole of
               what a plugin can reach, which is the thing an operator wants to
