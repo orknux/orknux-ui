@@ -74,6 +74,15 @@ export interface Plugin {
    */
   icon: string | null;
   /**
+   * The same glyph in white, for a dark ground. Null where the plugin has
+   * only the one, and then `icon` is drawn on either.
+   *
+   * Two files rather than one that adapts: an SVG behind an `<img>` is its
+   * own document, inherits no colour from the page around it, and resolves
+   * `currentColor` to black — a square of nothing on a dark screen.
+   */
+  iconDark: string | null;
+  /**
    * What the plugin says about itself, from the `plugin.json` it ships.
    *
    * Prose only: what it is allowed to do is read from the code when somebody
@@ -97,6 +106,8 @@ export interface MarketplaceListing {
   version: string;
   /** An emoji, or the URL of a small image. Null where the catalog offers none. */
   icon: string | null;
+  /** The same for a dark ground; null where the catalog offers only the one. */
+  iconDark: string | null;
   downloads: number;
   rating: number | null;
   reviews: number;
@@ -108,7 +119,7 @@ export interface MarketplaceListing {
 }
 
 const LISTING_FIELDS = `
-  key name author summary description version icon downloads rating reviews published
+  key name author summary description version icon iconDark downloads rating reviews published
   installed installedVersion updatable
 `;
 
@@ -225,7 +236,7 @@ export interface PluginSkillDeclaration {
 
 const PLUGIN_FIELDS = `
   id key name filename sizeBytes apiVersion sha256 uploadedAt uploadedBy
-  enabled libraries marketplaceKey marketplaceVersion icon summary author version
+  enabled libraries marketplaceKey marketplaceVersion icon iconDark summary author version
   declaredFunctions { name description returnType signature params { name type } }
   skills { name description content }
   declaredParameters { name description type required secret }

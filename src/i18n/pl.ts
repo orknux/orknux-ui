@@ -1924,6 +1924,7 @@ export const PL: Record<string, string> = {
   "From plugins": "Z wtyczek",
   "FROM PLUGINS": "Z WTYCZEK",
   "Search the marketplace...": "Szukaj w sklepie...",
+  "Refresh the marketplace": "Odśwież sklep",
   "Search the marketplace": "Szukaj w sklepie",
   "From the plugin": "Z wtyczki",
   "granted by name, and not edited here.": "przyznawany po nazwie i nieedytowany tutaj.",

@@ -22,6 +22,7 @@ import downloadIcon from '../../assets/download.svg';
 import fileCodeIcon from '../../assets/file-code.svg';
 import plusIcon from '../../assets/plus.svg';
 import puzzleIcon from '../../assets/puzzle.svg';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import trashIcon from '../../assets/trash-2.svg';
@@ -31,6 +32,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
 import { shellUser } from '../../session/user';
+import { useTheme } from '../../session/useTheme';
 import styles from './AdminPluginsPage.module.css';
 import { t } from '../../i18n';
 
@@ -74,11 +76,26 @@ interface Asking {
  * URI rather than as elements. An emoji is a character and stands as itself;
  * a URL is drawn from where it is, the way any other picture is.
  */
-function Face({ icon, size }: { icon: string | null; size: number }) {
-  if (icon === null || icon.trim() === '') {
+function Face({ icon, iconDark, size }: { icon: string | null; iconDark?: string | null; size: number }) {
+  /*
+   * Which glyph, decided by the ground it is being drawn on.
+   *
+   * The cascade cannot reach inside an `<img>`: an SVG behind one is its own
+   * document, inherits nothing from this page, and resolves `currentColor` to
+   * black - which on the dark theme is a square of nothing. So the catalog
+   * ships two files and the choice is made here.
+   *
+   * A plugin with only the one gets it on both grounds. That is the plugin's
+   * decision - an icon in real colours needs no second - and it is why the
+   * fallback is `icon` rather than the placeholder.
+   */
+  const theme = useTheme();
+  const chosen = theme === 'dark' ? (iconDark ?? icon) : icon;
+
+  if (chosen === null || chosen === undefined || chosen.trim() === '') {
     return <span aria-hidden="true">🧩</span>;
   }
-  const held = icon.trim();
+  const held = chosen.trim();
   if (held.startsWith('<svg') || held.startsWith('<?xml')) {
     return (
       <img
@@ -469,7 +486,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
             {plugin.icon === null ? (
               <img src={puzzleIcon} alt="" width={16} height={16} />
             ) : (
-              <Face icon={plugin.icon} size={18} />
+              <Face icon={plugin.icon} iconDark={plugin.iconDark} size={18} />
             )}
           </span>
           <span className={styles.nameBlock}>
@@ -958,12 +975,21 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
               <div className={styles.listingList}>
                 <div className={styles.listingHead}>
                   <span>{t('From the marketplace')}</span>
+                  {/*
+                    An icon, like the other things that act rather than
+                    navigate. The word sat in a header that is otherwise a
+                    title, and read as the shelf's name having two halves.
+                  */}
                   <button
                     type="button"
                     className={styles.refresh}
                     disabled={catalogLoading || busy}
                     onClick={() => browse()}
-                  >{t('Refresh')}</button>
+                    aria-label={t('Refresh the marketplace')}
+                    title={t('Refresh the marketplace')}
+                  >
+                    <img src={refreshIcon} alt="" width={14} height={14} />
+                  </button>
                 </div>
 
                 {/*
@@ -1017,7 +1043,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                       onClick={() => setReading(listing.key)}
                     >
                       <span className={styles.listingIcon}>
-                        <Face icon={listing.icon} size={22} />
+                        <Face icon={listing.icon} iconDark={listing.iconDark} size={22} />
                       </span>
                       <span className={styles.listingBody}>
                         <span className={styles.listingName}>
@@ -1058,7 +1084,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                     <div className={styles.detailsHead}>
                       <div className={styles.detailsTitle}>
                         <span className={styles.listingIcon}>
-                          <Face icon={open.icon} size={26} />
+                          <Face icon={open.icon} iconDark={open.iconDark} size={26} />
                         </span>
                         <span>
                           <span className={styles.detailsName}>{open.name}</span>
