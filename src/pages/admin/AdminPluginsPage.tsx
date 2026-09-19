@@ -28,6 +28,7 @@ import toggleOnIcon from '../../assets/toggle-on.svg';
 import trashIcon from '../../assets/trash-2.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
@@ -429,6 +430,14 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
       if (listings !== null) browse();
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : t('Could not unload that plugin.'));
+      /*
+       * Said twice on purpose, to two different readers. The banner is for
+       * the button on the marketplace pane; the throw is for the dialog,
+       * which draws the message inside itself and stays open - a modal sits
+       * over the banner, so a refusal that only set it would be a dialog
+       * that closed and a page that looked unchanged.
+       */
+      throw cause;
     } finally {
       setBusy(false);
     }
@@ -1163,7 +1172,9 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                               type="button"
                               className={styles.dangerAction}
                               disabled={busy}
-                              onClick={() => void onUnload(here)}
+                              // The banner says what went wrong here; there
+                              // is no dialog to carry it.
+                              onClick={() => void onUnload(here).catch(() => {})}
                             >{t('Uninstall')}</button>
                           );
                         })()}
@@ -1268,6 +1279,23 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
           )}
         </div>
       )}
+
+      {/*
+        What unloading costs, said before it happens.
+
+        `confirming` holds the id and the dialog looks the row up, so a list
+        that refreshes underneath cannot leave the question pointing at a
+        plugin that is no longer there — it simply closes.
+      */}
+      <ConfirmDialog
+        subject={plugins?.find((one) => one.id === confirming)?.name ?? null}
+        kind="unloadPlugin"
+        onClose={() => setConfirming(null)}
+        onConfirm={async () => {
+          const held = plugins?.find((one) => one.id === confirming);
+          if (held !== undefined) await onUnload(held);
+        }}
+      />
     </AppShell>
   );
 }

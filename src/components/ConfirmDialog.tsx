@@ -13,6 +13,7 @@ export type ConfirmKind =
   | 'deleteChat'
   | 'removeLibrary'
   | 'bundleLibrary'
+  | 'unloadPlugin'
   | 'removeComment';
 
 /**
@@ -23,7 +24,7 @@ export type ConfirmKind =
  * kind that deletes something arrived wearing the amber warning of a kind that
  * merely switches something off.
  */
-const DESTRUCTIVE = new Set<ConfirmKind>(['remove', 'deleteChat', 'removeComment']);
+const DESTRUCTIVE = new Set<ConfirmKind>(['remove', 'deleteChat', 'removeComment', 'unloadPlugin']);
 
 export interface ConfirmDialogProps {
   /** What is being acted on, named, or null when the dialog is closed. */
@@ -114,6 +115,24 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    unloadPlugin: {
+      title: t('Unload plugin'),
+      /*
+       * What goes, said plainly, because this is the one plugin action that
+       * cannot be undone by pressing it again. Switching a plugin off keeps
+       * everything and offers nothing; this keeps nothing - and the sentence
+       * names the switch, because somebody reaching for this often wanted
+       * that.
+       */
+      message: (
+        <>
+          Unload {name} from this installation? Every workspace loses it at once — its functions, its tools,
+          the shapes it exports and the skills it brings — and what each workspace set its parameters to goes
+          with it. To stop it running without losing any of that, switch it off instead.
+        </>
+      ),
+      button: submitting ? t('Unloading…') : t('Unload'),
     },
     bundleLibrary: {
       title: t('Bundle into one library'),
