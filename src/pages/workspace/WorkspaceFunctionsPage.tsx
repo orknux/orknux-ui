@@ -25,6 +25,7 @@ import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceFunctionsPage.module.css';
 import { t } from '../../i18n';
@@ -57,7 +58,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
    * github_that among the workspace's own are findable but not siftable -
    * this is the sieve. A plugin's own row in it is `plugin:<id>`.
    */
-  const [scope, setScope] = useState<string>('');
+  const [scope, setScope] = useSieve('functions');
   /** The plugins with functions here, for the sieve's own rows. */
   const [pluginChoices, setPluginChoices] = useState<{ id: string; name: string }[]>([]);
 

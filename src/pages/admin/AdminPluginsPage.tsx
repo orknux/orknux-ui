@@ -138,6 +138,8 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   const asked = useRef(false);
   /** Which offering's details are open, by key. */
   const [reading, setReading] = useState<string | null>(null);
+  /** What somebody typed to narrow the shelf. */
+  const [hunting, setHunting] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -418,7 +420,32 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
    * entry instead of pinning whatever happened to be first when the page
    * opened.
    */
-  const open = listings?.find((one) => one.key === reading) ?? listings?.[0];
+  /*
+   * The shelf, narrowed by what was typed.
+   *
+   * Filtered here rather than asked of the marketplace: the catalog arrives
+   * whole and is a screenful, so a round trip per keystroke would buy a wait
+   * and nothing else. Over the name, the key, the summary and the author,
+   * because "the Slack one", "slack", "posts messages" and "who wrote the
+   * Jira plugin" are all the same question asked four ways.
+   */
+  const wanted = hunting.trim().toLowerCase();
+  const shelf =
+    listings === null
+      ? null
+      : wanted === ''
+        ? listings
+        : listings.filter((one) =>
+            `${one.name} ${one.key} ${one.summary} ${one.author}`.toLowerCase().includes(wanted),
+          );
+
+  /*
+   * What the details pane shows: the one picked, or the first on the shelf.
+   * The shelf rather than the whole catalog, so narrowing to one plugin opens
+   * it - and so the pane never goes on showing something the list no longer
+   * has.
+   */
+  const open = shelf?.find((one) => one.key === reading) ?? shelf?.[0];
 
   /** One plugin as a row: what it is, and what can be done to it. */
   function pluginRow(plugin: Plugin, where: Source | 'installed' = 'installed') {
@@ -939,6 +966,30 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                   >{t('Refresh')}</button>
                 </div>
 
+                {/*
+                  Under the head rather than in it: the head is a title and a
+                  button, and a third thing in that row squeezed both.
+                */}
+                <div className={styles.hunt}>
+                  <input
+                    className={styles.huntInput}
+                    type="search"
+                    value={hunting}
+                    placeholder={t('Search the marketplace...')}
+                    aria-label={t('Search the marketplace')}
+                    onChange={(event) => {
+                      setHunting(event.target.value);
+                      /*
+                       * The pane follows the list. A choice made before the
+                       * box was typed into is a choice about a row that may
+                       * no longer be there, and leaving it set would show a
+                       * plugin the list has just stopped offering.
+                       */
+                      setReading(null);
+                    }}
+                  />
+                </div>
+
                 {catalogLoading && (
                   <p className={styles.notice}>
                     <Loader />
@@ -947,8 +998,11 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                 {!catalogLoading && listings?.length === 0 && (
                   <p className={styles.notice}>{t('The marketplace offers nothing yet.')}</p>
                 )}
+                {!catalogLoading && listings !== null && listings.length > 0 && shelf?.length === 0 && (
+                  <p className={styles.notice}>{t('Nothing here matches that.')}</p>
+                )}
 
-                {listings?.map((listing) => {
+                {shelf?.map((listing) => {
                   const here = installedOf(listing);
                   return (
                     <button
@@ -1046,7 +1100,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                           return (
                             <button
                               type="button"
-                              className={styles.cancel}
+                              className={styles.dangerAction}
                               disabled={busy}
                               onClick={() => void onUnload(here)}
                             >{t('Uninstall')}</button>

@@ -87,6 +87,32 @@ record(
 const install = await page.getByRole('button', { name: 'Install', exact: true }).first().boundingBox();
 record(install.height >= 36, `Install is sized like a primary action (${Math.round(install.height)}px tall)`);
 
+/*
+ * The shelf narrows to what was typed, and the pane follows it.
+ *
+ * Filtered here rather than at the marketplace, over the name, the key, the
+ * summary and the author - "the Slack one", "slack" and "posts messages" are
+ * one question asked three ways. The pane following matters as much as the
+ * list does: a details pane still showing a plugin the list has stopped
+ * offering is a screen saying two things at once.
+ */
+await page.getByLabel('Search the marketplace').fill('second');
+await page.waitForTimeout(400);
+const narrowed = await page.locator('main, body').first().innerText();
+record(narrowed.includes('Beta'), 'the search finds a plugin by its summary');
+record(!narrowed.includes('The first on the shelf.'), 'and leaves out what does not match');
+record(narrowed.includes('What Beta does.'), 'and the pane opens on what is left');
+
+await page.getByLabel('Search the marketplace').fill('nothing called this');
+await page.waitForTimeout(400);
+record(
+  (await page.locator('main, body').first().innerText()).includes('Nothing here matches that'),
+  'and says so when nothing matches',
+);
+
+await page.getByLabel('Search the marketplace').fill('');
+await page.waitForTimeout(400);
+
 // Picking another moves it, which is the part the default must not break.
 await page.getByRole('button', { name: /Beta/ }).first().click();
 await page.waitForTimeout(400);

@@ -1923,6 +1923,8 @@ export const PL: Record<string, string> = {
   "The workspace's own": "Własne przestrzeni roboczej",
   "From plugins": "Z wtyczek",
   "FROM PLUGINS": "Z WTYCZEK",
+  "Search the marketplace...": "Szukaj w sklepie...",
+  "Search the marketplace": "Szukaj w sklepie",
   "From the plugin": "Z wtyczki",
   "granted by name, and not edited here.": "przyznawany po nazwie i nieedytowany tutaj.",
   "This plugin brings no skills.": "Ta wtyczka nie wnosi żadnych umiejętności.",

@@ -541,6 +541,13 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'sieve-memory-check',
+    what: 'the origin sieve on Functions and Tools survives a refresh, per list',
+    // Reads two lists and sets a select; it creates nothing, so it runs
+    // beside the others.
+    needs: ['workspace'],
+  },
+  {
     name: 'plugin-details-check',
     what: 'the marketplace opens on its first listing rather than on an invitation to click',
     // Stubs the catalog call in the browser: it installs nothing and changes

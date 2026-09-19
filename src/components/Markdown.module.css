@@ -4,10 +4,15 @@
  * Sized to read rather than to fill: 80ch is about as wide as prose stays
  * comfortable, and it is what the chat used before anything was rendered.
  * Everything here is a token, so the light theme follows for free.
+ *
+ * The measure is a variable so a host that is not a chat bubble can widen it.
+ * A plugin's README is mostly tables of signatures, and 80ch left them
+ * wrapping in a column while most of the pane sat empty - prose wants a
+ * measure, and a table wants the room it was given.
  */
 
 .markdown {
-  max-width: 80ch;
+  max-width: var(--markdown-measure, 80ch);
   font-size: var(--text-base);
   line-height: 22px;
   color: var(--color-text-body);

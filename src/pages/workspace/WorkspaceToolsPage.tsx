@@ -6,6 +6,7 @@ import type { PluginAgentTool } from '../../api/plugins';
 import type { SessionUser } from '../../api/session';
 import { createTool, fetchWorkspaceTools, setToolEnabled, timeAgo } from '../../api/tools';
 import type { Tool } from '../../api/tools';
+import externalLinkIcon from '../../assets/external-link.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
@@ -24,6 +25,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
 import { t } from '../../i18n';
@@ -59,7 +61,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
    * not a place to browse - so the browser lists them beside the workspace's
    * own, each row saying which plugin offers it.
    */
-  const [source, setSource] = useState<string>('');
+  const [source, setSource] = useSieve('tools');
   /** The plugins offering tools, for the sieve's own rows. */
   const [pluginChoices, setPluginChoices] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -277,13 +279,19 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
               <span className={`${styles.colModified} ${styles.modified}`}>—</span>
               <span className={styles.colActions}>
                 {row.offered.functionId !== null && (
+                  /*
+                    A jump, not a settings screen. The gear here said "open
+                    this row's settings", and what the link actually does is
+                    leave for another page - the function this tool fronts,
+                    which is somewhere else and belongs to something else.
+                  */
                   <Link
                     className={styles.rowAction}
                     to={`/workspace/${workspaceId}/functions/${row.offered.functionId}`}
                     aria-label={`Open the function ${row.offered.name} fronts`}
                     title={`Open the function ${row.offered.name} fronts`}
                   >
-                    <img src={settingsIcon} alt="" width={14} height={14} />
+                    <img src={externalLinkIcon} alt="" width={14} height={14} />
                   </Link>
                 )}
               </span>

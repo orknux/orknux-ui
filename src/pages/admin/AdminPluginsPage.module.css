@@ -451,6 +451,19 @@
 }
 
 /*
+ * Uninstalling, from the same row as Install.
+ *
+ * The danger colour, because it takes something away - the rule the unload
+ * confirm in the table already follows. Sized with Install rather than
+ * against it: they sit side by side and a pair at two heights reads as one
+ * button and one afterthought.
+ */
+.dangerAction {
+  composes: primaryAction;
+  background: var(--color-danger);
+}
+
+/*
  * What a loaded plugin was granted, under its name.
  *
  * The same line as the signatures above it, in amber, because it is the one
@@ -606,6 +619,33 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   overflow: hidden;
+}
+
+/*
+ * The search box, under the shelf's own head.
+ *
+ * Always there rather than appearing past some number of rows: a marketplace
+ * grows, and a control that arrives once it is needed is one nobody knows to
+ * look for before then.
+ */
+.hunt {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.huntInput {
+  width: 100%;
+  padding: var(--space-6) var(--space-10);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.huntInput::placeholder {
+  color: var(--color-text-muted);
 }
 
 .listingHead {
@@ -798,7 +838,25 @@
 .detailsBody {
   padding: var(--space-16);
   overflow-y: auto;
-  max-height: 60vh;
+  /*
+   * Taller, and as wide as it was given.
+   *
+   * This is the half of the screen somebody came to read, and it was drawing
+   * a plugin's README in a narrow column with the rest of the pane empty
+   * underneath it: prose keeps a measure, but a README is mostly tables of
+   * signatures and those want the room. 100ch is still a measure - it does
+   * not sprawl on a wide monitor.
+   *
+   * The height is everything that is not this pane: the shell's header, this
+   * page's own header and tabs, the pane's chrome, and the footer underneath
+   * it. All of those are fixed heights, so one constant is right at every
+   * window size - but it has to count the footer, and twice it did not: the
+   * pane grew until `main` was taller than the window and pushed the footer
+   * off the bottom of the screen.
+   */
+  --markdown-measure: 100ch;
+  max-height: calc(100vh - 512px);
+  min-height: 0;
   font-size: var(--text-base);
   color: var(--color-text-primary);
 }
