@@ -600,6 +600,27 @@
   flex: 1 0 0;
   gap: var(--space-20);
   min-width: 0;
+  /*
+   * Into the shell's own bottom padding.
+   *
+   * The shell leaves 112px under every page, which is right where a page ends
+   * in a table that stops wherever its rows do - it is the room that keeps
+   * the last row off the footer. This page ends in a pane with a decided
+   * height, so that padding read as a band of empty screen under a plugin's
+   * description, with the description scrolling inside a box that had stopped
+   * short of it.
+   *
+   * Pulled up rather than the pane simply made taller: growing the pane grows
+   * `main`, and a taller `main` pushes the footer off the bottom of the
+   * window - which is the bug this already caused twice. The pane takes some
+   * of those pixels and gives back exactly as many, so `main` is as tall as
+   * it was and the footer does not move.
+   *
+   * Not all of them. The rest is the gap between the pane and the footer -
+   * taking the lot left the two almost touching, which reads as a pane that
+   * ran out of room rather than one that ends.
+   */
+  margin-bottom: -56px;
 }
 
 /* ------------------------------------------------------------ the offers */
@@ -855,7 +876,7 @@
    * off the bottom of the screen.
    */
   --markdown-measure: 100ch;
-  max-height: calc(100vh - 512px);
+  max-height: calc(100vh - 456px);
   min-height: 0;
   font-size: var(--text-base);
   color: var(--color-text-primary);
