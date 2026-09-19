@@ -541,6 +541,14 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'parameter-picker-check',
+    what: 'a plugin parameter that names its values is answered from a list, and one that does not is typed',
+    // Loads a plugin, which is installation-wide: its rows appear in every
+    // workspace at once, so it runs on its own.
+    needs: ['workspace'],
+    alone: true,
+  },
+  {
     name: 'sieve-memory-check',
     what: 'the origin sieve on Functions and Tools survives a refresh, per list',
     // Reads two lists and sets a select; it creates nothing, so it runs

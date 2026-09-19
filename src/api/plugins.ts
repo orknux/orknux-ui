@@ -553,6 +553,11 @@ export interface PluginParameterSetting {
   required: boolean;
   secret: boolean;
   /** What somebody typed. Null when this points at a variable, or is unanswered. */
+  /**
+   * The values this may take, where the plugin knows them all; empty where
+   * anything typed will do. A set makes the field a picker.
+   */
+  options: string[];
   literal: string | null;
   variableId: string | null;
   /** The name of that variable, never what it holds. */
@@ -563,7 +568,9 @@ export interface PluginParameterSetting {
 const WORKSPACE_PLUGIN_FIELDS = `
   missing
   plugin { ${PLUGIN_FIELDS} }
-  parameters { name description type connectionType required secret literal variableId variableName missing }
+  parameters {
+    name description type connectionType required secret options literal variableId variableName missing
+  }
 `;
 
 export async function fetchWorkspacePlugins(workspaceId: string): Promise<WorkspacePlugin[]> {

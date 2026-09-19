@@ -545,6 +545,47 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
             )}
           </select>
         </div>
+      ) : parameter.options.length > 0 ? (
+        /*
+         * One of the values the plugin named.
+         *
+         * A plugin choosing between two backends used to take a string and
+         * check it itself, throwing a sentence that listed the choices - so a
+         * typo was found at the first call rather than at the moment it was
+         * typed. Declared, it is a picker, and a value that is not on the list
+         * cannot be chosen.
+         */
+        <div className={styles.inputWrapper}>
+          <select
+            id={fieldId}
+            className={`${styles.input} ${styles.parameterValue}`}
+            value={parameter.literal ?? ''}
+            disabled={busy}
+            onChange={(event) => {
+              if (event.target.value !== '') onSet({ literal: event.target.value });
+            }}
+          >
+            <option value="" disabled>
+              {t('Choose one…')}
+            </option>
+            {parameter.options.map((one) => (
+              <option key={one} value={one}>
+                {one}
+              </option>
+            ))}
+            {/*
+              What it is set to, even where the plugin no longer offers it: a
+              new version of a plugin may drop a choice, and the parameter is
+              still set to the old one until somebody changes it. What this
+              control must not do is misreport what it currently is.
+            */}
+            {parameter.literal !== null && !parameter.options.includes(parameter.literal) && (
+              <option value={parameter.literal}>
+                {`${parameter.literal} (no longer offered)`}
+              </option>
+            )}
+          </select>
+        </div>
       ) : (
         <div className={styles.inputWrapper}>
           <input
