@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import {
   PluginPermissionsRequired,
@@ -182,8 +183,33 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   /** A plugin somewhere on the web, by its URL. */
   const [url, setUrl] = useState('');
 
-  const [tab, setTab] = useState<Tab>('installed');
-  const [source, setSource] = useState<Source>('local');
+  /*
+   * Which tab and which shelf, kept in the address.
+   *
+   * So a link lands where it was sent from, and a refresh does not throw
+   * somebody back to Installed while they were reading the catalog. The
+   * address is the state rather than a copy of it - there is no `useState`
+   * beside this to drift out of step with what the URL says.
+   *
+   * Replaced rather than pushed: switching tabs is looking around one screen,
+   * not going somewhere, and a Back button that walks through every tab
+   * somebody glanced at is a Back button nobody can use to leave.
+   */
+  const [addressed, setAddressed] = useSearchParams();
+  const tab: Tab = addressed.get('tab') === 'catalog' ? 'catalog' : 'installed';
+  const source: Source = addressed.get('source') === 'marketplace' ? 'marketplace' : 'local';
+
+  /** One of the two, written into the address without disturbing the other. */
+  function show(what: { tab?: Tab; source?: Source }) {
+    const next = new URLSearchParams(addressed);
+    if (what.tab !== undefined) next.set('tab', what.tab);
+    if (what.source !== undefined) {
+      next.set('source', what.source);
+      // A shelf is a fact about the Catalog tab, so naming one means that tab.
+      next.set('tab', 'catalog');
+    }
+    setAddressed(next, { replace: true });
+  }
   /** The catalog, read once the shelf is opened rather than on arrival. */
   const [listings, setListings] = useState<MarketplaceListing[] | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -710,37 +736,26 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
            * Unloading belongs where loading does, which is the catalog — a
            * plugin from the marketplace is uninstalled there, one of your own
            * is removed from the shelf it was loaded onto. Installed is what
-           * runs here and what can be done to it while it stays; taking it
-           * away is the other tab's act, and the switch above is the
-           * reversible half somebody usually wanted anyway.
+           * runs here and what can be done to it while it stays.
            *
-           * Confirmed in the row rather than in a modal: unloading is one
-           * click and the only dialog in this codebase that would fit is the
-           * workflow one, which is about workflows.
+           * The bin asks in a modal rather than turning the row into a second
+           * pair of buttons. This takes every workspace's answers with it and
+           * cannot be undone by pressing it again, and a row has no space to
+           * say so - the confirm was the word "Unload" beside "Cancel", which
+           * is the shape of a question nobody reads.
            */}
-          {asFile &&
-            (confirming === plugin.id ? (
-              <>
-                <button
-                  type="button"
-                  className={styles.confirm}
-                  disabled={busy}
-                  onClick={() => void onUnload(plugin)}
-                >{t('Unload')}</button>
-                <button type="button" className={styles.cancel} onClick={() => setConfirming(null)}>{t('Cancel')}</button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className={styles.rowAction}
-                disabled={busy}
-                onClick={() => setConfirming(plugin.id)}
-                aria-label={`Unload ${plugin.name}`}
-                title={`Unload ${plugin.name}`}
-              >
-                <img src={trashIcon} alt="" width={14} height={14} />
-              </button>
-            ))}
+          {asFile && (
+            <button
+              type="button"
+              className={styles.rowAction}
+              disabled={busy}
+              onClick={() => setConfirming(plugin.id)}
+              aria-label={`Unload ${plugin.name}`}
+              title={`Unload ${plugin.name}`}
+            >
+              <img src={trashIcon} alt="" width={14} height={14} />
+            </button>
+          )}
         </span>
       </div>
     );
@@ -811,7 +826,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
           role="tab"
           aria-selected={tab === 'installed'}
           className={tab === 'installed' ? `${styles.tab} ${styles.tabOn}` : styles.tab}
-          onClick={() => setTab('installed')}
+          onClick={() => show({ tab: 'installed' })}
         >
           {t('Installed')}
           {plugins !== null && <span className={styles.tabCount}>{plugins.length}</span>}
@@ -821,7 +836,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
           role="tab"
           aria-selected={tab === 'catalog'}
           className={tab === 'catalog' ? `${styles.tab} ${styles.tabOn}` : styles.tab}
-          onClick={() => setTab('catalog')}
+          onClick={() => show({ tab: 'catalog' })}
         >{t('Catalog')}</button>
       </div>
 
@@ -962,12 +977,12 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
             <button
               type="button"
               className={source === 'local' ? `${styles.railItem} ${styles.railItemOn}` : styles.railItem}
-              onClick={() => setSource('local')}
+              onClick={() => show({ source: 'local' })}
             >{t('Local')}</button>
             <button
               type="button"
               className={source === 'marketplace' ? `${styles.railItem} ${styles.railItemOn}` : styles.railItem}
-              onClick={() => setSource('marketplace')}
+              onClick={() => show({ source: 'marketplace' })}
             >{t('Marketplace')}</button>
           </nav>
 

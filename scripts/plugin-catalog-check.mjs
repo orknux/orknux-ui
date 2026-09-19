@@ -87,9 +87,19 @@ if (switched) {
   );
 }
 
+// Nothing in the address until somebody chooses, so a bare link is Installed.
+record(new URL(page.url()).search === '', 'the address is bare until something is chosen');
+
 await page.getByRole('tab', { name: 'Catalog' }).click();
 await page.waitForSelector('text=Marketplace', { timeout: 10_000 });
 await page.waitForTimeout(600);
+
+/*
+ * Where somebody is, kept in the address: a link lands where it was sent
+ * from, and a refresh does not throw them back to Installed while they were
+ * reading the catalog.
+ */
+record(new URL(page.url()).search === '?tab=catalog', `the tab is in the address (${new URL(page.url()).search})`);
 
 /*
  * Catalog opens on Local - the shelf that always works - so the marketplace
@@ -100,6 +110,10 @@ record(opened.includes('Load Plugin'), 'Catalog opens on Local, which always wor
 record(asks.length === 0, `and the marketplace is still unasked (${asks.length} calls)`);
 
 await page.getByRole('button', { name: 'Marketplace', exact: true }).click();
+record(
+  new URL(page.url()).search === '?tab=catalog&source=marketplace',
+  `and so is the shelf (${new URL(page.url()).search})`,
+);
 
 /*
  * Mid-flight: nothing is laid out yet. Drawing the list and the details pane
@@ -169,5 +183,15 @@ await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Try again' }).click();
 await page.waitForTimeout(1200);
 record(asks.length === 2, `Try again asks once more (${asks.length} calls)`);
+
+/*
+ * And a link arriving cold opens on what it names, which is the half of this
+ * that a person actually uses: the address is the state rather than a copy of
+ * it, so there is nothing beside it to drift out of step.
+ */
+await page.goto(`${BASE}/admin/plugins?tab=catalog&source=local`, { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(1200);
+const linked = await page.locator('main, body').first().innerText();
+record(linked.includes('Load Plugin'), 'a link opens on the shelf it names');
 
 await finish(browser);
