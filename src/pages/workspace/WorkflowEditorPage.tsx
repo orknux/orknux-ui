@@ -280,6 +280,16 @@ const AGENT_PARAMETERS = ['prompt', 'systemPrompt'];
 const SESSION_PARAMETERS = ['sessionKeyPrefix', 'sessionKey'];
 
 /**
+ * What an image node holds, and the name is the server's: `prompt` is what
+ * `ImageNodeRunner` looks for, and a node without one is a node it skips.
+ *
+ * One name rather than a list, and it is still a list because the shape of the
+ * rule is the same: the kind fixes what the node takes, so the panel and the
+ * runner cannot disagree about it.
+ */
+const IMAGE_PARAMETERS = ['prompt'];
+
+/**
  * Where a send goes, which is the one parameter a Slack connection can be asked
  * about.
  *
@@ -2905,6 +2915,36 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     setDraft((held) => {
       if (held === null || held.kind !== 'SESSION') return held;
       const seeded = SESSION_PARAMETERS.map(
+        (name) =>
+          held.mappings.find((mapping) => mapping.name === name) ??
+          { name, expression: '', mode: 'VALUE' as MappingMode },
+      );
+      return sameMappings(held.mappings, seeded) ? held : { ...held, mappings: seeded };
+    });
+  }, [draft?.kind, selectedKey]);
+
+  /**
+   * An image node takes exactly one, and always it.
+   *
+   * `prompt` is what it draws from, and it is the whole of what the node is
+   * told - so it is seeded whenever the node is opened rather than only when
+   * it is made. Seeding it once at creation was not enough: a mapping with a
+   * blank expression does not survive a save, so the row vanished the first
+   * time the graph was stored and there was no way to get it back. The panel
+   * then said "this action takes no parameters", the run skipped the node for
+   * having no prompt, and the graph looked like it went straight from the
+   * agent to the reply.
+   *
+   * The same shape as a session's two, for the same reason: the kind fixes
+   * the list, so what the panel shows and what the runner looks for cannot
+   * come apart.
+   */
+  useEffect(() => {
+    if (draft === null || draft.kind !== 'IMAGE') return;
+
+    setDraft((held) => {
+      if (held === null || held.kind !== 'IMAGE') return held;
+      const seeded = IMAGE_PARAMETERS.map(
         (name) =>
           held.mappings.find((mapping) => mapping.name === name) ??
           { name, expression: '', mode: 'VALUE' as MappingMode },

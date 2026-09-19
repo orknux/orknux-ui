@@ -307,6 +307,9 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   CONDITION: 'Condition',
   OBJECT: 'Object',
   SESSION: t('LLM Session'),
-  IMAGE: t('Image'),
+  // "Image model", because the node runs one - the way LLM Agent and LLM
+  // Session name what they run rather than what they make. "Image" on its own
+  // read as a picture on the canvas.
+  IMAGE: t('Image model'),
 };
 

@@ -1453,6 +1453,7 @@ export const PL: Record<string, string> = {
   "Execute Type": "Rodzaj wykonania",
   "LLM Agent": "Agent LLM",
   "LLM Session": "Sesja LLM",
+  "Image model": "Model obrazu",
   "Everything that reached this node": "Wszystko, co dotarło do tego węzła",
   "What it was given": "Co dostał",
   "What is inside": "Co jest w środku",
