@@ -85,12 +85,19 @@
  * would read as a way of searching.
  */
 .grantAll {
-  padding: 2px var(--space-8);
+  /*
+   * A press rather than a footnote.
+   *
+   * It started at the count's size, which is what the thing beside it is - a
+   * reading. This is the one control on the row, and at ten pixels it read as
+   * a label somebody had underlined.
+   */
+  padding: var(--space-4) var(--space-10);
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: var(--text-2xs, var(--text-xs));
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
   white-space: nowrap;
