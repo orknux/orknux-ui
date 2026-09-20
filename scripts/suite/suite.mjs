@@ -570,6 +570,13 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'picture-key-render-check',
+    what: 'a picture an agent named by its key, inside what it wrote, is drawn there',
+    // Reads whatever the workspace's tasks have drawn; says so and stops where
+    // nothing has.
+    needs: ['workspace'],
+  },
+  {
     name: 'finish-answer-grant-check',
     what: "finish_answer is ticked in an agent's Tools list to begin with, and unticking it is stored",
     // Drives one agent's settings and puts the switch back as it found it.
