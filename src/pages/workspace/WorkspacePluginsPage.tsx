@@ -337,20 +337,14 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
                   </div>
 
                   {showing && (
-                    <div className={styles.details} id={`plugin-parameters-${entry.plugin.id}`}>
-                      {entry.parameters.map((parameter) => (
-                        <ParameterRow
-                          key={parameter.name}
-                          pluginId={entry.plugin.id}
-                          parameter={parameter}
-                          variables={variables}
-                          connections={connections}
-                          busy={busy}
-                          onSet={(answer) => void onSet(entry.plugin.id, parameter.name, answer)}
-                          onClear={() => void onClear(entry.plugin.id, parameter.name)}
-                        />
-                      ))}
-                    </div>
+                    <PluginSettings
+                      entry={entry}
+                      variables={variables}
+                      connections={connections}
+                      busy={busy}
+                      onSet={onSet}
+                      onClear={onClear}
+                    />
                   )}
                 </div>
               );
@@ -409,6 +403,121 @@ function Summary({ entry }: { entry: WorkspacePlugin }) {
   );
 }
 
+/**
+ * One plugin's parameters, and the one press that stores what was typed.
+ *
+ * The press used to sit on each row, which is where it belonged while every
+ * answer was its own little form. Asked for at the bottom instead: somebody
+ * filling in four parameters fills in four and then looks down, and a row that
+ * saves itself the moment you leave it is a row you cannot correct without a
+ * round trip.
+ *
+ * What still stores itself is a picker - a variable, a connection, one of a
+ * parameter's named options. Those are finished acts rather than half-typed
+ * text, they carry no draft anybody could lose, and one of them clears
+ * whatever else was answered, which is a decision better taken at the moment
+ * it is made than at the bottom of a form.
+ */
+function PluginSettings({
+  entry,
+  variables,
+  connections,
+  busy,
+  onSet,
+  onClear,
+}: {
+  entry: WorkspacePlugin;
+  variables: Variable[];
+  connections: WorkspaceConnection[];
+  busy: boolean;
+  onSet: (
+    pluginId: string,
+    name: string,
+    answer: { literal: string } | { variableId: string },
+  ) => Promise<void> | void;
+  onClear: (pluginId: string, name: string) => Promise<void> | void;
+}) {
+  /** What is in each box, by parameter name, while it is still being typed. */
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  /*
+   * A draft is forgotten the moment the stored answer becomes it.
+   *
+   * The parameters come back from the server after every save, so this clears
+   * what has landed and keeps what has not - which is what makes the button
+   * below able to say whether there is anything left to store.
+   */
+  useEffect(() => {
+    setDrafts((held) => {
+      const left: Record<string, string> = {};
+      entry.parameters.forEach((parameter) => {
+        const draft = held[parameter.name];
+        if (draft !== undefined && draft.trim() !== (parameter.literal ?? '')) left[parameter.name] = draft;
+      });
+      return left;
+    });
+  }, [entry.parameters]);
+
+  /** The parameters whose box holds something the server has not been told. */
+  const unsaved = entry.parameters.filter((parameter) => {
+    const draft = drafts[parameter.name];
+    return draft !== undefined && draft.trim() !== '' && draft.trim() !== (parameter.literal ?? '');
+  });
+
+  async function save() {
+    /*
+     * One at a time rather than all at once. Each is its own write with its
+     * own refusal - a number that is not a number, a variable from another
+     * workspace - and a failure halfway through should leave what came before
+     * it stored rather than rolled into one unreadable error.
+     */
+    for (const parameter of unsaved) {
+      await onSet(entry.plugin.id, parameter.name, { literal: (drafts[parameter.name] ?? '').trim() });
+    }
+  }
+
+  return (
+    <div className={styles.details} id={`plugin-parameters-${entry.plugin.id}`}>
+      {entry.parameters.map((parameter) => (
+        <ParameterRow
+          key={parameter.name}
+          pluginId={entry.plugin.id}
+          parameter={parameter}
+          variables={variables}
+          connections={connections}
+          busy={busy}
+          onSet={(answer) => void onSet(entry.plugin.id, parameter.name, answer)}
+          onClear={() => void onClear(entry.plugin.id, parameter.name)}
+          onTyped={(value) => setDrafts((held) => ({ ...held, [parameter.name]: value }))}
+          onSubmit={() => void save()}
+        />
+      ))}
+
+      {/*
+        The press, at the bottom of the plugin it belongs to.
+
+        Switched off with nothing to store rather than hidden, so its place on
+        the page does not move as somebody types - and saying how many are
+        waiting, because a form with four boxes and one button owes an answer
+        to "did it take all of them".
+      */}
+      <div className={styles.settingsFoot}>
+        {unsaved.length > 0 && (
+          <span className={styles.settingsUnsaved}>
+            {unsaved.length === 1 ? t('1 unsaved') : `${unsaved.length} unsaved`}
+          </span>
+        )}
+        <button
+          type="button"
+          className={styles.settingsSave}
+          disabled={busy || unsaved.length === 0}
+          onClick={() => void save()}
+        >{t('Save')}</button>
+      </div>
+    </div>
+  );
+}
+
 interface ParameterRowProps {
   pluginId: string;
   parameter: PluginParameterSetting;
@@ -417,6 +526,17 @@ interface ParameterRowProps {
   busy: boolean;
   onSet: (answer: { literal: string } | { variableId: string }) => void;
   onClear: () => void;
+  /**
+   * What is in the box right now, reported as it is typed.
+   *
+   * The press that stores it lives at the bottom of the plugin rather than on
+   * this row, so the row holds the text and the card holds the decision. A
+   * picker still stores itself: choosing a variable or a connection is a
+   * finished act, and nothing is half-typed about it.
+   */
+  onTyped: (value: string) => void;
+  /** Enter in the box, which saves the whole plugin's settings. */
+  onSubmit: () => void;
 }
 
 /**
@@ -437,7 +557,17 @@ interface ParameterRowProps {
  * variable for one, and what it stores is which of the workspace's connections
  * was picked - so the box is a picker of them by name, never a number typed in.
  */
-function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet, onClear }: ParameterRowProps) {
+function ParameterRow({
+  pluginId,
+  parameter,
+  variables,
+  connections,
+  busy,
+  onSet,
+  onClear,
+  onTyped,
+  onSubmit,
+}: ParameterRowProps) {
   const [typed, setTyped] = useState(parameter.literal ?? '');
 
   // The stored value is the one to edit whenever it changes underneath, which it
@@ -478,7 +608,6 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
   useEffect(() => setMode(stored), [stored]);
 
   const answered = parameter.literal !== null || parameter.variableId !== null;
-  const unsaved = typed.trim() !== '' && typed.trim() !== (parameter.literal ?? '');
   const fieldId = `plugin-parameter-${pluginId}-${parameter.name}`;
 
   /*
@@ -681,31 +810,14 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
                 : `A ${parameter.type.toLowerCase()}`
             }
             spellCheck={false}
-            onChange={(event) => setTyped(event.target.value)}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              onTyped(event.target.value);
+            }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && unsaved) onSet({ literal: typed.trim() });
+              if (event.key === 'Enter') onSubmit();
             }}
           />
-          {/*
-            Save, which is what every other screen here calls it.
-
-            A workflow is saved as a whole and this is not: each answer is
-            stored on its own, the moment it is given. Choosing a variable
-            stores itself, so only the typed side needs a press - and it was
-            called "Set", which is accurate and is not the word anybody looks
-            for. Somebody typing a token and then hunting for a save button
-            found this and did not read it as one.
-
-            Always there rather than appearing on the first keystroke, so
-            nothing arrives under the cursor mid-sentence, and switched off
-            until there is something unsaved so it says which of those it is.
-          */}
-          <button
-            type="button"
-            className={styles.parameterAction}
-            disabled={busy || !unsaved}
-            onClick={() => onSet({ literal: typed.trim() })}
-          >{t('Save')}</button>
         </div>
       )}
 

@@ -259,6 +259,45 @@
   color: var(--color-danger);
 }
 
+/*
+ * The foot of one plugin's settings: what is waiting, and the press.
+ *
+ * Right-aligned under the boxes rather than beside them, where a form's button
+ * is looked for - and holding its place whether or not anything is unsaved, so
+ * the page does not move under somebody's hand as they type.
+ */
+.settingsFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16) var(--space-4);
+}
+
+.settingsUnsaved {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.settingsSave {
+  padding: var(--space-8) var(--space-16);
+  background: var(--color-accent-brand);
+  border: 0;
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.settingsSave:disabled {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
 .parameterAction {
   padding: 0;
   background: none;
