@@ -16,6 +16,8 @@ import {
   transferStyles,
 } from '../../components/ComponentTransfer';
 import { Loader } from '../../components/Loader';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -43,6 +45,11 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
   const [actions, setActions] = useState<PageOf<Action> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('actions');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather
+  // than at page four of the previous one.
+  useEffect(() => setPage(1), [asked]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +57,7 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceActions(workspaceId, page - 1, pageSize)
+    fetchWorkspaceActions(workspaceId, page - 1, pageSize, asked)
       .then((result) => {
         setActions(result);
         setLoading(false);
@@ -60,7 +67,7 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
         setError(cause instanceof Error ? cause.message : t('Could not load the actions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize]);
+  }, [workspaceId, page, pageSize, asked]);
 
   useEffect(load, [load]);
 
@@ -86,6 +93,14 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
             </Link>
           </div>
         </header>
+
+        <SearchRow>
+          <SearchBox
+            value={typed}
+            onChange={setTyped}
+            placeholder={t('Search actions...')}
+          />
+        </SearchRow>
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>

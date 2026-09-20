@@ -152,8 +152,8 @@ const FUNCTION_FIELDS =
    signature timeoutSeconds lastModifiedAt lastModifiedBy`;
 
 const WORKSPACE_FUNCTIONS_QUERY = `
-  query WorkspaceFunctions($workspaceId: ID!, $page: Int!, $size: Int!, $scope: FunctionScope, $pluginId: ID) {
-    workspaceFunctions(workspaceId: $workspaceId, page: $page, size: $size, scope: $scope, pluginId: $pluginId) {
+  query WorkspaceFunctions($workspaceId: ID!, $page: Int!, $size: Int!, $scope: FunctionScope, $pluginId: ID, $search: String) {
+    workspaceFunctions(workspaceId: $workspaceId, page: $page, size: $size, scope: $scope, pluginId: $pluginId, search: $search) {
       content { ${FUNCTION_FIELDS} }
       page
       size
@@ -236,6 +236,12 @@ export function asImportInput(held: ScriptImportInput): ScriptImportInput {
  * origin - the workspace's own, or what the plugins brought - and absent is
  * both, which is what the list always showed.
  */
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
 export async function fetchWorkspaceFunctions(
   workspaceId: string,
   page: number,
@@ -243,6 +249,7 @@ export async function fetchWorkspaceFunctions(
   scope?: FunctionScope,
   /** Narrower still: what one plugin brought. Wins over scope. */
   pluginId?: string,
+  search = '',
 ): Promise<PageOf<WorkspaceFunction>> {
   const data = await graphql<{ workspaceFunctions: PageOf<WorkspaceFunction> }>(WORKSPACE_FUNCTIONS_QUERY, {
     workspaceId,
@@ -250,6 +257,7 @@ export async function fetchWorkspaceFunctions(
     size,
     scope: scope ?? null,
     pluginId: pluginId ?? null,
+    search: search.trim() === '' ? null : search.trim(),
   });
   return data.workspaceFunctions;
 }
@@ -692,6 +700,9 @@ export function starterSource(
     '  //   orknux.slack.thread(connection, ch, ts)   the messages in one thread',
     '  //   orknux.slack.post(connection, ch, text)   send a message, or a reply',
     '  //   orknux.slack.react(connection, ch, ts, e) add an emoji to a message',
+    '  //   orknux.slack.message(connection, link)    the message a permalink points at',
+    "  //   orknux.slack.user(connection, '<@U…>')    who a mention is",
+    '  //   orknux.slack.mention(connection, name)    the <@…> notation to post',
     '  // Each answers a value with `error` on it when it could not; check that',
     '  // first. There is no fetch, no import and no require: this is a sandbox.',
     '',

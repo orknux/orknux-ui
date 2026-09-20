@@ -42,6 +42,7 @@ const WORKSPACE_WORKFLOWS_QUERY = `
     $size: Int!
     $order: WorkflowOrder
     $ascending: Boolean
+    $search: String
   ) {
     workspaceWorkflows(
       workspaceId: $workspaceId
@@ -49,6 +50,7 @@ const WORKSPACE_WORKFLOWS_QUERY = `
       size: $size
       order: $order
       ascending: $ascending
+      search: $search
     ) {
       content { ${WORKFLOW_FIELDS} }
       page
@@ -104,12 +106,19 @@ const REMOVE_WORKFLOW_MUTATION = `
  * pick from; the server then answers by name, ascending, which is what this has
  * always done.
  */
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
 export async function fetchWorkspaceWorkflows(
   workspaceId: string,
   page: number,
   size: number,
   order?: WorkflowOrder,
   ascending?: boolean,
+  search = '',
 ): Promise<PageOf<WorkspaceWorkflow>> {
   const data = await graphql<{ workspaceWorkflows: PageOf<WorkspaceWorkflow> }>(WORKSPACE_WORKFLOWS_QUERY, {
     workspaceId,
@@ -117,6 +126,7 @@ export async function fetchWorkspaceWorkflows(
     size,
     order: order ?? null,
     ascending: ascending ?? null,
+    search: search.trim() === '' ? null : search.trim(),
   });
   return data.workspaceWorkflows;
 }

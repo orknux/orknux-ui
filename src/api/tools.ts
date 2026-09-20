@@ -98,15 +98,26 @@ const TOOL_FIELDS =
   `${SCRIPT_LIBRARY_IMPORT_FIELDS} ` +
   'signature timeoutSeconds enabled lastModifiedAt lastModifiedBy';
 
-export async function fetchWorkspaceTools(workspaceId: string, page = 0, size = 20): Promise<PageOf<Tool>> {
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
+export async function fetchWorkspaceTools(
+  workspaceId: string,
+  page = 0,
+  size = 20,
+  search = '',
+): Promise<PageOf<Tool>> {
   const data = await graphql<{ workspaceTools: PageOf<Tool> }>(
-    `query WorkspaceTools($workspaceId: ID!, $page: Int!, $size: Int!) {
-       workspaceTools(workspaceId: $workspaceId, page: $page, size: $size) {
+    `query WorkspaceTools($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
+       workspaceTools(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
          content { ${TOOL_FIELDS} }
          page size totalElements totalPages
        }
      }`,
-    { workspaceId, page, size },
+    { workspaceId, page, size, search: search.trim() === '' ? null : search.trim() },
   );
   return data.workspaceTools;
 }

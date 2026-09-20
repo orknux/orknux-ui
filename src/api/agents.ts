@@ -108,8 +108,8 @@ const AGENT_FIELDS =
   'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
 
 const WORKSPACE_AGENTS_QUERY = `
-  query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!) {
-    workspaceAgents(workspaceId: $workspaceId, page: $page, size: $size) {
+  query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
+    workspaceAgents(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
       content { ${AGENT_FIELDS} }
       page
       size
@@ -171,8 +171,24 @@ const MEMORY_BUDGET_QUERY = `
 `;
 
 /** `page` is 0-based, matching the server. */
-export async function fetchWorkspaceAgents(workspaceId: string, page: number, size: number): Promise<PageOf<Agent>> {
-  const data = await graphql<{ workspaceAgents: PageOf<Agent> }>(WORKSPACE_AGENTS_QUERY, { workspaceId, page, size });
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
+export async function fetchWorkspaceAgents(
+  workspaceId: string,
+  page: number,
+  size: number,
+  search = '',
+): Promise<PageOf<Agent>> {
+  const data = await graphql<{ workspaceAgents: PageOf<Agent> }>(WORKSPACE_AGENTS_QUERY, {
+    workspaceId,
+    page,
+    size,
+    search: search.trim() === '' ? null : search.trim(),
+  });
   return data.workspaceAgents;
 }
 

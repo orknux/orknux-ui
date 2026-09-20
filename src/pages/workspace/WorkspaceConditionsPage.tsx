@@ -16,6 +16,8 @@ import {
   transferStyles,
 } from '../../components/ComponentTransfer';
 import { Loader } from '../../components/Loader';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -42,6 +44,11 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
   const [conditions, setConditions] = useState<PageOf<Condition> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('conditions');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather
+  // than at page four of the previous one.
+  useEffect(() => setPage(1), [asked]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +56,7 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceConditions(workspaceId, page - 1, pageSize)
+    fetchWorkspaceConditions(workspaceId, page - 1, pageSize, asked)
       .then((result) => {
         setConditions(result);
         setLoading(false);
@@ -59,7 +66,7 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
         setError(cause instanceof Error ? cause.message : t('Could not load the conditions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize]);
+  }, [workspaceId, page, pageSize, asked]);
 
   useEffect(load, [load]);
 
@@ -87,6 +94,14 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
             </Link>
           </div>
         </header>
+
+        <SearchRow>
+          <SearchBox
+            value={typed}
+            onChange={setTyped}
+            placeholder={t('Search conditions...')}
+          />
+        </SearchRow>
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>

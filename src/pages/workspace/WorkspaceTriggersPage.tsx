@@ -32,6 +32,8 @@ import {
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -69,6 +71,12 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
   const [triggers, setTriggers] = useState<PageOf<Trigger> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('triggers');
+  // Named apart from this page's own `asked`, which is a ref about firing.
+  const [typed, setTyped, searching] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather
+  // than at page four of the previous one.
+  useEffect(() => setPage(1), [searching]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -103,7 +111,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceTriggers(workspaceId, page - 1, pageSize)
+    fetchWorkspaceTriggers(workspaceId, page - 1, pageSize, searching)
       .then((result) => {
         setTriggers(result);
         setLoading(false);
@@ -113,7 +121,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
         setError(cause instanceof Error ? cause.message : t('Could not load triggers.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize]);
+  }, [workspaceId, page, pageSize, searching]);
 
   useEffect(load, [load]);
 
@@ -213,6 +221,14 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
             <button type="button" className={styles.createTrigger} onClick={() => setCreating(true)}>{t('+ Create Trigger')}</button>
           </div>
         </header>
+
+        <SearchRow>
+          <SearchBox
+            value={typed}
+            onChange={setTyped}
+            placeholder={t('Search triggers...')}
+          />
+        </SearchRow>
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>

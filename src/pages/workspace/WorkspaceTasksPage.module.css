@@ -135,12 +135,24 @@
 
 /* ---- Filter ---- */
 
+/*
+ * Search on the left, the rest hard right.
+ *
+ * `space-between` spread three children evenly, which put State stranded in
+ * the middle of the row with air on both sides. The search is the first thing
+ * on the left, as it is on every other list; what narrows and what refreshes
+ * belong together at the other end.
+ */
 .filterBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-12);
   width: 100%;
+}
+
+/* Everything after the search box is pushed to the right-hand end. */
+.filterBar > :nth-child(2) {
+  margin-left: auto;
 }
 
 .sortRow {

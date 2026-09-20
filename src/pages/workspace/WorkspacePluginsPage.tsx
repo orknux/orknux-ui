@@ -17,6 +17,10 @@ import { FieldHint } from '../../components/FieldHint';
 import { FieldPicker } from '../../components/FieldPicker';
 import type { FieldOption, FieldPickerLabels } from '../../components/FieldPicker';
 import { Loader } from '../../components/Loader';
+import { CompactPagination } from '../../components/CompactPagination';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
+import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
@@ -70,6 +74,42 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
   const [busy, setBusy] = useState(false);
   /** Which plugin's parameters are open. One at a time; this is a list, not a form. */
   const [open, setOpen] = useState<string | null>(null);
+
+  /*
+   * Narrowed and paged here rather than by the server.
+   *
+   * Honest on this page and not on the paged ones: the query answers with
+   * every plugin loaded into the installation, so what is in the browser is
+   * the population - nothing can be hiding on a page that was never fetched.
+   */
+  const [typed, setTyped, asked] = useSearch();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('plugins');
+
+  // A new search is a new list, so it starts at its first page.
+  useEffect(() => setPage(1), [asked]);
+
+  /** A plugin is found by the name it shows, by its key, or by who wrote it. */
+  const matching = useMemo(() => {
+    const looking = asked.trim().toLowerCase();
+    if (plugins === null) return null;
+    if (looking === '') return plugins;
+    return plugins.filter((entry) => {
+      const held = entry.plugin;
+      return (
+        held.name.toLowerCase().includes(looking) ||
+        held.key.toLowerCase().includes(looking) ||
+        (held.author ?? '').toLowerCase().includes(looking) ||
+        (held.summary ?? '').toLowerCase().includes(looking)
+      );
+    });
+  }, [plugins, asked]);
+
+  const shown = useMemo(() => {
+    if (matching === null) return null;
+    const from = (page - 1) * pageSize;
+    return matching.slice(from, from + pageSize);
+  }, [matching, page, pageSize]);
   /*
    * What the pickers offer, kept current rather than read once with the plugins.
    * A parameter is answered with a variable, and the variable it wants is often
@@ -171,6 +211,14 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
           </div>
         </header>
 
+        <SearchRow>
+          <SearchBox
+            value={typed}
+            onChange={setTyped}
+            placeholder={t('Search plugins...')}
+          />
+        </SearchRow>
+
         {loading && (
           <p className={styles.notice}>
             <Loader />
@@ -210,6 +258,10 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
           </p>
         )}
 
+        {plugins !== null && plugins.length > 0 && matching?.length === 0 && (
+          <p className={styles.notice}>{t('No plugin matches what you typed.')}</p>
+        )}
+
         {plugins !== null && plugins.length > 0 && (
           <div className={styles.table}>
             <div className={styles.tableHeader}>
@@ -217,7 +269,7 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
               <span className={styles.colParams}>{t('Parameters')}</span>
             </div>
 
-            {plugins.map((entry) => {
+            {shown?.map((entry) => {
               const opens = entry.parameters.length > 0;
               const showing = open === entry.plugin.id;
 
@@ -304,6 +356,22 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
               );
             })}
           </div>
+        )}
+
+        {/*
+          Shown whenever there is anything, not only when there is more than
+          one page: it carries the page-size control as well as the numbers.
+        */}
+        {matching !== null && matching.length > 0 && (
+          <CompactPagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={matching.length}
+            unit={t('plugins')}
+            onPageChange={setPage}
+            pageSizes={PAGE_SIZES}
+            onPageSizeChange={setPageSize}
+          />
         )}
       </section>
     </AppShell>

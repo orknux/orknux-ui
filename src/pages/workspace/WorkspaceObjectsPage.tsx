@@ -20,6 +20,8 @@ import {
 import { Loader } from '../../components/Loader';
 import { NameDialog } from '../../components/NameDialog';
 import { FieldHint } from '../../components/FieldHint';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -46,6 +48,11 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
   const [objects, setObjects] = useState<PageOf<WorkflowObject> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('objects');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather
+  // than at page four of the previous one.
+  useEffect(() => setPage(1), [asked]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   /**
@@ -61,13 +68,13 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setError(null);
-    fetchWorkspaceObjects(workspaceId, page - 1, pageSize)
+    fetchWorkspaceObjects(workspaceId, page - 1, pageSize, asked)
       .then(setObjects)
       .catch((cause: unknown) => {
         setObjects(null);
         setError(cause instanceof Error ? cause.message : t('Could not load the objects.'));
       });
-  }, [workspaceId, page, pageSize]);
+  }, [workspaceId, page, pageSize, asked]);
 
   useEffect(load, [load]);
 
@@ -103,6 +110,14 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           <button type="button" className={styles.createButton} onClick={() => setCreating(true)}>{t('+ Create Object')}</button>
         </div>
       </header>
+
+      <SearchRow>
+        <SearchBox
+          value={typed}
+          onChange={setTyped}
+          placeholder={t('Search objects...')}
+        />
+      </SearchRow>
 
       {error !== null && (
         <p className={styles.pageError} role="alert">

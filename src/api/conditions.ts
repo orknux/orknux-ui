@@ -32,6 +32,14 @@ export interface ConditionArgument {
 export interface Condition {
   id: string;
   workspaceId: string;
+  /**
+   * The workflow this belongs to, where it is that workflow's own.
+   *
+   * Null is the ordinary case - a definition the workspace shares. Set is
+   * "Custom": made from a node, left out of the workspace's list, and shown in
+   * no other workflow's picker.
+   */
+  workflowId: string | null;
   name: string;
   type: ConditionType;
   typeLabel: string;
@@ -52,14 +60,14 @@ export interface Condition {
 }
 
 const CONDITION_FIELDS = `
-  id workspaceId name type typeLabel property check negate
+  id workspaceId workflowId name type typeLabel property check negate
   functionId functionName values members memberNames description icon
   arguments { name expression mode }
 `;
 
 const WORKSPACE_CONDITIONS_QUERY = `
-  query WorkspaceConditions($workspaceId: ID!, $page: Int!, $size: Int!) {
-    workspaceConditions(workspaceId: $workspaceId, page: $page, size: $size) {
+  query WorkspaceConditions($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
+    workspaceConditions(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
       content { ${CONDITION_FIELDS} }
       page
       size
@@ -100,15 +108,23 @@ export async function fetchCondition(id: string): Promise<Condition | null> {
 }
 
 /** `page` is 0-based, matching the server. */
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
 export async function fetchWorkspaceConditions(
   workspaceId: string,
   page: number,
   size: number,
+  search = '',
 ): Promise<PageOf<Condition>> {
   const data = await graphql<{ workspaceConditions: PageOf<Condition> }>(WORKSPACE_CONDITIONS_QUERY, {
     workspaceId,
     page,
     size,
+    search: search.trim() === '' ? null : search.trim(),
   });
   return data.workspaceConditions;
 }
@@ -126,7 +142,23 @@ export interface ConditionInput {
   members?: string[];
 }
 
-export async function createCondition(input: ConditionInput & { workspaceId: string }): Promise<Condition> {
+/** The "Custom" conditions one workflow owns; see fetchWorkflowOwnedActions. */
+export async function fetchWorkflowOwnedConditions(
+  workspaceId: string,
+  workflowId: string,
+): Promise<Condition[]> {
+  const data = await graphql<{ workflowOwnedConditions: Condition[] }>(
+    `query WorkflowOwnedConditions($workspaceId: ID!, $workflowId: ID!) {
+       workflowOwnedConditions(workspaceId: $workspaceId, workflowId: $workflowId) { ${CONDITION_FIELDS} }
+     }`,
+    { workspaceId, workflowId },
+  );
+  return data.workflowOwnedConditions;
+}
+
+export async function createCondition(
+  input: ConditionInput & { workspaceId: string; workflowId?: string | null },
+): Promise<Condition> {
   const data = await graphql<{ createCondition: Condition }>(CREATE_CONDITION_MUTATION, { input });
   return data.createCondition;
 }

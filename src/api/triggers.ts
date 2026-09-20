@@ -58,6 +58,14 @@ export const FIRING_OUTCOME_LABEL: Record<FiringOutcome, string> = {
 export interface Trigger {
   id: string;
   workspaceId: string;
+  /**
+   * The workflow this belongs to, where it is that workflow's own.
+   *
+   * Null is the ordinary case - a trigger the workspace shares. Set is
+   * "Custom": made from a node, left out of the workspace's list, and shown in
+   * no other workflow's picker.
+   */
+  workflowId: string | null;
   name: string;
   type: TriggerType;
   connectionId: string | null;
@@ -100,12 +108,12 @@ export interface Trigger {
 }
 
 const TRIGGER_FIELDS =
-  `id workspaceId name type connectionId action watchedConnectionIds cron timezone payload conditionId conditionName enabled source event icon webhookPath objectId objectName authType authFunctionId authFunctionName
+  `id workspaceId workflowId name type connectionId action watchedConnectionIds cron timezone payload conditionId conditionName enabled source event icon webhookPath objectId objectName authType authFunctionId authFunctionName
    lastFiring { id at outcome detail runsStarted }`;
 
 const WORKSPACE_TRIGGERS_QUERY = `
-  query WorkspaceTriggers($workspaceId: ID!, $page: Int!, $size: Int!) {
-    workspaceTriggers(workspaceId: $workspaceId, page: $page, size: $size) {
+  query WorkspaceTriggers($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
+    workspaceTriggers(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
       content { ${TRIGGER_FIELDS} }
       page
       size
@@ -140,8 +148,24 @@ const DELETE_TRIGGER_MUTATION = `
 `;
 
 /** `page` is 0-based, matching the server. */
-export async function fetchWorkspaceTriggers(workspaceId: string, page: number, size: number): Promise<PageOf<Trigger>> {
-  const data = await graphql<{ workspaceTriggers: PageOf<Trigger> }>(WORKSPACE_TRIGGERS_QUERY, { workspaceId, page, size });
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
+export async function fetchWorkspaceTriggers(
+  workspaceId: string,
+  page: number,
+  size: number,
+  search = '',
+): Promise<PageOf<Trigger>> {
+  const data = await graphql<{ workspaceTriggers: PageOf<Trigger> }>(WORKSPACE_TRIGGERS_QUERY, {
+    workspaceId,
+    page,
+    size,
+    search: search.trim() === '' ? null : search.trim(),
+  });
   return data.workspaceTriggers;
 }
 
@@ -159,6 +183,8 @@ export async function fetchTrigger(id: string): Promise<Trigger | null> {
 
 export interface CreateTriggerInput {
   workspaceId: string;
+  /** The workflow this belongs to, where it is that workflow's own. */
+  workflowId?: string | null;
   name: string;
   type: TriggerType;
   connectionId?: string;
@@ -180,6 +206,20 @@ export interface CreateTriggerInput {
   authFunctionId?: string | null;
   /** Whether it fires at all; omitted makes one that does. */
   enabled?: boolean;
+}
+
+/** The "Custom" triggers one workflow owns; see fetchWorkflowOwnedActions. */
+export async function fetchWorkflowOwnedTriggers(
+  workspaceId: string,
+  workflowId: string,
+): Promise<Trigger[]> {
+  const data = await graphql<{ workflowOwnedTriggers: Trigger[] }>(
+    `query WorkflowOwnedTriggers($workspaceId: ID!, $workflowId: ID!) {
+       workflowOwnedTriggers(workspaceId: $workspaceId, workflowId: $workflowId) { ${TRIGGER_FIELDS} }
+     }`,
+    { workspaceId, workflowId },
+  );
+  return data.workflowOwnedTriggers;
 }
 
 export async function createTrigger(input: CreateTriggerInput): Promise<Trigger> {

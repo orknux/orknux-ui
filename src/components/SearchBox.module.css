@@ -1,0 +1,75 @@
+/*
+ * An icon and a field sharing one border.
+ *
+ * The shape Variables has worn since it got a search; this is that control as
+ * one component rather than as a copy per page.
+ */
+.box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: min(280px, 40vw);
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.box:focus-within {
+  border-color: var(--color-accent-brand);
+}
+
+.input {
+  flex: 1 0 0;
+  min-width: 0;
+  background: none;
+  border: 0;
+  font-family: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+/* The border above is the focus ring; a second one inside it is noise. */
+.input:focus {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/*
+ * Where a search box goes: first thing on the left, under the title.
+ *
+ * One class rather than each page placing its own, because the first attempt
+ * put the box wherever that page's header happened to have room - centred on
+ * one screen, hard right on another, tucked beside a button on a third. A
+ * control that does the same thing on twelve pages has to be in the same place
+ * on twelve pages, and the way to guarantee that is to give it one home.
+ */
+.row {
+  display: flex;
+  justify-content: flex-start;
+  /*
+   * No margin of its own.
+   *
+   * These pages lay their sections out in a flex column with a gap, so a
+   * margin here is added to that gap rather than replacing it - the row ended
+   * up with forty pixels under it where every other section had twenty-four,
+   * and the box floated in the middle of its own band of empty page.
+   */
+  margin: 0;
+}
+
+/*
+ * The same row, inside a card.
+ *
+ * A card's own padding is on its header and its rows, not on the card, so a
+ * row dropped straight into one sits flush against the border while everything
+ * above and below it is inset. The number matches what those cards give their
+ * header.
+ */
+.rowInset {
+  padding: var(--space-16) var(--space-24) 0;
+  margin-bottom: var(--space-12);
+}

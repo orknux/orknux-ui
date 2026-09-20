@@ -20,7 +20,8 @@
  */
 .header {
   display: flex;
-  align-items: center;
+  /* The heading is two lines now, so the controls sit against its first. */
+  align-items: flex-start;
   gap: var(--space-16);
 }
 
@@ -34,6 +35,21 @@
  * right, and a title that also grew took half the slack for one word while
  * refusing to give any of it back when the row ran out of room.
  */
+/* The heading and its sentence, stacked, as the other lists have them. */
+.titleGroup {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
 .title {
   flex: 0 1 auto;
   min-width: 0;

@@ -71,19 +71,26 @@ export async function fetchPluginObjects(): Promise<WorkflowObject[]> {
   return data.pluginObjects;
 }
 
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
 export async function fetchWorkspaceObjects(
   workspaceId: string,
   page: number,
   size: number,
+  search = '',
 ): Promise<PageOf<WorkflowObject>> {
   const data = await graphql<{ workspaceObjects: PageOf<WorkflowObject> }>(
-    `query WorkspaceObjects($workspaceId: ID!, $page: Int!, $size: Int!) {
-       workspaceObjects(workspaceId: $workspaceId, page: $page, size: $size) {
+    `query WorkspaceObjects($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
+       workspaceObjects(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
          content { ${OBJECT_FIELDS} }
          page size totalElements totalPages
        }
      }`,
-    { workspaceId, page, size },
+    { workspaceId, page, size, search: search.trim() === '' ? null : search.trim() },
   );
   return data.workspaceObjects;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -16,6 +16,10 @@ import { ConnectionIcon } from '../../components/ConnectionIcon';
 import { Loader } from '../../components/Loader';
 import { McpServerDialog } from '../../components/McpServerDialog';
 import { WorkspaceConnectionDialog } from '../../components/WorkspaceConnectionDialog';
+import { CompactPagination } from '../../components/CompactPagination';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
+import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceIntegrationsPage.module.css';
@@ -62,6 +66,58 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
   const [servers, setServers] = useState<McpServer[] | null>(null);
   const [connections, setConnections] = useState<WorkspaceConnection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /*
+   * Both lists are narrowed and paged here rather than by the server.
+   *
+   * Honest on this page and not on the paged ones: these two queries answer
+   * with the whole list, so what is in the browser is the population and
+   * nothing can be hiding on a page that was never fetched.
+   */
+  const [serverTyped, setServerTyped, serverAsked] = useSearch();
+  const [connectionTyped, setConnectionTyped, connectionAsked] = useSearch();
+  const [serverPage, setServerPage] = useState(1);
+  const [connectionPage, setConnectionPage] = useState(1);
+  const [serverSize, setServerSize] = usePageSize('mcpServers');
+  const [connectionSize, setConnectionSize] = usePageSize('connections');
+
+  // A new search is a new list, so each goes back to its own first page.
+  useEffect(() => setServerPage(1), [serverAsked]);
+  useEffect(() => setConnectionPage(1), [connectionAsked]);
+
+  /** A server is found by its name or by where it points. */
+  const matchingServers = useMemo(() => {
+    const looking = serverAsked.trim().toLowerCase();
+    if (servers === null) return null;
+    if (looking === '') return servers;
+    return servers.filter(
+      (held) =>
+        held.name.toLowerCase().includes(looking) ||
+        held.address.toLowerCase().includes(looking),
+    );
+  }, [servers, serverAsked]);
+
+  /** A connection is found by its name or by what kind it is. */
+  const matchingConnections = useMemo(() => {
+    const looking = connectionAsked.trim().toLowerCase();
+    if (connections === null) return null;
+    if (looking === '') return connections;
+    return connections.filter(
+      (held) =>
+        held.name.toLowerCase().includes(looking) ||
+        held.type.toLowerCase().includes(looking),
+    );
+  }, [connections, connectionAsked]);
+
+  /** The slice of an already-filtered list that belongs on the page being shown. */
+  function slice<T>(all: T[] | null, page: number, size: number): T[] | null {
+    if (all === null) return null;
+    const from = (page - 1) * size;
+    return all.slice(from, from + size);
+  }
+
+  const shownServers = slice<McpServer>(matchingServers, serverPage, serverSize);
+  const shownConnections = slice<WorkspaceConnection>(matchingConnections, connectionPage, connectionSize);
   const [addingServer, setAddingServer] = useState(false);
   const [addingConnection, setAddingConnection] = useState(false);
 
@@ -108,6 +164,14 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
           <h2 className={styles.cardTitle}>{t('MCP Servers')}</h2>
           <button type="button" className={styles.addButton} onClick={() => setAddingServer(true)}>{t('+ Add Server')}</button>
         </div>
+        <SearchRow inset>
+          <SearchBox
+            value={serverTyped}
+            onChange={setServerTyped}
+            placeholder={t('Search servers...')}
+            label={t('Search MCP servers')}
+          />
+        </SearchRow>
 
         <div className={styles.tableHeader}>
           <span className={styles.colName}>{t('Name')}</span>
@@ -118,8 +182,11 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
 
         {servers === null && error === null && <p className={styles.notice}><Loader /></p>}
         {servers?.length === 0 && <p className={styles.notice}>{t('No MCP servers yet.')}</p>}
+        {servers !== null && servers.length > 0 && matchingServers?.length === 0 && (
+          <p className={styles.notice}>{t('No server matches what you typed.')}</p>
+        )}
 
-        {servers?.map((server) => (
+        {shownServers?.map((server) => (
           <div
             key={server.id}
             className={`${styles.row} ${styles.rowOpens}`}
@@ -151,6 +218,22 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             </span>
           </div>
         ))}
+
+        {/*
+          Shown whenever there is anything, not only when there is more than
+          one page: it carries the page-size control as well as the numbers.
+        */}
+        {matchingServers !== null && matchingServers.length > 0 && (
+          <CompactPagination
+            page={serverPage}
+            pageSize={serverSize}
+            totalItems={matchingServers.length}
+            unit={t('servers')}
+            onPageChange={setServerPage}
+            pageSizes={PAGE_SIZES}
+            onPageSizeChange={setServerSize}
+          />
+        )}
       </section>
 
       <section className={styles.card}>
@@ -164,6 +247,15 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
           <button type="button" className={styles.addButton} onClick={() => setAddingConnection(true)}>{t('+ Add Connection')}</button>
         </div>
 
+        <SearchRow inset>
+          <SearchBox
+            value={connectionTyped}
+            onChange={setConnectionTyped}
+            placeholder={t('Search connections...')}
+            label={t('Search connections')}
+          />
+        </SearchRow>
+
         <div className={styles.tableHeader}>
           <span className={styles.colName}>{t('Name')}</span>
           <span className={styles.colGrow}>{t('Type')}</span>
@@ -173,8 +265,11 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
 
         {connections === null && error === null && <p className={styles.notice}><Loader /></p>}
         {connections?.length === 0 && <p className={styles.notice}>{t('No connections yet.')}</p>}
+        {connections !== null && connections.length > 0 && matchingConnections?.length === 0 && (
+          <p className={styles.notice}>{t('No connection matches what you typed.')}</p>
+        )}
 
-        {connections?.map((connection) => (
+        {shownConnections?.map((connection) => (
           // The whole row opens it: a cog at the far right is a small target
           // for the only thing anybody wants from a row.
           <div
@@ -211,6 +306,18 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             </span>
           </div>
         ))}
+
+        {matchingConnections !== null && matchingConnections.length > 0 && (
+          <CompactPagination
+            page={connectionPage}
+            pageSize={connectionSize}
+            totalItems={matchingConnections.length}
+            unit={t('connections')}
+            onPageChange={setConnectionPage}
+            pageSizes={PAGE_SIZES}
+            onPageSizeChange={setConnectionSize}
+          />
+        )}
       </section>
 
       <McpServerDialog

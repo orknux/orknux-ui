@@ -16,7 +16,6 @@ import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import clockIcon from '../../assets/clock.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
-import searchIcon from '../../assets/search.svg';
 import terminalIcon from '../../assets/terminal.svg';
 import userIcon from '../../assets/user.svg';
 import { AppShell } from '../../components/AppShell';
@@ -24,6 +23,7 @@ import { AutoRefresh } from '../../components/AutoRefresh';
 import { Loader } from '../../components/Loader';
 import { SelectField } from '../../components/SelectField';
 import { CompactPagination } from '../../components/CompactPagination';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -149,6 +149,23 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
         </div>
       </header>
 
+      {/*
+        First thing on the left under the title, as on every other list.
+
+        It sat at the far right of the filters row, which put the control that
+        narrows by name at the opposite end of the screen from the controls
+        that narrow by status and by date - three things doing one job, spread
+        across the width of the page.
+      */}
+      <SearchRow>
+        <SearchBox
+          value={search}
+          onChange={setSearch}
+          placeholder={t('Search executions...')}
+          label={t('Search executions')}
+        />
+      </SearchRow>
+
       <div className={styles.filtersBar}>
         <div className={styles.filtersLeft}>
           <SelectField
@@ -196,17 +213,6 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
           />
         </div>
 
-        <div className={styles.searchBox}>
-          <img src={searchIcon} alt="" width={14} height={14} />
-          <input
-            className={styles.searchField}
-            type="search"
-            placeholder={t('Search executions...')}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            aria-label={t('Search executions')}
-          />
-        </div>
       </div>
 
       <section className={styles.card}>

@@ -19,6 +19,8 @@ import {
 } from '../../components/ComponentTransfer';
 import { CreateAgentDialog } from '../../components/CreateAgentDialog';
 import { Loader } from '../../components/Loader';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -37,6 +39,11 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
   const [agents, setAgents] = useState<PageOf<Agent> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('agents');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather
+  // than at page four of the previous one.
+  useEffect(() => setPage(1), [asked]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -45,7 +52,7 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceAgents(workspaceId, page - 1, pageSize)
+    fetchWorkspaceAgents(workspaceId, page - 1, pageSize, asked)
       .then((result) => {
         setAgents(result);
         setLoading(false);
@@ -55,7 +62,7 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
         setError(cause instanceof Error ? cause.message : t('Could not load agents.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize]);
+  }, [workspaceId, page, pageSize, asked]);
 
   useEffect(load, [load]);
 
@@ -85,6 +92,14 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
           <button type="button" className={styles.createAgent} onClick={() => setCreating(true)}>{t('+ Create Agent')}</button>
         </div>
       </header>
+
+      <SearchRow>
+        <SearchBox
+          value={typed}
+          onChange={setTyped}
+          placeholder={t('Search agents...')}
+        />
+      </SearchRow>
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>

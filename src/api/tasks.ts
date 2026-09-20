@@ -195,11 +195,13 @@ const TASK_FIELDS = `
 
 export async function fetchTasks(
   workspaceId: string,
-  options: { status?: TaskStatus; page?: number; size?: number } = {},
+  options: { status?: TaskStatus; page?: number; size?: number; search?: string } = {},
 ): Promise<TaskPage> {
+  // Blank is "every title", which is what absent means to the server.
+  const looking = (options.search ?? '').trim();
   const data = await graphql<{ workspaceTasks: TaskPage }>(
-    `query ($workspaceId: ID!, $status: TaskStatus, $page: Int, $size: Int) {
-       workspaceTasks(workspaceId: $workspaceId, status: $status, page: $page, size: $size) {
+    `query ($workspaceId: ID!, $status: TaskStatus, $page: Int, $size: Int, $search: String) {
+       workspaceTasks(workspaceId: $workspaceId, status: $status, page: $page, size: $size, search: $search) {
          totalElements
          content { ${TASK_FIELDS} }
        }
@@ -209,6 +211,7 @@ export async function fetchTasks(
       status: options.status ?? null,
       page: options.page ?? 0,
       size: options.size ?? 20,
+      search: looking === '' ? null : looking,
     },
   );
   return data.workspaceTasks;

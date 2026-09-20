@@ -25,6 +25,8 @@ import {
 import { CreateWorkflowDialog } from '../../components/CreateWorkflowDialog';
 import { Loader } from '../../components/Loader';
 import { SortControl } from '../../components/SortControl';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
@@ -138,6 +140,10 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
    * hook's; see pageSize.ts, which every paginated list now goes through.
    */
   const [pageSize, setPageSize] = usePageSize('workflows');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page.
+  useEffect(() => setPage(1), [asked]);
 
   /*
    * Which list the page number belongs to.
@@ -189,7 +195,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
     const mine = ++newest.current;
     setLoading(true);
     setError(null);
-    fetchWorkspaceWorkflows(workspaceId, page - 1, pageSize, order, ascending)
+    fetchWorkspaceWorkflows(workspaceId, page - 1, pageSize, order, ascending, asked)
       .then((result) => {
         if (mine !== newest.current) return;
         /*
@@ -212,7 +218,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
         setError(cause instanceof Error ? cause.message : t('Could not load workflows.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, order, ascending]);
+  }, [workspaceId, page, pageSize, order, ascending, asked]);
 
   useEffect(load, [load]);
 
@@ -277,7 +283,20 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
     >
       <section className={styles.card}>
         <header className={styles.header}>
-          <h1 className={styles.title}>{t('Workflows')}</h1>
+          {/*
+            The title and what the page is, as every other list here has.
+
+            It had the heading alone, so this was the one screen that did not
+            say what it lists - and the sentence is also what tells somebody
+            the difference between this and Executions, which is the question
+            the two names on their own do not answer.
+          */}
+          <div className={styles.titleGroup}>
+            <h1 className={styles.title}>{t('Workflows')}</h1>
+            <p className={styles.subtitle}>
+              {t('The workflows this workspace runs, and what each one is doing.')}
+            </p>
+          </div>
           <span className={styles.headerSpacer} />
           {/*
             The order, on the header row with everything else that acts on this
@@ -318,6 +337,14 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
             {t('Create Workflow')}
           </button>
         </header>
+
+        <SearchRow>
+          <SearchBox
+            value={typed}
+            onChange={setTyped}
+            placeholder={t('Search workflows...')}
+          />
+        </SearchRow>
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>

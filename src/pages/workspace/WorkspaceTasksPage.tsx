@@ -13,6 +13,8 @@ import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
+import { SearchBox } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -42,6 +44,10 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
   const [tasks, setTasks] = useState<TaskPage | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('tasks');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page.
+  useEffect(() => setPage(1), [asked]);
   const [status, setStatus] = useState<TaskStatus | ''>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +68,7 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
       status: status === '' ? undefined : status,
       page: page - 1,
       size: pageSize,
+      search: asked,
     })
       .then((found) => {
         setTasks(found);
@@ -72,7 +79,7 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
         setError(cause instanceof Error ? cause.message : t('Could not load the tasks.'));
         setLoading(false);
       });
-  }, [workspaceId, status, page, pageSize]);
+  }, [workspaceId, status, page, pageSize, asked]);
 
   useEffect(load, [load]);
 
@@ -207,6 +214,19 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
       </section>
 
       <div className={styles.filterBar}>
+        {/*
+          On the filter bar, with the other control that narrows this list.
+
+          It was under the title, which put it above the box somebody types a
+          prompt into - so the page read as "search, then write a task", and
+          the two controls that decide which rows are shown were a section
+          apart from each other.
+        */}
+        <SearchBox
+          value={typed}
+          onChange={setTyped}
+          placeholder={t('Search tasks...')}
+        />
         <div className={styles.sortRow}>
           <label className={styles.sortLabel} htmlFor="task-status">{t('State')}</label>
           <span className={styles.selectWrapper}>

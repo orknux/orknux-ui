@@ -63,6 +63,14 @@ export interface ActionParam {
 export interface Action {
   id: string;
   workspaceId: string;
+  /**
+   * The workflow this belongs to, where it is that workflow's own.
+   *
+   * Null is the ordinary case - a definition the workspace shares. Set is
+   * "Custom": made from a node, left out of the workspace's list, and shown in
+   * no other workflow's picker.
+   */
+  workflowId: string | null;
   name: string;
   type: ActionType;
   subtype: ActionSubtype;
@@ -128,7 +136,7 @@ export interface ActionHeader {
 }
 
 const ACTION_FIELDS = `
-  id workspaceId name type subtype subtypeLabel
+  id workspaceId workflowId name type subtype subtypeLabel
   connectionId connectionName connectionAction content targetName
   emailTo emailCc emailSubject emailReplyTo
   url method headers headersReadable headerRows { name value variableId variableName }
@@ -140,8 +148,8 @@ const ACTION_FIELDS = `
 `;
 
 const WORKSPACE_ACTIONS_QUERY = `
-  query WorkspaceActions($workspaceId: ID!, $page: Int!, $size: Int!) {
-    workspaceActions(workspaceId: $workspaceId, page: $page, size: $size) {
+  query WorkspaceActions($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
+    workspaceActions(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
       content { ${ACTION_FIELDS} }
       page
       size
@@ -182,8 +190,24 @@ export async function fetchAction(id: string): Promise<Action | null> {
 }
 
 /** `page` is 0-based, matching the server. */
-export async function fetchWorkspaceActions(workspaceId: string, page: number, size: number): Promise<PageOf<Action>> {
-  const data = await graphql<{ workspaceActions: PageOf<Action> }>(WORKSPACE_ACTIONS_QUERY, { workspaceId, page, size });
+/**
+ * @param search narrows the list to what a word appears in; blank is all of it.
+ *
+ * Asked of the server rather than sieved here, because the list is paged:
+ * narrowing what arrived on page one would hide matches on page four.
+ */
+export async function fetchWorkspaceActions(
+  workspaceId: string,
+  page: number,
+  size: number,
+  search = '',
+): Promise<PageOf<Action>> {
+  const data = await graphql<{ workspaceActions: PageOf<Action> }>(WORKSPACE_ACTIONS_QUERY, {
+    workspaceId,
+    page,
+    size,
+    search: search.trim() === '' ? null : search.trim(),
+  });
   return data.workspaceActions;
 }
 
@@ -220,8 +244,28 @@ export interface ActionInput {
   durationSeconds?: number | null;
 }
 
+/**
+ * The "Custom" actions one workflow owns - what the workspace list leaves out.
+ *
+ * The workflow editor asks for these beside that list: they are its own, made
+ * from its nodes, and without them a node pointing at one would open an empty
+ * picker with its action filtered away.
+ */
+export async function fetchWorkflowOwnedActions(
+  workspaceId: string,
+  workflowId: string,
+): Promise<Action[]> {
+  const data = await graphql<{ workflowOwnedActions: Action[] }>(
+    `query WorkflowOwnedActions($workspaceId: ID!, $workflowId: ID!) {
+       workflowOwnedActions(workspaceId: $workspaceId, workflowId: $workflowId) { ${ACTION_FIELDS} }
+     }`,
+    { workspaceId, workflowId },
+  );
+  return data.workflowOwnedActions;
+}
+
 export async function createAction(
-  input: ActionInput & { workspaceId: string; type: ActionType },
+  input: ActionInput & { workspaceId: string; type: ActionType; workflowId?: string | null },
 ): Promise<Action> {
   const data = await graphql<{ createAction: Action }>(CREATE_ACTION_MUTATION, { input });
   return data.createAction;

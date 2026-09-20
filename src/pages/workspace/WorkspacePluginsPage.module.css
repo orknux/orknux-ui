@@ -7,7 +7,20 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-8);
-  overflow: clip;
+  /*
+   * Not clipped.
+   *
+   * `overflow: clip` was here to keep the card's corners round over whatever
+   * sits in it - and it also cut off every picker that opens downwards. A
+   * variable list on the last parameter of a card was a search box and two
+   * rows, with the rest of the workspace's variables behind the card's edge
+   * and no way to scroll to them.
+   *
+   * The corners are kept by the children that need it rather than by the
+   * parent, which is the trade: one card's inner element rounding itself
+   * against one dropdown that cannot be reached at all.
+   */
+  overflow: visible;
 }
 
 .header {

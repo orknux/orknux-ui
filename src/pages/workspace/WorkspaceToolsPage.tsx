@@ -22,6 +22,8 @@ import {
 import { Loader } from '../../components/Loader';
 import { NameDialog } from '../../components/NameDialog';
 import { FieldHint } from '../../components/FieldHint';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -55,6 +57,11 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
   const [serverPaged, setServerPaged] = useState(true);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('tools');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather
+  // than at page four of the previous one.
+  useEffect(() => setPage(1), [asked]);
   /*
    * One origin, or both. The plugins' tools were nowhere on this page at all -
    * they stood only on the agent form's grant list, which is a place to grant,
@@ -89,7 +96,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
     };
 
     if (source === 'WORKSPACE') {
-      fetchWorkspaceTools(workspaceId, page - 1, pageSize)
+      fetchWorkspaceTools(workspaceId, page - 1, pageSize, asked)
         .then((result) => {
           setRows(result.content.map((tool) => ({ kind: 'tool', tool })));
           setTotal(result.totalElements);
@@ -128,7 +135,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
         setServerPaged(false);
       })
       .catch(failed);
-  }, [workspaceId, page, pageSize, source]);
+  }, [workspaceId, page, pageSize, source, asked]);
 
   useEffect(load, [load]);
 
@@ -186,6 +193,14 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
           <button type="button" className={styles.createButton} onClick={() => setCreating(true)}>{t('+ Create Tool')}</button>
         </div>
       </header>
+
+      <SearchRow>
+        <SearchBox
+          value={typed}
+          onChange={setTyped}
+          placeholder={t('Search tools...')}
+        />
+      </SearchRow>
 
       {error !== null && (
         <p className={styles.pageError} role="alert">

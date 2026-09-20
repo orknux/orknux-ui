@@ -22,6 +22,8 @@ import {
   transferStyles,
 } from '../../components/ComponentTransfer';
 import { Loader } from '../../components/Loader';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
@@ -52,6 +54,11 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
   const [functions, setFunctions] = useState<PageOf<WorkspaceFunction> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('functions');
+  const [typed, setTyped, asked] = useSearch();
+
+  // A new search is a new list, so it starts at its first page rather than at
+  // page four of the previous one.
+  useEffect(() => setPage(1), [asked]);
   /*
    * One origin, or both, or one plugin by name. The list has carried the
    * plugins' functions since they existed, and rows named slack_this and
@@ -126,6 +133,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
       pageSize,
       scope === 'WORKSPACE' || scope === 'PLUGIN' ? scope : undefined,
       scope.startsWith('plugin:') ? scope.slice('plugin:'.length) : undefined,
+      asked,
     )
       .then((result) => {
         setFunctions(result);
@@ -136,7 +144,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
         setError(cause instanceof Error ? cause.message : t('Could not load the functions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, scope]);
+  }, [workspaceId, page, pageSize, scope, asked]);
 
   useEffect(load, [load]);
 
@@ -222,6 +230,14 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
             >{t('+ Create Function')}</button>
           </div>
         </header>
+
+        <SearchRow>
+          <SearchBox
+            value={typed}
+            onChange={setTyped}
+            placeholder={t('Search functions...')}
+          />
+        </SearchRow>
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>

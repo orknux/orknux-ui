@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
@@ -18,6 +18,10 @@ import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
 import { ModelDialog } from '../../components/ModelDialog';
+import { CompactPagination } from '../../components/CompactPagination';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
+import { useSearch } from '../../components/useSearch';
+import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceModelsPage.module.css';
@@ -50,6 +54,66 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
   const [addingModel, setAddingModel] = useState(false);
   /** Which model an agent is being made on, so the row cannot be pressed twice. */
   const [makingAgentOn, setMakingAgentOn] = useState<string | null>(null);
+
+  /*
+   * Both lists are narrowed and paged here rather than by the server.
+   *
+   * That is honest on this page and would not be on the others: these two
+   * queries answer with the whole list, so what is in the browser *is* the
+   * population. Nothing can be hiding on a page that was never fetched, which
+   * is the one thing that makes a client-side sieve a lie elsewhere.
+   *
+   * A search each, because they are two lists and somebody looking for a model
+   * is not looking for a provider.
+   */
+  const [providerTyped, setProviderTyped, providerAsked] = useSearch();
+  const [modelTyped, setModelTyped, modelAsked] = useSearch();
+  const [providerPage, setProviderPage] = useState(1);
+  const [modelPage, setModelPage] = useState(1);
+  const [providerSize, setProviderSize] = usePageSize('providers');
+  const [modelSize, setModelSize] = usePageSize('models');
+
+  // A new search is a new list, so each goes back to its own first page.
+  useEffect(() => setProviderPage(1), [providerAsked]);
+  useEffect(() => setModelPage(1), [modelAsked]);
+
+  /** A provider is found by its name or by where it points. */
+  const matchingProviders = useMemo(() => {
+    const looking = providerAsked.trim().toLowerCase();
+    if (providers === null) return null;
+    if (looking === '') return providers;
+    return providers.filter(
+      (held) =>
+        held.name.toLowerCase().includes(looking) ||
+        held.endpoint.toLowerCase().includes(looking),
+    );
+  }, [providers, providerAsked]);
+
+  /**
+   * A model is found by the name somebody gave it, by the id the provider knows
+   * it as, or by whose it is - which are the three things the row shows.
+   */
+  const matchingModels = useMemo(() => {
+    const looking = modelAsked.trim().toLowerCase();
+    if (models === null) return null;
+    if (looking === '') return models;
+    return models.filter(
+      (held) =>
+        held.name.toLowerCase().includes(looking) ||
+        held.modelId.toLowerCase().includes(looking) ||
+        held.providerName.toLowerCase().includes(looking),
+    );
+  }, [models, modelAsked]);
+
+  /** The slice of an already-filtered list that belongs on the page being shown. */
+  function slice<T>(all: T[] | null, page: number, size: number): T[] | null {
+    if (all === null) return null;
+    const from = (page - 1) * size;
+    return all.slice(from, from + size);
+  }
+
+  const shownProviders = slice<ModelProvider>(matchingProviders, providerPage, providerSize);
+  const shownModels = slice<Model>(matchingModels, modelPage, modelSize);
 
   const load = useCallback(() => {
     if (workspaceId === '') return;
@@ -133,6 +197,14 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             {t('+ Add Provider')}
           </Link>
         </div>
+        <SearchRow inset>
+          <SearchBox
+            value={providerTyped}
+            onChange={setProviderTyped}
+            placeholder={t('Search providers...')}
+            label={t('Search providers')}
+          />
+        </SearchRow>
 
         <div className={styles.tableHeader}>
           <span className={styles.colProvider}>{t('Provider')}</span>
@@ -143,8 +215,11 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
 
         {providers === null && error === null && <p className={styles.notice}><Loader /></p>}
         {providers?.length === 0 && <p className={styles.notice}>{t('No providers yet.')}</p>}
+        {providers !== null && providers.length > 0 && matchingProviders?.length === 0 && (
+          <p className={styles.notice}>{t('No provider matches what you typed.')}</p>
+        )}
 
-        {providers?.map((provider) => (
+        {shownProviders?.map((provider) => (
           // The whole row opens it, the way a connection's row does on
           // Integrations: a cog at the far right is a small target for the only
           // thing anybody wants from a row. The name is a real link, so the row
@@ -205,6 +280,24 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             </span>
           </div>
         ))}
+
+        {/*
+          Shown whenever there is anything, not only when there is more than
+          one page: it carries the page-size control as well as the numbers, so
+          gating it on a page count takes away the control that had just been
+          used.
+        */}
+        {matchingProviders !== null && matchingProviders.length > 0 && (
+          <CompactPagination
+            page={providerPage}
+            pageSize={providerSize}
+            totalItems={matchingProviders.length}
+            unit={t('providers')}
+            onPageChange={setProviderPage}
+            pageSizes={PAGE_SIZES}
+            onPageSizeChange={setProviderSize}
+          />
+        )}
       </section>
 
       <section className={styles.card}>
@@ -218,6 +311,14 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             disabled={providers === null || providers.length === 0}
           >{t('+ Add Model')}</button>
         </div>
+        <SearchRow inset>
+          <SearchBox
+            value={modelTyped}
+            onChange={setModelTyped}
+            placeholder={t('Search models...')}
+            label={t('Search models')}
+          />
+        </SearchRow>
 
         <div className={styles.tableHeader}>
           <span className={styles.colModel}>{t('Model')}</span>
@@ -236,8 +337,11 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
               : t('No models yet.')}
           </p>
         )}
+        {models !== null && models.length > 0 && matchingModels?.length === 0 && (
+          <p className={styles.notice}>{t('No model matches what you typed.')}</p>
+        )}
 
-        {models?.map((model) => (
+        {shownModels?.map((model) => (
           // As above. Both lists on this page behave the same way; a page where
           // half the rows open and half do not is worse than neither.
           <div
@@ -309,6 +413,18 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             </span>
           </div>
         ))}
+
+        {matchingModels !== null && matchingModels.length > 0 && (
+          <CompactPagination
+            page={modelPage}
+            pageSize={modelSize}
+            totalItems={matchingModels.length}
+            unit={t('models')}
+            onPageChange={setModelPage}
+            pageSizes={PAGE_SIZES}
+            onPageSizeChange={setModelSize}
+          />
+        )}
       </section>
 
       <ModelDialog
