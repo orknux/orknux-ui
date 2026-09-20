@@ -83,7 +83,67 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * The search and the origin filter, on one line with room under them.
+ *
+ * The box sat directly on top of the first row with nothing between them, so
+ * the thing that narrows the list read as the first item in it.
+ */
+.grantFind {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-10);
+}
+
+/* Which plugin's rows to show; only drawn where there is more than one origin. */
+.grantGroup {
+  flex-shrink: 0;
+  max-width: 45%;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.grantGroup:focus {
+  outline: none;
+  border-color: var(--color-accent-brand);
+}
+
+/*
+ * What the origin filter is holding back, and the way back to it.
+ *
+ * A button rather than a line of text: the whole of what somebody wants on
+ * reading it is to see those rows, and the filter that hid them is the thing
+ * standing in the way.
+ */
+.grantElsewhere {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.grantElsewhere:hover {
+  border-color: var(--color-accent-brand);
+  color: var(--color-text-primary);
+}
+
 .grantSearch {
+  flex: 1 0 0;
+  min-width: 0;
   width: 100%;
   padding: var(--space-6) var(--space-10);
   background: var(--color-bg);

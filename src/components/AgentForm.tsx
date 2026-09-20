@@ -178,6 +178,14 @@ const DEFAULT_SHARE = 0;
  */
 const PREVIEW_PAUSE = 150;
 
+/**
+ * What a row with no plugin is filed under in the origin filter.
+ *
+ * Not a plugin name and cannot collide with one: a plugin key is an
+ * identifier, and this is a sentence.
+ */
+const OWN_GROUP = 'this workspace';
+
 /** Grouped the way the server groups them in its own sentences. */
 function thousands(count: number): string {
   return count.toLocaleString('en-US');
@@ -217,6 +225,18 @@ interface GrantListProps<Item> {
    * now that its list mixes the workspace's own with what plugins brought.
    */
   hint?: ReactNode;
+  /**
+   * Which plugin a row came from, where the list mixes several origins.
+   *
+   * Tools is the one that does: the workspace's own sit beside everything its
+   * plugins brought, and a workspace with a few plugins loaded has a list
+   * where searching by name only helps if you already know the name. Left out
+   * for a list with one origin, where a filter offering "all of them" and
+   * nothing else is a control that does nothing.
+   *
+   * Null for a row the workspace itself defines.
+   */
+  groupOf?: (item: Item) => string | null;
   /** The names granted now. */
   granted: string[];
   onChange: (granted: string[]) => void;
@@ -263,10 +283,13 @@ function GrantList<Item>({
   metaOf,
   linkOf,
   hint,
+  groupOf,
   granted,
   onChange,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
+  /** Which plugin is being shown, or '' for all of them. */
+  const [group, setGroup] = useState('');
   const items = catalogue.items;
   const needle = search.trim().toLowerCase();
 
@@ -279,13 +302,42 @@ function GrantList<Item>({
    */
   const rows = items.map((item) => {
     const name = nameOf(item);
+    /*
+     * The two narrowings are not the same thing, and do not behave the same.
+     *
+     * A search is a guess at a name: a ticked row survives it, because a grant
+     * somebody cannot see is a grant they cannot revoke, and the row they
+     * typed past is the one they were about to untick.
+     *
+     * The origin filter is not a guess. Choosing one plugin says "only this
+     * plugin's" outright, and keeping every other plugin's granted rows in
+     * view made the control do nothing you could see: an agent with nineteen
+     * grants answered "PDF" with one PDF row and eighteen others. So it hides
+     * ticked rows too - and says how many it hid, which is what keeps the
+     * grant from being hidden *silently*.
+     */
+    const inGroup = group === '' || (groupOf?.(item) ?? OWN_GROUP) === group;
     return {
       item,
       name,
+      inGroup,
       ticked: granted.includes(name),
       matches: needle === '' || name.toLowerCase().includes(needle),
     };
   });
+
+  /**
+   * The origins this list actually holds, in the order somebody reads them.
+   *
+   * Read off the rows rather than asked for: a plugin with nothing in this
+   * list is not an option worth offering, and one loaded after the page opened
+   * appears without anything having to be told about it.
+   */
+  const groups = groupOf === undefined
+    ? []
+    : [...new Set(items.map((item) => groupOf(item) ?? OWN_GROUP))].sort((left, right) =>
+        left === OWN_GROUP ? -1 : right === OWN_GROUP ? 1 : left.localeCompare(right),
+      );
 
   /*
    * A grant the catalogue has no row for still gets one.
@@ -300,8 +352,11 @@ function GrantList<Item>({
    */
   const orphans = granted.filter((name) => !rows.some((row) => row.name === name));
 
-  const shown = rows.filter((row) => row.matches || row.ticked);
-  const matching = rows.filter((row) => row.matches).length;
+  const shown = rows.filter((row) => row.inGroup && (row.matches || row.ticked));
+  const matching = rows.filter((row) => row.inGroup && row.matches).length;
+
+  /** Grants the origin filter is holding back, which the list has to own up to. */
+  const elsewhere = rows.filter((row) => row.ticked && !row.inGroup).length;
   const here = rows.filter((row) => row.ticked).length + orphans.length;
 
   return (
@@ -332,15 +387,59 @@ function GrantList<Item>({
       <CatalogueNote catalogue={catalogue} className={own.emptyNote} empty={empty} />
 
       {items.length >= SEARCH_FROM && (
-        <input
-          className={own.grantSearch}
-          type="search"
-          value={search}
-          spellCheck={false}
-          placeholder={`Search ${what}…`}
-          aria-label={`Search ${what}`}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+        <div className={own.grantFind}>
+          <input
+            className={own.grantSearch}
+            type="search"
+            value={search}
+            spellCheck={false}
+            placeholder={`Search ${what}…`}
+            aria-label={`Search ${what}`}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+
+          {/*
+            Where the list holds more than one origin. Two of them is already
+            worth a filter - the workspace's own and one plugin's - because
+            "which of these did that plugin bring" is otherwise answered by
+            reading every row.
+          */}
+          {groups.length > 1 && (
+            <select
+              className={own.grantGroup}
+              value={group}
+              aria-label={`Which ${what} to list`}
+              onChange={(event) => setGroup(event.target.value)}
+            >
+              <option value="">{t('All')}</option>
+              {groups.map((one) => (
+                <option key={one} value={one}>
+                  {one === OWN_GROUP ? t("This workspace's own") : one}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {elsewhere > 0 && (
+        /*
+          Said out loud, and undoable in one press.
+
+          The filter may hide a grant; it may not hide that it did. Without
+          this line an agent reads as having fewer grants than it has, which is
+          the very thing the never-hide-a-ticked-row rule exists to prevent.
+        */
+        <button
+          type="button"
+          className={own.grantElsewhere}
+          onClick={() => setGroup('')}
+          data-grants-elsewhere={elsewhere}
+        >
+          {elsewhere === 1
+            ? t('1 more is granted outside this filter - show all')
+            : `${thousands(elsewhere)} more are granted outside this filter - show all`}
+        </button>
       )}
 
       {(items.length > 0 || orphans.length > 0) && (
@@ -1052,6 +1151,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           nameOf={(tool) => tool.name}
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
           linkOf={(tool) => tool.link}
+          groupOf={(tool) => tool.plugin ?? null}
           granted={tools}
           onChange={setTools}
         />
