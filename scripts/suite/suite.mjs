@@ -570,6 +570,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'finish-answer-grant-check',
+    what: "finish_answer is ticked in an agent's Tools list to begin with, and unticking it is stored",
+    // Drives one agent's settings and puts the switch back as it found it.
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-drawn-file-check',
     what: "a picture the model draws is in the chat's files at once, not after a reload",
     // Stubs the turn: a seeded installation has no image model to ask, and
