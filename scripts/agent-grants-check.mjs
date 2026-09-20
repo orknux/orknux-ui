@@ -497,7 +497,33 @@ async function measure(root, where) {
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agentNode.agentId}/settings`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
-await page.waitForTimeout(500);
+
+/*
+ * Until the groups stop growing, rather than for half a second.
+ *
+ * The tools group fills in two waves - the workspace's own, then what each
+ * plugin brings - and half a second landed in the middle of that often enough
+ * to be a nuisance: forty rows of an eventual eighty-eight, no count line, and
+ * no search box, which reads as three product faults rather than one early
+ * look. Settled means the row count is the same twice in a row and the count
+ * line has something in it.
+ */
+async function settled() {
+  let before = -1;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const now = await page.evaluate(() => {
+      const group = document.querySelector('[data-grants="tools"]');
+      return {
+        rows: group?.querySelectorAll('[data-grant-rows] > [data-grant-name]').length ?? 0,
+        count: group?.querySelector('[data-grant-count]')?.textContent?.trim() ?? '',
+      };
+    });
+    if (now.rows > 0 && now.rows === before && now.count !== '') return;
+    before = now.rows;
+    await page.waitForTimeout(250);
+  }
+}
+await settled();
 const column = await page
   .locator('[data-grants="tools"]')
   .evaluate((node) => Math.round(node.getBoundingClientRect().width));
