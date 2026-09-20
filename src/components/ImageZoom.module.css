@@ -54,27 +54,41 @@
   color: var(--color-text-secondary);
 }
 
+/*
+ * The way out, drawn as one.
+ *
+ * It was a muted glyph with no surface, over a picture that fills the window
+ * and a backdrop the same colour as the glyph - so the control was there and
+ * looked like nothing, and the only way out somebody found was Escape or a
+ * click on the dark. Given a surface, a border and a size worth aiming at, it
+ * reads as a button before it is hovered.
+ */
 .close {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   margin-left: auto;
   padding: 0;
-  background: none;
-  border: 0;
-  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
   font-size: var(--text-xl);
   line-height: 1;
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
 .close:hover {
-  background: var(--color-surface-raised);
-  color: var(--color-text-primary);
+  background: var(--color-surface-hover, var(--color-surface-raised));
+  border-color: var(--color-accent-brand);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--color-accent-brand);
+  outline-offset: 2px;
 }
 
 .stage {

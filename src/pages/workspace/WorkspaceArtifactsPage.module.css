@@ -1,0 +1,194 @@
+
+/*
+ * A gallery, not a table.
+ *
+ * What is on this page is pictures, and a column of filenames says nothing
+ * about which one somebody is looking for. The grid fills to whatever width the
+ * shell leaves it rather than fixing a column count, so the same page works
+ * beside a wide sidebar and on a narrow window without a breakpoint per size.
+ */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-20);
+  padding: var(--space-20);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+/* The thumbnail is a control: it opens the picture at full size. */
+.thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--color-accent-brand);
+  outline-offset: -2px;
+}
+
+/*
+ * A fixed height and a crop, deliberately.
+ *
+ * Pictures come back at whatever shape the model drew them, and letting each
+ * set its own height gives a grid with a ragged bottom edge on every row. The
+ * crop loses part of a very tall picture in the thumbnail only - the viewer
+ * behind the click shows the whole of it, fitted.
+ */
+.image {
+  display: block;
+  width: 100%;
+  /*
+   * Taller than the card is wide, near enough.
+   *
+   * At 160 against a 220-odd card the thumbnails were letterbox strips of
+   * pictures that are mostly square, and the page was a band of them with the
+   * window empty underneath. A picture is what somebody came here to look at,
+   * so it gets the room.
+   */
+  height: 220px;
+  object-fit: cover;
+  background: var(--color-surface-raised);
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-12);
+}
+
+/*
+ * Two lines of the prompt, then an ellipsis.
+ *
+ * A prompt is a sentence and sometimes a paragraph. One line cuts most of them
+ * mid-phrase; letting it run makes the cards different heights, which is the
+ * ragged grid again. The whole of it is in the title attribute and under the
+ * picture in the viewer.
+ */
+.prompt {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.runLink {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.runLink:hover {
+  color: var(--color-accent-brand);
+  text-decoration: underline;
+}
+
+.dot {
+  color: var(--color-border);
+}
+
+/* Pushed to the bottom so every card's buttons line up across a row. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: auto;
+  padding: var(--space-8) var(--space-12) var(--space-12);
+}
+
+/*
+ * One height for both, set here rather than left to the contents.
+ *
+ * The two buttons are a word and an icon, and a word's line box and a 16px
+ * glyph are not the same height - so a row of them drew a small Download
+ * beside a trash can half again as tall. Fixed height and equal padding is the
+ * whole of it; the icon is sized to match the text beside it.
+ */
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 var(--space-10, 10px);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/*
+ * Both are squares: the two things you can do to the file, drawn the same.
+ *
+ * The row was a word beside an icon - a pill and a square, which read as two
+ * different kinds of control and never lined up however the padding was set.
+ */
+.action {
+  width: 28px;
+  padding: 0;
+}
+
+/*
+ * Sized so the two glyphs look the same, which is not the same as being the
+ * same size.
+ *
+ * The download icon nearly fills its viewBox; the trash can is drawn across
+ * about fourteen units of thirty-two, a little under half of its own. At an
+ * equal 14px the can came out visibly the smaller of the two, so the svg is
+ * given the room that makes what is drawn inside it match.
+ */
+.action img {
+  width: 14px;
+  height: 14px;
+}
+
+.action svg {
+  width: 26px;
+  height: 26px;
+}
+
+.action:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+/* Taking something away is drawn as taking something away. */
+.remove:hover {
+  border-color: var(--color-danger, #dc2626);
+  color: var(--color-danger, #dc2626);
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--color-accent-brand);
+  outline-offset: 2px;
+}

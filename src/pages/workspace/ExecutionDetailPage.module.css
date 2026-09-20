@@ -642,7 +642,14 @@ a.refresh {
   flex-direction: column;
   gap: var(--space-16);
   flex-shrink: 0;
-  width: 260px;
+  /*
+   * Half again as wide as it was. What this column holds is the step's input
+   * and its output as JSON, and a picture it drew - none of which is a label
+   * beside a value. At 260 a payload wrapped every few tokens and a picture
+   * arrived as a thumbnail, so the panel was a column of things too small to
+   * read next to a graph with room to spare.
+   */
+  width: 390px;
   padding: var(--space-24);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -921,6 +928,21 @@ a.summaryStopped:focus-visible {
   border-radius: var(--radius-6);
   overflow: hidden;
   background: var(--color-bg);
+}
+
+/* The miniature is a control: it opens the picture at full size. */
+.pictureZoom {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+}
+
+.pictureZoom:focus-visible {
+  outline: 2px solid var(--color-accent-brand);
+  outline-offset: 2px;
 }
 
 .pictureImage {

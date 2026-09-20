@@ -30,6 +30,7 @@ import { ConditionSettingsPage } from './pages/workspace/ConditionSettingsPage';
 import { ConnectionSettingsPage } from './pages/workspace/ConnectionSettingsPage';
 import { DocsPage } from './pages/docs/DocsPage';
 import { ExecutionDetailPage } from './pages/workspace/ExecutionDetailPage';
+import { WorkspaceArtifactsPage } from './pages/workspace/WorkspaceArtifactsPage';
 import { ExecutionsPage } from './pages/workspace/ExecutionsPage';
 import { FunctionEditorPage } from './pages/workspace/FunctionEditorPage';
 import { McpServerSettingsPage } from './pages/workspace/McpServerSettingsPage';
@@ -93,6 +94,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/functions': (session, onSignOut) => <WorkspaceFunctionsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/agents': (session, onSignOut) => <AgentsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/objects': (session, onSignOut) => <WorkspaceObjectsPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/artifacts': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/variables': (session, onSignOut) => <WorkspaceVariablesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/plugins': (session, onSignOut) => <WorkspacePluginsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/memory': (session, onSignOut) => <WorkspaceMemoryPage session={session} onSignOut={onSignOut} />,

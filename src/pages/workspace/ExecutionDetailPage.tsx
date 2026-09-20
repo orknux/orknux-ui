@@ -20,6 +20,8 @@ import {
   rerunExecution,
   rerunExecutionStep,
 } from '../../api/executions';
+import { ImageZoom } from '../../components/ImageZoom';
+import type { Picture } from '../../components/ImageZoom';
 import type { ExecutionDetail, ExecutionPicture, ExecutionStep, StepStatus } from '../../api/executions';
 import { NODE_KIND_LABEL } from '../../api/graph';
 import type { NodeKind } from '../../api/graph';
@@ -805,6 +807,9 @@ function NodeDetailsPanel({
   onRerunFromHere: (nodeKey: string) => Promise<void>;
   onClose: () => void;
 }) {
+  /** Which of this step's pictures is open over the page, or null while none is. */
+  const [zoomed, setZoomed] = useState<Picture | null>(null);
+
   const [rerunning, setRerunning] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
 
@@ -938,9 +943,30 @@ function NodeDetailsPanel({
           <div className={styles.pictures}>
             {pictures.map((picture) => (
               <figure key={picture.id} className={styles.picture}>
-                {/* The bytes are served by ExecutionPictureAPI; a 404 draws the
-                    broken-image icon, which is what says a picture was swept. */}
-                <img src={picture.url} alt={picture.prompt} className={styles.pictureImage} />
+                {/*
+                  Clicking it opens it, the same gesture and the same viewer a
+                  picture in a chat answers to.
+
+                  The panel is a column beside a graph, so a picture arrives in
+                  it at a few hundred pixels - which is a thumbnail of the thing
+                  the step exists to have made. Downloading it was the only way
+                  to see what was drawn, and that leaves the run behind.
+
+                  A button rather than an onClick on the image, for the reason
+                  Markdown's is one: it is a control, so it is reachable by
+                  keyboard and says what it does.
+                */}
+                <button
+                  type="button"
+                  className={styles.pictureZoom}
+                  onClick={() => setZoomed({ src: picture.url, alt: picture.prompt })}
+                  aria-label={t('Open this picture larger')}
+                  title={t('Click to open this picture larger')}
+                >
+                  {/* The bytes are served by ExecutionPictureAPI; a 404 draws the
+                      broken-image icon, which is what says a picture was swept. */}
+                  <img src={picture.url} alt={picture.prompt} className={styles.pictureImage} />
+                </button>
                 <figcaption className={styles.pictureCaption}>
                   <span className={styles.picturePrompt} title={picture.prompt}>{picture.prompt}</span>
                   <a className={styles.pictureDownload} href={picture.url} download={picture.filename}>
@@ -950,6 +976,8 @@ function NodeDetailsPanel({
               </figure>
             ))}
           </div>
+
+          <ImageZoom picture={zoomed} onClose={() => setZoomed(null)} />
         </>
       )}
     </aside>

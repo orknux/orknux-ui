@@ -5,6 +5,7 @@ import bellIcon from './assets/bell.svg';
 import bookIcon from './assets/book.svg';
 import botIcon from './assets/bot.svg';
 import boxIcon from './assets/box.svg';
+import imageIcon from './assets/image.svg';
 import chartLineIcon from './assets/chart-line.svg';
 import chartNetworkIcon from './assets/chart-network.svg';
 import clipboardListIcon from './assets/clipboard-list.svg';
@@ -280,6 +281,16 @@ export const PAGES = [
   },
 
   // ---- Workspace: what the whole of it is set up with ----
+  {
+    path: '/workspace/:workspaceId/artifacts',
+    access: 'signed-in',
+    goTo: {
+      label: t('Artifacts'),
+      where: 'Workspace',
+      icon: imageIcon,
+      also: 'images pictures generated files downloads',
+    },
+  },
   {
     path: '/workspace/:workspaceId/variables',
     access: 'signed-in',
