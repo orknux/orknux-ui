@@ -34,9 +34,41 @@
  * and is what "the same as the other multi-line fields" actually means.
  */
 
+/*
+ * The box the prompt sits in, told to grow.
+ *
+ * The note above explains why a class in this file loses to the frames' own:
+ * one class each is a tie, and theirs is injected last. What it did not say is
+ * that the tie is only a tie at equal specificity - so this rule names itself
+ * twice, which beats a single class wherever it is injected. The alternative
+ * is editing `.inputWrapperTall` in three page stylesheets to change one
+ * field, and dragging every other tall box along with it.
+ *
+ * `height: auto` because the agent settings page's version is a hard 80px: a
+ * 260px textarea inside it simply hung out of its own border.
+ */
+.promptWrapper.promptWrapper {
+  height: auto;
+  min-height: 280px;
+  align-items: stretch;
+}
+
 .promptInput {
   font-size: var(--text-md);
   line-height: 1.5;
+  /*
+   * Room to read the thing being edited.
+   *
+   * The textarea carries `rows=2` from the markup, which is 54px - so opening
+   * the prompt showed two lines of it and a scrollbar, and "expand" turned out
+   * to mean "reveal a sliver". This is an agent's whole briefing: it is the
+   * longest thing on the form and the one people come here to change.
+   *
+   * A minimum rather than a height, with the wrapper left on `height: auto`,
+   * so a long prompt grows the box instead of scrolling inside it - and
+   * `resize: vertical` still lets somebody drag it wherever they want.
+   */
+  min-height: 260px;
 }
 
 .promptToggle {

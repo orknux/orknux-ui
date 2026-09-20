@@ -944,7 +944,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             {t('System Prompt')}
           </button>
           {promptOpen && (
-            <div className={`${styles.inputWrapper} ${styles.inputWrapperTall}`}>
+            <div className={`${styles.inputWrapper} ${styles.inputWrapperTall} ${own.promptWrapper}`}>
               <textarea
                 id="agent-system-prompt"
                 name="systemPrompt"
