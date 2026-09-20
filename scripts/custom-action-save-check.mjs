@@ -80,6 +80,33 @@ if (fn === undefined) {
   await done();
 }
 
+/*
+ * A second node with the same default name, because that is the shape of the
+ * bug this workflow was reported for.
+ *
+ * Every action node arrives called "Action" and the Custom form names the
+ * definition after its node, so a workflow with two of them asks for two
+ * definitions called "Action". While owned names had to be unique the second
+ * was refused, the panel - which has no button and writes itself - never
+ * saved, and the node came back from a reload with no action on it.
+ */
+await graphql(
+  `mutation($w: ID!, $f: ID!, $input: WorkflowGraphInput!) {
+     saveWorkflowGraph(workspaceId: $w, workflowId: $f, input: $input) { nodes { key } }
+   }`,
+  {
+    w: WORKSPACE,
+    f: WORKFLOW,
+    input: {
+      nodes: [
+        { key: 'act', kind: 'ACTION', name: 'Action', x: 160, y: 160 },
+        { key: 'act2', kind: 'ACTION', name: 'Action', x: 160, y: 320 },
+      ],
+      edges: [],
+    },
+  },
+);
+
 await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.react-flow__node', { timeout: 20_000 });
 await page.locator('.react-flow__node').first().click();
@@ -197,6 +224,28 @@ const shown = await page.evaluate(() => {
 record(
   shown.function.includes(other.name),
   `and the reloaded panel shows the last thing chosen (${JSON.stringify(shown)})`,
+);
+
+/*
+ * And the *other* node, whose Custom definition wants the same name. Two
+ * labels on two nodes, which is ordinary; it was an error until V266.
+ */
+await page.locator('.react-flow__node').nth(1).click();
+await page.waitForTimeout(800);
+await page.locator('button').filter({ hasText: /Choose an action/ }).first().click();
+await page.waitForTimeout(400);
+await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
+await page.waitForTimeout(500);
+const second2 = page.locator('#action-subtype');
+await second2.selectOption({ label: 'HTTP Request' });
+await page.locator('#action-url').fill('https://example.invalid/ping');
+await page.waitForTimeout(1800);
+
+const both = await owned();
+record(
+  both.length === 2,
+  `two nodes in one workflow may each have a definition of the same name (${both.length}: ` +
+    `${JSON.stringify(both.map((one) => one.name))})`,
 );
 
 await done();

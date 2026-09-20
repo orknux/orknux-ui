@@ -145,6 +145,15 @@ interface GrantableCatalog {
 const SEARCH_FROM = 8;
 
 /**
+ * What the tools this application brings itself are listed under.
+ *
+ * A group of its own rather than mixed into the workspace's: where a tool
+ * comes from is what tells two rows of the same name apart, and "built in" is
+ * an answer the way a plugin's name is.
+ */
+const BUILT_IN = 'Built in';
+
+/**
  * The widest share the slider offers.
  *
  * The server's own ceiling, and it is the server that enforces it: a share past
@@ -606,7 +615,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
   const [shellAccess, setShellAccess] = useState(agent.shellAccess);
-  const [drawAccess, setDrawAccess] = useState(agent.drawAccess);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
@@ -698,13 +706,29 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         fetchWorkspaceTools(workspaceId, 0, TOOL_PAGE_SIZE),
         fetchPluginTools(),
       ]);
-      const rows: GrantableTool[] = held.content.map((tool) => ({
+      /*
+       * The one tool this application brings itself.
+       *
+       * In the list rather than beside it as a switch of its own: this list is
+       * where somebody looks to see what an agent may do, and a capability
+       * that is not in it is a capability nobody finds. Granted by name like
+       * every other row - the server reads the same list.
+       *
+       * It draws only inside a workflow, where there is a step to file the
+       * picture against; in a chat the composer's own button is the door and
+       * the agent is offered nothing, so granting it to an agent that only
+       * ever chats costs nothing and does nothing.
+       */
+      const rows: GrantableTool[] = [
+        { id: 'built-in:draw_picture', name: 'draw_picture', plugin: BUILT_IN, off: false, link: null },
+      ];
+      rows.push(...held.content.map((tool) => ({
         id: tool.id,
         name: tool.name,
         plugin: null,
         off: !tool.enabled,
         link: `/workspace/${workspaceId}/tools/${tool.id}`,
-      }));
+      })));
       const taken = new Set(rows.map((row) => row.name));
       for (const offer of offered) {
         if (taken.has(offer.name)) continue;
@@ -861,7 +885,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         mcpServers,
         orknuxAccess,
         shellAccess,
-        drawAccess,
         memoryCatalogs,
         skillCatalogs,
         tools,
@@ -874,7 +897,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
       setShellAccess(updated.shellAccess);
-      setDrawAccess(updated.drawAccess);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setTools(updated.tools);
@@ -1298,29 +1320,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         </div>
 
 
-        {/*
-          Beside Shells because it is the same kind of switch, and on by
-          default because it is the same kind of grant as keeping a file: it
-          opens no door onto anything that already exists. An agent that should
-          not be spending on pictures is told so here, one agent at a time,
-          rather than by turning drawing off for the installation.
-        */}
-        <div className={styles.field}>
-          <span className={styles.label}>{t('Pictures')}</span>
-          <div className={own.checkRow}>
-            <label className={own.grantToggle}>
-              <input
-                type="checkbox"
-                checked={drawAccess}
-                onChange={(event) => setDrawAccess(event.target.checked)}
-              />
-              <span>{t('Let this agent draw a picture while it works')}</span>
-            </label>
-            <FieldHint label={t('Pictures')}>
-              {t('Inside a workflow it can ask for a picture from a description it writes itself, drawn with the image model this workspace chose and filed under the step that asked, where the run shows it. Up to twenty a run. It draws nothing in a chat: the chat has its own button for that.')}
-            </FieldHint>
-          </div>
-        </div>
         {/*
           The same list as Tools and the catalogs above, and for the reason
           issue #172 gave for those: this was a row of chips with a text box to

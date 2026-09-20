@@ -27,15 +27,6 @@ export interface Agent {
   orknuxAccess: boolean;
   /** Whether it may open a shell on one of the installation's machines. */
   shellAccess: boolean;
-  /**
-   * Whether it may draw a picture from a description it writes itself.
-   *
-   * Only reaches a model inside a run, where there is a step to file the
-   * picture against; a chat's drawing is the chat's own door. On by default,
-   * which is what `artifactAccess` is too - it opens no door onto anything
-   * that already exists, it only lets an agent make something.
-   */
-  drawAccess: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
   /** Which skill catalogs it may draw on. */
@@ -114,7 +105,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess drawAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
@@ -246,8 +237,6 @@ export async function updateAgent(
     orknuxAccess?: boolean;
     /** Whether it may open a shell on a machine; left out, the grant is unchanged. */
     shellAccess?: boolean;
-    /** Whether it may draw a picture; left out, the grant is unchanged. */
-    drawAccess?: boolean;
     memoryCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];
