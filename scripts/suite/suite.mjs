@@ -549,6 +549,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'custom-action-save-check',
+    what: "a Custom action in a node's panel is written, and written again when it changes",
+    // Builds a workflow of its own and takes it away again.
+    needs: ['workspace'],
+  },
+  {
     name: 'catalog-room-check',
     what: 'a catalog of forty scrolls its own shelf and leaves the footer on the screen',
     // Stubs the catalog: a short shelf would not test the thing that breaks,

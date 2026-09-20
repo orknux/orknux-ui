@@ -606,6 +606,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
   const [shellAccess, setShellAccess] = useState(agent.shellAccess);
+  const [drawAccess, setDrawAccess] = useState(agent.drawAccess);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
@@ -860,6 +861,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         mcpServers,
         orknuxAccess,
         shellAccess,
+        drawAccess,
         memoryCatalogs,
         skillCatalogs,
         tools,
@@ -872,6 +874,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
       setShellAccess(updated.shellAccess);
+      setDrawAccess(updated.drawAccess);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setTools(updated.tools);
@@ -1294,6 +1297,30 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           </div>
         </div>
 
+
+        {/*
+          Beside Shells because it is the same kind of switch, and on by
+          default because it is the same kind of grant as keeping a file: it
+          opens no door onto anything that already exists. An agent that should
+          not be spending on pictures is told so here, one agent at a time,
+          rather than by turning drawing off for the installation.
+        */}
+        <div className={styles.field}>
+          <span className={styles.label}>{t('Pictures')}</span>
+          <div className={own.checkRow}>
+            <label className={own.grantToggle}>
+              <input
+                type="checkbox"
+                checked={drawAccess}
+                onChange={(event) => setDrawAccess(event.target.checked)}
+              />
+              <span>{t('Let this agent draw a picture while it works')}</span>
+            </label>
+            <FieldHint label={t('Pictures')}>
+              {t('Inside a workflow it can ask for a picture from a description it writes itself, drawn with the image model this workspace chose and filed under the step that asked, where the run shows it. Up to twenty a run. It draws nothing in a chat: the chat has its own button for that.')}
+            </FieldHint>
+          </div>
+        </div>
         {/*
           The same list as Tools and the catalogs above, and for the reason
           issue #172 gave for those: this was a row of chips with a text box to

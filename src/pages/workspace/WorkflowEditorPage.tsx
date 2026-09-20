@@ -3762,6 +3762,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (!matches(event, copyKey)) return;
+      /*
+       * Not while somebody is typing, the rule the turn and add keys already
+       * follow - and this one earns it twice over, because it can be rebound
+       * to a keystroke that means something inside a text box. Bound to Ctrl+X
+       * it cut nothing and duplicated a node instead, and duplicating changes
+       * which node is selected, which closes the expanded box being typed in.
+       * A shortcut that eats a standard editing key is worse than no shortcut.
+       */
+      if (typingText(event.target)) return;
       event.preventDefault();
       duplicate();
     }
@@ -4627,7 +4636,20 @@ Change the keystroke in Preferences.`}
                         </p>
                         <TriggerForm
                           namedAfter={draft.name || 'Trigger'}
-                          key={ownedTrigger?.id ?? 'new-custom-trigger'}
+                          /*
+                            Keyed by the node, not by what the form has saved
+                            so far.
+                            
+                            Keyed by the definition's id, the form was thrown
+                            away and rebuilt the moment it first saved - the
+                            id arrived, the key changed, React remounted it -
+                            and everything typed while that save was in flight
+                            went with it. The node is what this form is about
+                            and it does not change while somebody fills it in;
+                            picking another node still builds a fresh form,
+                            which is all the key was ever for.
+                          */
+                          key={`custom-trigger-${draft.key}`}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
                           trigger={ownedTrigger}
@@ -4758,7 +4780,7 @@ Change the keystroke in Preferences.`}
                         </p>
                         <ActionForm
                           namedAfter={draft.name || 'Action'}
-                          key={ownedAction?.id ?? 'new-custom-action'}
+                          key={`custom-action-${draft.key}`}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
                           action={ownedAction}
@@ -4975,7 +4997,7 @@ Change the keystroke in Preferences.`}
                         </p>
                         <ConditionForm
                           namedAfter={draft.name || 'Condition'}
-                          key={ownedCondition?.id ?? 'new-custom-condition'}
+                          key={`custom-condition-${draft.key}`}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
                           condition={ownedCondition}

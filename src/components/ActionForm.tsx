@@ -592,6 +592,18 @@ export function ActionForm({
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the action.'));
+    } finally {
+      /*
+       * However it ended.
+       *
+       * A form that is pressed goes away when it succeeds, so leaving this on
+       * cost nothing there. A form in a node's panel stays open and writes
+       * itself, and `submitting` is what the watcher checks before writing -
+       * so the first successful save switched the panel off for good, and
+       * everything typed after it was dropped without a word. Choose a
+       * function, fill its parameters, reload: the parameters were never
+       * there.
+       */
       setSubmitting(false);
     }
   }
