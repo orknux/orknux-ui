@@ -271,7 +271,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
             */}
             {pluginCatalogs !== null && pluginCatalogs.length > 0 && (
               <>
-                <p className={styles.sidebarNote}>{t('FROM PLUGINS')}</p>
+                <p className={styles.catalogsFrom}>{t('FROM PLUGINS')}</p>
                 {pluginCatalogs.map((catalog) => {
                   const at = `${PLUGIN_PREFIX}${catalog.name}`;
                   const open = at === selected;

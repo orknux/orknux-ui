@@ -138,6 +138,18 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * The second heading in the rail: what the plugins brought.
+ *
+ * The same heading as the first, with room above it. It was drawn as a note -
+ * the style the loader and the empty state wear - so it sat against the row
+ * above and read as that row's caption rather than as the start of a group.
+ */
+.catalogsFrom {
+  composes: catalogsTitle;
+  margin-top: var(--space-16);
+}
+
 .newCatalog {
   display: flex;
   align-items: center;
