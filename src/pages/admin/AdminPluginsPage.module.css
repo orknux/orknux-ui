@@ -601,26 +601,20 @@
   gap: var(--space-20);
   min-width: 0;
   /*
-   * Into the shell's own bottom padding.
+   * As tall as what is left under it, measured rather than counted.
    *
-   * The shell leaves 112px under every page, which is right where a page ends
-   * in a table that stops wherever its rows do - it is the room that keeps
-   * the last row off the footer. This page ends in a pane with a decided
-   * height, so that padding read as a band of empty screen under a plugin's
-   * description, with the description scrolling inside a box that had stopped
-   * short of it.
+   * This pane used to be given a height in pixels - `100vh` less a constant
+   * that stood for the shell's header, this page's header and tabs, the
+   * pane's own chrome and the footer. Twice that constant went stale and the
+   * pane grew until `main` was taller than the window and pushed the footer
+   * off the bottom of the screen, and because what overflowed was a flex item
+   * rather than the document, the page could not be scrolled down to it.
    *
-   * Pulled up rather than the pane simply made taller: growing the pane grows
-   * `main`, and a taller `main` pushes the footer off the bottom of the
-   * window - which is the bug this already caused twice. The pane takes some
-   * of those pixels and gives back exactly as many, so `main` is as tall as
-   * it was and the footer does not move.
-   *
-   * Not all of them. The rest is the gap between the pane and the footer -
-   * taking the lot left the two almost touching, which reads as a pane that
-   * ran out of room rather than one that ends.
+   * `--catalog-room` is set by the page from where this element actually
+   * starts, so adding a row of tags above it moves the number instead of
+   * breaking it. The panes inside scroll; this box does not grow.
    */
-  margin-bottom: -56px;
+  max-height: var(--catalog-room, 60vh);
 }
 
 /* ------------------------------------------------------------ the offers */
@@ -640,6 +634,23 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   overflow: hidden;
+}
+
+/*
+ * The rows, and only the rows.
+ *
+ * The title and the search above them stay where they are while the list
+ * moves under them - a search box that scrolls away is one somebody has to
+ * scroll back up to use. `min-height: 0` because a flex item's floor is its
+ * content unless it is told otherwise, and without it the list pushes the
+ * shelf taller instead of scrolling inside it.
+ */
+.listingScroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /*
@@ -1108,7 +1119,14 @@
    * off the bottom of the screen.
    */
   --markdown-measure: 100ch;
-  max-height: calc(100vh - 456px);
+  /*
+   * Whatever is left inside the pane, rather than a count of everything above
+   * it: `.catalogBody` is bounded now, so this can simply fill it and scroll.
+   * The constant this replaces went stale twice, each time by something being
+   * added above it, and each time the symptom was a footer pushed off the
+   * bottom of a page that would not scroll.
+   */
+  flex: 1 1 auto;
   min-height: 0;
   font-size: var(--text-base);
   color: var(--color-text-primary);

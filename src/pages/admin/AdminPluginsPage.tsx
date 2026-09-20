@@ -272,6 +272,18 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   /** The tag list itself, for the press-elsewhere that closes it. */
   const tagList = useRef<HTMLDivElement | null>(null);
 
+  /**
+   * The catalog's two panes, so their height can be measured rather than
+   * counted.
+   *
+   * See `--catalog-room` in the stylesheet: the height used to be `100vh`
+   * less a constant standing for everything above and below, and twice a row
+   * was added above it and the constant quietly stopped being true - the
+   * panes grew, `main` grew past the window, and the footer went off the
+   * bottom of a page that could not be scrolled down to it.
+   */
+  const catalogBox = useRef<HTMLDivElement | null>(null);
+
   /** Whether the open listing's history is shown whole. */
   const [showingAll, setShowingAll] = useState(false);
 
@@ -312,6 +324,57 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
         setCatalogLoading(false);
       });
   }, []);
+
+  /*
+   * How much room the catalog's panes have, written onto the element itself.
+   *
+   * Measured from where the panes actually begin and how much the shell keeps
+   * under every page, so nothing here has to know what is above them. A row
+   * of tags, a second line in the header, a wider window: the number moves
+   * and the panes fit, where the constant this replaces had to be found and
+   * edited - and twice was not, which is how the footer ended up off the
+   * bottom of the screen.
+   *
+   * On every render and on resize. Reading a rect is cheap and this is a
+   * screen somebody is looking at, not a loop.
+   */
+  useEffect(() => {
+    function measure() {
+      const box = catalogBox.current;
+      if (box === null) return;
+      const here = box.getBoundingClientRect();
+
+      /*
+       * Everything that comes after the panes: the room the shell keeps under
+       * every page, and the footer standing in it.
+       *
+       * Taken from those two elements rather than from where they happen to
+       * be sitting. The footer floats to the bottom of a window taller than
+       * the page, so the distance down to it is not a fact about the layout -
+       * measuring that was the first attempt here, and it made the panes stop
+       * growing as soon as they fitted. A height and a padding do not move.
+       */
+      const under = (() => {
+        for (let up = box.parentElement; up !== null; up = up.parentElement) {
+          const padding = Number.parseFloat(getComputedStyle(up).paddingBottom);
+          if (padding > 0) return padding;
+        }
+        return 112;
+      })();
+      const foot = document.querySelector('footer');
+      const tail = under + (foot?.getBoundingClientRect().height ?? 0);
+
+      // A floor, so a short window leaves a pane somebody can still read
+      // rather than a sliver - a page taller than its window scrolls, which is
+      // the ordinary way out of that.
+      const room = Math.max(window.innerHeight - here.top - tail, 320);
+      box.style.setProperty('--catalog-room', `${Math.round(room)}px`);
+    }
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
 
   useEffect(() => {
     /*
@@ -1078,7 +1141,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
       )}
 
       {tab === 'catalog' && (
-        <div className={styles.catalog}>
+        <div className={styles.catalog} ref={catalogBox}>
           {/*
             Two shelves, named for where a plugin comes from rather than for
             what the screen does: the marketplace offers them, and Local is
@@ -1259,6 +1322,18 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                   )}
                 </div>
 
+                {/*
+                  The rows scroll, the search above them does not.
+                  
+                  A shelf of forty plugins used to make the pane itself forty
+                  rows tall, which made `main` taller than the window and put
+                  the footer off the bottom of the screen - and the page could
+                  not be scrolled down to it, because what had overflowed was
+                  a flex item rather than the document. The list is the part
+                  with an unknown amount in it, so the list is the part that
+                  scrolls.
+                */}
+                <div className={styles.listingScroll}>
                 {catalogLoading && (
                   <p className={styles.notice}>
                     <Loader />
@@ -1334,6 +1409,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                     </button>
                   );
                 })}
+                </div>
               </div>
 
               {/*
