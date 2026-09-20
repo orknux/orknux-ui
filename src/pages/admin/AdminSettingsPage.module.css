@@ -259,3 +259,23 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/*
+ * The page's one Save, in its header.
+ *
+ * There were five, one beside each box, and five buttons for one verb is five
+ * decisions about when to press. Up here it is the page's own control, next to
+ * the word that says what page this is.
+ */
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin-left: auto;
+}
+
+/* Beside the button that did it, rather than at the foot of a long page. */
+.savedMark {
+  color: var(--color-success, var(--color-accent-brand));
+  font-size: var(--text-sm);
+}

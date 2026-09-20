@@ -69,6 +69,10 @@ export interface InstallationSettings {
   pluginMaxSourceKb: number;
   /** What a fresh installation allows: the built-in default. */
   pluginMaxSourceKbConfigured: number;
+  /** How long a plugin may take to load, in seconds. */
+  pluginTimeoutSeconds: number;
+  /** What a fresh installation waits, before anybody changed it. */
+  pluginTimeoutSecondsConfigured: number;
   /**
    * False where the installation runs Temporal, and the field is not offered.
    *
@@ -85,7 +89,7 @@ const FIELDS =
   'revisionRetentionDays revisionRetentionDaysConfigured ' +
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
-  'pluginMaxSourceKb pluginMaxSourceKbConfigured';
+  'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -189,6 +193,23 @@ export async function setTaskSweepMinutes(minutes: number): Promise<Installation
  * Administrators only, and recorded in the audit log. Every load reads it
  * fresh, so it takes effect without a restart.
  */
+/**
+ * How long a plugin may take to load.
+ *
+ * The loading bound and nothing else: what one of its functions or tools may
+ * then take is the workspace's setting, because a plugin slow to parse and a
+ * tool slow to answer are different problems with different people to talk to.
+ */
+export async function setPluginTimeoutSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setPluginTimeoutSeconds: InstallationSettings }>(
+    `mutation SetPluginTimeoutSeconds($seconds: Int!) {
+       setPluginTimeoutSeconds(seconds: $seconds) { ${FIELDS} }
+     }`,
+    { seconds },
+  );
+  return data.setPluginTimeoutSeconds;
+}
+
 export async function setPluginMaxSourceKb(kb: number): Promise<InstallationSettings> {
   const data = await graphql<{ setPluginMaxSourceKb: InstallationSettings }>(
     `mutation SetPluginMaxSourceKb($kb: Int!) {

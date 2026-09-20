@@ -4,9 +4,10 @@ import {
   fetchInstallationSettings,
   setAttachmentsEnabled,
   setChatEnabled,
-  setMetricsAnonymous,
   setExecutionRetentionDays,
+  setMetricsAnonymous,
   setPluginMaxSourceKb,
+  setPluginTimeoutSeconds,
   setRevisionRetentionDays,
   setTaskSweepMinutes,
 } from '../../api/installation';
@@ -55,6 +56,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [sweep, setSweep] = useState('');
   /** And for the plugin source cap, for the same reason. */
   const [pluginSource, setPluginSource] = useState('');
+  /** How long a plugin may take to load, as typed. */
+  const [pluginWait, setPluginWait] = useState('');
 
   useEffect(() => {
     /*
@@ -76,6 +79,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setRunRetention(String(held.executionRetentionDays));
         setSweep(String(held.taskSweepMinutes));
         setPluginSource(String(held.pluginMaxSourceKb));
+        setPluginWait(String(held.pluginTimeoutSeconds));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -87,6 +91,60 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   }, []);
 
   /** Every switch on this page saves the same way; only the mutation differs. */
+  /**
+   * The numbers this page holds, against what the server last said.
+   *
+   * Compared as strings and as numbers both: a box holding "90 " and one
+   * holding "090" are the same answer, and an empty box is somebody in the
+   * middle of typing rather than a change to write.
+   */
+  const pending = settings === null
+    ? []
+    : [
+        { typed: retention, held: settings.revisionRetentionDays, write: setRevisionRetentionDays },
+        { typed: runRetention, held: settings.executionRetentionDays, write: setExecutionRetentionDays },
+        { typed: sweep, held: settings.taskSweepMinutes, write: setTaskSweepMinutes },
+        { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
+        { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
+      ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
+
+  const changed = pending.length > 0;
+
+  /**
+   * Every changed number, one call each, in the order they appear.
+   *
+   * One at a time rather than together, because each is its own mutation and
+   * its own refusal: a number out of range says which number it was, and the
+   * ones before it are already stored. The page then shows what the server
+   * holds, so a refusal leaves the box that caused it standing and the rest
+   * agreeing with the server.
+   */
+  async function saveAll() {
+    if (settings === null || busy || !changed) return;
+
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      let held = settings;
+      for (const one of pending) {
+        held = await one.write(Number(one.typed));
+      }
+      setSettings(held);
+      setRetention(String(held.revisionRetentionDays));
+      setRunRetention(String(held.executionRetentionDays));
+      setSweep(String(held.taskSweepMinutes));
+      setPluginSource(String(held.pluginMaxSourceKb));
+      setPluginWait(String(held.pluginTimeoutSeconds));
+      forgetInstallation();
+      setSaved(true);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : t('Could not save.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function save(change: () => Promise<InstallationSettings>) {
     if (settings === null || busy) return;
 
@@ -99,6 +157,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
       setRetention(String(held.revisionRetentionDays));
       setSweep(String(held.taskSweepMinutes));
       setPluginSource(String(held.pluginMaxSourceKb));
+      setPluginWait(String(held.pluginTimeoutSeconds));
       // The shell reads the same settings to decide whether to offer the Chat
       // tab, so it is told rather than left showing a link to a page that is off.
       forgetInstallation();
@@ -124,6 +183,30 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               {t('What this installation allows, for every workspace in it.')}
             </p>
           </div>
+          {/*
+            One Save, at the top, for every number on the page.
+
+            There were four - one per field, each beside its own box - and four
+            buttons that do the same verb is four decisions about when to press
+            rather than one. Somebody changing two numbers had to notice that
+            the first had its own button.
+
+            The switches above keep none: a switch that needs saving is a
+            switch that lies about what it is showing, and those take effect as
+            they are flipped.
+          */}
+          {settings !== null && (
+            <div className={styles.headActions}>
+              {saved && <span className={styles.savedMark}>{t('Saved.')}</span>}
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => void saveAll()}
+                disabled={busy || !changed}
+                aria-label={t('Save the settings on this page')}
+              >{t('Save')}</button>
+            </div>
+          )}
         </header>
 
         {settings === null && error === null && (
@@ -332,16 +415,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many days of component history to keep')}
                 />
                 <span className={styles.retentionUnit}>{t('days')}</span>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={() => void save(() => setRevisionRetentionDays(Number(retention)))}
-                  disabled={
-                    busy ||
-                    retention.trim() === '' ||
-                    Number(retention) === settings.revisionRetentionDays
-                  }
-                >{t('Save')}</button>
               </div>
             </div>
 
@@ -384,16 +457,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many days of run history to keep')}
                 />
                 <span className={styles.retentionUnit}>{t('days')}</span>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={() => void save(() => setExecutionRetentionDays(Number(runRetention)))}
-                  disabled={
-                    busy ||
-                    runRetention.trim() === '' ||
-                    Number(runRetention) === settings.executionRetentionDays
-                  }
-                >{t('Save')}</button>
               </div>
             </div>
 
@@ -439,28 +502,43 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                       aria-label={t('How many minutes a task may wait before it is picked up')}
                     />
                     <span className={styles.retentionUnit}>{t('minutes')}</span>
-                    <button
-                      type="button"
-                      className={styles.primaryButton}
-                      onClick={() => void save(() => setTaskSweepMinutes(Number(sweep)))}
-                      disabled={
-                        busy || sweep.trim() === '' || Number(sweep) === settings.taskSweepMinutes
-                      }
-                      /*
-                        Named for what it saves. There are two Saves on this
-                        page now, and two controls that answer to the same word
-                        are two controls a screen reader cannot tell apart —
-                        nor, it turns out, could the retention check, which
-                        asks for the button called Save.
-                      */
-                      aria-label={t('Save how long before a stuck task is picked up')}
-                    >{t('Save')}</button>
                   </div>
                 </div>
               </>
             )}
 
             <h2 className={styles.sectionHeading}>{t('Plugins')}</h2>
+
+            {/*
+              The loading bound, and it says so: what a plugin's tool may then
+              take is a workspace's setting, and one screen claiming both would
+              be one number two people argue about.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How long a plugin may take to load')}</p>
+                  <FieldHint label={t('How long a plugin may take to load')}>
+                    {t('The bundle is evaluated once when it is loaded, and this is how long that may take before the load is stopped. What one of its functions or tools may then take is set per workspace, under Timeouts. 30 seconds unless somebody says otherwise; every load reads it fresh, so no restart is needed.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="plugin-timeout-seconds"
+                  name="pluginTimeoutSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={pluginWait}
+                  onChange={(event) => setPluginWait(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many seconds a plugin may take to load')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
 
             <div className={styles.setting}>
               <div className={styles.settingText}>
@@ -485,21 +563,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many KB one plugin source file may be')}
                 />
                 <span className={styles.retentionUnit}>KB</span>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={() => void save(() => setPluginMaxSourceKb(Number(pluginSource)))}
-                  disabled={
-                    busy ||
-                    pluginSource.trim() === '' ||
-                    Number(pluginSource) === settings.pluginMaxSourceKb
-                  }
-                  aria-label={t('Save how large a plugin source file may be')}
-                >{t('Save')}</button>
               </div>
             </div>
 
-            {saved && <p className={styles.saved}>{t('Saved.')}</p>}
           </>
         )}
       </section>

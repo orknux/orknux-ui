@@ -570,6 +570,20 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'tool-search-check',
+    what: 'the box above the tools list narrows it, under every setting of the sieve and not only one',
+    // Reads what the workspace and its plugins already offer and types in the
+    // box; changes nothing.
+    needs: ['workspace'],
+  },
+  {
+    name: 'settings-save-check',
+    what: 'the settings page has one Save, at the top, and it stores every number that changed',
+    // Writes installation settings and puts them back as it found them, so it
+    // runs alone rather than beside anything that reads them.
+    needs: [],
+  },
+  {
     name: 'catalog-room-check',
     what: 'a catalog of forty scrolls its own shelf and leaves the footer on the screen',
     // Stubs the catalog: a short shelf would not test the thing that breaks,

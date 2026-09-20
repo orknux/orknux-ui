@@ -47,6 +47,21 @@ type ToolRow = { kind: 'tool'; tool: Tool } | { kind: 'plugin'; offered: PluginA
  */
 const ALL_OF_THEM = 200;
 
+/**
+ * Whether a tool answers what was typed in the box.
+ *
+ * Name or description, either one, folded to one case - the same rule the
+ * database applies to the workspace's own tools, written out here because the
+ * plugins' tools are not in a table to ask. Two lists sieved by two rules is a
+ * search that finds a tool under one sieve setting and not under another.
+ */
+function matches(name: string, description: string | null, looking: string): boolean {
+  const wanted = looking.trim().toLowerCase();
+  if (wanted === '') return true;
+  return name.toLowerCase().includes(wanted) ||
+    (description ?? '').toLowerCase().includes(wanted);
+}
+
 export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPageProps) {
   const { workspaceId = '' } = useParams();
   const navigate = useNavigate();
@@ -110,7 +125,12 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
       const wanted = source.startsWith('plugin:') ? source.slice('plugin:'.length) : null;
       fetchPluginTools()
         .then((offered) => {
-          const kept = wanted === null ? offered : offered.filter((one) => one.plugin === wanted);
+          const kept = offered
+            .filter((one) => wanted === null || one.plugin === wanted)
+            // The box is above this list whichever sieve it is showing, and a
+            // box that does nothing is worse than no box: it answers "no such
+            // tool" by leaving everything where it was.
+            .filter((one) => matches(one.name, one.description, asked));
           setRows(kept.map((one) => ({ kind: 'plugin' as const, offered: one })));
           setTotal(kept.length);
           setServerPaged(false);
@@ -126,7 +146,14 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
         const merged: ToolRow[] = [
           ...own.content.map((tool) => ({ kind: 'tool' as const, tool })),
           ...offered.map((one) => ({ kind: 'plugin' as const, offered: one })),
-        ].sort((a, b) => {
+        ]
+          // Sieved here rather than half here and half at the server: this
+          // branch asks for the whole of the workspace's list precisely so
+          // that both origins can be cut by one rule and paged as one.
+          .filter((row) => (row.kind === 'tool'
+            ? matches(row.tool.name, row.tool.description, asked)
+            : matches(row.offered.name, row.offered.description, asked)))
+          .sort((a, b) => {
           const nameOf = (row: ToolRow) => (row.kind === 'tool' ? row.tool.name : row.offered.name);
           return nameOf(a).localeCompare(nameOf(b));
         });
