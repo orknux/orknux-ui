@@ -296,6 +296,33 @@ the page says as much where the two disagree. Between a day and ten years, and
 there is no off — a history nobody keeps is a different decision from a short
 one, and it would want a switch of its own rather than a zero in this box.
 
+### How long a plugin may run
+
+A plugin is a bundle, and loading one costs more than calling a function, so it
+has a bound of its own rather than the one a workspace's own JavaScript runs
+under. **The number is set here**, between one second and five minutes, and it
+is thirty seconds until somebody changes it.
+
+It is read per call, so a change decides the next call and never one already in
+flight. A call that overruns is stopped and says the number it was held to, which
+is the difference between "the plugin is broken" and "the plugin wanted longer
+than this installation allows".
+
+`ORKNUX_PLUGIN_TIMEOUT_MILLIS` is the floor a fresh installation starts at.
+
+### How long a run is kept
+
+A finished run is kept with its steps, and swept once it is older than the
+number set here — ninety days until somebody changes it. A deleted workspace
+takes its runs with it whatever this says.
+
+### One Save, at the top
+
+Every number on this page is written by the one Save in its header, and it wakes
+only when something differs from what the server holds. The switches above keep
+none: a switch that needed saving would be a switch that lies about what it is
+showing, so those take effect as they are flipped.
+
 ### How long before a stuck task is picked up
 
 A task is written down and then handed to a worker, and that hand-over can be
@@ -348,9 +375,41 @@ says which of them is wrong rather than that something is.
 ![The plugins loaded into this installation](/screens/plugins.png)
 
 JavaScript loaded into the sandbox to give workflows functions the platform does
-not ship. A plugin can be uploaded, fetched from a URL, or written from the
-starter this server generates — in JavaScript or TypeScript — and downloaded
-again later as whichever of the two it was written in.
+not ship. A plugin can be installed from the marketplace, uploaded, fetched from
+a URL, or written from the starter this server generates — in JavaScript or
+TypeScript — and downloaded again later as whichever of the two it was written
+in.
+
+A plugin brings more than functions. It may also bring **tools** an agent can be
+granted, which appear in the workspace's Tools list with the plugin's name
+beside them; **skills**, granted as a catalog of their own; **object shapes** its
+functions return, which a workflow node can hold an answer to; and the
+**libraries** it embeds, which are allowed when it is loaded.
+
+### The marketplace
+
+The **Catalog** tab beside Installed is a shelf of plugins somebody has
+published: an icon, a description, tags, and the versions available, searchable,
+installed with one press. Three things about it are worth knowing.
+
+**The server fetches it, not your browser.** Both the catalog and the download go
+out through this installation's proxy rules, like every other outbound call, so
+an installation behind a proxy reaches the marketplace under the rules it already
+has and one with no way out sees an empty shelf rather than a browser error.
+
+**The bytes are checked before anything runs.** What arrives is hashed against
+the digest the catalog published, and refused if the two disagree.
+
+**An update is offered only when it is newer** than the version held. Each
+listing's **Changelog** tab carries the notes its author wrote for each release,
+so what an update contains is readable before it is taken.
+
+`ORKNUX_MARKETPLACE_URL` decides where the catalog is asked — point it at your
+own mirror, or leave it empty and load plugins by hand.
+
+Plugins are not part of this server's release. They live in their own repository
+and are written against the `@orknux/plugin` package, so a new plugin arrives
+without a new server.
 
 A plugin's key is its identity, not its filename: loading the same key again
 replaces what is there.

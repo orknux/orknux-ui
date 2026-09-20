@@ -140,6 +140,7 @@ Every one of those keystrokes is yours to change, in Preferences.
 | Function | Runs JavaScript on the values handed to it. |
 | Object | Assembles a named shape, field by field, for later nodes to read. |
 | Session | Names the conversation the agent it leads to keeps, so what is said outlives the run. |
+| Image | Draws a picture from a description, with the workspace's text-to-image model. |
 
 Each kind can be **inline** — defined in this workflow only — or made from a
 **definition** in the workspace catalogue, which several workflows can share.
@@ -154,6 +155,13 @@ gives each of them a conversation of its own, and a run a week later that
 computes the same key carries on where the last one left off. An agent with no
 session node beside it answers and forgets. What is kept is on the workspace's
 Sessions page, described under AI.
+
+An image node keeps its prompt where you typed it, and passes the picture on
+**beside** what reached the node rather than in place of it — so a node after it
+still has the payload it would have had, with the drawing added. What it drew is
+shown under that node in the run log, and is on the workspace's Artifacts page
+afterwards. A workspace with no text-to-image model chosen cannot run one, and
+the node says so rather than failing somewhere further in.
 
 ## The catalogue
 

@@ -344,6 +344,42 @@ conversation is. **Remove session** takes the conversation and every line in it,
 says so before it does; nothing makes a session again by hand, because a session
 exists only because a run computed its key.
 
+## Drawing, and looking
+
+An agent can look at a picture and can make one.
+
+**Looking** needs nothing switched on. A picture already on the conversation —
+pasted into a chat, shared in the Slack thread a run is answering — is handed to
+the model as an image rather than described to it, so "what is wrong with this
+screenshot" is a question with an answer. What is not a picture is named on the
+payload instead and fetched by the agent if it wants it.
+
+**Drawing** is a tool, and a grant. Where the workspace has chosen a
+text-to-image model, an agent may be given the drawing tool in its editor, the
+same way it is given anything else — it appears in the Tools list with
+everything else it could be granted, and can be switched off there. A chat agent
+draws into the conversation; an agent in a run files the picture against the
+step that drew it, where the run log shows it under that node.
+
+What the tool hands back to the model is a **key**, not a link: the picture's
+bytes go into the session's own store, and a key is what a tool that uploads a
+file takes. That is the difference between a picture somebody is shown in Slack
+and a picture filed where they are not looking — a link pasted into a chat is
+punctuation, not a delivery.
+
+## Artifacts
+
+Everything a workspace has made, on one page: the pictures its runs drew, and
+whatever an agent saved with the **save_artifact** tool.
+
+A picture opens in the viewer. A document an agent wrote — a page, a report, a
+PDF — opens to be read rather than downloading, drawn inside a frame that is
+allowed no script, no cookies and no network of its own. That last part is what
+makes it safe to open something a model wrote. Anything else downloads.
+
+What is open is in the address bar, so an artifact can be linked to: send
+somebody the address and they see the thing, not the list.
+
 ## Letting an agent drive orknux
 
 An agent's settings carry one switch that is not an MCP server: **Orknux**. It

@@ -174,6 +174,10 @@ speaker appears only once the workspace has a speech model.
 
 ## Attachments, previewed
 
+A picture the agent drew is a picture like any other: it is in the **Files**
+strip above the composer as soon as it is drawn, and clicking it in the thread
+opens it over the conversation.
+
 Clicking a picture in a chat opens it over the conversation rather than in a new
 tab, with the arrow keys stepping between the pictures in the same group.
 Anything that is not a picture downloads instead — the server sends those as
