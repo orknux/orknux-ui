@@ -414,6 +414,13 @@ export function TriggerForm({
   function settingsNow(chosenFunction: string = authFunctionId) {
   return {
       name: name.trim(),
+      /*
+       * The kind, which an update carries only for a definition a node owns -
+       * the server ignores it on a shared one. Sent always rather than only
+       * when embedded, because the value is what the form holds either way and
+       * a field the server drops is cheaper than a branch here.
+       */
+      type,
       connectionId: incoming ? connectionId : undefined,
       action: incoming ? action : undefined,
       // Sent on every incoming trigger, empty included: the server assigns it
@@ -535,7 +542,7 @@ export function TriggerForm({
       const settings = settingsNow(chosenFunction);
       const saved = editing
         ? await updateTrigger(trigger?.id ?? madeId!, settings)
-        : await createTrigger({ workspaceId, workflowId, type, ...settings });
+        : await createTrigger({ workspaceId, workflowId, ...settings });
       /*
        * Cleared on the way out, not only on the way to an error.
        *
@@ -606,8 +613,18 @@ export function TriggerForm({
                 className={`${styles.input} ${styles.select}`}
                 value={type}
                 onChange={(event) => setType(event.target.value as TriggerType)}
-                // What a trigger waits for does not change; its settings do.
-                disabled={editing}
+                /*
+                  What a shared trigger waits for does not change; its settings
+                  do. Several workflows may point at one, and a kind changed
+                  under them is every one of them rewritten by somebody who was
+                  editing a different screen.
+                  
+                  A definition belonging to one node is the opposite: it is
+                  this node's, nothing else can see it, and being unable to
+                  change its kind meant starting again by pointing the picker
+                  somewhere else and back.
+                 */
+                disabled={editing && !embedded}
               >
                 <option value="INCOMING_CONNECTION">{t('Connection')}</option>
                 <option value="SCHEDULED">{t('Scheduled')}</option>

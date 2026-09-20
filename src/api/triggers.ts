@@ -231,6 +231,13 @@ export async function updateTrigger(
   id: string,
   input: {
     name: string;
+    /**
+     * What kind of trigger it is; left out, the kind is unchanged.
+     *
+     * The server honours it only for a definition a workflow owns - a shared
+     * trigger's kind is what it is, because several workflows may point at one.
+     */
+    type?: TriggerType;
     connectionId?: string;
     action?: TriggerAction;
     /** Whose messages a `REPLY` watches; omitted or empty watches nobody. */

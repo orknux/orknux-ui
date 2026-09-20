@@ -1154,6 +1154,15 @@ function copyOutputName(of: string, taken: Set<string>): string {
  */
 const COPY_OFFSET = 40;
 
+/** What a node starts as, which is what "centred" is measured against. */
+const NEW_NODE_WIDTH = 220;
+const NEW_NODE_HEIGHT = 96;
+
+/** How far a new node steps when the middle is already occupied. */
+const NEW_NODE_NUDGE = 40;
+
+
+
 /** A name for the next field of a shape being made up as it is drawn. */
 function nextFieldName(held: NodeMapping[]): string {
   for (let at = held.length + 1; ; at += 1) {
@@ -1786,7 +1795,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     [remember],
   );
   const navigate = useNavigate();
-  const { updateNode } = useReactFlow();
+  const { updateNode, screenToFlowPosition } = useReactFlow();
   /*
    * React Flow measures a node's handles once and remembers where they are.
    *
@@ -2735,6 +2744,73 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     return untaken(stem, (at) => `${stem}-${at}`, new Set(nodes.map((node) => node.id)));
   }
 
+  /**
+   * Where a new node goes: the middle of what is on screen.
+   *
+   * It used to be a staircase from the origin - eighty pixels in, forty more
+   * per node already on the canvas - which is somewhere else entirely as soon
+   * as somebody has panned or zoomed or has a graph bigger than a window. The
+   * node was made, the canvas did not move, and it read as nothing having
+   * happened.
+   *
+   * Nudged along the staircase while the middle is taken, so pressing Add
+   * twice does not stack two nodes in one place. The comparison is loose on
+   * purpose: a node is not a point, and anything within half its size reads as
+   * "on top of that one".
+   */
+  function whereNewNodesGo(current: Node[]): { x: number; y: number } {
+    const canvas = document.querySelector<HTMLElement>('.react-flow');
+    const box = canvas?.getBoundingClientRect();
+    const middle = box === undefined
+      ? { x: 80 + current.length * 40, y: 80 + current.length * 30 }
+      : screenToFlowPosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+
+    /*
+     * From the middle of the node rather than its corner, which is what a
+     * person means by "in the middle of the screen".
+     *
+     * Measured off a node already on the canvas where there is one: a node
+     * grows with what it holds, so a constant is right only for the first one
+     * anybody makes. The constants below are the fallback for an empty canvas,
+     * and they are a starting size rather than a rule.
+     */
+    const drawn = document.querySelector<HTMLElement>('.react-flow__node');
+    const size = drawn === null
+      ? { width: NEW_NODE_WIDTH, height: NEW_NODE_HEIGHT }
+      : { width: drawn.offsetWidth || NEW_NODE_WIDTH, height: drawn.offsetHeight || NEW_NODE_HEIGHT };
+    const place = { x: middle.x - size.width / 2, y: middle.y - size.height / 2 };
+    const taken = (at: { x: number; y: number }) =>
+      current.some(
+        (node) =>
+          Math.abs(node.position.x - at.x) < size.width / 2 &&
+          Math.abs(node.position.y - at.y) < size.height / 2,
+      );
+
+    /*
+     * Around the middle rather than away from it.
+     *
+     * A staircase walked off the screen after three presses, which is the bug
+     * this was meant to fix arriving by another road. These are rings: a step
+     * out in each direction before the ring widens, so the fourth node is as
+     * close to the middle as the first and every one of them is still on the
+     * canvas.
+     */
+    const ring = [
+      [0, 0], [1, 1], [-1, 1], [1, -1], [-1, -1],
+      [2, 0], [0, 2], [-2, 0], [0, -2], [2, 2], [-2, 2], [2, -2], [-2, -2],
+    ];
+    const free = ring
+      .map(([across, down]) => ({
+        x: place.x + across * NEW_NODE_NUDGE,
+        y: place.y + down * NEW_NODE_NUDGE,
+      }))
+      .find((at) => !taken(at));
+    // Every ring taken is a canvas nobody can see the middle of anyway; the
+    // node goes in the middle and lands on top of something, which is visible
+    // and draggable rather than lost.
+    return free ?? place;
+  }
+
   function addNode(kind: NodeKind) {
     const key = freshKey(kind);
     setNodes((current) => [
@@ -2742,7 +2818,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       {
         id: key,
         type: 'graphNode',
-        position: { x: 80 + current.length * 40, y: 80 + current.length * 30 },
+        position: whereNewNodesGo(current),
         data: {
           kind,
           name: NODE_KIND_LABEL[kind],
@@ -4588,8 +4664,20 @@ Change the keystroke in Preferences.`}
                         .filter((trigger) => trigger.workflowId === null || trigger.id === draft.triggerId)
                         .map((trigger) => ({
                           value: trigger.id,
-                          label: trigger.name,
-                          hint: trigger.workflowId === null ? undefined : t("This workflow's own"),
+                          /*
+                            One this workflow owns is called Custom, whatever
+                            it is named.
+                            
+                            Its name is a label on the node - it is reached
+                            through the node and appears in no list - so the
+                            picker showing "Action" said the node was pointed
+                            at something called Action, which is what a shared
+                            definition of that name would look like. What the
+                            picker is answering is "where does this come
+                            from", and the answer is: from here.
+                          */
+                          label: trigger.workflowId === null ? trigger.name : t('Custom'),
+                          hint: trigger.workflowId === null ? undefined : trigger.name,
                         }))}
                       create={{
                         value: CUSTOM,
@@ -4765,8 +4853,20 @@ Change the keystroke in Preferences.`}
                         .filter((action) => action.workflowId === null || action.id === draft.actionId)
                         .map((action) => ({
                           value: action.id,
-                          label: action.name,
-                          hint: action.workflowId === null ? undefined : t("This workflow's own"),
+                          /*
+                            One this workflow owns is called Custom, whatever
+                            it is named.
+                            
+                            Its name is a label on the node - it is reached
+                            through the node and appears in no list - so the
+                            picker showing "Action" said the node was pointed
+                            at something called Action, which is what a shared
+                            definition of that name would look like. What the
+                            picker is answering is "where does this come
+                            from", and the answer is: from here.
+                          */
+                          label: action.workflowId === null ? action.name : t('Custom'),
+                          hint: action.workflowId === null ? undefined : action.name,
                         }))}
                       create={{
                         value: CUSTOM,
@@ -5015,8 +5115,10 @@ Change the keystroke in Preferences.`}
                         .filter((held) => held.workflowId === null || held.id === draft.conditionId)
                         .map((held) => ({
                           value: held.id,
-                          label: held.name,
-                          hint: held.workflowId === null ? undefined : t("This workflow's own"),
+                          // One this workflow owns is called Custom; see the
+                          // note on the action picker.
+                          label: held.workflowId === null ? held.name : t('Custom'),
+                          hint: held.workflowId === null ? undefined : held.name,
                         }))}
                       create={{
                         value: CUSTOM,

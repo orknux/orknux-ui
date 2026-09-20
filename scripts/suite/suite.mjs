@@ -549,6 +549,13 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'new-node-centre-check',
+    what: 'a node added from the menu lands in the middle of what is on screen',
+    // Builds a workflow of its own, with one node deliberately far from the
+    // origin, and takes it away again.
+    needs: ['workspace'],
+  },
+  {
     name: 'custom-action-save-check',
     what: "a Custom action in a node's panel is written, and written again when it changes",
     // Builds a workflow of its own and takes it away again.

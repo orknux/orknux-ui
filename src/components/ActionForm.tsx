@@ -687,8 +687,11 @@ export function ActionForm({
                 className={`${styles.input} ${styles.select}`}
                 value={type}
                 onChange={(event) => changeType(event.target.value as ActionType)}
-                // What an action is does not change; its settings do.
-                disabled={editing}
+                // What a shared action is does not change; its settings do -
+                // several workflows may point at one. A definition belonging to
+                // one node is this node's alone, so it can be turned into
+                // something else without starting again.
+                disabled={editing && !embedded}
               >
                 {(['EXECUTE', 'WAIT'] as ActionType[]).map((candidate) => (
                   <option key={candidate} value={candidate}>
