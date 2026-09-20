@@ -508,16 +508,16 @@ await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout:
  * look. Settled means the row count is the same twice in a row and the count
  * line has something in it.
  */
-async function settled() {
+async function settled(within = '') {
   let before = -1;
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    const now = await page.evaluate(() => {
-      const group = document.querySelector('[data-grants="tools"]');
+    const now = await page.evaluate((scope) => {
+      const group = document.querySelector(`${scope}[data-grants="tools"]`);
       return {
         rows: group?.querySelectorAll('[data-grant-rows] > [data-grant-name]').length ?? 0,
         count: group?.querySelector('[data-grant-count]')?.textContent?.trim() ?? '',
       };
-    });
+    }, within);
     if (now.rows > 0 && now.rows === before && now.count !== '') return;
     before = now.rows;
     await page.waitForTimeout(250);
@@ -540,7 +540,8 @@ await page.locator('.react-flow__node').filter({ hasText: agentNode.name }).firs
 await page.waitForTimeout(600);
 await page.getByRole('link', { name: /^Open the .+'s definition$/ }).click();
 await page.waitForSelector('dialog[open] [data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
-await page.waitForTimeout(500);
+// The same two waves as the page; see `settled`.
+await settled('dialog[open] ');
 
 const panel = page.locator('dialog[open]').first();
 const narrow = await panel
