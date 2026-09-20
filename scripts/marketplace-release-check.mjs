@@ -258,6 +258,19 @@ record((await shelf()).join('|') === 'Notes|Charts', 'and pressing it again lets
  * rather than tinted - held here against the mark beside it, because "more
  * visible" is a comparison and not a colour.
  */
+/*
+ * The row says what is installed, not what it could move to.
+ *
+ * It printed the catalog's number under every state, so an installed plugin
+ * wore the version it would update *to* - "1.4.0 update", with 1.0.1 the thing
+ * actually running and written nowhere.
+ */
+const versions = await page.$$eval('[class*="_listingVersion_"]', (all) => all.map((one) => one.textContent.trim()));
+record(
+  versions.join('|') === '1.0.1|0.2.0',
+  `an installed row wears the version it is on (${versions.join(', ')})`,
+);
+
 const update = page.locator('[class*="_updateMark_"]');
 /*
  * One word. The version it would move to is on the row already, beside the

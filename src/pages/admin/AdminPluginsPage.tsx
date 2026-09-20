@@ -1291,7 +1291,20 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                       <span className={styles.listingBody}>
                         <span className={styles.listingName}>
                           {listing.name}
-                          <span className={styles.listingVersion}>{listing.version}</span>
+                          {/*
+                            What is here, where anything is - and what is on
+                            offer otherwise.
+
+                            The row used to print the catalog's number under
+                            every state, so an installed plugin wore the
+                            version it could move to rather than the one it is
+                            on: "0.13.1" beside "update", both of them the
+                            marketplace's, and nothing on the row saying what
+                            was actually installed.
+                          */}
+                          <span className={styles.listingVersion}>
+                            {listing.installed ? (listing.installedVersion ?? listing.version) : listing.version}
+                          </span>
                           {listing.installed && !listing.updatable && (
                             <span className={styles.installedMark}>{t('installed')}</span>
                           )}
