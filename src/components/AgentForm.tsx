@@ -399,10 +399,9 @@ function GrantList<Item>({
 
           Twelve tools from one plugin is twelve presses otherwise, and the
           filter above is exactly the thing that says which twelve - so this
-          acts on what the filter and the search name and on nothing else. The
-          count is in the label rather than implied by it, because "select all"
-          beside a filtered list is a sentence with two possible meanings and
-          only one of them is safe.
+          acts on what the filter and the search name and on nothing else.
+          "All" is therefore all of what is named, which the count line beside
+          it spells out while a search is running: `N matching`.
 
           It flips to clearing once they are all granted: the press somebody
           wants after granting a plugin's tools by mistake is the same press
@@ -423,7 +422,7 @@ function GrantList<Item>({
               );
             }}
           >
-            {allPicked ? `Clear these ${thousands(matching)}` : `Grant these ${thousands(matching)}`}
+            {allPicked ? t('Deselect all') : t('Select all')}
           </button>
         )}
       </span>

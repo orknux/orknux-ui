@@ -340,14 +340,19 @@ async function measure(root, where) {
    * the search never claimed to be about.
    */
   record(
-    filtered.all.startsWith('Grant these'),
-    `${where}: the filtered list offers to grant what it names - "${filtered.all}"`,
+    filtered.all === 'Select all',
+    `${where}: the filtered list offers to select all of what it names - "${filtered.all}"`,
   );
 
+  /*
+   * "All" is all of what the search named, and the count line beside the
+   * button is what says how many that is - which is the assertion below,
+   * since the label no longer carries the number.
+   */
   const matched = filtered.names.filter((name) => name.toLowerCase().includes(hit.toLowerCase()));
   record(
-    filtered.all.includes(String(matched.length)),
-    `${where}: and says how many that is (${matched.length} matched "${hit}")`,
+    filtered.count.endsWith(`${matched.length} matching`),
+    `${where}: and the count says how many that is - "${filtered.count}"`,
   );
 
   await root.locator('[data-grants="tools"] [data-grant-all]').click();
@@ -373,8 +378,8 @@ async function measure(root, where) {
     `${where}: and grants nothing the filter was hiding (${pressed.ticked.length} granted, ${wanted.size} named or already there)`,
   );
   record(
-    pressed.allDoes === 'clear',
-    `${where}: with everything named granted, the same press now clears them`,
+    pressed.allDoes === 'clear' && pressed.all === 'Deselect all',
+    `${where}: with everything named granted, the same control now deselects - "${pressed.all}"`,
   );
 
   await root.locator('[data-grants="tools"] [data-grant-all]').click();
