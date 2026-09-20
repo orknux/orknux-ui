@@ -549,6 +549,15 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'image-prompt-check',
+    what: "an image node's prompt survives a save and a reload, panel and server agreeing",
+    // Adds a node to the fixture's graph and saves it, so it runs on its own:
+    // another check reading that graph mid-way would see a node it did not
+    // expect.
+    needs: ['workflow'],
+    alone: true,
+  },
+  {
     name: 'sieve-memory-check',
     what: 'the origin sieve on Functions and Tools survives a refresh, per list',
     // Reads two lists and sets a select; it creates nothing, so it runs
