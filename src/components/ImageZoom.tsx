@@ -51,7 +51,7 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
    * one — the same trap `AttachmentViewer` fell into.
    */
   function handleClick(event: React.MouseEvent<HTMLDialogElement>) {
-    if ((event.target as HTMLElement).closest('img, button, header') === null) onClose();
+    if ((event.target as HTMLElement).closest('img, button, header, p') === null) onClose();
   }
 
   return (
@@ -66,7 +66,6 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
       {picture !== null && (
         <div className={styles.frame}>
           <header className={styles.bar}>
-            <span className={styles.caption}>{picture.alt}</span>
             <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')} title={t('Close')}>
               ×
             </button>
@@ -86,6 +85,13 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
               data-keeps-colour=""
             />
           </div>
+
+          {/*
+            Under the picture, the way a caption is printed under a plate: it
+            says what was just looked at, so it is read after it rather than
+            standing between the opening and the picture.
+          */}
+          {picture.alt !== '' && <p className={styles.caption}>{picture.alt}</p>}
         </div>
       )}
     </dialog>

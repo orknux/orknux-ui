@@ -123,11 +123,18 @@ export interface ExecutionDetail extends Execution {
    * here. Null when Temporal is off or has no interface to send anybody to.
    */
   temporalUrl?: string | null;
-  /** The pictures this run's image nodes drew, each keyed to its step by nodeKey. */
+  /**
+   * The pictures this run drew, each keyed to its step by nodeKey.
+   *
+   * An image node's, and since #349 an agent's too: an agent inside a run can
+   * ask for one with `draw_picture`, and it is filed against the step the same
+   * way, so the graph draws it under whichever node made it without knowing
+   * which kind of node that was.
+   */
   pictures?: ExecutionPicture[];
 }
 
-/** One picture an image node drew, as the run graph shows it. */
+/** One picture a step drew, as the run graph shows it. */
 export interface ExecutionPicture {
   id: string;
   /** Which step drew it, so it shows under that node. */

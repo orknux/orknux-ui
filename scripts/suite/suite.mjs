@@ -549,12 +549,28 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'catalog-room-check',
+    what: 'a catalog of forty scrolls its own shelf and leaves the footer on the screen',
+    // Stubs the catalog: a short shelf would not test the thing that breaks,
+    // and a check written against the real marketplace goes red when somebody
+    // publishes a plugin.
+    needs: [],
+  },
+  {
     name: 'marketplace-release-check',
     what: "the catalog's tags narrow the shelf, and a listing's releases are drawn with what is no longer held",
     // Stubs the catalog call in the browser: it loads nothing and changes
     // nothing, and a check written against whatever the real marketplace is
     // offering goes red when somebody publishes a plugin.
     needs: [],
+  },
+  {
+    name: 'picture-links-check',
+    what: 'an answer that links to pictures shows them, titled, under the prose',
+    // Stubs the answer and the pictures both: a seeded installation has no
+    // model to ask, and a check must not fetch from somebody else's server to
+    // pass.
+    needs: ['workspace'],
   },
   {
     name: 'parameter-picker-check',

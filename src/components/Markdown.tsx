@@ -68,6 +68,21 @@ export interface MarkdownProps {
    * the viewer the attachment list opens, which can step between them.
    */
   zoomImages?: boolean;
+  /**
+   * Whether links to pictures are also shown as pictures, under the prose.
+   *
+   * A model asked for images answers with links to them - it has no bytes to
+   * attach, so `[BMW i4](https://…/i4.jpg)` is the whole of what it can write -
+   * and a list of six blue link titles is not what was asked for. The links
+   * stay exactly as written, because the title is what says which car it is;
+   * a strip of thumbnails is added beneath, so the answer can be looked at
+   * rather than clicked through six tabs.
+   *
+   * Only where a model writes: the chat, a task's outcome. The manual's links
+   * point at pages, and an issue's pictures are attachments with a viewer of
+   * their own.
+   */
+  pictureLinks?: boolean;
 }
 
 /**
@@ -89,10 +104,78 @@ export interface MarkdownProps {
  * provider, and a prompt can ask for anything at all, so it renders as markup
  * only for the constructs markdown itself defines.
  */
+/**
+ * A URL that ends in a picture.
+ *
+ * By extension rather than by asking the host, because asking means a request
+ * per link to somewhere nobody chose to go. A query string is allowed after it
+ * - signed URLs and CDNs carry one - and the extension is the last thing before
+ * it.
+ */
+const PICTURE_URL = /https?:\/\/[^\s)<>"']+\.(?:png|jpe?g|gif|webp|avif|svg)(?:\?[^\s)<>"']*)?/gi;
+
+/** A markdown link, so the words it was written with can be kept. */
+const TITLED_LINK = /\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g;
+
+/** A picture a strip shows, and what the prose called it. */
+export interface PictureLink {
+  url: string;
+  /** The link's own words, or empty where it was written as a bare URL. */
+  title: string;
+}
+
+/** As many as a strip holds before it is a page of its own. */
+const MOST_PICTURES = 12;
+
+/**
+ * The pictures an answer links to, in the order it links to them.
+ *
+ * Links only. One the model wrote as an image - `![](…)` - is already drawn by
+ * the prose, and drawing it twice reads as a bug rather than as a gallery, so
+ * those are left out by looking at the character before the `(`.
+ */
+export function pictureLinksIn(markdown: string): PictureLink[] {
+  // The images the prose already draws, taken out before anything is looked
+  // for, so what is left is only what a reader would have to click.
+  const linked = markdown.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');
+
+  /*
+   * What the link was called, by URL.
+   *
+   * The title is the whole reason a strip beats a row of pictures: six cars
+   * look alike at 130 pixels and "Rolls-Royce Spectre" is what says which one
+   * this is. Markdown's own link syntax is where it is written; a bare URL in
+   * the prose has no title and is shown without one rather than with its file
+   * name, which is a hash as often as it is a word.
+   */
+  const titles = new Map<string, string>();
+  for (const hit of linked.matchAll(TITLED_LINK)) {
+    const url = hit[2].trim();
+    const title = hit[1].replace(/[*_`]/g, '').trim();
+    if (title !== '' && !titles.has(url)) titles.set(url, title);
+  }
+
+  const found: PictureLink[] = [];
+  for (const hit of linked.matchAll(PICTURE_URL)) {
+    // Trailing punctuation belongs to the sentence, not to the URL.
+    const url = hit[0].replace(/[).,]+$/, '');
+    if (found.some((one) => one.url === url)) continue;
+    found.push({ url, title: titles.get(url) ?? '' });
+    if (found.length === MOST_PICTURES) break;
+  }
+  return found;
+}
+
 /** The plugin list, exactly as the renderer that takes it declares it. */
 type RehypePlugins = ComponentProps<typeof ReactMarkdown>['rehypePlugins'];
 
-export function Markdown({ children, highlight, issuesIn, zoomImages = false }: MarkdownProps) {
+export function Markdown({
+  children,
+  highlight,
+  issuesIn,
+  zoomImages = false,
+  pictureLinks = false,
+}: MarkdownProps) {
   /** Which picture is open over the page, or null while none is. */
   const [zoomed, setZoomed] = useState<Picture | null>(null);
   /*
@@ -107,6 +190,22 @@ export function Markdown({ children, highlight, issuesIn, zoomImages = false }: 
    * exactly the same problem.
    */
   const [missing, setMissing] = useState<string[]>([]);
+
+  /*
+   * The picture links whose bytes did not come back.
+   *
+   * These point at somebody else's server - a model writes the URL it read
+   * somewhere - so a dead one is ordinary rather than a fault here. It leaves
+   * the strip without a word: the link is still in the prose above, which is
+   * where the explanation belongs.
+   */
+  const [broken, setBroken] = useState<string[]>([]);
+
+  /** Rebuilt only when the prose changes, not on every open picture. */
+  const gallery = useMemo(
+    () => (pictureLinks ? pictureLinksIn(children).filter((one) => !broken.includes(one.url)) : []),
+    [pictureLinks, children, broken],
+  );
 
   /*
    * Rebuilt only when the term changes. A fresh array on every render would have
@@ -207,7 +306,46 @@ export function Markdown({ children, highlight, issuesIn, zoomImages = false }: 
         {children}
       </ReactMarkdown>
 
-      {zoomImages && <ImageZoom picture={zoomed} onClose={() => setZoomed(null)} />}
+      {gallery.length > 0 && (
+        <div className={styles.gallery} aria-label={t('Pictures this answer links to')}>
+          {gallery.map((picture) => (
+            <figure key={picture.url} className={styles.framed}>
+              <button
+                type="button"
+                className={styles.frame}
+                onClick={() => setZoomed({ src: picture.url, alt: picture.title })}
+                title={
+                  picture.title === ''
+                    ? t('Click to open this picture larger')
+                    : `${picture.title} - ${t('click to open larger')}`
+                }
+              >
+                <img
+                  src={picture.url}
+                  alt={picture.title}
+                  loading="lazy"
+                  data-keeps-colour=""
+                  /* Somebody else's server learns that a picture was fetched,
+                     not which page of this application was open when it was. */
+                  referrerPolicy="no-referrer"
+                  onError={() =>
+                    setBroken((known) =>
+                      known.includes(picture.url) ? known : [...known, picture.url],
+                    )
+                  }
+                />
+              </button>
+              {picture.title !== '' && (
+                <figcaption className={styles.caption}>{picture.title}</figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      )}
+
+      {(zoomImages || gallery.length > 0) && (
+        <ImageZoom picture={zoomed} onClose={() => setZoomed(null)} />
+      )}
     </div>
   );
 }

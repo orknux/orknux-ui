@@ -287,7 +287,7 @@ export function QuickChat({ workspacePath }: QuickChatProps) {
                 </p>
               ) : (
                 <div key={index} className={styles.answered}>
-                  <Markdown>{turn.content}</Markdown>
+                  <Markdown pictureLinks>{turn.content}</Markdown>
                   {/* Under the answer that offered it, where it was explained. */}
                   {offers[index] !== undefined &&
                     (offers[index].inEditor ? (

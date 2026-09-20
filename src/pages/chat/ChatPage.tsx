@@ -2540,7 +2540,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       );
                     })()}
                     {/* Models write markdown; showing the source shows the asterisks. */}
-                    <Markdown>{shownTake(index, message)}</Markdown>
+                    <Markdown pictureLinks>{shownTake(index, message)}</Markdown>
                     {/*
                       Which take of this answer is being read, and the way back
                       to the others.

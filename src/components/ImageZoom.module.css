@@ -26,18 +26,35 @@
 }
 
 .frame {
+  /*
+   * The picture and its caption, together in the middle.
+   *
+   * Centred as one block rather than the picture centred and the caption left
+   * at the foot of the window: at full height that put the words a third of a
+   * screen below the thing they name, which reads as two unrelated pieces of
+   * furniture. The close control is taken out of the flow so that centring is
+   * about the picture only.
+   */
+  position: relative;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-12);
   width: 100%;
   height: 100%;
+  padding: var(--space-16) var(--space-24) var(--space-24);
 }
 
 .bar {
+  /* In the corner, over the ground: the caption is under the plate now, and
+     what is left is one button that must not decide where the picture sits. */
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-16);
   display: flex;
-  flex: none;
   align-items: center;
   gap: var(--space-12);
-  padding: var(--space-12) var(--space-16);
 }
 
 /*
@@ -46,6 +63,10 @@
  * caption, and half a caption explains nothing.
  */
 .caption {
+  flex: none;
+  max-width: min(100%, 68ch);
+  margin: 0;
+  text-align: center;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -93,12 +114,14 @@
 
 .stage {
   display: flex;
-  flex: 1 0 0;
+  /* Shrinks to the picture, so the caption follows it rather than the window. */
+  flex: 0 1 auto;
   align-items: center;
   justify-content: center;
-  /* Without this the picture's natural height wins and the bar is pushed off. */
+  /* Without this the picture's natural height wins and the caption is pushed
+     off the bottom of the window. */
   min-height: 0;
-  padding: 0 var(--space-24) var(--space-24);
+  max-width: 100%;
 }
 
 /*

@@ -671,7 +671,7 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                    * where what a model produced is a picture rather than an
                    * illustration of prose - in a card narrower than the picture.
                    */}
-                  <Markdown zoomImages>{task.outcome}</Markdown>
+                  <Markdown zoomImages pictureLinks>{task.outcome}</Markdown>
                 </div>
               )}
             </section>
