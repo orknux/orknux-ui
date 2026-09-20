@@ -154,6 +154,15 @@ const SEARCH_FROM = 8;
 const BUILT_IN = 'Built in';
 
 /**
+ * The one row in the Tools list that is not a grant.
+ *
+ * It is a flag on the agent - on until it is turned off - and it is drawn here
+ * because this list is what somebody reads to see what an agent may do. The
+ * name is the server's; see `FinishAnswerTools`.
+ */
+const FINISH_ANSWER = 'finish_answer';
+
+/**
  * The widest share the slider offers.
  *
  * The server's own ceiling, and it is the server that enforces it: a share past
@@ -625,6 +634,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
   const [shellAccess, setShellAccess] = useState(agent.shellAccess);
+  /*
+   * Ticked until somebody unticks it.
+   *
+   * Drawn as a row in the Tools list rather than as a switch of its own, for
+   * the reason that list gives: it is where somebody looks to see what an
+   * agent may do. Held here as a flag because that is what it is on the
+   * server - an agent is not *granted* the right to stop - and the row is
+   * folded in and out of the granted names below.
+   */
+  const [finishAccess, setFinishAccess] = useState(agent.finishAccess !== false);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
@@ -731,6 +750,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
        */
       const rows: GrantableTool[] = [
         { id: 'built-in:draw_picture', name: 'draw_picture', plugin: BUILT_IN, off: false, link: null },
+        /*
+         * And the ending, which is ticked to begin with.
+         *
+         * Every other row here is a capability somebody decided to hand over.
+         * This one is how a turn stops: an agent that has posted its reply
+         * itself has nothing left to write, and without this it either repeats
+         * the message or answers with nothing - which reads as a failure and is
+         * retried. Unticking it suits a workflow whose next node needs an
+         * answer to work with.
+         */
+        { id: 'built-in:finish_answer', name: FINISH_ANSWER, plugin: BUILT_IN, off: false, link: null },
       ];
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -895,6 +925,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         mcpServers,
         orknuxAccess,
         shellAccess,
+        finishAccess,
         memoryCatalogs,
         skillCatalogs,
         tools,
@@ -907,6 +938,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
       setShellAccess(updated.shellAccess);
+      setFinishAccess(updated.finishAccess !== false);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setTools(updated.tools);
@@ -1234,8 +1266,13 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
           linkOf={(tool) => tool.link}
           groupOf={(tool) => tool.plugin ?? null}
-          granted={tools}
-          onChange={setTools}
+          granted={finishAccess ? [...tools, FINISH_ANSWER] : tools}
+          onChange={(names) => {
+            // One row of this list is a flag rather than a grant, so it is
+            // taken out of the names before the rest are stored.
+            setFinishAccess(names.includes(FINISH_ANSWER));
+            setTools(names.filter((one) => one !== FINISH_ANSWER));
+          }}
         />
 
         {/*

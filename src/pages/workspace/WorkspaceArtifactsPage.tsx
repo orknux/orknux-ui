@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
@@ -138,11 +138,34 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
     open !== null && drawable(open.contentType) ? { src: open.url, alt: open.prompt } : null;
 
   const read = open !== null && !drawable(open.contentType) ? open : null;
+  /** The panel's own close button, focused when it opens so Escape has a home. */
+  const closer = useRef<HTMLButtonElement | null>(null);
 
   /** Opening one, and closing it, are both a move in the history. */
   const show = (artifact: Artifact) =>
     navigate(`/workspace/${workspaceId}/artifacts/${artifact.id}`);
   const close = () => navigate(`/workspace/${workspaceId}/artifacts`);
+
+  /*
+   * Escape closes the document, the way it closes the picture viewer.
+   *
+   * `ImageZoom` has always listened for it and this did not, so which key put
+   * a thing away depended on what kind of file had been opened. Listened for
+   * on the document rather than on the panel because the panel is not what
+   * holds the focus: a reader scrolling the report is inside a sandboxed
+   * frame, and nothing in there reaches out here. What that frame cannot do,
+   * the page can still do around it - so the close button is focused when the
+   * panel opens, which is also what a screen reader needs.
+   */
+  useEffect(() => {
+    if (read === null) return;
+    const pressed = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', pressed);
+    closer.current?.focus();
+    return () => document.removeEventListener('keydown', pressed);
+  }, [read?.id]);
 
   /*
    * Fetched only when the address names one the list does not hold - a deep
@@ -459,6 +482,7 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
               >{t('Open in a tab')}</a>
               <button
                 type="button"
+                ref={closer}
                 className={styles.readingClose}
                 onClick={close}
                 aria-label={t('Close')}

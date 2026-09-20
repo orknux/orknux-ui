@@ -100,6 +100,21 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/artifacts`, { waitUntil: 'domcon
 await page.waitForSelector('figure', { timeout: 20_000 });
 await page.waitForTimeout(600);
 
+/*
+ * On whichever page of the gallery it is on.
+ *
+ * The document this check measures is the newest one the workspace holds, and
+ * the gallery draws a page at a time - so on an installation that has drawn a
+ * few dozen pictures since, the card is two pages in. The page size control at
+ * the foot is the page's own way of asking for more, and pressing it is what
+ * somebody looking for the file would do.
+ */
+const showAll = page.locator('select[aria-label*="How many"], footer select, select').last();
+if (await showAll.count() > 0) {
+  await showAll.selectOption({ label: '100' }).catch(() => undefined);
+  await page.waitForTimeout(1200);
+}
+
 const tile = await page.evaluate(({ named, at }) => {
   const cards = [...document.querySelectorAll('figure')];
   // By what the card links to rather than by its words: the caption is the
@@ -200,6 +215,45 @@ record(
 record(
   cold.pictureViewer === 0,
   'and as a document rather than in the picture viewer, which drew it as broken',
+);
+
+/*
+ * And the frame actually drew the document.
+ *
+ * The headers above say it may be framed; this says it *was*. Spring Security
+ * writes `X-Frame-Options: DENY` on every response that does not carry the
+ * header itself, so for a while the reader got Chrome's "localhost refused to
+ * connect" where the report should have been - with every assertion above it
+ * passing, because each of them was about a header or an attribute rather
+ * than about what is on the screen.
+ */
+/*
+ * And Escape puts it away, the way it does the picture viewer.
+ *
+ * Which key closed a thing used to depend on what kind of file it was: the
+ * viewer has always listened for Escape and the document panel did not.
+ */
+await page.keyboard.press('Escape');
+await page.waitForTimeout(600);
+const closed = await page.evaluate(() => ({
+  panel: document.querySelectorAll('[role="dialog"] iframe[src*="/preview"]').length,
+  where: window.location.pathname,
+}));
+record(closed.panel === 0, 'Escape closes the document');
+record(
+  closed.where.endsWith('/artifacts'),
+  `and leaves the address on the list rather than on the artifact (${closed.where})`,
+);
+
+// Back where it was, for the assertion below.
+await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
+await page.waitForTimeout(1500);
+
+const inside = page.frames().find((one) => one.url().includes('/preview'));
+const words = inside === undefined ? '' : await inside.evaluate(() => document.body?.innerText ?? '').catch(() => '');
+record(
+  inside !== undefined && words.trim().length > 0,
+  `the document is drawn inside the frame rather than refused (${words.replace(/\s+/g, ' ').trim().slice(0, 60)})`,
 );
 
 await finish(browser);

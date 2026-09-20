@@ -27,6 +27,15 @@ export interface Agent {
   orknuxAccess: boolean;
   /** Whether it may open a shell on one of the installation's machines. */
   shellAccess: boolean;
+  /**
+   * Whether it may end its turn by saying so, rather than by writing prose.
+   *
+   * On until somebody turns it off, which is why it is a flag and not a name in
+   * `tools`: that list is what an agent was *given*, and an ending is not
+   * something to be given. The Tools list draws it as a row all the same,
+   * because that list is where somebody looks to see what an agent may do.
+   */
+  finishAccess: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
   /** Which skill catalogs it may draw on. */
@@ -105,7 +114,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
@@ -237,6 +246,8 @@ export async function updateAgent(
     orknuxAccess?: boolean;
     /** Whether it may open a shell on a machine; left out, the grant is unchanged. */
     shellAccess?: boolean;
+    /** Whether it may end its turn by saying so; left out, it is unchanged. */
+    finishAccess?: boolean;
     memoryCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];
