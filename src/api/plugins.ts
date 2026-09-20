@@ -130,7 +130,15 @@ export interface MarketplaceListing {
   /** Markdown, from a public repository; rendered rather than printed. */
   description: string;
   version: string;
-  /** An emoji, or the URL of a small image. Null where the catalog offers none. */
+  /**
+   * The drawing itself, or an emoji. Null where the catalog offers none.
+   *
+   * An icon the marketplace hosts is fetched by the server and arrives here as
+   * its markup: a browser fetching it from the marketplace is a call this
+   * installation's proxy rules have no say over, and on a network whose egress
+   * is a proxy it was a broken square on every row. A URL still arrives as one
+   * where the server will not fetch from where it is hosted.
+   */
   icon: string | null;
   /** The same for a dark ground; null where the catalog offers only the one. */
   iconDark: string | null;

@@ -161,6 +161,20 @@ type Tab = 'installed' | 'catalog';
  */
 const SHOW_RELEASES = 5;
 
+/**
+ * A category as the catalog files it, written the way a person reads it.
+ *
+ * The marketplace's own words are slugs - `source-control`, `observability` -
+ * because they are keys on the other side. Printed raw they read as data
+ * somebody forgot to format, and printed as this they are still the catalog's
+ * words: only the hyphens and the first letter change, so a category invented
+ * tomorrow needs no entry anywhere.
+ */
+function readable(category: string): string {
+  const spaced = category.replace(/[-_]+/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 /** And which shelf of the catalog: what is offered, or what you brought. */
 type Source = 'marketplace' | 'local';
 
@@ -1134,7 +1148,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                     >
                       <option value="">{t('All categories')}</option>
                       {categories.map((one) => (
-                        <option key={one} value={one}>{one}</option>
+                        <option key={one} value={one}>{readable(one)}</option>
                       ))}
                     </select>
                   )}
@@ -1185,7 +1199,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                         <span className={styles.listingMeta}>
                           {listing.author}
                           {listing.category !== null && (
-                            <span className={styles.categoryMark}>{listing.category}</span>
+                            <span className={styles.categoryMark}>{readable(listing.category)}</span>
                           )}
                         </span>
                       </span>

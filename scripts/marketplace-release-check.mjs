@@ -73,7 +73,7 @@ const OFFERED = [
     installed: false,
     installedVersion: null,
     updatable: false,
-    category: 'Diagrams',
+    category: 'source-control',
     versions: [{ version: '0.2.0', published: '2026-04-01', replaced: '2026-04-02', files: 1, available: true }],
   },
 ];
@@ -113,13 +113,18 @@ record((await filter.count()) === 1, 'the shelf offers a category filter');
  */
 const choices = await filter.locator('option').allInnerTexts();
 record(
-  choices.join('|') === 'All categories|Productivity|Diagrams',
+  choices.join('|') === 'All categories|Productivity|Source control',
   `and offers what the catalog actually used (${choices.join(', ')})`,
 );
 
 record((await shelf()).join('|') === 'Notes|Charts', 'both plugins are on the shelf to begin with');
 
-await filter.selectOption('Diagrams');
+/*
+ * Chosen by the catalog's own word rather than by the label drawn from it.
+ * The slug is what filters and what the marketplace files under; the reading
+ * is only for the person choosing.
+ */
+await filter.selectOption('source-control');
 await page.waitForTimeout(200);
 const narrowed = await shelf();
 record(narrowed.join('|') === 'Charts', `choosing a category narrows the shelf (${narrowed.join(', ') || 'nothing'})`);
@@ -139,7 +144,10 @@ record((await shelf()).join('|') === 'Notes|Charts', 'and All brings the rest ba
 // The word is on the row as well, so a shelf that is not filtered still says
 // what each plugin is.
 const marks = await page.$$eval('[class*="_categoryMark_"]', (all) => all.map((one) => one.textContent.trim()));
-record(marks.join('|') === 'Productivity|Diagrams', `each row says what it is filed under (${marks.join(', ')})`);
+record(
+  marks.join('|') === 'Productivity|Source control',
+  `each row says what it is filed under, in words rather than slugs (${marks.join(', ')})`,
+);
 
 /* -------------------------------------------------------------- the history */
 
