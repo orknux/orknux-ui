@@ -108,32 +108,60 @@ const shelf = () =>
 
 /* ----------------------------------------------------------------- the tags */
 
-const filter = page.locator('select[aria-label="Filter by tag"]');
+const filter = page.getByRole('button', { name: 'Filter by tag' });
 record((await filter.count()) === 1, 'the shelf offers a tag filter');
+record((await filter.innerText()).trim().startsWith('All tags'), 'and says nothing is chosen yet');
+
+/** Open the list, and hand back what it offers. */
+async function opened() {
+  if ((await page.locator('[class*="_tagPanel_"]').count()) === 0) await filter.click();
+  await page.waitForTimeout(150);
+  return page.$$eval('[class*="_tagChoice_"]', (all) => all.map((one) => one.textContent.trim()));
+}
+
+/** Tick or untick one, by the reading drawn beside its box. */
+async function tick(label) {
+  await opened();
+  await page.locator('[class*="_tagChoice_"]', { hasText: new RegExp(`^${label}$`) }).locator('input').click();
+  await page.waitForTimeout(250);
+}
 
 /*
- * Every tag the catalog actually used, each once, in the order it listed them,
- * and All first. Built from the listings rather than kept in the screen, so a
- * tag invented on the marketplace appears without this page changing - and one
- * no plugin carries never appears at all.
+ * Every tag the catalog actually used, each once, in the order it listed them.
+ * Built from the listings rather than kept in the screen, so a tag invented on
+ * the marketplace appears without this page changing - and one no plugin
+ * carries never appears at all.
  */
-const choices = await filter.locator('option').allInnerTexts();
+const choices = await opened();
 record(
-  choices.join('|') === 'All tags|Productivity|Notes|Files|Search|Source control',
+  choices.join('|') === 'Productivity|Notes|Files|Search|Source control',
   `and offers what the catalog actually used, each once (${choices.join(', ')})`,
+);
+
+/*
+ * The way back to the whole shelf, at the top where it is found rather than
+ * under however many tags the catalog happens to use - and switched off while
+ * there is nothing to clear, so the row does not appear under somebody's aim.
+ */
+record(
+  await page.locator('[class*="_tagClear_"]').isDisabled(),
+  'Clear all is there before anything is ticked, and does nothing',
 );
 
 record((await shelf()).join('|') === 'Notes|Charts', 'both plugins are on the shelf to begin with');
 
 /*
- * Chosen by the catalog's own word rather than by the label drawn from it.
- * The lowercase tag is what filters and what the marketplace holds; the
- * reading is only for the person choosing.
+ * Ticked by the reading, held against the shelf. The lowercase tag is what
+ * filters and what the marketplace holds; the reading is only for the person
+ * choosing.
  */
-await filter.selectOption('source-control');
-await page.waitForTimeout(200);
+await tick('Source control');
 const narrowed = await shelf();
-record(narrowed.join('|') === 'Charts', `choosing a tag narrows the shelf (${narrowed.join(', ') || 'nothing'})`);
+record(narrowed.join('|') === 'Charts', `ticking a tag narrows the shelf (${narrowed.join(', ') || 'nothing'})`);
+record(
+  (await filter.innerText()).includes('Source control'),
+  `and the button says which one (${(await filter.innerText()).trim()})`,
+);
 
 /*
  * The pane follows the list. A details pane still showing the plugin that was
@@ -143,9 +171,41 @@ record(narrowed.join('|') === 'Charts', `choosing a tag narrows the shelf (${nar
 const openName = await page.locator('[class*="_detailsName_"]').innerText();
 record(openName.trim() === 'Charts', `and the details pane follows it (${openName.trim()})`);
 
-await filter.selectOption('');
+/*
+ * A second tag widens rather than narrows, which is the whole of what several
+ * at once is for: "show me the chat and the files ones" rather than "show me
+ * what is both at once". A plugin is usually more than one thing, and the tag
+ * that hid it is why there is a list here rather than one word.
+ */
+await tick('Notes');
+record((await shelf()).join('|') === 'Notes|Charts', 'a second tag keeps what either one matches');
+record(
+  (await filter.innerText()).includes('2 tags'),
+  `and the button counts them rather than spelling them out (${(await filter.innerText()).trim()})`,
+);
+
+// Untick, and only what it was carrying goes.
+await tick('Notes');
+record((await shelf()).join('|') === 'Charts', 'unticking one takes its listings away again');
+
+await opened();
+record(!(await page.locator('[class*="_tagClear_"]').isDisabled()), 'and wakes up once something is');
+await page.locator('[class*="_tagClear_"]').click();
+await page.waitForTimeout(250);
+record((await shelf()).join('|') === 'Notes|Charts', 'and Clear all brings the rest back');
+record((await filter.innerText()).trim().startsWith('All tags'), 'and the button says so');
+
+/*
+ * The list hangs over the shelf, so it has to close: left open, the listing
+ * somebody is reaching for is not there to press.
+ */
+await opened();
+await page.locator('[class*="_detailsBody_"]').click({ position: { x: 5, y: 5 } });
 await page.waitForTimeout(200);
-record((await shelf()).join('|') === 'Notes|Charts', 'and All brings the rest back');
+record(
+  (await page.locator('[class*="_tagPanel_"]').count()) === 0,
+  'pressing elsewhere closes the list',
+);
 
 /*
  * The row wears the first few and says how many more there are. A plugin may
@@ -175,10 +235,10 @@ record(
 
 await page.getByRole('button', { name: 'Files', exact: true }).click();
 await page.waitForTimeout(250);
-record((await shelf()).join('|') === 'Notes', 'pressing one narrows the shelf to it');
+record((await shelf()).join('|') === 'Notes', 'pressing one narrows the shelf by it');
 record(
-  (await filter.inputValue()) === 'files',
-  `and the select agrees about what is being shown (${await filter.inputValue()})`,
+  (await filter.innerText()).includes('Files'),
+  `and the filter agrees about what is being shown (${(await filter.innerText()).trim()})`,
 );
 
 await page.getByRole('button', { name: 'Files', exact: true }).click();

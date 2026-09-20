@@ -19,6 +19,7 @@ import {
 import type { Loaded, MarketplaceListing, Plugin, PluginPermission } from '../../api/plugins';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
+import chevronDownIcon from '../../assets/chevron-down-12.svg';
 import downloadIcon from '../../assets/download.svg';
 import fileCodeIcon from '../../assets/file-code.svg';
 import plusIcon from '../../assets/plus.svg';
@@ -252,15 +253,24 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   const [hunting, setHunting] = useState('');
 
   /**
-   * Which tag the shelf is narrowed to, or '' for all of them.
+   * Which tags the shelf is narrowed to. Empty is all of them.
    *
-   * One at a time rather than several: the question somebody has is "show me
-   * the chat ones", and a set of ticks answering "chat and files, but only
-   * both" is a control that needs explaining. The choices are whatever the
-   * catalog answered with rather than anything fixed here, so a tag invented
-   * on the other side appears without this screen changing.
+   * Several at once, and a listing matching *any* of them stays: the question
+   * somebody has is "show me the chat and the files ones", not "show me what
+   * is both at once" - a plugin is usually more than one thing, and the tag
+   * that hid it was the whole reason there is a list here rather than a word.
+   *
+   * The choices are whatever the catalog answered with rather than anything
+   * fixed here, so a tag invented on the other side appears without this
+   * screen changing.
    */
-  const [filed, setFiled] = useState('');
+  const [filed, setFiled] = useState<string[]>([]);
+
+  /** Whether the tag list is open. It covers the shelf, so it closes easily. */
+  const [picking, setPicking] = useState(false);
+
+  /** The tag list itself, for the press-elsewhere that closes it. */
+  const tagList = useRef<HTMLDivElement | null>(null);
 
   /** Whether the open listing's history is shown whole. */
   const [showingAll, setShowingAll] = useState(false);
@@ -566,7 +576,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
     listings === null
       ? null
       : listings
-          .filter((one) => filed === '' || one.tags.includes(filed))
+          .filter((one) => filed.length === 0 || one.tags.some((tag) => filed.includes(tag)))
           .filter(
             (one) =>
               wanted === '' ||
@@ -604,6 +614,43 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
    * history across that would show one plugin's shape under another's name.
    */
   useEffect(() => setShowingAll(false), [open?.key]);
+
+  /**
+   * A tag, added to the filter or taken out of it.
+   *
+   * The pane's tag buttons and the list's ticks are the same act, so they are
+   * the same function - and both move the shelf, which is why the open listing
+   * is let go of: a choice made before the list moved is a choice about a row
+   * that may no longer be on it.
+   */
+  const toggle = useCallback((tag: string) => {
+    setFiled((held) => (held.includes(tag) ? held.filter((one) => one !== tag) : [...held, tag]));
+    setReading(null);
+  }, [setReading]);
+
+  /*
+   * Pressing anywhere else closes the list, and so does Escape.
+   *
+   * It hangs over the shelf, so leaving it open while somebody reaches for a
+   * listing underneath means the listing is not there to press. Only bound
+   * while it is open: a document listener for a panel nobody opened is a
+   * listener on every click this screen ever sees.
+   */
+  useEffect(() => {
+    if (!picking) return;
+    const elsewhere = (event: MouseEvent) => {
+      if (!tagList.current?.contains(event.target as Node)) setPicking(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPicking(false);
+    };
+    document.addEventListener('mousedown', elsewhere);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('mousedown', elsewhere);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [picking]);
 
   /** One plugin as a row: what it is, and what can be done to it. */
   function pluginRow(plugin: Plugin, where: Source | 'installed' = 'installed') {
@@ -1144,26 +1191,71 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                     }}
                   />
                   {/*
-                    Only where the catalog tags things at all. A select with
-                    one choice in it is a control that cannot do anything, and
-                    an older marketplace answers no tags.
+                    Only where the catalog tags things at all. A list with one
+                    choice in it is a control that cannot do anything, and an
+                    older marketplace answers no tags.
+
+                    Ticks rather than a native select: several at once is the
+                    point, and a multiple `<select>` asks somebody to hold
+                    control while they click, which is a thing nobody does on
+                    purpose.
                   */}
                   {tags.length > 0 && (
-                    <select
-                      className={styles.huntPick}
-                      value={filed}
-                      aria-label={t('Filter by tag')}
-                      onChange={(event) => {
-                        setFiled(event.target.value);
-                        // Same reason as the box above: the pane follows the list.
-                        setReading(null);
-                      }}
-                    >
-                      <option value="">{t('All tags')}</option>
-                      {tags.map((one) => (
-                        <option key={one} value={one}>{readable(one)}</option>
-                      ))}
-                    </select>
+                    <div className={styles.tagPicker} ref={tagList}>
+                      <button
+                        type="button"
+                        className={filed.length > 0 ? `${styles.huntPick} ${styles.huntPickOn}` : styles.huntPick}
+                        aria-label={t('Filter by tag')}
+                        aria-expanded={picking}
+                        aria-haspopup="true"
+                        onClick={() => setPicking((was) => !was)}
+                      >
+                        {/*
+                          What is chosen, said as shortly as it can be: the tag
+                          itself while there is one, a count once there are
+                          more - three tags spelled out is a button as wide as
+                          the shelf it narrows.
+                        */}
+                        {filed.length === 0
+                          ? t('All tags')
+                          : filed.length === 1
+                            ? readable(filed[0])
+                            : `${filed.length} tags`}
+                        <img src={chevronDownIcon} alt="" width={12} height={12} />
+                      </button>
+
+                      {picking && (
+                        <div className={styles.tagPanel} role="group" aria-label={t('Tags')}>
+                          {/*
+                            Taking them all off, at the top where it is found
+                            rather than under however many tags the catalog
+                            happens to use - with eight of them the way back to
+                            the whole shelf was below the fold.
+
+                            Always drawn and switched off while there is
+                            nothing to clear: a control that appears once
+                            something is ticked moves every row under it at the
+                            moment somebody is aiming at one.
+                          */}
+                          <button
+                            type="button"
+                            className={styles.tagClear}
+                            disabled={filed.length === 0}
+                            onClick={() => { setFiled([]); setReading(null); }}
+                          >{t('Clear all')}</button>
+                          {tags.map((one) => (
+                            <label key={one} className={styles.tagChoice}>
+                              <input
+                                type="checkbox"
+                                checked={filed.includes(one)}
+                                onChange={() => toggle(one)}
+                              />
+                              {readable(one)}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -1313,14 +1405,12 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                           <button
                             key={tag}
                             type="button"
-                            className={filed === tag ? `${styles.tagButton} ${styles.tagButtonOn}` : styles.tagButton}
-                            aria-pressed={filed === tag}
-                            // Pressing one narrows the shelf to it, which is
+                            className={filed.includes(tag) ? `${styles.tagButton} ${styles.tagButtonOn}` : styles.tagButton}
+                            aria-pressed={filed.includes(tag)}
+                            // Pressing one narrows the shelf by it, which is
                             // the question a tag raises: what else is this.
-                            onClick={() => {
-                              setFiled(filed === tag ? '' : tag);
-                              setReading(null);
-                            }}
+                            // The same act as ticking it in the list above.
+                            onClick={() => toggle(tag)}
                           >{readable(tag)}</button>
                         ))}
                       </div>
