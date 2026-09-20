@@ -95,6 +95,32 @@ export interface Plugin {
   version: string | null;
 }
 
+/**
+ * One version of a plugin, as the marketplace remembers it.
+ *
+ * A listing arrives with its whole history, not only what is current, which is
+ * what lets the details pane say how long a plugin has been maintained rather
+ * than showing one number and leaving somebody to guess.
+ */
+export interface MarketplaceRelease {
+  version: string;
+  /** ISO-8601. When this version first appeared; it never moves again. */
+  published: string;
+  /** ISO-8601. When its bytes last changed - the same as `published` for most. */
+  replaced: string;
+  /** How many files it shipped with, the plugin and its libraries together. */
+  files: number;
+  /**
+   * Whether its bytes are still held.
+   *
+   * The marketplace keeps the record of every release and the files of the ten
+   * newest, so an older version is real, nameable, and cannot be installed.
+   * The row says so; the alternative is a failure at the moment somebody
+   * pressed Install.
+   */
+  available: boolean;
+}
+
 /** One plugin the marketplace offers, with what is installed here folded in. */
 export interface MarketplaceListing {
   key: string;
@@ -116,11 +142,20 @@ export interface MarketplaceListing {
   installedVersion: string | null;
   /** Installed, and the catalog is offering a version this one is not. */
   updatable: boolean;
+  /**
+   * What the marketplace files it under, or null where it files it under
+   * nothing. A word the catalog chose, not one the plugin declares - so it is
+   * shown and filtered by, and never matched against an installed plugin.
+   */
+  category: string | null;
+  /** Every release, newest first. Empty from a marketplace that keeps none. */
+  versions: MarketplaceRelease[];
 }
 
 const LISTING_FIELDS = `
   key name author summary description version icon iconDark downloads rating reviews published
-  installed installedVersion updatable
+  installed installedVersion updatable category
+  versions { version published replaced files available }
 `;
 
 /**

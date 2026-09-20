@@ -650,6 +650,9 @@
  * look for before then.
  */
 .hunt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
   padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--color-border);
 }
@@ -667,6 +670,25 @@
 
 .huntInput::placeholder {
   color: var(--color-text-muted);
+}
+
+/*
+ * The category filter, beside the box rather than under it.
+ *
+ * Narrow on purpose: it holds one word and the box holds a question, so the
+ * room belongs to the box - and the two read as one control for narrowing
+ * the shelf rather than as two rows of furniture above it.
+ */
+.huntPick {
+  flex: 0 0 auto;
+  max-width: 10rem;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
 }
 
 .listingHead {
@@ -759,8 +781,89 @@
 }
 
 .listingMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+}
+
+/* What the catalog files it under; quieter than the state marks beside the
+ * name, because it says what a plugin is rather than what has happened to it. */
+.categoryMark {
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--text-2xs, var(--text-xs));
+  color: var(--color-text-muted);
+}
+
+/*
+ * What a plugin has shipped, under its description.
+ *
+ * Ruled off above rather than boxed: it is the same pane continuing, and a
+ * card inside a card reads as a different screen.
+ */
+.history {
+  margin-top: var(--space-20);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--color-border);
+}
+
+.historyHead {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-2xs, var(--text-xs));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.historyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: var(--space-4) 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.historyVersion {
+  min-width: 4.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.historyAt {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A version the marketplace remembers and can no longer hand over. */
+.goneMark {
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--text-2xs, var(--text-xs));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.historyMore {
+  margin-top: var(--space-6);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.historyMore:hover {
+  text-decoration: underline;
 }
 
 /*

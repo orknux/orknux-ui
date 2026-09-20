@@ -541,6 +541,14 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'marketplace-release-check',
+    what: "the catalog's categories narrow the shelf, and a listing's releases are drawn with what is no longer held",
+    // Stubs the catalog call in the browser: it loads nothing and changes
+    // nothing, and a check written against whatever the real marketplace is
+    // offering goes red when somebody publishes a plugin.
+    needs: [],
+  },
+  {
     name: 'parameter-picker-check',
     what: 'a plugin parameter that names its values is answered from a list, and one that does not is typed',
     // Loads a plugin, which is installation-wide: its rows appear in every

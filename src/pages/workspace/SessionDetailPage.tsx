@@ -19,9 +19,11 @@ import type {
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
 import { BackLink } from '../../components/BackLink';
+import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -220,7 +222,16 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  /*
+   * The session itself: its key, its count, when it was last spoken in.
+   *
+   * Its own call, and now its own callback, because a refresh has to move
+   * both halves of this page. The line above the transcript says how many
+   * lines there are and how long ago the last one was, and a transcript that
+   * gained three lines under a heading still saying "last spoken in 4
+   * minutes" is worse than one that did not refresh at all.
+   */
+  const loadSession = useCallback(() => {
     if (sessionId === '') return;
     fetchLlmSession(sessionId)
       .then((found) => {
@@ -229,6 +240,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       })
       .catch(() => setMissing(true));
   }, [sessionId]);
+
+  useEffect(loadSession, [loadSession]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search), SEARCH_PAUSE_MS);
@@ -261,6 +274,18 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [sessionId, debouncedSearch, kinds, page, pageSize, order, ascending]);
 
   useEffect(load, [load]);
+
+  /*
+   * What a press, and a tick, both do.
+   *
+   * A session is written by agents while somebody watches it, which is what
+   * makes this page worth refreshing at all: the run is still going, and the
+   * next tool call is the thing being waited for.
+   */
+  const refresh = useCallback(() => {
+    loadSession();
+    load();
+  }, [loadSession, load]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -300,6 +325,28 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               */}
               {held !== null && (
                 <div className={styles.actions}>
+                  {/*
+                    Refreshing first, and leftmost of the actions: it is the
+                    one here that changes nothing, and it sits beside the two
+                    that do.
+
+                    The interval is the shared one every other watchable
+                    screen uses, not a setting of this page - somebody who has
+                    decided how often they want to be interrupted has decided
+                    it everywhere.
+                  */}
+                  <AutoRefresh onRefresh={refresh} busy={loading} />
+                  {/* The label does not change: a word that flips every few
+                      seconds under auto-refresh is movement, not information. */}
+                  <button
+                    type="button"
+                    className={styles.refresh}
+                    onClick={refresh}
+                    disabled={loading}
+                  >
+                    <img src={refreshIcon} alt="" width={14} height={14} />
+                    {t('Refresh')}
+                  </button>
                   {/*
                     Picking the conversation up by hand.
 

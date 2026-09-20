@@ -153,6 +153,14 @@ function isDrawing(held: string): boolean {
 /** Which half of the screen is being read. */
 type Tab = 'installed' | 'catalog';
 
+/**
+ * How many releases a listing shows before it offers the rest.
+ *
+ * Enough to read the shape of a history - roughly how often, and how recently -
+ * without the list pushing the description it sits under off the screen.
+ */
+const SHOW_RELEASES = 5;
+
 /** And which shelf of the catalog: what is offered, or what you brought. */
 type Source = 'marketplace' | 'local';
 
@@ -220,6 +228,18 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   const [reading, setReading] = useState<string | null>(null);
   /** What somebody typed to narrow the shelf. */
   const [hunting, setHunting] = useState('');
+
+  /**
+   * Which category the shelf is narrowed to, or '' for all of them.
+   *
+   * A word the marketplace files a plugin under, so the list of choices is
+   * whatever the catalog answered with rather than anything fixed here - a
+   * category added on the other side appears without this screen changing.
+   */
+  const [filed, setFiled] = useState('');
+
+  /** Whether the open listing's history is shown whole. */
+  const [showingAll, setShowingAll] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -521,11 +541,24 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   const shelf =
     listings === null
       ? null
-      : wanted === ''
-        ? listings
-        : listings.filter((one) =>
-            `${one.name} ${one.key} ${one.summary} ${one.author}`.toLowerCase().includes(wanted),
+      : listings
+          .filter((one) => filed === '' || one.category === filed)
+          .filter(
+            (one) =>
+              wanted === '' ||
+              `${one.name} ${one.key} ${one.summary} ${one.author} ${one.category ?? ''}`
+                .toLowerCase()
+                .includes(wanted),
           );
+
+  /*
+   * The categories the catalog actually used, in the order it listed them.
+   *
+   * Read from the listings rather than kept as a list here, so the choices are
+   * always ones that match something - a filter offering a category no plugin
+   * is in is a filter that can only empty the screen.
+   */
+  const categories = [...new Set((listings ?? []).map((one) => one.category).filter((one) => one !== null))];
 
   /*
    * What the details pane shows: the one picked, or the first on the shelf.
@@ -534,6 +567,16 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
    * has.
    */
   const open = shelf?.find((one) => one.key === reading) ?? shelf?.[0];
+
+  /*
+   * A history opens folded on every listing.
+   *
+   * Tied to which plugin is open rather than to the click that opened it,
+   * because the pane also follows the list: typing in the box moves it to a
+   * different plugin without anybody pressing a row, and carrying an unfolded
+   * history across that would show one plugin's shape under another's name.
+   */
+  useEffect(() => setShowingAll(false), [open?.key]);
 
   /** One plugin as a row: what it is, and what can be done to it. */
   function pluginRow(plugin: Plugin, where: Source | 'installed' = 'installed') {
@@ -1073,6 +1116,28 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                       setReading(null);
                     }}
                   />
+                  {/*
+                    Only where the catalog files things at all. A select with
+                    one choice in it is a control that cannot do anything,
+                    and an older marketplace answers no categories.
+                  */}
+                  {categories.length > 0 && (
+                    <select
+                      className={styles.huntPick}
+                      value={filed}
+                      aria-label={t('Filter by category')}
+                      onChange={(event) => {
+                        setFiled(event.target.value);
+                        // Same reason as the box above: the pane follows the list.
+                        setReading(null);
+                      }}
+                    >
+                      <option value="">{t('All categories')}</option>
+                      {categories.map((one) => (
+                        <option key={one} value={one}>{one}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {catalogLoading && (
@@ -1117,7 +1182,12 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                           {here?.enabled === false && <span className={styles.offMark}>{t('off')}</span>}
                         </span>
                         <span className={styles.listingSummary}>{listing.summary}</span>
-                        <span className={styles.listingMeta}>{listing.author}</span>
+                        <span className={styles.listingMeta}>
+                          {listing.author}
+                          {listing.category !== null && (
+                            <span className={styles.categoryMark}>{listing.category}</span>
+                          )}
+                        </span>
                       </span>
                     </button>
                   );
@@ -1202,6 +1272,52 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                         and the chat use — which is where the sanitising is.
                       */}
                       <Markdown>{open.description}</Markdown>
+
+                      {/*
+                        What it has shipped, under the prose rather than over
+                        it: somebody opens a listing to learn what the plugin
+                        is, and the release history is the second question.
+
+                        Folded to a handful, because the interesting part of a
+                        history is its shape - how recent, how often - and
+                        twenty rows of it push the description off the screen.
+                      */}
+                      {open.versions.length > 0 && (
+                        <div className={styles.history}>
+                          <p className={styles.historyHead}>{t('Releases')}</p>
+                          {(showingAll ? open.versions : open.versions.slice(0, SHOW_RELEASES)).map((release) => (
+                            <p key={release.version} className={styles.historyRow}>
+                              <span className={styles.historyVersion}>{release.version}</span>
+                              <span className={styles.historyAt}>
+                                {new Date(release.published).toLocaleDateString()}
+                              </span>
+                              {/*
+                                Said on the row it is true of. The bytes of an
+                                old release are gone and the record of it is
+                                not, so the honest thing is a version that is
+                                listed and marked rather than one quietly left
+                                out.
+                              */}
+                              {!release.available && (
+                                <span className={styles.goneMark} title={t('The marketplace no longer holds this version’s files.')}>
+                                  {t('not held')}
+                                </span>
+                              )}
+                            </p>
+                          ))}
+                          {open.versions.length > SHOW_RELEASES && (
+                            <button
+                              type="button"
+                              className={styles.historyMore}
+                              onClick={() => setShowingAll((held) => !held)}
+                            >
+                              {showingAll
+                                ? t('Show fewer')
+                                : `Show all ${open.versions.length} releases`}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

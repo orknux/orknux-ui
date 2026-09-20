@@ -77,6 +77,38 @@
  * The two controls on the title row, so the one that carries on the
  * conversation sits beside the one that ends it rather than under it.
  */
+/*
+ * Refreshing, beside the acts that change something.
+ *
+ * Drawn like the Refresh on every other watchable screen rather than like
+ * the buttons next to it: it is the same control doing the same thing, and a
+ * page where it looks different is a page where somebody has to look for it.
+ */
+.refresh {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-14);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.refresh:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .actions {
   flex: none;
   display: flex;

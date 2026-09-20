@@ -538,6 +538,68 @@ if (await drawn(page, 'the session transcript')) {
   );
 }
 
+/* ============================== refreshing, by hand and on a timer (#0.9.8) */
+
+/*
+ * A session is written while somebody watches it.
+ *
+ * That is what makes this page worth refreshing at all: the run is still
+ * going, the next tool call is the thing being waited for, and until this
+ * landed the only way to see it was to reload the whole screen. So what is
+ * measured is that a press fetches again and that the timer does the same
+ * without one - both read off the requests the page actually makes, because a
+ * button that draws a spinner and asks nothing looks exactly like a button
+ * that works.
+ */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${read.id}`, { waitUntil: 'domcontentloaded' });
+if (await drawn(page, 'the session to refresh')) {
+  /** Every transcript fetch this page makes, so "asks again" is a count. */
+  let fetches = 0;
+  page.on('request', (asked) => {
+    if (asked.url().includes('/graphql') && (asked.postData() ?? '').includes('llmSessionEvents')) fetches += 1;
+  });
+
+  const refresh = page.getByRole('button', { name: 'Refresh', exact: true });
+  const auto = page.locator('select[aria-label="Refresh automatically"]');
+  record((await refresh.count()) === 1, 'the session offers one Refresh');
+  record((await auto.count()) === 1, 'and an interval to refresh itself at');
+
+  /*
+   * Off first, and held there for longer than the shortest interval: a page
+   * that polls whatever the setting says is a page nobody can read a long
+   * transcript on, and the setting is shared with every other screen - so one
+   * left at five seconds elsewhere must not poll this one.
+   */
+  await auto.selectOption('0');
+  await page.waitForTimeout(500);
+  fetches = 0;
+  await page.waitForTimeout(7_000);
+  record(fetches === 0, `with Auto off the page asks nothing on its own (${fetches} calls)`);
+
+  await refresh.click();
+  const pressed = await settlesOn(async () => fetches, 1, 5_000);
+  record(pressed === 1, `pressing Refresh asks once (${pressed} calls)`);
+
+  /*
+   * And the timer asks by itself. Five seconds over a twelve-second window, so
+   * a window that catches only one tick still catches one - and the assertion
+   * is "more than none" rather than an exact count, because a check that
+   * pins the number is a check that goes red on a slow machine.
+   */
+  await auto.selectOption('5');
+  fetches = 0;
+  await page.waitForTimeout(12_000);
+  record(fetches >= 1, `at five seconds the page refreshes itself (${fetches} calls in 12s)`);
+
+  /*
+   * Left as it was found. The interval is one setting shared by every screen
+   * that offers it, and a check that walks away having switched polling on for
+   * the whole product has changed something it was only supposed to measure.
+   */
+  await auto.selectOption('0');
+  await page.waitForTimeout(300);
+}
+
 /* ======================================== two presses, and only two, to remove */
 
 /*
