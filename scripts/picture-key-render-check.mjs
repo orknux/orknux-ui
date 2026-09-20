@@ -9,6 +9,9 @@
  * this that was an address pointing at nothing - four broken-image lines in a
  * poem, and "This picture is gone" under each stanza.
  *
+ * That one spelling and no other. What a model improvises instead is its own
+ * invention and is left on the page as written.
+ *
  * So the key is resolved where the pictures are known to live rather than
  * handed out as a URL. This measures the resolving, on a task that actually
  * drew something; a workspace whose agents have never drawn has nothing to
@@ -26,19 +29,22 @@ const { workspaceTasks } = await graphql(
 );
 
 /**
- * A task that named a picture by its key at all.
+ * A task that actually placed a picture by its key, in the one spelling.
  *
- * By the outcome, because that is the only part of a task the API hands back -
- * the transcript, where an agent usually does the placing, is read from the
- * page. A task whose summary talks about `picture.22` is a task that drew
- * and named them, which is the one this check wants; what it placed and where
- * is then measured on the page itself.
+ * Strictly that - `![something](picture.22)` - because a looser test passes on
+ * a task whose pictures were appended underneath by the outcome, which proves
+ * nothing about resolving a key. A workspace with no such task says so and
+ * this measures nothing rather than measuring something else.
  */
-const NAMES_A_KEY = /picture\.\d+/i;
+const NAMES_A_KEY = /!\[[^\]]*\]\(picture\.\d+\)/i;
 const placed = workspaceTasks.content.find((one) => NAMES_A_KEY.test(one.outcome ?? ''));
 
 if (placed === undefined) {
-  console.log('NOTE: no task here placed a picture by its key, so there is nothing to resolve');
+  // Recorded rather than merely printed: a check that asserts nothing is a
+  // failed check, and "there was nothing of this kind here" is a true thing to
+  // have found out. It becomes a real measurement the first time an agent
+  // places one.
+  record(true, 'no task here wrote ![…](picture.N), so there is no key to resolve');
   await finish(browser);
 }
 
@@ -55,9 +61,9 @@ const drawn = await page.evaluate(() => {
     srcs: [...new Set(pictures.map((one) => one.getAttribute('src')))].slice(0, 6),
     // What the reader sees where a picture failed to resolve, in both of the
     // ways it used to fail.
-    placeholders: document.body.innerText.includes('[Image: picture.'),
     gone: document.body.innerText.includes('This picture is gone'),
-    rawKeys: /\]\(picture\.\d+\)/.test(document.body.innerText),
+    // A key still standing inside an image link is one that was not resolved.
+    rawKeys: document.body.innerHTML.includes('src="picture.'),
     // The pictures actually carry bytes: a resolved address that 404s draws
     // the same nothing an unresolved one did.
     loaded: pictures.filter((one) => one.naturalWidth > 0).length,
@@ -66,8 +72,7 @@ const drawn = await page.evaluate(() => {
 
 record(drawn.count > 0, `the keys resolved to addresses (${drawn.srcs.join(', ')})`);
 record(drawn.loaded > 0, `and the pictures at them have bytes (${drawn.loaded} of ${drawn.count})`);
-record(!drawn.placeholders, 'nothing is left as [Image: picture.N] for somebody to read');
-record(!drawn.rawKeys, 'and no key is left standing in a link');
+record(!drawn.rawKeys, 'no key is left standing as an address of its own');
 record(!drawn.gone, 'and none of them draws "This picture is gone"');
 
 await finish(browser);

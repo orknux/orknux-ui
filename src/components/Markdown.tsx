@@ -222,10 +222,10 @@ export function Markdown({
   /**
    * The prose, with any picture key in it turned into an address.
    *
-   * Two spellings, because models write both. `![alt](picture.22)` is the one
-   * the tool asks for; `[Image: picture.22]` is what one wrote anyway when it
-   * had a key and no syntax to put it in, and rendering that as the picture it
-   * plainly means costs one expression.
+   * One spelling: `![alt](picture.22)`, the markdown the drawing tool asks for.
+   * Whatever else a model improvises is its own invention and is left exactly
+   * as written - a second syntax here would be this application supporting one
+   * model's habit, and the next model has a different habit.
    *
    * Only where a base was given. Elsewhere this is the identity function and
    * the document is the document.
@@ -234,7 +234,6 @@ export function Markdown({
     if (pictureKeys === undefined) return children;
     const base = pictureKeys.replace(/\/$/, '');
     return children
-      .replace(/\[Image:\s*picture\.(\d+)\s*\]/gi, (_whole, id) => `![](picture.${id})`)
       // Inside an image and nowhere else. A summary that mentions a key in a
       // sentence - "the four images (picture.22, picture.23)" - is prose about
       // the pictures, and rewriting that would put a path in somebody's
