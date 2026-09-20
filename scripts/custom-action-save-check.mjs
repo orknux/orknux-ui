@@ -248,4 +248,47 @@ record(
     `${JSON.stringify(both.map((one) => one.name))})`,
 );
 
+/*
+ * The sequence that was reported, exactly: add a node, choose Custom, choose
+ * Custom *again*, save, and look at what the graph holds.
+ *
+ * Choosing Custom cleared the node's actionId, which is right when the node
+ * is pointed at a shared action and somebody wants one of its own - and wrong
+ * on the second press, where it threw away the definition the panel had just
+ * written. The form, holding the same fields it had already saved, wrote
+ * nothing more, and the node was saved pointing at nothing.
+ */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.react-flow__node', { timeout: 20_000 });
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: /^Add node/ }).click();
+await page.getByRole('menuitem', { name: 'Action', exact: true }).click();
+await page.waitForTimeout(900);
+
+await page.locator('button').filter({ hasText: /Choose an action/ }).first().click();
+await page.waitForTimeout(400);
+await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
+await page.waitForTimeout(1500);
+
+// And again, which is the press that used to lose it. By id: the picker now
+// shows the definition it holds rather than the word Custom, which is the
+// point - it kept it.
+await page.locator('#node-action').click();
+await page.waitForTimeout(400);
+await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
+await page.waitForTimeout(1400);
+
+await page.getByRole('button', { name: /^Save/ }).first().click();
+await page.waitForTimeout(2000);
+
+const graph = await graphql(
+  `query($w: ID!, $f: ID!) { workflowGraph(workspaceId: $w, workflowId: $f) { nodes { key name actionId } } }`,
+  { w: WORKSPACE, f: WORKFLOW },
+);
+const fresh = graph.workflowGraph.nodes.find((one) => one.name === 'Action' && one.key.startsWith('action-'));
+record(
+  fresh !== undefined && fresh.actionId !== null,
+  `a node whose Custom action was chosen twice keeps it through a save (${JSON.stringify(fresh)})`,
+);
+
 await done();

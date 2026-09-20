@@ -4605,7 +4605,19 @@ Change the keystroke in Preferences.`}
                            * Object node has always put them.
                            */
                           setCustom('TRIGGER');
-                          setDraft({ ...draft, triggerId: null });
+                          /*
+                           * Keeping the one this node already owns.
+                           *
+                           * Choosing Custom on a node that already has a
+                           * Custom definition is asking to edit it, not to
+                           * throw it away - and clearing the id did exactly
+                           * that: the form, holding the same fields it had
+                           * already saved, wrote nothing more, so the node was
+                           * saved pointing at nothing and came back from a
+                           * reload with no action on it. That is the whole of
+                           * "I still cant save custom action".
+                           */
+                          setDraft({ ...draft, triggerId: ownedTrigger?.id ?? null });
                           return;
                         }
                         setDraft({ ...draft, triggerId: chosen || null });
@@ -4659,6 +4671,27 @@ Change the keystroke in Preferences.`}
                             setDraft((current) =>
                               current === null ? current : { ...current, triggerId: trigger.id },
                             );
+                            /*
+                              Into the node itself, not only into the draft.
+                              
+                              The draft reaches the node through a debounce,
+                              and anything that re-seeds the draft from the
+                              node in the meantime - a preview landing, an
+                              undo - reads the node as it still is and throws
+                              the id away. What came back was a saved
+                              definition with nothing pointing at it: the node
+                              drew empty after a reload and the work looked
+                              lost. An id is a fact rather than a keystroke,
+                              so it is written where it belongs at once.
+                            */
+                            setNodes((all) =>
+                              all.map((node) =>
+                                node.id === selectedKey
+                                  ? { ...node, data: { ...(node.data as NodeData), triggerId: trigger.id } }
+                                  : node,
+                              ),
+                            );
+                            setSaved(false);
                             setCustom(null);
                           }}
                           onCancel={() => setCustom(null)}
@@ -4749,7 +4782,19 @@ Change the keystroke in Preferences.`}
                            * Object node has always put them.
                            */
                           setCustom('ACTION');
-                          setDraft({ ...draft, actionId: null });
+                          /*
+                           * Keeping the one this node already owns.
+                           *
+                           * Choosing Custom on a node that already has a
+                           * Custom definition is asking to edit it, not to
+                           * throw it away - and clearing the id did exactly
+                           * that: the form, holding the same fields it had
+                           * already saved, wrote nothing more, so the node was
+                           * saved pointing at nothing and came back from a
+                           * reload with no action on it. That is the whole of
+                           * "I still cant save custom action".
+                           */
+                          setDraft({ ...draft, actionId: ownedAction?.id ?? null });
                           return;
                         }
                         setDraft({ ...draft, actionId: chosen || null });
@@ -4790,6 +4835,27 @@ Change the keystroke in Preferences.`}
                             setDraft((current) =>
                               current === null ? current : { ...current, actionId: action.id },
                             );
+                            /*
+                              Into the node itself, not only into the draft.
+                              
+                              The draft reaches the node through a debounce,
+                              and anything that re-seeds the draft from the
+                              node in the meantime - a preview landing, an
+                              undo - reads the node as it still is and throws
+                              the id away. What came back was a saved
+                              definition with nothing pointing at it: the node
+                              drew empty after a reload and the work looked
+                              lost. An id is a fact rather than a keystroke,
+                              so it is written where it belongs at once.
+                            */
+                            setNodes((all) =>
+                              all.map((node) =>
+                                node.id === selectedKey
+                                  ? { ...node, data: { ...(node.data as NodeData), actionId: action.id } }
+                                  : node,
+                              ),
+                            );
+                            setSaved(false);
                             setCustom(null);
                           }}
                           onDeleted={() => {
@@ -4966,7 +5032,19 @@ Change the keystroke in Preferences.`}
                            * Object node has always put them.
                            */
                           setCustom('CONDITION');
-                          setDraft({ ...draft, conditionId: null });
+                          /*
+                           * Keeping the one this node already owns.
+                           *
+                           * Choosing Custom on a node that already has a
+                           * Custom definition is asking to edit it, not to
+                           * throw it away - and clearing the id did exactly
+                           * that: the form, holding the same fields it had
+                           * already saved, wrote nothing more, so the node was
+                           * saved pointing at nothing and came back from a
+                           * reload with no action on it. That is the whole of
+                           * "I still cant save custom action".
+                           */
+                          setDraft({ ...draft, conditionId: ownedCondition?.id ?? null });
                           return;
                         }
                         setDraft({ ...draft, conditionId: chosen || null });
@@ -5007,6 +5085,27 @@ Change the keystroke in Preferences.`}
                             setDraft((current) =>
                               current === null ? current : { ...current, conditionId: condition.id },
                             );
+                            /*
+                              Into the node itself, not only into the draft.
+                              
+                              The draft reaches the node through a debounce,
+                              and anything that re-seeds the draft from the
+                              node in the meantime - a preview landing, an
+                              undo - reads the node as it still is and throws
+                              the id away. What came back was a saved
+                              definition with nothing pointing at it: the node
+                              drew empty after a reload and the work looked
+                              lost. An id is a fact rather than a keystroke,
+                              so it is written where it belongs at once.
+                            */
+                            setNodes((all) =>
+                              all.map((node) =>
+                                node.id === selectedKey
+                                  ? { ...node, data: { ...(node.data as NodeData), conditionId: condition.id } }
+                                  : node,
+                              ),
+                            );
+                            setSaved(false);
                             setCustom(null);
                           }}
                           onCancel={() => setCustom(null)}
