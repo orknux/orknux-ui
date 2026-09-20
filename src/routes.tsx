@@ -95,6 +95,15 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/agents': (session, onSignOut) => <AgentsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/objects': (session, onSignOut) => <WorkspaceObjectsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/artifacts': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
+  /*
+   * The same page, opened at one artifact.
+   *
+   * A picture opened in the viewer was a state the address knew nothing about,
+   * so there was no way to send somebody "this one" - and the back button
+   * left the page rather than closing what was open. The id is the one the
+   * list gives, which says which table it came from.
+   */
+  '/workspace/:workspaceId/artifacts/:artifactId': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/variables': (session, onSignOut) => <WorkspaceVariablesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/plugins': (session, onSignOut) => <WorkspacePluginsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/memory': (session, onSignOut) => <WorkspaceMemoryPage session={session} onSignOut={onSignOut} />,

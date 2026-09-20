@@ -291,6 +291,14 @@ export const PAGES = [
       also: 'images pictures generated files downloads',
     },
   },
+  /*
+   * The same page, opened at one artifact.
+   *
+   * `goTo: false` because it is not a destination anybody types - it is where
+   * the page puts itself when something is open, so the address says which
+   * one and a link to it works from cold.
+   */
+  { path: '/workspace/:workspaceId/artifacts/:artifactId', access: 'signed-in', goTo: false },
   {
     path: '/workspace/:workspaceId/variables',
     access: 'signed-in',

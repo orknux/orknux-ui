@@ -155,4 +155,51 @@ if (tile !== null) {
   );
 }
 
+/* ------------------------------------------- the address says which one */
+
+/*
+ * Opening an artifact is a navigation, not a state the address knows nothing
+ * about. A picture opened in the viewer used to leave the bar reading
+ * `/artifacts`, so there was no way to send somebody *this one* - and the back
+ * button left the page rather than closing what was open.
+ */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/artifacts`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('figure', { timeout: 20_000 });
+await page.waitForTimeout(600);
+
+const list = page.url();
+await page.locator('figure a[class*="_document_"], figure button[class*="_thumb_"]').first().click();
+await page.waitForTimeout(700);
+
+record(page.url() !== list, `opening one puts it in the address (${page.url().replace(BASE, '')})`);
+record(
+  /\/artifacts\/[A-Z]+-\d+$/.test(page.url()),
+  'and the address names the artifact, kind and row',
+);
+
+await page.goBack();
+await page.waitForTimeout(500);
+record(page.url() === list, 'the back button closes it rather than leaving the page');
+
+/*
+ * And the address works from cold, which is the whole point of it: the list is
+ * paged, so what somebody was sent may be on page four.
+ */
+await page.goto(`${BASE}${new URL(document_.previewUrl, BASE).pathname.replace('/api/artifacts/', '/workspace/' + WORKSPACE + '/artifacts/SAVED-').replace('/preview', '')}`, {
+  waitUntil: 'domcontentloaded',
+});
+await page.waitForTimeout(2000);
+const cold = await page.evaluate(() => ({
+  frame: document.querySelector('iframe[src*="/preview"]')?.getAttribute('src') ?? '',
+  pictureViewer: document.querySelectorAll('dialog[open]').length,
+}));
+record(
+  cold.frame === document_.previewUrl,
+  `a link straight to a document opens it, read where it is (${cold.frame})`,
+);
+record(
+  cold.pictureViewer === 0,
+  'and as a document rather than in the picture viewer, which drew it as broken',
+);
+
 await finish(browser);

@@ -71,6 +71,23 @@ const DELETE_ARTIFACT_MUTATION = `
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/**
+ * One artifact, by the id the list gave it.
+ *
+ * What a link to an artifact resolves to. Null for one that is not there or
+ * not this workspace's - the same answer for both, so an address cannot be
+ * used to find out what another team has produced.
+ */
+export async function fetchWorkspaceArtifact(workspaceId: string, id: string): Promise<Artifact | null> {
+  const data = await graphql<{ workspaceArtifact: Artifact | null }>(
+    `query WorkspaceArtifact($workspaceId: ID!, $id: ID!) {
+       workspaceArtifact(workspaceId: $workspaceId, id: $id) { ${ARTIFACT_FIELDS} }
+     }`,
+    { workspaceId, id },
+  );
+  return data.workspaceArtifact;
+}
+
 export async function fetchWorkspaceArtifacts(
   workspaceId: string,
   page = 0,

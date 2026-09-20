@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
-import { deleteArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
+import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
 import type { Artifact } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import downloadIcon from '../../assets/download.svg';
@@ -93,14 +93,81 @@ function kindOf(filename: string, contentType: string): string {
 }
 
 export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifactsPageProps) {
-  const { workspaceId = '' } = useParams();
+  const { workspaceId = '', artifactId } = useParams();
+  const navigate = useNavigate();
 
   const [artifacts, setArtifacts] = useState<PageOf<Artifact> | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('artifacts');
   const [error, setError] = useState<string | null>(null);
-  /** Which artifact is open over the page at full size, or null while none is. */
-  const [zoomed, setZoomed] = useState<Picture | null>(null);
+  /**
+   * The one the address names, where it names one this page has not listed.
+   *
+   * A link to an artifact has to work from cold: the list is paged, so the
+   * thing somebody was sent may be on page four, and a page that could only
+   * open what it had already drawn would answer a perfectly good link with
+   * nothing.
+   */
+  const [addressed, setAddressed] = useState<Artifact | null>(null);
+
+  /**
+   * Which artifact is open over the page at full size, or null while none is.
+   *
+   * Read from the address rather than held here. Opening one is a navigation,
+   * so the back button closes it, a reload reopens it, and the thing on screen
+   * can be sent to somebody - which is what "I want to see the full url for
+   * that artifact" asks for.
+   */
+  const open = useMemo(() => {
+    if (artifactId === undefined) return null;
+    return (
+      artifacts?.content.find((one) => one.id === artifactId) ??
+      (addressed?.id === artifactId ? addressed : null)
+    );
+  }, [artifactId, artifacts, addressed]);
+
+  /*
+   * A picture opens in the viewer; a document opens as a document.
+   *
+   * Both are "this artifact, open", and both are the same address - what
+   * differs is what a browser can do with the bytes. Sending an HTML report to
+   * `ImageZoom` drew the broken-image icon over the page, which says the file
+   * is gone about a file that is fine.
+   */
+  const zoomed: Picture | null =
+    open !== null && drawable(open.contentType) ? { src: open.url, alt: open.prompt } : null;
+
+  const read = open !== null && !drawable(open.contentType) ? open : null;
+
+  /** Opening one, and closing it, are both a move in the history. */
+  const show = (artifact: Artifact) =>
+    navigate(`/workspace/${workspaceId}/artifacts/${artifact.id}`);
+  const close = () => navigate(`/workspace/${workspaceId}/artifacts`);
+
+  /*
+   * Fetched only when the address names one the list does not hold - a deep
+   * link, or a reload on page four. Clicking a picture needs no round trip:
+   * the row is already on the page.
+   */
+  useEffect(() => {
+    if (artifactId === undefined || workspaceId === '') return;
+    if (artifacts?.content.some((one) => one.id === artifactId) === true) return;
+    if (addressed?.id === artifactId) return;
+
+    let left = false;
+    void fetchWorkspaceArtifact(workspaceId, artifactId)
+      .then((found) => {
+        if (!left) setAddressed(found);
+      })
+      .catch(() => {
+        // A link to something that is gone closes rather than saying so twice:
+        // the list behind it is already the answer to "what is here".
+        if (!left) setAddressed(null);
+      });
+    return () => {
+      left = true;
+    };
+  }, [artifactId, workspaceId, artifacts, addressed]);
   /** Which one a delete has been asked about, held until it is confirmed. */
   const [removing, setRemoving] = useState<Artifact | null>(null);
   /**
@@ -215,7 +282,7 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                   <button
                     type="button"
                     className={styles.thumb}
-                    onClick={() => setZoomed({ src: artifact.url, alt: artifact.prompt })}
+                    onClick={() => show(artifact)}
                     aria-label={t('Open this picture larger')}
                     title={t('Click to open this picture larger')}
                   >
@@ -226,6 +293,19 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 ) : artifact.previewUrl !== null ? (
                   <a
                     className={`${styles.thumb} ${styles.document}`}
+                    onClick={(event) => {
+                      /*
+                        In place, at the artifact's own address - the same
+                        gesture a picture answers to, and the thing that puts
+                        "which one is open" in the address bar. A modified
+                        click is left alone: somebody asking for a new tab has
+                        said so, and the href is the reading address they will
+                        land on.
+                      */
+                      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                      event.preventDefault();
+                      show(artifact);
+                    }}
                     // The reading address, not the file's own. An artifact's
                     // url hands the bytes over whatever they are, so a link
                     // somebody copies and sends is a download; this one is the
@@ -345,7 +425,66 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
         )}
       </section>
 
-      <ImageZoom picture={zoomed} onClose={() => setZoomed(null)} />
+      <ImageZoom picture={zoomed} onClose={close} />
+
+      {/*
+        A document, read where it is - in a frame the server sandboxes, so a
+        page an agent wrote cannot reach anything of ours. The address is the
+        artifact's, which is the point of the route: this is a thing that can
+        be sent to somebody.
+      */}
+      {read !== null && (
+        <div
+          className={styles.reading}
+          role="dialog"
+          aria-label={read.filename}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) close();
+          }}
+        >
+          <div className={styles.readingFrame}>
+            <header className={styles.readingBar}>
+              <span className={styles.readingName} title={read.prompt}>{read.filename}</span>
+              <span className={styles.readingFacts}>
+                {readableSize(read.sizeBytes)}
+                <span className={styles.dot}>·</span>
+                {read.source}
+              </span>
+              <a
+                className={styles.readingOut}
+                href={read.previewUrl ?? read.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                title={t('Open this in a tab of its own')}
+              >{t('Open in a tab')}</a>
+              <button
+                type="button"
+                className={styles.readingClose}
+                onClick={close}
+                aria-label={t('Close')}
+                title={t('Close')}
+              >×</button>
+            </header>
+            {read.previewUrl === null ? (
+              <p className={styles.readingNone}>
+                {t('Nothing here renders this kind of file. The download is on its card.')}
+              </p>
+            ) : (
+              /*
+                `sandbox` with nothing allowed, on top of the header the server
+                already sends: two locks on the same door, because this one is
+                inside our own page rather than a tab of its own.
+              */
+              <iframe
+                className={styles.readingPage}
+                src={read.previewUrl}
+                sandbox=""
+                title={read.filename}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         subject={removing?.filename ?? null}
