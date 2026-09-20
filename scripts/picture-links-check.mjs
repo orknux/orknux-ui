@@ -184,4 +184,32 @@ if (await drawn(page, 'the chat log')) {
   }
 }
 
+/*
+ * And a picture the answer draws itself opens too.
+ *
+ * `chat_draw_picture` puts one in the thread as an image, not a link, and the
+ * transcript passed no `zoomImages` - so the one place in the application
+ * where a picture is actually *made* was the one place clicking it did
+ * nothing. It is drawn at the width of the column and there is nowhere else to
+ * see it whole.
+ */
+const inline = page.locator('button[title*="open this picture"] img[src*="drawn.png"]');
+record(await inline.count() > 0, 'a picture in the prose is a control, not just a picture');
+
+if (await inline.count() > 0) {
+  // Escape first: the strip's viewer is open from the assertions above.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await inline.first().click();
+  await page.waitForTimeout(400);
+  const opened = await page.evaluate(() => {
+    const dialog = document.querySelector('dialog[open]');
+    return dialog === null ? null : dialog.querySelector('img')?.getAttribute('src') ?? '';
+  });
+  record(
+    opened !== null && opened.includes('drawn.png'),
+    `clicking a drawn picture opens it larger (${opened})`,
+  );
+}
+
 await finish(browser);

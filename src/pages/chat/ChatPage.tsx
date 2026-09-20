@@ -172,6 +172,17 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [attaching, setAttaching] = useState(false);
   /** What has already been sent with this chat, for opening again later. */
   const [chatFiles, setChatFiles] = useState<Attachment[]>([]);
+  /**
+   * Whether a picture was drawn during the turn being answered.
+   *
+   * The files strip is read back from the server after a send, and it used to
+   * be read back only when the send carried files of its own - so a picture
+   * the model drew was filed against the chat, shown in the transcript, and
+   * absent from the strip until the page was reloaded. A ref rather than
+   * state: the handler that sets it and the code that reads it are in the same
+   * run of the send, which never sees a state change made inside itself.
+   */
+  const drewPicture = useRef(false);
   /** The picture the viewer is showing, by id, or null when it is closed. */
   const [previewId, setPreviewId] = useState<string | null>(null);
   /**
@@ -1210,7 +1221,11 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         true,
       );
       if (failure !== null) throw new Error(failure);
-      if (going.length > 0) {
+      // Files the send carried, and any picture drawn while it was answered:
+      // both are attachments of this chat now, and the strip shows neither
+      // until it is read back.
+      if (going.length > 0 || drewPicture.current) {
+        drewPicture.current = false;
         await fetchChatAttachments(currentId)
           .then(setChatFiles)
           .catch(() => undefined);
@@ -1255,7 +1270,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        * order it was shown in live - the picture, then what the model said
        * about it.
        */
-      onDrew: (markdown) =>
+      onDrew: (markdown) => {
+        drewPicture.current = true;
         setMessages((present) => {
           const at = present.length - 1;
           const drawn = {
@@ -1271,7 +1287,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           };
           if (at < 0) return [...present, drawn];
           return [...present.slice(0, at), drawn, present[at]];
-        }),
+        });
+      },
       onCompacting: () => setWorking((held) => ({ ...held, compacting: true })),
       /*
        * The summary is in the thread now and the messages it replaced are gone,
@@ -1431,8 +1448,11 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
         asked.signal,
       );
       if (failure !== null) throw new Error(failure);
-      // The send tied them to the chat, so this only reads back what is there.
-      if (going.length > 0) {
+      // Files the send carried, and any picture drawn while it was answered:
+      // both are attachments of this chat now, and the strip shows neither
+      // until it is read back.
+      if (going.length > 0 || drewPicture.current) {
+        drewPicture.current = false;
         await fetchChatAttachments(currentId)
           .then(setChatFiles)
           .catch(() => undefined);
@@ -2540,7 +2560,15 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       );
                     })()}
                     {/* Models write markdown; showing the source shows the asterisks. */}
-                    <Markdown pictureLinks>{shownTake(index, message)}</Markdown>
+                    {/*
+                      Zooming on, because a picture drawn in a chat is drawn at
+                      the width of the column and there is nowhere else to see
+                      it whole: clicking it did nothing, which reads as a
+                      picture rather than a control. The docs and a task's
+                      outcome have said `zoomImages` all along; this is the one
+                      place a picture is actually *made*.
+                    */}
+                    <Markdown pictureLinks zoomImages>{shownTake(index, message)}</Markdown>
                     {/*
                       Which take of this answer is being read, and the way back
                       to the others.

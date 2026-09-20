@@ -570,6 +570,13 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-drawn-file-check',
+    what: "a picture the model draws is in the chat's files at once, not after a reload",
+    // Stubs the turn: a seeded installation has no image model to ask, and
+    // what is measured is whether the page reads its files back.
+    needs: ['workspace'],
+  },
+  {
     name: 'tool-search-check',
     what: 'the box above the tools list narrows it, under every setting of the sieve and not only one',
     // Reads what the workspace and its plugins already offer and types in the
