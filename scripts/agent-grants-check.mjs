@@ -138,6 +138,29 @@ if (agentNode === null) {
   await finish(browser);
 }
 
+/*
+ * The agent's grants, put back the way they were found.
+ *
+ * This check presses "Select all", which is the point of it - and then left
+ * forty-two tools granted on a seeded agent, so the next run opened on a list
+ * that was already granted and read the control as saying "Deselect all". It
+ * had been passing because it happened to run first.
+ *
+ * Cleared at the start rather than restored at the end: a run that fails part
+ * way through should still leave the next one something it can measure.
+ */
+const { agent: itsOwn } = await graphql(`query($id: ID!) { agent(id: $id) { id name } }`, {
+  id: agentNode.agentId,
+});
+await graphql(
+  // The name goes with it: the mutation takes one, and an agent has to keep
+  // the name it had.
+  `mutation($id: ID!, $name: String!) {
+     updateAgent(id: $id, input: { name: $name, tools: [], memoryCatalogs: [], skillCatalogs: [], mcpServers: [] }) { id }
+   }`,
+  { id: agentNode.agentId, name: itsOwn.name },
+).catch((cause) => console.log(`NOTE: could not clear the agent's grants first: ${cause}`));
+
 // -------------------------------------------------------------- the questions
 
 /**
