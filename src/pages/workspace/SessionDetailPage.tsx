@@ -93,11 +93,54 @@ function dayOf(iso: string): string {
   return at.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** One line of the transcript, folded while it is longer than a line should be. */
-function EventLine({ event }: { event: LlmSessionEvent }) {
-  const text = readable(event.kind, event.content);
+/**
+ * One block of a line: the text, folded while it is longer than a line should be.
+ *
+ * Its own component because a tool line has two of them now - what was asked and
+ * what came back - and each folds on its own. Sharing one `open` between them
+ * would mean opening a long answer to read a short call.
+ */
+function Block({ text, code, label }: { text: string; code: boolean; label?: string }) {
   const long = text.length > FOLD_OVER_CHARS;
   const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {label !== undefined && <p className={styles.blockLabel}>{label}</p>}
+      {/*
+        A tool's arguments are code and are read as code; what was said is
+        prose, and monospacing prose makes a conversation look like a log.
+      */}
+      <pre className={`${styles.content} ${code ? styles.code : ''} ${long && !open ? styles.folded : ''}`}>
+        {text}
+      </pre>
+      {long && (
+        <button type="button" className={styles.fold} onClick={() => setOpen((held) => !held)}>
+          {open ? t('Show less') : `Show all ${text.length.toLocaleString()} characters`}
+        </button>
+      )}
+    </>
+  );
+}
+
+/** One line of the transcript: what happened, and for a tool, what came back. */
+function EventLine({ event }: { event: LlmSessionEvent }) {
+  const text = readable(event.kind, event.content);
+
+  /*
+   * What the tool answered, where it answered anything.
+   *
+   * This was recorded from the start and never drawn, and the reason it was
+   * not is written on the schema: a tool can return a whole file, and a
+   * transcript that pastes one in is a transcript nobody can read. What
+   * changed is that the recorder now trims a long field rather than keeping
+   * every byte of it, so what reaches this page is the shape of the answer and
+   * not its weight - and the shape is most of what somebody is looking for.
+   *
+   * Only for TOOL. The other kinds have nothing on the far side of them: an
+   * agent's line is what it said, and there is no second half to show.
+   */
+  const answered = event.kind === 'TOOL' ? readable(event.kind, event.result) : '';
 
   return (
     <article className={`${styles.event} ${styles[KIND_CLASS[event.kind]]}`}>
@@ -108,21 +151,28 @@ function EventLine({ event }: { event: LlmSessionEvent }) {
           {timeOfDay(event.at)}
         </span>
       </div>
-      {text.trim() === '' ? (
+      {text.trim() === '' && answered.trim() === '' ? (
         <p className={styles.nothing}>{t('Nothing was recorded on this line.')}</p>
       ) : (
         <>
+          {text.trim() !== '' && (
+            <Block text={text} code={event.kind === 'TOOL'} label={answered === '' ? undefined : t('Asked')} />
+          )}
+
           {/*
-            A tool's arguments are code and are read as code; what was said is
-            prose, and monospacing prose makes a conversation look like a log.
+            Labelled only when there are two blocks. A single block under a
+            heading that says "Asked" with nothing answering it reads as a
+            missing half rather than as all there was.
           */}
-          <pre className={`${styles.content} ${event.kind === 'TOOL' ? styles.code : ''} ${long && !open ? styles.folded : ''}`}>
-            {text}
-          </pre>
-          {long && (
-            <button type="button" className={styles.fold} onClick={() => setOpen((held) => !held)}>
-              {open ? t('Show less') : `Show all ${text.length.toLocaleString()} characters`}
-            </button>
+          {answered.trim() !== '' && <Block text={answered} code label={t('Answered')} />}
+
+          {/*
+            A call still running has arguments and no answer, and saying so is
+            worth a line: the alternative is a tool that looks like it returned
+            nothing, which is what a tool that failed looks like too.
+          */}
+          {event.kind === 'TOOL' && event.result === null && (
+            <p className={styles.nothing}>{t('No answer was recorded for this call.')}</p>
           )}
         </>
       )}
@@ -160,7 +210,13 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    */
   const [kinds, setKinds] = useState<LlmSessionEventKind[]>([]);
   const [order, setOrder] = useState<LlmSessionEventOrder>('AT');
-  const [ascending, setAscending] = useState(true);
+  /*
+   * Newest first, because that is what the page is opened for: the last tool
+   * call, the answer, the refusal. Oldest first is one press away and is what
+   * somebody wants when following a turn through rather than seeing how it
+   * ended.
+   */
+  const [ascending, setAscending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

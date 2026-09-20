@@ -399,6 +399,25 @@
   mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
 }
 
+/*
+ * Which half of a tool line this is.
+ *
+ * Small and quiet: it is a label on a block, not a heading in the transcript,
+ * and a transcript of a hundred calls should not read as two hundred headings.
+ */
+.blockLabel {
+  margin: var(--space-8) 0 var(--space-4);
+  font-weight: 600;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.blockLabel:first-of-type {
+  margin-top: 0;
+}
+
 .fold {
   align-self: flex-start;
   padding: 0;

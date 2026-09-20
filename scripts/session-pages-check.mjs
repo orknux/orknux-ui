@@ -480,6 +480,21 @@ if (await drawn(page, 'the session transcript')) {
 
   const order = page.locator('select#event-order');
 
+  /*
+   * Put the page oldest-first before comparing it with the server.
+   *
+   * The two orders below are fetched with `ascending: true`, and the page now
+   * opens newest-first - a transcript is read to see how a turn ended. So the
+   * comparison has to say which direction it means rather than assume the one
+   * the page happens to start in, or it measures a default instead of the
+   * ordering it is here for.
+   */
+  const direction = page.locator('button[aria-label="Oldest first"], button[aria-label="Newest first"]');
+  if ((await direction.getAttribute('aria-label')) === 'Newest first') {
+    await direction.click();
+    await page.waitForTimeout(600);
+  }
+
   await order.selectOption('AT');
   const inTime = await settlesOn(drawnOrder, timeOrder);
   record(
@@ -501,9 +516,21 @@ if (await drawn(page, 'the session transcript')) {
   /* -------------------------------------- and the direction switch reverses it */
 
   await order.selectOption('AT');
-  await settlesOn(drawnOrder, timeOrder);
-  const backwards = [...timeOrder].reverse();
-  await page.locator('button[aria-label="Oldest first"]').click();
+
+  /*
+   * Whichever way the page opens, pressing the direction turns it round.
+   *
+   * It used to assume the page opened oldest-first and pressed the button by
+   * that name. The page now opens newest-first - a transcript is read to see
+   * how a turn ended - so a check naming one label was a check that broke on a
+   * default, which is not what it is here to measure. What it measures is that
+   * the press reverses what is drawn, and that holds either way round.
+   */
+  const opened = await settlesOn(drawnOrder, timeOrder).catch(() => null)
+    ?? await settlesOn(drawnOrder, [...timeOrder].reverse());
+  const backwards = [...opened].reverse();
+
+  await direction.click();
   const reversed = await settlesOn(drawnOrder, backwards);
   record(
     JSON.stringify(reversed) === JSON.stringify(backwards),
