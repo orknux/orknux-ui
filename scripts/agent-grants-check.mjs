@@ -323,7 +323,9 @@ async function measure(root, where) {
   );
   record(filtered.marks > 0, `${where}: the typed word is picked out inside the rows that matched`);
   record(
-    /^\d+ of \d+ granted · \d+ matching$/.test(filtered.count),
+    // The kept clause is there whenever a grant survived the search; see the
+    // assertions at the end of this file for what it is for.
+    /^\d+ of \d+ granted · \d+ matching(?: · \d+ kept: already granted)?$/.test(filtered.count),
     `${where}: the count says how much is granted and how much matched - "${filtered.count}"`,
   );
   record(filtered.boxHeight <= CAP, `${where}: the box is still bounded while filtered (${filtered.boxHeight}px)`);
@@ -351,7 +353,7 @@ async function measure(root, where) {
    */
   const matched = filtered.names.filter((name) => name.toLowerCase().includes(hit.toLowerCase()));
   record(
-    filtered.count.endsWith(`${matched.length} matching`),
+    filtered.count.includes(`${matched.length} matching`),
     `${where}: and the count says how many that is - "${filtered.count}"`,
   );
 
@@ -554,4 +556,29 @@ await measure(panel, 'editor panel');
 await page.screenshot({ path: shot('agent-grants-panel.png') });
 
 await sweep();
+/*
+ * A search that leaves granted rows standing says so in words.
+ *
+ * They are kept on purpose - a grant somebody cannot see is one they cannot
+ * take back - and the dashed border was the only thing saying so, which reads
+ * as a filter that does not work rather than as three rows being held.
+ */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agentNode.agentId}/settings`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
+await settled();
+const hunt = page.locator('[data-grants="tools"] input[type="search"]');
+await hunt.fill('zzz-nothing-matches-this');
+await page.waitForTimeout(500);
+const held = await page.evaluate(() => {
+  const group = document.querySelector('[data-grants="tools"]');
+  const rows = group.querySelectorAll('[data-grant-rows] > [data-grant-name]');
+  return { rows: rows.length, said: group.querySelector('[data-grant-count]')?.textContent?.trim() ?? '' };
+});
+record(
+  held.rows === 0 || /\d+ kept/.test(held.said),
+  `rows kept against a search are accounted for in words ("${held.said}" beside ${held.rows} rows)`,
+);
+record(/0 matching/.test(held.said), `and the search itself is honest about finding nothing ("${held.said}")`);
+await hunt.fill('');
+
 await finish(browser);

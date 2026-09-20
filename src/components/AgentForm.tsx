@@ -375,6 +375,15 @@ function GrantList<Item>({
    */
   const picked = rows.filter((row) => row.inGroup && row.matches);
   const matching = picked.length;
+  /*
+   * Ticked rows that the search does not name, and which are on screen anyway.
+   *
+   * Counted so the line above can say so. A search for nonsense that leaves
+   * three rows standing reads as a filter that does not work - the dashed
+   * border was meant to carry that and plainly does not, because it says
+   * "this row is different" without saying why or how many.
+   */
+  const kept = rows.filter((row) => row.inGroup && !row.matches && row.ticked).length;
 
   /** Whether the press would grant or clear, which is what its label says. */
   const allPicked = matching > 0 && picked.every((row) => row.ticked);
@@ -400,6 +409,7 @@ function GrantList<Item>({
           <span className={own.grantCount} data-grant-count="">
             {here} of {items.length} granted
             {needle !== '' && ` · ${matching} matching`}
+            {needle !== '' && kept > 0 && ` · ${kept} kept: already granted`}
           </span>
         )}
 
