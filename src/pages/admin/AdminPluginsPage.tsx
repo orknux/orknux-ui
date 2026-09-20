@@ -162,16 +162,24 @@ type Tab = 'installed' | 'catalog';
 const SHOW_RELEASES = 5;
 
 /**
- * A category as the catalog files it, written the way a person reads it.
+ * How many tags a row wears before it says how many more there are.
  *
- * The marketplace's own words are slugs - `source-control`, `observability` -
- * because they are keys on the other side. Printed raw they read as data
- * somebody forgot to format, and printed as this they are still the catalog's
- * words: only the hyphens and the first letter change, so a category invented
- * tomorrow needs no entry anywhere.
+ * A plugin may carry eight, and a row wearing all of them is tags with a name
+ * attached. Three is enough to say what kind of thing it is.
  */
-function readable(category: string): string {
-  const spaced = category.replace(/[-_]+/g, ' ').trim();
+const ROW_TAGS = 3;
+
+/**
+ * A tag as the catalog holds it, written the way a person reads it.
+ *
+ * The marketplace's words are lowercase and sometimes hyphenated -
+ * `source-control`, `observability` - because they are keys on the other side.
+ * Printed raw they read as data somebody forgot to format, and printed as this
+ * they are still the catalog's words: only the hyphens and the first letter
+ * change, so a tag invented tomorrow needs no entry anywhere.
+ */
+function readable(tag: string): string {
+  const spaced = tag.replace(/[-_]+/g, ' ').trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
@@ -244,11 +252,13 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   const [hunting, setHunting] = useState('');
 
   /**
-   * Which category the shelf is narrowed to, or '' for all of them.
+   * Which tag the shelf is narrowed to, or '' for all of them.
    *
-   * A word the marketplace files a plugin under, so the list of choices is
-   * whatever the catalog answered with rather than anything fixed here - a
-   * category added on the other side appears without this screen changing.
+   * One at a time rather than several: the question somebody has is "show me
+   * the chat ones", and a set of ticks answering "chat and files, but only
+   * both" is a control that needs explaining. The choices are whatever the
+   * catalog answered with rather than anything fixed here, so a tag invented
+   * on the other side appears without this screen changing.
    */
   const [filed, setFiled] = useState('');
 
@@ -556,23 +566,26 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
     listings === null
       ? null
       : listings
-          .filter((one) => filed === '' || one.category === filed)
+          .filter((one) => filed === '' || one.tags.includes(filed))
           .filter(
             (one) =>
               wanted === '' ||
-              `${one.name} ${one.key} ${one.summary} ${one.author} ${one.category ?? ''}`
+              `${one.name} ${one.key} ${one.summary} ${one.author} ${one.tags.join(' ')}`
                 .toLowerCase()
                 .includes(wanted),
           );
 
   /*
-   * The categories the catalog actually used, in the order it listed them.
+   * The tags the catalog actually used, in the order it listed them.
    *
    * Read from the listings rather than kept as a list here, so the choices are
-   * always ones that match something - a filter offering a category no plugin
-   * is in is a filter that can only empty the screen.
+   * always ones that match something - a filter offering a tag no plugin
+   * carries is a filter that can only empty the screen. Sorted by nothing on
+   * purpose: the catalog's order puts the tags of the plugins it thinks matter
+   * first, and alphabetising that is a decision made here about somebody
+   * else's list.
    */
-  const categories = [...new Set((listings ?? []).map((one) => one.category).filter((one) => one !== null))];
+  const tags = [...new Set((listings ?? []).flatMap((one) => one.tags))];
 
   /*
    * What the details pane shows: the one picked, or the first on the shelf.
@@ -1131,23 +1144,23 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                     }}
                   />
                   {/*
-                    Only where the catalog files things at all. A select with
-                    one choice in it is a control that cannot do anything,
-                    and an older marketplace answers no categories.
+                    Only where the catalog tags things at all. A select with
+                    one choice in it is a control that cannot do anything, and
+                    an older marketplace answers no tags.
                   */}
-                  {categories.length > 0 && (
+                  {tags.length > 0 && (
                     <select
                       className={styles.huntPick}
                       value={filed}
-                      aria-label={t('Filter by category')}
+                      aria-label={t('Filter by tag')}
                       onChange={(event) => {
                         setFiled(event.target.value);
                         // Same reason as the box above: the pane follows the list.
                         setReading(null);
                       }}
                     >
-                      <option value="">{t('All categories')}</option>
-                      {categories.map((one) => (
+                      <option value="">{t('All tags')}</option>
+                      {tags.map((one) => (
                         <option key={one} value={one}>{readable(one)}</option>
                       ))}
                     </select>
@@ -1198,8 +1211,18 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                         <span className={styles.listingSummary}>{listing.summary}</span>
                         <span className={styles.listingMeta}>
                           {listing.author}
-                          {listing.category !== null && (
-                            <span className={styles.categoryMark}>{readable(listing.category)}</span>
+                          {/*
+                            The first few, and a count of what is left rather
+                            than a quiet truncation: a plugin may carry eight
+                            and a row that wore all of them would be tags with
+                            a name attached. The rest are on the details pane,
+                            and every one of them is in the filter.
+                          */}
+                          {listing.tags.slice(0, ROW_TAGS).map((tag) => (
+                            <span key={tag} className={styles.tagMark}>{readable(tag)}</span>
+                          ))}
+                          {listing.tags.length > ROW_TAGS && (
+                            <span className={styles.tagMore}>{`+${listing.tags.length - ROW_TAGS}`}</span>
                           )}
                         </span>
                       </span>
@@ -1279,6 +1302,29 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                         })()}
                       </div>
                     </div>
+                    {/*
+                      All of them here, where there is room: the row shows the
+                      first few, and this is where somebody reading a listing
+                      finds out the Slack plugin is also files and search.
+                    */}
+                    {open.tags.length > 0 && (
+                      <div className={styles.detailsTags}>
+                        {open.tags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            className={filed === tag ? `${styles.tagButton} ${styles.tagButtonOn}` : styles.tagButton}
+                            aria-pressed={filed === tag}
+                            // Pressing one narrows the shelf to it, which is
+                            // the question a tag raises: what else is this.
+                            onClick={() => {
+                              setFiled(filed === tag ? '' : tag);
+                              setReading(null);
+                            }}
+                          >{readable(tag)}</button>
+                        ))}
+                      </div>
+                    )}
                     <div className={styles.detailsBody}>
                       {/*
                         Somebody else's prose from a public repository, so it

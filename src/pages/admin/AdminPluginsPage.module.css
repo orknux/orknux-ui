@@ -788,14 +788,56 @@
   color: var(--color-text-secondary);
 }
 
-/* What the catalog files it under; quieter than the state marks beside the
- * name, because it says what a plugin is rather than what has happened to it. */
-.categoryMark {
+/* What a plugin is for; quieter than the state marks beside the name, because
+ * it says what a plugin is rather than what has happened to it. */
+.tagMark,
+.tagMore {
   padding: 1px var(--space-6);
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   font-size: var(--text-2xs, var(--text-xs));
   color: var(--color-text-muted);
+}
+
+/* How many more the row is not wearing. No border, so it reads as a count of
+ * the marks beside it rather than as another one of them. */
+.tagMore {
+  background: none;
+  padding-left: 0;
+}
+
+/*
+ * Every tag, on the details pane, and each one a way into the shelf.
+ *
+ * Pressable because a tag raises a question - what else is this - and the
+ * answer is the shelf narrowed to it. The pressed one is the shelf's current
+ * filter, so the pane and the select never disagree about what is being shown.
+ */
+.detailsTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  padding: 0 var(--space-20) var(--space-12);
+}
+
+.tagButton {
+  padding: 2px var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-2xs, var(--text-xs));
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.tagButton:hover {
+  border-color: var(--color-accent-brand);
+}
+
+.tagButtonOn {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 /*

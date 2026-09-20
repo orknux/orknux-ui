@@ -151,20 +151,64 @@ export interface MarketplaceListing {
   /** Installed, and the catalog is offering a version this one is not. */
   updatable: boolean;
   /**
-   * What the marketplace files it under, or null where it files it under
-   * nothing. A word the catalog chose, not one the plugin declares - so it is
-   * shown and filtered by, and never matched against an installed plugin.
+   * What the plugin is for, in its author's own words - `chat`, `files`,
+   * `search`. Lowercase, and empty for one that said nothing rather than null.
+   *
+   * A list rather than one word: a plugin is usually more than one thing, and
+   * filing it under whichever of those somebody picked hid it from the readers
+   * looking for the other two. Shown and filtered by, never matched against an
+   * installed plugin.
    */
-  category: string | null;
+  tags: string[];
   /** Every release, newest first. Empty from a marketplace that keeps none. */
   versions: MarketplaceRelease[];
 }
 
-const LISTING_FIELDS = `
+/** What every version of this server has answered a listing with. */
+const LISTING_CORE = `
   key name author summary description version icon iconDark downloads rating reviews published
-  installed installedVersion updatable category
-  versions { version published replaced files available }
+  installed installedVersion updatable
 `;
+
+const LISTING_TAGGED = `${LISTING_CORE} tags`;
+
+const LISTING_FIELDS = `${LISTING_TAGGED} versions { version published replaced files available }`;
+
+/**
+ * What a listing is asked for, in the order it is asked.
+ *
+ * GraphQL fails a query that names a field the schema does not have - the whole
+ * query, not that one field - so a page asking for something its server has not
+ * got draws nothing at all and says the marketplace cannot be reached, which is
+ * a sentence about the wrong thing entirely. That is not hypothetical: it is
+ * what this screen did for the minutes between the page reloading with `tags`
+ * in it and the server restarting with `tags` in its schema.
+ *
+ * So each rung drops the newest thing and keeps the rest, and the screen shows
+ * as much as the server it is talking to can say. The same ladder the server
+ * climbs when it asks the marketplace, for the same reason and in the same
+ * order.
+ */
+const LISTING_LADDER = [LISTING_FIELDS, LISTING_TAGGED, LISTING_CORE];
+
+/**
+ * Whether a refusal is the server saying it has never heard of a field.
+ *
+ * Matched on the validation's own words rather than on a code, because that is
+ * what carries which field it was - and narrowly, because every other refusal
+ * has to go on being thrown: a screen that quietly retried a smaller query
+ * after a permissions failure would draw a shorter listing and say nothing
+ * about why.
+ */
+function unknownField(cause: unknown): boolean {
+  const said = cause instanceof Error ? cause.message : '';
+  return said.includes('FieldUndefined') || said.includes('is undefined');
+}
+
+/** A listing from a rung that answered less, filled out to the whole shape. */
+function whole(listing: Partial<MarketplaceListing>): MarketplaceListing {
+  return { ...(listing as MarketplaceListing), tags: listing.tags ?? [], versions: listing.versions ?? [] };
+}
 
 /**
  * What the marketplace offers, as this installation sees it.
@@ -175,10 +219,26 @@ const LISTING_FIELDS = `
  * marketplace, which has no such argument and refused the whole query.
  */
 export async function fetchMarketplace(): Promise<MarketplaceListing[]> {
-  const data = await graphql<{ marketplacePlugins: MarketplaceListing[] }>(
-    `query Marketplace { marketplacePlugins { ${LISTING_FIELDS} } }`,
-  );
-  return data.marketplacePlugins;
+  for (const [rung, fields] of LISTING_LADDER.entries()) {
+    try {
+      const data = await graphql<{ marketplacePlugins: Partial<MarketplaceListing>[] }>(
+        `query Marketplace { marketplacePlugins { ${fields} } }`,
+      );
+      return data.marketplacePlugins.map(whole);
+    } catch (cause) {
+      // The last rung is what every server answers, so a refusal there is a
+      // refusal rather than a field this one has not got.
+      if (rung === LISTING_LADDER.length - 1 || !unknownField(cause)) throw cause;
+      // Said out loud: a screen quietly drawing less than it was written to
+      // draw should leave a trace of why, or the missing half looks like a
+      // marketplace that answered nothing.
+      console.warn('This server does not know every field a listing carries; asking for fewer.', cause);
+    }
+  }
+  // Unreachable: the loop returns or throws on the last rung. Here because the
+  // compiler cannot know that, and an empty list is the honest shape if it ever
+  // became reachable.
+  return [];
 }
 
 /** What an install came to: the plugin, or the agreement it is waiting on. */

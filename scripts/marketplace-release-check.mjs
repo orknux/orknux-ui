@@ -1,10 +1,10 @@
 /**
- * What the catalog knows beyond a version number: the category it files a
- * plugin under, and every release it remembers.
+ * What the catalog knows beyond a version number: the tags a plugin carries,
+ * and every release it remembers.
  *
  * The marketplace answers a listing with its whole history - each version, when
  * it appeared, how many files it shipped, and whether the bytes are still held
- * - and with the word it files the plugin under. None of it is visible unless
+ * - and with the words its author says it is for. None of it is visible unless
  * this screen draws it, and all of it is the kind that breaks quietly: a filter
  * that has stopped filtering still draws a list, and a history missing its
  * oldest half still draws rows.
@@ -21,7 +21,11 @@ import { BASE, open, record, finish } from './suite/harness.mjs';
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
 /*
- * Two plugins in two categories, and one of them with a history worth folding.
+ * Two plugins, tagged, and one of them with a history worth folding.
+ *
+ * The first carries four, against a row that wears three: a plugin is usually
+ * more than one thing and the row has to say how many more it is not showing,
+ * which is a number that can only be checked where there is one.
  *
  * Six releases against a fold of five, so "show the rest" has exactly one row
  * to reveal and the count in the button is checkable. The oldest is the one the
@@ -46,7 +50,7 @@ const OFFERED = [
     installed: false,
     installedVersion: null,
     updatable: false,
-    category: 'Productivity',
+    tags: ['productivity', 'notes', 'files', 'search'],
     versions: [
       { version: '1.4.0', published: '2026-03-01', replaced: '2026-03-01', files: 2, available: true },
       { version: '1.3.0', published: '2026-02-01', replaced: '2026-02-01', files: 2, available: true },
@@ -73,7 +77,7 @@ const OFFERED = [
     installed: false,
     installedVersion: null,
     updatable: false,
-    category: 'source-control',
+    tags: ['source-control'],
     versions: [{ version: '0.2.0', published: '2026-04-01', replaced: '2026-04-02', files: 1, available: true }],
   },
 ];
@@ -92,7 +96,9 @@ await page.route('**/graphql', async (route) => {
 });
 
 await page.goto(`${BASE}/admin/plugins?tab=catalog&source=marketplace`, { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('text=Notes', { timeout: 20_000 });
+// A listing row, not the word: "Notes" is also a tag now, and the tag filter's
+// own options carry it.
+await page.waitForSelector('[class*="_listingName_"]', { timeout: 20_000 });
 
 /** The names on the shelf, top to bottom. */
 const shelf = () =>
@@ -100,34 +106,34 @@ const shelf = () =>
     names.map((one) => one.firstChild?.textContent?.trim() ?? one.textContent.trim()),
   );
 
-/* ------------------------------------------------------------- the category */
+/* ----------------------------------------------------------------- the tags */
 
-const filter = page.locator('select[aria-label="Filter by category"]');
-record((await filter.count()) === 1, 'the shelf offers a category filter');
+const filter = page.locator('select[aria-label="Filter by tag"]');
+record((await filter.count()) === 1, 'the shelf offers a tag filter');
 
 /*
- * The catalog's own words, in the order it listed them, and All first.
- * Built from the listings rather than kept in the screen, so a category
- * invented on the marketplace appears without this page changing - and one no
- * plugin is in never appears at all.
+ * Every tag the catalog actually used, each once, in the order it listed them,
+ * and All first. Built from the listings rather than kept in the screen, so a
+ * tag invented on the marketplace appears without this page changing - and one
+ * no plugin carries never appears at all.
  */
 const choices = await filter.locator('option').allInnerTexts();
 record(
-  choices.join('|') === 'All categories|Productivity|Source control',
-  `and offers what the catalog actually used (${choices.join(', ')})`,
+  choices.join('|') === 'All tags|Productivity|Notes|Files|Search|Source control',
+  `and offers what the catalog actually used, each once (${choices.join(', ')})`,
 );
 
 record((await shelf()).join('|') === 'Notes|Charts', 'both plugins are on the shelf to begin with');
 
 /*
  * Chosen by the catalog's own word rather than by the label drawn from it.
- * The slug is what filters and what the marketplace files under; the reading
- * is only for the person choosing.
+ * The lowercase tag is what filters and what the marketplace holds; the
+ * reading is only for the person choosing.
  */
 await filter.selectOption('source-control');
 await page.waitForTimeout(200);
 const narrowed = await shelf();
-record(narrowed.join('|') === 'Charts', `choosing a category narrows the shelf (${narrowed.join(', ') || 'nothing'})`);
+record(narrowed.join('|') === 'Charts', `choosing a tag narrows the shelf (${narrowed.join(', ') || 'nothing'})`);
 
 /*
  * The pane follows the list. A details pane still showing the plugin that was
@@ -141,13 +147,43 @@ await filter.selectOption('');
 await page.waitForTimeout(200);
 record((await shelf()).join('|') === 'Notes|Charts', 'and All brings the rest back');
 
-// The word is on the row as well, so a shelf that is not filtered still says
-// what each plugin is.
-const marks = await page.$$eval('[class*="_categoryMark_"]', (all) => all.map((one) => one.textContent.trim()));
+/*
+ * The row wears the first few and says how many more there are. A plugin may
+ * carry eight, and a row wearing all of them is tags with a name attached -
+ * but a row that quietly dropped the rest would be a screen hiding what it
+ * knows.
+ */
+const marks = await page.$$eval('[class*="_tagMark_"]', (all) => all.map((one) => one.textContent.trim()));
 record(
-  marks.join('|') === 'Productivity|Source control',
-  `each row says what it is filed under, in words rather than slugs (${marks.join(', ')})`,
+  marks.join('|') === 'Productivity|Notes|Files|Source control',
+  `each row wears its first three tags (${marks.join(', ')})`,
 );
+const hidden = await page.$$eval('[class*="_tagMore_"]', (all) => all.map((one) => one.textContent.trim()));
+record(hidden.join('|') === '+1', `and says how many it is not showing (${hidden.join(', ') || 'nothing'})`);
+
+/*
+ * All of them on the details pane, where there is room - and each one a way
+ * into the shelf, because the question a tag raises is what else is this.
+ */
+await page.getByRole('button', { name: /Notes/ }).first().click();
+await page.waitForTimeout(200);
+const paneTags = await page.$$eval('[class*="_tagButton_"]', (all) => all.map((one) => one.textContent.trim()));
+record(
+  paneTags.join('|') === 'Productivity|Notes|Files|Search',
+  `the details pane shows every tag (${paneTags.join(', ')})`,
+);
+
+await page.getByRole('button', { name: 'Files', exact: true }).click();
+await page.waitForTimeout(250);
+record((await shelf()).join('|') === 'Notes', 'pressing one narrows the shelf to it');
+record(
+  (await filter.inputValue()) === 'files',
+  `and the select agrees about what is being shown (${await filter.inputValue()})`,
+);
+
+await page.getByRole('button', { name: 'Files', exact: true }).click();
+await page.waitForTimeout(250);
+record((await shelf()).join('|') === 'Notes|Charts', 'and pressing it again lets the rest back');
 
 /* -------------------------------------------------------------- the history */
 
@@ -208,5 +244,69 @@ record((await page.locator('[class*="_historyMore_"]').count()) === 0, 'and a sh
 await page.getByRole('button', { name: /Notes/ }).first().click();
 await page.waitForTimeout(200);
 record((await releases()).length === 5, 'and coming back, the long one is folded again');
+
+/* ------------------------------ a server that has not heard of a field */
+
+/*
+ * The screen draws what an older server can answer rather than nothing at all.
+ *
+ * GraphQL fails a whole query over one field it does not have, so a page asking
+ * for something its server has not got drew an empty catalog under "the
+ * marketplace cannot be reached" - a sentence about the wrong thing, since the
+ * marketplace was fine and the server was simply older than the page. The
+ * refusal below is the real one, copied from the server that produced it.
+ */
+await page.unroute('**/graphql');
+const asked = [];
+await page.route('**/graphql', async (route) => {
+  const body = route.request().postData() ?? '';
+  if (!body.includes('marketplacePlugins')) return route.continue();
+
+  asked.push(body);
+  if (body.includes('versions {') || body.includes('tags')) {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        errors: [{
+          message:
+            "Validation error (FieldUndefined@[marketplacePlugins/tags]) : Field 'tags' in type " +
+            "'MarketplaceListing' is undefined",
+        }],
+        data: null,
+      }),
+    });
+    return;
+  }
+  // The rung every server answers: the same listings, without what it has
+  // never heard of.
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      data: {
+        marketplacePlugins: OFFERED.map(({ tags, versions, ...rest }) => rest),
+      },
+    }),
+  });
+});
+
+await page.goto(`${BASE}/admin/plugins?tab=catalog&source=marketplace`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('[class*="_listingName_"]', { timeout: 20_000 });
+
+record((await shelf()).join('|') === 'Notes|Charts', 'an older server still gets its catalog drawn');
+record(
+  !(await page.locator('main, body').first().innerText()).includes('cannot be reached'),
+  'and the screen does not blame the marketplace for a field the server lacks',
+);
+record(
+  (await page.locator('select[aria-label="Filter by tag"]').count()) === 0,
+  'the tag filter is simply absent, rather than empty',
+);
+record(
+  (await page.locator('[class*="_historyRow_"]').count()) === 0,
+  'and so is the release history',
+);
+record(asked.length >= 2, `it climbed down rather than giving up (${asked.length} queries)`);
 
 await finish(browser);
