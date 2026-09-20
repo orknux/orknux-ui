@@ -201,15 +201,34 @@
  * button: what it does is open a tab, and a browser already knows how to say
  * that - middle-click, open in a new window, copy the address.
  */
+/*
+ * The same 220px a thumbnail takes, so a row of mixed artifacts is a grid.
+ *
+ * Sized to the glyph, the tile was a strip at the top of a card the height of
+ * its neighbours - a band of dark under the caption that reads as a picture
+ * that failed to load, which is the impression this whole tile exists to
+ * avoid.
+ */
 .document {
   display: flex;
+  height: 220px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-8);
   text-decoration: none;
   color: var(--color-text-secondary);
-  background: var(--color-surface-muted, var(--color-surface));
+  background: var(--color-surface-raised);
+  /*
+   * A pointer, not the magnifying glass.
+   *
+   * It shares `.thumb` with the picture tile, and that one is `zoom-in`
+   * because clicking it opens the picture larger in place. This opens a tab,
+   * which is an ordinary link - and a cursor promising a zoom that never
+   * happens is the interface telling a small lie every time somebody passes
+   * over it.
+   */
+  cursor: pointer;
 }
 
 .document:hover {
@@ -217,8 +236,9 @@
   color: var(--color-text-primary);
 }
 
+/* Big enough to be the thing the tile is about, at the size a picture is. */
 .documentMark {
-  font-size: 34px;
+  font-size: 56px;
   line-height: 1;
 }
 

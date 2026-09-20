@@ -86,10 +86,17 @@ const tile = await page.evaluate(({ named, at }) => {
     cards.find((one) => one.textContent.includes(named));
   if (card === undefined) return null;
   const link = card.querySelector('a[target="_blank"]');
+  // Any picture tile on the page: their addresses differ by where the picture
+  // came from - a run, a task, an agent's own saving - and what is being
+  // compared is the box, not the file.
+  const picture = document.querySelector('figure [class*="_image_"]');
   return {
     brokenImage: card.querySelector('img[src*="/api/artifacts/"]') !== null,
     opensInATab: link !== null,
     href: link?.getAttribute('href') ?? '',
+    tall: Math.round(link?.getBoundingClientRect().height ?? 0),
+    pictureTall: Math.round(picture?.getBoundingClientRect().height ?? 0),
+    cursor: link === null ? '' : getComputedStyle(link).cursor,
     says: card.textContent.replace(/\s+/g, ' ').trim().slice(0, 120),
   };
 }, { named: document_.prompt || document_.filename, at: document_.url });
@@ -101,6 +108,20 @@ if (tile !== null) {
     'it is not drawn as a picture, which is what made it look like a file that had gone',
   );
   record(tile.opensInATab, `it opens in a tab (${tile.href})`);
+  /*
+   * The same box a thumbnail fills, and a cursor that says what the click
+   * does. Sized to the glyph, the tile was a strip at the top of a card as
+   * tall as its neighbours - a band of dark under the caption, which reads as
+   * a picture that failed to load. And it shares a class with the picture
+   * tile, which is `zoom-in`: a magnifying glass over something that opens a
+   * tab is the interface telling a small lie every time somebody passes over
+   * it.
+   */
+  record(
+    tile.tall === tile.pictureTall,
+    `and fills the same box a picture does (${tile.tall}px against ${tile.pictureTall}px)`,
+  );
+  record(tile.cursor === 'pointer', `with a cursor that says it opens something (${tile.cursor})`);
   record(
     /[A-Z]{2,5}/.test(tile.says),
     `and the tile says what kind of file it is (${tile.says})`,
