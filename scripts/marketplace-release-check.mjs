@@ -53,12 +53,19 @@ const OFFERED = [
     updatable: true,
     tags: ['productivity', 'notes', 'files', 'search'],
     versions: [
-      { version: '1.4.0', published: '2026-03-01', replaced: '2026-03-01', files: 2, available: true },
-      { version: '1.3.0', published: '2026-02-01', replaced: '2026-02-01', files: 2, available: true },
-      { version: '1.2.0', published: '2026-01-01', replaced: '2026-01-01', files: 2, available: true },
-      { version: '1.1.0', published: '2025-12-01', replaced: '2025-12-01', files: 1, available: true },
-      { version: '1.0.1', published: '2025-11-05', replaced: '2025-11-05', files: 1, available: true },
-      { version: '1.0.0', published: '2025-11-01', replaced: '2025-11-01', files: 1, available: false },
+      {
+        version: '1.4.0',
+        published: '2026-03-01',
+        replaced: '2026-03-01',
+        files: 2,
+        available: true,
+        notes: 'Faster, and it keeps attachments.',
+      },
+      { version: '1.3.0', published: '2026-02-01', replaced: '2026-02-01', files: 2, available: true, notes: '' },
+      { version: '1.2.0', published: '2026-01-01', replaced: '2026-01-01', files: 2, available: true, notes: '' },
+      { version: '1.1.0', published: '2025-12-01', replaced: '2025-12-01', files: 1, available: true, notes: '' },
+      { version: '1.0.1', published: '2025-11-05', replaced: '2025-11-05', files: 1, available: true, notes: '' },
+      { version: '1.0.0', published: '2025-11-01', replaced: '2025-11-01', files: 1, available: false, notes: '' },
     ],
   },
   {
@@ -79,7 +86,16 @@ const OFFERED = [
     installedVersion: null,
     updatable: false,
     tags: ['source-control'],
-    versions: [{ version: '0.2.0', published: '2026-04-01', replaced: '2026-04-02', files: 1, available: true }],
+    versions: [
+      {
+        version: '0.2.0',
+        published: '2026-04-01',
+        replaced: '2026-04-02',
+        files: 1,
+        available: true,
+        notes: 'First release.',
+      },
+    ],
   },
 ];
 
@@ -358,6 +374,89 @@ record((await page.locator('[class*="_historyMore_"]').count()) === 0, 'and a sh
 await page.getByRole('button', { name: /Notes/ }).first().click();
 await page.waitForTimeout(200);
 record((await releases()).length === 5, 'and coming back, the long one is folded again');
+
+/* --------------------------------------------- what changed, in its own tab */
+
+/*
+ * The notes belong to the release, which is the shape the marketplace settled
+ * on: an entry is *about* a version, and a map keyed by one has to be matched
+ * back by a string neither side parses. This asked for a `changelog` field for
+ * a day, and asking for one that no longer exists dropped a rung and threw
+ * away notes that were already arriving.
+ */
+/*
+ * The tags sit on the line that says who wrote it and which version, because
+ * the three answer one question together: what is this, and is it the thing I
+ * want. A row of their own under the buttons put them after the decision they
+ * inform.
+ */
+const titled = await page.evaluate(() => {
+  const meta = document.querySelector('[class*="_detailsMeta_"]');
+  const tags = document.querySelector('[class*="_detailsTags_"]');
+  if (meta === null || tags === null) return null;
+  return {
+    // Inside it, rather than beside it at the same height: a pixel that
+    // matches is a pixel, and four tags in a narrow pane wrap onto a second
+    // line without ceasing to belong to the line they started on.
+    within: meta.contains(tags),
+    after: Math.round(tags.getBoundingClientRect().left - meta.getBoundingClientRect().left),
+    said: meta.textContent.replace(/\s+/g, ' ').trim().slice(0, 60),
+  };
+});
+record(
+  titled?.within === true,
+  `the tags are on the line that says who wrote it and which version (${JSON.stringify(titled)})`,
+);
+record(titled !== null && titled.after > 0, 'and to the right of it, not before it');
+
+/** What the listing's own tabs say, and which of them is showing. */
+const halves = () =>
+  page.evaluate(() => ({
+    tabs: [...document.querySelectorAll('[class*="_detailsTab_"]')].map((one) =>
+      one.textContent.replace(/\s+/g, ' ').trim(),
+    ),
+    showing: document.querySelector('[class*="_changelog_"]') !== null ? 'changelog' : 'about',
+    entries: document.querySelectorAll('[class*="_changeEntry_"]').length,
+    notes: [...document.querySelectorAll('[class*="_releaseNotes_"]')].map((one) =>
+      one.textContent.replace(/\s+/g, ' ').trim(),
+    ),
+  }));
+
+const before = await halves();
+record(
+  before.tabs.join('|') === 'About|Changelog1',
+  `the listing offers a Changelog tab, counted (${before.tabs.join(' | ')})`,
+);
+record(before.showing === 'about', 'and opens on what the plugin is, not on what it changed');
+record(
+  before.notes.length === 0,
+  'with the notes kept out of the description, where they used to push it off the screen',
+);
+
+await page.getByRole('tab', { name: /Changelog/ }).click();
+await page.waitForTimeout(300);
+const after = await halves();
+
+record(after.showing === 'changelog', 'pressing it shows what changed');
+record(
+  after.entries === 1,
+  `only the releases that say something are in it (${after.entries} of ${OFFERED[0].versions.length})`,
+);
+record(
+  after.notes[0] === 'Faster, and it keeps attachments.',
+  `and it is the author's own words (${JSON.stringify(after.notes[0] ?? '')})`,
+);
+
+/*
+ * A tab is a question about *this* plugin. Carried onto the next one it lands
+ * somebody on release notes for something whose description they have not read.
+ */
+await page.locator('[class*="_listingName_"]').filter({ hasText: 'Charts' }).first().click();
+await page.waitForTimeout(400);
+record((await halves()).showing === 'about', 'and another listing opens on About again');
+
+await page.locator('[class*="_listingName_"]').filter({ hasText: 'Notes' }).first().click();
+await page.waitForTimeout(400);
 
 /* ------------------------------ a server that has not heard of a field */
 

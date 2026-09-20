@@ -907,11 +907,20 @@
  * answer is the shelf narrowed to it. The pressed one is the shelf's current
  * filter, so the pane and the select never disagree about what is being shown.
  */
+/*
+ * The tags, on the line that says who wrote it and which version.
+ *
+ * `inline-flex` because they sit inside that sentence rather than under it,
+ * and a little space before the first one so they read as a separate thing
+ * from the text they follow rather than as more of it. They wrap where the
+ * pane is narrow, which is the one place the line becomes two.
+ */
 .detailsTags {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: var(--space-6);
-  padding: 0 var(--space-20) var(--space-12);
+  margin-left: var(--space-10);
+  vertical-align: middle;
 }
 
 .tagButton {
@@ -1346,4 +1355,101 @@
 
 .changeNotes :global(p:last-child) {
   margin-bottom: 0;
+}
+
+/*
+ * One release and what changed in it.
+ *
+ * A block rather than a row, because the notes under it are prose - a
+ * sentence, or a paragraph and a list. The row keeps its own shape; this is
+ * what holds the two together so a long note cannot be read as belonging to
+ * the version below it.
+ */
+.historyEntry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-8);
+}
+
+/* Indented under the version it belongs to, and quieter than it. */
+.releaseNotes {
+  padding-left: var(--space-12);
+  border-left: 2px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.releaseNotes :global(p:first-child) {
+  margin-top: 0;
+}
+
+.releaseNotes :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+/* How many of the releases say what changed, beside the heading. */
+.historyNoted {
+  margin-left: var(--space-8);
+  color: var(--color-text-muted, var(--color-text-secondary));
+  font-weight: 400;
+}
+
+/*
+ * The listing's own tabs: what it is, and what it changed.
+ *
+ * Inside the details pane rather than beside the shelf's two, and quieter than
+ * those: those choose what the screen is about, these choose which half of one
+ * listing is on it.
+ */
+.detailsTabs {
+  display: flex;
+  gap: var(--space-4);
+  padding: 0 var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detailsTab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-8) var(--space-10);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.detailsTab:hover {
+  color: var(--color-text-primary);
+}
+
+.detailsTabOn {
+  border-bottom-color: var(--color-accent-brand);
+  color: var(--color-text-primary);
+}
+
+/* How many releases say something, on the tab that holds them. */
+.detailsTabCount {
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface-muted, var(--color-surface));
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One release's notes, in the tab of their own. */
+.changelog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.changeEntry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }

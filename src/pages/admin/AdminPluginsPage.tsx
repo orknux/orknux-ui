@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -162,13 +162,6 @@ type Tab = 'installed' | 'catalog';
  */
 const SHOW_RELEASES = 5;
 
-/**
- * How many changelog entries are shown before the rest are folded away.
- *
- * Fewer than the releases: an entry is a paragraph rather than a row, so five
- * of them is already the length of the description above it.
- */
-const SHOW_CHANGES = 3;
 
 /**
  * How many tags a row wears before it says how many more there are.
@@ -294,8 +287,17 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
 
   /** Whether the open listing's history is shown whole. */
   const [showingAll, setShowingAll] = useState(false);
+
+  /**
+   * Which half of a listing is being read: what it is, or what it changed.
+   *
+   * Reset to About as the listing changes, because a tab is a question about
+   * *this* plugin - carrying "changelog" onto the next one lands somebody on
+   * release notes for something they have not read the description of yet.
+   */
+  const [half, setHalf] = useState<'about' | 'changelog'>('about');
   /** Whether the whole changelog is open, or the newest few of it. */
-  const [showingChanges, setShowingChanges] = useState(false);
+
 
   const load = useCallback(() => {
     setLoading(true);
@@ -687,6 +689,21 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
    * history across that would show one plugin's shape under another's name.
    */
   useEffect(() => setShowingAll(false), [open?.key]);
+
+  // And back to About; see `reading`.
+  useEffect(() => setHalf('about'), [open?.key]);
+
+  /**
+   * The releases that say what changed in them, newest first as answered.
+   *
+   * What the Changelog tab holds, and what decides whether there is a tab at
+   * all: most plugins shipped every release they have without notes, and a tab
+   * that always says "nothing here" teaches people not to open it.
+   */
+  const noted = useMemo(
+    () => (open?.versions ?? []).filter((one) => one.notes.trim() !== ''),
+    [open?.versions],
+  );
 
   /**
    * A tag, added to the filter or taken out of it.
@@ -1452,6 +1469,35 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                             {open.installed && open.installedVersion !== null &&
                               open.installedVersion !== open.version &&
                               `  ·  installed ${open.installedVersion}`}
+                            {/*
+                              On the same line as who wrote it and which
+                              version, because they answer one question
+                              together: what is this, and is it the thing I
+                              want. A row of their own under the buttons put
+                              them after the decision they inform.
+
+                              Still buttons: pressing one narrows the shelf by
+                              it, which is what a tag raises - what else is
+                              this - and the same act as ticking it in the
+                              filter above.
+                            */}
+                            {open.tags.length > 0 && (
+                              <span className={styles.detailsTags}>
+                                {open.tags.map((tag) => (
+                                  <button
+                                    key={tag}
+                                    type="button"
+                                    className={
+                                      filed.includes(tag)
+                                        ? `${styles.tagButton} ${styles.tagButtonOn}`
+                                        : styles.tagButton
+                                    }
+                                    aria-pressed={filed.includes(tag)}
+                                    onClick={() => toggle(tag)}
+                                  >{readable(tag)}</button>
+                                ))}
+                              </span>
+                            )}
                           </span>
                         </span>
                       </div>
@@ -1494,117 +1540,146 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                       </div>
                     </div>
                     {/*
-                      All of them here, where there is room: the row shows the
-                      first few, and this is where somebody reading a listing
-                      finds out the Slack plugin is also files and search.
+                      Two questions about a listing, two tabs.
+
+                      What a plugin *is* and what it has *changed* are read at
+                      different moments - one before installing, the other
+                      before updating - and the second is release notes, which
+                      are paragraphs. Under the description they pushed it off
+                      the screen; beside it they are a tab somebody opens when
+                      that is the question.
+
+                      Drawn only where there is something to read. Most plugins
+                      ship no notes, and a tab that always says "nothing here"
+                      teaches people not to open it.
                     */}
-                    {open.tags.length > 0 && (
-                      <div className={styles.detailsTags}>
-                        {open.tags.map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            className={filed.includes(tag) ? `${styles.tagButton} ${styles.tagButtonOn}` : styles.tagButton}
-                            aria-pressed={filed.includes(tag)}
-                            // Pressing one narrows the shelf by it, which is
-                            // the question a tag raises: what else is this.
-                            // The same act as ticking it in the list above.
-                            onClick={() => toggle(tag)}
-                          >{readable(tag)}</button>
-                        ))}
+                    {noted.length > 0 && (
+                      <div className={styles.detailsTabs} role="tablist" aria-label={t('About this plugin')}>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={half === 'about'}
+                          className={
+                            half === 'about'
+                              ? `${styles.detailsTab} ${styles.detailsTabOn}`
+                              : styles.detailsTab
+                          }
+                          onClick={() => setHalf('about')}
+                        >{t('About')}</button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={half === 'changelog'}
+                          className={
+                            half === 'changelog'
+                              ? `${styles.detailsTab} ${styles.detailsTabOn}`
+                              : styles.detailsTab
+                          }
+                          onClick={() => setHalf('changelog')}
+                        >
+                          {t('Changelog')}
+                          <span className={styles.detailsTabCount}>{noted.length}</span>
+                        </button>
                       </div>
                     )}
+
                     <div className={styles.detailsBody}>
-                      {/*
-                        Somebody else's prose from a public repository, so it
-                        is rendered by the same component the documentation
-                        and the chat use — which is where the sanitising is.
-                      */}
-                      <Markdown>{open.description}</Markdown>
+                      {half === 'changelog' && noted.length > 0 ? (
+                        <div className={styles.changelog}>
+                          {/*
+                            What changed, version by version, in the order the
+                            marketplace answered - which is not ours to sort:
+                            `2.0.0`, `2026.1` and `v3-beta` are all somebody's
+                            idea of a version and nothing here parses them.
 
-                      {/*
-                        What it has shipped, under the prose rather than over
-                        it: somebody opens a listing to learn what the plugin
-                        is, and the release history is the second question.
-
-                        Folded to a handful, because the interesting part of a
-                        history is its shape - how recent, how often - and
-                        twenty rows of it push the description off the screen.
-                      */}
-                      {/*
-                        What changed, where the author wrote it.
-
-                        Beside the release list rather than woven into it: a
-                        changelog usually reaches further back than the ten
-                        releases whose files are kept, and a release nobody
-                        wrote a line about is ordinary - so a row per entry
-                        stands on its own rather than hanging off a release
-                        that may not be listed.
-
-                        Newest first is the author's order, not ours: `2.0.0`,
-                        `2026.1` and `v3-beta` are all somebody's idea of a
-                        version and nothing here parses them.
-                      */}
-                      {open.changelog.length > 0 && (
-                        <div className={styles.history}>
-                          <p className={styles.historyHead}>{t('What changed')}</p>
-                          {(showingChanges ? open.changelog : open.changelog.slice(0, SHOW_CHANGES)).map((change) => (
-                            <div key={change.version} className={styles.changeRow}>
-                              <span className={styles.historyVersion}>{change.version}</span>
-                              <div className={styles.changeNotes}>
-                                <Markdown>{change.notes}</Markdown>
+                            Only the releases that say something. One published
+                            before the notes existed has nothing to show, and a
+                            row saying so is a row about our history rather
+                            than the plugin's.
+                          */}
+                          {noted.map((release) => (
+                            <div key={release.version} className={styles.changeEntry}>
+                              <p className={styles.historyRow}>
+                                <span className={styles.historyVersion}>{release.version}</span>
+                                <span className={styles.historyAt}>
+                                  {new Date(release.published).toLocaleDateString()}
+                                </span>
+                                {!release.available && (
+                                  <span
+                                    className={styles.goneMark}
+                                    title={t('The marketplace no longer holds this version’s files.')}
+                                  >
+                                    {t('not held')}
+                                  </span>
+                                )}
+                              </p>
+                              {/* Somebody's prose from a public repository,
+                                  through the renderer that sanitises it. */}
+                              <div className={styles.releaseNotes}>
+                                <Markdown>{release.notes}</Markdown>
                               </div>
                             </div>
                           ))}
-                          {open.changelog.length > SHOW_CHANGES && (
-                            <button
-                              type="button"
-                              className={styles.historyMore}
-                              onClick={() => setShowingChanges((held) => !held)}
-                            >
-                              {showingChanges
-                                ? t('Show fewer')
-                                : `Show all ${open.changelog.length} versions`}
-                            </button>
-                          )}
                         </div>
-                      )}
+                      ) : (
+                        <>
+                          {/*
+                            Somebody else's prose from a public repository, so it
+                            is rendered by the same component the documentation
+                            and the chat use - which is where the sanitising is.
+                          */}
+                          <Markdown>{open.description}</Markdown>
 
-                      {open.versions.length > 0 && (
-                        <div className={styles.history}>
-                          <p className={styles.historyHead}>{t('Releases')}</p>
-                          {(showingAll ? open.versions : open.versions.slice(0, SHOW_RELEASES)).map((release) => (
-                            <p key={release.version} className={styles.historyRow}>
-                              <span className={styles.historyVersion}>{release.version}</span>
-                              <span className={styles.historyAt}>
-                                {new Date(release.published).toLocaleDateString()}
-                              </span>
-                              {/*
-                                Said on the row it is true of. The bytes of an
-                                old release are gone and the record of it is
-                                not, so the honest thing is a version that is
-                                listed and marked rather than one quietly left
-                                out.
-                              */}
-                              {!release.available && (
-                                <span className={styles.goneMark} title={t('The marketplace no longer holds this version’s files.')}>
-                                  {t('not held')}
-                                </span>
+                          {/*
+                            What it has shipped, under the prose rather than over
+                            it: somebody opens a listing to learn what the plugin
+                            is, and the release history is the second question.
+
+                            Folded to a handful, because the interesting part of
+                            a history is its shape - how recent, how often - and
+                            twenty rows of it push the description off the
+                            screen. What each release *says* is the other tab.
+                          */}
+                          {open.versions.length > 0 && (
+                            <div className={styles.history}>
+                              <p className={styles.historyHead}>{t('Releases')}</p>
+                              {(showingAll ? open.versions : open.versions.slice(0, SHOW_RELEASES)).map((release) => (
+                                <p key={release.version} className={styles.historyRow}>
+                                  <span className={styles.historyVersion}>{release.version}</span>
+                                  <span className={styles.historyAt}>
+                                    {new Date(release.published).toLocaleDateString()}
+                                  </span>
+                                  {/*
+                                    Said on the row it is true of. The bytes of
+                                    an old release are gone and the record of it
+                                    is not, so the honest thing is a version
+                                    that is listed and marked rather than one
+                                    quietly left out.
+                                  */}
+                                  {!release.available && (
+                                    <span
+                                      className={styles.goneMark}
+                                      title={t('The marketplace no longer holds this version’s files.')}
+                                    >
+                                      {t('not held')}
+                                    </span>
+                                  )}
+                                </p>
+                              ))}
+                              {open.versions.length > SHOW_RELEASES && (
+                                <button
+                                  type="button"
+                                  className={styles.historyMore}
+                                  onClick={() => setShowingAll((held) => !held)}
+                                >
+                                  {showingAll
+                                    ? t('Show fewer')
+                                    : `Show all ${open.versions.length} releases`}
+                                </button>
                               )}
-                            </p>
-                          ))}
-                          {open.versions.length > SHOW_RELEASES && (
-                            <button
-                              type="button"
-                              className={styles.historyMore}
-                              onClick={() => setShowingAll((held) => !held)}
-                            >
-                              {showingAll
-                                ? t('Show fewer')
-                                : `Show all ${open.versions.length} releases`}
-                            </button>
+                            </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   </>

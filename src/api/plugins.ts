@@ -119,6 +119,15 @@ export interface MarketplaceRelease {
    * pressed Install.
    */
   available: boolean;
+  /**
+   * What changed in this version, as the author wrote it when publishing.
+   *
+   * On the release rather than in a list of its own: an entry is *about* a
+   * release, and a map keyed by version has to be matched back to one by a
+   * string neither side parses. Markdown; empty for a release published
+   * without any, and for a marketplace too old to be asked.
+   */
+  notes: string;
 }
 
 /** One plugin the marketplace offers, with what is installed here folded in. */
@@ -162,22 +171,6 @@ export interface MarketplaceListing {
   tags: string[];
   /** Every release, newest first. Empty from a marketplace that keeps none. */
   versions: MarketplaceRelease[];
-  /**
-   * What changed, an entry per version, in the order the author wrote them.
-   *
-   * Beside the releases rather than on them: a changelog usually reaches
-   * further back than the releases whose files are kept, and a release nobody
-   * wrote a line about is ordinary. Empty where the plugin ships none, or the
-   * marketplace is too old to be asked.
-   */
-  changelog: MarketplaceChange[];
-}
-
-/** What changed in one version, as the plugin's author wrote it. */
-export interface MarketplaceChange {
-  version: string;
-  /** Markdown. */
-  notes: string;
 }
 
 /** What every version of this server has answered a listing with. */
@@ -190,7 +183,7 @@ const LISTING_TAGGED = `${LISTING_CORE} tags`;
 
 const LISTING_VERSIONED = `${LISTING_TAGGED} versions { version published replaced files available }`;
 
-const LISTING_FIELDS = `${LISTING_VERSIONED} changelog { version notes }`;
+const LISTING_FIELDS = `${LISTING_TAGGED} versions { version published replaced files available notes }`;
 
 /**
  * What a listing is asked for, in the order it is asked.
@@ -228,8 +221,9 @@ function whole(listing: Partial<MarketplaceListing>): MarketplaceListing {
   return {
     ...(listing as MarketplaceListing),
     tags: listing.tags ?? [],
-    versions: listing.versions ?? [],
-    changelog: listing.changelog ?? [],
+    // A rung that answered without them leaves each release saying nothing,
+    // which is what a release published before the notes existed says anyway.
+    versions: (listing.versions ?? []).map((one) => ({ ...one, notes: one.notes ?? '' })),
   };
 }
 
