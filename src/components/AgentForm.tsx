@@ -353,7 +353,22 @@ function GrantList<Item>({
   const orphans = granted.filter((name) => !rows.some((row) => row.name === name));
 
   const shown = rows.filter((row) => row.inGroup && (row.matches || row.ticked));
-  const matching = rows.filter((row) => row.inGroup && row.matches).length;
+
+  /*
+   * What a press of "grant these" acts on: the rows the filter and the search
+   * actually name.
+   *
+   * Not `shown`, which is deliberately wider - a ticked row survives a search
+   * so that a grant nobody can see is not a grant nobody can revoke. Granting
+   * that row again does nothing, but *clearing* it would take away a grant the
+   * search never claimed to be about, which is the same silent loss the
+   * never-hide-a-ticked-row rule exists to prevent.
+   */
+  const picked = rows.filter((row) => row.inGroup && row.matches);
+  const matching = picked.length;
+
+  /** Whether the press would grant or clear, which is what its label says. */
+  const allPicked = matching > 0 && picked.every((row) => row.ticked);
 
   /** Grants the origin filter is holding back, which the list has to own up to. */
   const elsewhere = rows.filter((row) => row.ticked && !row.inGroup).length;
@@ -377,6 +392,39 @@ function GrantList<Item>({
             {here} of {items.length} granted
             {needle !== '' && ` · ${matching} matching`}
           </span>
+        )}
+
+        {/*
+          Granting what is on screen, in one press.
+
+          Twelve tools from one plugin is twelve presses otherwise, and the
+          filter above is exactly the thing that says which twelve - so this
+          acts on what the filter and the search name and on nothing else. The
+          count is in the label rather than implied by it, because "select all"
+          beside a filtered list is a sentence with two possible meanings and
+          only one of them is safe.
+
+          It flips to clearing once they are all granted: the press somebody
+          wants after granting a plugin's tools by mistake is the same press
+          again, and hunting for a second control to undo the first is what
+          makes people untick twelve boxes by hand.
+        */}
+        {matching > 0 && (
+          <button
+            type="button"
+            className={own.grantAll}
+            data-grant-all={allPicked ? 'clear' : 'grant'}
+            onClick={() => {
+              const names = picked.map((row) => row.name);
+              onChange(
+                allPicked
+                  ? granted.filter((one) => !names.includes(one))
+                  : [...granted, ...names.filter((one) => !granted.includes(one))],
+              );
+            }}
+          >
+            {allPicked ? `Clear these ${thousands(matching)}` : `Grant these ${thousands(matching)}`}
+          </button>
         )}
       </span>
 

@@ -175,6 +175,9 @@ async function readGroup(root, what) {
         .filter((row) => row.querySelector('input[type="checkbox"]')?.checked === true)
         .map((row) => row.getAttribute('data-grant-name')),
       marks: node.querySelectorAll('mark').length,
+      /* The one-press grant, and which way round it is pointing. */
+      all: node.querySelector('[data-grant-all]')?.textContent?.trim() ?? '',
+      allDoes: node.querySelector('[data-grant-all]')?.getAttribute('data-grant-all') ?? '',
     };
   });
 }
@@ -327,6 +330,67 @@ async function measure(root, where) {
   // The picture of the thing that was argued about: one match, and a grant kept
   // beside it in a dashed row.
   await page.screenshot({ path: shot(`agent-grants-${where.replace(' ', '-')}-filtered.png`) });
+
+  // ---- granting what the filter names, in one press --------------------
+
+  /*
+   * The whole of what makes this safe is that it acts on what is *named* by
+   * the search rather than on what is *drawn*: a ticked row survives a search
+   * so it can be revoked, and granting the drawn set would be granting rows
+   * the search never claimed to be about.
+   */
+  record(
+    filtered.all.startsWith('Grant these'),
+    `${where}: the filtered list offers to grant what it names - "${filtered.all}"`,
+  );
+
+  const matched = filtered.names.filter((name) => name.toLowerCase().includes(hit.toLowerCase()));
+  record(
+    filtered.all.includes(String(matched.length)),
+    `${where}: and says how many that is (${matched.length} matched "${hit}")`,
+  );
+
+  await root.locator('[data-grants="tools"] [data-grant-all]').click();
+  await page.waitForTimeout(200);
+  const pressed = await readGroup(root, 'tools');
+
+  record(
+    matched.every((name) => pressed.ticked.includes(name)),
+    `${where}: one press grants every row the search named`,
+  );
+  record(
+    pressed.ticked.includes(keep),
+    `${where}: and leaves the grant that was already there alone`,
+  );
+  /*
+   * Exactly the rows already granted plus the rows the search named, and
+   * nothing else: the filter is hiding most of this list, and a press that
+   * reached past it would be the bug this assertion is here for.
+   */
+  const wanted = new Set([...filtered.ticked, ...matched]);
+  record(
+    pressed.ticked.length === wanted.size,
+    `${where}: and grants nothing the filter was hiding (${pressed.ticked.length} granted, ${wanted.size} named or already there)`,
+  );
+  record(
+    pressed.allDoes === 'clear',
+    `${where}: with everything named granted, the same press now clears them`,
+  );
+
+  await root.locator('[data-grants="tools"] [data-grant-all]').click();
+  await page.waitForTimeout(200);
+  const undone = await readGroup(root, 'tools');
+  record(
+    matched.filter((name) => name !== keep).every((name) => !undone.ticked.includes(name)),
+    `${where}: pressing again takes back exactly what the press gave`,
+  );
+
+  // Put back the one grant the drill started from, so what follows reads the
+  // list it expects.
+  if (!undone.ticked.includes(keep)) {
+    await keepBox.locator('input[type="checkbox"]').check();
+    await page.waitForTimeout(150);
+  }
 
   await search.fill('zzz-nothing-is-called-this');
   await page.waitForTimeout(200);

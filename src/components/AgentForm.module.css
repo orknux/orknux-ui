@@ -77,6 +77,30 @@
   min-width: 0;
 }
 
+/*
+ * Granting what the filter names, in one press.
+ *
+ * Beside the count rather than under the search box: it is a fact about the
+ * same set of rows the count is about, and a control that sat with the search
+ * would read as a way of searching.
+ */
+.grantAll {
+  padding: 2px var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-2xs, var(--text-xs));
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.grantAll:hover {
+  border-color: var(--color-accent-brand);
+  color: var(--color-text-primary);
+}
+
 .grantCount {
   flex: none;
   font-size: var(--text-xs);
