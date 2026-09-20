@@ -28,7 +28,11 @@ const { browser, page, graphql } = await open({ viewport: { width: 1500, height:
  * pictures is not a failure of this page.
  */
 const { workspaceArtifacts } = await graphql(
-  `query($w: ID!) { workspaceArtifacts(workspaceId: $w, page: 0, size: 100) { content { id prompt filename contentType url } } }`,
+  `query($w: ID!) {
+     workspaceArtifacts(workspaceId: $w, page: 0, size: 100) {
+       content { id prompt filename contentType url previewUrl }
+     }
+   }`,
   { w: WORKSPACE },
 );
 
@@ -46,7 +50,26 @@ record(true, `a document artifact to look at: ${document_.filename} (${document_
 
 /* ------------------------------------------------------- what the server says */
 
-const served = await page.request.get(`${BASE}${document_.url}`);
+/*
+ * Two addresses, and the difference between them is the point.
+ *
+ * The artifact's own url hands the bytes over whatever they are, so a link
+ * somebody copies and sends a colleague is a download - which is what they
+ * meant by copying it. Rendering is something the server does deliberately, at
+ * an address that says so.
+ */
+record(
+  document_.previewUrl !== null && document_.previewUrl !== document_.url,
+  `a document has a reading address of its own (${document_.url} against ${document_.previewUrl})`,
+);
+
+const handed = await page.request.get(`${BASE}${document_.url}`);
+record(
+  (handed.headers()['content-disposition'] ?? '').startsWith('attachment'),
+  `and its own address still hands the file over (${handed.headers()['content-disposition']})`,
+);
+
+const served = await page.request.get(`${BASE}${document_.previewUrl}`);
 const disposition = served.headers()['content-disposition'] ?? '';
 const policy = served.headers()['content-security-policy'] ?? '';
 
@@ -108,6 +131,10 @@ if (tile !== null) {
     'it is not drawn as a picture, which is what made it look like a file that had gone',
   );
   record(tile.opensInATab, `it opens in a tab (${tile.href})`);
+  record(
+    tile.href === document_.previewUrl,
+    `at the reading address rather than the file's (${tile.href})`,
+  );
   /*
    * The same box a thumbnail fills, and a cursor that says what the click
    * does. Sized to the glyph, the tile was a strip at the top of a card as

@@ -246,3 +246,13 @@
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
+
+/* A file with nothing to open: the tile, without the invitation. */
+.unopenable {
+  cursor: default;
+}
+
+.unopenable:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}

@@ -66,18 +66,6 @@ function drawable(contentType: string): boolean {
   return ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'].includes(type);
 }
 
-/**
- * What a browser will read rather than save.
- *
- * The same list the server serves inline - a document it hands over sandboxed
- * opens in a tab; anything else is a download whatever the link says. Kept
- * here so the tooltip says which of the two is about to happen.
- */
-function readable(contentType: string): boolean {
-  const type = contentType.toLowerCase().split(';')[0].trim();
-  return ['text/html', 'text/plain', 'text/markdown', 'application/pdf'].includes(type);
-}
-
 /** A glyph standing in for the thing, where there is no thumbnail to draw. */
 function markFor(contentType: string): string {
   const type = contentType.toLowerCase().split(';')[0].trim();
@@ -235,19 +223,37 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                         icon, which is what says the file is gone. */}
                     <img src={artifact.url} alt={artifact.prompt} className={styles.image} loading="lazy" />
                   </button>
-                ) : (
+                ) : artifact.previewUrl !== null ? (
                   <a
                     className={`${styles.thumb} ${styles.document}`}
-                    href={artifact.url}
+                    // The reading address, not the file's own. An artifact's
+                    // url hands the bytes over whatever they are, so a link
+                    // somebody copies and sends is a download; this one is the
+                    // server rendering something deliberately, at an address
+                    // that says so.
+                    href={artifact.previewUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    title={readable(artifact.contentType) ? t('Open this in a new tab') : t('Download this file')}
+                    title={t('Open this in a new tab')}
                   >
                     <span className={styles.documentMark} aria-hidden="true">
                       {markFor(artifact.contentType)}
                     </span>
                     <span className={styles.documentKind}>{kindOf(artifact.filename, artifact.contentType)}</span>
                   </a>
+                ) : (
+                  /*
+                    A file nothing renders: the same tile, saying what it is,
+                    and no way in. A link that downloads from a place that
+                    looks like it opens is worse than no link - the row's own
+                    download button is right there and says what it does.
+                  */
+                  <span className={`${styles.thumb} ${styles.document} ${styles.unopenable}`}>
+                    <span className={styles.documentMark} aria-hidden="true">
+                      {markFor(artifact.contentType)}
+                    </span>
+                    <span className={styles.documentKind}>{kindOf(artifact.filename, artifact.contentType)}</span>
+                  </span>
                 )}
 
                 <figcaption className={styles.caption}>

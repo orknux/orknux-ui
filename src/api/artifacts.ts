@@ -32,11 +32,19 @@ export interface Artifact {
   sizeBytes: number;
   /** Where the bytes are: the same address the run graph's `<img>` uses. */
   url: string;
+  /**
+   * Where the same bytes can be read rather than saved, or null for a file
+   * nothing renders.
+   *
+   * Its own address, so what a link is does not depend on what the file inside
+   * it turns out to be: `url` hands the file over, always, and this one opens.
+   */
+  previewUrl: string | null;
   drawnAt: string;
 }
 
 const ARTIFACT_FIELDS = `
-  id kind source sourcePath prompt filename contentType sizeBytes url drawnAt
+  id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
