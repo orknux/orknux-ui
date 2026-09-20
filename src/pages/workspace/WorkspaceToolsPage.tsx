@@ -50,16 +50,20 @@ const ALL_OF_THEM = 200;
 /**
  * Whether a tool answers what was typed in the box.
  *
- * Name or description, either one, folded to one case - the same rule the
- * database applies to the workspace's own tools, written out here because the
- * plugins' tools are not in a table to ask. Two lists sieved by two rules is a
- * search that finds a tool under one sieve setting and not under another.
+ * The name, folded to one case - the same rule the database applies to the
+ * workspace's own tools, written out here because the plugins' tools are not
+ * in a table to ask. Two lists sieved by two rules is a search that finds a
+ * tool under one sieve setting and not under another.
+ *
+ * Not the description: it is a paragraph written for a model to read, so
+ * searching "date" returned every github tool, whose descriptions talk about a
+ * commit's date. A word common enough to type is common enough to appear in
+ * prose.
  */
-function matches(name: string, description: string | null, looking: string): boolean {
+function matches(name: string, looking: string): boolean {
   const wanted = looking.trim().toLowerCase();
   if (wanted === '') return true;
-  return name.toLowerCase().includes(wanted) ||
-    (description ?? '').toLowerCase().includes(wanted);
+  return name.toLowerCase().includes(wanted);
 }
 
 export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPageProps) {
@@ -130,7 +134,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
             // The box is above this list whichever sieve it is showing, and a
             // box that does nothing is worse than no box: it answers "no such
             // tool" by leaving everything where it was.
-            .filter((one) => matches(one.name, one.description, asked));
+            .filter((one) => matches(one.name, asked));
           setRows(kept.map((one) => ({ kind: 'plugin' as const, offered: one })));
           setTotal(kept.length);
           setServerPaged(false);
@@ -150,9 +154,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
           // Sieved here rather than half here and half at the server: this
           // branch asks for the whole of the workspace's list precisely so
           // that both origins can be cut by one rule and paged as one.
-          .filter((row) => (row.kind === 'tool'
-            ? matches(row.tool.name, row.tool.description, asked)
-            : matches(row.offered.name, row.offered.description, asked)))
+          .filter((row) => matches(row.kind === 'tool' ? row.tool.name : row.offered.name, asked))
           .sort((a, b) => {
           const nameOf = (row: ToolRow) => (row.kind === 'tool' ? row.tool.name : row.offered.name);
           return nameOf(a).localeCompare(nameOf(b));

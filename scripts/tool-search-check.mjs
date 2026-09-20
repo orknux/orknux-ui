@@ -52,27 +52,42 @@ const names = () =>
     return rows.map((one) => (one.firstElementChild.firstChild?.textContent ?? '').trim());
   });
 
-/** Types into the box and waits for the debounce plus the load. */
+/**
+ * The list once it has stopped moving.
+ *
+ * Two reads that agree, rather than a fixed wait: the box settles 300ms after
+ * the typing stops and the rows follow whenever the server answers, which on a
+ * cold one is seconds. A check that reads between the two sees the list it was
+ * looking at before and calls the search broken.
+ */
+async function settled() {
+  let before = await names();
+  for (let tries = 0; tries < 30; tries += 1) {
+    await page.waitForTimeout(400);
+    const after = await names();
+    if (after.length === before.length && after.every((one, at) => one === before[at])) return after;
+    before = after;
+  }
+  return before;
+}
+
+/** Types into the box and waits for what it asked for. */
 async function look(what) {
   await page.fill('input[placeholder="Search tools..."]', what);
-  // The box settles 300ms after the typing stops and the list follows.
-  await page.waitForTimeout(900);
-  await listed();
-  await page.waitForTimeout(300);
-  return names();
+  await page.waitForTimeout(600);
+  return settled();
 }
 
 /** Puts the sieve on one of its settings and waits for that list. */
 async function sieve(value) {
   await page.selectOption('select[aria-label="Which tools to list"]', value);
-  await page.waitForTimeout(500);
-  await listed();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
+  await settled();
 }
 
 /* ------------------------------------------- the default: both origins at once */
 
-const everything = await names();
+const everything = await settled();
 record(everything.length > 0, `the page lists tools to search (${everything.length})`);
 
 const first = everything[0];
@@ -100,10 +115,38 @@ record(
   `clearing the box brings the whole list back (${back.length} of ${everything.length})`,
 );
 
+/*
+ * And a word that lives only in a description finds nothing.
+ *
+ * The rule was the name or the description, and a tool's description here is a
+ * paragraph written for a model: searching "date" returned every github tool,
+ * because their descriptions mention a commit's date. A word common enough to
+ * type is common enough to appear in prose.
+ */
+const prose = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll('section > div')].filter(
+    (one) => one.children.length === 5 && one.firstElementChild.textContent.trim() !== 'Name',
+  );
+  const names = rows.map((one) => (one.firstElementChild.firstChild?.textContent ?? '').toLowerCase());
+  const words = rows.flatMap((one) => one.children[1].textContent.toLowerCase().match(/[a-z]{6,}/g) ?? []);
+  return words.find((word) => names.every((name) => !name.includes(word))) ?? null;
+});
+record(prose !== null, `the descriptions have a word no name carries (${prose})`);
+if (prose !== null) {
+  const byProse = await look(prose);
+  record(
+    byProse.length === 0,
+    `a word only a description carries finds nothing (${byProse.length} for "${prose}")`,
+  );
+}
+
+
 /* -------------------------------------------------------- the plugins' own list */
 
+// Empty again, or the next sieve is read through the last search.
+await look('');
 await sieve('PLUGIN');
-const plugins = await names();
+const plugins = await settled();
 record(plugins.length > 0, `the plugins offer tools to search too (${plugins.length})`);
 
 const pluginBit = plugins[0].slice(0, Math.max(3, Math.floor(plugins[0].length / 2)));
@@ -125,7 +168,7 @@ record(
 
 await look('');
 await sieve('WORKSPACE');
-const own = await names();
+const own = await settled();
 const ownBit = own.length === 0 ? '' : own[0].slice(0, Math.max(3, Math.floor(own[0].length / 2)));
 const ownNarrowed = own.length === 0 ? [] : await look(ownBit);
 record(
