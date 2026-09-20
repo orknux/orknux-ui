@@ -98,9 +98,26 @@ export interface Workspace {
    * Null means the workspace has decided nothing and the installation's own
    * number is used.
    */
-  scriptTimeoutSeconds: number | null;
+  /**
+   * How long one run of this workspace's functions may hold its thread, in
+   * seconds. A workflow's step, a condition, a webhook answering - every place
+   * a function runs with nobody in particular waiting on it.
+   *
+   * Null means the workspace has decided nothing and the installation's bound
+   * is used. A tool an agent called is bounded by `toolTimeoutSeconds`.
+   */
+  functionTimeoutSeconds: number | null;
   /** What a run here gets when the field above is null, so the box can show it. */
-  scriptTimeoutSecondsDefault: number;
+  functionTimeoutSecondsDefault: number;
+  /**
+   * And how long a tool an agent called may run for.
+   *
+   * Its own setting because the wait belongs to somebody: a model is stopped
+   * mid-turn until the tool answers and, in a chat, a person is watching it
+   * happen.
+   */
+  toolTimeoutSeconds: number | null;
+  toolTimeoutSecondsDefault: number;
   /**
    * How long a pause has to run, after somebody has been talking, before voice
    * mode decides they have finished and sends what it heard.
@@ -144,7 +161,8 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault scriptTimeoutSeconds scriptTimeoutSecondsDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault ' +
+  'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs ' +
   'voiceSpeechChunking chatShowTimestamps';
 
@@ -332,17 +350,31 @@ export async function setWorkspaceTaskMaxTurns(
 }
 
 /** Null clears it, which puts the workspace back on the installation's number. */
-export async function setWorkspaceScriptTimeout(
+export async function setWorkspaceFunctionTimeout(
   workspaceId: string,
   seconds: number | null,
 ): Promise<Workspace> {
-  const data = await graphql<{ setWorkspaceScriptTimeout: Workspace }>(
-    `mutation SetWorkspaceScriptTimeout($workspaceId: ID!, $seconds: Int) {
-       setWorkspaceScriptTimeout(workspaceId: $workspaceId, seconds: $seconds) { ${WORKSPACE_FIELDS} }
+  const data = await graphql<{ setWorkspaceFunctionTimeout: Workspace }>(
+    `mutation SetFunctionTimeout($workspaceId: ID!, $seconds: Int) {
+       setWorkspaceFunctionTimeout(workspaceId: $workspaceId, seconds: $seconds) { ${WORKSPACE_FIELDS} }
      }`,
     { workspaceId, seconds },
   );
-  return data.setWorkspaceScriptTimeout;
+  return data.setWorkspaceFunctionTimeout;
+}
+
+/** The same, for a tool an agent called - a different wait, and its own number. */
+export async function setWorkspaceToolTimeout(
+  workspaceId: string,
+  seconds: number | null,
+): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceToolTimeout: Workspace }>(
+    `mutation SetToolTimeout($workspaceId: ID!, $seconds: Int) {
+       setWorkspaceToolTimeout(workspaceId: $workspaceId, seconds: $seconds) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, seconds },
+  );
+  return data.setWorkspaceToolTimeout;
 }
 
 /**
