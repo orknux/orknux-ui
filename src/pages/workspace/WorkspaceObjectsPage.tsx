@@ -24,6 +24,7 @@ import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useSieve } from '../../components/sieve';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
@@ -65,6 +66,36 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
    */
   const [fromPlugins, setFromPlugins] = useState<WorkflowObject[] | null>(null);
 
+  /**
+   * One origin, or both - the same sieve the tools and functions lists wear.
+   *
+   * The plugins' shapes used to sit in a second table under a rule, which
+   * answered "what could a property point at" and nothing else: to see one
+   * plugin's shapes somebody read every row of it. This narrows instead, and
+   * the row says where it came from either way.
+   */
+  const [source, setSource] = useSieve('objects');
+
+  /** The plugins with a shape in this list, for the sieve's own rows. */
+  const pluginChoices = [
+    ...new Set((fromPlugins ?? []).map((one) => one.lastModifiedBy.replace(/^plugin /, ''))),
+  ].sort((left, right) => left.localeCompare(right));
+
+  /**
+   * The plugins' shapes this sieve is showing, which is all of them or one
+   * plugin's or none.
+   *
+   * Cut here rather than fetched that way: they arrive once, in one list, and
+   * there are tens of them rather than thousands.
+   */
+  const shownPlugins = (() => {
+    if (source === 'WORKSPACE') return [];
+    const all = fromPlugins ?? [];
+    if (!source.startsWith('plugin:')) return all;
+    const wanted = source.slice('plugin:'.length);
+    return all.filter((one) => one.lastModifiedBy.replace(/^plugin /, '') === wanted);
+  })();
+
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setError(null);
@@ -77,6 +108,9 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
   }, [workspaceId, page, pageSize, asked]);
 
   useEffect(load, [load]);
+
+  // A different sieve is a different list, so it starts at its first page.
+  useEffect(() => setPage(1), [source]);
 
   useEffect(() => {
     /*
@@ -117,6 +151,23 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           onChange={setTyped}
           placeholder={t('Search objects...')}
         />
+        {/* One origin, or both - the same sieve the tools list wears. */}
+        <select
+          className={styles.sourceFilter}
+          aria-label={t('Which objects to list')}
+          value={source}
+          onChange={(event) => setSource(event.target.value)}
+        >
+          <option value="">{t('All sources')}</option>
+          <option value="WORKSPACE">{t('The workspace\'s own')}</option>
+          <option value="PLUGIN">{t('From plugins')}</option>
+          {/* And each plugin by name, which is the question people ask. */}
+          {pluginChoices.map((plugin) => (
+            <option key={plugin} value={`plugin:${plugin}`}>
+              {plugin}
+            </option>
+          ))}
+        </select>
       </SearchRow>
 
       {error !== null && (
@@ -129,6 +180,15 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
         <div className={styles.tableHeader}>
           <span className={styles.colName}>{t('Name')}</span>
           <span className={styles.colDescription}>{t('Description')}</span>
+          {/*
+            Where a shape came from, on the row rather than in a second table.
+
+            The plugins' shapes used to sit under a rule of their own, which
+            said where they came from once and then left every row of the list
+            looking the same as every other. A column says it per row, which is
+            also what makes the sieve beside the search worth having.
+          */}
+          <span className={styles.colSource}>{t('Source')}</span>
           <span className={styles.colStatus}>{t('Properties')}</span>
           <span className={styles.colModified}>{t('Last Modified')}</span>
           <span className={styles.colActions}>{t('Actions')}</span>
@@ -151,7 +211,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           </p>
         )}
 
-        {objects?.content.map((held) => (
+        {(source === 'PLUGIN' || source.startsWith('plugin:') ? [] : objects?.content ?? []).map((held) => (
           <div key={held.id} className={styles.row}>
             <Link className={`${styles.colName} ${styles.name}`} to={`/workspace/${workspaceId}/objects/${held.id}`}>
               {held.name}
@@ -161,6 +221,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
             >
               {held.description ?? t('No description')}
             </span>
+            <span className={`${styles.colSource} ${styles.modified}`}>{t('This workspace')}</span>
             {/* Where Skills shows a switch: a count, because there is nothing to switch. */}
             <span className={`${styles.colStatus} ${styles.modified}`}>{held.propertyCount}</span>
             <span className={`${styles.colModified} ${styles.modified}`}>{timeAgo(held.lastModifiedAt)}</span>
@@ -195,16 +256,9 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           row's actions: a plugin's shape is replaced wholesale the next time
           it is loaded, so an edit would be an edit somebody loses.
         */}
-        {fromPlugins !== null && fromPlugins.length > 0 && (
+        {shownPlugins.length > 0 && (
           <>
-            <div className={styles.tableHeader}>
-              <span className={styles.colName}>{t('From plugins')}</span>
-              <span className={styles.colDescription} />
-              <span className={styles.colStatus} />
-              <span className={styles.colModified} />
-              <span className={styles.colActions} />
-            </div>
-            {fromPlugins.map((held) => (
+            {shownPlugins.map((held) => (
               <div key={held.id} className={styles.row}>
                 <Link
                   className={`${styles.colName} ${styles.name}`}
@@ -218,10 +272,16 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
                 >
                   {held.description ?? t('No description')}
                 </span>
-                <span className={`${styles.colStatus} ${styles.modified}`}>{held.propertyCount}</span>
-                <span className={`${styles.colModified} ${styles.modified}`}>
-                  {held.lastModifiedBy}
+                <span className={`${styles.colSource} ${styles.modified}`}>
+                  {held.lastModifiedBy.replace(/^plugin /, '')}
                 </span>
+                <span className={`${styles.colStatus} ${styles.modified}`}>{held.propertyCount}</span>
+                {/*
+                  Nothing, rather than the plugin's name repeated: a plugin's
+                  shape is replaced wholesale the next time it is loaded, so
+                  there is no edit and nobody made one.
+                */}
+                <span className={`${styles.colModified} ${styles.modified}`}>—</span>
                 <span className={styles.colActions}>
                   <Link
                     className={styles.rowAction}

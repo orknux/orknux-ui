@@ -107,6 +107,25 @@
   min-width: 0;
 }
 
+/*
+ * Where a row came from: this workspace, or the plugin that exports it.
+ *
+ * Narrow, and centred like the two columns beside it - what it holds is one
+ * word or one plugin's key, and a column as wide as a description would make
+ * the reading harder rather than easier.
+ */
+.colSource {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 130px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .colStatus {
   display: flex;
   flex-shrink: 0;
