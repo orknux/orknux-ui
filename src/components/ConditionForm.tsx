@@ -137,6 +137,16 @@ export interface ConditionFormProps {
   onDeleted?: () => void;
   /** Left out where the frame already offers a way back, as a page's breadcrumb does. */
   onCancel?: () => void;
+  /**
+   * A name given from outside, for a definition that has no name of its own to
+   * give.
+   *
+   * A Custom definition belongs to one node and is reached through that node,
+   * so its name is the node's: asking for a second one in the node's own panel
+   * is asking somebody to name the same thing twice, and the name they type is
+   * one nothing ever shows them again. Set, and the field is not drawn.
+   */
+  namedAfter?: string;
 }
 
 const PAGE_SIZE = 100;
@@ -174,9 +184,10 @@ export function ConditionForm({
   styles,
   onSaved,
   onDeleted,
+  namedAfter,
   onCancel,
 }: ConditionFormProps) {
-  const [name, setName] = useState(condition?.name ?? '');
+  const [name, setName] = useState(condition?.name ?? namedAfter ?? '');
   const [type, setType] = useState<ConditionType>(condition?.type ?? (preset === null ? 'SLACK' : 'FUNCTION'));
   const startingProperty = condition?.property ?? 'MESSAGE_AUTHOR';
   const [property, setProperty] = useState<ConditionProperty>(startingProperty);
@@ -481,6 +492,7 @@ export function ConditionForm({
     <>
       <form className={styles.body} onSubmit={handleSubmit}>
         <div className={styles.fields}>
+          {namedAfter === undefined && (
           <div className={styles.field}>
             <label className={styles.label} htmlFor="condition-name">{t('Condition Name')}</label>
             <div className={styles.inputWrapper}>
@@ -496,6 +508,7 @@ export function ConditionForm({
               />
             </div>
           </div>
+          )}
 
           <IconField
             value={icon}

@@ -96,6 +96,16 @@ export interface TriggerFormProps {
   onSaved: (trigger: Trigger) => void;
   /** Left out where the frame already offers a way back, as a page's breadcrumb does. */
   onCancel?: () => void;
+  /**
+   * A name given from outside, for a definition that has no name of its own to
+   * give.
+   *
+   * A Custom definition belongs to one node and is reached through that node,
+   * so its name is the node's: asking for a second one in the node's own panel
+   * is asking somebody to name the same thing twice, and the name they type is
+   * one nothing ever shows them again. Set, and the field is not drawn.
+   */
+  namedAfter?: string;
 }
 
 /** The zones the form offers; anything else can be typed into the server. */
@@ -139,9 +149,10 @@ export function TriggerForm({
   trigger = null,
   styles,
   onSaved,
+  namedAfter,
   onCancel,
 }: TriggerFormProps) {
-  const [name, setName] = useState(trigger?.name ?? '');
+  const [name, setName] = useState(trigger?.name ?? namedAfter ?? '');
   const [type, setType] = useState<TriggerType>(trigger?.type ?? 'INCOMING_CONNECTION');
   const [connectionId, setConnectionId] = useState(trigger?.connectionId ?? '');
   const [action, setAction] = useState<TriggerAction>(trigger?.action ?? 'MENTION');
@@ -456,6 +467,7 @@ export function TriggerForm({
     <>
       <form className={styles.body} onSubmit={handleSubmit}>
         <div className={styles.fields}>
+          {namedAfter === undefined && (
           <div className={styles.field}>
             <label className={styles.label} htmlFor="trigger-name">{t('Trigger Name')}</label>
             <div className={styles.inputWrapper}>
@@ -472,6 +484,7 @@ export function TriggerForm({
               />
             </div>
           </div>
+          )}
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="trigger-type">{t('Type')}</label>

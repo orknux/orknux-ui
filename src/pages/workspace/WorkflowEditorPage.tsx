@@ -4564,7 +4564,17 @@ Change the keystroke in Preferences.`}
                     {/* Custom, as the action and condition pickers offer it. */}
                     <DefinitionPicker
                       id="node-trigger"
-                      value={draft.triggerId ?? ''}
+                      /*
+                        Custom, while its form is open.
+
+                        Choosing Custom clears the id - there is no definition
+                        yet - so the picker read "Choose a…" with the fields
+                        for the thing being made sitting right under it. It
+                        looked like nothing had been chosen, which is exactly
+                        the state somebody then loses by pressing Save without
+                        pressing Create.
+                      */
+                      value={custom === 'TRIGGER' ? CUSTOM : draft.triggerId ?? ''}
                       options={triggers
                         .filter((trigger) => trigger.workflowId === null || trigger.id === draft.triggerId)
                         .map((trigger) => ({
@@ -4616,6 +4626,7 @@ Change the keystroke in Preferences.`}
                           {t("This trigger belongs to this workflow. It is not in the workspace's list.")}
                         </p>
                         <TriggerForm
+                          namedAfter={draft.name || 'Trigger'}
                           key={ownedTrigger?.id ?? 'new-custom-trigger'}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
@@ -4684,7 +4695,17 @@ Change the keystroke in Preferences.`}
                     */}
                     <DefinitionPicker
                       id="node-action"
-                      value={draft.actionId ?? ''}
+                      /*
+                        Custom, while its form is open.
+
+                        Choosing Custom clears the id - there is no definition
+                        yet - so the picker read "Choose a…" with the fields
+                        for the thing being made sitting right under it. It
+                        looked like nothing had been chosen, which is exactly
+                        the state somebody then loses by pressing Save without
+                        pressing Create.
+                      */
+                      value={custom === 'ACTION' ? CUSTOM : draft.actionId ?? ''}
                       options={actions
                         .filter((action) => action.workflowId === null || action.id === draft.actionId)
                         .map((action) => ({
@@ -4736,6 +4757,7 @@ Change the keystroke in Preferences.`}
                           {t("This action belongs to this workflow. It is not in the workspace's list.")}
                         </p>
                         <ActionForm
+                          namedAfter={draft.name || 'Action'}
                           key={ownedAction?.id ?? 'new-custom-action'}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
@@ -4890,7 +4912,17 @@ Change the keystroke in Preferences.`}
                     </span>
                     <DefinitionPicker
                       id="node-condition"
-                      value={draft.conditionId ?? ''}
+                      /*
+                        Custom, while its form is open.
+
+                        Choosing Custom clears the id - there is no definition
+                        yet - so the picker read "Choose a…" with the fields
+                        for the thing being made sitting right under it. It
+                        looked like nothing had been chosen, which is exactly
+                        the state somebody then loses by pressing Save without
+                        pressing Create.
+                      */
+                      value={custom === 'CONDITION' ? CUSTOM : draft.conditionId ?? ''}
                       options={conditions
                         .filter((held) => held.workflowId === null || held.id === draft.conditionId)
                         .map((held) => ({
@@ -4942,6 +4974,7 @@ Change the keystroke in Preferences.`}
                           {t("This condition belongs to this workflow. It is not in the workspace's list.")}
                         </p>
                         <ConditionForm
+                          namedAfter={draft.name || 'Condition'}
                           key={ownedCondition?.id ?? 'new-custom-condition'}
                           workspaceId={workspaceId}
                           workflowId={workflowId}

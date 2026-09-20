@@ -127,6 +127,16 @@ export interface ActionFormProps {
   onDeleted?: () => void;
   /** Left out where the frame already offers a way back, as a page's breadcrumb does. */
   onCancel?: () => void;
+  /**
+   * A name given from outside, for a definition that has no name of its own to
+   * give.
+   *
+   * A Custom definition belongs to one node and is reached through that node,
+   * so its name is the node's: asking for a second one in the node's own panel
+   * is asking somebody to name the same thing twice, and the name they type is
+   * one nothing ever shows them again. Set, and the field is not drawn.
+   */
+  namedAfter?: string;
 }
 
 const FUNCTION_PAGE_SIZE = 100;
@@ -209,9 +219,10 @@ export function ActionForm({
   styles,
   onSaved,
   onDeleted,
+  namedAfter,
   onCancel,
 }: ActionFormProps) {
-  const [name, setName] = useState(action?.name ?? '');
+  const [name, setName] = useState(action?.name ?? namedAfter ?? '');
   const [type, setType] = useState<ActionType>(action?.type ?? 'EXECUTE');
   const [subtype, setSubtype] = useState<ActionSubtype>(action?.subtype ?? 'OUTGOING_CONNECTION');
   const [connectionId, setConnectionId] = useState(action?.connectionId ?? '');
@@ -531,6 +542,7 @@ export function ActionForm({
     <>
       <form className={styles.body} onSubmit={handleSubmit}>
         <div className={styles.fields}>
+          {namedAfter === undefined && (
           <div className={styles.field}>
             <label className={styles.label} htmlFor="action-name">{t('Action Name')}</label>
             <div className={styles.inputWrapper}>
@@ -547,6 +559,7 @@ export function ActionForm({
               />
             </div>
           </div>
+          )}
 
           <IconField
             value={icon}
