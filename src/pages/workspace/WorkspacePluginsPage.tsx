@@ -457,7 +457,16 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
       ? offeredConnections.find((held) => held.id === parameter.literal) ?? null
       : null;
 
-  const stored: Answer = parameter.secret || parameter.variableId !== null ? 'REFERENCE' : 'VALUE';
+  /*
+   * Which side the switch opens on: whichever the parameter is actually
+   * answered by.
+   *
+   * A secret used to force REFERENCE because typing one was refused. It is
+   * stored encrypted now, so a secret somebody typed opens on Value - where
+   * the box says it is set - and one pointing at a variable opens on
+   * Reference, like everything else.
+   */
+  const stored: Answer = parameter.variableId !== null ? 'REFERENCE' : 'VALUE';
   const [mode, setMode] = useState<Answer>(stored);
 
   /*
@@ -531,16 +540,11 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
               type="button"
               className={mode === option ? `${styles.modeOption} ${styles.modeOptionOn}` : styles.modeOption}
               aria-pressed={mode === option}
-              disabled={
-                (parameter.secret && option === 'VALUE') ||
-                (takesConnection && option === 'REFERENCE')
-              }
+              disabled={takesConnection && option === 'REFERENCE'}
               title={
-                parameter.secret && option === 'VALUE'
-                  ? t('A secret is only ever answered by pointing at a variable')
-                  : takesConnection && option === 'REFERENCE'
-                    ? t('A connection is picked from the workspace\'s connections, never read from a variable')
-                    : undefined
+                takesConnection && option === 'REFERENCE'
+                  ? t('A connection is picked from the workspace\'s connections, never read from a variable')
+                  : undefined
               }
               onClick={() => setMode(option)}
             >
@@ -656,12 +660,26 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
         </div>
       ) : (
         <div className={styles.inputWrapper}>
+          {/*
+            A secret is typed into a box that never shows it back.
+
+            `password` so a shoulder and a screenshot see nothing, and the
+            placeholder carries the only thing the server will say about a
+            stored one: that there is one. Typing over it replaces it; there is
+            nothing to edit, because nothing came back to edit.
+          */}
           <input
             id={fieldId}
+            type={parameter.secret ? 'password' : 'text'}
             className={`${styles.input} ${styles.parameterValue}`}
             value={typed}
             disabled={busy}
-            placeholder={`A ${parameter.type.toLowerCase()}`}
+            autoComplete={parameter.secret ? 'new-password' : undefined}
+            placeholder={
+              parameter.secret && parameter.secretSet
+                ? t('Set - type to replace it')
+                : `A ${parameter.type.toLowerCase()}`
+            }
             spellCheck={false}
             onChange={(event) => setTyped(event.target.value)}
             onKeyDown={(event) => {
@@ -689,9 +707,9 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
         answer this parameter is a list that is empty - and the second is what
         the parameter currently is, which is a reading and not an explanation.
       */}
-      {parameter.secret && variables.length === 0 && (
+      {parameter.secret && mode === 'REFERENCE' && variables.length === 0 && (
         <p className={styles.parameterNote}>
-          {t('A secret is only ever answered by pointing at a variable, and this workspace has none yet. Add one on the Variables page and it will be offered here.')}
+          {t('This workspace has no variables yet. Add one on the Variables page and it will be offered here - or type the secret in under Value, where it is stored encrypted and never shown back.')}
         </p>
       )}
 

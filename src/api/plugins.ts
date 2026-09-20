@@ -662,6 +662,15 @@ export interface PluginParameterSetting {
    */
   options: string[];
   literal: string | null;
+  /**
+   * Whether a secret has been typed into this parameter - and never what it
+   * is.
+   *
+   * A secret typed here is stored encrypted and nothing carries it back out,
+   * so this is how the screen knows to say "set" rather than showing an empty
+   * box beside an answered parameter.
+   */
+  secretSet: boolean;
   variableId: string | null;
   /** The name of that variable, never what it holds. */
   variableName: string | null;
@@ -672,7 +681,7 @@ const WORKSPACE_PLUGIN_FIELDS = `
   missing
   plugin { ${PLUGIN_FIELDS} }
   parameters {
-    name description type connectionType required secret options literal variableId variableName missing
+    name description type connectionType required secret options literal secretSet variableId variableName missing
   }
 `;
 
