@@ -192,3 +192,37 @@
   outline: 2px solid var(--color-accent-brand);
   outline-offset: 2px;
 }
+
+/*
+ * A file with no picture in it: a glyph and what kind it is.
+ *
+ * The same box a thumbnail fills, so a gallery of mixed artifacts is a grid
+ * rather than a row of cards of two heights. It is a link rather than a
+ * button: what it does is open a tab, and a browser already knows how to say
+ * that - middle-click, open in a new window, copy the address.
+ */
+.document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted, var(--color-surface));
+}
+
+.document:hover {
+  border-color: var(--color-accent-brand);
+  color: var(--color-text-primary);
+}
+
+.documentMark {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.documentKind {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+}

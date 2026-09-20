@@ -1,0 +1,110 @@
+/**
+ * An artifact that is not a picture is a thing you can open.
+ *
+ * The Artifacts page drew every row as an `<img>`, so an HTML report an agent
+ * wrote appeared as the browser's broken-image icon - which is the page's own
+ * way of saying "these bytes are gone" about a file that is perfectly fine.
+ * The only way to read it was to download it and open it from a machine, which
+ * is the same HTML with *more* trust around it than a tab has.
+ *
+ * So: a document gets a tile that says what it is and a link that opens it,
+ * and the server hands it back sandboxed - no script, no network, an opaque
+ * origin - which is what makes opening it in a tab the safer of the two.
+ *
+ * The artifact is made through the API rather than by asking an agent to write
+ * one: what is measured here is the page and the headers, not a model.
+ */
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+
+const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
+
+/*
+ * An artifact that is not a picture, whichever one this installation has.
+ *
+ * Artifacts arrive through the agent's own `save_artifact` tool - there is no
+ * mutation to make one with - so this reads the workspace rather than seeding
+ * it, and says plainly when there is nothing of the kind to look at. That is
+ * better than a timeout: a workspace whose agents have only ever drawn
+ * pictures is not a failure of this page.
+ */
+const { workspaceArtifacts } = await graphql(
+  `query($w: ID!) { workspaceArtifacts(workspaceId: $w, page: 0, size: 100) { content { id prompt filename contentType url } } }`,
+  { w: WORKSPACE },
+);
+
+const PICTURES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'];
+const document_ = workspaceArtifacts.content.find(
+  (one) => !PICTURES.includes((one.contentType ?? '').toLowerCase().split(';')[0].trim()),
+);
+
+if (document_ === undefined) {
+  console.log('NOTE: this workspace holds only pictures, so there is no document tile to measure');
+  await finish(browser);
+}
+
+record(true, `a document artifact to look at: ${document_.filename} (${document_.contentType})`);
+
+/* ------------------------------------------------------- what the server says */
+
+const served = await page.request.get(`${BASE}${document_.url}`);
+const disposition = served.headers()['content-disposition'] ?? '';
+const policy = served.headers()['content-security-policy'] ?? '';
+
+record(served.status() === 200, `the file is served (${served.status()})`);
+record(
+  disposition.startsWith('inline'),
+  `a document is handed back to be read rather than saved (${disposition})`,
+);
+record(
+  (served.headers()['content-type'] ?? '').split(';')[0].trim() === document_.contentType.split(';')[0].trim(),
+  `as itself rather than as a download (${served.headers()['content-type']})`,
+);
+
+/*
+ * The assertion the whole thing rests on. A page served from our host with no
+ * sandbox is a page with our cookies; with it, the document is in an opaque
+ * origin and nothing in it runs.
+ */
+record(policy.includes('sandbox'), `and sandboxed, so nothing in it runs (${policy})`);
+record(policy.includes("default-src 'none'"), 'with nothing fetchable from anywhere');
+record(!policy.includes('script-src'), 'and no script allowance of any kind');
+
+/* --------------------------------------------------------- what the page draws */
+
+await page.goto(`${BASE}/workspace/${WORKSPACE}/artifacts`, { waitUntil: 'domcontentloaded' });
+// The gallery itself, not a stopwatch: the page fetches a page of artifacts
+// and the cards arrive when they arrive.
+await page.waitForSelector('figure', { timeout: 20_000 });
+await page.waitForTimeout(600);
+
+const tile = await page.evaluate(({ named, at }) => {
+  const cards = [...document.querySelectorAll('figure')];
+  // By what the card links to rather than by its words: the caption is the
+  // prompt, truncated, and a filename may not be on the card at all.
+  const card =
+    cards.find((one) => one.querySelector(`a[href="${at}"], img[src="${at}"]`) !== null) ??
+    cards.find((one) => one.textContent.includes(named));
+  if (card === undefined) return null;
+  const link = card.querySelector('a[target="_blank"]');
+  return {
+    brokenImage: card.querySelector('img[src*="/api/artifacts/"]') !== null,
+    opensInATab: link !== null,
+    href: link?.getAttribute('href') ?? '',
+    says: card.textContent.replace(/\s+/g, ' ').trim().slice(0, 120),
+  };
+}, { named: document_.prompt || document_.filename, at: document_.url });
+
+record(tile !== null, 'the document is on the Artifacts page');
+if (tile !== null) {
+  record(
+    !tile.brokenImage,
+    'it is not drawn as a picture, which is what made it look like a file that had gone',
+  );
+  record(tile.opensInATab, `it opens in a tab (${tile.href})`);
+  record(
+    /[A-Z]{2,5}/.test(tile.says),
+    `and the tile says what kind of file it is (${tile.says})`,
+  );
+}
+
+await finish(browser);

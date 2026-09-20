@@ -60,6 +60,50 @@ function readableSize(bytes: number): string {
  * across both the runs' pictures and the tasks', including everything drawn by
  * runs and tasks nobody remembers.
  */
+/** What the gallery can draw as a picture, which is what the server shows inline. */
+function drawable(contentType: string): boolean {
+  const type = contentType.toLowerCase().split(';')[0].trim();
+  return ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'].includes(type);
+}
+
+/**
+ * What a browser will read rather than save.
+ *
+ * The same list the server serves inline - a document it hands over sandboxed
+ * opens in a tab; anything else is a download whatever the link says. Kept
+ * here so the tooltip says which of the two is about to happen.
+ */
+function readable(contentType: string): boolean {
+  const type = contentType.toLowerCase().split(';')[0].trim();
+  return ['text/html', 'text/plain', 'text/markdown', 'application/pdf'].includes(type);
+}
+
+/** A glyph standing in for the thing, where there is no thumbnail to draw. */
+function markFor(contentType: string): string {
+  const type = contentType.toLowerCase().split(';')[0].trim();
+  if (type === 'application/pdf') return '📕';
+  if (type === 'text/html') return '🌐';
+  if (type.startsWith('text/')) return '📄';
+  if (type.startsWith('audio/')) return '🎵';
+  if (type.startsWith('video/')) return '🎞️';
+  if (type === 'image/svg+xml') return '🖊️';
+  return '📦';
+}
+
+/**
+ * What to call it in three or four characters.
+ *
+ * The extension where the name has one, because that is what somebody
+ * recognises - `report.html` is an HTML file whatever its content type says -
+ * and the type's own subtype otherwise.
+ */
+function kindOf(filename: string, contentType: string): string {
+  const dot = filename.lastIndexOf('.');
+  if (dot > 0 && dot < filename.length - 1) return filename.slice(dot + 1).toUpperCase().slice(0, 5);
+  const type = contentType.toLowerCase().split(';')[0].trim();
+  return (type.split('/')[1] ?? 'file').toUpperCase().slice(0, 5);
+}
+
 export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifactsPageProps) {
   const { workspaceId = '' } = useParams();
 
@@ -169,21 +213,42 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
             {artifacts.content.map((artifact) => (
               <figure key={artifact.id} className={styles.card}>
                 {/*
-                  The thumbnail is a control: it opens the picture at full size,
-                  the same gesture and the same viewer a picture in a chat and a
-                  picture on a run answer to.
+                  A picture opens at full size, here, in the viewer a picture
+                  in a chat and a picture on a run both answer to.
+
+                  Anything else opens in a tab, because that is where a browser
+                  reads a document - and drawing one as an `<img>` was drawing
+                  the broken-image icon, which says "this file is gone" about a
+                  file that is perfectly fine. The server serves a document
+                  sandboxed, so a page an agent wrote cannot reach anything of
+                  ours; see `AttachmentDownloads`.
                 */}
-                <button
-                  type="button"
-                  className={styles.thumb}
-                  onClick={() => setZoomed({ src: artifact.url, alt: artifact.prompt })}
-                  aria-label={t('Open this picture larger')}
-                  title={t('Click to open this picture larger')}
-                >
-                  {/* A row whose bytes have been swept draws the broken-image
-                      icon, which is what says the file is gone. */}
-                  <img src={artifact.url} alt={artifact.prompt} className={styles.image} loading="lazy" />
-                </button>
+                {drawable(artifact.contentType) ? (
+                  <button
+                    type="button"
+                    className={styles.thumb}
+                    onClick={() => setZoomed({ src: artifact.url, alt: artifact.prompt })}
+                    aria-label={t('Open this picture larger')}
+                    title={t('Click to open this picture larger')}
+                  >
+                    {/* A row whose bytes have been swept draws the broken-image
+                        icon, which is what says the file is gone. */}
+                    <img src={artifact.url} alt={artifact.prompt} className={styles.image} loading="lazy" />
+                  </button>
+                ) : (
+                  <a
+                    className={`${styles.thumb} ${styles.document}`}
+                    href={artifact.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title={readable(artifact.contentType) ? t('Open this in a new tab') : t('Download this file')}
+                  >
+                    <span className={styles.documentMark} aria-hidden="true">
+                      {markFor(artifact.contentType)}
+                    </span>
+                    <span className={styles.documentKind}>{kindOf(artifact.filename, artifact.contentType)}</span>
+                  </a>
+                )}
 
                 <figcaption className={styles.caption}>
                   <span className={styles.prompt} title={artifact.prompt}>

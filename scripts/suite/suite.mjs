@@ -549,6 +549,14 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'artifact-document-check',
+    what: 'an artifact that is not a picture opens in a tab, sandboxed, instead of drawing as a broken image',
+    // Reads whatever the workspace holds rather than seeding one: artifacts
+    // arrive through an agent's own tool and there is no mutation to make one.
+    // Says so and stops where there is nothing but pictures.
+    needs: ['workspace'],
+  },
+  {
     name: 'new-node-centre-check',
     what: 'a node added from the menu lands in the middle of what is on screen',
     // Builds a workflow of its own, with one node deliberately far from the
