@@ -49,7 +49,16 @@
  */
 .row {
   display: flex;
+  align-items: center;
   justify-content: flex-start;
+  /*
+   * A gap, for the rows that hold more than the box.
+   *
+   * A search that sits beside a filter - the objects list's source sieve - had
+   * the two controls touching, because nothing here ever had a second child
+   * before. Costs nothing on a row with one.
+   */
+  gap: var(--space-12);
   /*
    * No margin of its own.
    *
