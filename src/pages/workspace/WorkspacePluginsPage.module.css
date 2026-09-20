@@ -280,23 +280,36 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * The same Save the workspace settings wear, to the pixel.
+ *
+ * It started smaller, as a control that belonged to a row. It is the page's
+ * one press now, and a page's Save has a size here - copying it is what keeps
+ * two screens from looking like two products.
+ */
 .pageSave {
-  padding: var(--space-8) var(--space-16);
+  padding: var(--space-10) var(--space-16);
   background: var(--color-accent-brand);
   border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;
-  font-weight: 500;
-  font-size: var(--text-sm);
+  font-weight: 600;
+  font-size: var(--text-md);
+  /*
+   * Stated rather than inherited: without it the button took its leading from
+   * whatever it sat in and came out two pixels taller than the same button on
+   * the settings screen, which is exactly the kind of difference nobody can
+   * name and everybody sees.
+   */
+  line-height: 1.2;
   color: var(--color-text-primary);
   cursor: pointer;
 }
 
+/* Faded rather than outlined, which is how every other Save says it is off. */
 .pageSave:disabled {
-  background: none;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  cursor: default;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .parameterAction {
