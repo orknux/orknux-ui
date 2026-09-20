@@ -437,6 +437,40 @@
  * Small and quiet: it is a label on a block, not a heading in the transcript,
  * and a transcript of a hundred calls should not read as two hundred headings.
  */
+/*
+ * What a thinking line cost, beside the badge that names it.
+ *
+ * Quiet: it is a measurement of a wait, not a heading, and a transcript of
+ * thirty turns should not read as thirty timers.
+ */
+.thoughtFor,
+.stillThinking {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+/*
+ * And one that has not stopped, which is a fact about right now rather than
+ * about the record - so it breathes, gently, and holds still for anybody who
+ * has asked the system for less movement.
+ */
+.stillThinking {
+  color: var(--color-accent);
+  animation: breathe 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stillThinking {
+    animation: none;
+  }
+}
+
 .blockLabel {
   margin: var(--space-8) 0 var(--space-4);
   font-weight: 600;

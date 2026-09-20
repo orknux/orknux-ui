@@ -541,6 +541,14 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'session-thinking-check',
+    what: "a transcript tells a model that is still thinking from one that thought for four seconds",
+    // Stubs the transcript in the browser: the other half - that a node's turn
+    // writes those lines at all - is AgentNodeRunnerTest, and making a real one
+    // here would need a provider with a reasoning model behind it.
+    needs: ['workspace'],
+  },
+  {
     name: 'marketplace-release-check',
     what: "the catalog's categories narrow the shelf, and a listing's releases are drawn with what is no longer held",
     // Stubs the catalog call in the browser: it loads nothing and changes

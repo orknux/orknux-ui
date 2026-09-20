@@ -125,6 +125,21 @@ function Block({ text, code, label }: { text: string; code: boolean; label?: str
   );
 }
 
+/**
+ * How long a model thought, in words a person reads rather than milliseconds.
+ *
+ * Coarse on purpose: nobody waiting on a model cares about the last hundred
+ * milliseconds of a two-minute think, and a figure that precise reads as a
+ * measurement of the machine rather than an account of the wait.
+ */
+function thoughtFor(millis: number): string {
+  const seconds = millis / 1000;
+  if (seconds < 10) return `${seconds.toFixed(1)}s`;
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${Math.round(seconds - minutes * 60)}s`;
+}
+
 /** One line of the transcript: what happened, and for a tool, what came back. */
 function EventLine({ event }: { event: LlmSessionEvent }) {
   const text = readable(event.kind, event.content);
@@ -149,6 +164,20 @@ function EventLine({ event }: { event: LlmSessionEvent }) {
       <div className={styles.eventHead}>
         <span className={styles.kindBadge}>{EVENT_KIND_LABEL[event.kind]}</span>
         <span className={styles.actor}>{event.actor}</span>
+        {/*
+          How long the thinking went on for, or that it is still going.
+
+          A thinking line is written while the model is still doing it and
+          carries no duration until it stops - so "no duration yet" is the
+          record's way of saying the model has not finished, and saying so is
+          the difference between a page that looks live and one that looks
+          stuck. It settles by itself as the line is refreshed.
+        */}
+        {event.kind === 'THINKING' && (
+          <span className={event.millis === null ? styles.stillThinking : styles.thoughtFor}>
+            {event.millis === null ? t('still thinking') : `thought for ${thoughtFor(event.millis)}`}
+          </span>
+        )}
         <span className={styles.at} title={event.at}>
           {timeOfDay(event.at)}
         </span>
