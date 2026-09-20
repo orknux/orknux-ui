@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -48,6 +48,14 @@ import { t } from '../i18n';
  * a card on its own page once it exists. The fields are identical in both — so
  * there is one form — and the look belongs to whichever frame is holding it.
  */
+/**
+ * How long the panel waits after the last change before it writes.
+ *
+ * Long enough that typing a name is one write rather than eleven, short
+ * enough that nobody gets to the graph's Save before it has happened.
+ */
+const PANEL_SAVE_MS = 600;
+
 export interface TriggerFormStyles {
   /** The form itself: a modal's body, or a settings card. */
   body: string;
@@ -369,6 +377,9 @@ export function TriggerForm({
    */
   const reading = useMemo(() => describeCron(cron), [cron]);
 
+  /** In a node's panel, where the definition belongs to the node. */
+  const embedded = namedAfter !== undefined;
+
   const complete =
     name.trim() !== '' &&
     (incoming
@@ -381,8 +392,72 @@ export function TriggerForm({
               (authFunctionId !== NEW_FUNCTION || validFunctionName(newFunctionName))))
         : cron.trim() !== '');
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  /**
+   * Everything this form holds, in the shape the server takes.
+   *
+   * Its own function because two callers want it: the save itself, and
+   * the panel's watcher, which compares one against the last to know
+   * whether anything actually changed.
+   */
+  function settingsNow(chosenFunction: string = authFunctionId) {
+  return {
+      name: name.trim(),
+      connectionId: incoming ? connectionId : undefined,
+      action: incoming ? action : undefined,
+      // Sent on every incoming trigger, empty included: the server assigns it
+      // rather than leaving it alone, so switching Reply to Mention clears
+      // what the reply was watching instead of leaving it behind.
+      watchedConnectionIds: incoming ? (reply ? watched : []) : undefined,
+      cron: incoming || webhook ? undefined : cron.trim(),
+      timezone: incoming || webhook ? undefined : timezone,
+      webhookPath: webhook ? webhookPath.trim() : undefined,
+      objectId: webhook ? objectId : undefined,
+      authType: webhook ? authType : undefined,
+      authFunctionId: webhook && authType === 'FUNCTION' ? chosenFunction : null,
+      payload: payload.trim(),
+      // Undefined would leave the condition alone; the form has to be able to
+      // take it off, so an empty pick is sent as null.
+      conditionId: conditionId === '' ? null : conditionId,
+      icon,
+      enabled,
+  };
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    void save();
+  }
+
+  /*
+   * In a node's panel there is no press: it saves as the panel saves.
+   *
+   * A Custom definition is part of the node, and everything else about a node
+   * is stored by editing it - typing a name, choosing a function, dragging a
+   * port. A Create button in the middle of that is a second kind of saving
+   * somebody has to know about, and the state it leaves when nobody presses it
+   * is the one that loses the whole definition on the next Save of the graph.
+   *
+   * So the embedded form writes itself: once it holds enough to be valid, and
+   * again whenever what it holds changes. No dependency list on purpose - it
+   * re-arms after every render and the timer is cleared each time, which is a
+   * debounce on "stopped changing" rather than a list of thirty fields where
+   * the one somebody forgets is the one that then never saves.
+   */
+  const lastWritten = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!embedded || !complete || submitting) return undefined;
+    const timer = window.setTimeout(() => {
+      const now = JSON.stringify(settingsNow());
+      if (lastWritten.current === now) return;
+      lastWritten.current = now;
+      void save();
+    }, PANEL_SAVE_MS);
+    return () => window.clearTimeout(timer);
+  });
+
+  /** Stored, whether a press asked for it or the panel did. */
+  async function save() {
     if (!complete || submitting) return;
 
     setSubmitting(true);
@@ -416,27 +491,7 @@ export function TriggerForm({
         chosenFunction = made.id;
       }
 
-      const settings = {
-        name: name.trim(),
-        connectionId: incoming ? connectionId : undefined,
-        action: incoming ? action : undefined,
-        // Sent on every incoming trigger, empty included: the server assigns it
-        // rather than leaving it alone, so switching Reply to Mention clears
-        // what the reply was watching instead of leaving it behind.
-        watchedConnectionIds: incoming ? (reply ? watched : []) : undefined,
-        cron: incoming || webhook ? undefined : cron.trim(),
-        timezone: incoming || webhook ? undefined : timezone,
-        webhookPath: webhook ? webhookPath.trim() : undefined,
-        objectId: webhook ? objectId : undefined,
-        authType: webhook ? authType : undefined,
-        authFunctionId: webhook && authType === 'FUNCTION' ? chosenFunction : null,
-        payload: payload.trim(),
-        // Undefined would leave the condition alone; the form has to be able to
-        // take it off, so an empty pick is sent as null.
-        conditionId: conditionId === '' ? null : conditionId,
-        icon,
-        enabled,
-      };
+      const settings = settingsNow(chosenFunction);
       const saved = editing
         ? await updateTrigger(trigger.id, settings)
         : await createTrigger({ workspaceId, workflowId, type, ...settings });
@@ -1090,6 +1145,15 @@ export function TriggerForm({
           </p>
         )}
 
+        {/*
+          No press in a node's panel: it saves as the panel saves, and a
+          Create button there is a second kind of saving somebody has to
+          know about - the one whose unpressed state loses the whole
+          definition on the next Save of the graph. Delete stays, because
+          nothing else offers it and taking one away is a decision rather
+          than an edit.
+        */}
+        {embedded ? null : (
         <div className={styles.actions}>
           {onCancel !== undefined && (
             <button type="button" className={styles.ghost} onClick={onCancel} disabled={submitting}>
@@ -1100,6 +1164,7 @@ export function TriggerForm({
             {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Trigger')}
           </button>
         </div>
+        )}
       </form>
 
       {/*

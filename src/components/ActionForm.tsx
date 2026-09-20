@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -56,6 +56,14 @@ import { t } from '../i18n';
  * graph. The fields are identical in both — so there is one form — and the look
  * belongs to whichever frame is holding it.
  */
+/**
+ * How long the panel waits after the last change before it writes.
+ *
+ * Long enough that typing a name is one write rather than eleven, short
+ * enough that nobody gets to the graph's Save before it has happened.
+ */
+const PANEL_SAVE_MS = 600;
+
 export interface ActionFormStyles {
   /** The form itself: a dialog's field stack, or a settings card. */
   body: string;
@@ -445,6 +453,9 @@ export function ActionForm({
    */
   const asking = subtype === 'OUTGOING_CONNECTION' && slackConnection !== null;
 
+  /** In a node's panel, where the definition belongs to the node. */
+  const embedded = namedAfter !== undefined;
+
   const complete =
     name.trim() !== '' &&
     (subtype === 'OUTGOING_CONNECTION' || subtype === 'SEND_EMAIL'
@@ -459,8 +470,85 @@ export function ActionForm({
               ? conditionId !== ''
               : Number(durationSeconds) > 0);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  /**
+   * Everything this form holds, in the shape the server takes.
+   *
+   * Its own function because two callers want it: the save itself, and
+   * the panel's watcher, which compares one against the last to know
+   * whether anything actually changed.
+   */
+  function settingsNow(chosen: string = functionId) {
+  return {
+      name: name.trim(),
+      subtype,
+      connectionId: subtype === 'OUTGOING_CONNECTION' || subtype === 'SEND_EMAIL' ? connectionId : null,
+      connectionAction: subtype === 'OUTGOING_CONNECTION' ? connectionAction : null,
+      // A mail's body is the same column a message's text is, which is why one
+      // field feeds both.
+      content: subtype === 'OUTGOING_CONNECTION' || subtype === 'SEND_EMAIL' ? content : null,
+      targetName: subtype === 'OUTGOING_CONNECTION' ? targetName : null,
+      emailTo: subtype === 'SEND_EMAIL' ? emailTo : null,
+      emailCc: subtype === 'SEND_EMAIL' ? emailCc : null,
+      emailSubject: subtype === 'SEND_EMAIL' ? emailSubject : null,
+      emailReplyTo: subtype === 'SEND_EMAIL' ? emailReplyTo : null,
+      url: subtype === 'HTTP_REQUEST' ? url.trim() : null,
+      method: subtype === 'HTTP_REQUEST' ? method : null,
+      /*
+       * Rows when the form was editing rows, the text when it was editing
+       * text. Only one of the two is ever sent, so mending a blob by hand
+       * cannot be undone by a set of rows the form never showed, and saving
+       * rows cannot quietly restore a blob nobody meant to keep.
+       */
+      headers: subtype === 'HTTP_REQUEST' && !headersReadable ? headers : null,
+      headerRows: subtype === 'HTTP_REQUEST' && headersReadable ? sentRows(headerRows) : undefined,
+      functionId: subtype === 'FUNCTION' ? chosen : null,
+      mappings: subtype === 'FUNCTION' ? mappings : [],
+      conditionExpression: subtype === 'INLINE_CONDITION' ? conditionExpression.trim() : null,
+      conditionId: subtype === 'CONDITION' ? conditionId : null,
+      timeoutSeconds:
+        subtype === 'CONDITION' || subtype === 'INLINE_CONDITION' ? Number(timeoutSeconds) : null,
+      retryIntervalSeconds:
+        subtype === 'CONDITION' || subtype === 'INLINE_CONDITION' ? Number(retryIntervalSeconds) : null,
+      durationSeconds: subtype === 'TIME' ? Number(durationSeconds) : null,
+      icon,
+  };
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    void save();
+  }
+
+  /*
+   * In a node's panel there is no press: it saves as the panel saves.
+   *
+   * A Custom definition is part of the node, and everything else about a node
+   * is stored by editing it - typing a name, choosing a function, dragging a
+   * port. A Create button in the middle of that is a second kind of saving
+   * somebody has to know about, and the state it leaves when nobody presses it
+   * is the one that loses the whole definition on the next Save of the graph.
+   *
+   * So the embedded form writes itself: once it holds enough to be valid, and
+   * again whenever what it holds changes. No dependency list on purpose - it
+   * re-arms after every render and the timer is cleared each time, which is a
+   * debounce on "stopped changing" rather than a list of thirty fields where
+   * the one somebody forgets is the one that then never saves.
+   */
+  const lastWritten = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!embedded || !complete || submitting) return undefined;
+    const timer = window.setTimeout(() => {
+      const now = JSON.stringify(settingsNow());
+      if (lastWritten.current === now) return;
+      lastWritten.current = now;
+      void save();
+    }, PANEL_SAVE_MS);
+    return () => window.clearTimeout(timer);
+  });
+
+  /** Stored, whether a press asked for it or the panel did. */
+  async function save() {
     if (!complete || submitting) return;
 
     setSubmitting(true);
@@ -481,40 +569,7 @@ export function ActionForm({
         chosen = (await createFunction({ workspaceId, name: newFunctionName.trim() })).id;
       }
 
-      const settings = {
-        name: name.trim(),
-        subtype,
-        connectionId: subtype === 'OUTGOING_CONNECTION' || subtype === 'SEND_EMAIL' ? connectionId : null,
-        connectionAction: subtype === 'OUTGOING_CONNECTION' ? connectionAction : null,
-        // A mail's body is the same column a message's text is, which is why one
-        // field feeds both.
-        content: subtype === 'OUTGOING_CONNECTION' || subtype === 'SEND_EMAIL' ? content : null,
-        targetName: subtype === 'OUTGOING_CONNECTION' ? targetName : null,
-        emailTo: subtype === 'SEND_EMAIL' ? emailTo : null,
-        emailCc: subtype === 'SEND_EMAIL' ? emailCc : null,
-        emailSubject: subtype === 'SEND_EMAIL' ? emailSubject : null,
-        emailReplyTo: subtype === 'SEND_EMAIL' ? emailReplyTo : null,
-        url: subtype === 'HTTP_REQUEST' ? url.trim() : null,
-        method: subtype === 'HTTP_REQUEST' ? method : null,
-        /*
-         * Rows when the form was editing rows, the text when it was editing
-         * text. Only one of the two is ever sent, so mending a blob by hand
-         * cannot be undone by a set of rows the form never showed, and saving
-         * rows cannot quietly restore a blob nobody meant to keep.
-         */
-        headers: subtype === 'HTTP_REQUEST' && !headersReadable ? headers : null,
-        headerRows: subtype === 'HTTP_REQUEST' && headersReadable ? sentRows(headerRows) : undefined,
-        functionId: subtype === 'FUNCTION' ? chosen : null,
-        mappings: subtype === 'FUNCTION' ? mappings : [],
-        conditionExpression: subtype === 'INLINE_CONDITION' ? conditionExpression.trim() : null,
-        conditionId: subtype === 'CONDITION' ? conditionId : null,
-        timeoutSeconds:
-          subtype === 'CONDITION' || subtype === 'INLINE_CONDITION' ? Number(timeoutSeconds) : null,
-        retryIntervalSeconds:
-          subtype === 'CONDITION' || subtype === 'INLINE_CONDITION' ? Number(retryIntervalSeconds) : null,
-        durationSeconds: subtype === 'TIME' ? Number(durationSeconds) : null,
-        icon,
-      };
+      const settings = settingsNow(chosen);
 
       const saved = editing
         ? await updateAction(action.id, settings)
@@ -1278,6 +1333,26 @@ export function ActionForm({
           </p>
         )}
 
+        {/*
+          No press in a node's panel: it saves as the panel saves, and a
+          Create button there is a second kind of saving somebody has to
+          know about - the one whose unpressed state loses the whole
+          definition on the next Save of the graph. Delete stays, because
+          nothing else offers it and taking one away is a decision rather
+          than an edit.
+        */}
+        {embedded ? (
+          editing && onDeleted !== undefined && (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.danger}
+                onClick={handleDelete}
+                disabled={submitting}
+              >{t('Delete')}</button>
+            </div>
+          )
+        ) : (
         <div className={styles.actions}>
           {editing && onDeleted !== undefined && (
             <button
@@ -1296,6 +1371,7 @@ export function ActionForm({
             {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Action')}
           </button>
         </div>
+        )}
       </form>
 
       {/*

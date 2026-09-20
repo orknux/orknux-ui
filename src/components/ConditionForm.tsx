@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -62,6 +62,14 @@ import { t } from '../i18n';
  * a card on the condition's own page. The fields are identical in all three - so
  * there is one form - and the look belongs to whichever frame is holding it.
  */
+/**
+ * How long the panel waits after the last change before it writes.
+ *
+ * Long enough that typing a name is one write rather than eleven, short
+ * enough that nobody gets to the graph's Save before it has happened.
+ */
+const PANEL_SAVE_MS = 600;
+
 export interface ConditionFormStyles {
   /** The form itself: a dialog's field stack, or a settings card. */
   body: string;
@@ -394,6 +402,9 @@ export function ConditionForm({
     return missing;
   }, [name, isComposite, members, type, functionId, newFunctionName, label, check, values, draftValue]);
 
+  /** In a node's panel, where the definition belongs to the node. */
+  const embedded = namedAfter !== undefined;
+
   const complete = blockers.length === 0;
 
   function addValue() {
@@ -403,15 +414,83 @@ export function ConditionForm({
     setDraftValue('');
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  /**
+   * Everything this form holds, in the shape the server takes.
+   *
+   * Its own function because two callers want it: the save itself, and
+   * the panel's watcher, which compares one against the last to know
+   * whether anything actually changed.
+   */
+  function settingsNow(chosen: string = functionId) {
+  return {
+      name: name.trim(),
+      type,
+      property: isComposite || type === 'FUNCTION' ? null : property,
+      check: isComposite || type === 'FUNCTION' ? null : check,
+      negate,
+      functionId: type === 'FUNCTION' ? chosen : null,
+      /*
+       * Only what the chosen function actually declares, in its own order. An
+       * argument left over from a function this condition used to call is not
+       * sent: it would be stored against a parameter that no longer exists and
+       * would come back as a row nobody could see.
+       */
+      arguments:
+        type === 'FUNCTION'
+          ? declared.map((param) => ({
+              name: param.name,
+              expression: passed[param.name]?.expression ?? '',
+              mode: passed[param.name]?.mode ?? 'VALUE',
+            }))
+          : [],
+      values: isComposite || type === 'FUNCTION' ? [] : values,
+      members: isComposite ? members : [],
+      icon,
+  };
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting) return;
     // Pressed while something is missing: say which thing, rather than doing
     // nothing and leaving the button looking broken.
-    if (!complete) {
+    if (!complete && !submitting) {
       setError(blockers.join(' '));
       return;
     }
+    void save();
+  }
+
+  /*
+   * In a node's panel there is no press: it saves as the panel saves.
+   *
+   * A Custom definition is part of the node, and everything else about a node
+   * is stored by editing it - typing a name, choosing a function, dragging a
+   * port. A Create button in the middle of that is a second kind of saving
+   * somebody has to know about, and the state it leaves when nobody presses it
+   * is the one that loses the whole definition on the next Save of the graph.
+   *
+   * So the embedded form writes itself: once it holds enough to be valid, and
+   * again whenever what it holds changes. No dependency list on purpose - it
+   * re-arms after every render and the timer is cleared each time, which is a
+   * debounce on "stopped changing" rather than a list of thirty fields where
+   * the one somebody forgets is the one that then never saves.
+   */
+  const lastWritten = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!embedded || !complete || submitting) return undefined;
+    const timer = window.setTimeout(() => {
+      const now = JSON.stringify(settingsNow());
+      if (lastWritten.current === now) return;
+      lastWritten.current = now;
+      void save();
+    }, PANEL_SAVE_MS);
+    return () => window.clearTimeout(timer);
+  });
+
+  /** Stored, whether a press asked for it or the panel did. */
+  async function save() {
+    if (submitting || !complete) return;
 
     setSubmitting(true);
     setError(null);
@@ -440,31 +519,7 @@ export function ConditionForm({
         chosen = made.id;
       }
 
-      const settings = {
-        name: name.trim(),
-        type,
-        property: isComposite || type === 'FUNCTION' ? null : property,
-        check: isComposite || type === 'FUNCTION' ? null : check,
-        negate,
-        functionId: type === 'FUNCTION' ? chosen : null,
-        /*
-         * Only what the chosen function actually declares, in its own order. An
-         * argument left over from a function this condition used to call is not
-         * sent: it would be stored against a parameter that no longer exists and
-         * would come back as a row nobody could see.
-         */
-        arguments:
-          type === 'FUNCTION'
-            ? declared.map((param) => ({
-                name: param.name,
-                expression: passed[param.name]?.expression ?? '',
-                mode: passed[param.name]?.mode ?? 'VALUE',
-              }))
-            : [],
-        values: isComposite || type === 'FUNCTION' ? [] : values,
-        members: isComposite ? members : [],
-        icon,
-      };
+      const settings = settingsNow(chosen);
 
       const saved = editing
         ? await updateCondition(condition.id, settings)
@@ -796,6 +851,26 @@ export function ConditionForm({
           </p>
         )}
 
+        {/*
+          No press in a node's panel: it saves as the panel saves, and a
+          Create button there is a second kind of saving somebody has to
+          know about - the one whose unpressed state loses the whole
+          definition on the next Save of the graph. Delete stays, because
+          nothing else offers it and taking one away is a decision rather
+          than an edit.
+        */}
+        {embedded ? (
+          editing && onDeleted !== undefined && (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.danger}
+                onClick={handleDelete}
+                disabled={submitting}
+              >{t('Delete')}</button>
+            </div>
+          )
+        ) : (
         <div className={styles.actions}>
           {editing && onDeleted !== undefined && (
             <button type="button" className={styles.danger} onClick={handleDelete} disabled={submitting}>
@@ -811,6 +886,7 @@ export function ConditionForm({
             {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Condition')}
           </button>
         </div>
+        )}
       </form>
 
       {/*
