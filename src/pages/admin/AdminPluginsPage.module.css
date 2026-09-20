@@ -1313,3 +1313,37 @@
     width: 100%;
   }
 }
+
+/*
+ * One changelog entry: the version, and what the author wrote about it.
+ *
+ * A block rather than a row, because the notes are markdown and can be a
+ * sentence or a list. The version sits above them rather than beside, so a
+ * long entry does not leave a lonely number in a column of its own.
+ */
+.changeRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+  border-top: 1px solid var(--color-border-subtle, var(--color-border));
+}
+
+.changeRow:first-of-type {
+  border-top: 0;
+}
+
+.changeNotes {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* The markdown inside an entry is prose, not a document: no room above the
+   first line, none under the last. */
+.changeNotes :global(p:first-child) {
+  margin-top: 0;
+}
+
+.changeNotes :global(p:last-child) {
+  margin-bottom: 0;
+}

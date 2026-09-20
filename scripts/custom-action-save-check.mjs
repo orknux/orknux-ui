@@ -139,12 +139,15 @@ await subtype.selectOption({ label: 'Function' });
 await page.waitForTimeout(1600);
 
 /*
- * Nothing yet, and that is right: a Function action with no function chosen is
- * not a thing to save. The panel writes when what it holds is valid, which is
- * the line between "saves itself" and "writes half-made rows".
+ * Already written, half-made and all.
+ *
+ * A definition belonging to one node is a draft like the graph around it: the
+ * panel writes as it is filled in, so choosing Function is stored before the
+ * function is chosen. Holding it back until it was valid is what lost the work
+ * - the graph saved with the node pointing at nothing.
  */
 const first = await owned();
-record(first.length === 0, `nothing is written while the form is incomplete (${first.length} owned)`);
+record(first.length === 1, `what the panel holds is written as it stands (${first.length} owned)`);
 
 /*
  * The second write, which is the whole point. The function is chosen after the
@@ -289,6 +292,60 @@ const fresh = graph.workflowGraph.nodes.find((one) => one.name === 'Action' && o
 record(
   fresh !== undefined && fresh.actionId !== null,
   `a node whose Custom action was chosen twice keeps it through a save (${JSON.stringify(fresh)})`,
+);
+
+/*
+ * A definition nobody has finished is kept as it stands.
+ *
+ * Custom, then Function, and then somebody goes to look through the list of
+ * functions - which is where they are when they press Save. Until this, the
+ * panel would not write a form it considered incomplete, the graph was saved
+ * with the node pointing at nothing, and the work was gone on the next
+ * reload. A graph is a draft; so is a definition that belongs to one node.
+ *
+ * What is missing is said at publish instead, which is where the rest of an
+ * unfinished graph is told about.
+ */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.react-flow__node', { timeout: 20_000 });
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: /^Add node/ }).click();
+await page.getByRole('menuitem', { name: 'Action', exact: true }).click();
+await page.waitForTimeout(900);
+await page.locator('button').filter({ hasText: /Choose an action/ }).first().click();
+await page.waitForTimeout(400);
+await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
+await page.waitForTimeout(1200);
+// Function, and stop there: no function chosen.
+await page.locator('#action-subtype').selectOption({ label: 'Function' });
+await page.waitForTimeout(1800);
+await page.getByRole('button', { name: /^Save/ }).first().click();
+await page.waitForTimeout(2200);
+
+const half = (await owned()).find((one) => one.subtype === 'FUNCTION' && one.functionId === null);
+record(
+  half !== undefined,
+  `a Function action with no function yet is stored as it stands (${JSON.stringify(half ?? null)})`,
+);
+
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.react-flow__node', { timeout: 20_000 });
+await page.waitForTimeout(1500);
+const nodes = await page.locator('.react-flow__node').count();
+await page.locator('.react-flow__node').nth(nodes - 1).click();
+await page.waitForTimeout(1200);
+const back = await page.evaluate(() => ({
+  subtype: document.querySelector('#action-subtype')?.selectedOptions?.[0]?.textContent?.trim() ?? 'no form',
+  // Whatever the page says about what is unfinished, wherever it says it.
+  // Wherever on the page the unfinished things are listed.
+  problems: document.body.innerText.replace(/\s+/g, ' '),
+}));
+record(back.subtype === 'Function', `and it comes back as it was left (${back.subtype})`);
+record(
+  /no function chosen/.test(back.problems),
+  `with what is missing said where the rest of an unfinished graph is said (${
+    back.problems.match(/[^.]*no function chosen[^.]*\./)?.[0] ?? 'not said'
+  })`,
 );
 
 await done();

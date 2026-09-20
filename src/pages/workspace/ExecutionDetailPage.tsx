@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Background,
@@ -296,11 +296,21 @@ const PADDING = 1.2;
  * Keyed on which steps there are rather than how many, so selecting one (which
  * rebuilds the node objects) does not yank the viewport back mid-inspection.
  */
-function FitWhenReady({ signature }: { signature: string }) {
+function FitWhenReady({ signature, held }: { signature: string; held: { current: boolean } }) {
   const flow = useReactFlow();
 
   useEffect(() => {
     if (signature === '') return;
+    /*
+     * Not once somebody has moved the canvas themselves.
+     *
+     * A run that is still going gains steps as it goes, and with the page
+     * refreshing every second that is a new signature every second - so a
+     * viewport framed on every one of them pulled the zoom back from under
+     * whoever was looking at a node. Framing is for arriving at the page; a
+     * hand on the canvas outranks it.
+     */
+    if (held.current) return;
 
     let cancelled = false;
     const frame = () => {
@@ -316,7 +326,7 @@ function FitWhenReady({ signature }: { signature: string }) {
       cancelAnimationFrame(first);
       window.clearTimeout(again);
     };
-  }, [signature, flow]);
+  }, [signature, flow, held]);
 
   return null;
 }
@@ -397,6 +407,14 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
 
   /** Which steps the graph is showing, so a refit follows the run and not the cursor. */
   const signature = useMemo(() => nodes.map((node) => node.id).join('|'), [nodes]);
+
+  /**
+   * Whether anybody has moved the canvas by hand.
+   *
+   * A ref rather than state: nothing is drawn differently because of it, and a
+   * re-render for every pan would be a re-render for every pixel of one.
+   */
+  const viewHeld = useRef(false);
 
   const edges: Edge[] = useMemo(() => {
     const outcomes = new Map(
@@ -698,6 +716,12 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                       edges={edges}
                       nodeTypes={nodeTypes}
                       onNodeClick={(_, node) => setSelectedKey(node.id)}
+                      // A pan or a zoom by hand; see `viewHeld`. React Flow
+                      // does not raise these for a viewport set in code, so
+                      // the framing this page does cannot switch itself off.
+                      onMoveStart={() => {
+                        viewHeld.current = true;
+                      }}
                       onPaneClick={() => setSelectedKey(null)}
                       nodesDraggable={false}
                       nodesConnectable={false}
@@ -705,7 +729,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                       fitView
                       proOptions={{ hideAttribution: true }}
                     >
-                      <FitWhenReady signature={signature} />
+                      <FitWhenReady signature={signature} held={viewHeld} />
                       <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#27272a" />
                     </ReactFlow>
                   </div>

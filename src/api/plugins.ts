@@ -162,6 +162,22 @@ export interface MarketplaceListing {
   tags: string[];
   /** Every release, newest first. Empty from a marketplace that keeps none. */
   versions: MarketplaceRelease[];
+  /**
+   * What changed, an entry per version, in the order the author wrote them.
+   *
+   * Beside the releases rather than on them: a changelog usually reaches
+   * further back than the releases whose files are kept, and a release nobody
+   * wrote a line about is ordinary. Empty where the plugin ships none, or the
+   * marketplace is too old to be asked.
+   */
+  changelog: MarketplaceChange[];
+}
+
+/** What changed in one version, as the plugin's author wrote it. */
+export interface MarketplaceChange {
+  version: string;
+  /** Markdown. */
+  notes: string;
 }
 
 /** What every version of this server has answered a listing with. */
@@ -172,7 +188,9 @@ const LISTING_CORE = `
 
 const LISTING_TAGGED = `${LISTING_CORE} tags`;
 
-const LISTING_FIELDS = `${LISTING_TAGGED} versions { version published replaced files available }`;
+const LISTING_VERSIONED = `${LISTING_TAGGED} versions { version published replaced files available }`;
+
+const LISTING_FIELDS = `${LISTING_VERSIONED} changelog { version notes }`;
 
 /**
  * What a listing is asked for, in the order it is asked.
@@ -189,7 +207,7 @@ const LISTING_FIELDS = `${LISTING_TAGGED} versions { version published replaced 
  * climbs when it asks the marketplace, for the same reason and in the same
  * order.
  */
-const LISTING_LADDER = [LISTING_FIELDS, LISTING_TAGGED, LISTING_CORE];
+const LISTING_LADDER = [LISTING_FIELDS, LISTING_VERSIONED, LISTING_TAGGED, LISTING_CORE];
 
 /**
  * Whether a refusal is the server saying it has never heard of a field.
@@ -207,7 +225,12 @@ function unknownField(cause: unknown): boolean {
 
 /** A listing from a rung that answered less, filled out to the whole shape. */
 function whole(listing: Partial<MarketplaceListing>): MarketplaceListing {
-  return { ...(listing as MarketplaceListing), tags: listing.tags ?? [], versions: listing.versions ?? [] };
+  return {
+    ...(listing as MarketplaceListing),
+    tags: listing.tags ?? [],
+    versions: listing.versions ?? [],
+    changelog: listing.changelog ?? [],
+  };
 }
 
 /**

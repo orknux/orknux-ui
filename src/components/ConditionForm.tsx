@@ -489,8 +489,35 @@ export function ConditionForm({
    */
   const lastWritten = useRef<string | null>(null);
 
+  /**
+   * What the form held when it opened, so an untouched one writes nothing.
+   *
+   * A subtype and its defaults are chosen on the first render, so a panel that
+   * wrote whatever it held would make a definition out of opening it - a row
+   * per node somebody clicked on and thought better of. Compared as a whole
+   * rather than watched field by field, for the reason the watcher gives.
+   */
+  const opened = useRef<string | null>(null);
+  if (opened.current === null) opened.current = JSON.stringify(settingsNow());
+  const touched = JSON.stringify(settingsNow()) !== opened.current || condition !== null || madeId !== null;
+
   useEffect(() => {
-    if (!embedded || !complete || submitting) return undefined;
+    /*
+     * Finished or not.
+     *
+     * A definition belonging to one node is filled in a field at a time, and
+     * the moment between "Function" and the function being chosen is an
+     * ordinary moment - it is where somebody looks at the list. Refusing to
+     * write until it was valid meant that Save landed on a node pointing at
+     * nothing, and everything typed so far was gone on the next reload, which
+     * is what "saving does not work" was. What is unfinished is said at
+     * publish, where the rest of an unfinished graph is.
+     *
+     * There has to be something to write, though: a subtype is chosen on the
+     * first render, so writing before anybody has touched the form would make
+     * a definition out of opening the panel.
+     */
+    if (!embedded || submitting || !touched) return undefined;
     const timer = window.setTimeout(() => {
       const now = JSON.stringify(settingsNow());
       if (lastWritten.current === now) return;
@@ -502,7 +529,9 @@ export function ConditionForm({
 
   /** Stored, whether a press asked for it or the panel did. */
   async function save() {
-    if (submitting || !complete) return;
+    // A press still waits for a complete form; the panel does not. See the
+    // watcher below for why.
+    if (submitting || (!embedded && !complete)) return;
 
     setSubmitting(true);
     setError(null);
@@ -882,22 +911,16 @@ export function ConditionForm({
           No press in a node's panel: it saves as the panel saves, and a
           Create button there is a second kind of saving somebody has to
           know about - the one whose unpressed state loses the whole
-          definition on the next Save of the graph. Delete stays, because
-          nothing else offers it and taking one away is a decision rather
-          than an edit.
+          definition on the next Save of the graph.
+
+          Nor Delete. It was kept here on the argument that nothing else
+          offers it, and that argument was wrong twice over: a definition
+          belonging to one node goes when the node does or when the picker is
+          pointed elsewhere, and a red button in the middle of a form somebody
+          is filling in is a press away from losing the work. The list of
+          definitions is where one is taken away deliberately.
         */}
-        {embedded ? (
-          editing && onDeleted !== undefined && (
-            <div className={styles.actions}>
-              <button
-                type="button"
-                className={styles.danger}
-                onClick={handleDelete}
-                disabled={submitting}
-              >{t('Delete')}</button>
-            </div>
-          )
-        ) : (
+        {embedded ? null : (
         <div className={styles.actions}>
           {editing && onDeleted !== undefined && (
             <button type="button" className={styles.danger} onClick={handleDelete} disabled={submitting}>

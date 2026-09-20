@@ -163,6 +163,14 @@ type Tab = 'installed' | 'catalog';
 const SHOW_RELEASES = 5;
 
 /**
+ * How many changelog entries are shown before the rest are folded away.
+ *
+ * Fewer than the releases: an entry is a paragraph rather than a row, so five
+ * of them is already the length of the description above it.
+ */
+const SHOW_CHANGES = 3;
+
+/**
  * How many tags a row wears before it says how many more there are.
  *
  * A plugin may carry eight, and a row wearing all of them is tags with a name
@@ -286,6 +294,8 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
 
   /** Whether the open listing's history is shown whole. */
   const [showingAll, setShowingAll] = useState(false);
+  /** Whether the whole changelog is open, or the newest few of it. */
+  const [showingChanges, setShowingChanges] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -1521,6 +1531,45 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                         history is its shape - how recent, how often - and
                         twenty rows of it push the description off the screen.
                       */}
+                      {/*
+                        What changed, where the author wrote it.
+
+                        Beside the release list rather than woven into it: a
+                        changelog usually reaches further back than the ten
+                        releases whose files are kept, and a release nobody
+                        wrote a line about is ordinary - so a row per entry
+                        stands on its own rather than hanging off a release
+                        that may not be listed.
+
+                        Newest first is the author's order, not ours: `2.0.0`,
+                        `2026.1` and `v3-beta` are all somebody's idea of a
+                        version and nothing here parses them.
+                      */}
+                      {open.changelog.length > 0 && (
+                        <div className={styles.history}>
+                          <p className={styles.historyHead}>{t('What changed')}</p>
+                          {(showingChanges ? open.changelog : open.changelog.slice(0, SHOW_CHANGES)).map((change) => (
+                            <div key={change.version} className={styles.changeRow}>
+                              <span className={styles.historyVersion}>{change.version}</span>
+                              <div className={styles.changeNotes}>
+                                <Markdown>{change.notes}</Markdown>
+                              </div>
+                            </div>
+                          ))}
+                          {open.changelog.length > SHOW_CHANGES && (
+                            <button
+                              type="button"
+                              className={styles.historyMore}
+                              onClick={() => setShowingChanges((held) => !held)}
+                            >
+                              {showingChanges
+                                ? t('Show fewer')
+                                : `Show all ${open.changelog.length} versions`}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       {open.versions.length > 0 && (
                         <div className={styles.history}>
                           <p className={styles.historyHead}>{t('Releases')}</p>
