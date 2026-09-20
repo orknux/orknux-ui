@@ -301,7 +301,19 @@ export function ActionForm({
    */
   const [makingCondition, setMakingCondition] = useState(false);
 
-  const editing = action !== null;
+  /**
+   * The definition this form made a moment ago, where it made one.
+   *
+   * A form in a node's panel writes itself, so the second write must be an
+   * update - and "am I editing" was read off the prop the parent passes back,
+   * which arrives a render later. In that gap the form asked for a second
+   * definition with the same name, and the workspace refused it by name:
+   * *An action named "Format agent output" already exists*. So the form
+   * remembers what it made rather than waiting to be told.
+   */
+  const [madeId, setMadeId] = useState<string | null>(null);
+
+  const editing = action !== null || madeId !== null;
 
   /*
    * The three catalogues this form picks from.
@@ -572,8 +584,11 @@ export function ActionForm({
       const settings = settingsNow(chosen);
 
       const saved = editing
-        ? await updateAction(action.id, settings)
+        ? await updateAction(action?.id ?? madeId!, settings)
         : await createAction({ workspaceId, workflowId, type, ...settings });
+      // What it made, so the next write is an update rather than a
+      // second definition with the same name.
+      if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the action.'));
@@ -1317,11 +1332,11 @@ export function ActionForm({
             <>
               <div className={styles.field}>
                 <p className={styles.paramHeading}>{t('Input Parameters')}</p>
-                <ParamList styles={styles} params={action.inputParams.map((param) => param.display)} />
+                <ParamList styles={styles} params={(action?.inputParams ?? []).map((param) => param.display)} />
               </div>
               <div className={styles.field}>
                 <p className={styles.paramHeading}>{t('Output Parameters')}</p>
-                <ParamList styles={styles} params={action.outputParams.map((param) => param.display)} />
+                <ParamList styles={styles} params={(action?.outputParams ?? []).map((param) => param.display)} />
               </div>
             </>
           )}

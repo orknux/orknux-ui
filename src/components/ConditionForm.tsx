@@ -254,7 +254,19 @@ export function ConditionForm({
    */
   const [makingMember, setMakingMember] = useState(false);
 
-  const editing = condition !== null;
+  /**
+   * The definition this form made a moment ago, where it made one.
+   *
+   * A form in a node's panel writes itself, so the second write must be an
+   * update - and "am I editing" was read off the prop the parent passes back,
+   * which arrives a render later. In that gap the form asked for a second
+   * definition with the same name, and the workspace refused it by name:
+   * *An action named "Format agent output" already exists*. So the form
+   * remembers what it made rather than waiting to be told.
+   */
+  const [madeId, setMadeId] = useState<string | null>(null);
+
+  const editing = condition !== null || madeId !== null;
   /*
    * The two ids the catalogues turn on, rather than the objects holding them.
    *
@@ -522,8 +534,11 @@ export function ConditionForm({
       const settings = settingsNow(chosen);
 
       const saved = editing
-        ? await updateCondition(condition.id, settings)
+        ? await updateCondition(condition?.id ?? madeId!, settings)
         : await createCondition({ workspaceId, workflowId, ...settings });
+      // What it made, so the next write is an update rather than a
+      // second definition with the same name.
+      if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the condition.'));
@@ -842,7 +857,7 @@ export function ConditionForm({
             the thing being edited rather than a note about a field - it belongs
             to no field, and there is no label for a (?) to stand beside.
           */}
-          {editing && <p className={styles.fieldHint}>{condition.description}</p>}
+          {condition !== null && <p className={styles.fieldHint}>{condition.description}</p>}
         </div>
 
         {error !== null && (

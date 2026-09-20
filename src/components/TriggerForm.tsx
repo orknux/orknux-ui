@@ -226,7 +226,19 @@ export function TriggerForm({
   const [makingCondition, setMakingCondition] = useState(false);
   const [makingObject, setMakingObject] = useState(false);
 
-  const editing = trigger !== null;
+  /**
+   * The definition this form made a moment ago, where it made one.
+   *
+   * A form in a node's panel writes itself, so the second write must be an
+   * update - and "am I editing" was read off the prop the parent passes back,
+   * which arrives a render later. In that gap the form asked for a second
+   * definition with the same name, and the workspace refused it by name:
+   * *An action named "Format agent output" already exists*. So the form
+   * remembers what it made rather than waiting to be told.
+   */
+  const [madeId, setMadeId] = useState<string | null>(null);
+
+  const editing = trigger !== null || madeId !== null;
 
   useEffect(() => {
     if (workspaceId === '') return;
@@ -493,7 +505,7 @@ export function TriggerForm({
 
       const settings = settingsNow(chosenFunction);
       const saved = editing
-        ? await updateTrigger(trigger.id, settings)
+        ? await updateTrigger(trigger?.id ?? madeId!, settings)
         : await createTrigger({ workspaceId, workflowId, type, ...settings });
       /*
        * Cleared on the way out, not only on the way to an error.
@@ -511,6 +523,9 @@ export function TriggerForm({
        * reason.
        */
       setSubmitting(false);
+      // What it made, so the next write is an update rather than a
+      // second definition with the same name.
+      if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the trigger.'));
