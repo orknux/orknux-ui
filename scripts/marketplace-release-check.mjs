@@ -47,9 +47,10 @@ const OFFERED = [
     rating: null,
     reviews: 0,
     published: '2026-03-01',
-    installed: false,
-    installedVersion: null,
-    updatable: false,
+    // Installed here, and behind: the one row on a catalog that is news.
+    installed: true,
+    installedVersion: '1.0.1',
+    updatable: true,
     tags: ['productivity', 'notes', 'files', 'search'],
     versions: [
       { version: '1.4.0', published: '2026-03-01', replaced: '2026-03-01', files: 2, available: true },
@@ -244,6 +245,42 @@ record(
 await page.getByRole('button', { name: 'Files', exact: true }).click();
 await page.waitForTimeout(250);
 record((await shelf()).join('|') === 'Notes|Charts', 'and pressing it again lets the rest back');
+
+/* ---------------------------------------------------------- what is news */
+
+/*
+ * The update mark, which is the thing people open this screen for.
+ *
+ * `installed` and `off` are states somebody already knows about - they put the
+ * plugin there, or switched it off. An update is the only thing a row says
+ * that they did not know, and drawn like its neighbours it read as another
+ * quiet grey word. So it names the version it would move to, and it is filled
+ * rather than tinted - held here against the mark beside it, because "more
+ * visible" is a comparison and not a colour.
+ */
+const update = page.locator('[class*="_updateMark_"]');
+// Uppercased by the stylesheet, so held against what it says rather than how
+// it is cased.
+record(
+  (await update.innerText()).trim().toLowerCase() === 'update to 1.4.0',
+  `the update says where it would go (${(await update.innerText()).trim()})`,
+);
+
+const seen = await page.evaluate(() => {
+  const mark = document.querySelector('[class*="_updateMark_"]');
+  const quiet = document.querySelector('[class*="_tagMark_"]');
+  const ink = (one) => getComputedStyle(one).backgroundColor;
+  const solid = (colour) => {
+    const [r, g, b, a] = (colour.match(/[\d.]+/g) ?? []).map(Number);
+    return { filled: (a ?? 1) >= 0.99 && !(r === 0 && g === 0 && b === 0 && (a ?? 1) === 0), colour };
+  };
+  return { mark: solid(ink(mark)), quiet: solid(ink(quiet)) };
+});
+record(seen.mark.filled, `the update mark is filled rather than tinted (${seen.mark.colour})`);
+record(
+  seen.mark.colour !== seen.quiet.colour,
+  `and does not wear the same ground as the quiet marks beside it (${seen.quiet.colour})`,
+);
 
 /* -------------------------------------------------------------- the history */
 

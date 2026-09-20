@@ -998,6 +998,7 @@
 .installedMark,
 .updateMark,
 .offMark {
+  flex: none;
   padding: 1px var(--space-6);
   border-radius: var(--radius-sm);
   font-size: var(--text-xs);
@@ -1011,9 +1012,20 @@
   color: var(--color-text-secondary);
 }
 
+/*
+ * The one mark that is news.
+ *
+ * `installed` and `off` are states somebody already knows about - they put the
+ * plugin there, or switched it off. An update is the only thing a catalog row
+ * tells you that you did not know, and drawn like its neighbours it read as
+ * another quiet grey word: the thing people open this screen for was the
+ * hardest thing on it to find. Filled rather than tinted, and it says what it
+ * would move to, because "update" invites the question and the version is
+ * already on the row beside it.
+ */
 .updateMark {
-  background: var(--color-accent-soft, var(--color-bg));
-  color: var(--color-accent);
+  background: var(--color-accent-brand);
+  color: var(--color-text-primary);
 }
 
 .offMark {
