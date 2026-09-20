@@ -687,18 +687,25 @@ function ParameterRow({ pluginId, parameter, variables, connections, busy, onSet
             }}
           />
           {/*
-            A workflow is saved as a whole and this is not: each answer is stored on
-            its own, the moment it is given. Choosing a variable stores itself, so
-            only the typed side needs somewhere to say "that one, then" - always
-            there rather than appearing on the first keystroke, so nothing arrives
-            under the cursor mid-sentence.
+            Save, which is what every other screen here calls it.
+
+            A workflow is saved as a whole and this is not: each answer is
+            stored on its own, the moment it is given. Choosing a variable
+            stores itself, so only the typed side needs a press - and it was
+            called "Set", which is accurate and is not the word anybody looks
+            for. Somebody typing a token and then hunting for a save button
+            found this and did not read it as one.
+
+            Always there rather than appearing on the first keystroke, so
+            nothing arrives under the cursor mid-sentence, and switched off
+            until there is something unsaved so it says which of those it is.
           */}
           <button
             type="button"
             className={styles.parameterAction}
             disabled={busy || !unsaved}
             onClick={() => onSet({ literal: typed.trim() })}
-          >{t('Set')}</button>
+          >{t('Save')}</button>
         </div>
       )}
 
