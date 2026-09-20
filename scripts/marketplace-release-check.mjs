@@ -259,11 +259,15 @@ record((await shelf()).join('|') === 'Notes|Charts', 'and pressing it again lets
  * visible" is a comparison and not a colour.
  */
 const update = page.locator('[class*="_updateMark_"]');
-// Uppercased by the stylesheet, so held against what it says rather than how
-// it is cased.
+/*
+ * One word. The version it would move to is on the row already, beside the
+ * name, and a mark repeating it reads as two numbers until somebody checks.
+ * Uppercased by the stylesheet, so held against what it says rather than how
+ * it is cased.
+ */
 record(
-  (await update.innerText()).trim().toLowerCase() === 'update to 1.4.0',
-  `the update says where it would go (${(await update.innerText()).trim()})`,
+  (await update.innerText()).trim().toLowerCase() === 'update',
+  `the update mark says it in a word (${(await update.innerText()).trim()})`,
 );
 
 const seen = await page.evaluate(() => {

@@ -1019,9 +1019,10 @@
  * plugin there, or switched it off. An update is the only thing a catalog row
  * tells you that you did not know, and drawn like its neighbours it read as
  * another quiet grey word: the thing people open this screen for was the
- * hardest thing on it to find. Filled rather than tinted, and it says what it
- * would move to, because "update" invites the question and the version is
- * already on the row beside it.
+ * hardest thing on it to find. Filled rather than tinted - and one word,
+ * because the version it would move to is already on the row two inches to
+ * the left, and a mark that repeats it reads as two different numbers until
+ * somebody checks.
  */
 .updateMark {
   background: var(--color-accent-brand);

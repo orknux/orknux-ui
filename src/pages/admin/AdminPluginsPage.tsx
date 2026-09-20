@@ -1296,7 +1296,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                             <span className={styles.installedMark}>{t('installed')}</span>
                           )}
                           {listing.updatable && (
-                            <span className={styles.updateMark}>{`update to ${listing.version}`}</span>
+                            <span className={styles.updateMark}>{t('update')}</span>
                           )}
                           {here?.enabled === false && <span className={styles.offMark}>{t('off')}</span>}
                         </span>
