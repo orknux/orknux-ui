@@ -647,13 +647,7 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                     </span>
                     {line.content !== null && (
                       <div className={styles.said}>
-                        {/*
-                          A picture this task drew, wherever the agent put it.
-                          What it writes is the store key - `![a tower]
-                          (picture.22)` - because a key is the only name it
-                          has for one; the address is this page's to know.
-                        */}
-                        <Markdown pictureKeys="/api/task-pictures">{line.content}</Markdown>
+                        <Markdown>{line.content}</Markdown>
                       </div>
                     )}
                   </>
@@ -677,7 +671,7 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                    * where what a model produced is a picture rather than an
                    * illustration of prose - in a card narrower than the picture.
                    */}
-                  <Markdown zoomImages pictureLinks pictureKeys="/api/task-pictures">{task.outcome}</Markdown>
+                  <Markdown zoomImages pictureLinks>{task.outcome}</Markdown>
                 </div>
               )}
             </section>

@@ -36,6 +36,13 @@ export interface Agent {
    * because that list is where somebody looks to see what an agent may do.
    */
   finishAccess: boolean;
+  /**
+   * Whether it may ask for an address for a picture it drew.
+   *
+   * On until somebody turns it off, and a flag for the same reason
+   * `finishAccess` is: what the grants list holds is what an agent was given.
+   */
+  pictureLinkAccess: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
   /** Which skill catalogs it may draw on. */
@@ -114,7 +121,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
@@ -248,6 +255,8 @@ export async function updateAgent(
     shellAccess?: boolean;
     /** Whether it may end its turn by saying so; left out, it is unchanged. */
     finishAccess?: boolean;
+    /** Whether it may ask for a picture's address; left out, it is unchanged. */
+    pictureLinkAccess?: boolean;
     memoryCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];

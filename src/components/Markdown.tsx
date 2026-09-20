@@ -69,23 +69,6 @@ export interface MarkdownProps {
    */
   zoomImages?: boolean;
   /**
-   * Where a picture named by its store key lives, for prose that names one.
-   *
-   * A tool that draws answers with a key - `picture.22` - because a key is the
-   * thing another tool can take to *deliver* the picture, and a link handed to
-   * a model is a link pasted into a chat that cannot resolve it. But a model
-   * asked to put pictures in the middle of what it writes has to name them
-   * somehow, and the key is the only name it has: what it writes is
-   * `![a tower](picture.22)`, which is an address pointing at nothing.
-   *
-   * So the key is resolved here, where the pictures of this run or this task
-   * are known to live: `"/api/task-pictures"` turns `picture.22` into
-   * `/api/task-pictures/22`. Left out, a key stays exactly the unresolvable
-   * thing it is, because a page that does not know which pictures these are
-   * cannot guess.
-   */
-  pictureKeys?: string;
-  /**
    * Whether links to pictures are also shown as pictures, under the prose.
    *
    * A model asked for images answers with links to them - it has no bytes to
@@ -192,7 +175,6 @@ export function Markdown({
   issuesIn,
   zoomImages = false,
   pictureLinks = false,
-  pictureKeys,
 }: MarkdownProps) {
   /** Which picture is open over the page, or null while none is. */
   const [zoomed, setZoomed] = useState<Picture | null>(null);
@@ -219,32 +201,10 @@ export function Markdown({
    */
   const [broken, setBroken] = useState<string[]>([]);
 
-  /**
-   * The prose, with any picture key in it turned into an address.
-   *
-   * One spelling: `![alt](picture.22)`, the markdown the drawing tool asks for.
-   * Whatever else a model improvises is its own invention and is left exactly
-   * as written - a second syntax here would be this application supporting one
-   * model's habit, and the next model has a different habit.
-   *
-   * Only where a base was given. Elsewhere this is the identity function and
-   * the document is the document.
-   */
-  const prose = useMemo(() => {
-    if (pictureKeys === undefined) return children;
-    const base = pictureKeys.replace(/\/$/, '');
-    return children
-      // Inside an image and nowhere else. A summary that mentions a key in a
-      // sentence - "the four images (picture.22, picture.23)" - is prose about
-      // the pictures, and rewriting that would put a path in somebody's
-      // reading.
-      .replace(/!\[([^\]]*)\]\(picture\.(\d+)\)/g, (_whole, alt, id) => `![${alt}](${base}/${id})`);
-  }, [children, pictureKeys]);
-
   /** Rebuilt only when the prose changes, not on every open picture. */
   const gallery = useMemo(
-    () => (pictureLinks ? pictureLinksIn(prose).filter((one) => !broken.includes(one.url)) : []),
-    [pictureLinks, prose, broken],
+    () => (pictureLinks ? pictureLinksIn(children).filter((one) => !broken.includes(one.url)) : []),
+    [pictureLinks, children, broken],
   );
 
   /*
@@ -343,7 +303,7 @@ export function Markdown({
           },
         }}
       >
-        {prose}
+        {children}
       </ReactMarkdown>
 
       {gallery.length > 0 && (

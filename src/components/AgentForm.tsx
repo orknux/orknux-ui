@@ -163,6 +163,16 @@ const BUILT_IN = 'Built in';
 const FINISH_ANSWER = 'finish_answer';
 
 /**
+ * The other row that is a flag rather than a grant.
+ *
+ * A drawing tool answers with a key, which is what a tool that uploads a file
+ * takes; this is the door for the other case - markdown for placing the
+ * picture inside what the agent writes. On until it is turned off, because an
+ * agent that can draw usually has somewhere to put what it drew.
+ */
+const PICTURE_LINK = 'picture_link';
+
+/**
  * The widest share the slider offers.
  *
  * The server's own ceiling, and it is the server that enforces it: a share past
@@ -644,6 +654,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * folded in and out of the granted names below.
    */
   const [finishAccess, setFinishAccess] = useState(agent.finishAccess !== false);
+  /** Ticked until somebody unticks it; see `PICTURE_LINK`. */
+  const [pictureLinkAccess, setPictureLinkAccess] = useState(agent.pictureLinkAccess !== false);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
@@ -761,6 +773,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
          * answer to work with.
          */
         { id: 'built-in:finish_answer', name: FINISH_ANSWER, plugin: BUILT_IN, off: false, link: null },
+        { id: 'built-in:picture_link', name: PICTURE_LINK, plugin: BUILT_IN, off: false, link: null },
       ];
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -926,6 +939,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         orknuxAccess,
         shellAccess,
         finishAccess,
+        pictureLinkAccess,
         memoryCatalogs,
         skillCatalogs,
         tools,
@@ -939,6 +953,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setOrknuxAccess(updated.orknuxAccess);
       setShellAccess(updated.shellAccess);
       setFinishAccess(updated.finishAccess !== false);
+      setPictureLinkAccess(updated.pictureLinkAccess !== false);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setTools(updated.tools);
@@ -1266,12 +1281,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
           linkOf={(tool) => tool.link}
           groupOf={(tool) => tool.plugin ?? null}
-          granted={finishAccess ? [...tools, FINISH_ANSWER] : tools}
+          granted={[
+            ...tools,
+            ...(finishAccess ? [FINISH_ANSWER] : []),
+            ...(pictureLinkAccess ? [PICTURE_LINK] : []),
+          ]}
           onChange={(names) => {
-            // One row of this list is a flag rather than a grant, so it is
+            // Two rows of this list are flags rather than grants, so they are
             // taken out of the names before the rest are stored.
             setFinishAccess(names.includes(FINISH_ANSWER));
-            setTools(names.filter((one) => one !== FINISH_ANSWER));
+            setPictureLinkAccess(names.includes(PICTURE_LINK));
+            setTools(names.filter((one) => one !== FINISH_ANSWER && one !== PICTURE_LINK));
           }}
         />
 

@@ -51,18 +51,18 @@ await page.waitForFunction(
 // list behind it is still settling is a click the next render undoes.
 await page.waitForTimeout(2000);
 
-/** The row, its tick, and what the list says it is. */
-const row = () =>
-  page.evaluate(() => {
+/** One row of the Tools list, its tick, and what the list says it is. */
+const row = (named = 'finish_answer') =>
+  page.evaluate((wanted) => {
     const labels = [...document.querySelectorAll('label')];
-    const found = labels.find((one) => one.textContent.includes('finish_answer'));
+    const found = labels.find((one) => one.textContent.includes(wanted));
     if (found === undefined) return null;
     const box = found.querySelector('input[type="checkbox"]');
     return {
       ticked: box?.checked === true,
       says: found.textContent.replace(/\s+/g, ' ').trim().slice(0, 80),
     };
-  });
+  }, named);
 
 const opened = await row();
 record(opened !== null, 'the row is in the Tools list, where the grants are');
@@ -110,5 +110,38 @@ const restored = (
   await graphql(`query ($id: ID!) { agent(id: $id) { finishAccess } }`, { id: agent.id })
 ).agent;
 record(restored.finishAccess === true, 'ticking it again turns it back on');
+
+/* ------------------------------------- the other row that is a flag, not a grant */
+
+/*
+ * `picture_link` is the same arrangement: on until it is unticked. The drawing
+ * tools answer with a key, and this is the door a model knocks on when it wants
+ * the picture inside what it writes - which is worth having, and worth being
+ * able to take away from an agent whose answers are read somewhere this
+ * installation is not.
+ */
+const linking = await row('picture_link');
+record(linking !== null, 'picture_link is in the same list');
+record(linking?.ticked === true, 'and it is ticked to begin with too');
+
+await page.locator('label', { hasText: 'picture_link' }).locator('input[type="checkbox"]').click();
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: 'Save' }).first().click();
+await page.waitForTimeout(1500);
+
+const linked = (
+  await graphql(`query ($id: ID!) { agent(id: $id) { pictureLinkAccess } }`, { id: agent.id })
+).agent;
+record(linked.pictureLinkAccess === false, `unticking it is stored (${linked.pictureLinkAccess})`);
+
+await page.locator('label', { hasText: 'picture_link' }).locator('input[type="checkbox"]').click();
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: 'Save' }).first().click();
+await page.waitForTimeout(1500);
+record(
+  (await graphql(`query ($id: ID!) { agent(id: $id) { pictureLinkAccess } }`, { id: agent.id }))
+    .agent.pictureLinkAccess === true,
+  'and it goes back on',
+);
 
 await finish(browser);
