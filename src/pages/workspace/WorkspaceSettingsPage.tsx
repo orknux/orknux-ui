@@ -1102,10 +1102,19 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       */}
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
-          <h2 className={styles.sectionHeading}>{t('Functions')}</h2>
-          <FieldHint label={t('Functions')}>
-            {t('A function’s own timeout, where it has one, is used instead of this.')}
-          </FieldHint>
+          {/*
+            Heading and hint on one line, and the rule under both - the way
+            every other card on this page is built. `sectionTitle` stacks what
+            it is given, so a hint handed to it straight sits on a line of its
+            own as a lone question mark under the word.
+          */}
+          <span className={styles.labelWithHint}>
+            <h2 className={styles.sectionHeading}>{t('Functions')}</h2>
+            <FieldHint label={t('Functions')}>
+              {t('A function’s own timeout, where it has one, is used instead of this.')}
+            </FieldHint>
+          </span>
+          <div className={styles.rule} />
         </div>
 
         <div className={styles.field}>
