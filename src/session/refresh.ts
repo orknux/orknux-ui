@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 const KEY = 'orknux.refreshSeconds';
 
 /** Off, and the intervals the control offers. */
-const ALLOWED = [0, 5, 15, 30, 60];
+const ALLOWED = [0, 1, 5, 15, 30, 60];
 
 /**
  * How often a screen that watches something reloads it, in seconds. Zero is off.

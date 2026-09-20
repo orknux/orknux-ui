@@ -14,6 +14,16 @@ export interface AutoRefreshProps {
 /** Off, and the intervals worth offering. Seconds. */
 const CHOICES: { value: number; label: string }[] = [
   { value: 0, label: t('Off') },
+  /*
+   * A second, for watching something happen rather than checking on it.
+   *
+   * The shortest interval used to be five, which is the right floor for a
+   * queue somebody is keeping an eye on and too slow for a run being followed
+   * line by line: a turn lands, and the page shows it a beat later. What makes
+   * it affordable is that a tick is skipped while the last one is still in
+   * flight, so a slow list asks once a second at most and never stacks.
+   */
+  { value: 1, label: '1s' },
   { value: 5, label: '5s' },
   { value: 15, label: '15s' },
   { value: 30, label: '30s' },
