@@ -9,6 +9,15 @@ import { t } from '../i18n';
 
 export interface CreateTriggerDialogProps {
   /**
+   * The workflow a new one belongs to, where it is that workflow's own.
+   *
+   * The workflow editor's "Custom" row sends this; null at every other door
+   * into this form. Ignored when editing - what a trigger belongs to is
+   * decided once, where it is made.
+   */
+  workflowId?: string | null;
+
+  /**
    * Whether this stands over the page or beside it.
    *
    * A modal is right when what somebody is doing has nothing to do with what
@@ -63,7 +72,15 @@ const FORM_STYLES: TriggerFormStyles = {
  * holds, which is what resets it: it reads its fields as it mounts, so the next
  * Create Trigger starts empty without anything having to empty it.
  */
-export function CreateTriggerDialog({ open, workspaceId, trigger = null, onClose, onCreated, placement = 'modal' }: CreateTriggerDialogProps) {
+export function CreateTriggerDialog({
+  open,
+  workspaceId,
+  workflowId = null,
+  trigger = null,
+  onClose,
+  onCreated,
+  placement = 'modal',
+}: CreateTriggerDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -93,6 +110,7 @@ export function CreateTriggerDialog({ open, workspaceId, trigger = null, onClose
           <TriggerForm
             key={trigger?.id ?? 'new'}
             workspaceId={workspaceId}
+            workflowId={workflowId}
             trigger={trigger}
             styles={FORM_STYLES}
             onSaved={onCreated}

@@ -103,6 +103,16 @@ export interface ActionFormStyles {
 
 export interface ActionFormProps {
   workspaceId: string;
+  /**
+   * The workflow a new one belongs to, where it is that workflow's own.
+   *
+   * The workflow editor's "Custom" row sends this: a definition made from a
+   * node, for that one node, rather than a name added to the workspace's
+   * shared library. Null everywhere else, which is every other door into this
+   * form. Ignored when editing - what a definition belongs to is decided once,
+   * where it is made.
+   */
+  workflowId?: string | null;
   /** Null creates one; an action edits it, with its type fixed. */
   action?: Action | null;
   styles: ActionFormStyles;
@@ -194,6 +204,7 @@ const NEW_CONDITION_ROW = { value: NEW_CONDITION, label: t('+ New condition') };
  */
 export function ActionForm({
   workspaceId,
+  workflowId = null,
   action = null,
   styles,
   onSaved,
@@ -496,7 +507,7 @@ export function ActionForm({
 
       const saved = editing
         ? await updateAction(action.id, settings)
-        : await createAction({ workspaceId, type, ...settings });
+        : await createAction({ workspaceId, workflowId, type, ...settings });
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the action.'));

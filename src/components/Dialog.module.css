@@ -778,7 +778,27 @@ select.input {
    */
   top: 104px;
   bottom: 0;
-  left: 0;
+  /*
+   * The right-hand edge, where the node's own panel is.
+   *
+   * A panel-placed dialog is only ever the editor for the thing the selected
+   * node points at - its action, its condition, its trigger - so it belongs on
+   * the side of the screen somebody is already looking at for that node. On
+   * the left it opened across the canvas, the properties it was editing were
+   * on the far side of the graph from it, and the parameters somebody had come
+   * to fill in were as far from the node as the window allows.
+   */
+  right: 0;
+  /*
+   * Explicitly, because the browser's own `left: 0` is still on it.
+   *
+   * A `<dialog>` is given `inset-inline: 0; margin: auto` by the UA
+   * stylesheet, and a box with a left, a right and a definite width is
+   * over-constrained - so `right` is the one dropped and the panel stayed
+   * against the left edge, which is exactly what `right: 0` looked like it
+   * had fixed and had not.
+   */
+  left: auto;
   width: min(34vw, 520px);
   max-width: none;
   max-height: none;
@@ -797,7 +817,7 @@ select.input {
   overflow-y: auto;
   border-top: 0;
   border-bottom: 0;
-  border-left: 0;
+  border-right: 0;
   border-radius: 0;
 }
 

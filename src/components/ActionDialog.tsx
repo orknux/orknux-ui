@@ -18,6 +18,16 @@ export interface ActionDialogProps {
   placement?: 'modal' | 'panel';
   open: boolean;
   workspaceId: string;
+  /**
+   * The workflow a new one belongs to, where it is that workflow's own.
+   *
+   * The workflow editor's "Custom" row sends this: a definition made from a
+   * node, for that one node, rather than a name added to the workspace's
+   * shared library. Null everywhere else, which is every other door into this
+   * form. Ignored when editing - what a definition belongs to is decided once,
+   * where it is made.
+   */
+  workflowId?: string | null;
   /** Null creates one; an action edits it, with its type fixed. */
   action: Action | null;
   onClose: () => void;
@@ -84,6 +94,7 @@ const FORM_STYLES: ActionFormStyles = {
 export function ActionDialog({
   open,
   workspaceId,
+  workflowId = null,
   action,
   onClose,
   onSaved,
@@ -124,6 +135,7 @@ export function ActionDialog({
           <ActionForm
             key={action?.id ?? 'new'}
             workspaceId={workspaceId}
+            workflowId={workflowId}
             action={action}
             styles={FORM_STYLES}
             onSaved={onSaved}

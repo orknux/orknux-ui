@@ -50,11 +50,11 @@ import type {
   WorkflowStatus,
 } from '../../api/graph';
 import type { SessionUser } from '../../api/session';
-import { fetchWorkspaceActions } from '../../api/actions';
+import { fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/actions';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Action } from '../../api/actions';
 import type { Agent } from '../../api/agents';
-import { fetchWorkspaceConditions } from '../../api/conditions';
+import { fetchWorkflowOwnedConditions, fetchWorkspaceConditions } from '../../api/conditions';
 import type { Condition } from '../../api/conditions';
 import { startExecution } from '../../api/executions';
 import { fetchWorkspaceFunctions } from '../../api/functions';
@@ -65,7 +65,7 @@ import { createObject, fetchWorkspaceObjects } from '../../api/objects';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { WorkflowObject } from '../../api/objects';
-import { fetchWorkspaceTriggers } from '../../api/triggers';
+import { fetchWorkflowOwnedTriggers, fetchWorkspaceTriggers } from '../../api/triggers';
 import type { Trigger } from '../../api/triggers';
 import { removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
 import activityIcon from '../../assets/activity.svg';
@@ -87,9 +87,11 @@ import rotateIcon from '../../assets/rotate-cw.svg';
 import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
 import { ActionDialog } from '../../components/ActionDialog';
+import { ActionForm } from '../../components/ActionForm';
 import { AppShell } from '../../components/AppShell';
 import { ExportComponentDialog } from '../../components/ComponentTransfer';
 import { ConditionDialog } from '../../components/ConditionDialog';
+import { ConditionForm } from '../../components/ConditionForm';
 import { DefinitionPicker } from '../../components/DefinitionPicker';
 import { FieldHint } from '../../components/FieldHint';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
@@ -97,6 +99,7 @@ import { RetryPolicyFields } from './RetryPolicyFields';
 import { CreateAgentDialog } from '../../components/CreateAgentDialog';
 import { NameDialog } from '../../components/NameDialog';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
+import { TriggerForm } from '../../components/TriggerForm';
 import { FieldPicker } from '../../components/FieldPicker';
 import type { FieldOption } from '../../components/FieldPicker';
 import { Icon, IconPickerDialog } from '../../components/IconPicker';
@@ -288,6 +291,72 @@ const SESSION_PARAMETERS = ['sessionKeyPrefix', 'sessionKey'];
  * runner cannot disagree about it.
  */
 const IMAGE_PARAMETERS = ['prompt'];
+
+/**
+ * The picker row that makes a definition this workflow owns.
+ *
+ * Not an id, and it cannot collide with one: an id is a number as a string, so
+ * nothing the server ever sends is this. Choosing it opens the editor for a new
+ * definition rather than storing anything, the way the New button beside the
+ * field does - the difference is only what the thing made belongs to.
+ */
+const CUSTOM = 'custom:new';
+
+/**
+ * The panel's own names for what a definition's form needs.
+ *
+ * A Custom action, condition or trigger is edited here rather than in a dialog:
+ * it belongs to this node, nothing else can point at it, and sending somebody
+ * to a separate window to fill it in was a window that existed only to be
+ * closed again. The same shape the Object node's Custom already had - the
+ * properties appear under the picker - now that the other three can have it.
+ *
+ * The forms draw themselves from a map like this one; `ActionDialog` has its
+ * own built out of Dialog.module.css. Mapped to what the panel already has
+ * wherever there is something to map to, so a Custom action looks like the
+ * fields above it rather than like a dialog pasted into a column.
+ */
+const PANEL_FORM_STYLES = {
+  body: styles.fields,
+  fields: styles.fields,
+  field: styles.field,
+  labelRow: styles.labelRow,
+  labelWithHint: styles.labelWithHint,
+  label: styles.label,
+  jump: styles.definitionJump,
+  input: styles.input,
+  select: styles.select,
+  inputWrapper: styles.inputWrapper,
+  inputWrapperTall: styles.inputWrapperTall,
+  textarea: styles.textarea,
+  inputMono: `${styles.input} ${styles.inputMono}`,
+  fieldHint: styles.fieldNote,
+  paramHeading: styles.label,
+  mappingList: styles.parameterList,
+  mappingRow: styles.parameter,
+  mappingArgument: styles.parameterName,
+  mappingPicker: styles.parameterValue,
+  paramList: styles.parameterList,
+  paramRow: styles.parameter,
+  error: styles.error,
+  actions: styles.formActions,
+  danger: styles.formDanger,
+  ghost: styles.ghostButton,
+  filled: styles.publishButton,
+  // A condition's switch and its list of values.
+  toggleRow: styles.formToggleRow,
+  toggleLabel: styles.formToggleLabel,
+  toggle: styles.formToggle,
+  toggleOn: styles.formToggleOn,
+  knob: styles.formKnob,
+  tags: styles.formTags,
+  tag: styles.formTag,
+  tagRemove: styles.formTagRemove,
+  addValue: styles.formAddValue,
+  // A trigger's cron box, and the fixed text in front of a webhook's path.
+  inputCron: `${styles.input} ${styles.inputMono}`,
+  prefix: styles.formPrefix,
+};
 
 /**
  * Where a send goes, which is the one parameter a Slack connection can be asked
@@ -1872,7 +1941,32 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * which one of that kind - null for one being made, so New and Open
    * definition are the same panel asked for two different things.
    */
-  const [building, setBuilding] = useState<{ kind: NodeKind; id: string | null } | null>(null);
+  /**
+   * What is being made or edited beside the graph, and whether it is this
+   * workflow's own.
+   *
+   * `owned` is the "Custom" row: the definition is made for this one node
+   * rather than added to the workspace's shared library, so it is left out of
+   * the workspace's list and of every other workflow's picker. Only meaningful
+   * while making one - what an existing definition belongs to was decided
+   * where it was made.
+   */
+  const [building, setBuilding] = useState<
+    { kind: NodeKind; id: string | null; owned?: boolean } | null
+  >(null);
+
+  /**
+   * Which kind of definition is being written inline, under its picker.
+   *
+   * Null is the ordinary case: the node points at something from the
+   * workspace's list, or at nothing yet. Set means "Custom" was chosen and the
+   * form for a definition this workflow will own is open below the picker -
+   * not saved yet, because a definition saved on being chosen would leave an
+   * empty row behind every time somebody changed their mind.
+   */
+  const [custom, setCustom] = useState<NodeKind | null>(null);
+
+
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [problems, setProblems] = useState<GraphProblem[]>([]);
   /** What the server said each node needs and gives, from the last save or load. */
@@ -2193,6 +2287,29 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    */
   const [connections, setConnections] = useState<WorkspaceConnection[]>([]);
   const [conditions, setConditions] = useState<Condition[]>([]);
+
+  /**
+   * What this node points at, where this workflow owns it.
+   *
+   * Null when the node points at one of the workspace's shared definitions, or
+   * at nothing - in either case there is no inline form, because editing a
+   * shared definition from inside one node is editing it for every node that
+   * uses it. Only a workflow's own is safe to edit in place, which is the
+   * whole reason Custom exists.
+   */
+  const ownedAction = useMemo(
+    () => actions.find((held) => held.id === draft?.actionId && held.workflowId !== null) ?? null,
+    [actions, draft?.actionId],
+  );
+  const ownedCondition = useMemo(
+    () => conditions.find((held) => held.id === draft?.conditionId && held.workflowId !== null) ?? null,
+    [conditions, draft?.conditionId],
+  );
+  const ownedTrigger = useMemo(
+    () => triggers.find((held) => held.id === draft?.triggerId && held.workflowId !== null) ?? null,
+    [triggers, draft?.triggerId],
+  );
+
   /*
    * Only for their signatures. A condition node fills in the parameters of the
    * function its condition asks, and the list of those is the function's - kept
@@ -2445,11 +2562,25 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   // The catalogues a trigger node and an action node pick from.
   useEffect(() => {
     if (workspaceId === '') return;
-    fetchWorkspaceTriggers(workspaceId, 0, TRIGGER_PAGE_SIZE)
-      .then((page) => setTriggers(page.content))
+    Promise.all([
+      fetchWorkspaceTriggers(workspaceId, 0, TRIGGER_PAGE_SIZE).then((page) => page.content),
+      workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedTriggers(workspaceId, workflowId),
+    ])
+      .then(([shared, own]) => setTriggers([...shared, ...own]))
       .catch(() => setTriggers([]));
-    fetchWorkspaceActions(workspaceId, 0, ACTION_PAGE_SIZE)
-      .then((page) => setActions(page.content))
+    /*
+     * The workspace's list and this workflow's own, together.
+     *
+     * The workspace list is the shared ones only, so a node pointing at a
+     * Custom action would open a picker its action had been filtered out of.
+     * Asked for separately rather than by loosening that list, which every
+     * other page in the product reads and none of them wants these rows.
+     */
+    Promise.all([
+      fetchWorkspaceActions(workspaceId, 0, ACTION_PAGE_SIZE).then((page) => page.content),
+      workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedActions(workspaceId, workflowId),
+    ])
+      .then(([shared, own]) => setActions([...shared, ...own]))
       .catch(() => setActions([]));
     // Not a catalogue anything is picked from here: see `slackSend` below.
     fetchWorkspaceConnections(workspaceId)
@@ -2459,8 +2590,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     fetchWorkspaceAgents(workspaceId, 0, AGENT_PAGE_SIZE)
       .then((page) => setAgents(page.content))
       .catch(() => setAgents([]));
-    fetchWorkspaceConditions(workspaceId, 0, CONDITION_PAGE_SIZE)
-      .then((page) => setConditions(page.content))
+    Promise.all([
+      fetchWorkspaceConditions(workspaceId, 0, CONDITION_PAGE_SIZE).then((page) => page.content),
+      workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedConditions(workspaceId, workflowId),
+    ])
+      .then(([shared, own]) => setConditions([...shared, ...own]))
       .catch(() => setConditions([]));
     fetchWorkspaceFunctions(workspaceId, 0, FUNCTION_PAGE_SIZE)
       .then((page) => setFunctions(page.content))
@@ -2939,6 +3073,10 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * the list, so what the panel shows and what the runner looks for cannot
    * come apart.
    */
+  // The form belongs to the node that opened it, so moving to another node
+  // puts it away rather than carrying it across.
+  useEffect(() => setCustom(null), [selectedKey]);
+
   useEffect(() => {
     if (draft === null || draft.kind !== 'IMAGE') return;
 
@@ -4423,14 +4561,77 @@ Change the keystroke in Preferences.`}
                         )}
                       </span>
                     </span>
+                    {/* Custom, as the action and condition pickers offer it. */}
                     <DefinitionPicker
                       id="node-trigger"
                       value={draft.triggerId ?? ''}
-                      options={triggers.map((trigger) => ({ value: trigger.id, label: trigger.name }))}
-                      onChoose={(chosen) => setDraft({ ...draft, triggerId: chosen || null })}
+                      options={triggers
+                        .filter((trigger) => trigger.workflowId === null || trigger.id === draft.triggerId)
+                        .map((trigger) => ({
+                          value: trigger.id,
+                          label: trigger.name,
+                          hint: trigger.workflowId === null ? undefined : t("This workflow's own"),
+                        }))}
+                      create={{
+                        value: CUSTOM,
+                        label: t('Custom…'),
+                        hint: t('A trigger for this node alone, made here'),
+                      }}
+                      onChoose={(chosen) => {
+                        if (chosen === CUSTOM) {
+                          /*
+                           * Under the picker, not in a dialog. What a Custom
+                           * definition is for is this one node, so its fields
+                           * belong beside the node's own - which is where the
+                           * Object node has always put them.
+                           */
+                          setCustom('TRIGGER');
+                          setDraft({ ...draft, triggerId: null });
+                          return;
+                        }
+                        setDraft({ ...draft, triggerId: chosen || null });
+                      }}
                       placeholder={t('Choose a trigger…')}
                       searchPlaceholder={t("Search triggers…")}
                     />
+
+                    {/*
+                      The Custom definition's own fields, under the picker.
+
+                      Drawn here rather than in a dialog because this is what
+                      Custom means: a a trigger for this one node, which nothing
+                      else can point at and which goes when the workflow does.
+                      A dialog for it was a window that existed only to be
+                      closed again, and it put the fields somebody came to fill
+                      in on the far side of the screen from the node.
+
+                      Open either because Custom was just chosen - nothing
+                      saved yet - or because the node already points at one
+                      this workflow owns, which is the same form with
+                      something in it.
+                    */}
+                    {(custom === 'TRIGGER' || ownedTrigger !== null) && (
+                      <>
+                        <p className={styles.customNote}>
+                          {t("This trigger belongs to this workflow. It is not in the workspace's list.")}
+                        </p>
+                        <TriggerForm
+                          key={ownedTrigger?.id ?? 'new-custom-trigger'}
+                          workspaceId={workspaceId}
+                          workflowId={workflowId}
+                          trigger={ownedTrigger}
+                          styles={PANEL_FORM_STYLES}
+                          onSaved={(trigger) => {
+                            setTriggers((all) => withDefinition(all, trigger));
+                            setDraft((current) =>
+                              current === null ? current : { ...current, triggerId: trigger.id },
+                            );
+                            setCustom(null);
+                          }}
+                          onCancel={() => setCustom(null)}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -4465,14 +4666,100 @@ Change the keystroke in Preferences.`}
                         )}
                       </span>
                     </span>
+                    {/*
+                      Custom is a row in the list, the way the Object node's is.
+
+                      An action made from it belongs to this workflow: it is not
+                      in the workspace's list, no other workflow can point at
+                      it, and it goes when this one does. That is what somebody
+                      means by wanting this one node to do a thing rather than
+                      to add a name to a library everything else can see - and
+                      it is a row rather than a second button because a mode
+                      reachable only by knowing about it is a mode that looks
+                      like a control nobody filled in. Issue #309 again.
+
+                      The list leaves out what other workflows own, and marks
+                      the one this node points at, so a name made here cannot be
+                      confused with one the workspace shares.
+                    */}
                     <DefinitionPicker
                       id="node-action"
                       value={draft.actionId ?? ''}
-                      options={actions.map((action) => ({ value: action.id, label: action.name }))}
-                      onChoose={(chosen) => setDraft({ ...draft, actionId: chosen || null })}
+                      options={actions
+                        .filter((action) => action.workflowId === null || action.id === draft.actionId)
+                        .map((action) => ({
+                          value: action.id,
+                          label: action.name,
+                          hint: action.workflowId === null ? undefined : t("This workflow's own"),
+                        }))}
+                      create={{
+                        value: CUSTOM,
+                        label: t('Custom…'),
+                        hint: t("An action for this node alone, made here"),
+                      }}
+                      onChoose={(chosen) => {
+                        if (chosen === CUSTOM) {
+                          /*
+                           * Under the picker, not in a dialog. What a Custom
+                           * definition is for is this one node, so its fields
+                           * belong beside the node's own - which is where the
+                           * Object node has always put them.
+                           */
+                          setCustom('ACTION');
+                          setDraft({ ...draft, actionId: null });
+                          return;
+                        }
+                        setDraft({ ...draft, actionId: chosen || null });
+                      }}
                       placeholder={t('Choose an action…')}
                       searchPlaceholder={t("Search actions…")}
                     />
+
+                    {/*
+                      The Custom definition's own fields, under the picker.
+
+                      Drawn here rather than in a dialog because this is what
+                      Custom means: a an action for this one node, which nothing
+                      else can point at and which goes when the workflow does.
+                      A dialog for it was a window that existed only to be
+                      closed again, and it put the fields somebody came to fill
+                      in on the far side of the screen from the node.
+
+                      Open either because Custom was just chosen - nothing
+                      saved yet - or because the node already points at one
+                      this workflow owns, which is the same form with
+                      something in it.
+                    */}
+                    {(custom === 'ACTION' || ownedAction !== null) && (
+                      <>
+                        <p className={styles.customNote}>
+                          {t("This action belongs to this workflow. It is not in the workspace's list.")}
+                        </p>
+                        <ActionForm
+                          key={ownedAction?.id ?? 'new-custom-action'}
+                          workspaceId={workspaceId}
+                          workflowId={workflowId}
+                          action={ownedAction}
+                          styles={PANEL_FORM_STYLES}
+                          onSaved={(action) => {
+                            setActions((all) => withDefinition(all, action));
+                            setDraft((current) =>
+                              current === null ? current : { ...current, actionId: action.id },
+                            );
+                            setCustom(null);
+                          }}
+                          onDeleted={() => {
+                            const gone = ownedAction?.id ?? null;
+                            setActions((all) => all.filter((held) => held.id !== gone));
+                            setDraft((current) =>
+                              current === null ? current : { ...current, actionId: null },
+                            );
+                            setCustom(null);
+                          }}
+                          onCancel={() => setCustom(null)}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -4604,11 +4891,73 @@ Change the keystroke in Preferences.`}
                     <DefinitionPicker
                       id="node-condition"
                       value={draft.conditionId ?? ''}
-                      options={conditions.map((condition) => ({ value: condition.id, label: condition.name }))}
-                      onChoose={(chosen) => setDraft({ ...draft, conditionId: chosen || null })}
+                      options={conditions
+                        .filter((held) => held.workflowId === null || held.id === draft.conditionId)
+                        .map((held) => ({
+                          value: held.id,
+                          label: held.name,
+                          hint: held.workflowId === null ? undefined : t("This workflow's own"),
+                        }))}
+                      create={{
+                        value: CUSTOM,
+                        label: t('Custom…'),
+                        hint: t('A condition for this node alone, made here'),
+                      }}
+                      onChoose={(chosen) => {
+                        if (chosen === CUSTOM) {
+                          /*
+                           * Under the picker, not in a dialog. What a Custom
+                           * definition is for is this one node, so its fields
+                           * belong beside the node's own - which is where the
+                           * Object node has always put them.
+                           */
+                          setCustom('CONDITION');
+                          setDraft({ ...draft, conditionId: null });
+                          return;
+                        }
+                        setDraft({ ...draft, conditionId: chosen || null });
+                      }}
                       placeholder={t('Choose a condition…')}
                       searchPlaceholder={t("Search conditions…")}
                     />
+
+                    {/*
+                      The Custom definition's own fields, under the picker.
+
+                      Drawn here rather than in a dialog because this is what
+                      Custom means: a a condition for this one node, which nothing
+                      else can point at and which goes when the workflow does.
+                      A dialog for it was a window that existed only to be
+                      closed again, and it put the fields somebody came to fill
+                      in on the far side of the screen from the node.
+
+                      Open either because Custom was just chosen - nothing
+                      saved yet - or because the node already points at one
+                      this workflow owns, which is the same form with
+                      something in it.
+                    */}
+                    {(custom === 'CONDITION' || ownedCondition !== null) && (
+                      <>
+                        <p className={styles.customNote}>
+                          {t("This condition belongs to this workflow. It is not in the workspace's list.")}
+                        </p>
+                        <ConditionForm
+                          key={ownedCondition?.id ?? 'new-custom-condition'}
+                          workspaceId={workspaceId}
+                          workflowId={workflowId}
+                          condition={ownedCondition}
+                          styles={PANEL_FORM_STYLES}
+                          onSaved={(condition) => {
+                            setConditions((all) => withDefinition(all, condition));
+                            setDraft((current) =>
+                              current === null ? current : { ...current, conditionId: condition.id },
+                            );
+                            setCustom(null);
+                          }}
+                          onCancel={() => setCustom(null)}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -5117,7 +5466,21 @@ Change the keystroke in Preferences.`}
                   </div>
                 </div>
 
-                {(draft.kind === 'AGENT' || draft.kind === 'ACTION' || draft.kind === 'OBJECT') && (
+                {/*
+                  An image node is named here too, and was not.
+
+                  It has an output name - the validator reads one, the runner
+                  files the picture under it, and the canvas draws it on the
+                  node - but the panel offered no way to set it. So every image
+                  node answered with `image`, and a graph wanting two of them
+                  could not be saved at all: the save refuses two nodes
+                  producing the same name, correctly, and there was nothing
+                  anybody could do about it from here.
+                */}
+                {(draft.kind === 'AGENT' ||
+                  draft.kind === 'ACTION' ||
+                  draft.kind === 'OBJECT' ||
+                  draft.kind === 'IMAGE') && (
                   <div className={styles.field}>
                     <span className={styles.labelWithHint}>
                       <label className={styles.label} htmlFor="node-output-name">
@@ -5358,6 +5721,7 @@ Change the keystroke in Preferences.`}
         placement="panel"
         open={building?.kind === 'TRIGGER'}
         workspaceId={workspaceId}
+        workflowId={building?.owned === true ? workflowId : null}
         trigger={beingBuilt('TRIGGER', triggers)}
         onClose={() => setBuilding(null)}
         onCreated={(trigger) => {
@@ -5371,6 +5735,7 @@ Change the keystroke in Preferences.`}
         placement="panel"
         open={building?.kind === 'ACTION'}
         workspaceId={workspaceId}
+        workflowId={building?.owned === true ? workflowId : null}
         action={beingBuilt('ACTION', actions)}
         onClose={() => setBuilding(null)}
         onSaved={(action) => {
@@ -5398,6 +5763,7 @@ Change the keystroke in Preferences.`}
         placement="panel"
         open={building?.kind === 'CONDITION'}
         workspaceId={workspaceId}
+        workflowId={building?.owned === true ? workflowId : null}
         condition={beingBuilt('CONDITION', conditions)}
         onClose={() => setBuilding(null)}
         onSaved={(condition) => {

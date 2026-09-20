@@ -18,6 +18,16 @@ export interface ConditionDialogProps {
   placement?: 'modal' | 'panel';
   open: boolean;
   workspaceId: string;
+  /**
+   * The workflow a new one belongs to, where it is that workflow's own.
+   *
+   * The workflow editor's "Custom" row sends this: a definition made from a
+   * node, for that one node, rather than a name added to the workspace's
+   * shared library. Null everywhere else, which is every other door into this
+   * form. Ignored when editing - what a definition belongs to is decided once,
+   * where it is made.
+   */
+  workflowId?: string | null;
   /** Null creates one; a condition edits it. */
   condition: Condition | null;
   /**
@@ -80,6 +90,7 @@ const FORM_STYLES: ConditionFormStyles = {
 export function ConditionDialog({
   open,
   workspaceId,
+  workflowId = null,
   condition,
   preset = null,
   onClose,
@@ -123,6 +134,7 @@ export function ConditionDialog({
           <ConditionForm
             key={condition?.id ?? 'new'}
             workspaceId={workspaceId}
+            workflowId={workflowId}
             condition={condition}
             preset={preset}
             styles={FORM_STYLES}

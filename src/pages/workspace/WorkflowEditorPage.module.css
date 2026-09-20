@@ -1417,3 +1417,145 @@ select.input {
   font-size: var(--text-sm);
   line-height: 1.5;
 }
+
+/*
+ * The bits a definition's form needs that the panel had no class for.
+ *
+ * A Custom action, condition or trigger is edited here rather than in a dialog
+ * - it belongs to this node and nothing else can point at it, so sending
+ * somebody to a separate window to fill it in was a window that existed only
+ * to be closed again. ActionForm and its two siblings draw themselves from a
+ * style map; these are the entries the panel could not already supply.
+ */
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.formDanger {
+  margin-right: auto;
+  padding: var(--space-6) var(--space-10);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-xs);
+  color: var(--color-danger, #dc2626);
+  cursor: pointer;
+}
+
+.formDanger:hover {
+  border-color: var(--color-danger, #dc2626);
+}
+
+.inputMono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/* What a custom definition is, said once above its form. */
+.customNote {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/*
+ * The rest of what a definition's form asks for: a condition's switch and its
+ * list of values, and a trigger's cron box and prefix.
+ *
+ * Drawn plainly, because the panel is a column of fields and these are more
+ * fields in it - the toggle is the one that earns a shape of its own, being
+ * the control the rest of the product uses for the same question.
+ */
+.formToggleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.formToggleLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.formToggle {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.formToggleOn {
+  background: var(--color-accent-brand);
+  border-color: var(--color-accent-brand);
+}
+
+.formKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--color-text-primary);
+  border-radius: 50%;
+  transition: transform 120ms ease;
+}
+
+.formToggleOn .formKnob {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+.formTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.formTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2, 2px) var(--space-8);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+}
+
+.formTagRemove {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: var(--text-sm);
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.formTagRemove:hover {
+  color: var(--color-danger, #dc2626);
+}
+
+.formAddValue {
+  padding: var(--space-4) var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.formPrefix {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

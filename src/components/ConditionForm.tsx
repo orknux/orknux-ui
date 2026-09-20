@@ -104,6 +104,16 @@ export interface ConditionFormStyles {
 
 export interface ConditionFormProps {
   workspaceId: string;
+  /**
+   * The workflow a new one belongs to, where it is that workflow's own.
+   *
+   * The workflow editor's "Custom" row sends this: a definition made from a
+   * node, for that one node, rather than a name added to the workspace's
+   * shared library. Null everywhere else, which is every other door into this
+   * form. Ignored when editing - what a definition belongs to is decided once,
+   * where it is made.
+   */
+  workflowId?: string | null;
   /** Null creates one; a condition edits it. */
   condition?: Condition | null;
   /**
@@ -158,6 +168,7 @@ const NEW_CONDITION_ROW = { value: NEW_CONDITION, label: t('+ New condition') };
  */
 export function ConditionForm({
   workspaceId,
+  workflowId = null,
   condition = null,
   preset = null,
   styles,
@@ -446,7 +457,7 @@ export function ConditionForm({
 
       const saved = editing
         ? await updateCondition(condition.id, settings)
-        : await createCondition({ workspaceId, ...settings });
+        : await createCondition({ workspaceId, workflowId, ...settings });
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the condition.'));

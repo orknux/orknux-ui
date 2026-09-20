@@ -82,6 +82,14 @@ export interface TriggerFormStyles {
 
 export interface TriggerFormProps {
   workspaceId: string;
+  /**
+   * The workflow a new one belongs to, where it is that workflow's own.
+   *
+   * The workflow editor's "Custom" row sends this; null at every other door
+   * into this form. Ignored when editing - what a trigger belongs to is
+   * decided once, where it is made.
+   */
+  workflowId?: string | null;
   /** Null creates one; a trigger edits it, with its type fixed. */
   trigger?: Trigger | null;
   styles: TriggerFormStyles;
@@ -125,7 +133,14 @@ const ANY_EVENT_ROW = { value: '', label: t('Fire on everything') };
  * by which trigger is being edited. An effect that put the fields back would be a
  * second answer to the same question, and the two would eventually disagree.
  */
-export function TriggerForm({ workspaceId, trigger = null, styles, onSaved, onCancel }: TriggerFormProps) {
+export function TriggerForm({
+  workspaceId,
+  workflowId = null,
+  trigger = null,
+  styles,
+  onSaved,
+  onCancel,
+}: TriggerFormProps) {
   const [name, setName] = useState(trigger?.name ?? '');
   const [type, setType] = useState<TriggerType>(trigger?.type ?? 'INCOMING_CONNECTION');
   const [connectionId, setConnectionId] = useState(trigger?.connectionId ?? '');
@@ -413,7 +428,7 @@ export function TriggerForm({ workspaceId, trigger = null, styles, onSaved, onCa
       };
       const saved = editing
         ? await updateTrigger(trigger.id, settings)
-        : await createTrigger({ workspaceId, type, ...settings });
+        : await createTrigger({ workspaceId, workflowId, type, ...settings });
       /*
        * Cleared on the way out, not only on the way to an error.
        *
