@@ -1070,7 +1070,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               {t('Tool Timeout')}
             </label>
             <FieldHint label={t('Tool Timeout')}>
-              {t('Seconds a tool an agent called may run; empty uses the installation’s bound.')}
+              {t('Seconds a tool an agent called may run, unless it sets its own; empty uses the installation’s bound.')}
             </FieldHint>
           </span>
 
@@ -1103,17 +1103,12 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
           {/*
-            Heading and hint on one line, and the rule under both - the way
-            every other card on this page is built. `sectionTitle` stacks what
-            it is given, so a hint handed to it straight sits on a line of its
-            own as a lone question mark under the word.
+            No hint on the heading. The card holds one field and that field has
+            its own, so a second one here said the same thing twice - and what
+            it actually said, that a function's own timeout wins, is a fact
+            about the box rather than about the card it sits on.
           */}
-          <span className={styles.labelWithHint}>
-            <h2 className={styles.sectionHeading}>{t('Functions')}</h2>
-            <FieldHint label={t('Functions')}>
-              {t('A function’s own timeout, where it has one, is used instead of this.')}
-            </FieldHint>
-          </span>
+          <h2 className={styles.sectionHeading}>{t('Functions')}</h2>
           <div className={styles.rule} />
         </div>
 
@@ -1123,7 +1118,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               {t('Function Timeout')}
             </label>
             <FieldHint label={t('Function Timeout')}>
-              {t('Seconds a workflow step, condition or webhook function may run; empty uses the installation’s bound.')}
+              {t('Seconds a workflow step, condition or webhook function may run, unless it sets its own; empty uses the installation’s bound.')}
             </FieldHint>
           </span>
 
