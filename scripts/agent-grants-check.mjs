@@ -593,7 +593,6 @@ record((await page.locator('.react-flow__node').count()) > 0, 'the panel opened 
 await measure(panel, 'editor panel');
 await page.screenshot({ path: shot('agent-grants-panel.png') });
 
-await sweep();
 /*
  * A search that leaves granted rows standing says so in words.
  *
@@ -619,5 +618,16 @@ record(
 );
 record(/0 matching/.test(held.said), `and the search itself is honest about finding nothing ("${held.said}")`);
 await hunt.fill('');
+
+/*
+ * Swept last, and that is load-bearing.
+ *
+ * It used to run before this section, which needs the list to be long enough
+ * to draw a search box - and taking the scratch rows away first leaves a
+ * workspace whose own tools are fewer than the eight a search appears at. It
+ * passed here, where there are enough real ones, and waited thirty seconds for
+ * an input on a runner whose fixture is smaller.
+ */
+await sweep();
 
 await finish(browser);
