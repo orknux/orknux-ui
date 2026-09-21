@@ -156,8 +156,31 @@ record(
 
 // An editor, not a reading of one: saving stores the definition and puts the
 // panel away, leaving the editor where it was.
-await page.locator('dialog[open] button[type="submit"]').first().click();
-await page.waitForTimeout(1500);
+/*
+ * Scrolled to first, because the panel is taller than it was.
+ *
+ * The form grew - a tools list with the rows this application brings itself in
+ * it, among other things - so Save is below the fold of a dialog that scrolls,
+ * and a click that waits for it to be visible waits for ever.
+ */
+const submit = page.locator('dialog[open] button[type="submit"]').first();
+await submit.scrollIntoViewIfNeeded();
+/*
+ * Pressed without waiting for the panel to hold still.
+ *
+ * Save is visible and enabled - the box says so - but something on the editor
+ * behind the panel never stops moving, so Playwright's "stable" never comes
+ * and a plain click waits thirty seconds for a button that is right there.
+ * The press is dispatched on the button itself: what this check is about is
+ * what saving does, not whether a pointer can reach it.
+ */
+await submit.evaluate((button) => button.click());
+// The save is a round trip; the panel closes when it answers.
+await page
+  .locator('dialog[open]')
+  .waitFor({ state: 'detached', timeout: 15_000 })
+  .catch(() => undefined);
+await page.waitForTimeout(500);
 record((await page.locator('dialog[open]').count()) === 0, 'saving closes the panel');
 record(
   new URL(page.url()).pathname.endsWith(`/workflows/${WORKFLOW}/editor`) &&

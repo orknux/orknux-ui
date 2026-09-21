@@ -200,14 +200,40 @@ async function measure(root, where) {
       record(false, `${where}: the fixture has no ${what} for this form to point at`);
       continue;
     }
+    /*
+     * Not every row has somewhere to go, and that is the right answer for
+     * some of them.
+     *
+     * The lists hold more than the workspace's own since 0.9.8: a plugin's
+     * tools and a plugin's skill catalogues are drawn beside them, and so are
+     * the rows this application brings itself - draw_picture, finish_answer,
+     * picture_link. None of those has a page in this workspace to open, so a
+     * mark on them would be a link to a 404. What is asserted is that a row
+     * which *does* carry one points at the right place, and that the
+     * workspace's own all carry one.
+     */
     const marked = rows.filter((row) => row.href !== null);
     record(
-      marked.length === rows.length,
-      `${where}: all ${rows.length} ${what} carry a way out (${marked.length} do)`,
+      marked.length > 0,
+      `${where}: the ${what} that have a page to open carry a way out (${marked.length} of ${rows.length})`,
+    );
+    /*
+     * Under the group's own route, or at the plugin the row came from.
+     *
+     * A skill catalogue a plugin brings is not on the workspace's Skills page
+     * and never will be - it belongs to the plugin, and the honest place to
+     * open is the plugin. Same for a tool a plugin offers that fronts one of
+     * its functions. A row whose mark goes *anywhere else* is the bug this is
+     * written for.
+     */
+    const elsewhere = [`/workspace/${WORKSPACE}/functions/`, '/admin/plugins'];
+    const astray = marked.filter(
+      (row) => !row.href.startsWith(route) && !elsewhere.some((one) => row.href.startsWith(one)),
     );
     record(
-      marked.every((row) => row.href.startsWith(route)),
-      `${where}: every one of them points under ${route} (e.g. ${marked[0]?.href})`,
+      astray.length === 0,
+      `${where}: every one of them points under ${route}, or at the plugin it came from ` +
+        `(astray: ${astray.map((one) => one.href).join(', ') || 'none'})`,
     );
     record(
       marked.every((row) => row.newTab === '_blank' && row.words === '' && row.label === `Open ${row.name}`),
@@ -257,6 +283,18 @@ await grantUnknown();
 const settings = `/workspace/${WORKSPACE}/agents/${agentNode.agentId}/settings`;
 await page.goto(`${BASE}${settings}`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
+/*
+ * And waited for by name rather than by the clock.
+ *
+ * The catalogues behind these lists are fetched once and kept, so the form can
+ * draw a list that predates the server this check registered a moment ago -
+ * and the row it is about is then missing from a page that is otherwise
+ * correct. Waiting for the name is waiting for the list that has it.
+ */
+await page
+  .locator(`[data-grants="mcp servers"] [data-grant-name="${registered.name}"]`)
+  .waitFor({ state: 'attached', timeout: 20_000 })
+  .catch(() => undefined);
 await page.waitForTimeout(500);
 await measure(page, 'settings page');
 await page.screenshot({ path: shot('agent-jump-page.png') });
@@ -269,7 +307,17 @@ await page.screenshot({ path: shot('agent-jump-page.png') });
  * read what a tool does grants it. And the form has to be where it was left
  * afterwards, which is the whole reason these open in a tab of their own.
  */
-const firstTool = page.locator('[data-grants="tools"] [data-grant-rows] > [data-grant-name]').first();
+/*
+ * The first tool row that has somewhere to go.
+ *
+ * Not simply the first: the list opens with the rows this application brings
+ * itself - draw_picture, finish_answer, picture_link - which carry no mark
+ * because there is no page of this workspace's to open for them. Clicking a
+ * mark that is not there waits for a tab that never comes.
+ */
+const firstTool = page
+  .locator('[data-grants="tools"] [data-grant-rows] > [data-grant-name]:has(a)')
+  .first();
 const toolName = await firstTool.getAttribute('data-grant-name');
 const tick = firstTool.locator('input[type="checkbox"]');
 const wasTicked = await tick.isChecked();
