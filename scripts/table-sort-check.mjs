@@ -142,6 +142,8 @@ const LISTS = [
   { path: 'conditions', query: 'workspaceConditions', column: 'Type', order: 'TYPE' },
   { path: 'agents', query: 'workspaceAgents', column: 'Description', order: 'DESCRIPTION' },
   { path: 'objects', query: 'workspaceObjects', column: 'Description', order: 'DESCRIPTION' },
+  { path: 'functions', query: 'workspaceFunctions', column: 'Return Type', order: 'RETURN_TYPE' },
+  { path: 'triggers', query: 'workspaceTriggers', column: 'Type', order: 'TYPE' },
 ];
 
 /** The first row's first cell, which every one of these lists draws as a link. */
@@ -189,8 +191,13 @@ for (const list of LISTS) {
   );
   const wanted = answered.content[0]?.name ?? null;
   console.log(`${list.path}: drew ${JSON.stringify(drew)}, server says ${JSON.stringify(wanted)}`);
+  /*
+   * Starts with, not equals: some of these lists put a badge inside the name
+   * cell - which plugin brought a function, what kind of thing a row is - so the
+   * cell's text is the name and then something about it.
+   */
   record(
-    drew === wanted,
+    wanted !== null && drew.startsWith(wanted),
     `${list.path}: ordered by ${list.column} it draws what the server ordered, not a reshuffled page`,
   );
 

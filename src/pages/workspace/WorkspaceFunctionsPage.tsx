@@ -8,11 +8,12 @@ import {
   timeAgo,
   valueTypeLabel,
 } from '../../api/functions';
-import type { WorkspaceFunction } from '../../api/functions';
+import type { FunctionOrder, WorkspaceFunction } from '../../api/functions';
 import type { SessionUser } from '../../api/session';
 import copyIcon from '../../assets/copy.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
   ExportComponentButton,
@@ -27,6 +28,7 @@ import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceFunctionsPage.module.css';
@@ -55,6 +57,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('functions');
   const [typed, setTyped, asked] = useSearch();
+  const [order, ascending, sortBy] = useTableSort<FunctionOrder>('functions', 'NAME', true, ['LAST_MODIFIED']);
 
   // A new search is a new list, so it starts at its first page rather than at
   // page four of the previous one.
@@ -134,6 +137,8 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
       scope === 'WORKSPACE' || scope === 'PLUGIN' ? scope : undefined,
       scope.startsWith('plugin:') ? scope.slice('plugin:'.length) : undefined,
       asked,
+      order,
+      ascending,
     )
       .then((result) => {
         setFunctions(result);
@@ -144,7 +149,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
         setError(cause instanceof Error ? cause.message : t('Could not load the functions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, scope, asked]);
+  }, [workspaceId, page, pageSize, scope, asked, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -241,10 +246,36 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>
-            <span className={styles.colName}>{t('Name')}</span>
+            {/*
+              Pressable where there is something stored to order by. Issue #358.
+              The parameter count is the size of what the function declares, so
+              there is no column to order by and it stays a heading.
+            */}
+            <ColumnHeader
+              label={t('Name')}
+              order="NAME"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colName}
+            />
             <span className={styles.colParams}>{t('Parameters')}</span>
-            <span className={styles.colReturn}>{t('Return Type')}</span>
-            <span className={styles.colModified}>{t('Last Modified')}</span>
+            <ColumnHeader
+              label={t('Return Type')}
+              order="RETURN_TYPE"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colReturn}
+            />
+            <ColumnHeader
+              label={t('Last Modified')}
+              order="LAST_MODIFIED"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colModified}
+            />
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>
 

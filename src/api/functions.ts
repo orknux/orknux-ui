@@ -152,8 +152,14 @@ const FUNCTION_FIELDS =
    signature timeoutSeconds lastModifiedAt lastModifiedBy`;
 
 const WORKSPACE_FUNCTIONS_QUERY = `
-  query WorkspaceFunctions($workspaceId: ID!, $page: Int!, $size: Int!, $scope: FunctionScope, $pluginId: ID, $search: String) {
-    workspaceFunctions(workspaceId: $workspaceId, page: $page, size: $size, scope: $scope, pluginId: $pluginId, search: $search) {
+  query WorkspaceFunctions(
+    $workspaceId: ID!, $page: Int!, $size: Int!, $scope: FunctionScope, $pluginId: ID, $search: String,
+    $order: String, $ascending: Boolean
+  ) {
+    workspaceFunctions(
+      workspaceId: $workspaceId, page: $page, size: $size, scope: $scope, pluginId: $pluginId,
+      search: $search, order: $order, ascending: $ascending
+    ) {
       content { ${FUNCTION_FIELDS} }
       page
       size
@@ -242,6 +248,9 @@ export function asImportInput(held: ScriptImportInput): ScriptImportInput {
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/** What the list can be put in the order of; see `FUNCTION_ORDERS` on the server. */
+export type FunctionOrder = 'NAME' | 'RETURN_TYPE' | 'LAST_MODIFIED';
+
 export async function fetchWorkspaceFunctions(
   workspaceId: string,
   page: number,
@@ -250,6 +259,8 @@ export async function fetchWorkspaceFunctions(
   /** Narrower still: what one plugin brought. Wins over scope. */
   pluginId?: string,
   search = '',
+  order: FunctionOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<WorkspaceFunction>> {
   const data = await graphql<{ workspaceFunctions: PageOf<WorkspaceFunction> }>(WORKSPACE_FUNCTIONS_QUERY, {
     workspaceId,
@@ -258,6 +269,8 @@ export async function fetchWorkspaceFunctions(
     scope: scope ?? null,
     pluginId: pluginId ?? null,
     search: search.trim() === '' ? null : search.trim(),
+    order,
+    ascending,
   });
   return data.workspaceFunctions;
 }

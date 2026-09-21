@@ -13,7 +13,7 @@ import {
   listensForMessages,
   setTriggerEnabled,
 } from '../../api/triggers';
-import type { SlackBotUser, Trigger, TriggerFiring } from '../../api/triggers';
+import type { SlackBotUser, Trigger, TriggerFiring, TriggerOrder } from '../../api/triggers';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -28,6 +28,7 @@ import {
   UseTemplateButton,
   transferStyles,
 } from '../../components/ComponentTransfer';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
 import { TriggerFirings, firedAt } from '../../components/TriggerFirings';
 import type { TriggerFiringsStyles } from '../../components/TriggerFirings';
@@ -38,6 +39,7 @@ import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceTriggersPage.module.css';
 import { t } from '../../i18n';
@@ -91,6 +93,8 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [order, ascending, sortBy] = useTableSort<TriggerOrder>('triggers', 'NAME');
+
   /** Which trigger's log is open; what it holds is the log's own business. */
   const [showing, setShowing] = useState<string | null>(null);
   /** Everything that has fired here, whichever trigger did it. */
@@ -120,7 +124,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceTriggers(workspaceId, page - 1, pageSize, searching)
+    fetchWorkspaceTriggers(workspaceId, page - 1, pageSize, searching, order, ascending)
       .then((result) => {
         setTriggers(result);
         setLoading(false);
@@ -130,7 +134,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
         setError(cause instanceof Error ? cause.message : t('Could not load triggers.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, searching]);
+  }, [workspaceId, page, pageSize, searching, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -220,12 +224,48 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>
-            <span className={styles.colName}>{t('Name')}</span>
-            <span className={styles.colType}>{t('Type')}</span>
+            {/*
+              Pressable where there is something stored to order by. Issue #358.
+
+              Source is the name of whatever the trigger listens on, resolved row
+              by row, and Last fired lives in the firing log - a different table
+              whose newest row per trigger this query cannot order by without
+              becoming a different query. Both stay headings.
+            */}
+            <ColumnHeader
+              label={t('Name')}
+              order="NAME"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colName}
+            />
+            <ColumnHeader
+              label={t('Type')}
+              order="TYPE"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colType}
+            />
             <span className={styles.colSource}>{t('Source')}</span>
-            <span className={styles.colAction}>{t('Action')}</span>
+            <ColumnHeader
+              label={t('Action')}
+              order="ACTION"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colAction}
+            />
             <span className={styles.colFired}>{t('Last fired')}</span>
-            <span className={styles.colStatus}>{t('Status')}</span>
+            <ColumnHeader
+              label={t('Status')}
+              order="STATUS"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colStatus}
+            />
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>
 

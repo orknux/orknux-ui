@@ -112,14 +112,28 @@ export async function deleteVariableCatalog(id: string): Promise<boolean> {
  * A blank search is no filter rather than a search for nothing, so the screen
  * can send what is in its box without deciding anything.
  */
+/** What the list can be put in the order of; see `VARIABLE_ORDERS` on the server. */
+export type VariableOrder = 'NAME' | 'DESCRIPTION' | 'TYPE';
+
 export async function fetchVariables(
   workspaceId: string,
-  options: { catalogId?: string | null; search?: string; page?: number; size?: number } = {},
+  options: {
+    catalogId?: string | null;
+    search?: string;
+    page?: number;
+    size?: number;
+    order?: VariableOrder;
+    ascending?: boolean;
+  } = {},
 ): Promise<PageOf<Variable>> {
   const data = await graphql<{ workspaceVariables: PageOf<Variable> }>(
-    `query WorkspaceVariables($workspaceId: ID!, $catalogId: ID, $search: String, $page: Int!, $size: Int!) {
+    `query WorkspaceVariables(
+       $workspaceId: ID!, $catalogId: ID, $search: String, $page: Int!, $size: Int!,
+       $order: String, $ascending: Boolean
+     ) {
        workspaceVariables(
-         workspaceId: $workspaceId, catalogId: $catalogId, search: $search, page: $page, size: $size
+         workspaceId: $workspaceId, catalogId: $catalogId, search: $search, page: $page, size: $size,
+         order: $order, ascending: $ascending
        ) {
          content { ${VARIABLE_FIELDS} }
          page size totalElements totalPages
@@ -131,6 +145,8 @@ export async function fetchVariables(
       search: options.search ?? null,
       page: options.page ?? 0,
       size: options.size ?? 20,
+      order: options.order ?? 'NAME',
+      ascending: options.ascending ?? true,
     },
   );
   return data.workspaceVariables;

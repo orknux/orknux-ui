@@ -112,8 +112,13 @@ const TRIGGER_FIELDS =
    lastFiring { id at outcome detail runsStarted }`;
 
 const WORKSPACE_TRIGGERS_QUERY = `
-  query WorkspaceTriggers($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-    workspaceTriggers(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+  query WorkspaceTriggers(
+    $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+  ) {
+    workspaceTriggers(
+      workspaceId: $workspaceId, page: $page, size: $size, search: $search,
+      order: $order, ascending: $ascending
+    ) {
       content { ${TRIGGER_FIELDS} }
       page
       size
@@ -154,17 +159,24 @@ const DELETE_TRIGGER_MUTATION = `
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/** What the list can be put in the order of; see `TRIGGER_ORDERS` on the server. */
+export type TriggerOrder = 'NAME' | 'TYPE' | 'ACTION' | 'STATUS';
+
 export async function fetchWorkspaceTriggers(
   workspaceId: string,
   page: number,
   size: number,
   search = '',
+  order: TriggerOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<Trigger>> {
   const data = await graphql<{ workspaceTriggers: PageOf<Trigger> }>(WORKSPACE_TRIGGERS_QUERY, {
     workspaceId,
     page,
     size,
     search: search.trim() === '' ? null : search.trim(),
+    order,
+    ascending,
   });
   return data.workspaceTriggers;
 }

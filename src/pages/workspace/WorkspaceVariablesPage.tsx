@@ -15,7 +15,7 @@ import {
   revealVariable,
   updateVariable,
 } from '../../api/variables';
-import type { Variable, VariableCatalog, VariableKind, VariableType } from '../../api/variables';
+import type { Variable, VariableCatalog, VariableKind, VariableOrder, VariableType } from '../../api/variables';
 import checkIcon from '../../assets/check.svg';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import folderOpenIcon from '../../assets/folder-open.svg';
@@ -25,9 +25,11 @@ import plusIcon from '../../assets/plus.svg';
 import searchIcon from '../../assets/search.svg';
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
 import { RevealToggle } from '../../components/RevealToggle';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceMemoryPage.module.css';
 import table from './WorkspaceVariablesPage.module.css';
@@ -87,6 +89,8 @@ function draftOf(variable: Variable, revealed?: string): Draft {
 export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariablesPageProps) {
   const { workspaceId = '' } = useParams();
 
+  const [order, ascending, sortBy] = useTableSort<VariableOrder>('variables', 'NAME');
+
   const [catalogs, setCatalogs] = useState<VariableCatalog[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [variables, setVariables] = useState<PageOf<Variable> | null>(null);
@@ -145,7 +149,12 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
         setArrangement([]);
         return;
       }
-      const held = await fetchVariables(workspaceId, { catalogId: selected, size: PAGE_SIZE });
+      const held = await fetchVariables(workspaceId, {
+        catalogId: selected,
+        size: PAGE_SIZE,
+        order,
+        ascending,
+      });
       const made = options.made;
       const content =
         made !== undefined && !held.content.some((one) => one.id === made.id)
@@ -163,7 +172,7 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
           : content.map((one) => one.id),
       );
     },
-    [workspaceId, selected],
+    [workspaceId, selected, order, ascending],
   );
 
   useEffect(() => {
@@ -379,6 +388,9 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 workspaceId={workspaceId}
                 catalogId={current.id}
                 variables={showing.filter((variable) => variable.kind === 'VALUE')}
+                order={order}
+                ascending={ascending}
+                onSort={sortBy}
                 onChanged={(made) => guard(() => afterChange(made))}
                 onError={setError}
               />
@@ -391,6 +403,9 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 workspaceId={workspaceId}
                 catalogId={current.id}
                 variables={showing.filter((variable) => variable.kind === 'SECRET')}
+                order={order}
+                ascending={ascending}
+                onSort={sortBy}
                 onChanged={(made) => guard(() => afterChange(made))}
                 onError={setError}
               />
@@ -417,6 +432,9 @@ function VariableTable({
   workspaceId,
   catalogId,
   variables,
+  order,
+  ascending,
+  onSort,
   onChanged,
   onError,
 }: {
@@ -427,6 +445,16 @@ function VariableTable({
   workspaceId: string;
   catalogId: string;
   variables: Variable[];
+  /**
+   * Which column the list is in the order of, and which way round.
+   *
+   * Handed down rather than kept here: the two tables on this screen are one
+   * list read twice, so an order chosen on either is the order of both - and
+   * the rows are fetched by the page, which is where the order has to be known.
+   */
+  order: VariableOrder;
+  ascending: boolean;
+  onSort: (column: VariableOrder) => void;
   /**
    * Reloads the list; awaited, so a row can hold what was typed until it lands.
    *
@@ -621,10 +649,37 @@ function VariableTable({
 
       <div className={table.table}>
         <div className={table.tableHeader}>
-          <span className={table.colName}>{t('Name')}</span>
+          {/*
+            Pressable where there is something stored to order by. Issue #358.
+            The Value column is not: a variable's value is a secret more often
+            than not, stored encrypted and never handed back, so there is nothing
+            to order the rows by.
+          */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={onSort}
+            className={table.colName}
+          />
           <span className={table.colValue}>{t('Value')}</span>
-          <span className={table.colDescription}>{t('Description')}</span>
-          <span className={table.colType}>{t('Type')}</span>
+          <ColumnHeader
+            label={t('Description')}
+            order="DESCRIPTION"
+            current={order}
+            ascending={ascending}
+            onSort={onSort}
+            className={table.colDescription}
+          />
+          <ColumnHeader
+            label={t('Type')}
+            order="TYPE"
+            current={order}
+            ascending={ascending}
+            onSort={onSort}
+            className={table.colType}
+          />
           <span className={table.colActions}>{t('Actions')}</span>
         </div>
 
