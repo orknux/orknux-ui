@@ -43,7 +43,16 @@ const field = () => page.getByLabel('How many days of run history to keep');
  * screen and each has a Save of its own, so asking the page for a button named
  * Save finds both and refuses to guess. The button is the input's sibling.
  */
-const save = () => page.locator('#execution-retention-days').locator('..').getByRole('button', { name: 'Save', exact: true });
+/**
+ * The one Save, at the top.
+ *
+ * There used to be one beside each number, and this looked for the one next to
+ * its own field. The page has a single Save in its header now - it writes every
+ * number that differs from what the server holds - so what "Save is dead" means
+ * here is that *nothing* on the page has changed, which is what these checks
+ * were asserting anyway: they change one number and no other.
+ */
+const save = () => page.getByRole('button', { name: 'Save the settings on this page', exact: true });
 
 await page.goto(SETTINGS, { waitUntil: 'domcontentloaded' });
 if (await drawn(page, 'admin settings')) {

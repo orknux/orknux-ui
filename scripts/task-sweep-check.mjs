@@ -67,7 +67,7 @@ if (!inline) {
   );
 }
 
-/** The number box, and the Save that belongs to it rather than to retention. */
+/** The number box, and the one Save this page has. */
 const field = () => page.getByLabel('How many minutes a task may wait before it is picked up');
 /*
  * By its accessible name and not by its text. Both Saves on this page say
@@ -76,7 +76,7 @@ const field = () => page.getByLabel('How many minutes a task may wait before it 
  * also what stops the retention check finding two buttons where it expects one.
  */
 const save = () =>
-  page.getByRole('button', { name: 'Save how long before a stuck task is picked up', exact: true });
+  page.getByRole('button', { name: 'Save the settings on this page', exact: true });
 
 await page.goto(SETTINGS, { waitUntil: 'domcontentloaded' });
 if (inline && (await drawn(page, 'admin settings'))) {

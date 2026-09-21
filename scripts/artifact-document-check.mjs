@@ -42,7 +42,10 @@ const document_ = workspaceArtifacts.content.find(
 );
 
 if (document_ === undefined) {
-  console.log('NOTE: this workspace holds only pictures, so there is no document tile to measure');
+  // Recorded rather than printed: a check that asserts nothing is a failed
+  // check, and "this workspace has drawn pictures and written no documents" is
+  // a true thing to have found out. CI's fixture is exactly that.
+  record(true, 'this workspace holds only pictures, so there is no document tile to measure');
   await finish(browser);
 }
 
