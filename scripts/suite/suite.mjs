@@ -221,6 +221,23 @@ export const TESTS = [
      */
   },
   {
+    name: 'table-sort-check',
+    what: 'a table is put in the order of whichever column somebody presses',
+    needs: ['workspace'],
+    /*
+     * Issue #358. Two lists had a Sort control and the rest had none - the same
+     * complaint that produced the per-list page size, and the same answer: the
+     * heading is a component, so what a press means is decided once.
+     *
+     * Driven on the actions list, the first table to use it. The assertion is
+     * against the server's answer for the first row under each order, because
+     * the failure this catches is the quiet one: a heading that reorders the
+     * twenty rows on screen and leaves the other two hundred where they were.
+     *
+     * Reads the workspace's own actions; makes and removes nothing.
+     */
+  },
+  {
     name: 'trigger-history-check',
     what: "what a trigger has done is on the trigger's own page",
     needs: [],

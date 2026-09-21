@@ -147,9 +147,17 @@ const ACTION_FIELDS = `
   outputParams { name type display }
 `;
 
+/** What the list can be put in the order of; see `ACTION_ORDERS` on the server. */
+export type ActionOrder = 'NAME' | 'TYPE' | 'SUBTYPE';
+
 const WORKSPACE_ACTIONS_QUERY = `
-  query WorkspaceActions($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-    workspaceActions(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+  query WorkspaceActions(
+    $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+  ) {
+    workspaceActions(
+      workspaceId: $workspaceId, page: $page, size: $size, search: $search,
+      order: $order, ascending: $ascending
+    ) {
       content { ${ACTION_FIELDS} }
       page
       size
@@ -201,12 +209,16 @@ export async function fetchWorkspaceActions(
   page: number,
   size: number,
   search = '',
+  order: ActionOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<Action>> {
   const data = await graphql<{ workspaceActions: PageOf<Action> }>(WORKSPACE_ACTIONS_QUERY, {
     workspaceId,
     page,
     size,
     search: search.trim() === '' ? null : search.trim(),
+    order,
+    ascending,
   });
   return data.workspaceActions;
 }

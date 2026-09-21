@@ -1,0 +1,55 @@
+/*
+ * A pressable table heading. Issue #358.
+ *
+ * The heading keeps its own column class - its width, its alignment, whatever
+ * the table decided - and this only adds what being pressable needs. So a table
+ * that lays its columns out in grid fractions and one that uses flex basis both
+ * get the same control without either learning about the other.
+ */
+.head {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/*
+ * The press itself. Transparent and inheriting everything: the headings of a
+ * table are drawn in the table's own font, size, letter-spacing and colour, and
+ * a button that brought a browser's defaults with it would be the one heading
+ * that looked like a button.
+ */
+.press {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.press:hover {
+  color: var(--color-text-primary);
+}
+
+/* The column the list is actually in the order of, so it reads as the live one. */
+.pressOn {
+  color: var(--color-text-primary);
+}
+
+/*
+ * Which way round, beside the name it is about. Small enough not to compete with
+ * the heading and not so small that it has to be looked for.
+ */
+.mark {
+  flex-shrink: 0;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--color-accent-brand);
+}

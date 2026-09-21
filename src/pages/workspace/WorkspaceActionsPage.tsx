@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ACTION_TYPE_LABEL, fetchWorkspaceActions, paramSummary } from '../../api/actions';
-import type { Action } from '../../api/actions';
+import type { Action, ActionOrder } from '../../api/actions';
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
   ExportComponentButton,
@@ -21,6 +22,7 @@ import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceActionsPage.module.css';
 import { t } from '../../i18n';
@@ -46,6 +48,7 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('actions');
   const [typed, setTyped, asked] = useSearch();
+  const [order, ascending, sortBy] = useTableSort<ActionOrder>('actions', 'NAME');
 
   // A new search is a new list, so it starts at its first page rather
   // than at page four of the previous one.
@@ -57,7 +60,7 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceActions(workspaceId, page - 1, pageSize, asked)
+    fetchWorkspaceActions(workspaceId, page - 1, pageSize, asked, order, ascending)
       .then((result) => {
         setActions(result);
         setLoading(false);
@@ -67,7 +70,7 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
         setError(cause instanceof Error ? cause.message : t('Could not load the actions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, asked]);
+  }, [workspaceId, page, pageSize, asked, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -104,9 +107,38 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>
-            <span className={styles.colName}>{t('Name')}</span>
-            <span className={styles.colType}>{t('Type')}</span>
-            <span className={styles.colSubtype}>{t('Subtype')}</span>
+            {/*
+              Pressable where there is something stored to order by. Issue #358.
+
+              The parameter counts are not: they are read off the settings, so
+              the number a row shows was worked out after the page was chosen,
+              and ordering by it would order the wrong twenty rows. A heading
+              that cannot be honoured stays a heading.
+            */}
+            <ColumnHeader
+              label={t('Name')}
+              order="NAME"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colName}
+            />
+            <ColumnHeader
+              label={t('Type')}
+              order="TYPE"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colType}
+            />
+            <ColumnHeader
+              label={t('Subtype')}
+              order="SUBTYPE"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colSubtype}
+            />
             <span className={styles.colInput}>{t('Input Params')}</span>
             <span className={styles.colOutput}>{t('Output Params')}</span>
             <span className={styles.colActions}>{t('Actions')}</span>
