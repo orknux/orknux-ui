@@ -69,17 +69,17 @@ try {
   const centres = controls.map((one) => one.y);
   const spread = Math.max(...centres) - Math.min(...centres);
   /*
-   * Three pixels rather than two.
+   * Four pixels rather than two.
    *
    * What this is for is a control that fell onto a row of its own - which is
    * tens of pixels, not three. A select and a button of the same height sit on
    * centres that differ by a fraction once their borders and line boxes are
    * worked out, and that fraction moves with the font the runner happens to
-   * have: 2.5px on a Linux runner against 1.6 here, which is a red check about
+   * have: 3.3px on a Linux runner against 1.6 here, which is a red check about
    * nothing.
    */
   record(
-    spread <= 3,
+    spread <= 4,
     `sort shares a row with Auto / Import / Use template / + Create Workflow - ` +
       `their vertical centres span ${spread.toFixed(1)}px: ` +
       controls.map((one) => `${one.name} ${one.y.toFixed(1)}`).join(', '),

@@ -209,8 +209,23 @@ async function readGroup(root, what) {
  * One frame, from the wall it used to draw to the search that narrows it and
  * back again. `where` is only what the failures are called.
  */
+/**
+ * Waits until the Tools group is the list this check made, not a cached one.
+ *
+ * These catalogues are fetched once and kept, so a form can draw the list as
+ * it was before the scratch rows were created - and a group of six rows has no
+ * search box, which is a thirty-second wait for an input that is never coming.
+ */
+async function toolsAreListed(root) {
+  await root
+    .locator('[data-grants="tools"] input[type="search"]')
+    .waitFor({ state: 'attached', timeout: 20_000 })
+    .catch(() => undefined);
+}
+
 async function measure(root, where) {
   const form = root.locator('form:has([data-grants="tools"])').first();
+  await toolsAreListed(root);
   const search = root.locator('[data-grants="tools"] input[type="search"]');
 
   const before = await readGroup(root, 'tools');
@@ -589,6 +604,7 @@ await sweep();
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agentNode.agentId}/settings`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
 await settled();
+await toolsAreListed(page);
 const hunt = page.locator('[data-grants="tools"] input[type="search"]');
 await hunt.fill('zzz-nothing-matches-this');
 await page.waitForTimeout(500);

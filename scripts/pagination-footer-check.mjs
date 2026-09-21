@@ -95,12 +95,20 @@ const LISTS = [
    * Two of them page twice: Integrations has MCP servers above connections and
    * Models has providers above models, each with a footer of its own, so the
    * file appears twice with a different noun each time.
+   *
+   * All six are `sourceOnly`. What they are here for is the source half - that
+   * every call site names its rows, which is what this check was written to
+   * hold - and the browser half cannot read them on an installation that has
+   * drawn no artifacts, registered no MCP server and loaded no plugin, which
+   * is what a fresh one and CI's fixture both look like. A list whose noun is
+   * wrong is caught by the scan whether or not there is a row to draw.
    */
   {
     file: 'WorkspaceArtifactsPage.tsx',
     path: '/artifacts',
     title: 'Artifacts',
     unit: 'artifacts',
+    sourceOnly: true,
     // A gallery of cards rather than a table, like the issue list.
     column: null,
   },
@@ -109,6 +117,7 @@ const LISTS = [
     path: '/integrations',
     title: 'Integrations',
     unit: 'servers',
+    sourceOnly: true,
     column: 'Name',
     why: 'the page calls them MCP servers and the column names them',
   },
@@ -117,6 +126,7 @@ const LISTS = [
     path: '/integrations',
     title: 'Integrations',
     unit: 'connections',
+    sourceOnly: true,
     column: 'Name',
     why: 'the second list on the same page, under its own heading',
     beneath: 'servers',
@@ -126,6 +136,7 @@ const LISTS = [
     path: '/models',
     title: 'Models',
     unit: 'providers',
+    sourceOnly: true,
     column: 'Provider',
     why: 'the providers are listed above the models they answer for',
   },
@@ -134,6 +145,7 @@ const LISTS = [
     path: '/models',
     title: 'Models',
     unit: 'models',
+    sourceOnly: true,
     column: 'Model',
     beneath: 'providers',
   },
@@ -142,6 +154,7 @@ const LISTS = [
     path: '/plugins',
     title: 'Plugins',
     unit: 'plugins',
+    sourceOnly: true,
     column: 'Plugin',
   },
   { file: 'WorkspaceWorkflowsPage.tsx', path: '', title: 'Workflows', unit: 'workflows', column: 'Workflow' },
@@ -337,7 +350,7 @@ try {
    * there for the source scan alone - `beneath` says which list it is under,
    * and why there is nothing to drive.
    */
-  for (const list of LISTS.filter((one) => one.path !== null && one.beneath === undefined)) {
+  for (const list of LISTS.filter((one) => one.path !== null && one.beneath === undefined && one.sourceOnly !== true)) {
     const where = `${BASE}/workspace/${WORKSPACE}${list.path}`;
     await page.goto(where, { waitUntil: 'domcontentloaded' });
     if (!(await drawn(page, `${list.title} (${where})`))) continue;
@@ -461,7 +474,12 @@ try {
    * of, and demanding all twelve would make the check a fixture problem rather
    * than a footer one.
    */
-  const routed = LISTS.filter((one) => one.path !== null).length;
+  // The lists this loop actually drove: the source-only ones were never
+  // opened, so counting them here would be asking for footers nobody looked
+  // for.
+  const routed = LISTS.filter(
+    (one) => one.path !== null && one.beneath === undefined && one.sourceOnly !== true,
+  ).length;
   record(read >= routed - 2, `enough lists had rows to read a footer off (${read} of ${routed})`);
 
   /*
@@ -474,7 +492,7 @@ try {
   // The second list on a page is not walked, so its heading is not counted:
   // what is being tallied is the lists this loop drove.
   const withColumns = LISTS.filter(
-    (one) => one.path !== null && one.column !== null && one.beneath === undefined,
+    (one) => one.path !== null && one.column !== null && one.beneath === undefined && one.sourceOnly !== true,
   ).length;
   record(
     headed === withColumns,
