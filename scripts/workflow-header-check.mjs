@@ -68,8 +68,18 @@ try {
 
   const centres = controls.map((one) => one.y);
   const spread = Math.max(...centres) - Math.min(...centres);
+  /*
+   * Three pixels rather than two.
+   *
+   * What this is for is a control that fell onto a row of its own - which is
+   * tens of pixels, not three. A select and a button of the same height sit on
+   * centres that differ by a fraction once their borders and line boxes are
+   * worked out, and that fraction moves with the font the runner happens to
+   * have: 2.5px on a Linux runner against 1.6 here, which is a red check about
+   * nothing.
+   */
   record(
-    spread <= 2,
+    spread <= 3,
     `sort shares a row with Auto / Import / Use template / + Create Workflow - ` +
       `their vertical centres span ${spread.toFixed(1)}px: ` +
       controls.map((one) => `${one.name} ${one.y.toFixed(1)}`).join(', '),
@@ -93,19 +103,27 @@ try {
   const between = await page.evaluate(() => {
     const header = document.querySelector('main section > header');
     const next = header?.nextElementSibling ?? null;
-    return next === null ? null : { className: next.className, text: next.innerText.trim().slice(0, 40) };
+    if (next === null) return null;
+    return {
+      className: next.className,
+      text: next.innerText.trim().slice(0, 40),
+      // A search box is a control, not words: a row holding one reads as empty
+      // to `innerText`, which is exactly how an abandoned row reads too.
+      holds: next.querySelectorAll('input, select, button').length,
+    };
   });
   record(
-    between !== null && /^(TEMPLATE|WORKFLOW)/i.test(between.text),
-    `the table follows the header directly, with no row in between ` +
-      `(next is <${between?.className}> "${between?.text}")`,
+    between !== null && (/^(TEMPLATE|WORKFLOW)/i.test(between.text) || between.holds > 0),
+    `nothing empty sits between the header and the table ` +
+      `(next is <${between?.className}> "${between?.text}", holding ${between?.holds} control(s))`,
   );
 
   // ------------------------------------------------------ what the columns say
 
   const columns = await page.evaluate(() => {
-    const header = document.querySelector('main section > header');
-    const table = header?.nextElementSibling;
+    // The table by its own class rather than by being next after the header:
+    // since the list learned to be searched, the search row is between them.
+    const table = document.querySelector('main section [class*="_table_"]');
     const row = table?.firstElementChild;
     return [...(row?.children ?? [])].map((one) => one.textContent.trim());
   });

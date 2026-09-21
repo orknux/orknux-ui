@@ -222,9 +222,26 @@ if (bot === null || app === null) {
   );
 }
 
+/*
+ * One choice per credential, however many credentials there are.
+ *
+ * It used to say "exactly two", which was true of a Slack connection with a
+ * bot token and an app-level token and stopped being true when the user token
+ * arrived - the one a search runs as. What the check is about is that the
+ * choice belongs to a field rather than to the card, so what it counts now is
+ * that every choice names the credential it is for, and that there is one for
+ * each.
+ */
+const choices = await page.evaluate(() =>
+  [...document.querySelectorAll('[role="tablist"]')].map((one) => one.getAttribute('aria-label') ?? ''),
+);
 record(
-  (await page.locator('[role="tablist"]').count()) === 2,
-  'there are exactly two choices on this card, which is one per credential rather than one for the card',
+  choices.length >= 2 && choices.every((one) => /^Where the .+ comes from$/.test(one)),
+  `every choice on this card is for one credential and says which (${choices.join(', ')})`,
+);
+record(
+  new Set(choices).size === choices.length,
+  'and no two of them are for the same one',
 );
 record(
   (await page.locator('[role="tablist"][aria-label="Credential"]').count()) === 0,
