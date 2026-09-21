@@ -89,6 +89,61 @@ const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } }
  * stopped being covered.
  */
 const LISTS = [
+  /*
+   * Six lists that learned to page since this table was written.
+   *
+   * Two of them page twice: Integrations has MCP servers above connections and
+   * Models has providers above models, each with a footer of its own, so the
+   * file appears twice with a different noun each time.
+   */
+  {
+    file: 'WorkspaceArtifactsPage.tsx',
+    path: '/artifacts',
+    title: 'Artifacts',
+    unit: 'artifacts',
+    // A gallery of cards rather than a table, like the issue list.
+    column: null,
+  },
+  {
+    file: 'WorkspaceIntegrationsPage.tsx',
+    path: '/integrations',
+    title: 'Integrations',
+    unit: 'servers',
+    column: 'Name',
+    why: 'the page calls them MCP servers and the column names them',
+  },
+  {
+    file: 'WorkspaceIntegrationsPage.tsx',
+    path: '/integrations',
+    title: 'Integrations',
+    unit: 'connections',
+    column: 'Name',
+    why: 'the second list on the same page, under its own heading',
+    beneath: 'servers',
+  },
+  {
+    file: 'WorkspaceModelsPage.tsx',
+    path: '/models',
+    title: 'Models',
+    unit: 'providers',
+    column: 'Provider',
+    why: 'the providers are listed above the models they answer for',
+  },
+  {
+    file: 'WorkspaceModelsPage.tsx',
+    path: '/models',
+    title: 'Models',
+    unit: 'models',
+    column: 'Model',
+    beneath: 'providers',
+  },
+  {
+    file: 'WorkspacePluginsPage.tsx',
+    path: '/plugins',
+    title: 'Plugins',
+    unit: 'plugins',
+    column: 'Plugin',
+  },
   { file: 'WorkspaceWorkflowsPage.tsx', path: '', title: 'Workflows', unit: 'workflows', column: 'Workflow' },
   {
     file: 'ExecutionsPage.tsx',
@@ -166,7 +221,16 @@ for (const path of sources()) {
   const held = readFileSync(path, 'utf8');
   for (const block of held.split('<CompactPagination').slice(1)) {
     const props = block.slice(0, block.indexOf('/>'));
-    const unit = /unit="([^"]+)"/.exec(props)?.[1] ?? null;
+    /*
+     * Either spelling: `unit="runs"` as it was written first, or
+     * `unit={t('runs')}` as every page writes it since the interface learned a
+     * second language. The word is the same word; what changed is that it goes
+     * through the catalogue on the way to the screen.
+     */
+    const unit =
+      /unit="([^"]+)"/.exec(props)?.[1] ??
+      /unit=\{t\(\s*['"]([^'"]+)['"]/.exec(props)?.[1] ??
+      null;
     found.push({ file: path.split(/[\\/]/).pop(), unit, sized: props.includes('pageSizes=') });
   }
 }
@@ -267,7 +331,13 @@ let headed = 0;
 
 let failed = false;
 try {
-  for (const list of LISTS.filter((one) => one.path !== null)) {
+  /*
+   * Two of these pages hold two lists, each with a footer of its own. The
+   * browser half reads the first footer on the page, so the second entry is
+   * there for the source scan alone - `beneath` says which list it is under,
+   * and why there is nothing to drive.
+   */
+  for (const list of LISTS.filter((one) => one.path !== null && one.beneath === undefined)) {
     const where = `${BASE}/workspace/${WORKSPACE}${list.path}`;
     await page.goto(where, { waitUntil: 'domcontentloaded' });
     if (!(await drawn(page, `${list.title} (${where})`))) continue;
@@ -401,7 +471,11 @@ try {
    * column assertions are inside the same loop an unreachable workspace walks
    * straight through.
    */
-  const withColumns = LISTS.filter((one) => one.path !== null && one.column !== null).length;
+  // The second list on a page is not walked, so its heading is not counted:
+  // what is being tallied is the lists this loop drove.
+  const withColumns = LISTS.filter(
+    (one) => one.path !== null && one.column !== null && one.beneath === undefined,
+  ).length;
   record(
     headed === withColumns,
     `every list that has a heading row drew one (${headed} of ${withColumns})`,

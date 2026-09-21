@@ -157,6 +157,90 @@ const NOT_A_FIELD_NOTE = [
  * this file, and `why` says which of the reader's questions it answers.
  */
 const IN_THE_OPEN = [
+  // ---- Lists with nothing in them, and lists a search emptied ------------
+  //
+  // Eleven of these arrived together: the plugins screens and the three
+  // workspace lists that gained a search box in 0.9.8. Each says what state
+  // the list is in - empty, or emptied by what was typed - which is the first
+  // thing in this file's vocabulary and not teaching at all.
+  {
+    file: 'src/pages/admin/AdminPluginsPage.tsx',
+    says: 'No plugins loaded yet. The Catalog tab is where they come from.',
+    because: 'status',
+    why: 'the state of the installation, on the list that would have shown them, with the one thing to do about it',
+  },
+  {
+    file: 'src/pages/admin/AdminPluginsPage.tsx',
+    says: 'The marketplace offers nothing yet.',
+    because: 'status',
+    why: 'what the catalog answered: an empty shelf, which reads as a broken page where it is not said',
+  },
+  {
+    file: 'src/pages/admin/AdminPluginsPage.tsx',
+    says: 'Nothing has been loaded from a file or a URL.',
+    because: 'status',
+    why: 'the state of the list of hand-loaded plugins, on the tab that lists them',
+  },
+  {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'No answer was recorded for this call.',
+    because: 'status',
+    why: 'what the transcript holds for that call, where a tool was asked for and the round ended before it answered',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceIntegrationsPage.tsx',
+    says: 'No server matches what you typed.',
+    because: 'status',
+    why: 'the result of the search just typed, in the place the rows would have been',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceIntegrationsPage.tsx',
+    says: 'No connection matches what you typed.',
+    because: 'status',
+    why: 'the same, for the second list on that page',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceModelsPage.tsx',
+    says: 'No provider matches what you typed.',
+    because: 'status',
+    why: 'the result of the search just typed, in the place the rows would have been',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceModelsPage.tsx',
+    says: 'No model matches what you typed.',
+    because: 'status',
+    why: 'the same, for the second list on that page',
+  },
+  {
+    file: 'src/pages/workspace/WorkspacePluginsPage.tsx',
+    says: 'No plugin matches what you typed.',
+    because: 'status',
+    why: 'the result of the search just typed, in the place the rows would have been',
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceSkillsPage.tsx',
+    says: 'This plugin brings no skills.',
+    because: 'status',
+    why: 'what the plugin chosen in the sieve actually offers, where that is nothing',
+  },
+  {
+    file: 'src/pages/workspace/WorkspacePluginsPage.tsx',
+    says: 'This workspace has no variables yet. Add one on the Variables page and it will be offered here - or type the secret in under Value, where it is stored encrypted and never shown back.',
+    because: 'status',
+    why: "the state of the workspace, on the field that would have offered one - the same case FunctionEditorPage makes for objects. It also says the other way to answer, which 0.9.8 added: a secret may be typed in now",
+  },
+  {
+    file: 'src/pages/workspace/WorkspaceSkillsPage.tsx',
+    says: 'granted by name, and not edited here.',
+    because: 'label',
+    why: "the rest of the line naming where the skill came from - 'From the plugin X - granted by name, and not edited here' is one sentence, and the half before it is the label",
+  },
+  {
+    file: 'src/pages/admin/AdminPluginsPage.tsx',
+    says: 'A single .js or .ts file, or a .zip holding the plugin and the libraries it ships with. A URL loads the same way: the server fetches the plugin and whatever it imports from beside it.',
+    because: 'label',
+    why: "what the control takes, which is what a file field's label is for: the two shapes it accepts and that a URL is read the same way. A reader who is not told tries a folder",
+  },
   // ---- What the reader just did, or what is happening now -----------------
   {
     file: 'src/App.tsx',
@@ -387,12 +471,6 @@ const IN_THE_OPEN = [
     says: 'No plugins are loaded into this installation, so there is nothing to configure.',
     because: 'status',
     why: 'why this page is empty. Its sibling sentence - how a plugin comes to ask for anything at all - went behind the (?)',
-  },
-  {
-    file: 'src/pages/workspace/WorkspacePluginsPage.tsx',
-    says: 'A secret is only ever answered by pointing at a variable, and this workspace has none yet.',
-    because: 'status',
-    why: 'a dead end: the only way to answer this parameter is a list that is empty here',
   },
   {
     file: 'src/pages/workspace/WorkspacePluginsPage.tsx',

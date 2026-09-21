@@ -157,7 +157,6 @@ export const PL: Record<string, string> = {
   "How large a plugin source file may be": "Jak duży może być plik źródłowy wtyczki",
   "One cap for the plugin's own file, each library it ships, and each file a load-from-URL fetches. A source is stored whole and read whole on every call, so this number is about the heap as much as the disk. 5120 KB unless somebody says otherwise; every load reads it fresh, so no restart is needed.": "Jeden limit dla pliku wtyczki, każdej biblioteki, którą przynosi, i każdego pliku pobieranego przy ładowaniu z adresu URL. Źródło jest zapisywane i czytane w całości przy każdym wywołaniu, więc ta liczba dotyczy pamięci tak samo jak dysku. 5120 KB, chyba że ktoś powie inaczej; każde ładowanie czyta ją na świeżo, więc restart nie jest potrzebny.",
   "How many KB one plugin source file may be": "Ile KB może mieć jeden plik źródłowy wtyczki",
-  "Save how large a plugin source file may be": "Zapisz, jak duży może być plik źródłowy wtyczki",
   "connections": "połączenia",
   "No connections in this workspace yet.": "Ta przestrzeń robocza nie ma jeszcze połączeń.",
   "Connections the agent may name where a tool takes one. It is told to use one only when explicitly asked to, and to leave tools to their configured defaults otherwise.": "Połączenia, które agent może wskazać tam, gdzie narzędzie przyjmuje połączenie. Ma polecenie używać ich tylko na wyraźne żądanie, a poza tym zostawiać narzędziom ich skonfigurowane wartości domyślne.",
@@ -299,7 +298,6 @@ export const PL: Record<string, string> = {
   "Try again": "Spróbuj ponownie",
   "Again": "Ponownie",
   "Done": "Gotowe",
-  "Set": "Ustaw",
   "Open": "Otwórz",
   "Move": "Przenieś",
   "Move to": "Przenieś do",
@@ -379,7 +377,6 @@ export const PL: Record<string, string> = {
   "No libraries loaded yet.": "Nie wczytano jeszcze żadnych bibliotek.",
   "No MCP servers yet.": "Jeszcze żadnych serwerów MCP.",
   "No objects yet": "Jeszcze żadnych obiektów",
-  "No plugins loaded yet.": "Nie wczytano jeszcze żadnych wtyczek.",
   "No providers yet.": "Jeszcze żadnych dostawców.",
   "No roles yet.": "Jeszcze żadnych ról.",
   "No roles are defined yet.": "Nie zdefiniowano jeszcze żadnych ról.",
@@ -699,7 +696,6 @@ export const PL: Record<string, string> = {
   "Trying…": "Próbuję…",
   "Only this list is affected. Every plugin already installed keeps running, and Local still loads a file of your own.": "Dotyczy to wyłącznie tej listy. Każda już zainstalowana wtyczka działa dalej, a zakładka Lokalne nadal wczytuje własny plik.",
   "From a file of your own": "Z własnego pliku",
-  "Choose a plugin to read what it does.": "Wybierz wtyczkę, aby przeczytać, co robi.",
   "The marketplace offers nothing yet.": "Sklep nie oferuje jeszcze niczego.",
   "Could not read the marketplace.": "Nie udało się odczytać sklepu.",
   "Could not switch that plugin.": "Nie udało się przełączyć tej wtyczki.",
@@ -754,8 +750,6 @@ export const PL: Record<string, string> = {
     "Po jakim czasie zablokowane zadanie zostanie podjęte",
   "How many minutes a task may wait before it is picked up":
     "Ile minut zadanie może czekać, zanim zostanie podjęte",
-  "Save how long before a stuck task is picked up":
-    "Zapisz, po jakim czasie zablokowane zadanie zostanie podjęte",
   "A task is written down and then handed to a worker, and that hand-over can be lost — a restart at the wrong moment, or a pool with nothing free to take it. Something looks on this interval and hands over anything that has been waiting longer, so a task cannot sit unstarted for ever. A task a worker already has is never handed over twice, whatever this says. Five minutes unless ORKNUX_TASK_SWEEP_MINUTES says otherwise; the next pass reads it, so no restart is needed.":
     "Zadanie jest zapisywane, a potem przekazywane pracownikowi, i to przekazanie można zgubić — restart w złym momencie albo pula, w której nic nie jest wolne. Coś zagląda w tym odstępie i przekazuje wszystko, co czeka dłużej, więc zadanie nie zostanie nierozpoczęte na zawsze. Zadanie, które pracownik już ma, nigdy nie jest przekazywane dwa razy, cokolwiek tu ustawiono. Pięć minut, chyba że ORKNUX_TASK_SWEEP_MINUTES mówi inaczej; kolejny przebieg to odczyta, więc restart nie jest potrzebny.",
   "Seconds between condition checks": "Sekundy między sprawdzeniami warunku",
@@ -989,7 +983,6 @@ export const PL: Record<string, string> = {
   "Connections inherited from admin defaults. Override credentials per connection.": "Połączenia odziedziczone z ustawień domyślnych administratora. Poświadczenia można nadpisać osobno dla każdego z nich.",
   "Default connections are automatically provisioned when a new workspace is created. Workspaces can override credentials in their own integration settings.": "Domyślne połączenia zakładane są automatycznie przy tworzeniu nowej przestrzeni roboczej. Przestrzenie robocze mogą nadpisać poświadczenia we własnych ustawieniach integracji.",
   "None set up yet. Connections carry credentials, so they are added under the workspace's Integrations and chosen here afterwards.": "Nic jeszcze nie skonfigurowano. Połączenia niosą poświadczenia, więc dodaje się je w Integracjach przestrzeni roboczej, a tutaj wybiera później.",
-  "A secret is only ever answered by pointing at a variable, and this workspace has none yet. Add one on the Variables page and it will be offered here.": "Na sekret odpowiada się wyłącznie wskazaniem zmiennej, a ta przestrzeń robocza nie ma jeszcze żadnej. Dodaj ją na stronie Zmienne, a pojawi się tutaj.",
   "A token is this user by another door: it carries their roles and nothing more. Sent as an Authorization: Bearer header.": "Token to ten sam użytkownik innymi drzwiami: niesie jego role i nic ponadto. Wysyłany jako nagłówek Authorization: Bearer.",
   "A JSON file you can import into another workspace. Nothing secret travels: a variable this is handed is named in the file, and the workspace it lands in supplies its own value. So is a model, a connection or an MCP server it points at — each of those is kept beside a credential, and the workspace it lands in says which of its own the name means.": "Plik JSON, który można zaimportować do innej przestrzeni roboczej. Nic tajnego nie podróżuje: zmienna, którą to dostaje, jest w pliku tylko nazwana, a wartość podaje przestrzeń robocza, do której plik trafi. Tak samo model, połączenie czy serwer MCP, na który wskazuje — każde z nich trzymane jest obok poświadczenia, a przestrzeń robocza, do której trafia, mówi, które ze swoich oznacza dana nazwa.",
   "Some of what this file points at is kept beside a credential, so no export could carry it — the file has the name and nothing else. Say which of this workspace's own each name means.": "Część tego, na co wskazuje ten plik, trzymana jest obok poświadczenia, więc żaden eksport nie mógłby tego przenieść — plik ma nazwę i nic więcej. Wskaż, które z zasobów tej przestrzeni roboczej oznacza każda z nazw.",
@@ -1006,7 +999,6 @@ export const PL: Record<string, string> = {
   "No plugins are loaded into this installation, so there is nothing to configure.": "Do tej instalacji nie wczytano żadnych wtyczek, więc nie ma czego konfigurować.",
   "It asks the server to do these on its behalf.": "Prosi też serwer, by robił za nią te rzeczy.",
   "The workspace's own tools, and the tools its plugins offer — a granted name is offered to the model either way.": "Własne narzędzia przestrzeni roboczej oraz narzędzia oferowane przez wtyczki — przyznana nazwa trafia do modelu tak czy tak.",
-  "The workspace's own catalogs, and the ones its plugins bring.": "Własne katalogi przestrzeni roboczej oraz te, które wnoszą wtyczki.",
   "The sandbox a plugin runs in switches these off for everything, because a plugin is somebody else's code running on this installation. Accepting turns them on for this plugin alone, and records who agreed and when. A plugin edited later to need something more is refused again, with the new list, rather than arriving under this answer.": "Piaskownica, w której działa wtyczka, wyłącza to wszystko dla każdego, bo wtyczka to cudzy kod działający w tej instalacji. Zgoda włącza je wyłącznie dla tej wtyczki i zapisuje, kto się zgodził i kiedy. Wtyczka zmieniona później tak, że potrzebuje czegoś więcej, zostanie odrzucona ponownie, z nową listą, zamiast wejść pod tę zgodą.",
 
   // --- access, users and what is decided elsewhere -----------------------
@@ -1692,7 +1684,6 @@ export const PL: Record<string, string> = {
   "One more was left out with it, because it cannot do without what you left out and this workspace has nothing to take its place.": "Razem z tym pominięto jeszcze jedno, bo nie obejdzie się bez tego, co pominąłeś, a ta przestrzeń robocza nie ma czym tego zastąpić.",
 
   // --- credentials and providers -------------------------------------------
-  "A secret is only ever answered by pointing at a variable": "Na sekret odpowiada się wyłącznie wskazaniem zmiennej",
   "A connection is picked from the workspace's connections, never read from a variable": "Połączenie wybiera się z połączeń przestrzeni roboczej, nigdy ze zmiennej",
   "This workspace has no connections yet. Add one on the Integrations page and it will be offered here.": "Ta przestrzeń robocza nie ma jeszcze połączeń. Dodaj je na stronie Integracji, a pojawi się tutaj.",
   "Kept out of sight. Show one to read it; the audit log records that you did.": "Trzymane poza zasięgiem wzroku. Pokaż, aby odczytać; dziennik audytu zapisze, że to zrobiłeś.",
@@ -1945,7 +1936,6 @@ export const PL: Record<string, string> = {
   "Workspace default": "Domyślne przestrzeni",
   "How long one call may run, in seconds; empty uses the workspace default.": "Ile sekund może trwać jedno wywołanie; puste używa domyślnej wartości przestrzeni.",
   "Tool Timeout": "Limit czasu narzędzi",
-  "Seconds one tool or function call may run; empty uses the installation’s bound.": "Ile sekund może trwać wywołanie narzędzia lub funkcji; puste używa limitu instalacji.",
 
   // --- one-word labels, which is what the menu is made of -------------------
   "Assignee": "Przypisany",

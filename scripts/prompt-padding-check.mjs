@@ -59,6 +59,10 @@ if (await drawn(page, 'the agent form')) {
         // edge. Padding alone would miss a box that centres its contents.
         gapTop: Math.round(f.top - w.top),
         gapBottom: Math.round(w.bottom - f.bottom),
+        // What the box adds to what it holds. The heights themselves follow
+        // the text - a long prompt is a tall box, which is correct - so what
+        // is comparable between the two is the chrome around the writing.
+        spare: Math.round(w.height - f.height),
       };
     };
     return { description: read('#agent-description'), prompt: read('#agent-system-prompt') };
@@ -75,9 +79,20 @@ if (await drawn(page, 'the agent form')) {
     `and the text starts and ends in the same place in each: prompt ${prompt.gapTop}/${prompt.gapBottom}, ` +
       `description ${description.gapTop}/${description.gapBottom}`,
   );
+  /*
+   * Not equal heights.
+   *
+   * This asserted `prompt.height === description.height`, which is a fact
+   * about how much somebody has typed rather than about the styling: an agent
+   * with a long system prompt and a short description has two boxes of
+   * different heights, correctly, and the check went red for it. What the bug
+   * it was written for actually looked like is a box taller than the writing
+   * inside it - 39px of nothing above the first line - so that is what is
+   * measured, on each box and against the other.
+   */
   record(
-    prompt.height === description.height,
-    `and neither is taller than it needs: prompt ${prompt.height}, description ${description.height}`,
+    prompt.spare === description.spare,
+    `and neither is taller than what it holds: prompt +${prompt.spare}px, description +${description.spare}px`,
   );
 }
 
