@@ -1677,6 +1677,24 @@ export const TESTS = [
      */
   },
   {
+    name: 'label-recency-check',
+    what: 'the labels offered under the label box are the ones lately used, first',
+    needs: ['workspace'],
+    /*
+     * Issue #346. The box offers six, and a workspace anybody is using has more
+     * than six labels - so the order decides whether the label being reached
+     * for is on the screen at all. Alphabetical put this week's milestone
+     * behind five labels last touched in March.
+     *
+     * Two labels are driven and they are named so that the alphabet and the
+     * clock disagree: used first, sorts first. A pair the two orders agree
+     * about would pass against either.
+     *
+     * Files two issues of its own and deletes them, and sweeps what an earlier
+     * killed run left.
+     */
+  },
+  {
     name: 'validate-status-check',
     what: 'the Validate status says what it checked, beside the button that checks it',
     needs: ['workspace'],

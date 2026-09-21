@@ -64,6 +64,10 @@ import { t } from '../../i18n';
  * Six is a glance; a workspace with forty labels would otherwise put a wall
  * of them under a one-line box, and anybody with forty labels is typing the
  * one they want anyway.
+ *
+ * Which six is the server's answer and not this page's: they arrive most
+ * recently used first, so the six are the ones this workspace is working with
+ * rather than the six nearest the top of the alphabet.
  */
 const SUGGESTIONS = 6;
 
@@ -150,6 +154,9 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
    * way: "p1" and "P1" filter separately, and nobody notices until a search
    * comes back short. Suggesting what exists is what keeps that from
    * happening, without forbidding a new one.
+   *
+   * Kept in the order it arrives in, which is the order it is meant to be
+   * read in - see [SUGGESTIONS]. Sorting it here would undo the answer.
    */
   const [known, setKnown] = useState<string[]>([]);
   /*
@@ -1632,10 +1639,10 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                   onBlur={addLabel}
                 />
                 {/*
-                  What this workspace already calls things, narrowed as you
-                  type. Only labels not already on this issue, and only when
-                  there is something to choose - a list that never shrinks is a
-                  list nobody reads.
+                  What this workspace already calls things, lately used first
+                  and narrowed as you type. Only labels not already on this
+                  issue, and only when there is something to choose - a list
+                  that never shrinks is a list nobody reads.
                 */}
                 {known.filter(
                   (one) =>
