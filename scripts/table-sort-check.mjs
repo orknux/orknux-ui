@@ -222,6 +222,7 @@ const firstCell = async () => {
 for (const list of [
   { path: 'executions', column: 'Workflow' },
   { path: 'tasks', column: 'Task' },
+  { path: 'sessions', column: 'Session' },
 ]) {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/${list.path}`, { waitUntil: 'domcontentloaded' });
   if (!(await drawn(page, list.path))) {

@@ -8,6 +8,7 @@ import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import { Loader } from '../../components/Loader';
 import { FieldHint } from '../../components/FieldHint';
@@ -52,6 +53,19 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [order, setOrder] = useState<LlmSessionOrder>('LAST_EVENT');
   const [ascending, setAscending] = useState(false);
+
+  /**
+   * A heading pressed: the same column turns round, a different one starts on
+   * the way it is read. The key reads A to Z and the two clocks newest first.
+   */
+  const sortBy = (column: LlmSessionOrder) => {
+    if (column === order) {
+      setAscending((held) => !held);
+      return;
+    }
+    setOrder(column);
+    setAscending(column === 'KEY');
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,11 +161,39 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colKey}>{t('Session')}</span>
+          {/*
+            The headings press for the same three orders the Sort box offers, and
+            the two controls are one piece of state - issue #358 asked for the
+            column, and a page with two controls that disagree is worse than
+            either. Prefix is the front of the key rather than a column of its
+            own, and Lines is a count of the transcript, so neither is an order.
+          */}
+          <ColumnHeader
+            label={t('Session')}
+            order="KEY"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colKey}
+          />
           <span className={styles.colPrefix}>{t('Prefix')}</span>
           <span className={styles.colCount}>{t('Lines')}</span>
-          <span className={styles.colOpened}>{t('Opened')}</span>
-          <span className={styles.colSpoken}>{t('Last spoken in')}</span>
+          <ColumnHeader
+            label={t('Opened')}
+            order="CREATED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colOpened}
+          />
+          <ColumnHeader
+            label={t('Last spoken in')}
+            order="LAST_EVENT"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colSpoken}
+          />
         </div>
 
         {loading && sessions === null && (
