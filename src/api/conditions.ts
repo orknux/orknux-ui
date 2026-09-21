@@ -66,8 +66,13 @@ const CONDITION_FIELDS = `
 `;
 
 const WORKSPACE_CONDITIONS_QUERY = `
-  query WorkspaceConditions($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-    workspaceConditions(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+  query WorkspaceConditions(
+    $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+  ) {
+    workspaceConditions(
+      workspaceId: $workspaceId, page: $page, size: $size, search: $search,
+      order: $order, ascending: $ascending
+    ) {
       content { ${CONDITION_FIELDS} }
       page
       size
@@ -114,17 +119,24 @@ export async function fetchCondition(id: string): Promise<Condition | null> {
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/** What the list can be put in the order of; see `CONDITION_ORDERS` on the server. */
+export type ConditionOrder = 'NAME' | 'TYPE';
+
 export async function fetchWorkspaceConditions(
   workspaceId: string,
   page: number,
   size: number,
   search = '',
+  order: ConditionOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<Condition>> {
   const data = await graphql<{ workspaceConditions: PageOf<Condition> }>(WORKSPACE_CONDITIONS_QUERY, {
     workspaceId,
     page,
     size,
     search: search.trim() === '' ? null : search.trim(),
+    order,
+    ascending,
   });
   return data.workspaceConditions;
 }

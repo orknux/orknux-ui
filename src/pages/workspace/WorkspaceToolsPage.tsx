@@ -5,12 +5,13 @@ import { fetchPluginTools } from '../../api/plugins';
 import type { PluginAgentTool } from '../../api/plugins';
 import type { SessionUser } from '../../api/session';
 import { createTool, fetchWorkspaceTools, setToolEnabled, timeAgo } from '../../api/tools';
-import type { Tool } from '../../api/tools';
+import type { Tool, ToolOrder } from '../../api/tools';
 import externalLinkIcon from '../../assets/external-link.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
   ExportComponentButton,
@@ -27,6 +28,7 @@ import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
@@ -77,6 +79,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('tools');
   const [typed, setTyped, asked] = useSearch();
+  const [order, ascending, sortBy] = useTableSort<ToolOrder>('tools', 'NAME', true, ['LAST_MODIFIED']);
 
   // A new search is a new list, so it starts at its first page rather
   // than at page four of the previous one.
@@ -105,6 +108,42 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
     };
   }, []);
 
+
+  /**
+   * The chosen order, applied where this page does its own cutting.
+   *
+   * Two of the three sieves hold the whole list in memory - the plugins' tools
+   * come as one answer, and "both origins" asks for all of the workspace's on
+   * purpose so one rule can cut both - so those are ordered here. The
+   * workspace-only sieve is paged by the server and ordered by it, because
+   * ordering a page after it has been chosen orders the wrong rows.
+   *
+   * A plugin's tool has no Status of its own and no last-modified: what it is,
+   * is that a plugin offers it. Those two orders fall back to the name for such
+   * a row rather than inventing a value that would sort it somewhere.
+   */
+  const inOrder = useCallback(
+    (rows: ToolRow[]): ToolRow[] => {
+      const nameOf = (row: ToolRow) => (row.kind === 'tool' ? row.tool.name : row.offered.name);
+      const keyOf = (row: ToolRow): string => {
+        if (order === 'DESCRIPTION') {
+          return (row.kind === 'tool' ? row.tool.description : row.offered.description) ?? '';
+        }
+        if (order === 'STATUS') return row.kind === 'tool' ? String(row.tool.enabled) : '';
+        if (order === 'LAST_MODIFIED') return row.kind === 'tool' ? row.tool.lastModifiedAt : '';
+        return nameOf(row);
+      };
+      const sorted = [...rows].sort((a, b) => {
+        const said = keyOf(a).localeCompare(keyOf(b));
+        // The name breaks every tie, or rows sharing a status shuffle between
+        // reads of the same page.
+        return said !== 0 ? said : nameOf(a).localeCompare(nameOf(b));
+      });
+      return ascending ? sorted : sorted.reverse();
+    },
+    [order, ascending],
+  );
+
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setError(null);
@@ -115,7 +154,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
     };
 
     if (source === 'WORKSPACE') {
-      fetchWorkspaceTools(workspaceId, page - 1, pageSize, asked)
+      fetchWorkspaceTools(workspaceId, page - 1, pageSize, asked, order, ascending)
         .then((result) => {
           setRows(result.content.map((tool) => ({ kind: 'tool', tool })));
           setTotal(result.totalElements);
@@ -135,7 +174,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
             // box that does nothing is worse than no box: it answers "no such
             // tool" by leaving everything where it was.
             .filter((one) => matches(one.name, asked));
-          setRows(kept.map((one) => ({ kind: 'plugin' as const, offered: one })));
+          setRows(inOrder(kept.map((one) => ({ kind: 'plugin' as const, offered: one }))));
           setTotal(kept.length);
           setServerPaged(false);
         })
@@ -154,17 +193,13 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
           // Sieved here rather than half here and half at the server: this
           // branch asks for the whole of the workspace's list precisely so
           // that both origins can be cut by one rule and paged as one.
-          .filter((row) => matches(row.kind === 'tool' ? row.tool.name : row.offered.name, asked))
-          .sort((a, b) => {
-          const nameOf = (row: ToolRow) => (row.kind === 'tool' ? row.tool.name : row.offered.name);
-          return nameOf(a).localeCompare(nameOf(b));
-        });
-        setRows(merged);
+          .filter((row) => matches(row.kind === 'tool' ? row.tool.name : row.offered.name, asked));
+        setRows(inOrder(merged));
         setTotal(merged.length);
         setServerPaged(false);
       })
       .catch(failed);
-  }, [workspaceId, page, pageSize, source, asked]);
+  }, [workspaceId, page, pageSize, source, asked, inOrder]);
 
   useEffect(load, [load]);
 
@@ -239,10 +274,39 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colName}>{t('Name')}</span>
-          <span className={styles.colDescription}>{t('Description')}</span>
-          <span className={styles.colStatus}>{t('Status')}</span>
-          <span className={styles.colModified}>{t('Last Modified')}</span>
+          {/* Pressable where there is something to order by. Issue #358. */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Description')}
+            order="DESCRIPTION"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colDescription}
+          />
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colStatus}
+          />
+          <ColumnHeader
+            label={t('Last Modified')}
+            order="LAST_MODIFIED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colModified}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 

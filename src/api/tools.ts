@@ -104,20 +104,30 @@ const TOOL_FIELDS =
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/** What the list can be put in the order of; see `TOOL_ORDERS` on the server. */
+export type ToolOrder = 'NAME' | 'DESCRIPTION' | 'STATUS' | 'LAST_MODIFIED';
+
 export async function fetchWorkspaceTools(
   workspaceId: string,
   page = 0,
   size = 20,
   search = '',
+  order: ToolOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<Tool>> {
   const data = await graphql<{ workspaceTools: PageOf<Tool> }>(
-    `query WorkspaceTools($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-       workspaceTools(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+    `query WorkspaceTools(
+       $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+     ) {
+       workspaceTools(
+         workspaceId: $workspaceId, page: $page, size: $size, search: $search,
+         order: $order, ascending: $ascending
+       ) {
          content { ${TOOL_FIELDS} }
          page size totalElements totalPages
        }
      }`,
-    { workspaceId, page, size, search: search.trim() === '' ? null : search.trim() },
+    { workspaceId, page, size, search: search.trim() === '' ? null : search.trim(), order, ascending },
   );
   return data.workspaceTools;
 }

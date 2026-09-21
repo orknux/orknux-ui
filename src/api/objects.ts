@@ -77,20 +77,30 @@ export async function fetchPluginObjects(): Promise<WorkflowObject[]> {
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/** What the list can be put in the order of; see `OBJECT_ORDERS` on the server. */
+export type ObjectOrder = 'NAME' | 'DESCRIPTION' | 'SOURCE' | 'LAST_MODIFIED';
+
 export async function fetchWorkspaceObjects(
   workspaceId: string,
   page: number,
   size: number,
   search = '',
+  order: ObjectOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<WorkflowObject>> {
   const data = await graphql<{ workspaceObjects: PageOf<WorkflowObject> }>(
-    `query WorkspaceObjects($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-       workspaceObjects(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+    `query WorkspaceObjects(
+       $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+     ) {
+       workspaceObjects(
+         workspaceId: $workspaceId, page: $page, size: $size, search: $search,
+         order: $order, ascending: $ascending
+       ) {
          content { ${OBJECT_FIELDS} }
          page size totalElements totalPages
        }
      }`,
-    { workspaceId, page, size, search: search.trim() === '' ? null : search.trim() },
+    { workspaceId, page, size, search: search.trim() === '' ? null : search.trim(), order, ascending },
   );
   return data.workspaceObjects;
 }

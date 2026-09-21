@@ -124,8 +124,13 @@ const AGENT_FIELDS =
   'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
 
 const WORKSPACE_AGENTS_QUERY = `
-  query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-    workspaceAgents(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+  query WorkspaceAgents(
+    $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+  ) {
+    workspaceAgents(
+      workspaceId: $workspaceId, page: $page, size: $size, search: $search,
+      order: $order, ascending: $ascending
+    ) {
       content { ${AGENT_FIELDS} }
       page
       size
@@ -193,17 +198,24 @@ const MEMORY_BUDGET_QUERY = `
  * Asked of the server rather than sieved here, because the list is paged:
  * narrowing what arrived on page one would hide matches on page four.
  */
+/** What the list can be put in the order of; see `AGENT_ORDERS` on the server. */
+export type AgentOrder = 'NAME' | 'DESCRIPTION' | 'STATUS';
+
 export async function fetchWorkspaceAgents(
   workspaceId: string,
   page: number,
   size: number,
   search = '',
+  order: AgentOrder = 'NAME',
+  ascending = true,
 ): Promise<PageOf<Agent>> {
   const data = await graphql<{ workspaceAgents: PageOf<Agent> }>(WORKSPACE_AGENTS_QUERY, {
     workspaceId,
     page,
     size,
     search: search.trim() === '' ? null : search.trim(),
+    order,
+    ascending,
   });
   return data.workspaceAgents;
 }

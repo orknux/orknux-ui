@@ -3,12 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import { createObject, fetchPluginObjects, fetchWorkspaceObjects } from '../../api/objects';
-import type { WorkflowObject } from '../../api/objects';
+import type { ObjectOrder, WorkflowObject } from '../../api/objects';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import puzzleIcon from '../../assets/puzzle.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
   ExportComponentButton,
@@ -26,6 +27,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { useSieve } from '../../components/sieve';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
 import { t } from '../../i18n';
@@ -50,6 +52,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('objects');
   const [typed, setTyped, asked] = useSearch();
+  const [order, ascending, sortBy] = useTableSort<ObjectOrder>('objects', 'NAME', true, ['LAST_MODIFIED']);
 
   // A new search is a new list, so it starts at its first page rather
   // than at page four of the previous one.
@@ -99,13 +102,13 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setError(null);
-    fetchWorkspaceObjects(workspaceId, page - 1, pageSize, asked)
+    fetchWorkspaceObjects(workspaceId, page - 1, pageSize, asked, order, ascending)
       .then(setObjects)
       .catch((cause: unknown) => {
         setObjects(null);
         setError(cause instanceof Error ? cause.message : t('Could not load the objects.'));
       });
-  }, [workspaceId, page, pageSize, asked]);
+  }, [workspaceId, page, pageSize, asked, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -178,8 +181,23 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colName}>{t('Name')}</span>
-          <span className={styles.colDescription}>{t('Description')}</span>
+          {/* Pressable where there is something stored to order by. Issue #358. */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Description')}
+            order="DESCRIPTION"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colDescription}
+          />
           {/*
             Where a shape came from, on the row rather than in a second table.
 
@@ -188,9 +206,27 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
             looking the same as every other. A column says it per row, which is
             also what makes the sieve beside the search worth having.
           */}
-          <span className={styles.colSource}>{t('Source')}</span>
+          <ColumnHeader
+            label={t('Source')}
+            order="SOURCE"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colSource}
+          />
+          {/*
+            The field count is the size of a collection, so there is no column to
+            order by and this stays a heading. Issue #358.
+          */}
           <span className={styles.colStatus}>{t('Properties')}</span>
-          <span className={styles.colModified}>{t('Last Modified')}</span>
+          <ColumnHeader
+            label={t('Last Modified')}
+            order="LAST_MODIFIED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colModified}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 

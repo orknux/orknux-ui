@@ -4,11 +4,12 @@ import { Link, useParams } from 'react-router-dom';
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
 import { agentTypeLabel, fetchWorkspaceAgents, setAgentEnabled } from '../../api/agents';
-import type { Agent } from '../../api/agents';
+import type { Agent, AgentOrder } from '../../api/agents';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
   ExportComponentButton,
@@ -24,6 +25,7 @@ import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './AgentsPage.module.css';
 import { t } from '../../i18n';
@@ -40,6 +42,7 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('agents');
   const [typed, setTyped, asked] = useSearch();
+  const [order, ascending, sortBy] = useTableSort<AgentOrder>('agents', 'NAME');
 
   // A new search is a new list, so it starts at its first page rather
   // than at page four of the previous one.
@@ -52,7 +55,7 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceAgents(workspaceId, page - 1, pageSize, asked)
+    fetchWorkspaceAgents(workspaceId, page - 1, pageSize, asked, order, ascending)
       .then((result) => {
         setAgents(result);
         setLoading(false);
@@ -62,7 +65,7 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
         setError(cause instanceof Error ? cause.message : t('Could not load agents.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, asked]);
+  }, [workspaceId, page, pageSize, asked, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -103,9 +106,31 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colGrow}>{t('Agent')}</span>
-          <span className={styles.colGrow}>{t('Description')}</span>
-          <span className={styles.colStatus}>{t('Status')}</span>
+          {/* Pressable where there is something stored to order by. Issue #358. */}
+          <ColumnHeader
+            label={t('Agent')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colGrow}
+          />
+          <ColumnHeader
+            label={t('Description')}
+            order="DESCRIPTION"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colGrow}
+          />
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colStatus}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 

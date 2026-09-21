@@ -3,10 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import { fetchWorkspaceConditions } from '../../api/conditions';
-import type { Condition } from '../../api/conditions';
+import type { Condition, ConditionOrder } from '../../api/conditions';
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
   ExportComponentButton,
@@ -21,6 +22,7 @@ import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceConditionsPage.module.css';
 import { t } from '../../i18n';
@@ -45,6 +47,7 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('conditions');
   const [typed, setTyped, asked] = useSearch();
+  const [order, ascending, sortBy] = useTableSort<ConditionOrder>('conditions', 'NAME');
 
   // A new search is a new list, so it starts at its first page rather
   // than at page four of the previous one.
@@ -56,7 +59,7 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceConditions(workspaceId, page - 1, pageSize, asked)
+    fetchWorkspaceConditions(workspaceId, page - 1, pageSize, asked, order, ascending)
       .then((result) => {
         setConditions(result);
         setLoading(false);
@@ -66,7 +69,7 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
         setError(cause instanceof Error ? cause.message : t('Could not load the conditions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, asked]);
+  }, [workspaceId, page, pageSize, asked, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -105,8 +108,28 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>
-            <span className={styles.colName}>{t('Name')}</span>
-            <span className={styles.colType}>{t('Type')}</span>
+            {/*
+              Pressable where there is something stored to order by. Issue #358.
+              The Description column is a sentence assembled from what the
+              condition asks - there is no stored description - so it stays a
+              heading rather than becoming a control that cannot be honoured.
+            */}
+            <ColumnHeader
+              label={t('Name')}
+              order="NAME"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colName}
+            />
+            <ColumnHeader
+              label={t('Type')}
+              order="TYPE"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colType}
+            />
             <span className={styles.colDescription}>{t('Description')}</span>
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>

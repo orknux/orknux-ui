@@ -71,13 +71,37 @@ const firstDrawn = () => page.locator('a[class*="_nameLink_"]').first().innerTex
 const nameHead = page.locator('button', { hasText: /^Name/ }).first();
 await nameHead.waitFor({ timeout: 20_000 });
 
-const started = await firstDrawn();
+/*
+ * Waited for, not slept past, on both sides of the press.
+ *
+ * The heading is drawn from the page and the rows from an answer that lands
+ * after it, so a press timed by a fixed pause can land on a list that is still
+ * arriving - and the reorder it asks for is then overwritten by the load it
+ * interrupted. Pressing once the first row exists, and reading once the row has
+ * actually changed, is the difference between measuring this and measuring the
+ * machine's mood.
+ */
+const rowsDrawn = async () => {
+  await page.locator('a[class*="_nameLink_"]').first().waitFor({ timeout: 20_000 });
+  return firstDrawn();
+};
+
+/** The first row once it is something other than [was], or after ten seconds. */
+const changedFrom = async (was) => {
+  const until = Date.now() + 10_000;
+  for (;;) {
+    const now = await firstDrawn().catch(() => was);
+    if (now !== was || Date.now() > until) return now;
+    await page.waitForTimeout(250);
+  }
+};
+
+const started = await rowsDrawn();
 console.log(`drawn first, as opened: ${JSON.stringify(started)}`);
 
 // Pressing the column the list is already in turns it round.
 await nameHead.click();
-await page.waitForTimeout(1500);
-const turned = await firstDrawn();
+const turned = await changedFrom(started);
 console.log(`after pressing Name: ${JSON.stringify(turned)}`);
 
 record(turned !== started, 'pressing the column the list is in turns it round');
@@ -91,8 +115,7 @@ record(
 await page.reload({ waitUntil: 'domcontentloaded' });
 await drawn(page, 'the actions list again');
 await nameHead.waitFor({ timeout: 20_000 });
-await page.waitForTimeout(800);
-const remembered = await firstDrawn();
+const remembered = await rowsDrawn();
 console.log(`after a reload: ${JSON.stringify(remembered)}`);
 record(remembered === turned, 'the order chosen is still theirs after a reload');
 
@@ -102,5 +125,111 @@ record(
   (await page.locator('button', { hasText: /^Input Params/ }).count()) === 0,
   'a heading the database cannot order by is a heading, not a control that lies',
 );
+
+/* ---- and the same heading, on every table that has grown one ---- */
+
+/*
+ * One press per list, against the server's answer for that order. Table-driven
+ * rather than a check per list, so the next list to grow a sortable heading is a
+ * row here rather than a file of its own - and a break in the shared heading or
+ * the shared hook fails once for every list it broke.
+ *
+ * `query` is the list's field and `column` a heading it now offers. Each is
+ * pressed twice: once to take the column, once to turn it round, which is the
+ * state the server is then asked to agree with.
+ */
+const LISTS = [
+  { path: 'conditions', query: 'workspaceConditions', column: 'Type', order: 'TYPE' },
+  { path: 'agents', query: 'workspaceAgents', column: 'Description', order: 'DESCRIPTION' },
+  { path: 'objects', query: 'workspaceObjects', column: 'Description', order: 'DESCRIPTION' },
+];
+
+/** The first row's first cell, which every one of these lists draws as a link. */
+const firstRow = () =>
+  page.locator('[class*="_row_"] a').first().innerText().then((text) => text.trim().split(String.fromCharCode(10))[0]);
+
+/** The first row of one of those lists, once it is something other than [was]. */
+const changedRow = async (was) => {
+  const until = Date.now() + 10_000;
+  for (;;) {
+    const now = await firstRow().catch(() => was);
+    if (now !== was || Date.now() > until) return now;
+    await page.waitForTimeout(250);
+  }
+};
+
+for (const list of LISTS) {
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/${list.path}`, { waitUntil: 'domcontentloaded' });
+  if (!(await drawn(page, list.path))) {
+    record(false, `${list.path}: the list is on screen`);
+    continue;
+  }
+
+  const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
+  const pressable = await head
+    .waitFor({ timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  record(pressable, `${list.path}: ${list.column} is a heading that can be pressed`);
+  if (!pressable) continue;
+
+  // Taken, then turned round: two presses leave it descending, which is an
+  // order nothing on this page starts in. Each press waits for the rows to move
+  // rather than for a fixed pause; see the note on the actions list above.
+  const before = await firstRow();
+  await head.click();
+  const took = await changedRow(before);
+  await head.click();
+  const drew = await changedRow(took);
+  const { [list.query]: answered } = await graphql(
+    `query($w: ID!, $o: String, $a: Boolean) {
+       ${list.query}(workspaceId: $w, page: 0, size: 1, order: $o, ascending: $a) { content { name } }
+     }`,
+    { w: WORKSPACE, o: list.order, a: false },
+  );
+  const wanted = answered.content[0]?.name ?? null;
+  console.log(`${list.path}: drew ${JSON.stringify(drew)}, server says ${JSON.stringify(wanted)}`);
+  record(
+    drew === wanted,
+    `${list.path}: ordered by ${list.column} it draws what the server ordered, not a reshuffled page`,
+  );
+
+  const sorted = await page
+    .locator(`[aria-sort="descending"]`)
+    .count()
+    .then((held) => held === 1);
+  record(sorted, `${list.path}: exactly one heading says which order the list is in`);
+}
+
+/* ---- the tools list, which cuts two origins into one page itself ---- */
+
+await page.goto(`${BASE}/workspace/${WORKSPACE}/tools`, { waitUntil: 'domcontentloaded' });
+record(await drawn(page, 'the tools list'), 'the tools list is on screen');
+
+const toolHead = page.locator('button', { hasText: /^Name/ }).first();
+await toolHead.waitFor({ timeout: 20_000 });
+/*
+ * Read off the row rather than out of a link: this table draws two origins, and
+ * a plugin's tool is a span with a badge beside it because there is no page of
+ * its own to link to. So the row's own first line is the only cell both kinds
+ * have.
+ */
+const toolName = async () => {
+  const said = await page.locator('[class*="_row_"]').allInnerTexts();
+  return said.map((one) => one.trim()).filter((one) => one !== '')[0]?.split(String.fromCharCode(10))[0] ?? '';
+};
+
+const toolsWere = await toolName();
+await toolHead.click();
+await page.waitForTimeout(1500);
+const toolsNow = await toolName();
+console.log(`tools: ${JSON.stringify(toolsWere)} then ${JSON.stringify(toolsNow)}`);
+/*
+ * Asserted by the turn rather than against the server: this page asks for the
+ * whole of the workspace's list and merges the plugins' tools into it, so the
+ * server's first row is not the list's first row. What is being measured is
+ * that the same press orders the rows the page cut for itself.
+ */
+record(toolsNow !== toolsWere, 'tools: the heading orders the rows this page cut for itself');
 
 await finish(browser);
