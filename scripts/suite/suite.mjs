@@ -221,6 +221,23 @@ export const TESTS = [
      */
   },
   {
+    name: 'object-shape-panel-check',
+    what: "a shape's fields are edited in the panel of the node that points at it",
+    needs: ['workspace'],
+    /*
+     * Issue #360. A shape made from the workflow editor was a name and a
+     * description: filling in the fields it exists to fix meant the object's
+     * own page, which is off the graph. It is the same editor the page draws,
+     * handed the panel's class names, so a property means one thing in both.
+     *
+     * The other half of the issue is measured by absence: the four lines of
+     * prose that sat under an empty list are asserted not to be on the page,
+     * and the (?) that now holds them is asserted to be.
+     *
+     * Makes a workflow and an object of its own, and removes both.
+     */
+  },
+  {
     name: 'object-custom-shape-check',
     what: "the Object node's Custom shape: named in the picker, marked, and not a one-way choice",
     needs: ['workspace'],

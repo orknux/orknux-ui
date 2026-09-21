@@ -1462,6 +1462,76 @@ select.input {
 }
 
 /*
+ * The shape a node points at, edited where the node is. Issue #360.
+ *
+ * The same editor the object's own page draws, in a column a third of its
+ * width - so the name, the type and Single/List stack rather than sit in a row,
+ * and only the delete stays beside the name it removes. What a property is
+ * called and what it holds are the two things being read here; everything the
+ * page puts around them belongs to the page.
+ */
+.shapeRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+.shapeMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.shapeField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The name and the way to remove it, on one line. */
+.shapeNameCol {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: var(--space-6);
+}
+
+.shapeNameCol > input {
+  flex: 1 0 0;
+}
+
+.shapeActionCol {
+  display: flex;
+  align-items: flex-end;
+}
+
+.shapeDelete {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  background: none;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.shapeDelete:hover {
+  color: var(--color-danger);
+}
+
+.shapeFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin-top: var(--space-6);
+}
+
+
+/*
  * The rest of what a definition's form asks for: a condition's switch and its
  * list of values, and a trigger's cron box and prefix.
  *

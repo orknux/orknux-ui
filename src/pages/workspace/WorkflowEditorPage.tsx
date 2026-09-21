@@ -61,10 +61,12 @@ import { fetchWorkspaceFunctions } from '../../api/functions';
 import type { WorkspaceFunction } from '../../api/functions';
 import { fetchWorkspaceConnections } from '../../api/integrations';
 import type { WorkspaceConnection } from '../../api/integrations';
-import { createObject, fetchWorkspaceObjects } from '../../api/objects';
+import { createObject, fetchObject, fetchWorkspaceObjects, updateObject } from '../../api/objects';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { WorkflowObject } from '../../api/objects';
+import { ObjectForm, asProperty, asRow, typeOptionsOf } from '../../components/ObjectForm';
+import type { ObjectFormStyles, Row } from '../../components/ObjectForm';
 import { fetchWorkflowOwnedTriggers, fetchWorkspaceTriggers } from '../../api/triggers';
 import type { Trigger } from '../../api/triggers';
 import { removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
@@ -356,6 +358,36 @@ const PANEL_FORM_STYLES = {
   // A trigger's cron box, and the fixed text in front of a webhook's path.
   inputCron: `${styles.input} ${styles.inputMono}`,
   prefix: styles.formPrefix,
+};
+
+/**
+ * The same again for a shape's properties, which the panel edits in place.
+ *
+ * The object's own page lays a property out as a row: name, type, how many,
+ * and a bin at the end. A panel is a third of that width, so the same controls
+ * stack - and Single/List borrows the switch the panel already draws for a
+ * parameter's Value and Reference, because two two-state switches that look
+ * different in one column is one look too many.
+ */
+const PANEL_SHAPE_STYLES: ObjectFormStyles = {
+  empty: styles.fieldNote,
+  row: styles.shapeRow,
+  main: styles.shapeMain,
+  field: styles.shapeField,
+  label: styles.label,
+  nameCol: `${styles.shapeField} ${styles.shapeNameCol}`,
+  name: `${styles.input} ${styles.inputMono}`,
+  typeCol: styles.shapeField,
+  holdsCol: styles.shapeField,
+  holds: styles.modeSwitch,
+  holdsOption: styles.modeOption,
+  holdsOptionActive: `${styles.modeOption} ${styles.modeOptionOn}`,
+  actionCol: styles.shapeActionCol,
+  delete: styles.shapeDelete,
+  descriptionRow: styles.shapeField,
+  description: styles.input,
+  footer: styles.shapeFooter,
+  add: styles.parameterSync,
 };
 
 /**
@@ -2328,6 +2360,19 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [functions, setFunctions] = useState<WorkspaceFunction[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [objects, setObjects] = useState<WorkflowObject[]>([]);
+  /*
+   * The shape the selected node points at, in full, and its fields as rows.
+   *
+   * The list above carries a name and a count, which is all a picker needs; the
+   * properties come with the one being looked at. Editing them here is what
+   * issue #360 asked for - a shape made from a node used to be a name and a
+   * description, and filling it in meant leaving the graph for the object's own
+   * page and finding the way back.
+   */
+  const [shape, setShape] = useState<WorkflowObject | null>(null);
+  const [shapeRows, setShapeRows] = useState<Row[]>([]);
+  const [shapeSaving, setShapeSaving] = useState(false);
+  const [shapeError, setShapeError] = useState<string | null>(null);
   /** The workspace's image models, for an image node's model picker. */
   const [imageModels, setImageModels] = useState<Model[]>([]);
 
@@ -2615,6 +2660,92 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       .then((all) => setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled)))
       .catch(() => setImageModels([]));
   }, [workspaceId]);
+
+
+  /**
+   * Whether the shape on screen says something the stored one does not.
+   *
+   * Compared as the payload a save would send rather than row by row, which is
+   * the only comparison that agrees with what pressing Save would actually
+   * change - and it means a blank row somebody added counts, because this
+   * editor sends every row it has.
+   */
+  /** What a property here may be one of; the same list the object's page offers. */
+  const shapeTypes = useMemo(() => typeOptionsOf(objects), [objects]);
+
+  const shapeEdited = useMemo(() => {
+    if (shape === null) return false;
+    return (
+      JSON.stringify(shapeRows.map(asProperty)) !==
+      JSON.stringify(shape.properties.map(asRow).map(asProperty))
+    );
+  }, [shape, shapeRows]);
+
+  /**
+   * Writes the shape, from the panel the node is in.
+   *
+   * On its own button rather than on a debounce like a Custom definition's
+   * form, because this one is not the node's: a shape is in the workspace's
+   * list and everything pointing at it gets what is written here. A save
+   * somebody meant is a save somebody pressed.
+   */
+  async function saveShape() {
+    if (shape === null || shapeSaving) return;
+    setShapeSaving(true);
+    setShapeError(null);
+    try {
+      const stored = await updateObject(shape.id, { properties: shapeRows.map(asProperty) });
+      setShape(stored);
+      setShapeRows(stored.properties.map(asRow));
+      // The picker shows a name and a count, and the count has just moved.
+      setObjects((all) => withDefinition(all, stored));
+    } catch (cause) {
+      setShapeError(cause instanceof Error ? cause.message : t('Could not save the shape.'));
+    } finally {
+      setShapeSaving(false);
+    }
+  }
+
+  /*
+   * Which shape to read, and nothing else about the draft.
+   *
+   * The effect below depends on this rather than on the draft, which changes on
+   * every keystroke in the panel - a dependency on the whole of it would fetch
+   * the same object again for each letter typed into the node's name.
+   */
+  const draftObjectId = draft !== null && draft.kind === 'OBJECT' ? draft.objectId : null;
+
+  /*
+   * The shape the selected node points at, read whole when it changes.
+   *
+   * An answer that is no longer wanted is dropped rather than applied: clicking
+   * from one object node to another asks twice, and a slow first reply would
+   * otherwise write the shape of the node nobody is looking at any more over
+   * the one they are.
+   */
+  useEffect(() => {
+    const wanted = draftObjectId;
+    if (wanted === null) {
+      setShape(null);
+      setShapeRows([]);
+      setShapeError(null);
+      return;
+    }
+    let abandoned = false;
+    fetchObject(wanted)
+      .then((loaded) => {
+        if (abandoned || loaded === null) return;
+        setShape(loaded);
+        setShapeRows(loaded.properties.map(asRow));
+        setShapeError(null);
+      })
+      .catch(() => {
+        if (!abandoned) setShape(null);
+      });
+    return () => {
+      abandoned = true;
+    };
+  }, [draftObjectId]);
 
   // Clicking on the canvas is React Flow's business, but a node we have just added
   // is not in its store yet, so the key is tracked here and its selection wins.
@@ -5066,6 +5197,46 @@ Change the keystroke in Preferences.`}
                       placeholder={t('Choose a shape…')}
                       searchPlaceholder={t("Search objects…")}
                     />
+
+                    {/*
+                      The shape's own fields, under the picker that chose it.
+
+                      Issue #360. A shape made from this panel was a name and a
+                      description and nothing else - the fields it exists to fix
+                      were on the object's own page, which is off the graph, and
+                      the way back was the breadcrumb. It is the same editor the
+                      page draws, so a property means the same thing in both.
+
+                      It is not this node's: a saved shape is in the
+                      workspace's list, and what is written here is written for
+                      everything pointing at it. That is what the note says and
+                      why the Save is a press rather than a pause.
+                    */}
+                    {shape !== null && (
+                      <>
+                        <p className={styles.customNote}>
+                          {t("This shape is in the workspace's list. What it says here, it says everywhere.")}
+                        </p>
+                        <ObjectForm
+                          rows={shapeRows}
+                          onChange={setShapeRows}
+                          typeOptions={shapeTypes}
+                          styles={PANEL_SHAPE_STYLES}
+                          idPrefix="node-shape"
+                        />
+                        {shapeError !== null && <p className={styles.error}>{shapeError}</p>}
+                        {shapeEdited && (
+                          <button
+                            type="button"
+                            className={styles.publishButton}
+                            onClick={() => void saveShape()}
+                            disabled={shapeSaving}
+                          >
+                            {shapeSaving ? t('Saving…') : t('Save shape')}
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
 
