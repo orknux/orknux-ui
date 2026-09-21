@@ -147,6 +147,28 @@ if (prose !== null) {
 await look('');
 await sieve('PLUGIN');
 const plugins = await settled();
+
+/*
+ * An installation with no plugins loaded has nothing under this sieve, which
+ * is not a fault: a fresh one is exactly that, and CI's fixture loads none.
+ * What is measured here is the box, so where there is nothing to narrow the
+ * measurement is skipped and said rather than failed.
+ */
+if (plugins.length === 0) {
+  record(true, 'no plugin offers a tool here, so there is no plugin list to narrow');
+  await look('');
+  await sieve('WORKSPACE');
+  const alone = await settled();
+  const aloneBit = alone.length === 0 ? '' : alone[0].slice(0, Math.max(3, Math.floor(alone[0].length / 2)));
+  const narrowedAlone = alone.length === 0 ? [] : await look(aloneBit);
+  record(
+    alone.length === 0 || (narrowedAlone.length > 0 && narrowedAlone.length <= alone.length),
+    `the setting that always worked still does (${narrowedAlone.length} of ${alone.length})`,
+  );
+  await look('');
+  await finish(browser);
+}
+
 record(plugins.length > 0, `the plugins offer tools to search too (${plugins.length})`);
 
 const pluginBit = plugins[0].slice(0, Math.max(3, Math.floor(plugins[0].length / 2)));

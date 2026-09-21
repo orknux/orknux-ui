@@ -367,6 +367,32 @@ file takes. That is the difference between a picture somebody is shown in Slack
 and a picture filed where they are not looking — a link pasted into a chat is
 punctuation, not a delivery.
 
+**Putting one in the middle of the text.** A key is not an address, so an agent
+that wants the picture at a particular point in what it writes asks for one:
+**picture_link** in a run, **task_picture_link** in a task. Both take the key
+and answer with markdown to place. Both are ticked in the agent's Tools list
+until somebody unticks them — the switch is for an agent whose answers are read
+somewhere this installation is not, where an address here resolves to nothing
+for the reader.
+
+## Saying the work is done
+
+An agent's turn ends when it writes an answer instead of asking for another
+tool. That assumes the answer is the prose, and often it is not: an agent
+answering a Slack mention posts its reply itself, because that is how a file or
+a picture reaches somebody. Asked for an answer anyway, it either repeats the
+message or says nothing at all — and nothing at all reads as a failure, which
+is retried, which posts the whole thing twice.
+
+**finish_answer** is that ending said out loud. The agent calls it, the turn
+ends, and the step is finished rather than failed. Anything it passes becomes
+what the step answers with, for a node that needs something to work with;
+passing nothing is the ordinary case, because what was made went somewhere the
+workflow is not.
+
+It is ticked for every agent until somebody unticks it, in the same Tools list
+as the grants. Untick it for the agent whose next node needs a real answer.
+
 ## Artifacts
 
 Everything a workspace has made, on one page: the pictures its runs drew, and
