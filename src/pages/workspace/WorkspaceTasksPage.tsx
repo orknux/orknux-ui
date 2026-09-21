@@ -5,10 +5,11 @@ import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
 import type { SessionUser } from '../../api/session';
 import { startTask, fetchTasks, openRequest, TASK_STATUSES, TASK_STATUS_LABEL } from '../../api/tasks';
-import type { TaskPage, TaskStatus } from '../../api/tasks';
+import type { TaskOrder, TaskPage, TaskStatus } from '../../api/tasks';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import { FieldHint } from '../../components/FieldHint';
@@ -17,6 +18,7 @@ import { SearchBox } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useTableSort } from '../../components/tableSort';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceTasksPage.module.css';
@@ -44,6 +46,8 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
   const [tasks, setTasks] = useState<TaskPage | null>(null);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('tasks');
+  /* Newest first, and the two counted columns read highest first when pressed. */
+  const [order, ascending, sortBy] = useTableSort<TaskOrder>('tasks', 'STARTED', false, ['STARTED', 'TURNS']);
   const [typed, setTyped, asked] = useSearch();
 
   // A new search is a new list, so it starts at its first page.
@@ -69,6 +73,8 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
       page: page - 1,
       size: pageSize,
       search: asked,
+      order,
+      ascending,
     })
       .then((found) => {
         setTasks(found);
@@ -79,7 +85,7 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
         setError(cause instanceof Error ? cause.message : t('Could not load the tasks.'));
         setLoading(false);
       });
-  }, [workspaceId, status, page, pageSize, asked]);
+  }, [workspaceId, status, page, pageSize, asked, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -253,11 +259,47 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colTitle}>{t('Task')}</span>
-          <span className={styles.colWorker}>{t('Doing it')}</span>
-          <span className={styles.colState}>{t('State')}</span>
-          <span className={styles.colTurns}>{t('Turns')}</span>
-          <span className={styles.colWhen}>{t('Started')}</span>
+          {/* Pressable, every one of them: this list has nothing derived in it. Issue #358. */}
+          <ColumnHeader
+            label={t('Task')}
+            order="TASK"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colTitle}
+          />
+          <ColumnHeader
+            label={t('Doing it')}
+            order="DOING"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colWorker}
+          />
+          <ColumnHeader
+            label={t('State')}
+            order="STATE"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colState}
+          />
+          <ColumnHeader
+            label={t('Turns')}
+            order="TURNS"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colTurns}
+          />
+          <ColumnHeader
+            label={t('Started')}
+            order="STARTED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colWhen}
+          />
         </div>
 
         {loading && tasks === null && (

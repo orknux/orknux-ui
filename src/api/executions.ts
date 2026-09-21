@@ -153,7 +153,13 @@ export interface ExecutionFilters {
   /** Only runs started in the last N days; omit for all time. */
   days?: number;
   search?: string;
+  /** Which column the list is in the order of; see the server's `orders`. */
+  order?: ExecutionOrder;
+  ascending?: boolean;
 }
+
+/** What the runs list can be put in the order of. */
+export type ExecutionOrder = 'RUN' | 'WORKFLOW' | 'STATUS' | 'STARTED' | 'TRIGGER';
 
 const WORKSPACE_EXECUTIONS_QUERY = `
   query WorkspaceExecutions(
@@ -164,6 +170,8 @@ const WORKSPACE_EXECUTIONS_QUERY = `
     $workflowId: ID
     $days: Int
     $search: String
+    $order: String
+    $ascending: Boolean
   ) {
     workspaceExecutions(
       workspaceId: $workspaceId
@@ -173,6 +181,8 @@ const WORKSPACE_EXECUTIONS_QUERY = `
       workflowId: $workflowId
       days: $days
       search: $search
+      order: $order
+      ascending: $ascending
     ) {
       content { id workflowId workflowName status trigger startedAt finishedAt durationSeconds workflowAssigned }
       page
@@ -198,6 +208,9 @@ export async function fetchWorkspaceExecutions(
     workflowId: filters.workflowId ?? null,
     days: filters.days ?? null,
     search: filters.search ?? null,
+    order: filters.order ?? 'STARTED',
+    // Newest first unless somebody asked otherwise, which is what this list is.
+    ascending: filters.ascending ?? false,
   });
   return data.workspaceExecutions;
 }

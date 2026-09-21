@@ -10,7 +10,7 @@ import {
   formatDuration,
   formatRelative,
 } from '../../api/executions';
-import type { Execution, ExecutionStatus, ExecutionWorkflow } from '../../api/executions';
+import type { Execution, ExecutionOrder, ExecutionStatus, ExecutionWorkflow } from '../../api/executions';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
@@ -19,6 +19,7 @@ import refreshIcon from '../../assets/refresh-cw.svg';
 import terminalIcon from '../../assets/terminal.svg';
 import userIcon from '../../assets/user.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { Loader } from '../../components/Loader';
 import { SelectField } from '../../components/SelectField';
@@ -26,6 +27,7 @@ import { CompactPagination } from '../../components/CompactPagination';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useTableSort } from '../../components/tableSort';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './ExecutionsPage.module.css';
@@ -57,6 +59,14 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
   const [ran, setRan] = useState<ExecutionWorkflow[]>([]);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('executions');
+  /*
+   * Newest first to begin with, which is what a list of runs is read as, and the
+   * three columns with a clock or a count behind them start that way too.
+   */
+  const [order, ascending, sortBy] = useTableSort<ExecutionOrder>('executions', 'STARTED', false, [
+    'STARTED',
+    'RUN',
+  ]);
   const [status, setStatus] = useState<ExecutionStatus | ''>('');
   const [workflowId, setWorkflowId] = useState('');
   const [days, setDays] = useState<number | ''>(1);
@@ -102,6 +112,8 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
       workflowId: workflowId || undefined,
       days: days === '' ? undefined : days,
       search: debouncedSearch || undefined,
+      order,
+      ascending,
     })
       .then((result) => {
         setRuns(result);
@@ -112,7 +124,7 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
         setError(cause instanceof Error ? cause.message : t('Could not load executions.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, status, workflowId, days, debouncedSearch]);
+  }, [workspaceId, page, pageSize, status, workflowId, days, debouncedSearch, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -217,12 +229,53 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colRun}>{t('Run')}</span>
-          <span className={styles.colWorkflow}>{t('Workflow')}</span>
-          <span className={styles.colStatus}>{t('Status')}</span>
-          <span className={styles.colStarted}>{t('Started')}</span>
+          {/*
+            Pressable where there is something stored to order by. Issue #358.
+            Duration is the distance between Started and finished, and a run
+            still going has only the first - so a third of the rows would have no
+            value to be ordered by. It stays a heading.
+          */}
+          <ColumnHeader
+            label={t('Run')}
+            order="RUN"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colRun}
+          />
+          <ColumnHeader
+            label={t('Workflow')}
+            order="WORKFLOW"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colWorkflow}
+          />
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colStatus}
+          />
+          <ColumnHeader
+            label={t('Started')}
+            order="STARTED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colStarted}
+          />
           <span className={styles.colDuration}>{t('Duration')}</span>
-          <span className={styles.colTrigger}>{t('Triggered by')}</span>
+          <ColumnHeader
+            label={t('Triggered by')}
+            order="TRIGGER"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colTrigger}
+          />
         </div>
 
         {/*

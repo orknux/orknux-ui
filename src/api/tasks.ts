@@ -193,15 +193,31 @@ const TASK_FIELDS = `
   messages { ${MESSAGE_FIELDS} }
 `;
 
+/** What the tasks list can be put in the order of; see `TASK_ORDERS` on the server. */
+export type TaskOrder = 'TASK' | 'DOING' | 'STATE' | 'TURNS' | 'STARTED';
+
 export async function fetchTasks(
   workspaceId: string,
-  options: { status?: TaskStatus; page?: number; size?: number; search?: string } = {},
+  options: {
+    status?: TaskStatus;
+    page?: number;
+    size?: number;
+    search?: string;
+    order?: TaskOrder;
+    ascending?: boolean;
+  } = {},
 ): Promise<TaskPage> {
   // Blank is "every title", which is what absent means to the server.
   const looking = (options.search ?? '').trim();
   const data = await graphql<{ workspaceTasks: TaskPage }>(
-    `query ($workspaceId: ID!, $status: TaskStatus, $page: Int, $size: Int, $search: String) {
-       workspaceTasks(workspaceId: $workspaceId, status: $status, page: $page, size: $size, search: $search) {
+    `query (
+       $workspaceId: ID!, $status: TaskStatus, $page: Int, $size: Int, $search: String,
+       $order: String, $ascending: Boolean
+     ) {
+       workspaceTasks(
+         workspaceId: $workspaceId, status: $status, page: $page, size: $size, search: $search,
+         order: $order, ascending: $ascending
+       ) {
          totalElements
          content { ${TASK_FIELDS} }
        }
@@ -212,6 +228,9 @@ export async function fetchTasks(
       page: options.page ?? 0,
       size: options.size ?? 20,
       search: looking === '' ? null : looking,
+      order: options.order ?? 'STARTED',
+      // Newest first unless somebody asked otherwise.
+      ascending: options.ascending ?? false,
     },
   );
   return data.workspaceTasks;

@@ -208,6 +208,51 @@ for (const list of LISTS) {
   record(sorted, `${list.path}: exactly one heading says which order the list is in`);
 }
 
+/* ---- the runs and the tasks, which are lists of events rather than of names ---- */
+
+/*
+ * Read off the row, because neither of these draws a link in the cell a heading
+ * orders by: a run's first cell is its number and a task's is its title.
+ */
+const firstCell = async () => {
+  const said = await page.locator('[class*="_row_"]').allInnerTexts();
+  return said.map((one) => one.trim()).filter((one) => one !== '')[0]?.split(String.fromCharCode(10))[0] ?? '';
+};
+
+for (const list of [
+  { path: 'executions', column: 'Workflow' },
+  { path: 'tasks', column: 'Task' },
+]) {
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/${list.path}`, { waitUntil: 'domcontentloaded' });
+  if (!(await drawn(page, list.path))) {
+    record(false, `${list.path}: the list is on screen`);
+    continue;
+  }
+
+  const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
+  const pressable = await head
+    .waitFor({ timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  record(pressable, `${list.path}: ${list.column} is a heading that can be pressed`);
+  if (!pressable) continue;
+
+  const was = await firstCell();
+  await head.click();
+  const until = Date.now() + 10_000;
+  let now = was;
+  while (now === was && Date.now() < until) {
+    await page.waitForTimeout(250);
+    now = await firstCell().catch(() => was);
+  }
+  console.log(`${list.path}: ${JSON.stringify(was)} then ${JSON.stringify(now)}`);
+  record(now !== was, `${list.path}: pressing ${list.column} reorders the rows`);
+  record(
+    (await page.locator('[aria-sort="ascending"], [aria-sort="descending"]').count()) === 1,
+    `${list.path}: exactly one heading says which order the list is in`,
+  );
+}
+
 /* ---- the tools list, which cuts two origins into one page itself ---- */
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tools`, { waitUntil: 'domcontentloaded' });
