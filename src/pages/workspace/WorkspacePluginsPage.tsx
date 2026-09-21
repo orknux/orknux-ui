@@ -13,10 +13,12 @@ import type { SessionUser } from '../../api/session';
 import type { Variable } from '../../api/variables';
 import puzzleIcon from '../../assets/puzzle.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { FieldHint } from '../../components/FieldHint';
 import { FieldPicker } from '../../components/FieldPicker';
 import type { FieldOption, FieldPickerLabels } from '../../components/FieldPicker';
 import { Loader } from '../../components/Loader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { CompactPagination } from '../../components/CompactPagination';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
@@ -101,6 +103,10 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
   // A new search is a new list, so it starts at its first page.
   useEffect(() => setPage(1), [asked]);
 
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'PARAMETERS'>('plugins', 'NAME', true, [
+    'PARAMETERS',
+  ]);
+
   /** A plugin is found by the name it shows, by its key, or by who wrote it. */
   const matching = useMemo(() => {
     const looking = asked.trim().toLowerCase();
@@ -117,11 +123,30 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
     });
   }, [plugins, asked]);
 
+  /*
+   * The order a heading asked for, applied here. Issue #358. The plugins arrive
+   * whole - this page pages them itself - so the parameter count is a column
+   * this list can honestly be ordered by, unlike the counts on the server-paged
+   * lists where the number is worked out after the page has been chosen.
+   */
+  const arranged = useMemo(
+    () =>
+      matching === null
+        ? null
+        : ordered(
+            matching,
+            (entry) => (order === 'PARAMETERS' ? entry.parameters.length : entry.plugin.name),
+            ascending,
+            (entry) => entry.plugin.name,
+          ),
+    [matching, order, ascending],
+  );
+
   const shown = useMemo(() => {
-    if (matching === null) return null;
+    if (arranged === null) return null;
     const from = (page - 1) * pageSize;
-    return matching.slice(from, from + pageSize);
-  }, [matching, page, pageSize]);
+    return arranged.slice(from, from + pageSize);
+  }, [arranged, page, pageSize]);
   /*
    * What the pickers offer, kept current rather than read once with the plugins.
    * A parameter is answered with a variable, and the variable it wants is often
@@ -308,8 +333,22 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
         {plugins !== null && plugins.length > 0 && (
           <div className={styles.table}>
             <div className={styles.tableHeader}>
-              <span className={styles.colName}>{t('Plugin')}</span>
-              <span className={styles.colParams}>{t('Parameters')}</span>
+              <ColumnHeader
+                label={t('Plugin')}
+                order="NAME"
+                current={order}
+                ascending={ascending}
+                onSort={sortBy}
+                className={styles.colName}
+              />
+              <ColumnHeader
+                label={t('Parameters')}
+                order="PARAMETERS"
+                current={order}
+                ascending={ascending}
+                onSort={sortBy}
+                className={styles.colParams}
+              />
             </div>
 
             {shown?.map((entry) => {

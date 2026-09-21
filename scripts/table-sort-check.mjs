@@ -219,10 +219,44 @@ const firstCell = async () => {
   return said.map((one) => one.trim()).filter((one) => one !== '')[0]?.split(String.fromCharCode(10))[0] ?? '';
 };
 
+/*
+ * What is asserted here differs from the lists above on purpose.
+ *
+ * These are read by the row rather than by a link, and three of them draw two
+ * tables on one screen - the models page has providers and models, the
+ * integrations page has servers and connections - so "exactly one heading says
+ * which order the list is in" is a statement about a page with one table and
+ * false about a page with two. The heading pressed is asked about itself
+ * instead.
+ *
+ * A reorder is only asserted where the table has two rows to reorder: a
+ * workspace with one MCP server has nothing to say about an order, and a check
+ * that demanded a change there would be asserting the fixture rather than the
+ * feature.
+ */
+/*
+ * What is asserted here differs from the lists above, on purpose.
+ *
+ * These are read by the row rather than by a link, and two of them draw two
+ * tables on one screen - the models page has providers and models, the
+ * integrations page has servers and connections - so "exactly one heading says
+ * which order the list is in" is a statement about a page with one table and
+ * false about a page with two. The heading that was pressed is asked about
+ * itself instead.
+ *
+ * A reorder is only asserted where there are two rows to reorder: a workspace
+ * with one MCP server has nothing to say about an order, and a check that
+ * demanded a change there would be asserting the fixture rather than the
+ * feature.
+ */
 for (const list of [
   { path: 'executions', column: 'Workflow' },
   { path: 'tasks', column: 'Task' },
   { path: 'sessions', column: 'Session' },
+  { path: 'audit', column: 'Action' },
+  { path: 'models', column: 'Provider' },
+  { path: 'integrations', column: 'Address' },
+  { path: 'plugins', column: 'Parameters' },
 ]) {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/${list.path}`, { waitUntil: 'domcontentloaded' });
   if (!(await drawn(page, list.path))) {
@@ -238,20 +272,64 @@ for (const list of [
   record(pressable, `${list.path}: ${list.column} is a heading that can be pressed`);
   if (!pressable) continue;
 
-  const was = await firstCell();
+  /** The heading itself, which is what carries `aria-sort`. */
+  const heading = page.locator(`[aria-sort]:has(button:text-matches("^${list.column}"))`).first();
+
+  /*
+   * The rows of the heading's own table, not the page's.
+   *
+   * Two of these screens draw two tables, and the first row on the page belongs
+   * to whichever of them comes first - so pressing a heading in the second one
+   * changed nothing the page-wide reading could see. Scoped to the section the
+   * heading is in, a press is measured against the rows it actually orders.
+   */
+  const section = heading.locator('xpath=ancestor::section[1]');
+
+  /** The first line of the first row of that table that has anything in it. */
+  const topRow = async () => {
+    const said = await section.locator('[class*="_row_"]').allInnerTexts();
+    const kept = said.map((one) => one.trim()).filter((one) => one !== '');
+    return { first: kept[0]?.split(String.fromCharCode(10))[0] ?? '', rows: kept.length };
+  };
+
+  const before = await topRow();
+
+  /*
+   * Up to two presses, because one is not always a different order.
+   *
+   * A press takes the column ascending, and a column this list is already in
+   * turns round instead - so whether the first press changes what is on top
+   * depends on where the list started and on whether two columns happen to put
+   * the same row first. Both are true somewhere here: the models list starts on
+   * Provider, and ordering MCP servers by name and by address puts the same one
+   * first. Pressing again is the same control doing the same thing.
+   */
+  const pressed = async () => {
+    const until = Date.now() + 6_000;
+    for (;;) {
+      const now = (await topRow().catch(() => before)).first;
+      if (now !== before.first || Date.now() > until) return now;
+      await page.waitForTimeout(250);
+    }
+  };
+
   await head.click();
-  const until = Date.now() + 10_000;
-  let now = was;
-  while (now === was && Date.now() < until) {
-    await page.waitForTimeout(250);
-    now = await firstCell().catch(() => was);
+  let now = await pressed();
+  if (now === before.first) {
+    await head.click();
+    now = await pressed();
   }
-  console.log(`${list.path}: ${JSON.stringify(was)} then ${JSON.stringify(now)}`);
-  record(now !== was, `${list.path}: pressing ${list.column} reorders the rows`);
+
+  console.log(`${list.path}: ${JSON.stringify(before.first)} then ${JSON.stringify(now)} (${before.rows} rows)`);
   record(
-    (await page.locator('[aria-sort="ascending"], [aria-sort="descending"]').count()) === 1,
-    `${list.path}: exactly one heading says which order the list is in`,
+    (await heading.getAttribute('aria-sort')) !== 'none',
+    `${list.path}: the heading pressed says which way the list is now in`,
   );
+  if (before.rows > 1) {
+    record(now !== before.first, `${list.path}: pressing ${list.column} reorders the rows`);
+  } else {
+    console.log(`${list.path}: one row, so there is no order to measure`);
+  }
 }
 
 /* ---- the tools list, which cuts two origins into one page itself ---- */

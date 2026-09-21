@@ -1,6 +1,41 @@
 import { useState } from 'react';
 
 /**
+ * Rows put in order here, for the lists that are not paged by the server.
+ *
+ * Most tables are a page of a longer list, and those are ordered by the server
+ * because ordering the twenty rows on screen is not ordering the two hundred.
+ * A few are not: the models, the connections and the plugins arrive whole,
+ * because they are short lists a workspace has a handful of. Those are ordered
+ * here, which is correct precisely because nothing was left behind.
+ *
+ * [keyOf] is what the column holds for a row; [tieOf] is what breaks a draw, and
+ * is the name in every caller so far - rows sharing a status must not shuffle
+ * between renders.
+ */
+export function ordered<T>(
+  rows: T[],
+  keyOf: (row: T) => string | number | boolean | null | undefined,
+  ascending: boolean,
+  tieOf?: (row: T) => string,
+): T[] {
+  const said = (value: string | number | boolean | null | undefined): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'boolean') return value ? '1' : '0';
+    // Numbers padded so 9 sorts before 10, which a plain comparison gets wrong.
+    if (typeof value === 'number') return value.toString().padStart(12, '0');
+    return value.toLowerCase();
+  };
+
+  const sorted = [...rows].sort((left, right) => {
+    const by = said(keyOf(left)).localeCompare(said(keyOf(right)));
+    if (by !== 0) return by;
+    return tieOf === undefined ? 0 : tieOf(left).toLowerCase().localeCompare(tieOf(right).toLowerCase());
+  });
+  return ascending ? sorted : sorted.reverse();
+}
+
+/**
  * Which column a list is ordered by, and which way round.
  *
  * Remembered per person and per list, the way the page size is and for the same

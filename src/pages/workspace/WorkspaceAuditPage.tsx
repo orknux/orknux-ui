@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { fetchActivityUsers, fetchWorkspaceActivity } from '../../api/activity';
-import type { ActivityCategory, ActivityEntry } from '../../api/activity';
+import type { ActivityCategory, ActivityEntry, ActivityOrder } from '../../api/activity';
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
 import bookIcon from '../../assets/book.svg';
@@ -19,11 +19,13 @@ import searchIcon from '../../assets/search.svg';
 import shieldIcon from '../../assets/shield.svg';
 import terminalIcon from '../../assets/terminal.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useTableSort } from '../../components/tableSort';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceAuditPage.module.css';
@@ -55,6 +57,8 @@ export function WorkspaceAuditPage({ session, onSignOut }: WorkspaceAuditPagePro
   const [users, setUsers] = useState<string[]>([]);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('audit');
+  /* Newest first, which is what a log is read as. */
+  const [order, ascending, sortBy] = useTableSort<ActivityOrder>('audit', 'AT', false, ['AT']);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState<ActivityCategory | ''>('');
@@ -87,6 +91,8 @@ export function WorkspaceAuditPage({ session, onSignOut }: WorkspaceAuditPagePro
       category: category || undefined,
       userId: userId || undefined,
       days: days === '' ? undefined : days,
+      order,
+      ascending,
     })
       .then((result) => {
         setEntries(result);
@@ -97,7 +103,7 @@ export function WorkspaceAuditPage({ session, onSignOut }: WorkspaceAuditPagePro
         setError(cause instanceof Error ? cause.message : t('Could not load the audit log.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, debouncedSearch, category, userId, days]);
+  }, [workspaceId, page, pageSize, debouncedSearch, category, userId, days, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -202,9 +208,31 @@ export function WorkspaceAuditPage({ session, onSignOut }: WorkspaceAuditPagePro
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colAction}>{t('Action')}</span>
-          <span className={styles.colUser}>{t('User')}</span>
-          <span className={styles.colTimestamp}>{t('Timestamp')}</span>
+          {/* Pressable, all three: a log entry is a message, a name and a moment. Issue #358. */}
+          <ColumnHeader
+            label={t('Action')}
+            order="ACTION"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colAction}
+          />
+          <ColumnHeader
+            label={t('User')}
+            order="USER"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colUser}
+          />
+          <ColumnHeader
+            label={t('Timestamp')}
+            order="AT"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colTimestamp}
+          />
         </div>
 
         <div className={styles.tableBody}>

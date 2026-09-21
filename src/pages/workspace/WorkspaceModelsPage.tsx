@@ -16,12 +16,14 @@ import userPlusIcon from '../../assets/user-plus.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
 import { ModelDialog } from '../../components/ModelDialog';
 import { CompactPagination } from '../../components/CompactPagination';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceModelsPage.module.css';
@@ -43,6 +45,15 @@ function statusDot(status: ProviderStatus): string {
       return styles.dotIdle;
   }
 }
+
+/**
+ * What each of the two tables on this screen can be put in the order of.
+ *
+ * Two unions rather than one: a provider has an endpoint and a model has a kind,
+ * and a single list of column names would offer each table the other's.
+ */
+type ProviderColumn = 'NAME' | 'ENDPOINT' | 'STATUS';
+type ModelColumn = 'NAME' | 'PROVIDER' | 'KIND' | 'STATUS';
 
 export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageProps) {
   const { workspaceId = '' } = useParams();
@@ -76,6 +87,21 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
   // A new search is a new list, so each goes back to its own first page.
   useEffect(() => setProviderPage(1), [providerAsked]);
   useEffect(() => setModelPage(1), [modelAsked]);
+
+  /*
+   * Each table has its own order. Issue #358. They are two lists - providers and
+   * the models those providers serve - and somebody reading the models by kind
+   * has not said anything about how the providers above should be arranged.
+   *
+   * Ordered here rather than by the server because both arrive whole: these are
+   * short lists, and the page is doing the paging, so ordering the rows it holds
+   * is ordering all of them.
+   */
+  const [providerOrder, providerAscending, sortProviders] = useTableSort<ProviderColumn>(
+    'model-providers',
+    'NAME',
+  );
+  const [modelOrder, modelAscending, sortModels] = useTableSort<ModelColumn>('models', 'NAME');
 
   /** A provider is found by its name or by where it points. */
   const matchingProviders = useMemo(() => {
@@ -112,8 +138,30 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
     return all.slice(from, from + size);
   }
 
-  const shownProviders = slice<ModelProvider>(matchingProviders, providerPage, providerSize);
-  const shownModels = slice<Model>(matchingModels, modelPage, modelSize);
+  /** What each column holds for a provider, for the order a heading asks for. */
+  const providerKey = (held: ModelProvider) => {
+    if (providerOrder === 'ENDPOINT') return held.endpoint;
+    if (providerOrder === 'STATUS') return held.status;
+    return held.name;
+  };
+
+  /** And for a model. Provider is the name drawn, not the id behind it. */
+  const modelKey = (held: Model) => {
+    if (modelOrder === 'PROVIDER') return held.providerName;
+    if (modelOrder === 'KIND') return held.kind;
+    if (modelOrder === 'STATUS') return held.enabled;
+    return held.name;
+  };
+
+  const arrangedProviders =
+    matchingProviders === null
+      ? null
+      : ordered(matchingProviders, providerKey, providerAscending, (held) => held.name);
+  const arrangedModels =
+    matchingModels === null ? null : ordered(matchingModels, modelKey, modelAscending, (held) => held.name);
+
+  const shownProviders = slice<ModelProvider>(arrangedProviders, providerPage, providerSize);
+  const shownModels = slice<Model>(arrangedModels, modelPage, modelSize);
 
   const load = useCallback(() => {
     if (workspaceId === '') return;
@@ -207,15 +255,37 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
         </SearchRow>
 
         <div className={styles.tableHeader}>
-          <span className={styles.colProvider}>{t('Provider')}</span>
-          <span className={styles.colGrow}>{t('API Endpoint')}</span>
-          <span className={styles.colStatus}>{t('Status')}</span>
+          {/* Pressable, all three of them: nothing on this row is derived. Issue #358. */}
+          <ColumnHeader
+            label={t('Provider')}
+            order="NAME"
+            current={providerOrder}
+            ascending={providerAscending}
+            onSort={sortProviders}
+            className={styles.colProvider}
+          />
+          <ColumnHeader
+            label={t('API Endpoint')}
+            order="ENDPOINT"
+            current={providerOrder}
+            ascending={providerAscending}
+            onSort={sortProviders}
+            className={styles.colGrow}
+          />
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={providerOrder}
+            ascending={providerAscending}
+            onSort={sortProviders}
+            className={styles.colStatus}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 
         {providers === null && error === null && <p className={styles.notice}><Loader /></p>}
         {providers?.length === 0 && <p className={styles.notice}>{t('No providers yet.')}</p>}
-        {providers !== null && providers.length > 0 && matchingProviders?.length === 0 && (
+        {providers !== null && providers.length > 0 && arrangedProviders?.length === 0 && (
           <p className={styles.notice}>{t('No provider matches what you typed.')}</p>
         )}
 
@@ -321,10 +391,38 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
         </SearchRow>
 
         <div className={styles.tableHeader}>
-          <span className={styles.colModel}>{t('Model')}</span>
-          <span className={styles.colProviderName}>{t('Provider')}</span>
-          <span className={styles.colKind}>{t('Type')}</span>
-          <span className={styles.colToggle}>{t('Status')}</span>
+          <ColumnHeader
+            label={t('Model')}
+            order="NAME"
+            current={modelOrder}
+            ascending={modelAscending}
+            onSort={sortModels}
+            className={styles.colModel}
+          />
+          <ColumnHeader
+            label={t('Provider')}
+            order="PROVIDER"
+            current={modelOrder}
+            ascending={modelAscending}
+            onSort={sortModels}
+            className={styles.colProviderName}
+          />
+          <ColumnHeader
+            label={t('Type')}
+            order="KIND"
+            current={modelOrder}
+            ascending={modelAscending}
+            onSort={sortModels}
+            className={styles.colKind}
+          />
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={modelOrder}
+            ascending={modelAscending}
+            onSort={sortModels}
+            className={styles.colToggle}
+          />
           <span className={styles.colGrow} />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
@@ -337,7 +435,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
               : t('No models yet.')}
           </p>
         )}
-        {models !== null && models.length > 0 && matchingModels?.length === 0 && (
+        {models !== null && models.length > 0 && arrangedModels?.length === 0 && (
           <p className={styles.notice}>{t('No model matches what you typed.')}</p>
         )}
 

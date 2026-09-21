@@ -29,7 +29,13 @@ export interface ActivityFilters {
   userId?: string;
   /** Only entries from the last N days; omit for all time. */
   days?: number;
+  /** Which column the feed is in the order of; see `AUDIT_ORDERS` on the server. */
+  order?: ActivityOrder;
+  ascending?: boolean;
 }
+
+/** What the feed can be put in the order of. */
+export type ActivityOrder = 'ACTION' | 'USER' | 'AT';
 
 const WORKSPACE_ACTIVITY_QUERY = `
   query WorkspaceActivity(
@@ -40,6 +46,8 @@ const WORKSPACE_ACTIVITY_QUERY = `
     $category: WorkspaceAuditCategory
     $userId: String
     $days: Int
+    $order: String
+    $ascending: Boolean
   ) {
     workspaceActivity(
       workspaceId: $workspaceId
@@ -49,6 +57,8 @@ const WORKSPACE_ACTIVITY_QUERY = `
       category: $category
       userId: $userId
       days: $days
+      order: $order
+      ascending: $ascending
     ) {
       content { id workspaceId category message date userId }
       page
@@ -80,6 +90,9 @@ export async function fetchWorkspaceActivity(
     category: filters.category ?? null,
     userId: filters.userId ?? null,
     days: filters.days ?? null,
+    order: filters.order ?? 'AT',
+    // Newest first unless somebody asked otherwise, which is what a log is.
+    ascending: filters.ascending ?? false,
   });
   return data.workspaceActivity;
 }

@@ -12,8 +12,10 @@ import type { ConnectionStatus, McpServer, WorkspaceConnection } from '../../api
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { ConnectionIcon } from '../../components/ConnectionIcon';
 import { Loader } from '../../components/Loader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { McpServerDialog } from '../../components/McpServerDialog';
 import { WorkspaceConnectionDialog } from '../../components/WorkspaceConnectionDialog';
 import { CompactPagination } from '../../components/CompactPagination';
@@ -59,6 +61,15 @@ function statusDot(status: ConnectionStatus): string {
   }
 }
 
+/**
+ * What each of the two tables here can be put in the order of.
+ *
+ * Two unions, because they are two lists: an MCP server has an address and a
+ * connection has a type, and one list of names would offer each the other's.
+ */
+type ServerColumn = 'NAME' | 'ADDRESS' | 'AUTH';
+type ConnectionColumn = 'NAME' | 'TYPE' | 'STATUS';
+
 export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceIntegrationsPageProps) {
   const { workspaceId = '' } = useParams();
   const navigate = useNavigate();
@@ -86,6 +97,12 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
   useEffect(() => setConnectionPage(1), [connectionAsked]);
 
   /** A server is found by its name or by where it points. */
+  const [serverOrder, serverAscending, sortServers] = useTableSort<ServerColumn>('mcp-servers', 'NAME');
+  const [connectionOrder, connectionAscending, sortConnections] = useTableSort<ConnectionColumn>(
+    'connections',
+    'NAME',
+  );
+
   const matchingServers = useMemo(() => {
     const looking = serverAsked.trim().toLowerCase();
     if (servers === null) return null;
@@ -116,8 +133,31 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     return all.slice(from, from + size);
   }
 
-  const shownServers = slice<McpServer>(matchingServers, serverPage, serverSize);
-  const shownConnections = slice<WorkspaceConnection>(matchingConnections, connectionPage, connectionSize);
+  /*
+   * An order per table. Issue #358. Both lists arrive whole - a workspace has a
+   * handful of each and this page does its own paging - so ordering the rows it
+   * holds is ordering all of them.
+   */
+  const serverKey = (held: McpServer) => {
+    if (serverOrder === 'ADDRESS') return held.address;
+    if (serverOrder === 'AUTH') return held.authType;
+    return held.name;
+  };
+  const connectionKey = (held: WorkspaceConnection) => {
+    if (connectionOrder === 'TYPE') return held.type;
+    if (connectionOrder === 'STATUS') return held.status;
+    return held.name;
+  };
+
+  const arrangedServers =
+    matchingServers === null ? null : ordered(matchingServers, serverKey, serverAscending, (held) => held.name);
+  const arrangedConnections =
+    matchingConnections === null
+      ? null
+      : ordered(matchingConnections, connectionKey, connectionAscending, (held) => held.name);
+
+  const shownServers = slice<McpServer>(arrangedServers, serverPage, serverSize);
+  const shownConnections = slice<WorkspaceConnection>(arrangedConnections, connectionPage, connectionSize);
   const [addingServer, setAddingServer] = useState(false);
   const [addingConnection, setAddingConnection] = useState(false);
 
@@ -174,15 +214,37 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
         </SearchRow>
 
         <div className={styles.tableHeader}>
-          <span className={styles.colName}>{t('Name')}</span>
-          <span className={styles.colGrow}>{t('Address')}</span>
-          <span className={styles.colMeta}>{t('Auth')}</span>
+          {/* Pressable where there is something to order by. Issue #358. */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={serverOrder}
+            ascending={serverAscending}
+            onSort={sortServers}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Address')}
+            order="ADDRESS"
+            current={serverOrder}
+            ascending={serverAscending}
+            onSort={sortServers}
+            className={styles.colGrow}
+          />
+          <ColumnHeader
+            label={t('Auth')}
+            order="AUTH"
+            current={serverOrder}
+            ascending={serverAscending}
+            onSort={sortServers}
+            className={styles.colMeta}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 
         {servers === null && error === null && <p className={styles.notice}><Loader /></p>}
         {servers?.length === 0 && <p className={styles.notice}>{t('No MCP servers yet.')}</p>}
-        {servers !== null && servers.length > 0 && matchingServers?.length === 0 && (
+        {servers !== null && servers.length > 0 && arrangedServers?.length === 0 && (
           <p className={styles.notice}>{t('No server matches what you typed.')}</p>
         )}
 
@@ -257,15 +319,36 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
         </SearchRow>
 
         <div className={styles.tableHeader}>
-          <span className={styles.colName}>{t('Name')}</span>
-          <span className={styles.colGrow}>{t('Type')}</span>
-          <span className={styles.colMeta}>{t('Status')}</span>
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={connectionOrder}
+            ascending={connectionAscending}
+            onSort={sortConnections}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Type')}
+            order="TYPE"
+            current={connectionOrder}
+            ascending={connectionAscending}
+            onSort={sortConnections}
+            className={styles.colGrow}
+          />
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={connectionOrder}
+            ascending={connectionAscending}
+            onSort={sortConnections}
+            className={styles.colMeta}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 
         {connections === null && error === null && <p className={styles.notice}><Loader /></p>}
         {connections?.length === 0 && <p className={styles.notice}>{t('No connections yet.')}</p>}
-        {connections !== null && connections.length > 0 && matchingConnections?.length === 0 && (
+        {connections !== null && connections.length > 0 && arrangedConnections?.length === 0 && (
           <p className={styles.notice}>{t('No connection matches what you typed.')}</p>
         )}
 
