@@ -337,6 +337,73 @@ select.input {
 }
 
 /* A label and the (?) that explains it. */
+
+/* The heading of a card that holds a list rather than fields. */
+.cardHeading {
+  margin: 0 0 var(--space-12);
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+/*
+ * What a trigger has done, on the trigger's own page. Issue #357.
+ *
+ * The same rows the triggers list opens under a row, in a card: a time, what
+ * became of the firing, and which workflows it started. The entries that matter
+ * are mostly the ones no run came of, and they appear nowhere else - so
+ * somebody who opened this page to ask why nothing ran had to go back to the
+ * list to find out.
+ */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.logRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+  width: 100%;
+}
+
+.logAt {
+  flex-shrink: 0;
+  width: 90px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.logDetail {
+  flex: 1 0 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.logEmpty {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--text-sm);
+  line-height: 18px;
+  color: var(--color-text-muted);
+}
+
+/* Started, and everything that is not started. */
+.outcomeGood {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--color-success);
+}
+
+.outcomeQuiet {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .labelWithHint {
   display: inline-flex;
   align-items: center;

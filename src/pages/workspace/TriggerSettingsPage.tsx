@@ -7,6 +7,8 @@ import type { Trigger } from '../../api/triggers';
 import { AppShell } from '../../components/AppShell';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
+import { TriggerFirings } from '../../components/TriggerFirings';
+import type { TriggerFiringsStyles } from '../../components/TriggerFirings';
 import { TriggerForm } from '../../components/TriggerForm';
 import type { TriggerFormStyles } from '../../components/TriggerForm';
 import { UsedBy } from '../../components/UsedBy';
@@ -41,6 +43,18 @@ const FORM_STYLES: TriggerFormStyles = {
   actions: styles.cardActions,
   ghost: styles.ghost,
   filled: styles.save,
+};
+
+/** This page's names for the log of what the trigger has done. */
+const LOG_STYLES: TriggerFiringsStyles = {
+  log: styles.log,
+  empty: styles.logEmpty,
+  row: styles.logRow,
+  at: styles.logAt,
+  outcomeGood: styles.outcomeGood,
+  outcomeQuiet: styles.outcomeQuiet,
+  detail: styles.logDetail,
+  labelWithHint: styles.labelWithHint,
 };
 
 /**
@@ -150,6 +164,20 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
             />
 
             {saved && <p className={styles.savedNote}>{t('Saved.')}</p>}
+
+            {/*
+              What it has done, above what points at it. Issue #357.
+
+              The same log the triggers list opens under a row, drawn here
+              because this is the page somebody opens when a workflow did not
+              run: the entries that explain that - an event a condition turned
+              down, a definition nothing instances - are recorded nowhere else,
+              and finding them meant going back to the list.
+            */}
+            <section className={styles.card}>
+              <h2 className={styles.cardHeading}>{t('History')}</h2>
+              <TriggerFirings triggerId={triggerId} styles={LOG_STYLES} />
+            </section>
 
             {/*
               Which workflows start from it. The draft graph alone is the

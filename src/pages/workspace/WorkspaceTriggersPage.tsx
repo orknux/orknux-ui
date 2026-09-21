@@ -8,7 +8,6 @@ import {
   TRIGGER_TYPE_LABEL,
   cannotReceive,
   fetchSlackBotUsers,
-  fetchTriggerFirings,
   fetchWorkspaceTriggerFirings,
   fetchWorkspaceTriggers,
   listensForMessages,
@@ -30,6 +29,8 @@ import {
   transferStyles,
 } from '../../components/ComponentTransfer';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
+import { TriggerFirings, firedAt } from '../../components/TriggerFirings';
+import type { TriggerFiringsStyles } from '../../components/TriggerFirings';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
@@ -47,13 +48,23 @@ export interface WorkspaceTriggersPageProps {
 }
 
 /** A timestamp as somebody watching a trigger reads it: how long ago. */
-function when(at: string): string {
-  const seconds = Math.round((Date.now() - new Date(at).getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h ago`;
-  return new Date(at).toLocaleDateString();
-}
+/*
+ * How a firing's time is said. One answer, in the component that draws the log:
+ * this column and the log under it are the same fact about the same row.
+ */
+const when = firedAt;
+
+/** This page's names for the log it opens under a row. */
+const LOG_STYLES: TriggerFiringsStyles = {
+  log: styles.log,
+  empty: styles.logEmpty,
+  row: styles.logRow,
+  at: styles.logAt,
+  outcomeGood: styles.outcomeGood,
+  outcomeQuiet: styles.outcomeQuiet,
+  detail: styles.logDetail,
+  labelWithHint: styles.labelWithHint,
+};
 
 /** What starts this workspace's workflows. */
 export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersPageProps) {
@@ -80,10 +91,8 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  /** Which trigger's log is open, and what it holds. */
+  /** Which trigger's log is open; what it holds is the log's own business. */
   const [showing, setShowing] = useState<string | null>(null);
-  const [firings, setFirings] = useState<TriggerFiring[]>([]);
-  const [firingsError, setFiringsError] = useState<string | null>(null);
   /** Everything that has fired here, whichever trigger did it. */
   const [history, setHistory] = useState<PageOf<TriggerFiring> | null>(null);
   const [historyPage, setHistoryPage] = usePageWithin(workspaceId);
@@ -168,27 +177,6 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
   }, [workspaceId, historyPage, historyPageSize]);
 
   useEffect(loadHistory, [loadHistory]);
-
-  /**
-   * The log is loaded when a row is opened rather than with the list — twenty
-   * rows would mean twenty queries for something nobody has asked to see.
-   */
-  useEffect(() => {
-    if (showing === null) return;
-    let current = true;
-    setFirings([]);
-    setFiringsError(null);
-    fetchTriggerFirings(showing, 0, 20)
-      .then((page) => {
-        if (current) setFirings(page.content);
-      })
-      .catch((cause: unknown) => {
-        if (current) setFiringsError(cause instanceof Error ? cause.message : t('Could not load the log.'));
-      });
-    return () => {
-      current = false;
-    };
-  }, [showing]);
 
   async function toggle(trigger: Trigger) {
     await setTriggerEnabled(trigger.id, !trigger.enabled);
@@ -360,37 +348,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
             </div>
 
             {showing === trigger.id && (
-              <div className={styles.log}>
-                {firingsError !== null && <p className={styles.logEmpty}>{firingsError}</p>}
-                {/*
-                  "Nothing yet." stops being true the first time this fires.
-                  Why an empty log is unremarkable, and what "asked" means for a
-                  Slack trigger, is as true of a log with forty rows in it - so
-                  by the rules file's test it is not status, and it goes behind
-                  the (?) beside the line rather than away.
-                */}
-                {firingsError === null && firings.length === 0 && (
-                  <p className={styles.logEmpty}>
-                    <span className={styles.labelWithHint}>
-                      {t('Nothing yet.')}
-                      <FieldHint label={t('Nothing yet')}>
-                        {t('This trigger has not been asked to do anything — for a Slack trigger that means no matching event has arrived. An empty log is what a trigger nobody has reached looks like, not a sign that anything is wrong with it.')}
-                      </FieldHint>
-                    </span>
-                  </p>
-                )}
-                {firings.map((firing) => (
-                  <div key={firing.id} className={styles.logRow}>
-                    <span className={styles.logAt}>{when(firing.at)}</span>
-                    <span
-                      className={firing.outcome === 'STARTED' ? styles.outcomeGood : styles.outcomeQuiet}
-                    >
-                      {FIRING_OUTCOME_LABEL[firing.outcome]}
-                    </span>
-                    <span className={styles.logDetail}>{firing.detail}</span>
-                  </div>
-                ))}
-              </div>
+              <TriggerFirings triggerId={trigger.id} styles={LOG_STYLES} />
             )}
             </Fragment>
             );

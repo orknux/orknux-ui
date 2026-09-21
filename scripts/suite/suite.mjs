@@ -221,6 +221,24 @@ export const TESTS = [
      */
   },
   {
+    name: 'trigger-history-check',
+    what: "what a trigger has done is on the trigger's own page",
+    needs: [],
+    /*
+     * Issue #357. The firing log existed and was drawn only on the list, under
+     * a row somebody had to expand - but the page people open when a workflow
+     * did not run is the trigger's own, and the entries that answer why are the
+     * ones no run came of. Those are recorded nowhere else.
+     *
+     * Drives a real firing: a webhook with nothing pointed at it is called,
+     * which writes the NO_INSTANCE entry this page exists to surface. Both
+     * surfaces are read, because they are now one component and a change to it
+     * can break either.
+     *
+     * Makes a webhook trigger and the shape it answers, and removes both.
+     */
+  },
+  {
     name: 'field-type-check',
     what: "a field an Object node names for itself says what it holds",
     needs: [],
