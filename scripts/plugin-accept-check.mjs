@@ -48,6 +48,16 @@ const unloadMine = async () => {
 if (await unloadMine()) console.log('NOTE: swept a scratch plugin from an earlier run');
 
 await page.goto(`${BASE}/admin/plugins`, { waitUntil: 'domcontentloaded' });
+
+/*
+ * The upload lives under Catalog now.
+ *
+ * The screen opens on Installed - a list of what this installation holds -
+ * and the two ways to get another one, the marketplace and a file of your
+ * own, are together on the other tab. The address carries it, which is how
+ * somebody sends a colleague a link to the shelf.
+ */
+await page.getByRole('tab', { name: 'Catalog' }).click();
 await page.waitForSelector('input[type="file"]', { state: 'attached', timeout: 20_000 });
 
 /*

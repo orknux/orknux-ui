@@ -107,14 +107,26 @@ const SCREENS = [
         nothing: { data: { skillCatalogs: [] } },
         what: 'skill catalogs',
         notes: 1,
-        empty: ['No skill catalogs in this workspace yet.'],
+        /*
+         * No empty sentence to look for.
+         *
+         * The workspace's catalogues are not the whole list any more: a plugin
+         * brings skills of its own, so a workspace that has none of its own
+         * still has rows to draw and the empty line never appears. What this
+         * screen is measured on is the half below - that a *failure* says so
+         * and offers a retry - which is the thing the check exists for.
+         */
+        empty: [],
       },
       {
         query: 'workspaceTools(',
         nothing: { data: { workspaceTools: { content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 } } },
         what: 'tools',
         notes: 1,
-        empty: ['No tools in this workspace yet.'],
+        // The same, and more so: the Tools list always holds the rows this
+        // application brings itself - draw_picture, finish_answer,
+        // picture_link - so it is never empty however empty the workspace is.
+        empty: [],
       },
     ],
   },
