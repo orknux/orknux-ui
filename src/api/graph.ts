@@ -1,4 +1,5 @@
 import { graphql } from './client';
+import type { PropertyKind } from './objects';
 import { t } from '../i18n';
 
 export type WorkflowStatus = 'DRAFT' | 'PUBLISHED';
@@ -132,6 +133,20 @@ export interface NodeMapping {
   mode: MappingMode;
   /** Which node produces the referenced field; what the canvas draws a line from. */
   sourceNodeKey?: string | null;
+  /**
+   * What this field holds, where the node is the one naming it.
+   *
+   * An Object node with no saved shape carries fields of its own, and this is
+   * what one of them is - the three parts a saved object's property has, asked
+   * in the other place somebody names a field. Absent on every other mapping: a
+   * parameter belonging to a function or a condition is typed by the definition
+   * it belongs to.
+   */
+  fieldKind?: PropertyKind | null;
+  /** What a list holds, where the kind is `ARRAY` and it holds scalars. */
+  fieldElementKind?: PropertyKind | null;
+  /** The object it points at, where it is one of those or a list of them. */
+  fieldRefObjectId?: string | null;
 }
 
 /** How much a problem matters: an error is refused on save, a warning is advice. */
@@ -207,7 +222,7 @@ const GRAPH_FIELDS = `
     key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId outputName icon orientation
     yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds
     retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds x y
-    mappings { name expression mode sourceNodeKey }
+    mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId }
     inputs { name type display }
     outputs { name type display }
   }

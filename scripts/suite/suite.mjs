@@ -221,6 +221,23 @@ export const TESTS = [
      */
   },
   {
+    name: 'field-type-check',
+    what: "a field an Object node names for itself says what it holds",
+    needs: [],
+    /*
+     * Issue #359. A field of a node's own was a name and a value, so a number
+     * typed into one arrived downstream as the string "3" and a saved shape was
+     * the only way to say otherwise - which made one node handing on a number a
+     * reason to add a name to the workspace's library.
+     *
+     * Driven end to end: chosen in the panel, saved with the graph, read back
+     * off the server, and a list of them as well as one of them. A picker that
+     * shows the right word and stores nothing is the failure it is for.
+     *
+     * Makes a workflow of its own and removes it.
+     */
+  },
+  {
     name: 'object-shape-panel-check',
     what: "a shape's fields are edited in the panel of the node that points at it",
     needs: ['workspace'],

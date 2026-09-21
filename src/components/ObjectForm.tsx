@@ -24,19 +24,53 @@ export interface Row {
   description: string;
 }
 
+/**
+ * What a type says, as the three parts anything storing one keeps.
+ *
+ * The pair on screen and the three in the database are the same answer written
+ * two ways, and this is the one place that knows both. A saved object's
+ * property is stored this way and so is a field an Object node names for
+ * itself - the same question asked in two places, so not two answers.
+ */
+export function kindsOf(type: string, many: boolean): {
+  kind: PropertyKind;
+  elementKind?: PropertyKind;
+  refObjectId?: string;
+} {
+  const [kind, refObjectId] = type.split(':');
+  if (many) {
+    return kind === 'OBJECT'
+      ? { kind: 'ARRAY', refObjectId }
+      : { kind: 'ARRAY', elementKind: kind as PropertyKind };
+  }
+  if (kind === 'OBJECT') return { kind: 'OBJECT', refObjectId };
+  return { kind: kind as PropertyKind };
+}
+
+/** And back: what the two controls should be showing for what is stored. */
+export function typeOf(held: {
+  kind?: PropertyKind | null;
+  elementKind?: PropertyKind | null;
+  refObjectId?: string | null;
+}): { type: string; many: boolean } {
+  if (held.kind === 'ARRAY') {
+    return {
+      type: held.refObjectId != null ? `OBJECT:${held.refObjectId}` : `${held.elementKind ?? 'STRING'}`,
+      many: true,
+    };
+  }
+  if (held.kind === 'OBJECT') return { type: `OBJECT:${held.refObjectId}`, many: false };
+  return { type: held.kind ?? 'STRING', many: false };
+}
+
 /** What the two controls mean together, unpacked for the server. */
 export function asProperty(row: Row): ObjectPropertyInput {
-  const [kind, refObjectId] = row.type.split(':');
   const description = row.description.trim();
-  const said = description === '' ? null : description;
-
-  if (row.many) {
-    return kind === 'OBJECT'
-      ? { name: row.name, kind: 'ARRAY', refObjectId, description: said }
-      : { name: row.name, kind: 'ARRAY', elementKind: kind as PropertyKind, description: said };
-  }
-  if (kind === 'OBJECT') return { name: row.name, kind: 'OBJECT', refObjectId, description: said };
-  return { name: row.name, kind: kind as PropertyKind, description: said };
+  return {
+    name: row.name,
+    ...kindsOf(row.type, row.many),
+    description: description === '' ? null : description,
+  };
 }
 
 /**
@@ -47,19 +81,7 @@ export function asProperty(row: Row): ObjectPropertyInput {
  * nothing is lost, because the two halves were always in the row anyway.
  */
 export function asRow(property: WorkflowObject['properties'][number]): Row {
-  const description = property.description ?? '';
-  if (property.kind === 'ARRAY') {
-    return {
-      name: property.name,
-      type: property.refObjectId !== null ? `OBJECT:${property.refObjectId}` : `${property.elementKind}`,
-      many: true,
-      description,
-    };
-  }
-  if (property.kind === 'OBJECT') {
-    return { name: property.name, type: `OBJECT:${property.refObjectId}`, many: false, description };
-  }
-  return { name: property.name, type: property.kind, many: false, description };
+  return { name: property.name, ...typeOf(property), description: property.description ?? '' };
 }
 
 /** A row to start from: a string, singular, waiting for a name. */

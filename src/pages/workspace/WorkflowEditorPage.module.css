@@ -1522,6 +1522,18 @@ select.input {
   color: var(--color-danger);
 }
 
+/*
+ * What a field of the node's own holds: the type, and whether there is one of
+ * it or a list. Above the Value/Reference switch, because what a field is comes
+ * before what goes in it - and in the same column width, so the row reads as
+ * one control stack rather than two.
+ */
+.fieldType {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .shapeFooter {
   display: flex;
   justify-content: space-between;

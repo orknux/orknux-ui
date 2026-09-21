@@ -65,7 +65,7 @@ import { createObject, fetchObject, fetchWorkspaceObjects, updateObject } from '
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { WorkflowObject } from '../../api/objects';
-import { ObjectForm, asProperty, asRow, typeOptionsOf } from '../../components/ObjectForm';
+import { ObjectForm, asProperty, asRow, kindsOf, typeOf, typeOptionsOf } from '../../components/ObjectForm';
 import type { ObjectFormStyles, Row } from '../../components/ObjectForm';
 import { fetchWorkflowOwnedTriggers, fetchWorkspaceTriggers } from '../../api/triggers';
 import type { Trigger } from '../../api/triggers';
@@ -2670,6 +2670,40 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * change - and it means a blank row somebody added counts, because this
    * editor sends every row it has.
    */
+
+  /** Whether a field of the node's own was declared to hold a list of them. */
+  function fieldIsMany(mapping: NodeMapping): boolean {
+    return mapping.fieldKind === 'ARRAY';
+  }
+
+  /**
+   * Writes a field's declared type, as the three parts the server keeps.
+   *
+   * The pair on screen is unpacked by the same function the object's page
+   * unpacks a property with, so a field named on a node and a property named on
+   * a shape are stored the same way.
+   */
+  function setFieldType(index: number, type: string, many: boolean) {
+    const kinds = kindsOf(type, many);
+    setDraft((held) =>
+      held === null
+        ? held
+        : {
+            ...held,
+            mappings: held.mappings.map((mapping, at) =>
+              at === index
+                ? {
+                    ...mapping,
+                    fieldKind: kinds.kind,
+                    fieldElementKind: kinds.elementKind ?? null,
+                    fieldRefObjectId: kinds.refObjectId ?? null,
+                  }
+                : mapping,
+            ),
+          },
+    );
+  }
+
   /** What a property here may be one of; the same list the object's page offers. */
   const shapeTypes = useMemo(() => typeOptionsOf(objects), [objects]);
 
@@ -5612,6 +5646,69 @@ Change the keystroke in Preferences.`}
                                   ) : null;
                                 })()}
                               </span>
+                              {/*
+                                What this field holds, where the node is the one
+                                naming it. Issue #359.
+
+                                A field of a node's own was a name and a value,
+                                so a number typed into one arrived downstream as
+                                the string "3" and whoever read it had to undo
+                                that before they could use it. The control is
+                                the one a saved shape's property has, because it
+                                is the same question - and a field left alone is
+                                a string, which is what every field written
+                                before this was.
+                              */}
+                              {draft.kind === 'OBJECT' && draft.objectId === null && (
+                                <span className={styles.fieldType}>
+                                  <DefinitionPicker
+                                    id={`node-field-type-${index}`}
+                                    value={typeOf({
+                                      kind: mapping.fieldKind,
+                                      elementKind: mapping.fieldElementKind,
+                                      refObjectId: mapping.fieldRefObjectId,
+                                    }).type}
+                                    options={shapeTypes}
+                                    onChoose={(chosen) =>
+                                      setFieldType(index, chosen, fieldIsMany(mapping))
+                                    }
+                                    placeholder={t('Choose a type…')}
+                                    searchPlaceholder={t('Search types…')}
+                                    ariaLabel={`Type of ${mapping.name || `field ${index + 1}`}`}
+                                  />
+                                  <span
+                                    className={styles.modeSwitch}
+                                    role="group"
+                                    aria-label={`Whether ${mapping.name || `field ${index + 1}`} is a single value or a list`}
+                                  >
+                                    {[false, true].map((many) => (
+                                      <button
+                                        key={many ? 'list' : 'single'}
+                                        type="button"
+                                        className={
+                                          fieldIsMany(mapping) === many
+                                            ? `${styles.modeOption} ${styles.modeOptionOn}`
+                                            : styles.modeOption
+                                        }
+                                        aria-pressed={fieldIsMany(mapping) === many}
+                                        onClick={() =>
+                                          setFieldType(
+                                            index,
+                                            typeOf({
+                                              kind: mapping.fieldKind,
+                                              elementKind: mapping.fieldElementKind,
+                                              refObjectId: mapping.fieldRefObjectId,
+                                            }).type,
+                                            many,
+                                          )
+                                        }
+                                      >
+                                        {many ? t('List') : t('Single')}
+                                      </button>
+                                    ))}
+                                  </span>
+                                </span>
+                              )}
                               {/*
                                 Written, or read from somewhere. The switch is
                                 what replaces knowing to type `{{input.reply}}`:
