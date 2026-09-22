@@ -206,10 +206,26 @@ export async function fetchDiscoveredModels(providerId: string): Promise<Discove
   return data.discoveredModels;
 }
 
-export async function fetchModelUsage(id: string, days = 30): Promise<ModelUsage> {
+/**
+ * What a model was used for, over a window and against the one before it.
+ *
+ * `days` counts back from today and is what the page opens on. `from` and `to`
+ * are a range and win where either is given: `from` alone runs to now, `to`
+ * alone is the window of `days` ending there, and the two together are the days
+ * between them. Both are `YYYY-MM-DD`; an empty one is nothing asked for, which
+ * is what an emptied box sends.
+ */
+export async function fetchModelUsage(
+  id: string,
+  days = 30,
+  from?: string,
+  to?: string,
+): Promise<ModelUsage> {
   const data = await graphql<{ modelUsage: ModelUsage }>(
-    `query ModelUsage($id: ID!, $days: Int!) { modelUsage(id: $id, days: $days) { ${USAGE_FIELDS} } }`,
-    { id, days },
+    `query ModelUsage($id: ID!, $days: Int!, $from: String, $to: String) {
+       modelUsage(id: $id, days: $days, from: $from, to: $to) { ${USAGE_FIELDS} }
+     }`,
+    { id, days, from: from ?? null, to: to ?? null },
   );
   return data.modelUsage;
 }

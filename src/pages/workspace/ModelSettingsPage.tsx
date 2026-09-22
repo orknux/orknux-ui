@@ -53,6 +53,18 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [model, setModel] = useState<Model | null>(null);
   const [usage, setUsage] = useState<ModelUsage | null>(null);
   /**
+   * The window the figures are for, as typed.
+   *
+   * Empty is the thirty days the page opens on, which is what it always showed.
+   * Held as strings because that is what a date box holds and what the query
+   * takes: half a date is somebody still typing, not a window.
+   */
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  /** What the figures on screen were actually asked for; see the effect. */
+  const [asked, setAsked] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [usageError, setUsageError] = useState<string | null>(null);
+  /**
    * The window, and what the model keeps out of it for its own answer.
    *
    * Their own state, their own save and their own message, apart from the
@@ -108,19 +120,38 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         setLoadError(cause instanceof Error ? cause.message : t('Could not load the model.'));
       });
 
-    // The metrics are their own request: the settings should still show if the
-    // usage query is the thing that failed.
-    fetchModelUsage(modelId)
-      .then((held) => {
-        if (!abandoned) setUsage(held);
-      })
-      .catch(() => {
-        if (!abandoned) setUsage(null);
-      });
     return () => {
       abandoned = true;
     };
   }, [modelId]);
+
+  /*
+   * The metrics are their own request, for two reasons: the settings should
+   * still show if the usage query is the thing that failed, and the window can
+   * change without the model having changed.
+   */
+  useEffect(() => {
+    let abandoned = false;
+    fetchModelUsage(modelId, 30, asked.from || undefined, asked.to || undefined)
+      .then((held) => {
+        if (abandoned) return;
+        setUsage(held);
+        setUsageError(null);
+      })
+      .catch((cause: unknown) => {
+        if (abandoned) return;
+        setUsage(null);
+        /*
+         * Said rather than swallowed. A date the server could not read used to
+         * be indistinguishable from a model nothing has called - and the one
+         * needs a different date, the other needs a call made.
+         */
+        setUsageError(cause instanceof Error ? cause.message : t('Could not load the usage metrics.'));
+      });
+    return () => {
+      abandoned = true;
+    };
+  }, [modelId, asked]);
 
   function apply(found: Model) {
     setModel(found);
@@ -444,13 +475,85 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
           <section className={styles.card}>
             <h2 className={styles.sectionHeading}>{t('Usage Metrics')}</h2>
 
-            {usage === null || usage.empty ? (
+            {/*
+              The window the figures are for.
+              Thirty days was fixed and nothing on this page could ask for
+              anything else - and every question somebody actually brings here is
+              about a different one: what yesterday's run cost, what was spent
+              last month, whether the spike on the 14th was this model.
+              Above the figures rather than inside them, because an empty window
+              is a reason to change it: a picker that disappeared the moment
+              nothing matched would be a dead end.
+            */}
+            <div className={styles.usageRange}>
+              <label className={styles.rangeField} htmlFor="usage-from">
+                <span className={styles.rangeLabel}>{t('From')}</span>
+                <input
+                  id="usage-from"
+                  name="usageFrom"
+                  className={styles.rangeInput}
+                  type="date"
+                  value={from}
+                  max={to || undefined}
+                  onChange={(event) => setFrom(event.target.value)}
+                />
+              </label>
+              <label className={styles.rangeField} htmlFor="usage-to">
+                <span className={styles.rangeLabel}>{t('To')}</span>
+                <input
+                  id="usage-to"
+                  name="usageTo"
+                  className={styles.rangeInput}
+                  type="date"
+                  value={to}
+                  min={from || undefined}
+                  onChange={(event) => setTo(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className={styles.rangeButton}
+                onClick={() => setAsked({ from, to })}
+                disabled={from === asked.from && to === asked.to}
+              >
+                {t('Apply')}
+              </button>
+              {/*
+                The way back, and only where there is something to go back from:
+                a Reset beside two empty boxes is a control that does nothing.
+              */}
+              {(asked.from !== '' || asked.to !== '') && (
+                <button
+                  type="button"
+                  className={styles.rangeReset}
+                  onClick={() => {
+                    setFrom('');
+                    setTo('');
+                    setAsked({ from: '', to: '' });
+                  }}
+                >
+                  {t('Last 30 days')}
+                </button>
+              )}
+            </div>
+
+            {usageError !== null ? (
+              <p className={styles.emptyMetrics}>{usageError}</p>
+            ) : usage === null || usage.empty ? (
               /*
                * Nothing has called this model, so there is nothing to show. A
                * grid of zeros would read as a result rather than as an absence.
                */
+              /*
+               * Two different absences, said differently. Nothing ever needs a
+               * call made; nothing in a window somebody chose needs a different
+               * window, and telling them the model has never been used would be
+               * a false statement about the model.
+               */
               <p className={styles.emptyMetrics}>
-                {t('No usage has been recorded for this model yet. The figures here are summed from real calls, so they stay empty until something makes one.')}
+                {asked.from === '' && asked.to === ''
+                  ? t('No usage has been recorded for this model yet. The figures here are summed from real calls, so they stay empty until something makes one.')
+                  : t('Nothing was recorded for this model between those dates. The figures are summed from real calls, so a window with no calls in it is empty rather than zero.')}
               </p>
             ) : (
               <>
@@ -477,6 +580,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                 </div>
 
                 <div className={styles.chartArea}>
+                  {/* What the window came to, which is what was asked for. */}
                   <p className={styles.chartTitle}>Usage Over Time ({usage.days} days)</p>
                   <UsageChart series={usage.series} />
                   <div className={styles.chartDates}>
@@ -486,7 +590,11 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                 </div>
 
                 <div className={styles.breakdown}>
-                  <p className={styles.breakdownTitle}>Token Breakdown (Last {usage.days} Days)</p>
+                  <p className={styles.breakdownTitle}>
+                    {asked.from === '' && asked.to === ''
+                      ? `Token Breakdown (Last ${usage.days} Days)`
+                      : `Token Breakdown (${usage.from} to ${usage.to})`}
+                  </p>
                   <div className={styles.breakdownGrid}>
                     <Figure label={t('Input Tokens')} value={formatTokens(usage.inputTokens)} />
                     <Figure label={t('Output Tokens')} value={formatTokens(usage.outputTokens)} />

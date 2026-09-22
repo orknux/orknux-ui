@@ -1805,6 +1805,27 @@ export const TESTS = [
      */
   },
   {
+    name: 'usage-range-check',
+    what: "the window a model's usage metrics are for, chosen on the page",
+    needs: ['workspace'],
+    /*
+     * Issue #370. Thirty days was fixed and nothing on the page could ask for
+     * anything else, while every question people bring here is about a different
+     * window: what yesterday's run cost, what was spent last month, whether the
+     * spike on the 14th was this model.
+     *
+     * Driven against a model that has actually been used, because the figures
+     * only draw where something was recorded - a model made for the check would
+     * show the sentence saying nothing has called it, and the check would be
+     * measuring that sentence. Nothing is written: there is no API that records
+     * a call against a past day, and adding one so a check could stage a chart
+     * would be a write path in the product that exists for the test. What lands
+     * inside a window is pinned in ModelAPITest, which writes the rows directly.
+     *
+     * Makes nothing and changes nothing.
+     */
+  },
+  {
     name: 'validate-status-check',
     what: 'the Validate status says what it checked, beside the button that checks it',
     needs: ['workspace'],
