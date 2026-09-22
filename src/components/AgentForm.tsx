@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-import { fetchMemoryBudget, updateAgent } from '../api/agents';
+import { fetchMemoryBudget, fetchWorkspaceAgents, updateAgent } from '../api/agents';
 import type { Agent, SessionMemoryBudget } from '../api/agents';
 import { fetchPluginTools } from '../api/plugins';
 import { fetchMcpServers, fetchWorkspaceConnections } from '../api/integrations';
@@ -88,6 +88,15 @@ export interface AgentFormProps {
 
 /** The whole of a workspace's tools fits in the list. */
 const TOOL_PAGE_SIZE = 100;
+
+/**
+ * How many of the workspace's other agents the picker offers.
+ *
+ * A hundred, like the tools beside it. A workspace with more agents than that
+ * has more than anybody is choosing between in a list, and the grant is for the
+ * two or three a specialist actually delegates to.
+ */
+const AGENT_CHOICES = 100;
 
 /**
  * One row of the Tools grant: a workspace tool, or a tool a plugin offers.
@@ -662,6 +671,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [tools, setTools] = useState<string[]>(agent.tools);
   /** Which of the workspace's connections it may name, by id - see the grant list below. */
   const [connectionIds, setConnectionIds] = useState<string[]>(agent.connectionIds);
+  /** Which other agents this one may ask; see `ask_agent`. Issue #350. */
+  const [agentIds, setAgentIds] = useState<string[]>(agent.agentIds);
   const [icon, setIcon] = useState<string | null>(agent.icon ?? null);
   /**
    * The share of the model's window a session may take back, or null to follow
@@ -844,6 +855,30 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     connectionCatalogue.items.find((held) => held.id === id)?.name ?? `#${id}`;
 
   /*
+   * And the workspace's other agents, for the one grant that points at the same
+   * kind of thing this form is editing.
+   *
+   * Itself left out rather than refused on save: an agent that may ask itself is
+   * a round spent asking the question again, and a tick that is always going to
+   * come back as an error is a tick that should not have been offered. The
+   * server refuses it too, because a form is not a boundary.
+   *
+   * A page of them rather than all: `fetchWorkspaceAgents` is paged like every
+   * other list, and a workspace with more agents than this asks for has more
+   * than anybody is choosing between in a picker.
+   */
+  const agentCatalogue = useCatalogue<Agent>(
+    t('agents'),
+    () =>
+      fetchWorkspaceAgents(workspaceId, 0, AGENT_CHOICES).then((page) =>
+        page.content.filter((one) => one.id !== agent.id),
+      ),
+    [workspaceId, agent.id],
+    { skip: noWorkspace },
+  );
+  const agentName = (id: string) => agentCatalogue.items.find((held) => held.id === id)?.name ?? `#${id}`;
+
+  /*
    * Only the models are unpacked here. The three grant lists are handed the
    * catalogue itself rather than the rows out of it, because each of them draws
    * the failure and the empty state as well as the list, and those are three
@@ -953,6 +988,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         skillCatalogs,
         tools,
         connectionIds,
+        agentIds,
         icon,
         // Sent every save rather than left out, which is what lets the slider
         // put it back to the default.
@@ -969,6 +1005,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setSkillCatalogs(updated.skillCatalogs);
       setTools(updated.tools);
       setConnectionIds(updated.connectionIds);
+      setAgentIds(updated.agentIds);
       setModelId(updated.modelId ?? '');
       setShare(updated.memoryShare);
       setRounds(updated.maxRounds === null ? '' : String(updated.maxRounds));
@@ -1364,6 +1401,40 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                 (name) =>
                   connectionCatalogue.items.find((held) => held.name === name)?.id ??
                   name.replace(/^#/, ''),
+              ),
+            )
+          }
+        />
+
+        {/*
+          And which of the workspace's other agents it may put a question to.
+
+          Issue #350. An agent needing work done in a system it holds no tools
+          for could be granted those tools as well - forty descriptions in its
+          context and a chain of lookups in its rounds - or hand the job back.
+          A specialist asked one question answers in a conversation of its own,
+          so what comes back is the answer rather than the working.
+
+          Beside the connections rather than among the tool grants, because what
+          is being granted is not a capability but somebody to ask.
+        */}
+        <GrantList<Agent>
+          label={t('Agents')}
+          what="agents"
+          styles={styles}
+          catalogue={agentCatalogue}
+          empty={t('No other agents in this workspace yet.')}
+          hint={t('Other agents this one may put a question to. The one asked answers in a conversation of its own, with its own tools, so what comes back is the answer rather than the rounds that produced it. It is granted no agents of its own, so a chain cannot go further than one.')}
+          keyOf={(one) => one.id}
+          nameOf={(one) => one.name}
+          metaOf={(one) => one.modelName ?? 'no model'}
+          linkOf={(one) => `/workspace/${workspaceId}/agents/${one.id}/settings`}
+          granted={agentIds.map(agentName)}
+          onChange={(names) =>
+            setAgentIds(
+              names.map(
+                (name) =>
+                  agentCatalogue.items.find((held) => held.name === name)?.id ?? name.replace(/^#/, ''),
               ),
             )
           }

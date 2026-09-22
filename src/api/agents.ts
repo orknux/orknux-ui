@@ -51,6 +51,15 @@ export interface Agent {
   tools: string[];
   /** Which of the workspace's connections it may name when a tool takes one. */
   connectionIds: string[];
+  /**
+   * Which other agents this one may put a question to.
+   *
+   * A specialist asked one question answers in a conversation of its own, so
+   * what comes back is the answer rather than the rounds of looking things up
+   * that produced it. One reached this way is granted no agents of its own,
+   * however many its row names.
+   */
+  agentIds: string[];
   /** Which icon a node drawn from this starts with; null draws the kind's own. */
   icon: string | null;
   /**
@@ -123,7 +132,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds agentIds icon memoryShare maxRounds';
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents(
@@ -278,6 +287,7 @@ export async function updateAgent(
     tools?: string[];
     /** Which of the workspace's connections it may name; left out, the grant is unchanged. */
     connectionIds?: string[];
+    agentIds?: string[];
     /** Which icon a node drawn from this agent starts with; null clears it. */
     icon?: string | null;
     /**

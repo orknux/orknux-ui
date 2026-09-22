@@ -1805,6 +1805,25 @@ export const TESTS = [
      */
   },
   {
+    name: 'agent-ask-agent-check',
+    what: 'an agent is given other agents to put a question to',
+    needs: ['workspace'],
+    /*
+     * Issue #350. An agent needing work done in a system it holds no tools for
+     * could be granted those tools as well - forty descriptions in its context,
+     * and a chain of lookups before the work it was asked about begins - or hand
+     * the job back. A specialist asked one question answers in a conversation of
+     * its own, so what comes back is the answer rather than the working.
+     *
+     * The grant is asserted against the server rather than against the ticks,
+     * and the two bounds with it: an agent cannot be given itself, and a refused
+     * save leaves the grant it already had alone. Those are what stop this being
+     * a way to spend money in a loop.
+     *
+     * Makes two agents and removes them.
+     */
+  },
+  {
     name: 'go-to-sections-check',
     what: '"go to" reaches a part of a page, not only the page',
     needs: ['workspace'],
