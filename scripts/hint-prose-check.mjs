@@ -632,12 +632,6 @@ const IN_THE_OPEN = [
 
   // ---- Somebody else is holding the file ---------------------------------
   {
-    file: 'src/pages/workspace/ObjectEditorPage.tsx',
-    says: 'No properties yet. Each one is a name, a type and a sentence saying what it means',
-    because: 'in-flight',
-    why: 'the four component editors are issue #175 and another agent has them open. This is an empty state wanting the split - the status stays, the definition goes behind the (?) - and it is theirs to make. Delete this entry when #175 lands',
-  },
-  {
     file: 'src/pages/workspace/ToolEditorPage.tsx',
     says: 'An agent calling this tool fills these in by name.',
     because: 'in-flight',

@@ -41,7 +41,10 @@ const SPLIT = [
     moved: 'A screenshot is worth a paragraph of description',
   },
   {
-    file: 'src/pages/workspace/WorkspaceTriggersPage.tsx',
+    // The per-trigger log moved into a component of its own when the trigger's
+    // page grew one too (#357). The sentences are the same sentences; what
+    // changed is which file holds them.
+    file: 'src/components/TriggerFirings.tsx',
     state: 'Nothing yet.',
     moved: 'no matching event has arrived',
   },

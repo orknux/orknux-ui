@@ -46,10 +46,26 @@
 /*
  * Which way round, beside the name it is about. Small enough not to compete with
  * the heading and not so small that it has to be looked for.
+ *
+ * Drawn by the pseudo-element rather than written into the button, so the
+ * heading's text stays the column's name: `innerText` of a sorted heading used
+ * to read "Name▲", and a column called Started answered to a search for a
+ * button whose text is "Start". What direction the list is in lives in
+ * `aria-sort` on the heading, which is what is read out; this is the picture of
+ * it.
  */
-.mark {
+.press[data-sorted]::after {
   flex-shrink: 0;
+  margin-left: var(--space-4);
   font-size: 8px;
   line-height: 1;
   color: var(--color-accent-brand);
+}
+
+.press[data-sorted='up']::after {
+  content: '▲';
+}
+
+.press[data-sorted='down']::after {
+  content: '▼';
 }

@@ -112,7 +112,13 @@ console.log(`made agent ${worker.name} (#${worker.id}) to be given it`);
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('h1:text("Tasks")', { timeout: 20_000 });
 
-const start = page.locator('button:text("Start")');
+/*
+ * Exactly "Start", not a button whose text contains it. The tasks list grew a
+ * column headed Started when every table became sortable, and `:text("Start")`
+ * matches that heading too - two elements, and Playwright refuses rather than
+ * guessing which was meant. The button this check is about says one word.
+ */
+const start = page.getByRole('button', { name: 'Start', exact: true });
 check(
   await start.isDisabled(),
   'Start is refused while there is nothing to work on',

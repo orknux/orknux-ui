@@ -41,7 +41,25 @@ await page
   )
   .catch(() => record(false, 'the first screenshot loaded'));
 
-const onPage = await inline.boundingBox();
+/*
+ * And then waited on until the box it occupies is a real one.
+ *
+ * Decoded is not the same as laid out: the wait above asks the *image* whether
+ * it has bytes, and CI measured a picture that had them and still occupied
+ * nothing - a stylesheet a moment behind, a section not yet open. Every
+ * measurement below is against this box, so a zero here reads as the layout
+ * being broken when it is the reading that was early.
+ */
+const boxed = async () => {
+  const until = Date.now() + 20_000;
+  for (;;) {
+    const box = await inline.boundingBox();
+    if ((box?.width ?? 0) > 0 || Date.now() > until) return box;
+    await page.waitForTimeout(250);
+  }
+};
+
+const onPage = await boxed();
 record(onPage !== null && onPage.width > 0, `the manual draws a screenshot (${Math.round(onPage?.width ?? 0)}px wide)`);
 
 const alt = (await inline.getAttribute('alt')) ?? '';

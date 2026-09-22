@@ -54,8 +54,21 @@ export function ColumnHeader<Order extends string>({
       className={`${className} ${styles.head}`}
       aria-sort={sorted ? (ascending ? 'ascending' : 'descending') : 'none'}
     >
+      {/*
+        The arrow is drawn by CSS rather than written into the button.
+        
+        It was a span holding ▲, and that put the character inside the heading's
+        text: a column headed Name read "Name▲" to anything asking what the
+        heading says, and the Started column answered to `button:text("Start")`
+        beside the Start button on the tasks page. Two checks caught it, and both
+        were right to - a heading says what the column is called and nothing
+        else. What direction it is in is `aria-sort` on the heading, which is
+        what a screen reader reads; the arrow is decoration and is drawn as
+        decoration.
+      */}
       <button
         type="button"
+        data-sorted={sorted ? (ascending ? 'up' : 'down') : undefined}
         className={sorted ? `${styles.press} ${styles.pressOn}` : styles.press}
         onClick={() => onSort(order)}
         title={
@@ -65,12 +78,6 @@ export function ColumnHeader<Order extends string>({
         }
       >
         {label}
-        {/*
-          The mark is text rather than an image: it sits on the baseline of a
-          heading half a line high, and an icon at that size was a smudge that
-          had to be looked at to be read.
-        */}
-        {sorted && <span className={styles.mark}>{ascending ? '▲' : '▼'}</span>}
       </button>
     </span>
   );
