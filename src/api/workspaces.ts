@@ -461,8 +461,8 @@ export interface WorkspaceAuditEntry {
 }
 
 const WORKSPACES_QUERY = `
-  query Workspaces($page: Int!, $size: Int!) {
-    workspaces(page: $page, size: $size) {
+  query Workspaces($page: Int!, $size: Int!, $order: String, $ascending: Boolean) {
+    workspaces(page: $page, size: $size, order: $order, ascending: $ascending) {
       content { ${WORKSPACE_FIELDS} }
       page
       size
@@ -480,6 +480,8 @@ const AUDIT_QUERY = `
     $category: WorkspaceAuditCategory
     $userId: String
     $days: Int
+    $order: String
+    $ascending: Boolean
   ) {
     workspaceAudit(
       page: $page
@@ -488,6 +490,8 @@ const AUDIT_QUERY = `
       category: $category
       userId: $userId
       days: $days
+      order: $order
+      ascending: $ascending
     ) {
       content { id workspaceId category message oldWorkspaceName newWorkspaceName operationType date userId }
       page
@@ -555,8 +559,21 @@ export async function deleteWorkspace(id: string): Promise<boolean> {
 }
 
 /** `page` is 0-based, matching the server. */
-export async function fetchWorkspaces(page: number, size: number): Promise<PageOf<Workspace>> {
-  const data = await graphql<{ workspaces: PageOf<Workspace> }>(WORKSPACES_QUERY, { page, size });
+/** What the admin list can be put in the order of; see `WORKSPACE_ORDERS` on the server. */
+export type WorkspaceOrder = 'NAME' | 'DESCRIPTION';
+
+export async function fetchWorkspaces(
+  page: number,
+  size: number,
+  order: WorkspaceOrder = 'NAME',
+  ascending = true,
+): Promise<PageOf<Workspace>> {
+  const data = await graphql<{ workspaces: PageOf<Workspace> }>(WORKSPACES_QUERY, {
+    page,
+    size,
+    order,
+    ascending,
+  });
   return data.workspaces;
 }
 
@@ -566,6 +583,9 @@ export interface AuditFilters {
   userId?: string;
   /** Only entries from the last N days; omit for all time. */
   days?: number;
+  /** Which column the feed is in the order of; the same three the workspace's own has. */
+  order?: 'ACTION' | 'USER' | 'AT';
+  ascending?: boolean;
 }
 
 export async function fetchWorkspaceAudit(
@@ -580,6 +600,9 @@ export async function fetchWorkspaceAudit(
     category: filters.category ?? null,
     userId: filters.userId ?? null,
     days: filters.days ?? null,
+    order: filters.order ?? 'AT',
+    // Newest first unless somebody asked otherwise, which is what a log is.
+    ascending: filters.ascending ?? false,
   });
   return data.workspaceAudit;
 }

@@ -10,6 +10,8 @@ import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
@@ -44,6 +46,10 @@ function statusDot(status: ShellStatus): string {
  */
 export function AdminShellPage({ session, onSignOut }: AdminShellPageProps) {
   const [shells, setShells] = useState<Shell[] | null>(null);
+  const [order, ascending, sortBy] = useTableSort<'STATUS' | 'NAME' | 'ADDRESS' | 'ENABLED'>(
+    'admin-shells',
+    'NAME',
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -196,16 +202,67 @@ export function AdminShellPage({ session, onSignOut }: AdminShellPageProps) {
             </div>
           </div>);
 
-  const sshShells = listed.filter((shell) => shell.kind !== 'MCP');
-  const mcpShells = listed.filter((shell) => shell.kind === 'MCP');
+  /*
+   * One order across both tables. Issue #358. They are one list of machines
+   * split by how it is reached, so a press on either heading means the same
+   * thing about both - and the header is one piece of markup drawn twice.
+   *
+   * Key is not an order: for an SSH shell it is what the stored key is called
+   * and for an MCP shell it is "via the server", which is a sentence about the
+   * kind rather than a value rows differ by.
+   */
+  const arrange = (rows: Shell[]) =>
+    ordered(
+      rows,
+      (shell) => {
+        if (shell.kind === 'MCP' && order === 'ADDRESS') return shell.name;
+        if (order === 'STATUS') return shell.status;
+        if (order === 'ADDRESS') return `${shell.host}:${shell.port}`;
+        if (order === 'ENABLED') return shell.enabled;
+        return shell.name;
+      },
+      ascending,
+      (shell) => shell.name,
+    );
+
+  const sshShells = arrange(listed.filter((shell) => shell.kind !== 'MCP'));
+  const mcpShells = arrange(listed.filter((shell) => shell.kind === 'MCP'));
 
   const tableHead = (
     <div className={styles.tableHeader}>
-      <div className={styles.colStatus}>{t('Status')}</div>
-      <div className={styles.colName}>{t('Name')}</div>
-      <div className={styles.colAddress}>{t('Address')}</div>
+      <ColumnHeader
+        label={t('Status')}
+        order="STATUS"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colStatus}
+      />
+      <ColumnHeader
+        label={t('Name')}
+        order="NAME"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colName}
+      />
+      <ColumnHeader
+        label={t('Address')}
+        order="ADDRESS"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colAddress}
+      />
       <div className={styles.colKey}>{t('Key')}</div>
-      <div className={styles.colEnabled}>{t('On')}</div>
+      <ColumnHeader
+        label={t('On')}
+        order="ENABLED"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colEnabled}
+      />
       <div className={styles.colActions} />
     </div>
   );

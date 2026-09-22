@@ -9,6 +9,8 @@ import pencilIcon from '../../assets/pencil.svg';
 import plusIcon from '../../assets/plus.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { TrashIcon } from '../../components/TrashIcon';
@@ -46,6 +48,28 @@ const BLANK: Draft = { id: null, name: '', description: '', scopes: ['USER'] };
  */
 export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
   const [roles, setRoles] = useState<Role[] | null>(null);
+  /* The list arrives whole - an installation has a handful of roles. Issue #358. */
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'SCOPES' | 'MODIFIED'>(
+    'admin-roles',
+    'NAME',
+    true,
+    ['MODIFIED', 'SCOPES'],
+  );
+  /** The roles in the order a heading asked for; the name breaks every tie. */
+  const arranged =
+    roles === null
+      ? null
+      : ordered(
+          roles,
+          (role) => {
+            if (order === 'SCOPES') return role.scopes.length;
+            if (order === 'MODIFIED') return role.lastModifiedAt;
+            return role.name;
+          },
+          ascending,
+          (role) => role.name,
+        );
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -230,9 +254,35 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>
-            <span className={styles.colName}>{t('Name')}</span>
-            <span className={styles.colScopes}>{t('Scopes')}</span>
-            <span className={styles.colModified}>{t('Last modified')}</span>
+            {/*
+              Pressable. Issue #358. Scopes is a set, so it orders by how many a
+              role has - which groups the roles that can do little away from the
+              ones that can do everything, and is what pressing it is asking.
+            */}
+            <ColumnHeader
+              label={t('Name')}
+              order="NAME"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colName}
+            />
+            <ColumnHeader
+              label={t('Scopes')}
+              order="SCOPES"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colScopes}
+            />
+            <ColumnHeader
+              label={t('Last modified')}
+              order="MODIFIED"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colModified}
+            />
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>
 
@@ -243,7 +293,7 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
           )}
           {!loading && roles?.length === 0 && <p className={styles.notice}>{t('No roles yet.')}</p>}
 
-          {roles?.map((role) => (
+          {arranged?.map((role) => (
             <div
               key={role.id}
               className={role.builtin ? styles.row : styles.rowClickable}

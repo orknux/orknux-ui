@@ -10,6 +10,8 @@ import plusIcon from '../../assets/plus.svg';
 import searchIcon from '../../assets/search.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import styles from './AdminUsersPage.module.css';
@@ -33,12 +35,37 @@ const SEARCH_PAUSE_MS = 300;
  * on this page. Neither kind is an account with a password; the front door
  * still belongs to the provider.
  */
+/** What this list can be put in the order of. */
+type UserColumn = 'USER' | 'EMAIL' | 'TYPE' | 'ROLES' | 'MODIFIED';
+
 export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
   const navigate = useNavigate();
   const [users, setUsers] = useState<AppUser[] | null>(null);
+  /*
+   * Ordered here: the list arrives whole, because an installation's accounts are
+   * a list an administrator reads rather than pages through. Issue #358.
+   */
+  const [order, ascending, sortBy] = useTableSort<UserColumn>('admin-users', 'USER', true, ['MODIFIED']);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  /** The accounts in the order a heading asked for; the name breaks every tie. */
+  const arranged =
+    users === null
+      ? null
+      : ordered(
+          users,
+          (user) => {
+            if (order === 'EMAIL') return user.email ?? '';
+            if (order === 'TYPE') return user.type;
+            if (order === 'ROLES') return user.roles.length;
+            if (order === 'MODIFIED') return user.lastModifiedAt;
+            return user.displayName;
+          },
+          ascending,
+          (user) => user.displayName,
+        );
 
   useEffect(() => {
     let current = true;
@@ -105,11 +132,52 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
 
         <div className={styles.table}>
           <div className={styles.tableHeader}>
-            <span className={styles.colUser}>{t('User')}</span>
-            <span className={styles.colEmail}>{t('Email')}</span>
-            <span className={styles.colType}>{t('Type')}</span>
-            <span className={styles.colRoles}>{t('Roles')}</span>
-            <span className={styles.colModified}>{t('Last Modified')}</span>
+            {/*
+              Pressable, every column that holds something. Issue #358. Roles is
+              a set, so it orders by how many an account has and then by name -
+              which puts the accounts nobody has given anything together, and is
+              what somebody pressing it is looking for.
+            */}
+            <ColumnHeader
+              label={t('User')}
+              order="USER"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colUser}
+            />
+            <ColumnHeader
+              label={t('Email')}
+              order="EMAIL"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colEmail}
+            />
+            <ColumnHeader
+              label={t('Type')}
+              order="TYPE"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colType}
+            />
+            <ColumnHeader
+              label={t('Roles')}
+              order="ROLES"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colRoles}
+            />
+            <ColumnHeader
+              label={t('Last Modified')}
+              order="MODIFIED"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colModified}
+            />
             <span className={styles.colActions} aria-hidden="true" />
           </div>
 
@@ -125,7 +193,7 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
           )}
 
           {!loading &&
-            users?.map((user) => (
+            arranged?.map((user) => (
               <div key={user.id} className={styles.row}>
                 <span className={styles.colUser}>
                   <span className={styles.avatar} aria-hidden="true">

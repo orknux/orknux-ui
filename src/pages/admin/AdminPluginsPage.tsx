@@ -30,6 +30,8 @@ import toggleOnIcon from '../../assets/toggle-on.svg';
 import trashIcon from '../../assets/trash-2.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -203,6 +205,33 @@ type Source = 'marketplace' | 'local';
  */
 export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) {
   const [plugins, setPlugins] = useState<Plugin[] | null>(null);
+  /* An order per table: the installed ones and the files loaded by hand. Issue #358. */
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'VERSION' | 'AUTHOR' | 'SOURCE'>(
+    'admin-plugins',
+    'NAME',
+  );
+  const [localOrder, localAscending, sortLocal] = useTableSort<'NAME' | 'API' | 'SIZE' | 'LOADED'>(
+    'admin-plugin-files',
+    'NAME',
+    true,
+    ['SIZE', 'LOADED', 'API'],
+  );
+
+  /** The installed plugins in the order a heading asked for. */
+  const arranged =
+    plugins === null
+      ? null
+      : ordered(
+          plugins,
+          (one) => {
+            if (order === 'VERSION') return one.marketplaceVersion ?? one.version ?? '';
+            if (order === 'AUTHOR') return one.author ?? '';
+            if (order === 'SOURCE') return one.marketplaceKey !== null ? 'marketplace' : 'local';
+            return one.name;
+          },
+          ascending,
+          (one) => one.name,
+        );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -971,10 +1000,39 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   /** What is installed here: the plugin's own account of itself. */
   const installedHead = (
     <div className={styles.tableHeader}>
-      <span className={styles.colName}>{t('Plugin')}</span>
-      <span className={styles.colVersion}>{t('Version')}</span>
-      <span className={styles.colAuthor}>{t('Author')}</span>
-      <span className={styles.colSource}>{t('Source')}</span>
+      {/* Pressable. Issue #358; the plugins arrive whole, so the order is here. */}
+      <ColumnHeader
+        label={t('Plugin')}
+        order="NAME"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colName}
+      />
+      <ColumnHeader
+        label={t('Version')}
+        order="VERSION"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colVersion}
+      />
+      <ColumnHeader
+        label={t('Author')}
+        order="AUTHOR"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colAuthor}
+      />
+      <ColumnHeader
+        label={t('Source')}
+        order="SOURCE"
+        current={order}
+        ascending={ascending}
+        onSort={sortBy}
+        className={styles.colSource}
+      />
       <span className={styles.colActions}>{t('Actions')}</span>
     </div>
   );
@@ -982,15 +1040,58 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   /** And what was loaded by hand: the questions a file raises. */
   const localHead = (
     <div className={styles.tableHeader}>
-      <span className={styles.colName}>{t('Name')}</span>
-      <span className={styles.colApi}>API</span>
-      <span className={styles.colSize}>{t('Size')}</span>
-      <span className={styles.colWhen}>{t('Loaded')}</span>
+      {/*
+        Its own order, because it is its own table: the files somebody loaded by
+        hand are the same rows described by what a file has rather than by what a
+        catalog says about it.
+      */}
+      <ColumnHeader
+        label={t('Name')}
+        order="NAME"
+        current={localOrder}
+        ascending={localAscending}
+        onSort={sortLocal}
+        className={styles.colName}
+      />
+      <ColumnHeader
+        label="API"
+        order="API"
+        current={localOrder}
+        ascending={localAscending}
+        onSort={sortLocal}
+        className={styles.colApi}
+      />
+      <ColumnHeader
+        label={t('Size')}
+        order="SIZE"
+        current={localOrder}
+        ascending={localAscending}
+        onSort={sortLocal}
+        className={styles.colSize}
+      />
+      <ColumnHeader
+        label={t('Loaded')}
+        order="LOADED"
+        current={localOrder}
+        ascending={localAscending}
+        onSort={sortLocal}
+        className={styles.colWhen}
+      />
       <span className={styles.colActions}>{t('Actions')}</span>
     </div>
   );
 
-  const hand = plugins?.filter((one) => one.marketplaceKey === null) ?? [];
+  const hand = ordered(
+    plugins?.filter((one) => one.marketplaceKey === null) ?? [],
+    (one) => {
+      if (localOrder === 'API') return one.apiVersion;
+      if (localOrder === 'SIZE') return one.sizeBytes;
+      if (localOrder === 'LOADED') return one.uploadedAt;
+      return one.name;
+    },
+    localAscending,
+    (one) => one.name,
+  );
 
   return (
     <AppShell
@@ -1163,7 +1264,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
             </p>
           )}
 
-          {plugins?.map((one) => pluginRow(one, 'installed'))}
+          {arranged?.map((one) => pluginRow(one, 'installed'))}
         </section>
       )}
 

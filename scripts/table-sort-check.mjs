@@ -363,4 +363,112 @@ console.log(`tools: ${JSON.stringify(toolsWere)} then ${JSON.stringify(toolsNow)
  */
 record(toolsNow !== toolsWere, 'tools: the heading orders the rows this page cut for itself');
 
+/* ---- and the administrator's own lists, which are the other half of #358 ---- */
+
+/*
+ * Swept the same way as the workspace's, with one difference that matters: all
+ * of these arrive whole and are ordered in the browser, because an installation
+ * has a handful of each and none of them is paged. So what a press has to
+ * reorder is the rows on screen, which here are all the rows there are - the
+ * failure the server-side assertion above guards against cannot happen on a
+ * list that was never cut into pages.
+ *
+ * A reorder is asserted only where there are two rows to reorder: an
+ * installation with one role has nothing to say about an order, and demanding a
+ * change there would be asserting the fixture rather than the feature.
+ */
+for (const list of [
+  { path: 'admin', column: 'Description' },
+  { path: 'admin/users', column: 'User' },
+  { path: 'admin/roles', column: 'Scopes' },
+  { path: 'admin/libraries', column: 'Size' },
+  { path: 'admin/templates', column: 'Format' },
+  { path: 'admin/plugins', column: 'Plugin' },
+  { path: 'admin/shell', column: 'Address' },
+  { path: 'admin/networking', column: 'Subject' },
+  { path: 'admin/integrations', column: 'Type' },
+  { path: 'admin/audit', column: 'Action' },
+]) {
+  await page.goto(`${BASE}/${list.path}`, { waitUntil: 'domcontentloaded' });
+  if (!(await drawn(page, list.path))) {
+    record(false, `${list.path}: the list is on screen`);
+    continue;
+  }
+
+  const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
+  const pressable = await head
+    .waitFor({ timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  record(pressable, `${list.path}: ${list.column} is a heading that can be pressed`);
+  if (!pressable) continue;
+
+  const heading = page.locator(`[aria-sort]:has(button:text-matches("^${list.column}"))`).first();
+  const section = heading.locator('xpath=ancestor::section[1]');
+
+  /*
+   * The heading row is a row here.
+   *
+   * The workspaces table paints its head with the same class as its rows, so
+   * the first `_row_` on that page is the headings - which no order moves, and
+   * which read as a list that never reorders. Excluded by the second class it
+   * carries.
+   */
+  const ROWS = '[class*="_row_"]:not([class*="_tableHeader_"])';
+
+  const topOf = async () => {
+    /*
+     * Scoped to the heading's own table where the page draws more than one -
+     * and falling back to the page where these rows are not inside a section,
+     * since the admin pages do not all use the same frame.
+     */
+    const within = await section.locator(ROWS).allInnerTexts().catch(() => []);
+    const said = within.length > 0 ? within : await page.locator(ROWS).allInnerTexts();
+    const kept = said.map((one) => one.trim()).filter((one) => one !== '');
+    /*
+     * The whole row rather than its first line. A machine's row starts with its
+     * status, and two unreachable machines put the same word on top whichever
+     * way the list is ordered - so the first line alone would report a table
+     * that reorders as one that does not.
+     */
+    return { first: kept[0]?.replace(/\s+/g, ' ') ?? '', rows: kept.length };
+  };
+
+  const was = await topOf();
+
+  /* Waited for rather than slept past, as above: a press is a render away. */
+  const settled = async () => {
+    const until = Date.now() + 6_000;
+    for (;;) {
+      const now = (await topOf().catch(() => was)).first;
+      if (now !== was.first || Date.now() > until) return now;
+      await page.waitForTimeout(250);
+    }
+  };
+
+  await head.click();
+  let after = await settled();
+  if (after === was.first) {
+    await head.click();
+    after = await settled();
+  }
+
+  console.log(`${list.path}: ${JSON.stringify(was.first)} then ${JSON.stringify(after)} (${was.rows} rows)`);
+  record(
+    (await heading.getAttribute('aria-sort')) !== 'none',
+    `${list.path}: the heading pressed says which way the list is now in`,
+  );
+  if (was.rows > 1) {
+    record(after !== was.first, `${list.path}: pressing ${list.column} reorders the rows`);
+  } else {
+    /*
+     * Said rather than passed over. A list this installation has nothing in is
+     * a list this run did not measure an order on, and a silent skip reads
+     * afterwards as coverage it never had - the heading above is all that was
+     * checked here.
+     */
+    console.log(`${list.path}: ${was.rows} rows, so the order was not measured on this run`);
+  }
+}
+
 await finish(browser);

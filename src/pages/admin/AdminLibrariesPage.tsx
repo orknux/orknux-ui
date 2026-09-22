@@ -19,6 +19,8 @@ import plusIcon from '../../assets/plus.svg';
 import trashIcon from '../../assets/trash-2.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -123,6 +125,26 @@ function provenance(library: ScriptLibrary): string {
 
 export function AdminLibrariesPage({ session, onSignOut }: AdminLibrariesPageProps) {
   const [libraries, setLibraries] = useState<ScriptLibrary[] | null>(null);
+  /* Ordered here: the libraries arrive whole. Issue #358. */
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'SIZE' | 'LOADED'>('admin-libraries', 'NAME', true, [
+    'SIZE',
+    'LOADED',
+  ]);
+
+  /** The libraries in the order a heading asked for; the name breaks every tie. */
+  const arranged =
+    libraries === null
+      ? null
+      : ordered(
+          libraries,
+          (library) => {
+            if (order === 'SIZE') return library.sizeBytes;
+            if (order === 'LOADED') return library.uploadedAt;
+            return library.name;
+          },
+          ascending,
+          (library) => library.name,
+        );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -418,9 +440,31 @@ export function AdminLibrariesPage({ session, onSignOut }: AdminLibrariesPagePro
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colName}>{t('Name')}</span>
-          <span className={styles.colSize}>{t('Size')}</span>
-          <span className={styles.colWhen}>{t('Loaded')}</span>
+          {/* Pressable, all three. Issue #358. */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Size')}
+            order="SIZE"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colSize}
+          />
+          <ColumnHeader
+            label={t('Loaded')}
+            order="LOADED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colWhen}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 
@@ -454,7 +498,7 @@ export function AdminLibrariesPage({ session, onSignOut }: AdminLibrariesPagePro
           </p>
         )}
 
-        {libraries?.map((library) => (
+        {arranged?.map((library) => (
           <div key={library.id} className={styles.row}>
             <span className={styles.colName}>
               <img className={styles.icon} src={packageIcon} alt="" width={16} height={16} />

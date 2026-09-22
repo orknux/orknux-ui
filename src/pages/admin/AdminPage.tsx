@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { WorkspaceOrder } from '../../api/workspaces';
 import { Link } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
@@ -13,9 +14,11 @@ import settingsIcon from '../../assets/settings.svg';
 import { AppShell } from '../../components/AppShell';
 import { CreateWorkspaceDialog } from '../../components/CreateWorkspaceDialog';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
 import { Pagination } from '../../components/Pagination';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './AdminPage.module.css';
 import { t } from '../../i18n';
@@ -28,11 +31,15 @@ export interface AdminPageProps {
 export function AdminPage({ session, onSignOut }: AdminPageProps) {
   const [workspacesPage, setWorkspacesPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('admin-workspaces');
+  const [order, ascending, sortBy] = useTableSort<WorkspaceOrder>('admin-workspaces', 'NAME');
   const [creating, setCreating] = useState(false);
   // Bumped after a write so both tables refetch, audit log included.
   const [reloadToken, setReloadToken] = useState(0);
 
-  const workspaces = useLoadedPage(() => fetchWorkspaces(workspacesPage - 1, pageSize), [workspacesPage, pageSize, reloadToken]);
+  const workspaces = useLoadedPage(
+    () => fetchWorkspaces(workspacesPage - 1, pageSize, order, ascending),
+    [workspacesPage, pageSize, reloadToken, order, ascending],
+  );
 
   // The section links need somewhere to go; the first workspace listed is the sensible default.
   const firstWorkspace = workspaces.data?.content[0];
@@ -71,8 +78,23 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
 
         <div className={styles.table}>
           <div className={`${styles.row} ${styles.tableHeader}`}>
-            <span className={styles.colGrow}>{t('Workspace')}</span>
-            <span className={styles.colDescription}>{t('Description')}</span>
+            {/* Pressable. Issue #358; this list is paged by the server, so is the order. */}
+            <ColumnHeader
+              label={t('Workspace')}
+              order="NAME"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colGrow}
+            />
+            <ColumnHeader
+              label={t('Description')}
+              order="DESCRIPTION"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colDescription}
+            />
             <span className={styles.colActions} aria-hidden="true" />
           </div>
 

@@ -17,7 +17,9 @@ import toggleOnIcon from '../../assets/toggle-on.svg';
 import { fetchTrustedCertificates } from '../../api/networking';
 import type { TrustedCertificate } from '../../api/networking';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { AppShell } from '../../components/AppShell';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { ProxyRuleDialog } from '../../components/ProxyRuleDialog';
@@ -83,6 +85,13 @@ export function AdminNetworkingPage({ session, onSignOut }: AdminNetworkingPageP
    * Issue #322.
    */
   const [certificates, setCertificates] = useState<TrustedCertificate[] | null>(null);
+  /* The certificates arrive whole, so their order is decided here. Issue #358. */
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'SUBJECT' | 'EXPIRES'>(
+    'admin-certificates',
+    'NAME',
+    true,
+    ['EXPIRES'],
+  );
   const [certificateError, setCertificateError] = useState<string | null>(null);
 
   const loadCertificates = useCallback(() => {
@@ -179,6 +188,13 @@ export function AdminNetworkingPage({ session, onSignOut }: AdminNetworkingPageP
       </header>
 
       <section className={styles.card}>
+        {/*
+          The rules are not sortable, and that is not an omission. Issue #358
+          asked for every table to be ordered by any column; this one's order is
+          the rule itself - they are consulted top to bottom and the first match
+          wins - so drawing them by name would be drawing something that is not
+          what the installation does.
+        */}
         <div className={styles.tableHeader}>
           <div className={styles.colOrder}>{t('Order')}</div>
           <div className={styles.colName}>{t('Name')}</div>
@@ -384,9 +400,31 @@ export function AdminNetworkingPage({ session, onSignOut }: AdminNetworkingPageP
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <div className={styles.colName}>{t('Name')}</div>
-          <div className={styles.colPattern}>{t('Subject')}</div>
-          <div className={styles.colProxy}>{t('Expires')}</div>
+          {/* The certificates are a list rather than a sequence, so they sort. */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Subject')}
+            order="SUBJECT"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colPattern}
+          />
+          <ColumnHeader
+            label={t('Expires')}
+            order="EXPIRES"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colProxy}
+          />
           <div className={styles.colActions} />
         </div>
 
@@ -400,7 +438,17 @@ export function AdminNetworkingPage({ session, onSignOut }: AdminNetworkingPageP
           </p>
         )}
 
-        {(certificates ?? []).map((certificate) => (
+        {ordered(
+          certificates ?? [],
+          (certificate) => {
+            if (order === 'SUBJECT') return certificate.subject;
+            // A certificate with no expiry sorts as one that never does.
+            if (order === 'EXPIRES') return certificate.expiresAt ?? '9999';
+            return certificate.name;
+          },
+          ascending,
+          (certificate) => certificate.name,
+        ).map((certificate) => (
           <Link
             className={styles.row}
             key={certificate.id}

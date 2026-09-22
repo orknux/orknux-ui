@@ -10,10 +10,12 @@ import refreshIcon from '../../assets/refresh-cw.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { Loader } from '../../components/Loader';
 import { Pagination } from '../../components/Pagination';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './AdminAuditPage.module.css';
 import { t } from '../../i18n';
@@ -30,6 +32,8 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
   const [users, setUsers] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('admin-audit');
+  /* Newest first, which is what a log is read as. */
+  const [order, ascending, sortBy] = useTableSort<'ACTION' | 'USER' | 'AT'>('admin-audit', 'AT', false, ['AT']);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [userId, setUserId] = useState('');
@@ -57,6 +61,8 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
       search: debouncedSearch || undefined,
       userId: userId || undefined,
       days: days === '' ? undefined : days,
+      order,
+      ascending,
     })
       .then((result) => {
         setEntries(result);
@@ -67,7 +73,7 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
         setError(cause instanceof Error ? cause.message : t('Could not load the audit log.'));
         setLoading(false);
       });
-  }, [page, pageSize, debouncedSearch, userId, days]);
+  }, [page, pageSize, debouncedSearch, userId, days, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -149,9 +155,31 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colAction}>{t('Action')}</span>
-          <span className={styles.colUser}>{t('User')}</span>
-          <span className={styles.colTimestamp}>{t('Timestamp')}</span>
+          {/* The same three the workspace's own feed offers. Issue #358. */}
+          <ColumnHeader
+            label={t('Action')}
+            order="ACTION"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colAction}
+          />
+          <ColumnHeader
+            label={t('User')}
+            order="USER"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colUser}
+          />
+          <ColumnHeader
+            label={t('Timestamp')}
+            order="AT"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colTimestamp}
+          />
         </div>
 
         {loading && <p className={styles.notice}><Loader /></p>}

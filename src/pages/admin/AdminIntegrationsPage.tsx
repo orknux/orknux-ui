@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { AdminConnectionOrder } from '../../api/integrations';
 
 import type { PageOf } from '../../api/client';
 import { connectionTypeLabel, fetchConnections } from '../../api/integrations';
@@ -11,9 +12,11 @@ import { ConnectionDialog } from '../../components/ConnectionDialog';
 import { ConnectionIcon } from '../../components/ConnectionIcon';
 import { FieldHint } from '../../components/FieldHint';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
 import { Pagination } from '../../components/Pagination';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
+import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './AdminIntegrationsPage.module.css';
 import { t } from '../../i18n';
@@ -28,6 +31,7 @@ export function AdminIntegrationsPage({ session, onSignOut }: AdminIntegrationsP
   const [connections, setConnections] = useState<PageOf<Connection> | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('admin-integrations');
+  const [order, ascending, sortBy] = useTableSort<AdminConnectionOrder>('admin-integrations', 'NAME');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // False when closed, true when adding, the connection itself when editing.
@@ -36,7 +40,7 @@ export function AdminIntegrationsPage({ session, onSignOut }: AdminIntegrationsP
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchConnections(page - 1, pageSize)
+    fetchConnections(page - 1, pageSize, order, ascending)
       .then((result) => {
         setConnections(result);
         setLoading(false);
@@ -84,9 +88,31 @@ export function AdminIntegrationsPage({ session, onSignOut }: AdminIntegrationsP
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colName}>{t('Name')}</span>
-          <span className={styles.colType}>{t('Type')}</span>
-          <span className={styles.colUrl}>URL</span>
+          {/* Pressable. Issue #358; this list is paged by the server, so is the order. */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Type')}
+            order="TYPE"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colType}
+          />
+          <ColumnHeader
+            label="URL"
+            order="URL"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colUrl}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 

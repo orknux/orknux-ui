@@ -126,8 +126,8 @@ const MCP_SERVER_FIELDS =
   'reachable lastCheckedAt checkDetail toolCount';
 
 const CONNECTIONS_QUERY = `
-  query Connections($page: Int!, $size: Int!) {
-    connections(page: $page, size: $size) {
+  query Connections($page: Int!, $size: Int!, $order: String, $ascending: Boolean) {
+    connections(page: $page, size: $size, order: $order, ascending: $ascending) {
       content { ${CONNECTION_FIELDS} }
       page
       size
@@ -254,8 +254,21 @@ const REVEAL_MCP_SECRET_MUTATION = `
 `;
 
 /** `page` is 0-based, matching the server. */
-export async function fetchConnections(page: number, size: number): Promise<PageOf<Connection>> {
-  const data = await graphql<{ connections: PageOf<Connection> }>(CONNECTIONS_QUERY, { page, size });
+/** What the admin list can be put in the order of; see `orders` on the server. */
+export type AdminConnectionOrder = 'NAME' | 'TYPE' | 'URL';
+
+export async function fetchConnections(
+  page: number,
+  size: number,
+  order: AdminConnectionOrder = 'NAME',
+  ascending = true,
+): Promise<PageOf<Connection>> {
+  const data = await graphql<{ connections: PageOf<Connection> }>(CONNECTIONS_QUERY, {
+    page,
+    size,
+    order,
+    ascending,
+  });
   return data.connections;
 }
 

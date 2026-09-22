@@ -8,6 +8,8 @@ import plusIcon from '../../assets/plus.svg';
 import settingsIcon from '../../assets/settings.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
@@ -35,6 +37,12 @@ export interface AdminTemplatesPageProps {
  */
 export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPageProps) {
   const [templates, setTemplates] = useState<ComponentTemplate[] | null>(null);
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'HOLDS' | 'FORMAT' | 'WHO'>(
+    'admin-templates',
+    'NAME',
+    true,
+    ['HOLDS', 'FORMAT'],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +63,18 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
 
   useEffect(load, [load]);
 
-  const listed = templates ?? [];
+  /* Ordered here: the templates arrive whole. Issue #358. */
+  const listed = ordered(
+    templates ?? [],
+    (template) => {
+      if (order === 'HOLDS') return template.componentCount;
+      if (order === 'FORMAT') return template.formatVersion ?? 0;
+      if (order === 'WHO') return template.producedBy ?? '';
+      return template.name;
+    },
+    ascending,
+    (template) => template.name,
+  );
 
   return (
     <AppShell
@@ -91,10 +110,44 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <div className={styles.colName}>{t('Name')}</div>
-          <div className={styles.colHolds}>{t('Holds')}</div>
-          <div className={styles.colVersion}>{t('Format')}</div>
-          <div className={styles.colWho}>{t('Published by')}</div>
+          {/*
+            Pressable. Issue #358. Holds is how many components a template
+            carries, which is a number this page has in hand - the list arrives
+            whole - so ordering by it is honest here in a way it is not on a
+            server-paged list.
+          */}
+          <ColumnHeader
+            label={t('Name')}
+            order="NAME"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colName}
+          />
+          <ColumnHeader
+            label={t('Holds')}
+            order="HOLDS"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colHolds}
+          />
+          <ColumnHeader
+            label={t('Format')}
+            order="FORMAT"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colVersion}
+          />
+          <ColumnHeader
+            label={t('Published by')}
+            order="WHO"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colWho}
+          />
           <div className={styles.colActions} />
         </div>
 
