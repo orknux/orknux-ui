@@ -74,6 +74,16 @@ export interface InstallationSettings {
   /** What a fresh installation waits, before anybody changed it. */
   pluginTimeoutSecondsConfigured: number;
   /**
+   * How many rounds of tool calls an agent gets before it must answer.
+   *
+   * One call to the model is a round: it answers, or it asks for tools and what
+   * it asks for is run and handed back. An agent may carry its own number; this
+   * is what the rest of them follow.
+   */
+  chatMaxRounds: number;
+  /** What a fresh installation allows, before anybody changed it. */
+  chatMaxRoundsConfigured: number;
+  /**
    * False where the installation runs Temporal, and the field is not offered.
    *
    * A `configurable` flag like `chatConfigurable`, and the fact behind it is
@@ -89,7 +99,8 @@ const FIELDS =
   'revisionRetentionDays revisionRetentionDaysConfigured ' +
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
-  'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured';
+  'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -208,6 +219,23 @@ export async function setPluginTimeoutSeconds(seconds: number): Promise<Installa
     { seconds },
   );
   return data.setPluginTimeoutSeconds;
+}
+
+/**
+ * How many rounds of tool calls an agent gets before it has to answer.
+ *
+ * The installation's number, which every agent follows unless it carries one of
+ * its own. Eight was written into the code, and an agent holding twenty tools
+ * spent them listing and loading before the work began.
+ */
+export async function setChatMaxRounds(rounds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatMaxRounds: InstallationSettings }>(
+    `mutation SetChatMaxRounds($rounds: Int!) {
+       setChatMaxRounds(rounds: $rounds) { ${FIELDS} }
+     }`,
+    { rounds },
+  );
+  return data.setChatMaxRounds;
 }
 
 export async function setPluginMaxSourceKb(kb: number): Promise<InstallationSettings> {
