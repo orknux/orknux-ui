@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import {
   fetchInstallationSettings,
+  setAgentSleepSeconds,
+  setAgentSleepTimes,
   setAttachmentsEnabled,
   setChatEnabled,
   setExecutionRetentionDays,
@@ -61,6 +63,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [pluginWait, setPluginWait] = useState('');
   /** The installation's ceiling on tool rounds; an agent may carry its own. */
   const [rounds, setRounds] = useState('');
+  /** The longest one of an agent's own waits may be, as typed. */
+  const [sleep, setSleep] = useState('');
+  /** And how many of those it may take in a row on one step. */
+  const [sleeps, setSleeps] = useState('');
 
   useEffect(() => {
     /*
@@ -84,6 +90,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setPluginSource(String(held.pluginMaxSourceKb));
         setPluginWait(String(held.pluginTimeoutSeconds));
         setRounds(String(held.chatMaxRounds));
+        setSleep(String(held.agentSleepSeconds));
+        setSleeps(String(held.agentSleepTimes));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -110,6 +118,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sweep, held: settings.taskSweepMinutes, write: setTaskSweepMinutes },
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
+        { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
+        { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
@@ -294,6 +304,66 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many rounds of tool calls an agent gets')}
                 />
                 <span className={styles.retentionUnit}>{t('rounds')}</span>
+              </div>
+            </div>
+
+            {/*
+              The other way an agent can end a turn: waiting. Some work is not
+              finished and not failing - a build is running, somebody has been
+              asked, a job lands at six - and the only two things an agent could
+              do about it were hold the round open, billed by the minute, or
+              answer as though the work were done. It can now stop and be started
+              again later; these two say for how long, and how many times.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('The longest an agent may wait before it is asked again')}</p>
+                  <FieldHint label={t('The longest an agent may wait before it is asked again')}>
+                    {t('An agent can end its turn by asking to be woken instead of answering, when what it needs has not happened yet - a build still running, a colleague who has been asked. The step stops there and the run comes back to it when the time is up, so nothing is held and no model is billed while it passes. An agent asking for longer than this is given this instead. Between 1 second and 24 hours.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="agent-sleep-seconds"
+                  name="agentSleepSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={86400}
+                  value={sleep}
+                  onChange={(event) => setSleep(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('The longest an agent may wait before it is asked again')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How many times in a row an agent may wait')}</p>
+                  <FieldHint label={t('How many times in a row an agent may wait')}>
+                    {t('Waiting is a decision the agent takes again every time it wakes, so the one that matters is not the first but the twentieth: without a bound, an agent that keeps deciding to wait a little longer never finishes. Counted per step, and an agent that has spent them all is told to finish. Zero means no agent may wait at all. Between 0 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="agent-sleep-times"
+                  name="agentSleepTimes"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={sleeps}
+                  onChange={(event) => setSleeps(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many times in a row an agent may wait')}
+                />
+                <span className={styles.retentionUnit}>{t('times')}</span>
               </div>
             </div>
 

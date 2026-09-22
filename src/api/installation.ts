@@ -84,6 +84,20 @@ export interface InstallationSettings {
   /** What a fresh installation allows, before anybody changed it. */
   chatMaxRoundsConfigured: number;
   /**
+   * The longest one of an agent's own waits may be, in seconds.
+   *
+   * An agent may end its turn with a wake-up instead of an answer: the step
+   * parks and the run comes back to that node when the time is up. A model
+   * asking for longer than this is given this instead.
+   */
+  agentSleepSeconds: number;
+  /** What a fresh installation allows, before anybody changed it. */
+  agentSleepSecondsConfigured: number;
+  /** How many times in a row one step's agent may wait; zero is never. */
+  agentSleepTimes: number;
+  /** What a fresh installation allows, before anybody changed it. */
+  agentSleepTimesConfigured: number;
+  /**
    * False where the installation runs Temporal, and the field is not offered.
    *
    * A `configurable` flag like `chatConfigurable`, and the fact behind it is
@@ -100,7 +114,8 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured';
+  'chatMaxRounds chatMaxRoundsConfigured ' +
+  'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -236,6 +251,34 @@ export async function setChatMaxRounds(rounds: number): Promise<InstallationSett
     { rounds },
   );
   return data.setChatMaxRounds;
+}
+
+/**
+ * The longest an agent may put itself to sleep for.
+ *
+ * An agent ending its turn with a wake-up parks the step, and the run comes back
+ * to it when the time is up. This is how long this installation will hold a run
+ * open for one of those waits.
+ */
+export async function setAgentSleepSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setAgentSleepSeconds: InstallationSettings }>(
+    `mutation SetAgentSleepSeconds($seconds: Int!) {
+       setAgentSleepSeconds(seconds: $seconds) { ${FIELDS} }
+     }`,
+    { seconds },
+  );
+  return data.setAgentSleepSeconds;
+}
+
+/** How many times in a row an agent may do that on one step; zero is never. */
+export async function setAgentSleepTimes(times: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setAgentSleepTimes: InstallationSettings }>(
+    `mutation SetAgentSleepTimes($times: Int!) {
+       setAgentSleepTimes(times: $times) { ${FIELDS} }
+     }`,
+    { times },
+  );
+  return data.setAgentSleepTimes;
 }
 
 export async function setPluginMaxSourceKb(kb: number): Promise<InstallationSettings> {

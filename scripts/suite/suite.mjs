@@ -1784,6 +1784,27 @@ export const TESTS = [
      */
   },
   {
+    name: 'agent-sleep-check',
+    what: 'how long an agent may wait before it is asked again, and how many times',
+    needs: [],
+    /*
+     * Issue #367. A turn could end two ways - an answer, or finish_answer - and
+     * neither fits work that is not finished and is not failing either: a build
+     * running, a colleague who has been asked, a job that lands at six. An agent
+     * can now end its turn with a wake-up, and the step is started again when the
+     * time is up.
+     *
+     * Both bounds are here because the dangerous one is not the first wait but
+     * the twentieth: waiting is a decision the model takes again every time it
+     * wakes. The two are typed and saved together, which is the case a page that
+     * only ever wrote one number would get wrong, and the refusal is asked of
+     * the server rather than typed, because the box's own min and max stop a
+     * person before the bound behind the screen is reached.
+     *
+     * Leaves the installation on the numbers it found.
+     */
+  },
+  {
     name: 'validate-status-check',
     what: 'the Validate status says what it checked, beside the button that checks it',
     needs: ['workspace'],
