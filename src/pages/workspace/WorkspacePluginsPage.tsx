@@ -16,6 +16,7 @@ import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { FieldHint } from '../../components/FieldHint';
 import { FieldPicker } from '../../components/FieldPicker';
+import { RevealToggle } from '../../components/RevealToggle';
 import type { FieldOption, FieldPickerLabels } from '../../components/FieldPicker';
 import { Loader } from '../../components/Loader';
 import { ordered, useTableSort } from '../../components/tableSort';
@@ -603,6 +604,19 @@ function ParameterRow({
    */
   const stored: Answer = parameter.variableId !== null ? 'REFERENCE' : 'VALUE';
   const [mode, setMode] = useState<Answer>(stored);
+  /*
+   * Whether what is being typed is readable. Issue #366.
+   *
+   * A key pasted with a character missing, or one the clipboard mangled, could
+   * not be checked before it was saved - and the plugin that then refused to
+   * authenticate said nothing about which of the two it was. Connections got
+   * this in #339 and the variables page has it; this is the third place.
+   *
+   * Only ever what somebody is typing now. A stored secret is not shown,
+   * because the server never hands one back: the placeholder saying there is
+   * one is the whole of what it will say.
+   */
+  const [showTyped, setShowTyped] = useState(false);
 
   /*
    * Switching only changes which control is shown, and sends nothing: an answer
@@ -804,7 +818,7 @@ function ParameterRow({
           */}
           <input
             id={fieldId}
-            type={parameter.secret ? 'password' : 'text'}
+            type={parameter.secret && !showTyped ? 'password' : 'text'}
             className={`${styles.input} ${styles.parameterValue}`}
             value={typed}
             disabled={busy}
@@ -823,6 +837,19 @@ function ParameterRow({
               if (event.key === 'Enter') onSubmit();
             }}
           />
+          {/*
+            Offered only where there is something typed to show. An eye over an
+            empty box reveals nothing and says there is something to look at,
+            and over a box holding the placeholder it would promise the stored
+            secret - which is the one thing it cannot give.
+          */}
+          {parameter.secret && typed !== '' && (
+            <RevealToggle
+              shown={showTyped}
+              label={parameter.name}
+              onToggle={() => setShowTyped((on) => !on)}
+            />
+          )}
         </div>
       )}
 

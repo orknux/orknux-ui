@@ -1805,6 +1805,24 @@ export const TESTS = [
      */
   },
   {
+    name: 'plugin-secret-reveal-check',
+    what: "a plugin's secret parameter can show what is being typed into it",
+    needs: ['workspace'],
+    /*
+     * Issue #366. The box was a bare password input with nothing beside it, so
+     * a key pasted with a character missing could not be checked before it was
+     * saved - and the plugin that then refused to authenticate said nothing
+     * about which of the two it was. Connections got this in #339 and the
+     * variables page has it; this is the third place.
+     *
+     * The bound is what is measured as closely as the control: the eye is not
+     * offered over an empty box, because the server never hands a stored secret
+     * back and an eye promising one would be promising the one thing it cannot
+     * give. Reads whichever installed plugin has a secret parameter, types into
+     * it and clears it again; saves nothing.
+     */
+  },
+  {
     name: 'usage-range-check',
     what: "the window a model's usage metrics are for, chosen on the page",
     needs: ['workspace'],
