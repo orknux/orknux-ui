@@ -96,6 +96,12 @@ jobs:
       # The same scheme the server publishes under: latest follows main, a
       # vX.Y.Z tag also publishes X.Y.Z and X.Y, and every build carries its
       # commit — the one tag that never moves.
+      #
+      # Matched rather than parsed as semver. A patch on a released line is
+      # numbered 0.9.8.1, which has four parts and is therefore not semver:
+      # `type=semver` quietly produced no version tag for it, so the job went
+      # green having published an image nobody could pin to. The server's
+      # workflow carries the same fix and the same note.
       - name: Work out tags
         id: meta
         uses: docker/metadata-action@v5
@@ -103,8 +109,8 @@ jobs:
           images: ${{ vars.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=match,pattern=v(.*),group=1
+            type=match,pattern=v(\d+\.\d+),group=1
             type=sha,format=long
 
       - name: Build and push
