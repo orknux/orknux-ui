@@ -6,6 +6,7 @@ import {
   setChatEnabled,
   setExecutionRetentionDays,
   setMetricsAnonymous,
+  setChatMaxRounds,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
   setRevisionRetentionDays,
@@ -58,6 +59,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [pluginSource, setPluginSource] = useState('');
   /** How long a plugin may take to load, as typed. */
   const [pluginWait, setPluginWait] = useState('');
+  /** The installation's ceiling on tool rounds; an agent may carry its own. */
+  const [rounds, setRounds] = useState('');
 
   useEffect(() => {
     /*
@@ -80,6 +83,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSweep(String(held.taskSweepMinutes));
         setPluginSource(String(held.pluginMaxSourceKb));
         setPluginWait(String(held.pluginTimeoutSeconds));
+        setRounds(String(held.chatMaxRounds));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -105,6 +109,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: runRetention, held: settings.executionRetentionDays, write: setExecutionRetentionDays },
         { typed: sweep, held: settings.taskSweepMinutes, write: setTaskSweepMinutes },
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
+        { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
@@ -257,6 +262,39 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   data-keeps-colour
                 />
               </button>
+            </div>
+
+            {/*
+              The ceiling on how long an agent may look things up before it has
+              to say something. It was eight, written into the code, and an agent
+              holding twenty tools spent them on listing and loading before the
+              work began - what came back was "kept looking things up without
+              reaching an answer", with everything it had gathered thrown away.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How many rounds of tool calls an agent gets')}</p>
+                  <FieldHint label={t('How many rounds of tool calls an agent gets')}>
+                    {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. Between 2 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-max-rounds"
+                  name="chatMaxRounds"
+                  className={styles.input}
+                  type="number"
+                  min={2}
+                  max={100}
+                  value={rounds}
+                  onChange={(event) => setRounds(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many rounds of tool calls an agent gets')}
+                />
+                <span className={styles.retentionUnit}>{t('rounds')}</span>
+              </div>
             </div>
 
             <h2 className={styles.sectionHeading}>

@@ -668,6 +668,15 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * the workspace's default - issue #226.
    */
   const [share, setShare] = useState<number | null>(agent.memoryShare);
+  /**
+   * How many rounds of tool calls this agent gets, or null to follow the
+   * installation's number.
+   *
+   * Blank is null and null is the default, the way the share above works: a
+   * number here is for the one agent whose work is longer than the rest, and
+   * emptying the box puts it back to whatever Admin has set.
+   */
+  const [rounds, setRounds] = useState<string>(agent.maxRounds === null ? '' : String(agent.maxRounds));
   /** What that share works out to, as the server works it out. Null until asked. */
   const [budget, setBudget] = useState<SessionMemoryBudget | null>(null);
 
@@ -948,6 +957,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         // Sent every save rather than left out, which is what lets the slider
         // put it back to the default.
         memoryShare: asked,
+        // The same rule: blank is null, and null is the installation's number.
+        maxRounds: rounds.trim() === '' ? null : Number(rounds),
       });
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
@@ -960,6 +971,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setConnectionIds(updated.connectionIds);
       setModelId(updated.modelId ?? '');
       setShare(updated.memoryShare);
+      setRounds(updated.maxRounds === null ? '' : String(updated.maxRounds));
       setSaved(true);
       onSaved(updated);
     } catch (cause) {
@@ -1223,6 +1235,38 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           {refusal === null && inheritedRefusal !== null && (
             <p className={own.inheritedNote}>{inheritedRefusal}</p>
           )}
+        </div>
+
+        {/*
+          How long it may look things up before it has to say something.
+
+          Beside the memory card because both are about what one turn may cost,
+          and empty here means the same as Default there: whatever the
+          installation has decided, which is where every agent starts. A number
+          is for the agent whose work is genuinely longer - twenty tools spend
+          three rounds on listing and loading before the work begins, and what
+          came back instead was "kept looking things up without reaching an
+          answer" with everything it had gathered thrown away.
+        */}
+        <div className={styles.field}>
+          <span className={own.labelWithHint}>
+            <label className={styles.label} htmlFor="agent-max-rounds">
+              {t('Tool Rounds')}
+            </label>
+            <FieldHint label={t('Tool Rounds')}>
+              {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. Empty follows the number Admin has set for this installation; set one here for an agent whose work is longer than the rest. Between 2 and 100.')}
+            </FieldHint>
+          </span>
+          <input
+            id="agent-max-rounds"
+            className={styles.input}
+            type="number"
+            min={2}
+            max={100}
+            value={rounds}
+            placeholder={t('Follows the installation')}
+            onChange={(event) => setRounds(event.target.value)}
+          />
         </div>
 
         {/*

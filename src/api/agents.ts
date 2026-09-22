@@ -67,6 +67,8 @@ export interface Agent {
    * [fetchMemoryBudget] what a share works out to.
    */
   memoryShare: number | null;
+  /** Its own ceiling on tool rounds; null follows the installation's. */
+  maxRounds: number | null;
 }
 
 /**
@@ -121,7 +123,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds icon memoryShare maxRounds';
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
@@ -276,6 +278,7 @@ export async function updateAgent(
      * refused here, in the same words `memoryBudget` previews.
      */
     memoryShare?: number | null;
+    maxRounds?: number | null;
   },
 ): Promise<Agent> {
   const data = await graphql<{ updateAgent: Agent }>(UPDATE_AGENT_MUTATION, { id, input });

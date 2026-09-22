@@ -1677,6 +1677,26 @@ export const TESTS = [
      */
   },
   {
+    name: 'tool-rounds-check',
+    what: 'how many rounds of tool calls an agent gets, set from Admin and per agent',
+    needs: ['workspace'],
+    /*
+     * It was eight, written into the code, and an agent holding twenty tools
+     * spent three of them listing and loading before the work began - what came
+     * back was "kept looking things up without reaching an answer", with
+     * everything it had gathered thrown away.
+     *
+     * Two knobs, because one number is not right for both cases: the
+     * installation's, which every agent follows, and an agent's own. Asserted
+     * against the server rather than against the boxes, because a field that
+     * shows a number and stores nothing is the failure this is for - and the
+     * empty box is asserted too, since "follow the installation" is the half a
+     * form that only ever sets a number could not say.
+     *
+     * Leaves the installation on the number it found.
+     */
+  },
+  {
     name: 'validate-status-check',
     what: 'the Validate status says what it checked, beside the button that checks it',
     needs: ['workspace'],
