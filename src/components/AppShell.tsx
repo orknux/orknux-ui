@@ -174,6 +174,70 @@ function useDocumentTitle(title: string | undefined, pathname: string) {
   }, [named]);
 }
 
+/**
+ * Lands on the part of the page that was asked for.
+ *
+ * Issue #361. "Go to" can now reach a section of a page - the workspace's
+ * secrets, the MCP servers, one heading of the settings - and a section is an
+ * address with a fragment on it. The browser only scrolls to a fragment on a
+ * full page load; a router navigation puts it in the address and leaves the page
+ * where it was, which reads as a control that did nothing.
+ *
+ * Here rather than in each page, because it is one rule and ten pages, and the
+ * ninth one to be written by hand is where it would be forgotten.
+ *
+ * Kept there rather than scrolled to once. A page's sections are drawn as its
+ * answers land, so the heading is usually not there when this first runs - and
+ * worse, it is there and then moves: the settings page grew by several hundred
+ * pixels above the section after the first scroll, which put the section back
+ * below the fold and left the control looking broken. So it keeps asking until
+ * the section is seated, and stops the moment it is.
+ *
+ * Bounded, and it stops at the first success rather than holding the page: a
+ * fragment naming nothing is a stale link and not a reason to keep looking, and
+ * a reader who scrolls away after it has landed is not dragged back.
+ */
+function useSectionArrival(pathname: string, hash: string) {
+  useEffect(() => {
+    const wanted = hash.replace(/^#/, '');
+    if (wanted === '') return;
+
+    let live = true;
+    const until = Date.now() + 8_000;
+
+    const seat = () => {
+      if (!live) return;
+
+      const found = document.getElementById(wanted);
+      if (found !== null) {
+        const top = found.getBoundingClientRect().top;
+        const scroller = document.scrollingElement;
+        /*
+         * What is left to scroll, not what there was. The last section of a
+         * page cannot reach the top - the page runs out first - so a rule about
+         * the total would keep scrolling a page that is already at its end.
+         */
+        const left = scroller === null ? 0 : scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+
+        // Seated: at the top, or as near it as a page with nothing left to
+        // scroll can put it. Either way there is nothing further to do.
+        if (top <= SEATED || left <= 1) return;
+        found.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+
+      if (Date.now() < until) window.setTimeout(seat, 200);
+    };
+    seat();
+
+    return () => {
+      live = false;
+    };
+  }, [pathname, hash]);
+}
+
+/** How near the top counts as landed on, in pixels; a heading has a margin. */
+const SEATED = 120;
+
 export function AppShell({
   user,
   workspacePath,
@@ -187,7 +251,8 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const workspaceFallback = useWorkspaceFallback(workspacePath === undefined);
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  useSectionArrival(pathname, hash);
   const collapsed = useSidebarCollapsed();
   const installation = useInstallation();
   /*

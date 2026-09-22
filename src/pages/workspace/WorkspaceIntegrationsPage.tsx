@@ -201,7 +201,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
 
       <section className={styles.card}>
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>{t('MCP Servers')}</h2>
+          <h2 id="mcp-servers" className={styles.cardTitle}>{t('MCP Servers')}</h2>
           <button type="button" className={styles.addButton} onClick={() => setAddingServer(true)}>{t('+ Add Server')}</button>
         </div>
         <SearchRow inset>
@@ -301,7 +301,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <div className={styles.cardTitles}>
-            <h2 className={styles.cardTitle}>{t('Connections')}</h2>
+            <h2 id="connections" className={styles.cardTitle}>{t('Connections')}</h2>
             <p className={styles.cardSubtitle}>
               {t('Connections inherited from admin defaults. Override credentials per connection.')}
             </p>

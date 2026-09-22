@@ -115,6 +115,34 @@ export interface GoTo {
 }
 
 /**
+ * A part of a page that is worth going straight to.
+ *
+ * Issue #361. "Go to" could reach a page or a named thing, and everything
+ * between the two was invisible: somebody looking for the workspace's secrets
+ * had to know they live under Variables, somebody after the marketplace had to
+ * know it is a tab of Plugins. Both are one keystroke away once found and
+ * unfindable until then, which is the whole complaint.
+ *
+ * [at] is what is put on the end of the page's own address, and it is one of two
+ * shapes. A query - `?tab=catalog` - where the page already keeps that state in
+ * the address, which some do and which needs nothing else to work. A fragment -
+ * `#secrets` - where the section is a heading on a page that draws all of them
+ * at once; the heading carries that id, and the shell scrolls to it on arrival.
+ *
+ * Not a page of its own in [PAGES], because it is not one: it has no route, it
+ * cannot be the answer to "which page am I on", and adding it there would put it
+ * in every sidebar that walks that list.
+ */
+export interface PageSection {
+  /** As the page itself names it, or it cannot be found by the name on screen. */
+  label: string;
+  /** `?tab=catalog` or `#secrets`, appended to the page's address. */
+  at: string;
+  /** Other words somebody might type for it; see [GoTo.also]. */
+  also?: string;
+}
+
+/**
  * Something Quick actions can *do*, offered beside the places it can go.
  *
  * It is still a page underneath - every one of these is a screen that already
@@ -175,6 +203,14 @@ export interface Page {
    * page.
    */
   followsWorkspace?: boolean;
+  /**
+   * The parts of this page worth going straight to; see [PageSection].
+   *
+   * Offered by "go to" as `Page - Section`, under the page's own heading and
+   * with the page's own icon: a section is a place inside a place, and drawing
+   * it as a thing of its own would say it is somewhere else.
+   */
+  sections?: readonly PageSection[];
 }
 
 /**
@@ -199,6 +235,10 @@ export const PAGES = [
     path: '/workspace/:workspaceId/models',
     access: 'signed-in',
     goTo: { label: t('Models'), where: 'AI', icon: databaseIcon, also: 'providers usage' },
+    sections: [
+      { label: t('Providers'), at: '#providers', also: 'openai anthropic azure ollama endpoint key' },
+      { label: t('Available Models'), at: '#models', also: 'gpt claude quota cost' },
+    ],
   },
   {
     path: '/workspace/:workspaceId/tools',
@@ -303,6 +343,10 @@ export const PAGES = [
     path: '/workspace/:workspaceId/variables',
     access: 'signed-in',
     goTo: { label: t('Variables'), where: 'Workspace', icon: lockKeyholeIcon, also: 'secrets catalogs values' },
+    sections: [
+      { label: t('Values'), at: '#values', also: 'configuration settings plain' },
+      { label: t('Secrets'), at: '#secrets', also: 'credentials keys tokens passwords' },
+    ],
   },
   {
     path: '/workspace/:workspaceId/plugins',
@@ -338,6 +382,10 @@ export const PAGES = [
     path: '/workspace/:workspaceId/integrations',
     access: 'signed-in',
     goTo: { label: t('Integrations'), where: 'Workspace', icon: plugIcon, also: 'connections slack mcp' },
+    sections: [
+      { label: t('MCP Servers'), at: '#mcp-servers', also: 'model context protocol tools' },
+      { label: t('Connections'), at: '#connections', also: 'slack jira confluence http credentials' },
+    ],
   },
   {
     path: '/workspace/:workspaceId/settings',
@@ -423,6 +471,15 @@ export const PAGES = [
     path: '/admin/plugins',
     access: 'admin',
     goTo: { label: t('Plugins'), where: 'Admin', icon: puzzleIcon, also: 'extensions javascript' },
+    /*
+     * These two are a query rather than a fragment: the page already keeps which
+     * tab it is on in the address, so going to one needs nothing that was not
+     * already there.
+     */
+    sections: [
+      { label: t('Installed'), at: '?tab=installed', also: 'loaded running' },
+      { label: t('Marketplace'), at: '?tab=catalog&source=marketplace', also: 'catalog install browse' },
+    ],
   },
   /* Beside Plugins: both are code loaded once for every workspace to use. */
   {
@@ -509,6 +566,14 @@ export const PAGES = [
      */
     access: 'admin',
     goTo: { label: t('Settings'), where: 'Admin', icon: settingsIcon, also: 'attachments chat installation' },
+    sections: [
+      { label: t('Metrics'), at: '#metrics', also: 'anonymous telemetry' },
+      { label: t('Component history'), at: '#component-history', also: 'revisions retention' },
+      { label: t('Run history'), at: '#run-history', also: 'executions retention sweep' },
+      { label: t('Queued tasks'), at: '#queued-tasks', also: 'sweep temporal interval' },
+      { label: t('Plugins'), at: '#plugins', also: 'source size timeout' },
+      { label: t('Attachments'), at: '#attachments', also: 'files uploads storage' },
+    ],
   },
   { path: '/admin/workspaces/:workspaceId/settings', access: 'admin', goTo: false },
 
@@ -557,6 +622,48 @@ export function goToPages(options: { workspacePath: string | null; showAdmin: bo
       : page.path;
 
     return [{ ...page.goTo, to }];
+  });
+}
+
+/**
+ * The parts of pages "go to" should offer, with `:workspaceId` filled in.
+ *
+ * A separate walk from [goToPages] rather than more rows out of it, for the
+ * reason [quickActions] is separate: what the palette does with a section
+ * differs from what it does with a page. A section is only worth offering once
+ * somebody has typed something - there are more of them than there are pages,
+ * and a palette that opened on forty rows would be a worse palette - so the
+ * caller needs them apart to hold that rule.
+ *
+ * The label is `Page - Section`, because "Secrets" on its own says nothing about
+ * where it is and two pages may reasonably both have a "Settings".
+ */
+export function goToSections(options: { workspacePath: string | null; showAdmin: boolean; showChat: boolean }) {
+  return PAGES.flatMap((page: Page) => {
+    if (page.sections === undefined || page.goTo === false) return [];
+    if (page.access === 'admin' && !options.showAdmin) return [];
+    if (page.path.startsWith('/chat') && !options.showChat) return [];
+
+    const workspaceScoped = page.path.startsWith('/workspace/');
+    if (workspaceScoped && options.workspacePath === null) return [];
+
+    const to = workspaceScoped
+      ? page.path.replace('/workspace/:workspaceId', options.workspacePath ?? '')
+      : page.path;
+
+    const owner = page.goTo;
+    return page.sections.map((section) => ({
+      label: `${owner.label} - ${section.label}`,
+      where: owner.where,
+      icon: owner.icon,
+      to: `${to}${section.at}`,
+      /*
+       * The page's own words as well as the section's: somebody typing
+       * "variables" should be offered its parts, and somebody typing "secret"
+       * should find them without knowing which page they are on.
+       */
+      also: [owner.label, owner.also, section.also].filter((one) => one !== undefined).join(' '),
+    }));
   });
 }
 

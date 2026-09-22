@@ -1805,6 +1805,26 @@ export const TESTS = [
      */
   },
   {
+    name: 'go-to-sections-check',
+    what: '"go to" reaches a part of a page, not only the page',
+    needs: ['workspace'],
+    /*
+     * Issue #361. The box could reach a page or one of the workspace's own named
+     * things, and everything between the two was invisible: the workspace's
+     * secrets are under Variables and the marketplace is a tab of Plugins, both
+     * one keystroke away once found and unfindable until then.
+     *
+     * Two shapes, measured separately because they arrive differently: a tab the
+     * page already keeps in its address, and a heading reached by a fragment.
+     * The fragment is the part that breaks quietly - the browser only scrolls to
+     * one on a full page load, and a router navigation leaves the page where it
+     * was - so the landing is asserted in pixels rather than by a row appearing.
+     *
+     * One of the three is on a page long enough to have somewhere to scroll to,
+     * because the other two fit in a window and cannot fail that way.
+     */
+  },
+  {
     name: 'plugin-secret-reveal-check',
     what: "a plugin's secret parameter can show what is being typed into it",
     needs: ['workspace'],

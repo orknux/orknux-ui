@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
 
 import { fetchWorkspaceEntities } from '../api/palette';
-import { goToPages, namesOneThing, quickActions, sectionAt } from '../navigation';
+import { goToPages, goToSections, namesOneThing, quickActions, sectionAt } from '../navigation';
 import type { EntityKind, NamedEntity } from '../api/palette';
 import activityIcon from '../assets/activity.svg';
 import bellIcon from '../assets/bell.svg';
@@ -250,6 +250,20 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
   );
 
   /**
+   * The parts of pages, which are places inside places — issue #361.
+   *
+   * Kept apart from the pages rather than folded in with them, because the rule
+   * about when to offer them differs: there are more sections than pages, and a
+   * resting palette listing every heading of every screen would be a wall. They
+   * join the search the moment a letter is typed, which is when somebody has
+   * said what they are looking for.
+   */
+  const sections = useMemo<Command[]>(
+    () => goToSections({ workspacePath: workspace, showAdmin, showChat }),
+    [workspace, showAdmin, showChat],
+  );
+
+  /**
    * The things this box can do rather than the places it can go — issue #218.
    *
    * From the same registry as the pages, so a screen that starts something says
@@ -363,7 +377,12 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
     }
 
     return {
-      found: [...actions, ...commands, ...named]
+      /*
+       * Pages before their sections before the workspace's own things: somebody
+       * typing "variables" wants the page, and its two halves under it - not one
+       * of the halves ahead of the whole.
+       */
+      found: [...actions, ...commands, ...sections, ...named]
         .map((one) => ({ one, at: rank(one, needle) }))
         .filter((scored) => scored.at >= 0)
         // Stable, so pages keep their place ahead of contents at the same rank.
@@ -373,7 +392,7 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
       headings: new Map<number, string>(),
       empty: 'unfound' as const,
     };
-  }, [actions, commands, named, recent, text, onRecent, ready]);
+  }, [actions, commands, sections, named, recent, text, onRecent, ready]);
 
   /*
    * The shortcuts work wherever the caret is, which is the point of one.

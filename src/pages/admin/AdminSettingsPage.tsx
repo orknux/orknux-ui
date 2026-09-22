@@ -367,7 +367,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
-            <h2 className={styles.sectionHeading}>
+            <h2 id="attachments" className={styles.sectionHeading}>
               <span className={styles.headingWithHint}>
                 {t('Attachments')}
                 <FieldHint label={t('Attachments')}>
@@ -424,7 +424,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <dd className={styles.factValue}>{settings.attachmentMaxFileSizeMb} MB</dd>
               </div>
             </dl>
-            <h2 className={styles.sectionHeading}>{t('Metrics')}</h2>
+            <h2 id="metrics" className={styles.sectionHeading}>{t('Metrics')}</h2>
 
             <div className={styles.setting}>
               <div className={styles.settingText}>
@@ -498,7 +498,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               )}
             </p>
 
-            <h2 className={styles.sectionHeading}>{t('Component history')}</h2>
+            <h2 id="component-history" className={styles.sectionHeading}>{t('Component history')}</h2>
 
             <div className={styles.setting}>
               <div className={styles.settingText}>
@@ -540,7 +540,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </p>
             )}
 
-            <h2 className={styles.sectionHeading}>{t('Run history')}</h2>
+            <h2 id="run-history" className={styles.sectionHeading}>{t('Run history')}</h2>
 
             <div className={styles.setting}>
               <div className={styles.settingText}>
@@ -585,7 +585,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             */}
             {settings.taskSweepConfigurable && (
               <>
-                <h2 className={styles.sectionHeading}>{t('Queued tasks')}</h2>
+                <h2 id="queued-tasks" className={styles.sectionHeading}>{t('Queued tasks')}</h2>
 
                 <div className={styles.setting}>
                   <div className={styles.settingText}>
@@ -615,7 +615,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </>
             )}
 
-            <h2 className={styles.sectionHeading}>{t('Plugins')}</h2>
+            <h2 id="plugins" className={styles.sectionHeading}>{t('Plugins')}</h2>
 
             {/*
               The loading bound, and it says so: what a plugin's tool may then

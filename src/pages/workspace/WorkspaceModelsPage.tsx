@@ -240,7 +240,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
 
       <section className={styles.card}>
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>{t('Providers')}</h2>
+          <h2 id="providers" className={styles.cardTitle}>{t('Providers')}</h2>
           <Link className={styles.addButton} to={`/workspace/${workspaceId}/models/providers/new`}>
             {t('+ Add Provider')}
           </Link>
@@ -372,7 +372,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
 
       <section className={styles.card}>
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>{t('Available Models')}</h2>
+          <h2 id="models" className={styles.cardTitle}>{t('Available Models')}</h2>
           {/* A model belongs to a provider, so there is nothing to add without one. */}
           <button
             type="button"

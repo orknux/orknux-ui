@@ -635,7 +635,14 @@ function VariableTable({
     <section className={table.section}>
       <header className={table.sectionHeader}>
         <div className={table.sectionTitles}>
-          <h2 className={table.sectionTitle}>{title}</h2>
+          {/*
+            Addressable, so "go to" can land on this half of the page. The id is
+            the title lowercased rather than a second name handed in: two names
+            for one section is one too many, and a table called Secrets that
+            answered to `#credentials` would be a heading somebody could read on
+            screen and still not find. Issue #361.
+          */}
+          <h2 id={title.toLowerCase()} className={table.sectionTitle}>{title}</h2>
           <p className={table.sectionNote}>{note}</p>
         </div>
         <button
