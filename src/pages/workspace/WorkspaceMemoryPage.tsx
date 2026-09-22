@@ -270,15 +270,27 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                   >
                     <img src={penIcon} alt="" width={14} height={14} />
                   </button>
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    onClick={() => void handleDeleteCatalog()}
-                    aria-label={`Delete ${current.name}`}
-                    title={t('Delete')}
-                  >
-                    <img src={trashIcon} alt="" width={14} height={14} />
-                  </button>
+                  {/*
+                    The one this workspace always has carries no Delete.
+
+                    Left out rather than drawn and disabled: a control that is
+                    there and refuses is a control somebody presses twice before
+                    reading why. Rename is beside it and is the way out of a name
+                    nobody likes, which is the whole reason this one is a flag
+                    rather than a name. The server refuses it as well, because a
+                    screen is not a boundary.
+                  */}
+                  {!current.isDefault && (
+                    <button
+                      type="button"
+                      className={styles.iconButton}
+                      onClick={() => void handleDeleteCatalog()}
+                      aria-label={`Delete ${current.name}`}
+                      title={t('Delete')}
+                    >
+                      <img src={trashIcon} alt="" width={14} height={14} />
+                    </button>
+                  )}
                 </div>
               </header>
               <div className={styles.rule} />

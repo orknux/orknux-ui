@@ -8,6 +8,15 @@ export interface MemoryCatalog {
   name: string;
   /** What the count badge shows. */
   memoryCount: number;
+  /**
+   * The one catalog this workspace always has.
+   *
+   * A catalog is what an agent is granted and what a memory is filed into, so a
+   * workspace with none has nowhere for either. This one cannot be deleted; it
+   * can be renamed, which is what makes the name it starts with a starting point
+   * rather than one somebody is stuck with.
+   */
+  isDefault: boolean;
   createdAt: string;
   createdBy: string;
 }
@@ -27,7 +36,7 @@ export interface Memory {
 
 export type MemorySort = 'LAST_MODIFIED' | 'CREATED' | 'TITLE';
 
-const CATALOG_FIELDS = 'id workspaceId name memoryCount createdAt createdBy';
+const CATALOG_FIELDS = 'id workspaceId name memoryCount createdAt createdBy isDefault';
 const MEMORY_FIELDS = 'id catalogId title content createdAt createdBy lastModifiedAt lastModifiedBy';
 
 export async function fetchMemoryCatalogs(workspaceId: string): Promise<MemoryCatalog[]> {

@@ -1805,6 +1805,26 @@ export const TESTS = [
      */
   },
   {
+    name: 'default-memory-catalog-check',
+    what: 'every workspace has one memory catalog, and it stays',
+    needs: ['workspace'],
+    /*
+     * A catalog is what an agent is granted and what a memory is filed into, so
+     * a workspace with none has nowhere for either - memory_save refuses because
+     * there is nothing to write to, and the two memory tools are not offered at
+     * all. Making one was setup nobody is told about, before an agent could
+     * remember anything.
+     *
+     * The rule is pinned in DefaultMemoryCatalogTest, which can make a workspace
+     * and read the row back. What is measured here is the screen: the catalog
+     * that cannot be deleted is drawn without a Delete rather than with one that
+     * argues back, and Rename is still there - renaming is the whole way out of
+     * a name nobody likes, and is why the mark is a flag and not the name.
+     *
+     * Makes nothing and removes nothing.
+     */
+  },
+  {
     name: 'agent-ask-agent-check',
     what: 'an agent is given other agents to put a question to',
     needs: ['workspace'],
