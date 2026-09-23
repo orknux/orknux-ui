@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { startChat } from '../../api/chat';
 import { fetchInstallationSettings } from '../../api/installation';
@@ -9,6 +9,7 @@ import {
   fetchLlmSession,
   fetchLlmSessionEvents,
   removeLlmSession,
+  fetchLlmSessionFamily,
 } from '../../api/llmSessions';
 import type {
   LlmSession,
@@ -16,10 +17,12 @@ import type {
   LlmSessionEventKind,
   LlmSessionEventOrder,
   LlmSessionEventPage,
+  LlmSessionMember,
 } from '../../api/llmSessions';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
+import branchIcon from '../../assets/git-branch.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
@@ -341,6 +344,37 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
+  /*
+   * The session's family: the main one and every session an agent in it
+   * started by asking another agent. Issue #379.
+   *
+   * Opened from the top right and kept open across a switch, because a
+   * switch is a navigation - the transcript on the left is a session page,
+   * and the panel is the same panel on the next one. The query string is
+   * what carries "open" from one page to the next.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const panelOpen = searchParams.get('family') === '1';
+  const [family, setFamily] = useState<LlmSessionMember[] | null>(null);
+  const loadFamily = useCallback(() => {
+    if (sessionId === '' || !panelOpen) return;
+    fetchLlmSessionFamily(sessionId)
+      .then(setFamily)
+      .catch(() => setFamily(null));
+  }, [sessionId, panelOpen]);
+  useEffect(loadFamily, [loadFamily]);
+  /* Status dots follow the transcript's refresh, so a subagent finishing goes orange with it. */
+  useEffect(() => {
+    if (!panelOpen) return;
+    loadFamily();
+  }, [events, panelOpen, loadFamily]);
+  const togglePanel = () => {
+    const next = new URLSearchParams(searchParams);
+    if (panelOpen) next.delete('family');
+    else next.set('family', '1');
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <AppShell
       user={shellUser(session)}
@@ -351,6 +385,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       title={held?.key}
       scrollContent
     >
+      <div className={panelOpen ? styles.split : undefined}>
+      <div className={styles.main}>
       <header className={styles.contentHeader}>
         <p className={styles.breadcrumb}>
           <BackLink to={`/workspace/${workspaceId}/sessions`} label={t('Sessions')} />
@@ -387,6 +423,20 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     decided how often they want to be interrupted has decided
                     it everywhere.
                   */}
+                  <button
+                    type="button"
+                    className={panelOpen ? `${styles.familyButton} ${styles.familyButtonOpen}` : styles.familyButton}
+                    onClick={togglePanel}
+                    aria-pressed={panelOpen}
+                    aria-controls="session-family"
+                    data-family-toggle
+                  >
+                    <img src={branchIcon} alt="" width={14} height={14} />
+                    {t('Sessions')}
+                    {family !== null && family.length > 1 && (
+                      <span className={styles.familyCount}>{family.length}</span>
+                    )}
+                  </button>
                   <AutoRefresh onRefresh={refresh} busy={loading} />
                   {/* The label does not change: a word that flips every few
                       seconds under auto-refresh is movement, not information. */}
@@ -623,6 +673,56 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           </section>
         </>
       )}
+      </div>
+      {panelOpen && (
+        <aside id="session-family" className={styles.family} aria-label={t('Sessions in this conversation')}>
+          <p className={styles.familyTitle}>{t('Sessions')}</p>
+          {family === null && (
+            <p className={styles.familyNote}>
+              <Loader />
+            </p>
+          )}
+          {family !== null && (
+            <ul className={styles.familyList}>
+              {family.map((member) => {
+                const current = member.id === sessionId;
+                return (
+                  <li key={member.id}>
+                    <button
+                      type="button"
+                      className={current ? `${styles.familyRow} ${styles.familyRowCurrent}` : styles.familyRow}
+                      aria-current={current ? 'page' : undefined}
+                      data-session-member={member.id}
+                      data-session-active={member.active ? 'true' : 'false'}
+                      onClick={() =>
+                        navigate({ pathname: `/workspace/${workspaceId}/sessions/${member.id}`, search: '?family=1' })
+                      }
+                    >
+                      {/*
+                        Green while an agent is at work in it, orange once it
+                        has gone quiet. A colour rather than a word, because the
+                        list is scanned rather than read, and the word would be
+                        the same on every row but one.
+                      */}
+                      <span
+                        className={member.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
+                        title={member.active ? t('Active') : t('Inactive')}
+                      />
+                      <span className={member.main ? `${styles.familyName} ${styles.familyMain}` : styles.familyName}>
+                        {member.title}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {family !== null && family.length === 1 && (
+            <p className={styles.familyNote}>{t('No agent in this session has asked another yet.')}</p>
+          )}
+        </aside>
+      )}
+      </div>
     </AppShell>
   );
 }

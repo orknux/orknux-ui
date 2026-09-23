@@ -98,6 +98,30 @@ const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEv
 /** What one opened session adds, and a row of the list does not. Issue #371. */
 const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
 
+/**
+ * One session of a family: the main session and every one an agent in it
+ * started by asking another agent. Issue #379.
+ */
+export interface LlmSessionMember {
+  id: string;
+  key: string;
+  /** "Main session" at the top; what the asking agent called the task for the rest. */
+  title: string;
+  main: boolean;
+  /** Green or orange: whether an agent is at work in it right now. */
+  active: boolean;
+  lastEventAt: string | null;
+}
+
+/** A session's family from the top, asked of any member. */
+export async function fetchLlmSessionFamily(id: string): Promise<LlmSessionMember[]> {
+  const data = await graphql<{ llmSessionFamily: LlmSessionMember[] }>(
+    `query ($id: ID!) { llmSessionFamily(id: $id) { id key title main active lastEventAt } }`,
+    { id },
+  );
+  return data.llmSessionFamily;
+}
+
 /** One thing an agent wrote down for itself, part-way through. */
 export interface LlmSessionNote {
   id: string;

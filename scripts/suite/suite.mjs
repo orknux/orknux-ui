@@ -2506,6 +2506,24 @@ export const TESTS = [
   },
 
   {
+    name: 'session-family-check',
+    what: 'a session lists its family from the top right and switches between them, the panel kept open',
+    needs: ['session'],
+    /*
+     * Issue #379. What is kept - a session under the one that asked, titled
+     * with the task, active while an agent is at work in it - is pinned in
+     * SubagentSessionTest; this is the other end: Query still serves
+     * llmSessionFamily with what the panel draws, and a family put in front
+     * of the page comes out as the main session first, each subagent by its
+     * task, a dot each, and a click that swaps the transcript on the left.
+     *
+     * The members are stubbed for the same reason the notes are in
+     * session-notes-check: a subagent session exists because a model called
+     * ask_agent, and no mutation makes one.
+     */
+  },
+
+  {
     name: 'session-pages-check',
     what: 'the sessions list narrows, a transcript filters and reorders, and a session takes two presses to remove',
     needs: ['workspace'],
