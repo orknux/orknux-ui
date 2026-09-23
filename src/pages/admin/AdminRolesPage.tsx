@@ -30,9 +30,17 @@ interface Draft {
   name: string;
   description: string;
   scopes: RoleScope[];
+  /**
+   * The directory names typed into the box, one per line. Issue #375.
+   *
+   * A string rather than a list, because that is what a textarea holds; it is
+   * split on the way to the server and joined on the way back, so an empty line
+   * somebody left while typing is not a rule that grants nothing.
+   */
+  matches: string;
 }
 
-const BLANK: Draft = { id: null, name: '', description: '', scopes: ['USER'] };
+const BLANK: Draft = { id: null, name: '', description: '', scopes: ['USER'], matches: '' };
 
 /**
  * The roles this installation defines.
@@ -104,6 +112,10 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
         name: draft.name.trim(),
         description: draft.description.trim(),
         scopes: draft.scopes,
+        matches: draft.matches
+          .split('\n')
+          .map((one) => one.trim())
+          .filter((one) => one !== ''),
       };
       if (draft.id === null) await createRole(input);
       else await updateRole(draft.id, input);
@@ -123,6 +135,7 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
       name: role.name,
       description: role.description ?? '',
       scopes: role.scopes,
+      matches: role.matches.join('\n'),
     });
   }
 
@@ -236,6 +249,46 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
                   </span>
                 </label>
               ))}
+            </div>
+
+            {/*
+              Where a role is granted by a name it cannot be called. Issue #375.
+
+              Below the scopes because it is the rarer half: a role named after
+              its group needs nothing here, and this box exists for the groups a
+              role cannot be named after — a dot or a space in the group's name
+              is enough. It was configuration-file-only, which meant the person
+              administering the installation could not see it, let alone change
+              it.
+
+              One per line, because that is how somebody pastes a handful of
+              group names out of a directory browser.
+            */}
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="role-matches">
+                {t('Directory groups')}
+                <FieldHint label={t('Directory groups')}>
+                  <p>
+                    Extra names the directory may use for this role, one per line. A role is
+                    already granted to whoever holds the authority made from its own name, so
+                    most roles need none of these.
+                  </p>
+                  <p>
+                    They are for groups this role cannot be named after — anything with a dot or
+                    a space in it. Write the group's name as the directory sends it
+                    (<code>ROLE_DEV.TL</code>) or paste its whole DN; either is matched, and
+                    capitals do not matter.
+                  </p>
+                </FieldHint>
+              </label>
+              <textarea
+                id="role-matches"
+                className={styles.textarea}
+                rows={3}
+                value={draft.matches}
+                placeholder={'ROLE_DEV.TL'}
+                onChange={(event) => setDraft({ ...draft, matches: event.target.value })}
+              />
             </div>
 
             <div className={styles.editorActions}>

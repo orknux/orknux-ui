@@ -106,6 +106,23 @@
   color: var(--color-text-secondary);
 }
 
+/*
+ * Directory group names, one per line (#375). Monospace because these are
+ * machine strings — a DN with a comma out of place is the whole fault, and a
+ * proportional font is where that hides.
+ */
+.textarea {
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  resize: vertical;
+}
+
 .input {
   width: 100%;
   padding: var(--space-10) var(--space-12);

@@ -2426,6 +2426,21 @@ export const TESTS = [
   },
 
   {
+    name: 'role-directory-names-check',
+    what: 'a role names the directory groups that grant it, on the screen rather than in a file',
+    needs: ['session'],
+    /*
+     * Issue #375. A role matched to a group by its own name covers most
+     * installations and falls down on the first group called `dev.TL`, and the
+     * only answer was a mapping in the configuration file - which an
+     * administrator can neither see nor change.
+     *
+     * The round trip rather than the box: a textarea that holds what was typed
+     * and sends nothing looks perfect and grants nobody anything.
+     */
+  },
+
+  {
     name: 'session-notes-check',
     what: 'a session draws what its agents wrote down for themselves, above the transcript',
     needs: ['session'],

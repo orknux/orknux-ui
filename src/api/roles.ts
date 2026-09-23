@@ -16,6 +16,14 @@ export interface Role {
   name: string;
   description: string | null;
   scopes: RoleScope[];
+  /**
+   * Which of the directory's names grant this role, beyond its own name.
+   *
+   * Most roles carry none: a role called `Backend` is already granted to
+   * whoever holds ROLE_BACKEND. These are for the groups a role cannot be named
+   * after — `dev.TL`, `BoarCMS Group`.
+   */
+  matches: string[];
   /** True for the administrator role, which is shown without its controls. */
   builtin: boolean;
   lastModifiedAt: string;
@@ -26,6 +34,7 @@ export interface RoleInput {
   name: string;
   description?: string;
   scopes?: RoleScope[];
+  matches?: string[];
 }
 
 export const ROLE_SCOPES: RoleScope[] = ['ADMIN', 'USER'];
@@ -40,7 +49,7 @@ export const ROLE_SCOPE_HINT: Record<RoleScope, string> = {
   USER: t('Signs in, and sees the workspaces this role is assigned to.'),
 };
 
-const ROLE_FIELDS = 'id name description scopes builtin lastModifiedAt lastModifiedBy';
+const ROLE_FIELDS = 'id name description scopes matches builtin lastModifiedAt lastModifiedBy';
 
 export async function fetchRoles(): Promise<Role[]> {
   const data = await graphql<{ roles: Role[] }>(`query Roles { roles { ${ROLE_FIELDS} } }`);
