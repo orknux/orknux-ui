@@ -339,6 +339,43 @@
  * server chips alike; the chips are gone - MCP servers are a grant list like
  * the others now - and the one class stayed where it was needed.
  */
+/*
+ * Always carried, rather than found when it is wanted. Issue #372.
+ *
+ * At the end of the row and quieter than the grant itself, because it is the
+ * second question about that row and only ever asked of a row already granted.
+ */
+/*
+ * What the ceiling beside it comes to, counted as it is typed. Issue #372.
+ *
+ * Quiet while the number works and loud when it does not: a ceiling under what
+ * is already marked as always carried is one the agent cannot work under, and
+ * the moment to say so is while somebody is choosing it rather than after a
+ * save.
+ */
+.carrying {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.carryingFull {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-accent-danger, var(--color-text-primary));
+}
+
+.grantAlways {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
 .grantJump {
   display: inline-flex;
   flex: none;

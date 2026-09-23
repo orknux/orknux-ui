@@ -277,6 +277,28 @@ interface GrantListProps<Item> {
   /** The names granted now. */
   granted: string[];
   onChange: (granted: string[]) => void;
+  /**
+   * Which granted rows are marked as always carried, where that is a question
+   * this list asks at all. Issue #372.
+   *
+   * Absent on every list but the tools, and on that one only where the agent
+   * carries a ceiling: without one nothing is ever dropped, so marking a row
+   * would be marking it against something that never happens. A second column
+   * that appears when a number is typed is how the form says the two are the
+   * same decision.
+   */
+  marked?: string[];
+  onMark?: (marked: string[]) => void;
+  /**
+   * Whether this row is one the mark means anything for.
+   *
+   * Two rows of the tools list are flags rather than grants - `finish_answer`
+   * and the picture link - and marking one of those is a statement about
+   * nothing: the server stores only what is granted, so the tick vanished on
+   * save and the form looked as though it had kept it. A control that can be
+   * pressed and does nothing is worse than one that is not there.
+   */
+  markable?: (name: string) => boolean;
 }
 
 /**
@@ -323,6 +345,9 @@ function GrantList<Item>({
   groupOf,
   granted,
   onChange,
+  marked,
+  onMark,
+  markable,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /** Which plugin is being shown, or '' for all of them. */
@@ -590,6 +615,30 @@ function GrantList<Item>({
                     )}
                   </span>
                 </label>
+                {/*
+                  Always carried, rather than found when it is wanted. #372.
+
+                  Only on a granted row, because marking something this agent
+                  does not have is a statement about nothing - and only where
+                  the caller asked the question at all, which is where a ceiling
+                  has been typed.
+                */}
+                {onMark !== undefined && row.ticked && (markable?.(row.name) ?? true) && (
+                  <label className={own.grantAlways} title={t('Always carried, rather than found when needed')}>
+                    <input
+                      type="checkbox"
+                      checked={marked?.includes(row.name) ?? false}
+                      onChange={(event) =>
+                        onMark(
+                          event.target.checked
+                            ? [...(marked ?? []), row.name]
+                            : (marked ?? []).filter((one) => one !== row.name),
+                        )
+                      }
+                    />
+                    <span>{t('always')}</span>
+                  </label>
+                )}
                 {meta !== undefined && meta !== null && meta !== false && (
                   <span className={own.checkCount}>{meta}</span>
                 )}
@@ -673,6 +722,18 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [connectionIds, setConnectionIds] = useState<string[]>(agent.connectionIds);
   /** Which other agents this one may ask; see `ask_agent`. Issue #350. */
   const [agentIds, setAgentIds] = useState<string[]>(agent.agentIds);
+  /** How many tools it carries at once, as typed; empty is the provider's. #372. */
+  const [maxTools, setMaxTools] = useState(agent.maxTools === null ? '' : String(agent.maxTools));
+  /** Which granted tools always travel rather than being found. #372. */
+  const [requiredTools, setRequiredTools] = useState<string[]>(agent.requiredTools);
+  /**
+   * The ceiling as a number, or null where none has been typed.
+   *
+   * Null is what turns the second column off and what the count reads as "not
+   * this agent's question": a half-typed box is not a ceiling, so anything that
+   * is not a number reads the same as empty.
+   */
+  const carrying = maxTools.trim() === '' || Number.isNaN(Number(maxTools)) ? null : Number(maxTools);
   const [icon, setIcon] = useState<string | null>(agent.icon ?? null);
   /**
    * The share of the model's window a session may take back, or null to follow
@@ -989,6 +1050,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         tools,
         connectionIds,
         agentIds,
+        maxTools: maxTools.trim() === '' ? null : Number(maxTools),
+        requiredTools,
         icon,
         // Sent every save rather than left out, which is what lets the slider
         // put it back to the default.
@@ -1006,6 +1069,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setTools(updated.tools);
       setConnectionIds(updated.connectionIds);
       setAgentIds(updated.agentIds);
+      setMaxTools(updated.maxTools === null ? '' : String(updated.maxTools));
+      setRequiredTools(updated.requiredTools);
       setModelId(updated.modelId ?? '');
       setShare(updated.memoryShare);
       setRounds(updated.maxRounds === null ? '' : String(updated.maxRounds));
@@ -1372,9 +1437,74 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             // taken out of the names before the rest are stored.
             setFinishAccess(names.includes(FINISH_ANSWER));
             setPictureLinkAccess(names.includes(PICTURE_LINK));
-            setTools(names.filter((one) => one !== FINISH_ANSWER && one !== PICTURE_LINK));
+            const kept = names.filter((one) => one !== FINISH_ANSWER && one !== PICTURE_LINK);
+            setTools(kept);
+            // A tool that is no longer granted cannot be one that always
+            // travels: the mark is about a grant, and one left behind would be
+            // a name nothing resolves. #372.
+            setRequiredTools((held) => held.filter((one) => kept.includes(one)));
           }}
+          /*
+            The second column, and only where a ceiling has been typed. Without
+            one nothing is ever dropped, so marking a row would be marking it
+            against something that never happens. #372.
+          */
+          marked={carrying === null ? undefined : requiredTools}
+          onMark={carrying === null ? undefined : setRequiredTools}
+          /*
+            The two flags in this list are not tools and cannot be marked: the
+            server stores only what is granted, so a tick on one of them was
+            dropped on save while the form went on showing it.
+          */
+          markable={(name) => name !== FINISH_ANSWER && name !== PICTURE_LINK}
         />
+
+        {/*
+          How many tools this agent carries at once. Issue #372.
+
+          Beneath the list rather than above it, because it is a statement about
+          what is in the list: the count beside it is what somebody reads to know
+          whether the number they typed is one this agent can actually work
+          under.
+        */}
+        <div className={styles.field}>
+          <span className={own.labelWithHint}>
+            <label className={styles.label} htmlFor="agent-max-tools">
+              {t('Tools carried at once')}
+            </label>
+            <FieldHint label={t('Tools carried at once')}>
+              {t('How many tools this agent holds in front of the model at a time. Left empty it holds all of them, up to what the model’s provider allows — which is 128 for OpenAI and Azure, and is the number at which a request fails rather than the number at which an agent starts choosing badly. Set one and the agent carries the ones marked "always" plus a tool for searching the rest, finding what a job needs and giving up what it looked up longest ago when the room runs out. Between 5 and 100.')}
+            </FieldHint>
+          </span>
+          <div className={styles.inputWrapper}>
+            <input
+              id="agent-max-tools"
+              name="maxTools"
+              className={styles.input}
+              type="number"
+              min={5}
+              max={100}
+              value={maxTools}
+              placeholder={t('As many as the provider allows')}
+              onChange={(event) => setMaxTools(event.target.value)}
+            />
+            {/*
+              Counted as it is typed, which is what makes the number mean
+              something: a ceiling under what is already marked as always
+              carried is a ceiling the agent cannot work under, and the moment
+              to say so is while somebody is choosing it.
+            */}
+            {carrying !== null && (
+              <span
+                className={requiredTools.length >= carrying ? own.carryingFull : own.carrying}
+                data-always-count=""
+              >
+                {requiredTools.length} always, {tools.length} granted
+                {requiredTools.length >= carrying && ` — leaves no room to search`}
+              </span>
+            )}
+          </div>
+        </div>
 
         {/*
           And what it may point those tools at. The one grant that comes with a

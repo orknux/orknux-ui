@@ -1805,6 +1805,25 @@ export const TESTS = [
      */
   },
   {
+    name: 'tool-budget-check',
+    what: 'how many tools an agent carries, and which of them always travel',
+    needs: ['workspace'],
+    /*
+     * Issue #372, past #368. That one was about surviving a hard limit - OpenAI
+     * and Azure refuse a request over 128 tools; this is about the number below
+     * it, where a model is already choosing from a list it cannot hold in mind.
+     *
+     * The eviction is ToolBudgetTest's. Measured here is the form, where the
+     * ceiling and the marks are one decision: the second column appears when a
+     * number is typed and not before, and it does not appear on the two rows
+     * that are flags rather than tools - the first run of this check ticked one
+     * of those, the server dropped it because it is not a granted tool, and the
+     * form went on showing it ticked.
+     *
+     * Makes an agent and removes it.
+     */
+  },
+  {
     name: 'voice-barge-in-check',
     what: 'how long somebody talks over an answer before it stops',
     needs: ['workspace'],

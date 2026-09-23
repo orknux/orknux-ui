@@ -60,6 +60,16 @@ export interface Agent {
    * however many its row names.
    */
   agentIds: string[];
+  /**
+   * How many tools this agent carries at once; null is the provider's ceiling.
+   *
+   * Issue #372. Tool search starts where this is reached - the provider's own
+   * limit is where a request fails, and this is where somebody decided the agent
+   * was choosing from a list it could not hold in mind.
+   */
+  maxTools: number | null;
+  /** Which granted tools always travel rather than being found. */
+  requiredTools: string[];
   /** Which icon a node drawn from this starts with; null draws the kind's own. */
   icon: string | null;
   /**
@@ -132,7 +142,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds agentIds icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds agentIds maxTools requiredTools icon memoryShare maxRounds';
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents(
@@ -288,6 +298,8 @@ export async function updateAgent(
     /** Which of the workspace's connections it may name; left out, the grant is unchanged. */
     connectionIds?: string[];
     agentIds?: string[];
+    maxTools?: number | null;
+    requiredTools?: string[];
     /** Which icon a node drawn from this agent starts with; null clears it. */
     icon?: string | null;
     /**
