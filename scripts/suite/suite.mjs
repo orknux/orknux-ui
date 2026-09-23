@@ -2426,6 +2426,20 @@ export const TESTS = [
   },
 
   {
+    name: 'variable-types-check',
+    what: "a variable of a plugin's type gets the plugin's picker and its refusal, and a list is edited as one",
+    needs: ['workspace'],
+    /*
+     * Issue #377. A Slack user id is a string only some values of are real,
+     * and a variable holding one was a text box. The plugin here is a palette
+     * rather than Slack, because what is measured is the screen and the round
+     * trip - the type on the picker, the suggestions as you type, the refusal
+     * with the plugin's own reason, the list stored as an array - and a type
+     * that needs no network says all of that without one.
+     */
+  },
+
+  {
     name: 'assigned-role-check',
     what: 'a role given to somebody on the Users screen is saved and comes back',
     needs: ['session'],

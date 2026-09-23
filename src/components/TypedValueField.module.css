@@ -1,0 +1,158 @@
+/*
+ * A value of a plugin's type, and the list the plugin offers under it (#377).
+ * The same drawing the Slack target box has, so the two read as one thing.
+ */
+.field {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  margin-top: var(--space-4);
+  padding: var(--space-8);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-modal);
+}
+
+.menuAbove {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: var(--space-4);
+}
+
+.rows {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.option {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover,
+.optionCurrent {
+  background: var(--color-surface-raised);
+}
+
+.optionText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.optionName {
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.optionDetail {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* The id that is actually stored, beside the name somebody recognises. */
+.optionValue {
+  flex: none;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---- a list of values (#377) ---- */
+
+.list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.listRow > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.listRemove,
+.listAdd {
+  flex: none;
+  padding: 0 var(--space-6);
+  background: none;
+  border: 0;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.listAdd {
+  align-self: flex-start;
+  color: var(--color-accent-brand);
+}
+
+.listRemove:hover,
+.listAdd:hover {
+  text-decoration: underline;
+}
+
+/* ---- what a type is told, under the value (#377) ---- */
+
+.told {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.told select,
+.told input {
+  min-width: 0;
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+}

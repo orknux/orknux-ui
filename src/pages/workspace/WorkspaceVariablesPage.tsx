@@ -16,6 +16,13 @@ import {
   updateVariable,
 } from '../../api/variables';
 import type { Variable, VariableCatalog, VariableKind, VariableOrder, VariableType } from '../../api/variables';
+import { fetchVariableTypes } from '../../api/variables';
+import type { ScalarType, VariableTypeOffer } from '../../api/variables';
+import { fetchWorkspaceConnections } from '../../api/integrations';
+import type { WorkspaceConnection } from '../../api/integrations';
+import { ListValueField } from '../../components/ListValueField';
+import { TypedValueField } from '../../components/TypedValueField';
+import typed from '../../components/TypedValueField.module.css';
 import checkIcon from '../../assets/check.svg';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import folderOpenIcon from '../../assets/folder-open.svg';
@@ -48,11 +55,26 @@ interface Draft {
   name: string;
   description: string;
   type: VariableType;
+  /** What a list holds; meaningless unless type is LIST. Issue #377. */
+  elementType: ScalarType;
+  /** A plugin's type, `slack:SlackUser`, over the base type - or null. */
+  customType: string | null;
+  /** What that type is told: parameter name to value, a connection id for a connection. */
+  args: Record<string, string>;
   /** Empty on a secret means "leave what is stored". */
   value: string;
 }
 
-const EMPTY: Draft = { name: '', description: '', type: 'STRING', value: '' };
+const EMPTY: Draft = {
+  name: '',
+  description: '',
+  type: 'STRING',
+  elementType: 'STRING',
+  customType: null,
+  args: {},
+  value: '',
+};
+
 
 /**
  * What the row holds before anybody edits it.
@@ -67,9 +89,53 @@ function draftOf(variable: Variable, revealed?: string): Draft {
     name: variable.name,
     description: variable.description ?? '',
     type: variable.type,
+    elementType: variable.elementType !== null && variable.elementType !== 'LIST' ? variable.elementType : 'STRING',
+    customType: variable.customType,
+    args: argsOf(variable.typeArguments),
     // A value is already known, so it is there to edit; a secret is empty until
     // somebody uncovers it, and then it is whatever came back.
     value: variable.kind === 'VALUE' ? (variable.value ?? '') : (revealed ?? ''),
+  };
+}
+
+/** What a variable was told, read off the JSON it is kept as. */
+function argsOf(json: string | null): Record<string, string> {
+  if (json === null || json.trim() === '') return {};
+  try {
+    const held: unknown = JSON.parse(json);
+    if (held === null || typeof held !== 'object' || Array.isArray(held)) return {};
+    return Object.fromEntries(
+      Object.entries(held as Record<string, unknown>).map(([name, value]) => [name, String(value)]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * One picker for what a variable is. Issue #377.
+ *
+ * A scalar, a list of one, a plugin's type, or a list of a plugin's type - one
+ * choice rather than two controls, because "a list of Slack users" is one
+ * thing to a person and the form should not make them assemble it. The choice
+ * is spelled `LIST:` + what it holds, and a plugin's type by its key.
+ */
+function choiceOf(draft: Draft): string {
+  const held = draft.customType ?? (draft.type === 'LIST' ? draft.elementType : draft.type);
+  return draft.type === 'LIST' ? `LIST:${held}` : held;
+}
+
+function fromChoice(choice: string, types: VariableTypeOffer[], current: Draft): Partial<Draft> {
+  const list = choice.startsWith('LIST:');
+  const rest = list ? choice.slice('LIST:'.length) : choice;
+  const offer = types.find((one) => one.key === rest) ?? null;
+  const scalar: ScalarType = offer !== null ? offer.base : (rest as ScalarType);
+  return {
+    type: list ? 'LIST' : scalar,
+    elementType: scalar,
+    customType: offer?.key ?? null,
+    // What it was told survives a change that keeps the same plugin type.
+    args: offer !== null && offer.key === current.customType ? current.args : {},
   };
 }
 
@@ -110,6 +176,31 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
   const [error, setError] = useState<string | null>(null);
   /** Whether the catalog column is folded away; the list is not always the work. */
   const [foldedCatalogs, setFoldedCatalogs] = useState(false);
+
+  /*
+   * What a variable may be beyond the three built in, and the connections a
+   * plugin's type may be told. Both are the workspace's, read once here and
+   * handed to both tables. Issue #377.
+   */
+  const [types, setTypes] = useState<VariableTypeOffer[]>([]);
+  const [connections, setConnections] = useState<WorkspaceConnection[]>([]);
+  useEffect(() => {
+    if (workspaceId === '') return;
+    let current = true;
+    fetchVariableTypes(workspaceId)
+      .then((held) => {
+        if (current) setTypes(held);
+      })
+      .catch(() => undefined);
+    fetchWorkspaceConnections(workspaceId)
+      .then((held) => {
+        if (current) setConnections(held);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [workspaceId]);
 
   const current = catalogs?.find((catalog) => catalog.id === selected) ?? null;
 
@@ -385,6 +476,8 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 note={t("Read and edited here: configuration rather than credentials.")}
                 addLabel={t("+ Add Value")}
                 kind="VALUE"
+                types={types}
+                connections={connections}
                 workspaceId={workspaceId}
                 catalogId={current.id}
                 variables={showing.filter((variable) => variable.kind === 'VALUE')}
@@ -400,6 +493,8 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 note={t("Kept out of sight. Show one to read it; the audit log records that you did.")}
                 addLabel={t("+ Add Secret")}
                 kind="SECRET"
+                types={types}
+                connections={connections}
                 workspaceId={workspaceId}
                 catalogId={current.id}
                 variables={showing.filter((variable) => variable.kind === 'SECRET')}
@@ -429,6 +524,8 @@ function VariableTable({
   note,
   addLabel,
   kind,
+  types,
+  connections,
   workspaceId,
   catalogId,
   variables,
@@ -442,6 +539,9 @@ function VariableTable({
   note: string;
   addLabel: string;
   kind: VariableKind;
+  /** The plugins' types on offer, and the connections one may be told. Issue #377. */
+  types: VariableTypeOffer[];
+  connections: WorkspaceConnection[];
   workspaceId: string;
   catalogId: string;
   variables: Variable[];
@@ -516,6 +616,9 @@ function VariableTable({
       draft.name !== original.name ||
       draft.description !== original.description ||
       draft.type !== original.type ||
+      draft.elementType !== original.elementType ||
+      draft.customType !== original.customType ||
+      JSON.stringify(draft.args) !== JSON.stringify(original.args) ||
       draft.value !== original.value
     );
   }
@@ -541,6 +644,10 @@ function VariableTable({
         name: draft.name.trim(),
         description: draft.description.trim(),
         type: draft.type,
+        elementType: draft.type === 'LIST' ? draft.elementType : null,
+        // Empty takes the plugin type off; the server reads absent as "leave it".
+        customType: draft.customType ?? '',
+        typeArguments: JSON.stringify(draft.args),
         // A covered secret's box is empty whatever is stored, so only a box the
         // person can actually read may say "empty means clear it".
         value:
@@ -583,6 +690,9 @@ function VariableTable({
         description: adding.description.trim(),
         type: adding.type,
         kind,
+        elementType: adding.type === 'LIST' ? adding.elementType : null,
+        customType: adding.customType,
+        typeArguments: JSON.stringify(adding.args),
         value: adding.value === '' ? undefined : adding.value,
       });
       // Handed on, so the row lands where the blank one was rather than where
@@ -630,6 +740,184 @@ function VariableTable({
 
   /** A name is what a function receives the value as, so it has to be one. */
   const nameable = (said: string) => said.replace(/[^A-Za-z0-9_]/g, '');
+
+  /* ------------------------------------------- what a variable may be --- */
+
+  const offerOf = (draft: Draft): VariableTypeOffer | null =>
+    draft.customType === null ? null : (types.find((one) => one.key === draft.customType) ?? null);
+
+  const typeOptions = (
+    <>
+      {VARIABLE_TYPES.filter((one) => one !== 'LIST').map((candidate) => (
+        <option key={candidate} value={candidate}>
+          {candidate.toLowerCase()}
+        </option>
+      ))}
+      {VARIABLE_TYPES.filter((one) => one !== 'LIST').map((candidate) => (
+        <option key={`LIST:${candidate}`} value={`LIST:${candidate}`}>
+          {t('list of')} {candidate.toLowerCase()}s
+        </option>
+      ))}
+      {types.length > 0 && (
+        <optgroup label={t('From plugins')}>
+          {types.map((offer) => (
+            <option key={offer.key} value={offer.key} title={offer.description ?? undefined}>
+              {offer.pluginName} {offer.name}
+            </option>
+          ))}
+          {types.map((offer) => (
+            <option key={`LIST:${offer.key}`} value={`LIST:${offer.key}`} title={offer.description ?? undefined}>
+              {t('list of')} {offer.pluginName} {offer.name}s
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </>
+  );
+
+  /*
+   * What a plugin's type is told, drawn under the value: a connection picker
+   * for a connection, a box for anything else. Only where the type asks for
+   * something - most do not, and a row of empty controls is a row nobody
+   * asked for.
+   */
+  function toldFor(draft: Draft, change: (next: Partial<Draft>) => void, label: string) {
+    const offer = offerOf(draft);
+    if (offer === null || offer.parameters.length === 0) return null;
+    return (
+      <span className={typed.told} data-type-arguments={offer.key}>
+        {offer.parameters.map((parameter) => {
+          const held = draft.args[parameter.name] ?? '';
+          const set = (value: string) => change({ args: { ...draft.args, [parameter.name]: value } });
+          if (parameter.type.toLowerCase() === 'connection') {
+            const candidates = connections.filter(
+              (one) => parameter.connectionType === null || one.type === parameter.connectionType,
+            );
+            return (
+              <label key={parameter.name}>
+                {t('in')}{' '}
+                <select
+                  value={held}
+                  aria-label={`${parameter.name} for ${label}`}
+                  onChange={(event) => set(event.target.value)}
+                >
+                  <option value="">{parameter.required ? t('choose a connection') : t('the configured one')}</option>
+                  {candidates.map((one) => (
+                    <option key={one.id} value={one.id}>
+                      {one.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          }
+          return (
+            <label key={parameter.name}>
+              {parameter.name}{' '}
+              <input value={held} aria-label={`${parameter.name} for ${label}`} onChange={(event) => set(event.target.value)} />
+            </label>
+          );
+        })}
+      </span>
+    );
+  }
+
+  /*
+   * The editor a value gets, decided by its type. Issue #377.
+   *
+   * A covered secret keeps the masked box whatever its type: a list somebody
+   * cannot read is not a list they can edit. Everything else gets the control
+   * its type deserves - a switch for a boolean, one row per element for a
+   * list, the plugin's picker for a plugin's type.
+   */
+  function valueFieldFor(
+    draft: Draft,
+    change: (next: Partial<Draft>) => void,
+    options: { readable: boolean; label: string; placeholder: string; onEnter: () => void; onEscape?: () => void; hint?: string },
+  ) {
+    const { readable, label, placeholder, onEnter, onEscape, hint } = options;
+    const offer = offerOf(draft);
+    const classes = `${table.cellInput} ${table.mono}`;
+
+    if (!readable) {
+      return (
+        <input
+          className={classes}
+          type="password"
+          autoComplete="off"
+          value={draft.value}
+          readOnly
+          placeholder={placeholder}
+          title={hint}
+          aria-label={label}
+        />
+      );
+    }
+    if (draft.type === 'LIST') {
+      return (
+        <ListValueField
+          className={classes}
+          value={draft.value}
+          onChange={(value) => change({ value })}
+          elementType={draft.elementType}
+          workspaceId={workspaceId}
+          customType={draft.customType}
+          args={draft.args}
+          suggests={offer?.suggests ?? false}
+          ariaLabel={label}
+          onEnter={onEnter}
+          onEscape={onEscape}
+        />
+      );
+    }
+    if (draft.type === 'BOOLEAN') {
+      return (
+        <select
+          className={classes}
+          value={draft.value === 'true' || draft.value === 'false' ? draft.value : ''}
+          aria-label={label}
+          onChange={(event) => change({ value: event.target.value })}
+        >
+          <option value="">{placeholder}</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      );
+    }
+    if (offer !== null) {
+      return (
+        <TypedValueField
+          className={classes}
+          value={draft.value}
+          onChange={(value) => change({ value })}
+          workspaceId={workspaceId}
+          type={offer.key}
+          args={draft.args}
+          suggests={offer.suggests}
+          placeholder={placeholder}
+          ariaLabel={label}
+          onEnter={onEnter}
+          onEscape={onEscape}
+        />
+      );
+    }
+    return (
+      <input
+        className={classes}
+        type="text"
+        autoComplete="off"
+        inputMode={draft.type === 'NUMBER' ? 'decimal' : undefined}
+        value={draft.value}
+        placeholder={placeholder}
+        aria-label={label}
+        onChange={(event) => change({ value: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') onEnter();
+          if (event.key === 'Escape') onEscape?.();
+        }}
+      />
+    );
+  }
 
   return (
     <section className={table.section}>
@@ -717,20 +1005,16 @@ function VariableTable({
                   nobody can check. The eye is the way in, and what it costs is
                   a line in the audit log — which is the honest price.
                 */}
-                <input
-                  className={`${table.cellInput} ${table.mono}`}
-                  type={readable ? 'text' : 'password'}
-                  autoComplete="off"
-                  value={draft.value}
-                  readOnly={!readable}
-                  placeholder={variable.valueSet ? 'Hidden' : t('Not set')}
-                  title={readable ? undefined : t('Show it to edit')}
-                  aria-label={`Value of ${variable.name}`}
-                  onChange={(event) => edit(variable, { value: event.target.value })}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void save(variable);
-                  }}
-                />
+                <span className={table.valueStack}>
+                  {valueFieldFor(draft, (next) => edit(variable, next), {
+                    readable,
+                    label: `Value of ${variable.name}`,
+                    placeholder: variable.valueSet ? 'Hidden' : t('Not set'),
+                    hint: readable ? undefined : t('Show it to edit'),
+                    onEnter: () => void save(variable),
+                  })}
+                  {toldFor(draft, (next) => edit(variable, next), variable.name)}
+                </span>
                 {/*
                   The usual eye. Uncovering fetches the secret, which the audit
                   log records; covering it again is only this screen's business,
@@ -759,15 +1043,11 @@ function VariableTable({
               <span className={`${table.colType} ${table.typeCell}`}>
                 <select
                   className={`${table.cellInput} ${table.mono}`}
-                  value={draft.type}
+                  value={choiceOf(draft)}
                   aria-label={`Type of ${variable.name}`}
-                  onChange={(event) => edit(variable, { type: event.target.value as VariableType })}
+                  onChange={(event) => edit(variable, fromChoice(event.target.value, types, draft))}
                 >
-                  {VARIABLE_TYPES.map((candidate) => (
-                    <option key={candidate} value={candidate}>
-                      {candidate.toLowerCase()}
-                    </option>
-                  ))}
+                  {typeOptions}
                 </select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </span>
@@ -820,19 +1100,16 @@ function VariableTable({
               }}
             />
             <span className={`${table.colValue} ${table.valueCell}`}>
-              <input
-                className={`${table.cellInput} ${table.mono}`}
-                type={kind === 'VALUE' || addingShown ? 'text' : 'password'}
-                autoComplete="off"
-                value={adding.value}
-                placeholder={t('Value')}
-                aria-label={t('New value')}
-                onChange={(event) => setAdding((held) => ({ ...(held ?? EMPTY), value: event.target.value }))}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') void add();
-                  if (event.key === 'Escape') setAdding(null);
-                }}
-              />
+              <span className={table.valueStack}>
+                {valueFieldFor(adding, (next) => setAdding((held) => ({ ...(held ?? EMPTY), ...next })), {
+                  readable: kind === 'VALUE' || addingShown,
+                  label: t('New value'),
+                  placeholder: t('Value'),
+                  onEnter: () => void add(),
+                  onEscape: () => setAdding(null),
+                })}
+                {toldFor(adding, (next) => setAdding((held) => ({ ...(held ?? EMPTY), ...next })), t('the new one'))}
+              </span>
               {/*
                 The same eye the saved rows have, and here it costs nothing: this
                 value has not been stored yet, so showing it fetches nothing and
@@ -861,17 +1138,13 @@ function VariableTable({
             <span className={`${table.colType} ${table.typeCell}`}>
               <select
                 className={`${table.cellInput} ${table.mono}`}
-                value={adding.type}
+                value={choiceOf(adding)}
                 aria-label={t('New type')}
                 onChange={(event) =>
-                  setAdding((held) => ({ ...(held ?? EMPTY), type: event.target.value as VariableType }))
+                  setAdding((held) => ({ ...(held ?? EMPTY), ...fromChoice(event.target.value, types, held ?? EMPTY) }))
                 }
               >
-                {VARIABLE_TYPES.map((candidate) => (
-                  <option key={candidate} value={candidate}>
-                    {candidate.toLowerCase()}
-                  </option>
-                ))}
+                {typeOptions}
               </select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </span>

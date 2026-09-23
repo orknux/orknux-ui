@@ -2,7 +2,7 @@ import { graphql } from './client';
 import type { PageOf } from './client';
 
 /** What a variable holds. Scalars only: a shape belongs in the object catalogue. */
-export type VariableType = 'STRING' | 'NUMBER' | 'BOOLEAN';
+export type VariableType = 'STRING' | 'NUMBER' | 'BOOLEAN' | 'LIST';
 
 /**
  * Whether a variable is something to keep out of sight.
@@ -47,6 +47,16 @@ export interface Variable {
   description: string | null;
   type: VariableType;
   kind: VariableKind;
+  /** What a LIST holds; null on anything else. Issue #377. */
+  elementType: VariableType | null;
+  /**
+   * A type a plugin defines over the base type — `slack:SlackUser` — or null
+   * for a plain one. What it buys is the picker and the check at the moment a
+   * value is typed.
+   */
+  customType: string | null;
+  /** What that type was told, as a JSON object: the connection to look in, for a Slack user. */
+  typeArguments: string | null;
   /** What it holds, on a value. Null on a secret, whatever is stored. */
   value: string | null;
   /** Whether anything is stored, which is all a secret says about itself. */
@@ -58,17 +68,90 @@ export interface Variable {
   lastModifiedBy: string;
 }
 
-export const VARIABLE_TYPES: VariableType[] = ['STRING', 'NUMBER', 'BOOLEAN'];
+export const VARIABLE_TYPES: VariableType[] = ['STRING', 'NUMBER', 'BOOLEAN', 'LIST'];
 
 export const VARIABLE_TYPE_LABEL: Record<VariableType, string> = {
   STRING: 'String',
   NUMBER: 'Number',
   BOOLEAN: 'Boolean',
+  LIST: 'List',
 };
 
+/** The three a list may hold, and a plugin's type may be over. */
+export type ScalarType = 'STRING' | 'NUMBER' | 'BOOLEAN';
+
+/** A type a variable may be beyond the built-in ones: one a plugin defines. Issue #377. */
+export interface VariableTypeOffer {
+  /** `<plugin>:<name>`, which is what a variable stores as its customType. */
+  key: string;
+  plugin: string;
+  pluginName: string;
+  name: string;
+  description: string | null;
+  /** What a value of it is underneath. */
+  base: ScalarType;
+  parameters: VariableTypeParameter[];
+  suggests: boolean;
+  validates: boolean;
+}
+
+/** One thing a plugin's type needs to be told — a connection, usually. */
+export interface VariableTypeParameter {
+  name: string;
+  description: string | null;
+  /** `connection`, or one of string, number, boolean as the plugin spells it. */
+  type: string;
+  required: boolean;
+  connectionType: string | null;
+  options: string[];
+}
+
+/** One thing a plugin offers for what was typed into a variable of its type. */
+export interface VariableSuggestion {
+  value: string;
+  label: string;
+  detail: string | null;
+}
+
 const CATALOG_FIELDS = 'id workspaceId name variableCount createdAt createdBy';
-const VARIABLE_FIELDS = `id workspaceId catalogId catalogName name description type kind value valueSet
+const VARIABLE_FIELDS = `id workspaceId catalogId catalogName name description type kind
+   elementType customType typeArguments value valueSet
    createdAt createdBy lastModifiedAt lastModifiedBy`;
+
+export async function fetchVariableTypes(workspaceId: string): Promise<VariableTypeOffer[]> {
+  const data = await graphql<{ variableTypes: VariableTypeOffer[] }>(
+    `query VariableTypes($workspaceId: ID!) {
+       variableTypes(workspaceId: $workspaceId) {
+         key plugin pluginName name description base suggests validates
+         parameters { name description type required connectionType options }
+       }
+     }`,
+    { workspaceId },
+  );
+  return data.variableTypes;
+}
+
+/**
+ * What the plugin defining `type` offers for what was typed so far.
+ *
+ * @param args what the variable is told — the connection to look in — sent as JSON.
+ */
+export async function fetchVariableSuggestions(
+  workspaceId: string,
+  type: string,
+  args: Record<string, string>,
+  typed: string,
+): Promise<VariableSuggestion[]> {
+  const data = await graphql<{ variableSuggestions: VariableSuggestion[] }>(
+    `query VariableSuggestions($workspaceId: ID!, $type: String!, $arguments: String, $typed: String!) {
+       variableSuggestions(workspaceId: $workspaceId, type: $type, arguments: $arguments, typed: $typed) {
+         value label detail
+       }
+     }`,
+    { workspaceId, type, arguments: JSON.stringify(args), typed },
+  );
+  return data.variableSuggestions;
+}
 
 export async function fetchVariableCatalogs(workspaceId: string): Promise<VariableCatalog[]> {
   const data = await graphql<{ variableCatalogs: VariableCatalog[] }>(
@@ -159,6 +242,9 @@ export async function createVariable(input: {
   description?: string;
   type: VariableType;
   kind: VariableKind;
+  elementType?: VariableType | null;
+  customType?: string | null;
+  typeArguments?: string | null;
   value?: string;
 }): Promise<Variable> {
   const data = await graphql<{ createVariable: Variable }>(
@@ -178,6 +264,10 @@ export async function updateVariable(
     description?: string;
     type?: VariableType;
     kind?: VariableKind;
+    elementType?: VariableType | null;
+    /** Empty takes the plugin type off; absent leaves it alone. */
+    customType?: string | null;
+    typeArguments?: string | null;
     /** Left out to keep the stored value; the form cannot show it to send it back. */
     value?: string;
   },

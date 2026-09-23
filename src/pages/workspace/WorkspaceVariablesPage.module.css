@@ -274,6 +274,19 @@
   min-width: 0;
 }
 
+/* The value and, where its type is told something, that under it (#377). */
+.valueStack {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.valueStack .cellInput {
+  width: 100%;
+}
+
 .textButton {
   flex-shrink: 0;
   padding: 0;

@@ -5,6 +5,7 @@ import type { FunctionParam, FunctionRun } from '../api/functions';
 import { fetchWorkspaceConnections } from '../api/integrations';
 import type { WorkspaceConnection } from '../api/integrations';
 import type { VariableType } from '../api/variables';
+import type { ValueType } from '../api/actions';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { FieldHint } from './FieldHint';
 import styles from './Dialog.module.css';
@@ -86,6 +87,11 @@ export interface TestRunDialogProps {
  * room to explain why it cannot run yet is this window, not a tooltip on a
  * button that browsers will not always show.
  */
+/** A variable's type as a function sees it: a list arrives as an array. Issue #377. */
+function asValueType(type: VariableType): ValueType {
+  return type === 'LIST' ? 'ARRAY' : type;
+}
+
 export function TestRunDialog({
   open,
   onClose,
@@ -209,7 +215,7 @@ export function TestRunDialog({
          */
         externals: handed
           .filter((one) => (instead[one.name] ?? '').trim() !== '')
-          .map((one) => ({ name: one.name, json: argumentJson(one.type, instead[one.name] ?? '') })),
+          .map((one) => ({ name: one.name, json: argumentJson(asValueType(one.type), instead[one.name] ?? '') })),
       });
       setRan(answer);
     } catch (cause) {
@@ -366,7 +372,7 @@ export function TestRunDialog({
               {handed.map((one) => (
                 <div key={`external-${one.name}`} className={styles.field}>
                   <label className={styles.label} htmlFor={`run-external-${one.name}`}>
-                    {one.name} · {valueTypeLabel(one.type)} · {t('from the workspace')}
+                    {one.name} · {valueTypeLabel(asValueType(one.type))} · {t('from the workspace')}
                   </label>
                   {one.type === 'BOOLEAN' ? (
                     <div className={styles.inputWrapper}>
