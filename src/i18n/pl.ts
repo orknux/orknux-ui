@@ -1270,7 +1270,7 @@ export const PL: Record<string, string> = {
   "Cleared. Your directory entry fills it in again at your next sign-in.": "Wyczyszczono. Twój wpis w katalogu wypełni to ponownie przy następnym logowaniu.",
   "Where to write to them. Internal users have no directory entry to inherit one from.": "Gdzie do nich pisać. Użytkownicy wewnętrzni nie mają wpisu w katalogu, z którego mogliby to odziedziczyć.",
   "Internal — managed here.": "Wewnętrzny — zarządzany tutaj.",
-  "External — the identity provider’s, apart from the address below.": "Zewnętrzny — należy do dostawcy tożsamości, poza adresem poniżej.",
+  "External — the identity provider’s, apart from the roles and address below.": "Zewnętrzny — należy do dostawcy tożsamości, poza rolami i adresem poniżej.",
   "Sees the Admin section and every workspace, whatever else is assigned.": "Widzi sekcję Administracja i każdą przestrzeń roboczą, niezależnie od tego, co jeszcze przypisano.",
   "Signs in, and sees the workspaces this role is assigned to.": "Loguje się i widzi przestrzenie robocze, do których ta rola jest przypisana.",
   "Edit email": "Edytuj adres e-mail",
