@@ -43,10 +43,15 @@ export interface AdminUserPageProps {
  * assign an issue to, a name to show - not a login; signing in stays with the
  * identity provider.
  *
- * An external user opens here too, with everything read-only but their address.
- * That one field is this installation's to set - the provider seeds it and
- * stops overwriting it once somebody has typed one - and refusing to open the
- * page at all would leave an administrator nowhere to do it.
+ * An external user opens here too. Their name and username are the provider's
+ * and are read-only; their address and their roles are this installation's.
+ *
+ * The roles were locked until they counted for something. Access was read from
+ * the provider's groups alone, so the box would have saved a role, drawn it
+ * under the name, and granted nothing - and the honest thing was to refuse it.
+ * Now it is the answer to what a directory cannot answer for: the first
+ * administrator of a new installation, somebody who needs one workspace for a
+ * fortnight, anybody nobody is going to make a group for.
  */
 export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
   const { userId = '' } = useParams();
@@ -132,7 +137,15 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
         });
         navigate(`/admin/users/${made.id}`, { replace: true });
       } else {
-        await updateUser(userId, { displayName: displayName.trim() || undefined, roleIds: [...chosen] });
+        /*
+         * A name this installation does not own is not sent back. The provider
+         * gives an external user their display name, so echoing it here would
+         * be this screen claiming a value it only read.
+         */
+        await updateUser(userId, {
+          displayName: external ? undefined : displayName.trim() || undefined,
+          roleIds: [...chosen],
+        });
         navigate('/admin/users');
       }
     } catch (cause) {
@@ -230,22 +243,24 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
                   {creating
                     ? t('A new internal user.')
                     : external
-                      ? t('External — the identity provider’s, apart from the address below.')
+                      ? t('External — the identity provider’s, apart from the roles and address below.')
                       : t('Internal — managed here.')}
                 </p>
               </div>
             </div>
-            {/* Nothing here to save for an external user: the address has its own button. */}
-            {!external && (
-              <button
-                type="button"
-                className={styles.save}
-                onClick={() => void save()}
-                disabled={saving || username.trim() === ''}
-              >
-                {saving ? t('Saving…') : creating ? t('Create User') : t('Save Changes')}
-              </button>
-            )}
+            {/*
+              For an external user this saves the roles and nothing else — their
+              name and username are the provider's, and the address has its own
+              button beside it.
+            */}
+            <button
+              type="button"
+              className={styles.save}
+              onClick={() => void save()}
+              disabled={saving || username.trim() === ''}
+            >
+              {saving ? t('Saving…') : creating ? t('Create User') : t('Save Changes')}
+            </button>
           </header>
 
           {error !== null && (
@@ -325,8 +340,29 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
               </div>
             )}
 
-            <fieldset className={styles.rolesBox} disabled={external}>
-              <legend className={styles.label}>{t('Roles')}</legend>
+            {/*
+              Editable for everybody, including people the directory vouches for.
+
+              It was locked for them, because a role given here decided nothing:
+              access was read from the provider's groups alone, so the box would
+              have saved a role, drawn it under the name, and granted nothing.
+              Now it counts, and it is the answer to what a directory cannot
+              answer for — the first administrator of a new installation,
+              somebody who needs one workspace for a fortnight, anybody nobody
+              is going to make a group for.
+
+              What their groups give them is not shown here and cannot be taken
+              away here. This is only what this installation gave them on top.
+            */}
+            <fieldset className={styles.rolesBox}>
+              <legend className={styles.label}>
+                {t('Roles')}
+                {external && (
+                  <span className={styles.fieldNote}>
+                    {t('Given here, on top of whatever their directory groups already give them.')}
+                  </span>
+                )}
+              </legend>
               {roles.length === 0 ? (
                 <p className={styles.fieldNote}>{t('No roles are defined yet.')}</p>
               ) : (

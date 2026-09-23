@@ -2426,6 +2426,25 @@ export const TESTS = [
   },
 
   {
+    name: 'assigned-role-check',
+    what: 'a role given to somebody on the Users screen is saved and comes back',
+    needs: ['session'],
+    /*
+     * Issue #376. The checkboxes were drawn and locked for anybody the directory
+     * vouches for - correctly at the time, since a role given there decided
+     * nothing: every access question was answered from the provider's groups
+     * alone, so the box would have saved a role, drawn it under the name, and
+     * granted nothing.
+     *
+     * Whether such a role then opens a workspace is AssignedRoleTest's business.
+     * This is the screen half.
+     *
+     * Leaves one scratch user behind: there is no mutation that removes one, and
+     * there should not be.
+     */
+  },
+
+  {
     name: 'role-directory-names-check',
     what: 'a role names the directory groups that grant it, on the screen rather than in a file',
     needs: ['session'],
