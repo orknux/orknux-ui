@@ -54,7 +54,9 @@ import { fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/acti
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Action } from '../../api/actions';
 import type { Agent } from '../../api/agents';
-import { fetchWorkflowOwnedConditions, fetchWorkspaceConditions } from '../../api/conditions';
+import { fetchWorkflowOwnedConditions, fetchWorkspaceConditions,
+  VALUE_SUBJECT,
+} from '../../api/conditions';
 import type { Condition } from '../../api/conditions';
 import { startExecution } from '../../api/executions';
 import { fetchWorkspaceFunctions } from '../../api/functions';
@@ -3469,6 +3471,12 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const conditionParams = useMemo(() => {
     if (draft === null || draft.kind !== 'CONDITION' || draft.conditionId === null) return [];
     const asked = conditions.find((one) => one.id === draft.conditionId);
+    /*
+     * A VALUE condition takes one thing: the value. Drawn as a row like a
+     * function's parameter, because it is filled in the same way - a field of
+     * what the run carries, picked here where the graph is. Issue #378.
+     */
+    if (asked?.type === 'VALUE') return [{ name: VALUE_SUBJECT, type: 'STRING' as const }];
     if (asked?.functionId == null) return [];
     return functions.find((one) => one.id === asked.functionId)?.params ?? [];
   }, [draft, draft?.kind, draft?.conditionId, conditions, functions]);

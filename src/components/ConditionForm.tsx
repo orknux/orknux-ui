@@ -10,6 +10,7 @@ import {
   NEW_CONDITION,
   PROPERTIES_BY_TYPE,
   PROPERTY_LABEL,
+  VALUE_CHECKS,
   composite,
   createCondition,
   deleteCondition,
@@ -339,7 +340,10 @@ export function ConditionForm({
 
   const isComposite = composite(type);
   const properties = PROPERTIES_BY_TYPE[type];
-  const checks = useMemo(() => (isComposite ? [] : CHECKS_BY_PROPERTY[property]), [isComposite, property]);
+  const checks = useMemo(
+    () => (isComposite ? [] : type === 'VALUE' ? VALUE_CHECKS : CHECKS_BY_PROPERTY[property]),
+    [isComposite, type, property],
+  );
   const label = valuesLabel(isComposite || type === 'FUNCTION' ? null : check);
 
   /*
@@ -368,6 +372,9 @@ export function ConditionForm({
     if (first !== undefined) {
       setProperty(first);
       setCheck(CHECKS_BY_PROPERTY[first][0]);
+    } else if (next === 'VALUE') {
+      // No property to pick from: the node picks the value. Issue #378.
+      setCheck(VALUE_CHECKS[0]);
     }
   }
 
@@ -437,7 +444,7 @@ export function ConditionForm({
   return {
       name: name.trim(),
       type,
-      property: isComposite || type === 'FUNCTION' ? null : property,
+      property: isComposite || type === 'FUNCTION' || type === 'VALUE' ? null : property,
       check: isComposite || type === 'FUNCTION' ? null : check,
       negate,
       functionId: type === 'FUNCTION' ? chosen : null,
@@ -649,8 +656,20 @@ export function ConditionForm({
             </div>
           </div>
 
+          {/*
+            What is checked, where the type knows. A VALUE condition does not:
+            the node it sits on picks the value with the ordinary reference
+            picker, under the name `value`, because the graph is there and this
+            form has none. Issue #378.
+          */}
+          {type === 'VALUE' && (
+            <p className={styles.fieldHint} data-value-note>
+              {t('The value is picked on the node, from what the run carries.')}
+            </p>
+          )}
           {!isComposite && type !== 'FUNCTION' && (
             <>
+              {properties.length > 0 && (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="condition-property">{t('Property')}</label>
                 <div className={styles.inputWrapper}>
@@ -669,6 +688,7 @@ export function ConditionForm({
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
+              )}
 
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="condition-check">{t('Check')}</label>

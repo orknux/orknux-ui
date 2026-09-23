@@ -3,7 +3,7 @@ import type { PageOf } from './client';
 import { t } from '../i18n';
 
 /** What a condition asks about. */
-export type ConditionType = 'SLACK' | 'JIRA' | 'TIME' | 'FUNCTION' | 'ANY_OF' | 'ALL_OF';
+export type ConditionType = 'SLACK' | 'JIRA' | 'TIME' | 'FUNCTION' | 'ANY_OF' | 'ALL_OF' | 'VALUE';
 
 export type ConditionProperty =
   | 'MESSAGE_AUTHOR'
@@ -198,13 +198,23 @@ export async function deleteCondition(id: string): Promise<boolean> {
  * It stays in the type, the label and the properties, so a condition already
  * saved as one still opens, still reads, and still lists its own choices.
  */
-export const CONDITION_TYPES: ConditionType[] = ['SLACK', 'TIME', 'FUNCTION', 'ANY_OF', 'ALL_OF'];
+export const CONDITION_TYPES: ConditionType[] = ['SLACK', 'TIME', 'VALUE', 'FUNCTION', 'ANY_OF', 'ALL_OF'];
+
+/**
+ * What a VALUE condition may ask of a value: everything but the time-of-day
+ * check and the directory one. Issue #378.
+ */
+export const VALUE_CHECKS: ConditionCheck[] = ['IN_LIST', 'EQUALS', 'CONTAINS', 'MATCHES'];
+
+/** The argument a VALUE condition takes; the node fills it with the ordinary picker. */
+export const VALUE_SUBJECT = 'value';
 
 export const CONDITION_TYPE_LABEL: Record<ConditionType, string> = {
   SLACK: 'Slack',
   JIRA: 'Jira',
   TIME: 'Time',
   FUNCTION: 'Function',
+  VALUE: t('Value'),
   ANY_OF: t('Any Of'),
   ALL_OF: t('All Of'),
 };
@@ -215,6 +225,7 @@ export const PROPERTIES_BY_TYPE: Record<ConditionType, ConditionProperty[]> = {
   JIRA: ['ISSUE_PRIORITY', 'ISSUE_STATUS', 'ISSUE_TYPE'],
   TIME: ['CURRENT_TIME'],
   FUNCTION: [],
+  VALUE: [],
   ANY_OF: [],
   ALL_OF: [],
 };

@@ -2426,6 +2426,18 @@ export const TESTS = [
   },
 
   {
+    name: 'value-condition-check',
+    what: 'a value condition is made without a property, and the node picks the value with the ordinary reference row',
+    needs: ['workspace'],
+    /*
+     * Issue #378. The typed conditions know where their subject is; a VALUE
+     * condition is told by the node, under the argument name `value`, with
+     * the same picker a function's parameters get. Two halves: the settings
+     * form, and the row on the node whose reference lands on the node.
+     */
+  },
+
+  {
     name: 'variable-types-check',
     what: "a variable of a plugin's type gets the plugin's picker and its refusal, and a list is edited as one",
     needs: ['workspace'],
