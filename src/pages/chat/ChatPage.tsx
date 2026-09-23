@@ -877,6 +877,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
                 pauseEndsTurnMs: held.voicePauseEndsTurnMs,
                 speechOverRoomPercent: held.voiceSpeechOverRoomPercent,
                 unattendedMicrophoneMs: held.voiceUnattendedMicrophoneMs,
+                bargeInMs: held.voiceBargeInMs,
               },
         );
       })

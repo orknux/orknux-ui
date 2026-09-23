@@ -1805,6 +1805,26 @@ export const TESTS = [
      */
   },
   {
+    name: 'voice-barge-in-check',
+    what: 'how long somebody talks over an answer before it stops',
+    needs: ['workspace'],
+    /*
+     * Issue #342. The microphone is held open while an answer is read aloud, so
+     * what is said over one was always heard - what was missing is the answer
+     * stopping, which is the one thing a person cannot do in a conversation:
+     * say "no, not that" and be listened to.
+     *
+     * The loop itself is the part a check cannot honestly drive: it wants a
+     * voice talking over a speaker, and this runs headless with neither. What is
+     * measured is the decision around it - the bounds, and that zero can be
+     * chosen, which is the setting that matters most because a room with poor
+     * echo cancellation hears the panel's own voice and would stop on every
+     * answer.
+     *
+     * Leaves the workspace on the setting it found.
+     */
+  },
+  {
     name: 'session-removal-check',
     what: 'an installation that will not let a conversation be thrown away',
     needs: ['workspace'],

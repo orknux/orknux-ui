@@ -40,6 +40,15 @@ export interface VoiceTurnTaking {
   pauseEndsTurnMs: number | null;
   speechOverRoomPercent: number | null;
   unattendedMicrophoneMs: number | null;
+  /**
+   * How long somebody keeps talking over the answer before it stops; 0 is off.
+   *
+   * Issue #342. The microphone is held open while the answer is read aloud, so
+   * what is said over it was already being heard - what was missing is the
+   * answer stopping, which is the one thing a person cannot do in a
+   * conversation: say "no, not that" and be listened to.
+   */
+  bargeInMs: number | null;
 }
 
 export interface VoiceModeProps {
@@ -183,6 +192,23 @@ const SILENCE_MS = 2_500;
 const LONGEST_TURN_MS = 600_000;
 
 /**
+ * How long somebody keeps talking over the answer before it stops. Issue #342.
+ *
+ * Half a second, and it is a hold rather than a level on purpose. What has to be
+ * kept out is not a quiet voice but a short noise - a cough, a door, or this
+ * application's own voice getting past the echo cancellation - and all three are
+ * brief where somebody interrupting keeps going. A level cannot tell them apart;
+ * a duration can.
+ *
+ * Erring long. The cost of waiting half a second is half a second of the answer
+ * somebody has already decided against; the cost of firing early is an answer
+ * that stops at every noise in the room, which is loud, constant and in the
+ * middle of every reply. A workspace can move it, and can set it to zero where
+ * the room or the microphone makes even this unusable.
+ */
+const BARGE_IN_MS = 500;
+
+/**
  * The three above, in the units a workspace states a decision about them in.
  *
  * The one place anything outside this file may learn what "the default" is.
@@ -206,6 +232,7 @@ export const VOICE_TURN_TAKING_DEFAULTS = {
   pauseEndsTurnMs: SILENCE_MS,
   speechOverRoomPercent: SPEECH_OVER_ROOM * 100,
   unattendedMicrophoneMs: LONGEST_TURN_MS,
+  bargeInMs: BARGE_IN_MS,
 } as const;
 
 /** What is really in force: whatever the workspace decided, else the above. */
@@ -216,6 +243,9 @@ function inForce(chosen: VoiceTurnTaking | null | undefined) {
       (chosen?.speechOverRoomPercent ?? VOICE_TURN_TAKING_DEFAULTS.speechOverRoomPercent) / 100,
     unattendedMs:
       chosen?.unattendedMicrophoneMs ?? VOICE_TURN_TAKING_DEFAULTS.unattendedMicrophoneMs,
+    // Zero is the workspace saying "leave the answer alone", which is a decision
+    // and not an absence - so it has to survive the `??` that fills in a null.
+    bargeMs: chosen?.bargeInMs ?? VOICE_TURN_TAKING_DEFAULTS.bargeInMs,
   };
 }
 
@@ -265,6 +295,15 @@ export function VoiceMode({
   ref,
 }: VoiceModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('listening');
+  /*
+   * The same thing the level watcher can read. Issue #342.
+   *
+   * `phase` is state and the watcher runs inside a closure made when the
+   * recorder started, so by the time the answer is being read aloud the `phase`
+   * that closure can see still says "listening". A ref is what crosses that,
+   * and it is written where the state is so the two cannot disagree.
+   */
+  const speakingNow = useRef(false);
   const [level, setLevel] = useState(0);
   const [said, setSaid] = useState<Said | null>(null);
   /** What was said into the gap and has not been sent yet, for the panel to show. */
@@ -327,14 +366,16 @@ export function VoiceMode({
   const pauseSetting = turnTaking?.pauseEndsTurnMs ?? null;
   const overRoomSetting = turnTaking?.speechOverRoomPercent ?? null;
   const unattendedSetting = turnTaking?.unattendedMicrophoneMs ?? null;
+  const bargeSetting = turnTaking?.bargeInMs ?? null;
   const decided = useRef(inForce(turnTaking));
   useEffect(() => {
     decided.current = inForce({
       pauseEndsTurnMs: pauseSetting,
       speechOverRoomPercent: overRoomSetting,
       unattendedMicrophoneMs: unattendedSetting,
+      bargeInMs: bargeSetting,
     });
-  }, [pauseSetting, overRoomSetting, unattendedSetting]);
+  }, [pauseSetting, overRoomSetting, unattendedSetting, bargeSetting]);
   const stream = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const context = useRef<AudioContext | null>(null);
@@ -596,6 +637,16 @@ export function VoiceMode({
      */
     let floor = SPEECH_LEVEL;
 
+    /**
+     * When the run of talking-over-the-answer began, or null between them.
+     *
+     * Issue #342. A duration rather than a level, because what has to be kept
+     * out is a short noise - a cough, a door, this application's own voice
+     * getting past the echo cancellation - and all three are brief where
+     * somebody interrupting keeps going.
+     */
+    let overAnswerSince: number | null = null;
+
     const watch = () => {
       if (!live.current || recorder.current !== held) return;
       analyser.getFloatTimeDomainData(samples);
@@ -609,7 +660,7 @@ export function VoiceMode({
 
       // Whatever is in force this frame: the workspace's, where it has decided
       // anything, and the constants above where it has not.
-      const { pauseMs, overRoom, unattendedMs } = decided.current;
+      const { pauseMs, overRoom, unattendedMs, bargeMs } = decided.current;
 
       /*
        * Clear of the room, or loud in its own right.
@@ -620,8 +671,44 @@ export function VoiceMode({
        * easier to satisfy wins, so a quiet voice in a quiet room passes on the
        * ratio and a normal voice in a noisy one passes on the level.
        */
-      if (loudness > Math.max(floor * overRoom, VISIBLE_LEVEL) || loudness > SPEECH_LEVEL) {
+      const aVoice = loudness > Math.max(floor * overRoom, VISIBLE_LEVEL) || loudness > SPEECH_LEVEL;
+      if (aVoice) {
         spokeAt = now;
+      }
+
+      /*
+       * Talking over the answer, for long enough to mean it. Issue #342.
+       *
+       * The microphone was already open and what is said over an answer was
+       * already heard and queued - what was missing is the answer stopping,
+       * which is the one thing a person cannot do in a conversation: say "no,
+       * not that" and be listened to. They had to reach for the panel and
+       * press, in the one mode whose whole point is not touching anything.
+       *
+       * The run has to be unbroken. A cough clears the bar for a frame or two
+       * and then stops, so counting frames since the *first* one would let any
+       * noise reach the threshold given a quiet moment afterwards; this resets
+       * the moment the room goes quiet again.
+       *
+       * Zero is the workspace saying to leave the answer alone, which is what a
+       * room with poor echo cancellation needs - there the panel hears itself
+       * and would stop on its own voice, every time.
+       */
+      if (!speakingNow.current || !aVoice) {
+        overAnswerSince = null;
+      } else {
+        overAnswerSince ??= now;
+        if (bargeMs > 0 && now - overAnswerSince >= bargeMs) {
+          overAnswerSince = null;
+          /*
+           * Stopped and listening, which is what the circle does when it is
+           * pressed mid-answer - the same act by the same rules, reached by
+           * talking instead. What was said goes on being recorded: this turn is
+           * still running, and the words that interrupted are the next thing
+           * sent.
+           */
+          bargeIn();
+        }
       }
 
       const quietLongEnough = spokeAt !== null && now - spokeAt > pauseMs;
@@ -708,6 +795,7 @@ export function VoiceMode({
    */
   useEffect(() => {
     onPhase?.(phase);
+    speakingNow.current = phase === 'speaking';
   }, [phase, onPhase]);
 
   useImperativeHandle(ref, () => ({ interrupt, again, say }));
@@ -737,6 +825,20 @@ export function VoiceMode({
     queued.current = null;
     setWaiting(null);
     busy.current = false;
+  }
+
+  /**
+   * Stops the answer because somebody talked over it. Issue #342.
+   *
+   * The speaking half of [interrupt] and nothing else: reached from the level
+   * watcher, which cannot read `phase` and has already decided this is somebody
+   * rather than a noise. Kept apart from `interrupt` so that pressing the circle
+   * and talking over the answer cannot drift into two different acts - what they
+   * share is `drop`, which is the part that matters.
+   */
+  function bargeIn() {
+    drop();
+    setPhase('listening');
   }
 
   function interrupt() {

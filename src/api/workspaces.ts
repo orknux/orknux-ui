@@ -145,6 +145,13 @@ export interface Workspace {
    */
   voiceUnattendedMicrophoneMs: number | null;
   /**
+   * How long somebody keeps talking over the answer before it stops; 0 is off.
+   *
+   * Issue #342. Null means the workspace has decided nothing and voice mode
+   * uses its own number.
+   */
+  voiceBargeInMs: number | null;
+  /**
    * Where an answer is cut before it is handed to the speech model.
    *
    * A value rather than a null, unlike the three above: those store a departure
@@ -163,7 +170,7 @@ const WORKSPACE_FIELDS =
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
-  'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs ' +
+  'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
 
 /** Just enough of a role to name it where a workspace lists what opens it. */
@@ -400,6 +407,8 @@ export async function setWorkspaceVoiceTurnTaking(
   pauseEndsTurnMs: number | null,
   speechOverRoomPercent: number | null,
   unattendedMicrophoneMs: number | null,
+  /** How long somebody talks over the answer before it stops; 0 is off. #342. */
+  bargeInMs: number | null,
 ): Promise<Workspace> {
   const data = await graphql<{ setWorkspaceVoiceTurnTaking: Workspace }>(
     `mutation SetWorkspaceVoiceTurnTaking(
@@ -407,15 +416,17 @@ export async function setWorkspaceVoiceTurnTaking(
        $pauseEndsTurnMs: Int
        $speechOverRoomPercent: Int
        $unattendedMicrophoneMs: Int
+       $bargeInMs: Int
      ) {
        setWorkspaceVoiceTurnTaking(
          workspaceId: $workspaceId
          pauseEndsTurnMs: $pauseEndsTurnMs
          speechOverRoomPercent: $speechOverRoomPercent
          unattendedMicrophoneMs: $unattendedMicrophoneMs
+         bargeInMs: $bargeInMs
        ) { ${WORKSPACE_FIELDS} }
      }`,
-    { workspaceId, pauseEndsTurnMs, speechOverRoomPercent, unattendedMicrophoneMs },
+    { workspaceId, pauseEndsTurnMs, speechOverRoomPercent, unattendedMicrophoneMs, bargeInMs },
   );
   return data.setWorkspaceVoiceTurnTaking;
 }

@@ -285,6 +285,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [pause, setPause] = useState('');
   const [overRoom, setOverRoom] = useState('');
   const [unattended, setUnattended] = useState('');
+  /** How long somebody talks over the answer before it stops; 0 is off. #342. */
+  const [bargeIn, setBargeIn] = useState('');
   /**
    * Where an answer is cut for the speech model, drafted.
    *
@@ -393,6 +395,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setPause(inBox(found?.voicePauseEndsTurnMs ?? null, A_SECOND));
         setOverRoom(inBox(found?.voiceSpeechOverRoomPercent ?? null, AS_IS));
         setUnattended(inBox(found?.voiceUnattendedMicrophoneMs ?? null, A_MINUTE));
+        setBargeIn(inBox(found?.voiceBargeInMs ?? null, A_SECOND));
         setChunking(found?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
         setCompanion(found?.companionModelId ?? '');
         setTranscription(found?.transcriptionModelId ?? '');
@@ -602,6 +605,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           asStored(pause, A_SECOND),
           asStored(overRoom, AS_IS),
           asStored(unattended, A_MINUTE),
+          asStored(bargeIn, A_SECOND),
         );
       }
       if (touched.has('chunking')) {
@@ -651,6 +655,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setPause(inBox(held.voicePauseEndsTurnMs, A_SECOND));
     setOverRoom(inBox(held.voiceSpeechOverRoomPercent, AS_IS));
     setUnattended(inBox(held.voiceUnattendedMicrophoneMs, A_MINUTE));
+    setBargeIn(inBox(held.voiceBargeInMs, A_SECOND));
     setChunking(held.voiceSpeechChunking);
     setCompactAfter(held.compactAfterTokens == null ? '' : String(held.compactAfterTokens));
     setSummaryTokens(held.compactionSummaryTokens == null ? '' : String(held.compactionSummaryTokens));
@@ -1471,6 +1476,42 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               }}
             />
             <span className={styles.unit}>{t('minutes')}</span>
+          </div>
+        </div>
+
+        {/*
+          Talking over the answer. Issue #342.
+
+          On this card because it is part of the same decision the three above
+          are: when a turn changes hands. The microphone is already open while
+          an answer is read aloud - what this sets is whether the answer also
+          stops, and how sure of it the panel has to be first.
+        */}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="voice-barge-in">
+              {t('Talking Over The Answer')}
+            </label>
+            <FieldHint label={t('Talking Over The Answer')}>
+              {t('How long you keep talking over an answer before it stops and listens. What is said over an answer is heard either way — the microphone stays open — and this is whether the answer also stops. A length rather than a loudness, because what has to be kept out is a short noise: a cough, a door, or this application’s own voice getting past the echo cancellation. Somebody interrupting keeps talking; none of those do. Set it to 0 where the room or the microphone makes the answer stop on nothing.')}
+            </FieldHint>
+          </span>
+          <div className={styles.inputWrapper}>
+            <input
+              id="voice-barge-in"
+              className={styles.input}
+              type="number"
+              inputMode="numeric"
+              step={0.1}
+              value={bargeIn}
+              placeholder={`Default — ${inBox(VOICE_TURN_TAKING_DEFAULTS.bargeInMs, A_SECOND)}`}
+              disabled={workspace === null}
+              onChange={(event) => {
+                touch('voice');
+                setBargeIn(event.target.value);
+              }}
+            />
+            <span className={styles.unit}>{t('seconds')}</span>
           </div>
         </div>
 
