@@ -144,7 +144,8 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
               <FieldHint label={t('Certificate authority')}>
                 <p>
                   For anything this installation has to reach that is behind a private authority or
-                  a self-signed certificate. It is trusted <strong>as well as</strong> the
+                  a self-signed certificate — the directory it signs people in against included. It
+                  is trusted <strong>as well as</strong> the
                   authorities this installation already trusts, never instead of them, so nothing
                   that works today stops.
                 </p>
