@@ -98,6 +98,15 @@ export interface InstallationSettings {
   /** What a fresh installation allows, before anybody changed it. */
   agentSleepTimesConfigured: number;
   /**
+   * Whether a conversation may be thrown away.
+   *
+   * A session is the record of what an agent was asked and what it answered,
+   * and on some installations that is the only account of a decision anybody
+   * has. True until an operator turns it off, which is how this has always
+   * worked.
+   */
+  sessionsRemovable: boolean;
+  /**
    * False where the installation runs Temporal, and the field is not offered.
    *
    * A `configurable` flag like `chatConfigurable`, and the fact behind it is
@@ -115,7 +124,8 @@ const FIELDS =
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
-  'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured';
+  'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
+  'sessionsRemovable';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -279,6 +289,22 @@ export async function setAgentSleepTimes(times: number): Promise<InstallationSet
     { times },
   );
   return data.setAgentSleepTimes;
+}
+
+/**
+ * Whether a conversation may be thrown away.
+ *
+ * Off closes the door: removing a session then refuses in words, because a
+ * session is the record of what an agent was asked and what it answered.
+ */
+export async function setSessionsRemovable(removable: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setSessionsRemovable: InstallationSettings }>(
+    `mutation SetSessionsRemovable($removable: Boolean!) {
+       setSessionsRemovable(removable: $removable) { ${FIELDS} }
+     }`,
+    { removable },
+  );
+  return data.setSessionsRemovable;
 }
 
 export async function setPluginMaxSourceKb(kb: number): Promise<InstallationSettings> {

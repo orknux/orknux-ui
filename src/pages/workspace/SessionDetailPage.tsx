@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { startChat } from '../../api/chat';
+import { fetchInstallationSettings } from '../../api/installation';
 import {
   EVENT_KINDS,
   EVENT_KIND_LABEL,
@@ -222,7 +223,16 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const { workspaceId = '', sessionId = '' } = useParams();
 
   const navigate = useNavigate();
+
   const [confirming, setConfirming] = useState(false);
+  /*
+   * Whether this installation lets a conversation be thrown away.
+   *
+   * True until the answer arrives, which is how it has always been - and the
+   * server refuses it either way, so a moment of offering a control that is
+   * about to disappear is better than one that flashes into existence.
+   */
+  const [removable, setRemovable] = useState(true);
   /** True while a chat is being opened, so a second press does not open a second one. */
   const [continuing, setContinuing] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -271,6 +281,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [sessionId]);
 
   useEffect(loadSession, [loadSession]);
+
+  /* Whether the installation allows this at all; see `removable`. */
+  useEffect(() => {
+    let abandoned = false;
+    fetchInstallationSettings()
+      .then((held) => {
+        if (!abandoned) setRemovable(held.sessionsRemovable);
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search), SEARCH_PAUSE_MS);
@@ -405,6 +428,14 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   >
                     {continuing ? t('Opening…') : t('Continue in chat')}
                   </button>
+                  {/*
+                    Left out where the installation has closed the door, rather
+                    than drawn and refused: a control that is there and argues
+                    back is one somebody presses twice before reading why. The
+                    server refuses it as well, because a screen is not a
+                    boundary.
+                  */}
+                  {removable && (
                   <button
                     type="button"
                     className={confirming ? styles.removeArmed : styles.remove}
@@ -423,6 +454,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   >
                     {confirming ? t('Remove it, and everything said in it') : t('Remove session')}
                   </button>
+                  )}
                 </div>
               )}
             </div>

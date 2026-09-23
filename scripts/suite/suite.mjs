@@ -1805,6 +1805,27 @@ export const TESTS = [
      */
   },
   {
+    name: 'session-removal-check',
+    what: 'an installation that will not let a conversation be thrown away',
+    needs: ['workspace'],
+    /*
+     * A session is the record of what an agent was asked and what it answered,
+     * and on some installations that is the only account of a decision anybody
+     * has. Removing one is a person tidying up - which is what it is for - but
+     * where the record has to stand it is a hole somebody can put in it with one
+     * press and no way back.
+     *
+     * The rule is SessionRemovalTest's. Measured here is the screen: the switch
+     * is in Admin, and the control on a conversation appears and disappears with
+     * it - left out where the door is closed rather than drawn and refused,
+     * because a control that argues back is one somebody presses twice before
+     * reading why. The server refuses it either way, which is asked of the API
+     * because a screen is not a boundary.
+     *
+     * Leaves the installation on the setting it found.
+     */
+  },
+  {
     name: 'chat-commands-check',
     what: 'what can be typed in a chat instead of said',
     needs: ['workspace'],
