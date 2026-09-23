@@ -22,6 +22,16 @@ export interface LoginPageProps {
   version?: string;
 }
 
+/**
+ * The methods where the password is somebody else's to hold.
+ *
+ * One door or the other, never both: where the provider holds the passwords
+ * there is nothing here to type, and a form that looked as though there were
+ * would be a form that always failed. Named as a list because there are two of
+ * them now - OIDC and GitHub, which differ on the server and not here.
+ */
+const ELSEWHERE = ['OIDC', 'GITHUB'];
+
 export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSION__}` }: LoginPageProps) {
   const usernameId = useId();
   const passwordId = useId();
@@ -92,7 +102,14 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
           there is nothing here to type, and a form that looked as though there were
           would be a form that always failed.
         */}
-        {signIn?.method === 'OIDC' && signIn.authorizeUrl !== null && (
+        {/*
+          GitHub is the same door as OIDC from here: a link to where the browser
+          flow starts, named by whatever the server calls it. The two are
+          separate methods on the server because GitHub is not OIDC - no
+          discovery, no ID token, an opaque token - but none of that difference
+          reaches this page. Issue #239.
+        */}
+        {ELSEWHERE.includes(signIn?.method ?? '') && signIn?.authorizeUrl != null && (
           <div className={styles.form}>
             <a className={styles.provider} href={signIn.authorizeUrl}>
               Continue with {signIn.displayName}
@@ -100,7 +117,7 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
           </div>
         )}
 
-        {signIn?.method !== 'OIDC' && (
+        {!ELSEWHERE.includes(signIn?.method ?? '') && (
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <div className={styles.fields}>
             <div className={styles.field}>
