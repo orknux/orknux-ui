@@ -22,7 +22,13 @@ import {
 } from '../../api/executions';
 import { ImageZoom } from '../../components/ImageZoom';
 import type { Picture } from '../../components/ImageZoom';
-import type { ExecutionDetail, ExecutionPicture, ExecutionStep, StepStatus } from '../../api/executions';
+import type {
+  ExecutionDetail,
+  ExecutionPicture,
+  ExecutionSpeech,
+  ExecutionStep,
+  StepStatus,
+} from '../../api/executions';
 import { NODE_KIND_LABEL } from '../../api/graph';
 import type { NodeKind } from '../../api/graph';
 import type { SessionUser } from '../../api/session';
@@ -793,6 +799,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
             step={selected}
             workspaceId={workspaceId}
             pictures={(run?.pictures ?? []).filter((picture) => picture.nodeKey === selected.key)}
+            speeches={(run?.speeches ?? []).filter((speech) => speech.nodeKey === selected.key)}
             runEnded={run !== null && run.status !== 'RUNNING'}
             onRerunFromHere={rerunFromStep}
             onClose={() => setSelectedKey(null)}
@@ -817,6 +824,7 @@ function NodeDetailsPanel({
   step,
   workspaceId,
   pictures,
+  speeches,
   runEnded,
   onRerunFromHere,
   onClose,
@@ -825,6 +833,8 @@ function NodeDetailsPanel({
   workspaceId: string;
   /** The pictures this step's image node drew, if it is one; empty otherwise. */
   pictures: ExecutionPicture[];
+  /** What this step said out loud, if it is one that speaks; empty otherwise. */
+  speeches: ExecutionSpeech[];
   /** True once the run has finished, so a pending step was never reached. */
   runEnded: boolean;
   /** Starts the workflow again from this step; rejects with the server's words. */
@@ -1002,6 +1012,36 @@ function NodeDetailsPanel({
           </div>
 
           <ImageZoom picture={zoomed} onClose={() => setZoomed(null)} />
+        </>
+      )}
+
+      {/*
+        What the step said out loud. Issue #264.
+
+        A player rather than a download alone: the point of the file is that
+        somebody listens to it, and a run page that could only hand it over
+        would make checking what a node said a trip through a file manager.
+        The words are printed beside it because audio cannot be skimmed - four
+        of these are four identical rows without them.
+      */}
+      {speeches.length > 0 && (
+        <>
+          <h3 className={styles.panelHeading}>{speeches.length === 1 ? t('Audio') : t('Audio clips')}</h3>
+          <div className={styles.speeches}>
+            {speeches.map((speech) => (
+              <figure key={speech.id} className={styles.speech}>
+                {/* The bytes are served by ExecutionSpeechAPI; a 404 leaves the
+                    player with nothing, which is what says it was swept. */}
+                <audio className={styles.speechPlayer} controls preload="none" src={speech.url} />
+                <figcaption className={styles.speechCaption}>
+                  <span className={styles.speechSaid} title={speech.said}>{speech.said}</span>
+                  <a className={styles.speechDownload} href={speech.url} download={speech.filename}>
+                    {t('Download')}
+                  </a>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         </>
       )}
     </aside>

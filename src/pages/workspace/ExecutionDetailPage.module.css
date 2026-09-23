@@ -971,3 +971,50 @@ a.summaryStopped:focus-visible {
   flex: none;
   color: var(--color-accent-brand);
 }
+
+/* ---- What a step said out loud (#264) ---- */
+
+/*
+ * Shaped like the pictures above, because they are the same thing on this page:
+ * something the step produced, shown under the node that produced it. What
+ * differs is the control - a player rather than an image - and the caption,
+ * which carries the words because audio cannot be skimmed.
+ */
+.speeches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.speech {
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  overflow: hidden;
+}
+
+.speechPlayer {
+  display: block;
+  width: 100%;
+}
+
+.speechCaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.speechSaid {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.speechDownload {
+  flex: none;
+  color: var(--color-accent-brand);
+}

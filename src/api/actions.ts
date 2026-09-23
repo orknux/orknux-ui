@@ -13,7 +13,8 @@ export type ActionSubtype =
   | 'FUNCTION'
   | 'INLINE_CONDITION'
   | 'CONDITION'
-  | 'TIME';
+  | 'TIME'
+  | 'SPEAK';
 
 export type ConnectionActionKind = 'SEND_MESSAGE' | 'REPLY_IN_THREAD' | 'CREATE_ISSUE' | 'UPDATE_ISSUE';
 
@@ -93,6 +94,12 @@ export interface Action {
   emailCc: string | null;
   emailSubject: string | null;
   emailReplyTo: string | null;
+  /** What a SPEAK action reads out; a node may say something else instead. */
+  speechText: string | null;
+  /** Which voice, where the provider offers more than one; null is its own. */
+  speechVoice: string | null;
+  /** Which model speaks it; null follows the workspace's own choice. */
+  speechModelId: string | null;
   url: string | null;
   method: string | null;
   /**
@@ -139,6 +146,7 @@ const ACTION_FIELDS = `
   id workspaceId workflowId name type subtype subtypeLabel
   connectionId connectionName connectionAction content targetName
   emailTo emailCc emailSubject emailReplyTo
+  speechText speechVoice speechModelId
   url method headers headersReadable headerRows { name value variableId variableName }
   functionId functionName mappings { argument expression }
   conditionExpression conditionId conditionName timeoutSeconds retryIntervalSeconds durationSeconds
@@ -242,6 +250,9 @@ export interface ActionInput {
   emailCc?: string | null;
   emailSubject?: string | null;
   emailReplyTo?: string | null;
+  speechText?: string | null;
+  speechVoice?: string | null;
+  speechModelId?: string | null;
   url?: string | null;
   method?: string | null;
   /** Sent only where the stored headers could not be read as rows; otherwise `headerRows` is. */
@@ -301,7 +312,7 @@ export const ACTION_TYPE_LABEL: Record<ActionType, string> = {
 
 /** Which subtypes an action of each type can be, in the order the form offers them. */
 export const SUBTYPES_BY_TYPE: Record<ActionType, ActionSubtype[]> = {
-  EXECUTE: ['OUTGOING_CONNECTION', 'SEND_EMAIL', 'HTTP_REQUEST', 'FUNCTION'],
+  EXECUTE: ['OUTGOING_CONNECTION', 'SEND_EMAIL', 'HTTP_REQUEST', 'FUNCTION', 'SPEAK'],
   WAIT: ['INLINE_CONDITION', 'CONDITION', 'TIME'],
 };
 
@@ -313,6 +324,7 @@ export const ACTION_SUBTYPE_LABEL: Record<ActionSubtype, string> = {
   INLINE_CONDITION: t('Inline Condition'),
   CONDITION: 'Condition',
   TIME: 'Time',
+  SPEAK: t('Speak'),
 };
 
 /**

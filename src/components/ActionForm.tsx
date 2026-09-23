@@ -243,6 +243,9 @@ export function ActionForm({
   const [emailCc, setEmailCc] = useState(action?.emailCc ?? '');
   const [emailSubject, setEmailSubject] = useState(action?.emailSubject ?? '');
   const [emailReplyTo, setEmailReplyTo] = useState(action?.emailReplyTo ?? '');
+  /* What a Speak action reads out, and in which voice. Issue #264. */
+  const [speechText, setSpeechText] = useState(action?.speechText ?? '');
+  const [speechVoice, setSpeechVoice] = useState(action?.speechVoice ?? '');
   const [url, setUrl] = useState(action?.url ?? '');
   const [method, setMethod] = useState(action?.method ?? 'GET');
   /**
@@ -503,6 +506,8 @@ export function ActionForm({
       emailCc: subtype === 'SEND_EMAIL' ? emailCc : null,
       emailSubject: subtype === 'SEND_EMAIL' ? emailSubject : null,
       emailReplyTo: subtype === 'SEND_EMAIL' ? emailReplyTo : null,
+      speechText: subtype === 'SPEAK' ? speechText : null,
+      speechVoice: subtype === 'SPEAK' ? speechVoice.trim() || null : null,
       url: subtype === 'HTTP_REQUEST' ? url.trim() : null,
       method: subtype === 'HTTP_REQUEST' ? method : null,
       /*
@@ -999,6 +1004,52 @@ export function ActionForm({
                     placeholder={t('Optional; answers go to the from-address otherwise')}
                     value={emailReplyTo}
                     onChange={(event) => setEmailReplyTo(event.target.value)}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/*
+            What a Speak action reads out. Issue #264.
+
+            The words are the action's and the node may say something else
+            instead, which is the same arrangement a message's text has: "read
+            the summary out" is the action, and which summary is the node's.
+          */}
+          {subtype === 'SPEAK' && (
+            <>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="action-speech-text">
+                  {t('What to say')}
+                </label>
+                <div className={styles.inputWrapperTall}>
+                  <textarea
+                    id="action-speech-text"
+                    name="speechText"
+                    className={`${styles.input} ${styles.textarea}`}
+                    rows={3}
+                    placeholder={t('The nightly summary is ready.')}
+                    value={speechText}
+                    onChange={(event) => setSpeechText(event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="action-speech-voice">
+                  {t('Voice')}
+                </label>
+                <div className={styles.inputWrapper}>
+                  <input
+                    id="action-speech-voice"
+                    name="speechVoice"
+                    className={styles.input}
+                    type="text"
+                    placeholder={t("Left empty, the model's own")}
+                    value={speechVoice}
+                    onChange={(event) => setSpeechVoice(event.target.value)}
                   />
                 </div>
               </div>

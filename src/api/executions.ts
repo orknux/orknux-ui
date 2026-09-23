@@ -132,6 +132,12 @@ export interface ExecutionDetail extends Execution {
    * which kind of node that was.
    */
   pictures?: ExecutionPicture[];
+  /**
+   * What this run said out loud, each keyed to its step by nodeKey.
+   *
+   * Empty for a run that spoke nothing, which is most of them. Issue #264.
+   */
+  speeches?: ExecutionSpeech[];
 }
 
 /** One picture a step drew, as the run graph shows it. */
@@ -143,6 +149,19 @@ export interface ExecutionPicture {
   url: string;
   /** What it was drawn from, its alt text. */
   prompt: string;
+  filename: string;
+  contentType: string;
+}
+
+/** One thing a run said out loud, as the run graph plays it. Issue #264. */
+export interface ExecutionSpeech {
+  id: string;
+  /** Which step said it, so it plays under that node. */
+  nodeKey: string;
+  /** Where the bytes are: an <audio src> and the download. */
+  url: string;
+  /** The words it read, because audio cannot be read at a glance. */
+  said: string;
   filename: string;
   contentType: string;
 }
@@ -275,6 +294,7 @@ const EXECUTION_DETAIL_FIELDS = `
   edges { source target branch }
   logs { id nodeKey at level message }
   pictures { id nodeKey url prompt filename contentType }
+  speeches { id nodeKey url said filename contentType }
   temporalUrl
 `;
 
