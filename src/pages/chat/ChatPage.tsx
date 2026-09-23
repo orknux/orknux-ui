@@ -17,11 +17,20 @@ import {
   setChatPinned,
   startChat,
   costAmount,
+  fetchChatCommands,
+  runChatCommand,
   spendKnown,
   thinkingTime,
   tokenCount,
 } from '../../api/chat';
-import type { ChatCall, ChatMessage, ChatSession, ChatSpend, ChatStreamHandlers } from '../../api/chat';
+import type {
+  ChatCall,
+  ChatCommand,
+  ChatMessage,
+  ChatSession,
+  ChatSpend,
+  ChatStreamHandlers,
+} from '../../api/chat';
 import { givenUp } from '../../api/sse';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
@@ -219,6 +228,25 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [pickerSearch, setPickerSearch] = useState('');
 
   const [draft, setDraft] = useState('');
+  /*
+   * The commands this workspace offers, asked of the server. Issue #343.
+   *
+   * Read once per workspace rather than per keystroke: the catalogue is a fact
+   * about the installation, and a menu that fetched while somebody typed would
+   * open empty and fill in under them.
+   */
+  const [commands, setCommands] = useState<ChatCommand[]>([]);
+  /** Which row of the slash menu is under the caret. */
+  const [commandAt, setCommandAt] = useState(-1);
+  /*
+   * Whether the menu was put away for the line being typed.
+   *
+   * Its own state rather than emptying the catalogue, which is what this did at
+   * first: the catalogue is a fact about the workspace, and clearing it to close
+   * a menu meant the menu never opened again for the rest of the session. It is
+   * cleared by typing, because the next character is somebody starting again.
+   */
+  const [commandsShut, setCommandsShut] = useState(false);
   const [sending, setSending] = useState(false);
   /**
    * The request answering the turn in flight, so it can be stopped.
@@ -524,6 +552,29 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     },
     [workspaceId, setCurrentId],
   );
+
+  /*
+   * What can be typed instead of said, read once per workspace.
+   *
+   * A catalogue is a fact about the installation rather than about the line
+   * being typed, so a menu that fetched per keystroke would open empty and fill
+   * in under somebody. An installation that answers nothing simply has no menu:
+   * the slash is then a slash, which is what it was before this existed.
+   */
+  useEffect(() => {
+    if (workspaceId === null) return;
+    let abandoned = false;
+    fetchChatCommands(workspaceId)
+      .then((held) => {
+        if (!abandoned) setCommands(held);
+      })
+      .catch(() => {
+        if (!abandoned) setCommands([]);
+      });
+    return () => {
+      abandoned = true;
+    };
+  }, [workspaceId]);
 
   useEffect(() => {
     if (workspaceId === null) return;
@@ -1357,9 +1408,46 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     });
   }
 
+  /**
+   * Runs what was typed, where what was typed is a command.
+   *
+   * Both halves of the line go into the conversation: what was asked for and
+   * what came of it. A command that acted and left no trace would be a run
+   * nobody can point at afterwards, and the conversation is where somebody
+   * would look - they typed it there.
+   */
+  async function runCommand(line: string): Promise<boolean> {
+    const said = line.trim();
+    if (!said.startsWith('/') || workspaceId === null) return false;
+
+    const [head, ...rest] = said.slice(1).split(' ');
+    if (!commands.some((one) => one.name.toLowerCase() === head.toLowerCase())) return false;
+
+    setDraft('');
+    setCommandAt(-1);
+    setMessages((present) => [
+      ...present,
+      { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
+    ]);
+
+    const answer = await runChatCommand(workspaceId, head, rest.join(' ').trim() || null).catch(
+      (cause: unknown) => (cause instanceof Error ? cause.message : t('The command could not be run.')),
+    );
+    setMessages((present) => [
+      ...present,
+      { role: 'assistant', content: answer, actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
+    ]);
+    return true;
+  }
+
   async function handleSend(event: FormEvent) {
     event.preventDefault();
     if (currentId === null || draft.trim() === '') return;
+
+    // A command is carried out rather than said to the model: the model has no
+    // way to run a workflow, and asking it to would be asking it to answer as
+    // though it had.
+    if (await runCommand(draft)) return;
 
     /*
      * What was attached is named in the message.
@@ -1663,7 +1751,58 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     asking.current = null;
   }
 
+  /**
+   * The commands the draft is asking for, or none.
+   *
+   * A slash only opens the menu at the very start of the box. Mid-sentence a
+   * slash is a slash - a path, a date, "and/or" - and a menu that appeared
+   * there would be a menu appearing while somebody wrote an ordinary message.
+   */
+  const offered =
+    !commandsShut && draft.startsWith('/') && !draft.slice(1).includes(' ')
+      ? commands.filter((one) => one.name.startsWith(draft.slice(1).toLowerCase()))
+      : [];
+
+  /** Which one Enter would run: the row under the caret, or the only match. */
+  const chosen = offered.length === 0 ? null : offered[Math.max(0, Math.min(commandAt, offered.length - 1))];
+
   function handleComposerKey(event: KeyboardEvent<HTMLTextAreaElement>) {
+    /*
+     * The menu takes the arrows and Enter while it is open, and nothing else.
+     * Escape closes it without clearing what was typed, because somebody who
+     * meant to write a message starting with a slash should not lose the line.
+     */
+    if (offered.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setCommandAt((at) => (at + 1) % offered.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setCommandAt((at) => (at <= 0 ? offered.length - 1 : at - 1));
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setCommandAt(-1);
+        setCommandsShut(true);
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === 'Tab') && chosen !== null) {
+        /*
+         * Completed rather than run. A command with an argument is not finished
+         * being typed, and one without is still a thing with consequences -
+         * `/workflow` really runs it - so the first Enter fills the box and the
+         * second, on a line the person has read, is the one that acts.
+         */
+        event.preventDefault();
+        setDraft(`/${chosen.name}${chosen.argument === null ? '' : ' '}`);
+        setCommandAt(-1);
+        return;
+      }
+    }
+
     // Enter sends, shift+enter is a new line: what a chat box is expected to do.
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -2890,12 +3029,58 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                   />
                 </div>
               )}
+              {/*
+                What can be typed instead of said, opened by a slash at the
+                start of the box. Issue #343.
+
+                Above the box rather than below it: the box sits at the bottom
+                of the window, and a menu under it would be off the screen.
+              */}
+              {offered.length > 0 && (
+                <div className={styles.commandMenu} role="listbox" aria-label={t('Commands')}>
+                  {offered.map((one, index) => (
+                    <button
+                      key={one.name}
+                      type="button"
+                      role="option"
+                      aria-selected={one.name === chosen?.name}
+                      className={one.name === chosen?.name ? styles.commandOn : styles.command}
+                      onMouseEnter={() => setCommandAt(index)}
+                      // Down rather than click: the box loses focus first
+                      // otherwise, and the menu is gone before the click lands.
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setDraft(`/${one.name}${one.argument === null ? '' : ' '}`);
+                        setCommandAt(-1);
+                        composerRef.current?.focus();
+                      }}
+                    >
+                      <span className={styles.commandName}>/{one.name}</span>
+                      <span className={styles.commandSummary}>{one.summary}</span>
+                      {one.argument !== null && (
+                        <span className={styles.commandArgument}>{one.argument}</span>
+                      )}
+                      {/*
+                        What is worth knowing before pressing rather than after:
+                        /workflow really runs it, and if the workflow messages
+                        somebody it messages them.
+                      */}
+                      {one.warning !== null && <span className={styles.commandWarning}>{one.warning}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
                 id="chat-composer"
                 ref={composerRef}
                 className={styles.composerInput}
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => {
+                  setDraft(event.target.value);
+                  // Typing is somebody starting again, so a menu put away for
+                  // the last line does not stay away for this one.
+                  setCommandsShut(false);
+                }}
                 onKeyDown={handleComposerKey}
                 placeholder={t('Type a message...')}
                 rows={1}

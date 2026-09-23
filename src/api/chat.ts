@@ -574,3 +574,55 @@ export function costAmount(cost: number): string {
   if (cost > 0 && cost < 0.0001) return 'under $0.0001';
   return `$${cost.toFixed(4)}`;
 }
+
+/**
+ * One thing that can be typed instead of said.
+ *
+ * Issue #343. The catalogue is the server's rather than this file's, because
+ * the chat is not the only place people type: Slack's own slash commands arrive
+ * at the server with nothing of the browser about them, and a list written here
+ * could be reached from one of the two places it belongs. What the chat adds on
+ * top is its own - a new chat, the find box - since a Slack message cannot ask
+ * for either.
+ */
+export interface ChatCommand {
+  /** What is typed after the slash. */
+  name: string;
+  /** One line, as the menu lists it. */
+  summary: string;
+  /** What to type after it, in words; null where it takes nothing. */
+  argument: string | null;
+  /** What is worth knowing before pressing it, where anything is. */
+  warning: string | null;
+}
+
+export async function fetchChatCommands(workspaceId: string): Promise<ChatCommand[]> {
+  const data = await graphql<{ chatCommands: ChatCommand[] }>(
+    `query ChatCommands($workspaceId: ID!) {
+       chatCommands(workspaceId: $workspaceId) { name summary argument warning }
+     }`,
+    { workspaceId },
+  );
+  return data.chatCommands;
+}
+
+/**
+ * Runs one, as the person who typed it.
+ *
+ * It really does it: `/workflow` starts the workflow, and if that workflow
+ * messages somebody it messages them. What comes back is what the underlying
+ * tool said, as JSON - this surface decides how to show it.
+ */
+export async function runChatCommand(
+  workspaceId: string,
+  name: string,
+  argument: string | null,
+): Promise<string> {
+  const data = await graphql<{ runChatCommand: string }>(
+    `mutation RunChatCommand($workspaceId: ID!, $name: String!, $argument: String) {
+       runChatCommand(workspaceId: $workspaceId, name: $name, argument: $argument)
+     }`,
+    { workspaceId, name, argument },
+  );
+  return data.runChatCommand;
+}

@@ -1805,6 +1805,27 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-commands-check',
+    what: 'what can be typed in a chat instead of said',
+    needs: ['workspace'],
+    /*
+     * Issue #343. A chat is for asking an agent, and some of what people want
+     * is not a question: start that workflow, file that as an issue. Either
+     * meant leaving the conversation, finding the page and coming back - and the
+     * conversation is where the reason lives, so what came back was somebody
+     * retyping what they had just written.
+     *
+     * The catalogue is the server's, because Slack's own slash commands arrive
+     * there with nothing of the browser about them; that half is ChatCommandsTest.
+     * Measured here is what only a browser answers: the slash opens the menu at
+     * the start of a line and not mid-sentence, and the first Enter completes
+     * rather than runs - /workflow really runs it, and a menu that fired on the
+     * keystroke that opened it would start things nobody had finished reading.
+     *
+     * Makes a chat and files one issue through a command, and sweeps both.
+     */
+  },
+  {
     name: 'default-memory-catalog-check',
     what: 'every workspace has one memory catalog, and it stays',
     needs: ['workspace'],
