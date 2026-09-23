@@ -2426,6 +2426,26 @@ export const TESTS = [
   },
 
   {
+    name: 'session-notes-check',
+    what: 'a session draws what its agents wrote down for themselves, above the transcript',
+    needs: ['session'],
+    /*
+     * Issue #371. What is kept and what is refused is pinned in NoteToSelfTest;
+     * this is the other end - that LlmSession still serves `notes`, and that a
+     * session carrying them draws them.
+     *
+     * The field is asked of the running server and only the notes themselves are
+     * stubbed, because a note exists because a model called `note_to_self` and
+     * there is no mutation that writes one. Asking a provider to use a tool on
+     * cue would make this a measurement of the provider's mood; asking the
+     * server for its schema does not.
+     *
+     * 'session' rather than 'workspace': it makes nothing, so an account is the
+     * whole of what it needs.
+     */
+  },
+
+  {
     name: 'session-pages-check',
     what: 'the sessions list narrows, a transcript filters and reorders, and a session takes two presses to remove',
     needs: ['workspace'],

@@ -17,6 +17,17 @@ export interface LlmSession {
   createdAt: string;
   /** Null on a session nothing has been recorded in yet. */
   lastEventAt: string | null;
+  /**
+   * What the agents in this conversation wrote down for themselves. Issue #371.
+   *
+   * The one part of a conversation an agent chose to keep rather than merely
+   * said: a transcript is what happened, and these are the few lines it decided
+   * it must not lose.
+   *
+   * Absent on a row of the list, which asks for none: twenty rows would carry
+   * every note in the workspace to draw a page that shows none of them.
+   */
+  notes?: LlmSessionNote[];
 }
 
 /** What a list of sessions is ordered by, in the words the server uses. */
@@ -84,6 +95,18 @@ export const EVENT_KINDS: LlmSessionEventKind[] = ['USER', 'AGENT', 'TOOL', 'THI
 
 const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt';
 
+/** What one opened session adds, and a row of the list does not. Issue #371. */
+const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
+
+/** One thing an agent wrote down for itself, part-way through. */
+export interface LlmSessionNote {
+  id: string;
+  note: string;
+  /** Which agent wrote it, since a conversation can be shared. */
+  writtenBy: string;
+  writtenAt: string;
+}
+
 const EVENT_FIELDS = 'id kind actor content result millis at';
 
 export async function fetchLlmSessions(
@@ -120,7 +143,7 @@ export async function fetchLlmSessions(
 /** Null where there is no such session, or it is not one this person may see. */
 export async function fetchLlmSession(id: string): Promise<LlmSession | null> {
   const data = await graphql<{ llmSession: LlmSession | null }>(
-    `query ($id: ID!) { llmSession(id: $id) { ${SESSION_FIELDS} } }`,
+    `query ($id: ID!) { llmSession(id: $id) { ${ONE_SESSION_FIELDS} } }`,
     { id },
   );
   return data.llmSession;
