@@ -4,6 +4,7 @@ import {
   fetchInstallationSettings,
   setAgentSleepSeconds,
   setAgentSleepTimes,
+  setAgentMaxSubagents,
   setAttachmentsEnabled,
   setSessionsRemovable,
   setChatEnabled,
@@ -68,6 +69,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [sleep, setSleep] = useState('');
   /** And how many of those it may take in a row on one step. */
   const [sleeps, setSleeps] = useState('');
+  /** How many other agents one agent may ask in one conversation. Issue #380. */
+  const [asks, setAsks] = useState('');
 
   useEffect(() => {
     /*
@@ -93,6 +96,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setRounds(String(held.chatMaxRounds));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
+        setAsks(String(held.agentMaxSubagents));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -121,6 +125,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
+        { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
@@ -365,6 +370,32 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many times in a row an agent may wait')}
                 />
                 <span className={styles.retentionUnit}>{t('times')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How many other agents an agent may ask')}</p>
+                  <FieldHint label={t('How many other agents an agent may ask')}>
+                    {t('Each ask starts a conversation of its own, with its own model calls and tools, on the asking agent’s say-so - so this is the number that bounds what one question can fan out into. Counted per conversation, and an agent that has spent them is told so and answers with what it has. Zero takes the tool off the table. A workspace may carry its own number in its settings, which wins over this one. Between 0 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="agent-max-subagents"
+                  name="agentMaxSubagents"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={asks}
+                  onChange={(event) => setAsks(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many other agents an agent may ask')}
+                />
+                <span className={styles.retentionUnit}>{t('agents')}</span>
               </div>
             </div>
 

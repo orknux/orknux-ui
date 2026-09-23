@@ -98,6 +98,16 @@ export interface InstallationSettings {
   /** What a fresh installation allows, before anybody changed it. */
   agentSleepTimesConfigured: number;
   /**
+   * How many other agents one agent may ask in one conversation; zero is none.
+   *
+   * Each ask is a conversation of its own with its own model calls, so this
+   * bounds what one question can fan out into. A workspace may carry its own
+   * number, which wins. Issue #380.
+   */
+  agentMaxSubagents: number;
+  /** What a fresh installation allows, before anybody changed it. */
+  agentMaxSubagentsConfigured: number;
+  /**
    * Whether a conversation may be thrown away.
    *
    * A session is the record of what an agent was asked and what it answered,
@@ -125,6 +135,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured ' +
   'sessionsRemovable';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
@@ -289,6 +300,17 @@ export async function setAgentSleepTimes(times: number): Promise<InstallationSet
     { times },
   );
   return data.setAgentSleepTimes;
+}
+
+/** How many other agents one agent may ask in one conversation; zero is none. Issue #380. */
+export async function setAgentMaxSubagents(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setAgentMaxSubagents: InstallationSettings }>(
+    `mutation SetAgentMaxSubagents($count: Int!) {
+       setAgentMaxSubagents(count: $count) { ${FIELDS} }
+     }`,
+    { count },
+  );
+  return data.setAgentMaxSubagents;
 }
 
 /**

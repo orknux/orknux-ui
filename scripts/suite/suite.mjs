@@ -1805,6 +1805,21 @@ export const TESTS = [
      */
   },
   {
+    name: 'subagent-limit-check',
+    what: 'how many other agents an agent may ask: the number the installation sets, and a workspace over it',
+    needs: ['workspace'],
+    /*
+     * Issue #380. Each ask is a conversation of its own, started on the asking
+     * model's say-so, so this is the bound on fan-out. What the count does to
+     * an ask is pinned in SubagentLimitTest; this is the two doors - Admin's
+     * box saves, the workspace's opens on the installation's number as its
+     * placeholder, saves its own, and clears back - and the refusal, asked of
+     * the server because the box's own bounds stop a person first.
+     *
+     * Leaves both on the numbers it found.
+     */
+  },
+  {
     name: 'tool-budget-check',
     what: 'how many tools an agent carries, and which of them always travel',
     needs: ['workspace'],

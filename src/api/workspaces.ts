@@ -92,6 +92,15 @@ export interface Workspace {
   /** What a task here gets when the field above is null, so the box can show it. */
   taskMaxTurnsDefault: number;
   /**
+   * How many other agents one agent here may ask in one conversation.
+   *
+   * Null means the workspace has decided nothing and the installation's number
+   * applies; zero takes the tool off the table here. Issue #380.
+   */
+  agentMaxSubagents: number | null;
+  /** What an agent here gets when the field above is null, so the box can show it. */
+  agentMaxSubagentsDefault: number;
+  /**
    * How many seconds one run of a tool or function here may hold its thread,
    * where the tool or function has no timeout of its own.
    *
@@ -168,7 +177,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -354,6 +363,20 @@ export async function setWorkspaceTaskMaxTurns(
     { workspaceId, turns },
   );
   return data.setWorkspaceTaskMaxTurns;
+}
+
+/** Null clears it, which puts the workspace back on the installation's number. Issue #380. */
+export async function setWorkspaceAgentMaxSubagents(
+  workspaceId: string,
+  count: number | null,
+): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceAgentMaxSubagents: Workspace }>(
+    `mutation SetWorkspaceAgentMaxSubagents($workspaceId: ID!, $count: Int) {
+       setWorkspaceAgentMaxSubagents(workspaceId: $workspaceId, count: $count) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, count },
+  );
+  return data.setWorkspaceAgentMaxSubagents;
 }
 
 /** Null clears it, which puts the workspace back on the installation's number. */

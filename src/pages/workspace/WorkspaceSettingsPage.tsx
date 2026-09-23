@@ -18,6 +18,7 @@ import {
   setWorkspaceFunctionTimeout,
   setWorkspaceToolTimeout,
   setWorkspaceTaskMaxTurns,
+  setWorkspaceAgentMaxSubagents,
   setWorkspaceQuickChatModel,
   setWorkspaceChatTimestamps,
   setWorkspaceQuickChatWrites,
@@ -244,6 +245,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
    * installation's own number is used.
    */
   const [turns, setTurns] = useState('');
+  /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
+  const [asks, setAsks] = useState('');
   /**
    * How many seconds one function run here may hold its thread, as typed.
    *
@@ -382,6 +385,11 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setDescription(found?.description ?? '');
         setShare(found?.defaultMemoryShare ?? null);
         setTurns(found?.taskMaxTurns === null || found?.taskMaxTurns === undefined ? '' : String(found.taskMaxTurns));
+        setAsks(
+          found?.agentMaxSubagents === null || found?.agentMaxSubagents === undefined
+            ? ''
+            : String(found.agentMaxSubagents),
+        );
         setFunctionTimeout(
           found?.functionTimeoutSeconds === null || found?.functionTimeoutSeconds === undefined
             ? ''
@@ -561,6 +569,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('turns')) {
         latest = await setWorkspaceTaskMaxTurns(workspaceId, wantedTurns);
       }
+      if (touched.has('asks')) {
+        latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
+      }
       if (touched.has('functionTimeout')) {
         latest = await setWorkspaceFunctionTimeout(
           workspaceId,
@@ -643,6 +654,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setDescription(held.description ?? '');
     setShare(held.defaultMemoryShare);
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
+    setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
     setToolTimeout(held.toolTimeoutSeconds === null ? '' : String(held.toolTimeoutSeconds));
     setCompanion(held.companionModelId ?? '');
@@ -1055,6 +1067,37 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               placeholder={workspace === null ? '' : String(workspace.taskMaxTurnsDefault)}
               value={turns}
               onChange={(event) => { touch('turns'); setTurns(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        {/*
+          How many other agents one agent here may ask in a conversation. Each
+          ask is a conversation of its own, started on the asking model's
+          say-so, so this is the bound on fan-out; on the workspace for the
+          same reason the turns are, and empty means Admin -> Settings applies.
+          Issue #380.
+        */}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-max-subagents">
+              {t('Agents An Agent May Ask')}
+            </label>
+            <FieldHint label={t('Agents An Agent May Ask')}>
+              {t('How many other agents one agent here may ask in the course of one conversation. Each ask starts a conversation of its own, with its own model calls and tools, on the asking agent’s say-so - so this bounds what one question can fan out into. An agent that has spent them is told so and answers with what it has. Left empty, the workspace has decided nothing and the installation’s number is used. Zero takes the tool off the table here. Between 0 and 100.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-max-subagents"
+              className={styles.input}
+              type="number"
+              min={0}
+              max={100}
+              placeholder={workspace === null ? '' : String(workspace.agentMaxSubagentsDefault)}
+              value={asks}
+              onChange={(event) => { touch('asks'); setAsks(event.target.value); }}
             />
           </div>
         </div>
