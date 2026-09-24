@@ -44,15 +44,27 @@ async function settingsPage() {
    * name, because which fields exist is the thing being measured; so what is
    * waited for is the page settling.
    */
+  /*
+   * Settled means the same shape twice in a row, 800ms apart, measured by the
+   * headings *and* the text. The headings alone were not enough: the Chat card
+   * is drawn once the installation's settings answer, which can land after
+   * the other cards have, and two reads 400ms apart agreed on a page that was
+   * still short of one card.
+   */
   let sections = -1;
+  let length = -1;
+  let agreed = 0;
   let settled = false;
   for (let tries = 0; tries < 75; tries += 1) {
     const now = await page.locator('main h2').count();
-    if (now === sections && now > 2) {
+    const held = await page.evaluate(() => (document.querySelector('main')?.innerText ?? '').length);
+    agreed = now === sections && held === length ? agreed + 1 : 0;
+    if (agreed >= 2 && now > 2) {
       settled = true;
       break;
     }
     sections = now;
+    length = held;
     await page.waitForTimeout(400);
   }
   // Said out loud rather than read anyway: every assertion below is about which
