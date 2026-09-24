@@ -11,7 +11,7 @@
  */
 import { readFileSync } from 'node:fs';
 
-import { BASE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -45,7 +45,7 @@ await page.setInputFiles('input[type=file]', {
 await page.waitForTimeout(3000);
 record(true, 'a plugin naming its values loads');
 
-await page.goto(`${BASE}/workspace/9/plugins`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/workspace/${WORKSPACE}/plugins`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(2500);
 // The parameters sit behind the plugin's own row.
 await page.getByText('picked', { exact: false }).first().click().catch(() => {});

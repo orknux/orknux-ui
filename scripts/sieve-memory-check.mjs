@@ -10,7 +10,7 @@
  *
  * Both lists, because they wear the same sieve and were both forgetting it.
  */
-import { BASE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -23,8 +23,8 @@ let labelled = '';
 const sieve = () => page.getByLabel(labelled);
 
 for (const [list, where, label] of [
-  ['functions', '/workspace/9/functions', 'Which functions to list'],
-  ['tools', '/workspace/9/tools', 'Which tools to list'],
+  ['functions', `/workspace/${WORKSPACE}/functions`, 'Which functions to list'],
+  ['tools', `/workspace/${WORKSPACE}/tools`, 'Which tools to list'],
 ]) {
   labelled = label;
   await page.goto(`${BASE}${where}`, { waitUntil: 'domcontentloaded' });
@@ -49,7 +49,7 @@ for (const [list, where, label] of [
    * quietly break.
    */
   const otherLabel = list === 'functions' ? 'Which tools to list' : 'Which functions to list';
-  const other = list === 'functions' ? '/workspace/9/tools' : '/workspace/9/functions';
+  const other = list === 'functions' ? `/workspace/${WORKSPACE}/tools` : `/workspace/${WORKSPACE}/functions`;
   await page.goto(`${BASE}${other}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(`[aria-label="${otherLabel}"]`, { timeout: 20_000 });
   await page.waitForTimeout(600);

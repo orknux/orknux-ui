@@ -1963,6 +1963,8 @@ export const TESTS = [
     name: 'plugin-secret-reveal-check',
     what: "a plugin's secret parameter can show what is being typed into it",
     needs: ['workspace'],
+    // Loads a plugin, which is installation-wide, so it runs on its own.
+    alone: true,
     /*
      * Issue #366. The box was a bare password input with nothing beside it, so
      * a key pasted with a character missing could not be checked before it was
@@ -1973,14 +1975,16 @@ export const TESTS = [
      * The bound is what is measured as closely as the control: the eye is not
      * offered over an empty box, because the server never hands a stored secret
      * back and an eye promising one would be promising the one thing it cannot
-     * give. Reads whichever installed plugin has a secret parameter, types into
-     * it and clears it again; saves nothing.
+     * give. Loads a plugin of its own with one secret parameter - a seeded
+     * installation has none - types into it and clears it again; saves
+     * nothing, and unloads the plugin afterwards.
      */
   },
   {
     name: 'usage-range-check',
     what: "the window a model's usage metrics are for, chosen on the page",
     needs: ['workspace'],
+    ci: false,
     /*
      * Issue #370. Thirty days was fixed and nothing on the page could ask for
      * anything else, while every question people bring here is about a different
@@ -1994,6 +1998,11 @@ export const TESTS = [
      * a call against a past day, and adding one so a check could stage a chart
      * would be a write path in the product that exists for the test. What lands
      * inside a window is pinned in ModelAPITest, which writes the rows directly.
+     *
+     * Not in CI for the same reason: a seeded installation has no model that
+     * answers, so nothing there has ever been used, and the check would fail
+     * on its first line. It runs on a developer's installation with a model
+     * that has been called.
      *
      * Makes nothing and changes nothing.
      */

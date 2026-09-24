@@ -264,6 +264,19 @@ for (const list of [
     continue;
   }
 
+  /*
+   * An installation with no plugins loaded draws no table on the workspace's
+   * plugins page - a sentence saying so, not headings over nothing - and a
+   * seeded installation is one of those. Nothing to order is not a heading
+   * that cannot be pressed; the developer's database is the only one with
+   * ten plugins in it.
+   */
+  const bare = await page.evaluate(() => (document.querySelector('main')?.innerText ?? '').includes('No plugins are loaded'));
+  if (bare) {
+    console.log(`${list.path}: no plugins are loaded here, so there is no table to order`);
+    continue;
+  }
+
   const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
   const pressable = await head
     .waitFor({ timeout: 20_000 })
@@ -416,14 +429,23 @@ for (const list of [
    */
   const ROWS = '[class*="_row_"]:not([class*="_tableHeader_"])';
 
+  /*
+   * Scoped to the heading's own table where the page draws more than one -
+   * and falling back to the page only where the heading is in no section at
+   * all, since the admin pages do not all use the same frame.
+   *
+   * By whether the section exists, not by whether it has rows. The networking
+   * screen draws two tables - the proxy rules, in an order of their own and not
+   * sortable, and the trusted certificates under them - and an installation
+   * with rules and no certificates was read as three rows under the
+   * certificates' Subject heading: the section was empty, the page was not, and
+   * a fall-back on emptiness reached into a table the press could never
+   * reorder. An empty section is an empty list, and is said to be one below.
+   */
+  const scoped = (await section.count()) > 0;
   const topOf = async () => {
-    /*
-     * Scoped to the heading's own table where the page draws more than one -
-     * and falling back to the page where these rows are not inside a section,
-     * since the admin pages do not all use the same frame.
-     */
     const within = await section.locator(ROWS).allInnerTexts().catch(() => []);
-    const said = within.length > 0 ? within : await page.locator(ROWS).allInnerTexts();
+    const said = scoped ? within : await page.locator(ROWS).allInnerTexts();
     const kept = said.map((one) => one.trim()).filter((one) => one !== '');
     /*
      * The whole row rather than its first line. A machine's row starts with its

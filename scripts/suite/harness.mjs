@@ -99,17 +99,15 @@ export async function open(options = {}) {
   const { viewport = { width: 1440, height: 900 }, launch = {}, context: contextOptions = {} } = options;
   /*
    * A base that is not localhost is an insecure origin to Chromium, and an
-   * insecure origin gets no microphone and no `isSecureContext` - so every
-   * voice check reports the product as offering no microphone when what it
-   * is looking at is `host.docker.internal`, the only name a container has
-   * for a server on the host. CI reaches the same server as localhost. Told
-   * to trust the base by name, the browser sees what CI sees.
+   * insecure origin gets no microphone and no `isSecureContext` - so a voice
+   * check pointed at `host.docker.internal` reports the product as offering no
+   * microphone. There is no launch flag that mends it headless (the one that
+   * exists needs a persistent profile), and a name under `.localhost` is no
+   * use either, because Chromium sends those to loopback whatever /etc/hosts
+   * says. What works is reaching the server as localhost, through
+   * `forward.mjs` when it is on the host - see run.mjs's header.
    */
-  const origin = new URL(BASE).origin;
-  const trusted = /^http:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(origin)
-    ? []
-    : [`--unsafely-treat-insecure-origin-as-secure=${origin}`];
-  const browser = await chromium.launch({ ...launch, args: [...trusted, ...(launch.args ?? [])] });
+  const browser = await chromium.launch(launch);
   const context = await browser.newContext({ viewport, ...contextOptions });
   const page = await context.newPage();
   await signIn(context);

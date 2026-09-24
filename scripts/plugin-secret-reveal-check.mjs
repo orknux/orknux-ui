@@ -14,14 +14,48 @@
  * server never hands a stored secret back and a control promising one would be
  * promising the one thing it cannot give.
  *
- * Nothing is saved: the value is typed and the page is left. Reads whichever
- * installed plugin has a secret parameter, and makes nothing.
+ * Nothing is saved: the value is typed and the page is left. Loads a plugin of
+ * its own with one secret parameter - a seeded installation has no plugins at
+ * all, and the developer's is the only one with a Slack in it - and unloads it
+ * afterwards.
  */
 import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1100 } });
 
 /* ------------------------------------- a plugin with a secret parameter ---- */
+
+const KEY = 'zzSecretReveal';
+const SOURCE = `
+export default class Keyed extends OrknuxPlugin {
+  id() { return '${KEY}'; }
+  apiVersion() { return 1; }
+  parameters() {
+    return [
+      new OrknuxParameter({ name: 'apiKey', type: 'string', description: 'The key it signs with.', secret: true }),
+    ];
+  }
+}
+`;
+
+const sweep = async () => {
+  const { plugins } = await graphql(`query { plugins { id key } }`, {});
+  for (const old of plugins.filter((one) => one.key === KEY)) {
+    await graphql(`mutation($id: ID!) { unloadPlugin(id: $id) }`, { id: old.id }).catch(() => undefined);
+    console.log(`swept plugin ${old.key}`);
+  }
+};
+await sweep();
+const clean = async () => {
+  await sweep();
+  await finish(browser);
+};
+
+const loaded = await page.request.post(`${BASE}/api/plugins`, {
+  multipart: { file: { name: `${KEY}.js`, mimeType: 'text/javascript', buffer: Buffer.from(SOURCE, 'utf8') } },
+});
+record(loaded.ok(), `a plugin with a secret parameter loads (${loaded.status()})`);
+if (!loaded.ok()) await clean();
 
 const { workspacePlugins } = await graphql(
   `query($w: ID!) {
@@ -33,7 +67,9 @@ const { workspacePlugins } = await graphql(
   { w: WORKSPACE },
 );
 
-const holding = workspacePlugins.find((one) => one.parameters.some((p) => p.secret)) ?? null;
+const holding = workspacePlugins.find((one) => one.plugin.name === KEY || one.plugin.id === KEY) ??
+  workspacePlugins.find((one) => one.parameters.some((p) => p.secret)) ??
+  null;
 
 if (holding === null) {
   /*
@@ -41,7 +77,7 @@ if (holding === null) {
    * is no box to cover, and a silent skip reads afterwards as coverage.
    */
   record(false, 'there is an installed plugin with a secret parameter to measure');
-  await finish(browser);
+  await clean();
 }
 
 const secret = holding.parameters.find((p) => p.secret);
@@ -51,6 +87,10 @@ console.log(`measuring ${holding.plugin.name} / ${secret.name} (stored: ${secret
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/plugins`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the plugins page'), 'the plugins page is on screen');
+
+/* Narrowed to the one loaded here: the list is paged, and a plugin loaded last is on the last page. */
+await page.getByPlaceholder('Search plugins...').fill(KEY);
+await page.waitForTimeout(600);
 
 /*
  * The parameters are behind the plugin's name, which is a real button so a
@@ -66,7 +106,7 @@ const there = await box
   .then(() => true)
   .catch(() => false);
 record(there, "the plugin's secret parameter has a box");
-if (!there) await finish(browser);
+if (!there) await clean();
 
 /** The eye inside this field's own row, which is what the toggle is. */
 const eye = box.locator('xpath=following-sibling::button[@aria-pressed]').first();
@@ -89,7 +129,7 @@ const appeared = await eye
   .then(() => true)
   .catch(() => false);
 record(appeared, 'typing into it brings out the eye');
-if (!appeared) await finish(browser);
+if (!appeared) await clean();
 
 record(await box.getAttribute('type').then((kind) => kind === 'password'), 'and what was typed is covered');
 
@@ -135,4 +175,4 @@ record(hidden, 'and pressing it again puts it away');
  */
 await box.fill('');
 
-await finish(browser);
+await clean();

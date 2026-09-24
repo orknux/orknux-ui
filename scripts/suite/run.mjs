@@ -10,6 +10,16 @@
  *   docker exec orknux-ui-dev-1 node scripts/suite/run.mjs --any-workspace
  *   docker exec orknux-ui-dev-1 node scripts/suite/run.mjs --jobs 4
  *
+ * Against the shipped image rather than the dev server - the way CI runs it -
+ * reach it as localhost and not as host.docker.internal: Chromium trusts the
+ * first with a microphone and not the second, and the voice checks measure
+ * whether one is offered at all. The container has no localhost:18099 of its
+ * own, so forward one to the host first, in the background:
+ *
+ *   docker exec -d orknux-ui-dev-1 node scripts/suite/forward.mjs 18099
+ *
+ * then ORKNUX_UI_URL=http://localhost:18099, the same as CI's BASE.
+ *
  * Each check is a process of its own rather than a function called in this one.
  * That is deliberate and it is what makes the timeout below mean anything: a
  * check that hangs waiting for a selector that will never appear is killed and
