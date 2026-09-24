@@ -469,6 +469,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                         <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/skills/${skill.id}`}>
                           {skill.name}
                         </Link>
+                        <code className={styles.cardKey} data-skill-key>{skill.key}</code>
                       </h2>
                       <div className={styles.cardActions}>
                         {/* A skill can be left defined but out of reach, which is

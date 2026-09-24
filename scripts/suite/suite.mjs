@@ -2462,6 +2462,41 @@ export const TESTS = [
   },
 
   {
+    name: 'skill-id-check',
+    what: 'every skill has an id, derived from its name, drawn on its card and edited under the rule',
+    needs: ['workspace'],
+    /*
+     * Issue #381. What the rule refuses is pinned in SkillIdTest; this is the
+     * screen: the id derived when a skill is made, the card showing it, and
+     * the editor refusing a bad one in words where it was typed.
+     *
+     * Makes one skill and removes it.
+     */
+  },
+  {
+    name: 'command-marker-check',
+    what: "what marks a command in a message is a box on the workspace's settings",
+    needs: ['workspace'],
+    /*
+     * Issue #381. The parse is pinned in CommandsTest and the trigger test;
+     * this is the box - opens on what is held, saves a change, refuses a
+     * letter in words. Leaves the marker as it found it.
+     */
+  },
+  {
+    name: 'agent-skill-ids-check',
+    what: 'an agent node names the skills to load, by id, and a written id that names nothing is refused',
+    needs: ['workflow'],
+    /*
+     * Issue #381. The run's half - the skills loaded before the model starts,
+     * the ids that name nothing noted - is ForcedSkillsTest's. This is the
+     * editor: the skillIds row on a new agent node, what its empty state says,
+     * and the save refused on the node for an id nothing answers to.
+     *
+     * Adds a node it never saves, so the fixture's graph is left as found.
+     */
+  },
+  {
     name: 'variable-duplicate-check',
     what: 'a variable refused for its name says so under the row that asked, not at the top of the page',
     needs: ['workspace'],

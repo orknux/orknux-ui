@@ -268,12 +268,16 @@ const OBJECT_PAGE_SIZE = 100;
  * can be written out or pointed at a field, so a node can ask about one part of
  * what arrived rather than handing over the whole payload.
  *
+ * `skillIds` names the skills loaded for the model before it starts, by id -
+ * written out, or read from another node, which is how a Slack trigger's
+ * `commands` become the skills an agent follows (issue #381).
+ *
  * Which conversation the node's turn belongs to is deliberately not here. That
  * is a Session node's, and an agent joins one by having an edge drawn from it —
  * so two agents can share a conversation by pointing at the same node, instead
  * of by somebody typing one key into both and hoping.
  */
-const AGENT_PARAMETERS = ['prompt', 'systemPrompt'];
+const AGENT_PARAMETERS = ['prompt', 'systemPrompt', 'skillIds'];
 
 /**
  * What a session node holds, and the names are the server's: `sessionKey` is
@@ -1222,7 +1226,9 @@ function parameterPlaceholder(draft: NodeData, name: string): string | undefined
     ? t('Everything that reached this node')
     : name === 'systemPrompt'
       ? t("The agent's own briefing")
-      : undefined;
+      : name === 'skillIds'
+        ? t('No skill is loaded by force')
+        : undefined;
 }
 
 /**
@@ -5481,7 +5487,10 @@ Change the keystroke in Preferences.`}
                               <>
                                 <strong>prompt</strong> is what the agent is asked; <strong>systemPrompt</strong>{' '}
                                 replaces its own briefing, for this node only. Leave either empty to keep what
-                                the agent already does.
+                                the agent already does. <strong>skillIds</strong> names skills by id, comma-separated
+                                or as a list from another node - the Slack trigger&apos;s <strong>commands</strong>,
+                                say - and they are loaded for the model before it starts. An id that names no skill
+                                is refused here when written, and noted in the run when it arrived with the message.
                                 {draft.mappings.some((mapping) => mapping.name === 'sessionKey') && (
                                   <>
                                     {' '}

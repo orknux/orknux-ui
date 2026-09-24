@@ -693,6 +693,14 @@
   color: var(--color-text-secondary);
 }
 
+/* A label with a (?) beside it, the way the settings pages draw one. */
+.labelWithHint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
 .input,
 .textarea {
   width: 100%;

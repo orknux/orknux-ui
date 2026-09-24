@@ -19,6 +19,7 @@ import {
   setWorkspaceToolTimeout,
   setWorkspaceTaskMaxTurns,
   setWorkspaceAgentMaxSubagents,
+  setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
   setWorkspaceChatTimestamps,
   setWorkspaceQuickChatWrites,
@@ -247,6 +248,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [turns, setTurns] = useState('');
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
+  /** What marks a command in a message that starts a run here; `!` to start. Issue #381. */
+  const [marker, setMarker] = useState('');
   /**
    * How many seconds one function run here may hold its thread, as typed.
    *
@@ -390,6 +393,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             ? ''
             : String(found.agentMaxSubagents),
         );
+        setMarker(found?.commandMarker ?? '!');
         setFunctionTimeout(
           found?.functionTimeoutSeconds === null || found?.functionTimeoutSeconds === undefined
             ? ''
@@ -572,6 +576,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('asks')) {
         latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
       }
+      if (touched.has('marker')) {
+        latest = await setWorkspaceCommandMarker(workspaceId, marker.trim());
+      }
       if (touched.has('functionTimeout')) {
         latest = await setWorkspaceFunctionTimeout(
           workspaceId,
@@ -655,6 +662,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setShare(held.defaultMemoryShare);
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
+    setMarker(held.commandMarker);
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
     setToolTimeout(held.toolTimeoutSeconds === null ? '' : String(held.toolTimeoutSeconds));
     setCompanion(held.companionModelId ?? '');
@@ -1098,6 +1106,36 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               placeholder={workspace === null ? '' : String(workspace.agentMaxSubagentsDefault)}
               value={asks}
               onChange={(event) => { touch('asks'); setAsks(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        {/*
+          What marks a command in a message that starts a run here. Orknux's
+          own syntax rather than Slack's `/`, which Slack intercepts and refuses
+          when unregistered; a word starting with this marker is a command, and
+          the Slack trigger hands the commands on as a list an agent node can
+          load skills from. Issue #381.
+        */}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-command-marker">
+              {t('Command Marker')}
+            </label>
+            <FieldHint label={t('Command Marker')}>
+              {t('What marks a command in a message that starts a run here: with ! as the marker, "@orknux !review PR 12" carries the command review, and the Slack trigger hands every command in the message on as a list, which an agent node’s Skill IDs can read to load the skills of those ids. Orknux’s own syntax, because Slack intercepts a message starting with / and refuses one it does not know. One to three characters, none of them a letter or a digit, so that ordinary words are never commands.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-command-marker"
+              className={styles.input}
+              type="text"
+              maxLength={3}
+              spellCheck={false}
+              value={marker}
+              onChange={(event) => { touch('marker'); setMarker(event.target.value); }}
             />
           </div>
         </div>

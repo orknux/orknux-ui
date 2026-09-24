@@ -16,6 +16,7 @@ import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import fileTextIcon from '../../assets/file-text.svg';
 import { AppShell } from '../../components/AppShell';
 import { BackLink } from '../../components/BackLink';
+import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { RevisionHistory } from '../../components/RevisionHistory';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
@@ -46,6 +47,8 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
 
   const [skill, setSkill] = useState<Skill | null>(null);
   const [name, setName] = useState('');
+  /** Its id, as typed; what a graph or a command names it by. Issue #381. */
+  const [key, setKey] = useState('');
   const [description, setDescription] = useState('');
   /** Which folder it lives in; changing it moves the skill. */
   const [catalogId, setCatalogId] = useState('');
@@ -118,6 +121,7 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
   function apply(found: Skill) {
     setSkill(found);
     setName(found.name);
+    setKey(found.key);
     setDescription(found.description ?? '');
     setContent(found.content);
     setCatalogId(found.catalogId);
@@ -169,6 +173,7 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
       apply(
         await updateSkill(skill.id, {
           name: name.trim(),
+          key: key.trim(),
           description: description.trim(),
           content,
           catalogId,
@@ -214,11 +219,12 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
     if (skill === null) return false;
     return (
       name.trim() !== skill.name.trim() ||
+      key.trim() !== skill.key ||
       description.trim() !== (skill.description ?? '').trim() ||
       content !== skill.content ||
       catalogId !== skill.catalogId
     );
-  }, [skill, name, description, content, catalogId]);
+  }, [skill, name, key, description, content, catalogId]);
 
   /*
    * The three ways out, and the question before any of them: a link, a Back
@@ -402,6 +408,31 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
                     value={name}
                     onChange={(event) => {
                       setName(event.target.value);
+                      setSaved(false);
+                    }}
+                  />
+                </div>
+                {/*
+                  What a graph or a Slack command names this skill by. Its own
+                  box rather than a derivation shown in grey, because the name
+                  is for people and the id is typed into a workflow: somebody
+                  wants `review` on a skill called "Thorough code review".
+                  Issue #381.
+                */}
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="skill-key">{t('ID')}</label>
+                    <FieldHint label={t('ID')}>
+                      {t('What a workflow graph or a Slack command names this skill by: an agent node’s Skill IDs, or !review in a message. Letters, underscores and hyphens only, and no two skills in a workspace share one. It started as the name with everything else removed.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="skill-key"
+                    className={`${styles.input} ${styles.inputMono}`}
+                    value={key}
+                    spellCheck={false}
+                    onChange={(event) => {
+                      setKey(event.target.value);
                       setSaved(false);
                     }}
                   />

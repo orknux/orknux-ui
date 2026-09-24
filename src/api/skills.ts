@@ -19,6 +19,12 @@ export interface Skill {
   /** The catalog it lives in; every skill is in one. */
   catalogId: string;
   name: string;
+  /**
+   * What a workflow graph or a command names it by: letters, underscores and
+   * hyphens, unique in the workspace. Derived from the name unless typed.
+   * Issue #381.
+   */
+  key: string;
   description: string | null;
   /** Markdown, opening with a frontmatter block naming and describing it. */
   content: string;
@@ -28,7 +34,7 @@ export interface Skill {
 }
 
 const SKILL_FIELDS =
-  'id workspaceId catalogId name description content enabled lastModifiedAt lastModifiedBy';
+  'id workspaceId catalogId name key description content enabled lastModifiedAt lastModifiedBy';
 
 const CATALOG_FIELDS = 'id workspaceId name skillCount createdAt createdBy';
 
@@ -79,6 +85,8 @@ export interface PluginSkillCatalog {
 /** One instruction set a plugin brings: markdown an agent reads, never code it runs. */
 export interface PluginSkill {
   name: string;
+  /** Derived from the name the way a workspace skill's is. */
+  key: string;
   description: string | null;
   content: string;
 }
@@ -87,7 +95,7 @@ export interface PluginSkill {
 export async function fetchPluginSkillCatalogs(): Promise<PluginSkillCatalog[]> {
   const data = await graphql<{ pluginSkillCatalogs: PluginSkillCatalog[] }>(
     `query PluginSkillCatalogs {
-       pluginSkillCatalogs { name key plugin skills { name description content } }
+       pluginSkillCatalogs { name key plugin skills { name key description content } }
      }`,
   );
   return data.pluginSkillCatalogs;
@@ -132,6 +140,8 @@ export async function fetchSkill(id: string): Promise<Skill | null> {
 
 export interface CreateSkillInput {
   name: string;
+  /** Its id; left out, the name's letters, underscores and hyphens. */
+  key?: string;
   description?: string;
   /** Left out for a new skill, which starts from the shape with its parts named. */
   content?: string;
@@ -149,6 +159,8 @@ export async function createSkill(workspaceId: string, input: CreateSkillInput):
 
 export interface UpdateSkillInput {
   name?: string;
+  /** A new id; left out it stays. Refused if another skill here holds it. */
+  key?: string;
   description?: string;
   content?: string;
   /** Moves it to another folder; left out it stays where it is. */

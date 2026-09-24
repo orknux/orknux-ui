@@ -458,6 +458,15 @@
  * to be read and a single line rarely carries the point of one — the card is
  * the summary, and the editor has the whole of it.
  */
+/* A skill's id, beside its name: what a graph or a command calls it (#381). */
+.cardKey {
+  margin-left: var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
 .cardBody {
   display: -webkit-box;
   -webkit-box-orient: vertical;

@@ -101,6 +101,12 @@ export interface Workspace {
   /** What an agent here gets when the field above is null, so the box can show it. */
   agentMaxSubagentsDefault: number;
   /**
+   * What marks a command in a message that starts a run here - `!review`.
+   * Orknux's own syntax, because Slack polices `/`. One to three characters,
+   * none a letter or a digit. Issue #381.
+   */
+  commandMarker: string;
+  /**
    * How many seconds one run of a tool or function here may hold its thread,
    * where the tool or function has no timeout of its own.
    *
@@ -177,7 +183,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault commandMarker ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -377,6 +383,17 @@ export async function setWorkspaceAgentMaxSubagents(
     { workspaceId, count },
   );
   return data.setWorkspaceAgentMaxSubagents;
+}
+
+/** One to three characters, none a letter, a digit or a space; refused otherwise. Issue #381. */
+export async function setWorkspaceCommandMarker(workspaceId: string, marker: string): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceCommandMarker: Workspace }>(
+    `mutation SetWorkspaceCommandMarker($workspaceId: ID!, $marker: String!) {
+       setWorkspaceCommandMarker(workspaceId: $workspaceId, marker: $marker) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, marker },
+  );
+  return data.setWorkspaceCommandMarker;
 }
 
 /** Null clears it, which puts the workspace back on the installation's number. */

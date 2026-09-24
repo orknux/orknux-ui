@@ -20,11 +20,49 @@
  */
 import { BASE, WORKSPACE, WORKFLOW, open, record, finish } from './suite/harness.mjs';
 
-const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
+/*
+ * The node this check adds is taken off the fixture's graph before and after.
+ *
+ * It was never removed: every run added an image node answering to the same
+ * name and saved it, so the second run on one installation was refused with
+ * `"checkedImage" is produced by 2 nodes` - which read as the editor losing a
+ * prompt. CI builds a fresh fixture and never saw it; a developer's ran once.
+ * Removed by script, through the same save the editor uses, so the graph is
+ * left as it was found.
+ */
+const NODE_FIELDS =
+  'key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey ' +
+  'imageModelId outputName icon orientation yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds ' +
+  'retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds x y ' +
+  'mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId }';
+
+const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
+
+const sweep = async (name) => {
+  const { workflowGraph } = await graphql(
+    `query($w: ID!, $f: ID!) { workflowGraph(workspaceId: $w, workflowId: $f) { nodes { ${NODE_FIELDS} } edges { source target branch } } }`,
+    { w: WORKSPACE, f: WORKFLOW },
+  );
+  const gone = new Set(workflowGraph.nodes.filter((node) => node.outputName === name).map((node) => node.key));
+  if (gone.size === 0) return;
+  await graphql(
+    `mutation($w: ID!, $f: ID!, $input: WorkflowGraphInput!) { saveWorkflowGraph(workspaceId: $w, workflowId: $f, input: $input) { workflowId } }`,
+    {
+      w: WORKSPACE,
+      f: WORKFLOW,
+      input: {
+        nodes: workflowGraph.nodes.filter((node) => !gone.has(node.key)),
+        edges: workflowGraph.edges.filter((edge) => !gone.has(edge.source) && !gone.has(edge.target)),
+      },
+    },
+  );
+  console.log(`swept ${gone.size} node(s) answering to ${name}`);
+};
 
 const PROMPT = 'a hen in a hat, oil on canvas';
 /** What this check's node answers with, kept off the name the fixture's uses. */
 const OUTPUT = 'checkedImage';
+await sweep(OUTPUT);
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, {
   waitUntil: 'domcontentloaded',
@@ -100,4 +138,5 @@ record(kept === PROMPT, `the prompt is still there after a reload (${JSON.string
 const denial = await page.getByText(/takes no parameters/i).count();
 record(denial === 0, 'and the panel does not say the node takes no parameters');
 
+await sweep(OUTPUT);
 await finish(browser);
