@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
@@ -593,6 +593,17 @@ function VariableTable({
     if (adding === null) setAddingShown(false);
   }, [adding]);
   const [busy, setBusy] = useState<string | null>(null);
+  /**
+   * The refusal, kept beside the row it is about.
+   *
+   * It used to go up to the page, which drew it as one red line above the
+   * catalog's name - five hundred pixels from the add row at the foot of the
+   * table, and off the screen entirely on a list of any length. A name that
+   * was already taken looked like a press that did nothing. So the row that
+   * was refused says so, directly under itself, where the eye already is;
+   * the page still hears about it for its own record.
+   */
+  const [refused, setRefused] = useState<{ id: string; message: string } | null>(null);
 
   function baseOf(variable: Variable): Draft {
     return draftOf(variable, shown[variable.id]);
@@ -626,14 +637,25 @@ function VariableTable({
   async function run(id: string, work: () => Promise<void>) {
     setBusy(id);
     onError(null);
+    setRefused(null);
     try {
       await work();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : t('That could not be saved.'));
+      const message = cause instanceof Error ? cause.message : t('That could not be saved.');
+      setRefused({ id, message });
+      onError(message);
     } finally {
       setBusy(null);
     }
   }
+
+  /** The refusal under one row, where there is one for it. */
+  const refusalUnder = (id: string) =>
+    refused !== null && refused.id === id ? (
+      <p className={table.rowError} role="alert" data-row-error={id}>
+        {refused.message}
+      </p>
+    ) : null;
 
   async function save(variable: Variable) {
     const draft = draftFor(variable);
@@ -986,7 +1008,8 @@ function VariableTable({
           // open — otherwise a secret saved empty could never be edited again.
           const readable = kind === 'VALUE' || variable.id in shown || !variable.valueSet;
           return (
-            <div key={variable.id} className={table.row}>
+            <Fragment key={variable.id}>
+            <div className={table.row}>
               <input
                 className={`${table.colName} ${table.cellInput} ${table.mono}`}
                 value={draft.name}
@@ -1081,6 +1104,8 @@ function VariableTable({
                 </button>
               </span>
             </div>
+            {refusalUnder(variable.id)}
+            </Fragment>
           );
         })}
 
@@ -1171,6 +1196,7 @@ function VariableTable({
             </span>
           </div>
         )}
+        {adding !== null && refusalUnder('new')}
       </div>
     </section>
   );

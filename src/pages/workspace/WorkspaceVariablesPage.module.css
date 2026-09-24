@@ -111,6 +111,15 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* What a row was refused with, directly under it. */
+.rowError {
+  margin: 0;
+  padding: var(--space-6) var(--space-16) var(--space-10);
+  background: var(--color-surface-raised);
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
 .colName {
   flex-shrink: 0;
   width: 200px;

@@ -2462,6 +2462,21 @@ export const TESTS = [
   },
 
   {
+    name: 'variable-duplicate-check',
+    what: 'a variable refused for its name says so under the row that asked, not at the top of the page',
+    needs: ['workspace'],
+    /*
+     * The server always refused a duplicate name in one catalog, and the page
+     * drew the refusal - one red line above the catalog's name, off the screen
+     * from the add row at the foot of any real list. Michal added a duplicate
+     * and saw nothing happen. The distance is what is measured: the refusal
+     * lands within a row's height under the row it is about, and goes with
+     * the row when the row is discarded.
+     *
+     * Makes one variable, tries it twice, and removes it.
+     */
+  },
+  {
     name: 'variable-types-check',
     what: "a variable of a plugin's type gets the plugin's picker and its refusal, and a list is edited as one",
     needs: ['workspace'],
