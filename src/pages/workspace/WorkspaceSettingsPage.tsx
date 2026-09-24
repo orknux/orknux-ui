@@ -1081,9 +1081,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         <div className={styles.field}>
           <span className={styles.labelWithHint}>
             <label className={styles.label} htmlFor="workspace-max-subagents">
-              {t('Agents An Agent May Ask')}
+              {t('Subagents Per Conversation')}
             </label>
-            <FieldHint label={t('Agents An Agent May Ask')}>
+            <FieldHint label={t('Subagents Per Conversation')}>
               {t('How many other agents one agent here may ask in the course of one conversation. Each ask starts a conversation of its own, with its own model calls and tools, on the asking agent’s say-so - so this bounds what one question can fan out into. An agent that has spent them is told so and answers with what it has. Left empty, the workspace has decided nothing and the installation’s number is used. Zero takes the tool off the table here. Between 0 and 100.')}
             </FieldHint>
           </span>

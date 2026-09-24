@@ -663,9 +663,12 @@ export function ConditionForm({
             form has none. Issue #378.
           */}
           {type === 'VALUE' && (
-            <p className={styles.fieldHint} data-value-note>
-              {t('The value is picked on the node, from what the run carries.')}
-            </p>
+            <span className={own.labelWithHint} data-value-note>
+              <span className={styles.label}>{t('Value')}</span>
+              <FieldHint label={t('Value')}>
+                {t('The value is picked on the node, from what the run carries, under the name value.')}
+              </FieldHint>
+            </span>
           )}
           {!isComposite && type !== 'FUNCTION' && (
             <>

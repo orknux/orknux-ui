@@ -358,9 +358,9 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
               <legend className={styles.label}>
                 {t('Roles')}
                 {external && (
-                  <span className={styles.fieldNote}>
-                    {t('Given here, on top of whatever their directory groups already give them.')}
-                  </span>
+                  <FieldHint label={t('Roles')}>
+                    {t('Given here, on top of whatever their directory groups already give them. What the groups give is not shown here and cannot be taken away here.')}
+                  </FieldHint>
                 )}
               </legend>
               {roles.length === 0 ? (

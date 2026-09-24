@@ -544,7 +544,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       */}
       {!missing && (held?.notes?.length ?? 0) > 0 && (
         <section className={styles.notes} aria-label={t('What the agent wrote down')}>
-          <h2 className={styles.notesHeading}>{t('Written down by the agent')}</h2>
+          <h2 className={styles.notesHeading}>{t('Agent notes')}</h2>
           <ul className={styles.notesList}>
             {held?.notes?.map((one) => (
               <li key={one.id} className={styles.note}>

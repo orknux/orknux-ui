@@ -97,7 +97,19 @@ export async function signIn(context) {
 
 export async function open(options = {}) {
   const { viewport = { width: 1440, height: 900 }, launch = {}, context: contextOptions = {} } = options;
-  const browser = await chromium.launch(launch);
+  /*
+   * A base that is not localhost is an insecure origin to Chromium, and an
+   * insecure origin gets no microphone and no `isSecureContext` - so every
+   * voice check reports the product as offering no microphone when what it
+   * is looking at is `host.docker.internal`, the only name a container has
+   * for a server on the host. CI reaches the same server as localhost. Told
+   * to trust the base by name, the browser sees what CI sees.
+   */
+  const origin = new URL(BASE).origin;
+  const trusted = /^http:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(origin)
+    ? []
+    : [`--unsafely-treat-insecure-origin-as-secure=${origin}`];
+  const browser = await chromium.launch({ ...launch, args: [...trusted, ...(launch.args ?? [])] });
   const context = await browser.newContext({ viewport, ...contextOptions });
   const page = await context.newPage();
   await signIn(context);

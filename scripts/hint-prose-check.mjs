@@ -170,6 +170,12 @@ const IN_THE_OPEN = [
     why: 'the state of the installation, on the list that would have shown them, with the one thing to do about it',
   },
   {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'No agent in this session has asked another yet.',
+    because: 'status',
+    why: 'the state of the sessions panel - a family of one - on the list that would have shown the rest (#379)',
+  },
+  {
     file: 'src/pages/admin/AdminPluginsPage.tsx',
     says: 'The marketplace offers nothing yet.',
     because: 'status',
