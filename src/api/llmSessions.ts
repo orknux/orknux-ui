@@ -108,6 +108,8 @@ export interface LlmSessionMember {
   /** "Main session" at the top; what the asking agent called the task for the rest. */
   title: string;
   main: boolean;
+  /** How deep under the main session it sits: 0 for the main, 1 for what it asked, and so on. Issue #379. */
+  depth: number;
   /** Green or orange: whether an agent is at work in it right now. */
   active: boolean;
   lastEventAt: string | null;
@@ -116,7 +118,7 @@ export interface LlmSessionMember {
 /** A session's family from the top, asked of any member. */
 export async function fetchLlmSessionFamily(id: string): Promise<LlmSessionMember[]> {
   const data = await graphql<{ llmSessionFamily: LlmSessionMember[] }>(
-    `query ($id: ID!) { llmSessionFamily(id: $id) { id key title main active lastEventAt } }`,
+    `query ($id: ID!) { llmSessionFamily(id: $id) { id key title main depth active lastEventAt } }`,
     { id },
   );
   return data.llmSessionFamily;

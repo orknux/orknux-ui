@@ -35,17 +35,17 @@ record(
 const member = await graphql(`query { __type(name: "LlmSessionMember") { fields { name } } }`, {}).catch(() => null);
 const carried = (member?.__type?.fields ?? []).map((one) => one.name);
 record(
-  ['id', 'title', 'main', 'active'].every((one) => carried.includes(one)),
-  'and each member says its title, whether it is the main one, and whether it is active',
+  ['id', 'title', 'main', 'depth', 'active'].every((one) => carried.includes(one)),
+  'and each member says its title, its depth, whether it is the main one, and whether it is active',
 );
 
 /* ------------------------------------------------------------ the drawing - */
 
 const MAIN = '424242';
 const FAMILY = [
-  { id: MAIN, key: 'chat:planning', title: 'Main session', main: true, active: true, lastEventAt: '2026-09-23T09:05:00Z' },
-  { id: '424243', key: 'chat:planning:ask-1', title: 'Summarise the incident thread', main: false, active: false, lastEventAt: '2026-09-23T09:01:00Z' },
-  { id: '424244', key: 'chat:planning:ask-2', title: 'Find the service owners', main: false, active: true, lastEventAt: '2026-09-23T09:04:00Z' },
+  { id: MAIN, key: 'chat:planning', title: 'Main session', main: true, depth: 0, active: true, lastEventAt: '2026-09-23T09:05:00Z' },
+  { id: '424243', key: 'chat:planning:ask-1', title: 'Summarise the incident thread', main: false, depth: 1, active: false, lastEventAt: '2026-09-23T09:01:00Z' },
+  { id: '424244', key: 'chat:planning:ask-2', title: 'Find the service owners', main: false, depth: 1, active: true, lastEventAt: '2026-09-23T09:04:00Z' },
 ];
 
 await page.route('**/graphql', async (route) => {
@@ -101,6 +101,16 @@ record(
 
 const active = await page.locator('[data-session-member][data-session-active="true"]').count();
 record(active === 2, `each carries its status: ${active} active (green), the rest inactive (orange)`);
+
+// The subagent sessions sit indented under the main one. Issue #379.
+const indent = await page.evaluate(() => {
+  const main = document.querySelector('[data-session-depth="0"]');
+  const sub = document.querySelector('[data-session-depth="1"]');
+  if (main === null || sub === null) return null;
+  return { main: parseFloat(getComputedStyle(main).paddingLeft), sub: parseFloat(getComputedStyle(sub).paddingLeft) };
+});
+console.log(`indent: ${JSON.stringify(indent)}`);
+record(indent !== null && indent.sub > indent.main, 'the subagent sessions are nested under the main one');
 record(
   await page.locator('[data-session-member][aria-current="page"]').getAttribute('data-session-member').then((id) => id === MAIN),
   'the one on screen is marked as the current one',

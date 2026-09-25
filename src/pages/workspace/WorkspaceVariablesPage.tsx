@@ -446,7 +446,7 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                     aria-label={`Delete ${current.name}`}
                     title={t('Delete')}
                   >
-                    <img src={trashIcon} alt="" width={14} height={14} />
+                    <img src={trashIcon} alt="" width={16} height={16} />
                   </button>
                 </div>
               </header>
@@ -1100,7 +1100,7 @@ function VariableTable({
                   aria-label={`Delete ${variable.name}`}
                   title={t('Delete')}
                 >
-                  <img src={trashIcon} alt="" width={14} height={14} />
+                  <img src={trashIcon} alt="" width={16} height={16} />
                 </button>
               </span>
             </div>
@@ -1191,7 +1191,7 @@ function VariableTable({
                 aria-label={t('Discard this row')}
                 title={t('Discard')}
               >
-                <img src={trashIcon} alt="" width={14} height={14} />
+                <img src={trashIcon} alt="" width={16} height={16} />
               </button>
             </span>
           </div>

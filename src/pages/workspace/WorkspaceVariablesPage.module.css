@@ -89,9 +89,12 @@
 }
 
 .tableHeader,
+/* Top-aligned: a LIST value stacks several inputs, so a row can be tall, and
+   the name, description, type and actions read best lined up with its first
+   value rather than floating in its middle. Issue: variable-list alignment. */
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-16);
   width: 100%;
   padding: var(--space-10) var(--space-16);
@@ -145,6 +148,7 @@
 .colDescription {
   flex: 1 0 0;
   min-width: 0;
+  align-self: flex-start;
   overflow: hidden;
   font-size: var(--text-md);
   color: var(--color-text-secondary);
@@ -160,10 +164,11 @@
 .colActions {
   display: flex;
   flex-shrink: 0;
-  align-items: center;
-  /* Centred: the tick comes and goes, and a bin that shifts when it does reads
-     as two different controls. */
+  align-items: flex-start;
+  /* Centred across, so the tick coming and going does not shift the bin; and
+     at the top, level with the first value in a tall row. */
   justify-content: center;
+  padding-top: var(--space-6);
   gap: var(--space-8);
   width: 110px;
 }

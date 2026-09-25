@@ -661,7 +661,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                       className={current ? `${styles.familyRow} ${styles.familyRowCurrent}` : styles.familyRow}
                       aria-current={current ? 'page' : undefined}
                       data-session-member={member.id}
+                      data-session-depth={member.depth}
                       data-session-active={member.active ? 'true' : 'false'}
+                      /* Nested under the one that asked, a step per level. Issue #379. */
+                      style={{ paddingLeft: `calc(var(--space-8) + ${member.depth} * var(--space-16))` }}
                       onClick={() =>
                         navigate(`/workspace/${workspaceId}/sessions/${member.id}`)
                       }
