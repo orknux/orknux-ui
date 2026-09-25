@@ -2462,6 +2462,17 @@ export const TESTS = [
   },
 
   {
+    name: 'login-reset-link-check',
+    what: 'the sign-in page offers a password reset only where the installation keeps the passwords',
+    needs: [],
+    /*
+     * Issue #382. Under a directory sign-in the Reset link beside the password
+     * box led to a page that could do nothing about a directory's password.
+     * The auth method is stubbed at the browser, both ways, because the
+     * installation under test signs in one way and this is about the other.
+     */
+  },
+  {
     name: 'skill-id-check',
     what: 'every skill has an id, derived from its name, drawn on its card and edited under the rule',
     needs: ['workspace'],

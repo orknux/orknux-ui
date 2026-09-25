@@ -141,9 +141,17 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
             <div className={styles.field}>
               <div className={styles.fieldHeader}>
                 <label className={styles.label} htmlFor={passwordId}>{t('Password')}</label>
-                <button type="button" className={styles.resetLink} onClick={onResetPassword}>
-                  {t('Reset')}
-                </button>
+                {/*
+                  Only where the installation keeps the passwords itself. A
+                  directory's password is not Orknux's to reset, so under LDAP
+                  the link led to a page that could do nothing about it. Issue
+                  #382.
+                */}
+                {signIn?.method === 'INTERNAL' && (
+                  <button type="button" className={styles.resetLink} onClick={onResetPassword}>
+                    {t('Reset')}
+                  </button>
+                )}
               </div>
               <div className={styles.inputContainer}>
                 <input
