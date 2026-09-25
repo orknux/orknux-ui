@@ -240,6 +240,11 @@ try {
       .catch(() => false);
     if (!record(there, `${what} draws the ${region} panel`)) continue;
 
+    // The History panel is collapsed by default now; open it so its status and
+    // list are on screen. Publications has no such toggle. Issue #414.
+    const historyToggle = found.locator('[data-history-toggle]');
+    if ((await historyToggle.count()) > 0) await historyToggle.click();
+
     /*
      * And then waited for it to have decided what it holds.
      *

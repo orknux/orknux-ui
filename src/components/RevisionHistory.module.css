@@ -24,6 +24,43 @@
 }
 
 /*
+ * The heading as a toggle, with the (?) beside it. Collapsed by default, the
+ * panel is a line that opens the list on a press. Issue #414.
+ */
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+/* The caret that turns as it opens. */
+.caret {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* How many versions there are, beside the word, so the count reads while closed. */
+.count {
+  padding: 0 var(--space-6);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/*
  * The heading and the (?) that explains the panel, kept on one line so the
  * question mark belongs to "History" rather than to the first row under it.
  * Same shape as the settings pages' `.headingWithHint`; written here rather

@@ -61,6 +61,9 @@ try {
     const history = page.getByRole('region', { name: 'History' });
     await history.waitFor({ timeout: 20_000 }).catch(() => {});
 
+    // Collapsed by default now, so open it before reading the versions. Issue #414.
+    await history.locator('[data-history-toggle]').click();
+
     /*
       The stub the tool was created as, and the first thing written over it -
       waited for rather than counted straight away. `count()` does not

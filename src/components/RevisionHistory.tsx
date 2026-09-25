@@ -53,6 +53,8 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
   const [detail, setDetail] = useState<ComponentRevisionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Whether the list is drawn. Collapsed by default: it can run to dozens. Issue #414. */
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(() => {
     // Nothing saved yet has nothing to have been. A page that draws this while
@@ -126,28 +128,47 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
         into the note above rather than deleted: "and it appears here" is the
         same fact, said once.
       */}
-      <h2 className={styles.heading}>
-        <span className={styles.headingWithHint}>
-          {t('History')}
-          <FieldHint label={t('History')}>
-            {t('Every save keeps what this was before it, and it appears here. How long they are kept is an administrator’s setting.')}
-          </FieldHint>
-        </span>
-      </h2>
+      {/*
+        Collapsed by default, opened on a press. A component saved often keeps
+        dozens of versions, and drawn open they push everything under the panel
+        off the screen - so the panel is a line that says how many there are
+        and opens to the list when somebody wants it. Issue #414.
+      */}
+      <div className={styles.headingRow}>
+        <button
+          type="button"
+          className={styles.toggle}
+          aria-expanded={open}
+          data-history-toggle=""
+          onClick={() => setOpen((was) => !was)}
+        >
+          <span className={styles.caret} aria-hidden="true">{open ? '▾' : '▸'}</span>
+          <h2 className={styles.heading}>{t('History')}</h2>
+          {revisions !== null && revisions.length > 0 && (
+            <span className={styles.count} data-history-count={revisions.length}>
+              {revisions.length}
+            </span>
+          )}
+        </button>
+        <FieldHint label={t('History')}>
+          {t('Every save keeps what this was before it, and it appears here. How long they are kept is an administrator’s setting.')}
+        </FieldHint>
+      </div>
 
-      {error !== null && (
+      {open && error !== null && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
 
-      {revisions === null ? (
-        <Loader />
-      ) : revisions.length === 0 ? (
-        // A status says the state. It does not teach; the (?) above does that.
-        <p className={styles.empty}>{t('Nothing yet.')}</p>
-      ) : (
-        <ul className={styles.list}>
+      {open &&
+        (revisions === null ? (
+          <Loader />
+        ) : revisions.length === 0 ? (
+          // A status says the state. It does not teach; the (?) above does that.
+          <p className={styles.empty}>{t('Nothing yet.')}</p>
+        ) : (
+          <ul className={styles.list}>
           {revisions.map((revision) => (
             <li key={revision.id} className={styles.item}>
               <button
@@ -188,7 +209,7 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
             </li>
           ))}
         </ul>
-      )}
+        ))}
     </section>
   );
 }
