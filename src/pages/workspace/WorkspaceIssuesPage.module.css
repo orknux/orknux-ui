@@ -237,6 +237,7 @@
 /* Open or closed, in the one place the eye already is. */
 .dotOpen,
 .dotProgress,
+.dotReview,
 .dotClosed {
   display: block;
   flex: none;
@@ -260,6 +261,11 @@
  */
 .dotProgress {
   background: var(--color-accent-warning, #f59e0b);
+}
+
+/* Awaiting review, between in-progress and closed. Violet. Issue #428. */
+.dotReview {
+  background: var(--color-violet, #8b5cf6);
 }
 
 .issueTitle {
@@ -331,6 +337,7 @@
  */
 .stateOpen,
 .stateProgress,
+.stateReview,
 .stateClosed {
   margin-right: var(--space-6);
   padding: 1px var(--space-6);
@@ -350,6 +357,11 @@
 .stateProgress {
   background: color-mix(in srgb, var(--color-accent-warning, #f59e0b) 18%, transparent);
   color: var(--color-accent-warning, #f59e0b);
+}
+
+.stateReview {
+  background: color-mix(in srgb, var(--color-violet, #8b5cf6) 18%, transparent);
+  color: var(--color-violet, #8b5cf6);
 }
 
 .stateClosed {

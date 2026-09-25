@@ -596,7 +596,8 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
    */
   function nextStatus(from: IssueStatus): IssueStatus {
     if (from === 'OPEN') return 'IN_PROGRESS';
-    return from === 'IN_PROGRESS' ? 'CLOSED' : 'OPEN';
+    if (from === 'IN_PROGRESS') return 'REVIEW';
+    return from === 'REVIEW' ? 'CLOSED' : 'OPEN';
   }
 
   async function setIssueStatus(wanted: IssueStatus) {
@@ -1496,7 +1497,9 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                       ? styles.statusOpen
                       : status === 'IN_PROGRESS'
                         ? styles.statusProgress
-                        : styles.statusClosed
+                        : status === 'REVIEW'
+                          ? styles.statusReview
+                          : styles.statusClosed
                   }
                   onClick={() => void toggleStatus()}
                   disabled={creating || saving}

@@ -289,6 +289,7 @@
 
 .statusOpen,
 .statusProgress,
+.statusReview,
 .statusClosed {
   align-self: flex-start;
   padding: var(--space-4) var(--space-12);
@@ -313,6 +314,7 @@
 
 .statusProgress:disabled,
 .statusOpen:disabled,
+.statusReview:disabled,
 .statusClosed:disabled {
   opacity: 0.6;
   cursor: default;
@@ -450,6 +452,13 @@
   background: color-mix(in srgb, var(--color-accent-warning, #f59e0b) 18%, transparent);
   border-color: var(--color-accent-warning, #f59e0b);
   color: var(--color-accent-warning, #f59e0b);
+}
+
+/* Done and awaiting review, between in-progress and closed. Violet. Issue #428. */
+.statusReview {
+  background: color-mix(in srgb, var(--color-violet, #8b5cf6) 18%, transparent);
+  border-color: var(--color-violet, #8b5cf6);
+  color: var(--color-violet, #8b5cf6);
 }
 
 /*

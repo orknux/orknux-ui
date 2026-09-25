@@ -1,8 +1,8 @@
 import { graphql } from './client';
 import { t } from '../i18n';
 
-/** Where an issue is in its life. Two states; a third would need a reason. */
-export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'CLOSED';
+/** Where an issue is in its life: open, picked up, up for review, then closed. */
+export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'REVIEW' | 'CLOSED';
 
 /** What a list is ordered by, in the words the server uses. */
 export type IssueOrder = 'NUMBER' | 'TITLE' | 'UPDATED' | 'LAST_COMMENT' | 'TYPE';
@@ -39,6 +39,7 @@ export type IssueTypeFilter = string | null;
 export const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
   OPEN: 'Open',
   IN_PROGRESS: t('In progress'),
+  REVIEW: t('Review'),
   CLOSED: 'Closed',
 };
 

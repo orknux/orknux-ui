@@ -40,6 +40,7 @@ const STALE_AFTER_MS = 30_000;
 const FILTERS: { label: string; status: IssueStatus | null }[] = [
   { label: t('Open'), status: 'OPEN' },
   { label: t('In progress'), status: 'IN_PROGRESS' },
+  { label: t('Review'), status: 'REVIEW' },
   { label: t('Closed'), status: 'CLOSED' },
   { label: t('All'), status: null },
 ];
@@ -464,7 +465,9 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
                           ? styles.dotOpen
                           : issue.status === 'IN_PROGRESS'
                             ? styles.dotProgress
-                            : styles.dotClosed
+                            : issue.status === 'REVIEW'
+                              ? styles.dotReview
+                              : styles.dotClosed
                       }
                       aria-hidden="true"
                       title={ISSUE_STATUS_LABEL[issue.status]}
@@ -484,7 +487,9 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
                           ? styles.stateOpen
                           : issue.status === 'IN_PROGRESS'
                             ? styles.stateProgress
-                            : styles.stateClosed
+                            : issue.status === 'REVIEW'
+                              ? styles.stateReview
+                              : styles.stateClosed
                       }
                     >
                       {ISSUE_STATUS_LABEL[issue.status]}
