@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
 import { NEW_CONDITION, fetchWorkspaceConditions } from '../api/conditions';
@@ -114,6 +115,17 @@ export interface TriggerFormProps {
    * one nothing ever shows them again. Set, and the field is not drawn.
    */
   namedAfter?: string;
+  /**
+   * Where the page wants the Save button drawn, when that is not the foot of the
+   * form. Issue #386.
+   *
+   * A settings page puts it in its header, beside the title, so saving a long
+   * form never needs a scroll. The button is the same one - same submit, same
+   * disabled and label states - reached through the `form` attribute and drawn
+   * into this element by a portal. Left undefined everywhere else (the create
+   * dialog), where the button stays at the foot.
+   */
+  actionsSlot?: HTMLElement | null;
 }
 
 /** The zones the form offers; anything else can be typed into the server. */
@@ -159,7 +171,10 @@ export function TriggerForm({
   onSaved,
   namedAfter,
   onCancel,
+  actionsSlot,
 }: TriggerFormProps) {
+  /** Ties the Save button to this form when a header draws it apart. Issue #386. */
+  const formId = useId();
   const [name, setName] = useState(trigger?.name ?? namedAfter ?? '');
   const [type, setType] = useState<TriggerType>(trigger?.type ?? 'INCOMING_CONNECTION');
   const [connectionId, setConnectionId] = useState(trigger?.connectionId ?? '');
@@ -583,7 +598,7 @@ export function TriggerForm({
 
   return (
     <>
-      <form className={styles.body} onSubmit={handleSubmit}>
+      <form id={formId} className={styles.body} onSubmit={handleSubmit}>
         <div className={styles.fields}>
           {namedAfter === undefined && (
           <div className={styles.field}>
@@ -1231,18 +1246,36 @@ export function TriggerForm({
           is filling in is a press away from losing the work. The list of
           definitions is where one is taken away deliberately.
         */}
-        {embedded ? null : (
-        <div className={styles.actions}>
-          {onCancel !== undefined && (
-            <button type="button" className={styles.ghost} onClick={onCancel} disabled={submitting}>
-              {t('Cancel')}
-            </button>
-          )}
-          <button type="submit" className={styles.filled} disabled={!complete || submitting}>
-            {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Trigger')}
-          </button>
-        </div>
-        )}
+        {embedded
+          ? null
+          : (() => {
+              /*
+               * The button, and beside it whatever the frame keeps in the form
+               * rather than elsewhere. Drawn at the foot, or portaled into the
+               * page's header where one is offered - the button carries its own
+               * `form`, so submitting works from either place. Issue #386.
+               */
+              const buttons = (
+                <>
+                  {onCancel !== undefined && (
+                    <button type="button" className={styles.ghost} onClick={onCancel} disabled={submitting}>
+                      {t('Cancel')}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    form={formId}
+                    className={styles.filled}
+                    disabled={!complete || submitting}
+                  >
+                    {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Trigger')}
+                  </button>
+                </>
+              );
+              return actionsSlot
+                ? createPortal(buttons, actionsSlot)
+                : <div className={styles.actions}>{buttons}</div>;
+            })()}
       </form>
 
       {/*

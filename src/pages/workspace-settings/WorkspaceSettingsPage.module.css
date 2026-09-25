@@ -39,6 +39,25 @@
   color: var(--color-text-primary);
 }
 
+/* The title and its actions on one row, the actions kept to the right. */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+/*
+ * Where the Save button sits, beside the title - so saving a long form never
+ * needs a scroll to the foot. Issue #386.
+ */
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 /* ---- Cards ---- */
 
 .card {

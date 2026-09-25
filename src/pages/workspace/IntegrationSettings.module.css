@@ -38,6 +38,18 @@
   gap: var(--space-10);
 }
 
+/*
+ * The Save (and its Check) beside the title, pushed to the far right - so
+ * saving a long form never needs a scroll to the foot. Issue #386.
+ */
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+  margin-left: auto;
+}
+
 .title {
   margin: 0;
   font-weight: 700;

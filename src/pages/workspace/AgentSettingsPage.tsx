@@ -58,6 +58,14 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   /**
+   * The header's action slot, where the form draws its Save. Issue #386.
+   *
+   * A callback ref kept in state rather than a plain ref, so the form re-renders
+   * into it once the element exists - the header is drawn before the form loads,
+   * so by the time there is a Save to portal the slot is already here.
+   */
+  const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
+  /**
    * How many times a version has been put back.
    *
    * Part of the form's key. The form reads its fields as it mounts and never
@@ -99,7 +107,11 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{agent?.name ?? '…'}</span>
         </p>
-        <h1 className={styles.pageTitle}>{t('Agent Settings')}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{t('Agent Settings')}</h1>
+          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
+          <div ref={setHeaderActions} className={styles.headerActions} />
+        </div>
       </header>
 
       {loadError !== null ? (
@@ -126,6 +138,7 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
             styles={FORM_STYLES}
             heading={<h2 className={styles.sectionHeading}>General</h2>}
             onSaved={setAgent}
+            actionsSlot={headerActions}
           />
 
           {/*

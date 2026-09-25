@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -37,6 +37,8 @@ const AUTH_TYPES: AuthType[] = ['NONE', 'API_KEY', 'BEARER_TOKEN', 'BASIC'];
 export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsPageProps) {
   const { workspaceId = '', serverId = '' } = useParams();
   const navigate = useNavigate();
+  /** Ties the header's Save button to the General form below. Issue #386. */
+  const formId = useId();
 
   const [server, setServer] = useState<McpServer | null>(null);
   const [name, setName] = useState('');
@@ -243,6 +245,29 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{server?.name ?? '…'}</h1>
           <img src={penIcon} alt="" width={12} height={12} />
+          {/* Check and Save beside the title, so saving never needs a scroll to
+              the foot; Save drives the General form through its `form`. #386. */}
+          {server !== null && (
+            <div className={styles.headerActions}>
+              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+              <button
+                type="button"
+                className={styles.testButton}
+                onClick={() => void handleCheck()}
+                disabled={checking}
+              >
+                {checking ? t('Checking…') : t('Check')}
+              </button>
+              <button
+                type="submit"
+                form={formId}
+                className={styles.save}
+                disabled={name.trim() === '' || address.trim() === '' || saving}
+              >
+                {saving ? t('Saving…') : t('Save Changes')}
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -258,7 +283,7 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
         </section>
       ) : (
         <>
-          <form className={styles.card} onSubmit={handleSave}>
+          <form id={formId} className={styles.card} onSubmit={handleSave}>
             <h2 className={styles.cardTitle}>{t('General')}</h2>
 
             <div className={styles.field}>
@@ -378,34 +403,13 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
                 {saveError}
               </p>
             )}
-
             {/*
-              Check beside Save rather than above it.
-              
-              They were on two rows and read as two decisions at two moments,
-              which is not what they are: one asks the server whether these
-              details work and the other keeps them, and anybody setting a server
-              up does both in the same breath. Check first because that is the
-              order it is done in.
+              Check and Save are drawn up in the page header now, so saving a long
+              form never needs a scroll to the foot. They stay side by side there,
+              Check first: one asks the server whether these details work and the
+              other keeps them, and anybody setting a server up does both in the
+              same breath. Issue #386.
             */}
-            <div className={styles.actionRow}>
-              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-              <button
-                type="button"
-                className={styles.testButton}
-                onClick={() => void handleCheck()}
-                disabled={checking}
-              >
-                {checking ? t('Checking…') : t('Check')}
-              </button>
-              <button
-                type="submit"
-                className={styles.save}
-                disabled={name.trim() === '' || address.trim() === '' || saving}
-              >
-                {saving ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
           </form>
 
           {/*

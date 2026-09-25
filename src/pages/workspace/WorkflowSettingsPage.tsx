@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -30,6 +30,8 @@ const WORKFLOW_LIST_SIZE = 100;
 export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPageProps) {
   const { workspaceId = '', workflowId = '' } = useParams();
   const navigate = useNavigate();
+  /** Ties the header's Save button to the General form below. Issue #386. */
+  const formId = useId();
 
   const [workflow, setWorkflow] = useState<WorkspaceWorkflow | null>(null);
   const [name, setName] = useState('');
@@ -124,15 +126,32 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{t('Workflow Settings')}</h1>
-          {/* The two halves of a workflow are its settings and its graph, and
-              getting from here to the graph meant going back to the list and
-              finding the row again. */}
-          <Link
-            className={styles.ghost}
-            to={`/workspace/${workspaceId}/workflows/${workflowId}/editor`}
-          >
-            {t('Open Editor')}
-          </Link>
+          <div className={styles.headerActions}>
+            {/* The two halves of a workflow are its settings and its graph, and
+                getting from here to the graph meant going back to the list and
+                finding the row again. */}
+            <Link
+              className={styles.ghost}
+              to={`/workspace/${workspaceId}/workflows/${workflowId}/editor`}
+            >
+              {t('Open Editor')}
+            </Link>
+            {/* Save beside the title so a long form never needs a scroll to save;
+                it drives the General form below through its `form`. Issue #386. */}
+            {workflow !== null && (
+              <>
+                {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+                <button
+                  type="submit"
+                  form={formId}
+                  className={styles.save}
+                  disabled={name.trim() === '' || saving}
+                >
+                  {saving ? t('Saving…') : t('Save Changes')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -148,7 +167,7 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
         </section>
       ) : (
         <>
-          <form className={styles.card} onSubmit={handleSave}>
+          <form id={formId} className={styles.card} onSubmit={handleSave}>
             <h2 className={styles.sectionHeading}>{t('General')}</h2>
 
             <div className={styles.field}>
@@ -200,13 +219,7 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
                 {saveError}
               </p>
             )}
-
-            <div className={styles.cardActions}>
-              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-              <button type="submit" className={styles.save} disabled={name.trim() === '' || saving}>
-                {saving ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
+            {/* The Save for this form is drawn up in the page header. Issue #386. */}
           </form>
 
           {/*

@@ -79,6 +79,8 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
   const [saved, setSaved] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  /** The header's action slot, where the form draws its Save. Issue #386. */
+  const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
   /** Whether the execution history is drawn; collapsed by default - it runs long. Issue #427. */
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -133,7 +135,11 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{trigger?.name ?? '…'}</span>
         </p>
-        <h1 className={styles.pageTitle}>{t('Trigger Settings')}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{t('Trigger Settings')}</h1>
+          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
+          <div ref={setHeaderActions} className={styles.headerActions} />
+        </div>
       </header>
 
       {loadError !== null ? (
@@ -163,6 +169,7 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
                 setTrigger(updated);
                 setSaved(true);
               }}
+              actionsSlot={headerActions}
             />
 
             {saved && <p className={styles.savedNote}>{t('Saved.')}</p>}

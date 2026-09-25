@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
 import {
@@ -156,6 +157,17 @@ export interface ConditionFormProps {
    * one nothing ever shows them again. Set, and the field is not drawn.
    */
   namedAfter?: string;
+  /**
+   * Where the page wants the Save button drawn, when that is not the foot of the
+   * form. Issue #386.
+   *
+   * A settings page puts it in its header, beside the title, so saving a long
+   * form never needs a scroll. The button is the same one - same submit, same
+   * disabled and label states - reached through the `form` attribute and drawn
+   * into this element by a portal. Left undefined everywhere else (the dialog,
+   * the node panel), where the button stays at the foot.
+   */
+  actionsSlot?: HTMLElement | null;
 }
 
 const PAGE_SIZE = 100;
@@ -195,7 +207,10 @@ export function ConditionForm({
   onDeleted,
   namedAfter,
   onCancel,
+  actionsSlot,
 }: ConditionFormProps) {
+  /** Ties the Save button to this form when a header draws it apart. Issue #386. */
+  const formId = useId();
   const [name, setName] = useState(condition?.name ?? namedAfter ?? '');
   const [type, setType] = useState<ConditionType>(condition?.type ?? (preset === null ? 'SLACK' : 'FUNCTION'));
   const startingProperty = condition?.property ?? 'MESSAGE_AUTHOR';
@@ -608,7 +623,7 @@ export function ConditionForm({
 
   return (
     <>
-      <form className={styles.body} onSubmit={handleSubmit}>
+      <form id={formId} className={styles.body} onSubmit={handleSubmit}>
         <div className={styles.fields}>
           {namedAfter === undefined && (
           <div className={styles.field}>
@@ -943,23 +958,41 @@ export function ConditionForm({
           is filling in is a press away from losing the work. The list of
           definitions is where one is taken away deliberately.
         */}
-        {embedded ? null : (
-        <div className={styles.actions}>
-          {editing && onDeleted !== undefined && (
-            <button type="button" className={styles.danger} onClick={handleDelete} disabled={submitting}>
-              {t('Delete')}
-            </button>
-          )}
-          {onCancel !== undefined && (
-            <button type="button" className={styles.ghost} onClick={onCancel} disabled={submitting}>
-              {t('Cancel')}
-            </button>
-          )}
-          <button type="submit" className={styles.filled} disabled={!complete || submitting}>
-            {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Condition')}
-          </button>
-        </div>
-        )}
+        {embedded
+          ? null
+          : (() => {
+              /*
+               * The button, and beside it whatever the frame keeps in the form
+               * rather than elsewhere. Drawn at the foot, or portaled into the
+               * page's header where one is offered - the button carries its own
+               * `form`, so submitting works from either place. Issue #386.
+               */
+              const buttons = (
+                <>
+                  {editing && onDeleted !== undefined && (
+                    <button type="button" className={styles.danger} onClick={handleDelete} disabled={submitting}>
+                      {t('Delete')}
+                    </button>
+                  )}
+                  {onCancel !== undefined && (
+                    <button type="button" className={styles.ghost} onClick={onCancel} disabled={submitting}>
+                      {t('Cancel')}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    form={formId}
+                    className={styles.filled}
+                    disabled={!complete || submitting}
+                  >
+                    {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Condition')}
+                  </button>
+                </>
+              );
+              return actionsSlot
+                ? createPortal(buttons, actionsSlot)
+                : <div className={styles.actions}>{buttons}</div>;
+            })()}
       </form>
 
       {/*

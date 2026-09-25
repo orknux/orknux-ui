@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -81,6 +81,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
   const { workspaceId = '', providerId } = useParams();
   const navigate = useNavigate();
   const adding = providerId === undefined;
+  /** Ties the header's Save button to the form below. Issue #386. */
+  const formId = useId();
   const { variables, refresh: refreshVariables } = useWorkspaceVariables(workspaceId);
 
   const [provider, setProvider] = useState<ModelProvider | null>(null);
@@ -421,7 +423,27 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{adding ? t('Add Provider') : (provider?.name ?? '…')}</span>
         </p>
-        <h1 className={styles.pageTitle}>{adding ? t('Add Provider') : (provider?.name ?? 'Provider')}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{adding ? t('Add Provider') : (provider?.name ?? 'Provider')}</h1>
+          {/* Test and Save beside the title, so saving never needs a scroll to
+              the foot; Save drives the form through its `form`. The connection
+              status stays at the foot where the check reports it. Issue #386. */}
+          {loadError === null && (adding || provider !== null) && (
+            <div className={styles.headerActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => void handleTest()}
+                disabled={testing || name.trim() === '' || endpoint.trim() === ''}
+              >
+                {testing ? 'Checking…' : t('Test Connection')}
+              </button>
+              <button type="submit" form={formId} className={styles.primaryButton} disabled={saving}>
+                {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}
+              </button>
+            </div>
+          )}
+        </div>
         <p className={styles.subtitle}>{t('Configure a new LLM provider for your workspace')}</p>
       </header>
 
@@ -436,7 +458,7 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
           <Loader />
         </section>
       ) : (
-        <form className={styles.form} onSubmit={handleSubmit}>
+        <form id={formId} className={styles.form} onSubmit={handleSubmit}>
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>{t('Provider')}</h2>
             <div className={styles.divider} />
@@ -764,19 +786,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                 saved && <span className={styles.statusConnected}>{t('Saved.')}</span>
               )}
             </div>
-            <div className={styles.buttons}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => void handleTest()}
-                disabled={testing || name.trim() === '' || endpoint.trim() === ''}
-              >
-                {testing ? 'Checking…' : t('Test Connection')}
-              </button>
-              <button type="submit" className={styles.primaryButton} disabled={saving}>
-                {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}
-              </button>
-            </div>
+            {/* Test and Save are drawn up in the page header now, so saving never
+                needs a scroll to the foot; the status above stays here. #386. */}
           </div>
         </form>
       )}

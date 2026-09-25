@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -29,6 +29,8 @@ const WORKSPACE_LIST_SIZE = 100;
 export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsPageProps) {
   const { workspaceId = '' } = useParams();
   const navigate = useNavigate();
+  /** Ties the header's Save button to the General form below. Issue #386. */
+  const formId = useId();
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [name, setName] = useState('');
@@ -136,7 +138,24 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{workspace?.name ?? '…'}</span>
         </p>
-        <h1 className={styles.pageTitle}>{t('Workspace Settings')}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{t('Workspace Settings')}</h1>
+          {/* Save beside the title so a long form never needs a scroll to save;
+              it drives the General form below through its `form`. Issue #386. */}
+          {workspace !== null && (
+            <div className={styles.headerActions}>
+              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+              <button
+                type="submit"
+                form={formId}
+                className={styles.save}
+                disabled={name.trim() === '' || saving}
+              >
+                {saving ? t('Saving…') : t('Save Changes')}
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       {loadError !== null ? (
@@ -151,7 +170,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         </section>
       ) : (
         <>
-          <form className={styles.card} onSubmit={handleSave}>
+          <form id={formId} className={styles.card} onSubmit={handleSave}>
             <div className={styles.sectionTitle}>
               <h2 className={styles.sectionHeading}>{t('General')}</h2>
             </div>
@@ -319,13 +338,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
                 {saveError}
               </p>
             )}
-
-            <div className={styles.cardActions}>
-              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-              <button type="submit" className={styles.save} disabled={name.trim() === '' || saving}>
-                {saving ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
+            {/* The Save for this form is drawn up in the page header. Issue #386. */}
           </form>
 
           <section className={`${styles.card} ${styles.dangerCard}`}>

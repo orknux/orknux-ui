@@ -93,6 +93,8 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
   const [action, setAction] = useState<Action | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  /** The header's action slot, where the form draws its Save. Issue #386. */
+  const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -148,7 +150,11 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{called}</span>
         </p>
-        <h1 className={styles.pageTitle}>{called}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{called}</h1>
+          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
+          <div ref={setHeaderActions} className={styles.headerActions} />
+        </div>
         <p className={styles.subtitle}>
           {t('A reusable block a workflow node points at. What it asks for follows its type, and the parameters below are read off those settings.')}
         </p>
@@ -178,6 +184,7 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
             action={action}
             styles={FORM_STYLES}
             onSaved={() => navigate(list)}
+            actionsSlot={headerActions}
           />
 
           {/*

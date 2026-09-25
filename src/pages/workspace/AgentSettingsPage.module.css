@@ -12,6 +12,18 @@
   gap: var(--space-16);
 }
 
+/*
+ * Where the Save button sits, beside the title - so saving a long form never
+ * needs a scroll to the foot. Issue #386. The form portals its Save (and any
+ * "Saved." note) in here; the row lays them out like the foot did.
+ */
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 .breadcrumbs {
   display: flex;
   align-items: center;

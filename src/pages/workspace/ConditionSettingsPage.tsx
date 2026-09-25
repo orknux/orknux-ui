@@ -85,6 +85,8 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
   const [condition, setCondition] = useState<Condition | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  /** The header's action slot, where the form draws its Save. Issue #386. */
+  const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -154,7 +156,11 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{called}</span>
         </p>
-        <h1 className={styles.pageTitle}>{called}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{called}</h1>
+          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
+          <div ref={setHeaderActions} className={styles.headerActions} />
+        </div>
         <p className={styles.subtitle}>
           {t('A reusable question, for workflow branching and action triggers. What it asks is read off the definition below and shown wherever the condition is used.')}
         </p>
@@ -185,6 +191,7 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
             preset={adding ? preset : null}
             styles={FORM_STYLES}
             onSaved={() => navigate(list)}
+            actionsSlot={headerActions}
           />
 
           {/*

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
 import { fetchMemoryBudget, fetchWorkspaceAgents, updateAgent } from '../api/agents';
@@ -84,6 +85,17 @@ export interface AgentFormProps {
   onSaved: (agent: Agent) => void;
   /** Left out where the frame already offers a way back, as a page's breadcrumb does. */
   onCancel?: () => void;
+  /**
+   * Where the page wants the Save button drawn, when that is not the foot of the
+   * form. Issue #386.
+   *
+   * A settings page puts it in its header, beside the title, so saving a long
+   * form never needs a scroll. The button is the same one - same submit, same
+   * disabled and label states - reached through the `form` attribute and drawn
+   * into this element by a portal. Left undefined in the workflow editor's
+   * panel, where the button stays at the foot.
+   */
+  actionsSlot?: HTMLElement | null;
 }
 
 /** The whole of a workspace's tools fits in the list. */
@@ -763,7 +775,9 @@ function GrantList<Item>({
  * panel renders it only while open - so following one agent to another starts
  * the form over instead of leaving the previous one's values in it.
  */
-export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCancel }: AgentFormProps) {
+export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCancel, actionsSlot }: AgentFormProps) {
+  /** Ties the Save button to this form when a header draws it apart. Issue #386. */
+  const formId = useId();
   const [name, setName] = useState(agent.name);
   const [description, setDescription] = useState(agent.description ?? '');
   const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt ?? '');
@@ -1163,7 +1177,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   }
 
   return (
-    <form className={styles.body} onSubmit={handleSave}>
+    <form id={formId} className={styles.body} onSubmit={handleSave}>
       {heading}
 
       <div className={styles.fields}>
@@ -1740,28 +1754,42 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         </p>
       )}
 
-      <div className={styles.actions}>
-        {saved && saveError === null && styles.savedNote !== undefined && (
-          <p className={styles.savedNote}>{t('Saved.')}</p>
-        )}
-        {onCancel !== undefined && (
-          <button type="button" className={styles.ghost} onClick={onCancel} disabled={saving}>
-            {t('Cancel')}
-          </button>
-        )}
-        {/*
-          A refused share stops the save here as well as at the server. Not
-          instead of: the mutation refuses it from the same calculation, and
-          this is only the form saying so before the press rather than after.
-        */}
-        <button
-          type="submit"
-          className={styles.filled}
-          disabled={name.trim() === '' || saving || refusal !== null}
-        >
-          {saving ? t('Saving…') : t('Save Changes')}
-        </button>
-      </div>
+      {(() => {
+        /*
+         * The button, the "Saved." note beside it, and a Cancel where the frame
+         * offers one. Drawn at the foot, or portaled into the page's header
+         * where one is offered - the button carries its own `form`, so
+         * submitting works from either place. Issue #386.
+         */
+        const buttons = (
+          <>
+            {saved && saveError === null && styles.savedNote !== undefined && (
+              <p className={styles.savedNote}>{t('Saved.')}</p>
+            )}
+            {onCancel !== undefined && (
+              <button type="button" className={styles.ghost} onClick={onCancel} disabled={saving}>
+                {t('Cancel')}
+              </button>
+            )}
+            {/*
+              A refused share stops the save here as well as at the server. Not
+              instead of: the mutation refuses it from the same calculation, and
+              this is only the form saying so before the press rather than after.
+            */}
+            <button
+              type="submit"
+              form={formId}
+              className={styles.filled}
+              disabled={name.trim() === '' || saving || refusal !== null}
+            >
+              {saving ? t('Saving…') : t('Save Changes')}
+            </button>
+          </>
+        );
+        return actionsSlot
+          ? createPortal(buttons, actionsSlot)
+          : <div className={styles.actions}>{buttons}</div>;
+      })()}
     </form>
   );
 }
