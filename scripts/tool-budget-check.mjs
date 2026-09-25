@@ -101,7 +101,16 @@ const appeared = await count
   .then(() => true)
   .catch(() => false);
 record(appeared, 'typing a ceiling brings out the count of what always travels');
-record((await count.innerText()).includes('0 always'), `nothing is marked always yet (${await count.innerText()})`);
+
+/*
+ * The count includes the built-in capabilities that are on - finish_answer and
+ * the picture link are always carried too, not searched for - so a fresh agent
+ * reads more than zero always before anything is pinned. Read the number rather
+ * than assume it. Issues #413.
+ */
+const alwaysNow = async () => Number(/(\d+) always/.exec(await count.innerText())?.[1] ?? NaN);
+const before = await alwaysNow();
+record(Number.isFinite(before), `the count reads how many always travel (${await count.innerText()})`);
 
 /* ------------------------------------------------ what a mark stores ------ */
 
@@ -114,15 +123,20 @@ record(
 
 /*
  * The count is what says the mark landed in the form rather than only on the
- * button: it reads requiredTools, so "1 always" is the form holding it.
+ * button: pinning one tool adds one to what always travels.
  */
 const marked = await page
-  .waitForFunction(() => document.querySelector('[data-always-count]')?.textContent?.includes('1 always'), {
-    timeout: 10_000,
-  })
+  .waitForFunction(
+    (was) => {
+      const said = document.querySelector('[data-always-count]')?.textContent ?? '';
+      return Number(/(\d+) always/.exec(said)?.[1] ?? NaN) === was + 1;
+    },
+    before,
+    { timeout: 10_000 },
+  )
   .then(() => true)
   .catch(() => false);
-record(marked, 'and that reaches the count, so the form has it, not only the button');
+record(marked, 'and pinning one tool adds one to the count, so the form has it, not only the button');
 
 /*
  * A capability flag has no Offer state. finish_answer is always carried when

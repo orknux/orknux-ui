@@ -803,6 +803,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * is not a number reads the same as empty.
    */
   const carrying = maxTools.trim() === '' || Number.isNaN(Number(maxTools)) ? null : Number(maxTools);
+  /*
+   * What is always carried, and what is granted in all - the counter's two
+   * numbers. The built-in capabilities that are on (finish_answer, the picture
+   * link) are always carried too, not searched for, so they count towards both:
+   * a counter that left them out said "0 always" beside a built-in row reading
+   * Always. Issue #413.
+   */
+  const builtinsOn = (finishAccess ? 1 : 0) + (pictureLinkAccess ? 1 : 0);
+  const alwaysCarried = requiredTools.length + builtinsOn;
+  const grantedTotal = tools.length + builtinsOn;
   const [icon, setIcon] = useState<string | null>(agent.icon ?? null);
   /**
    * The share of the model's window a session may take back, or null to follow
@@ -1566,11 +1576,11 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             */}
             {carrying !== null && (
               <span
-                className={requiredTools.length >= carrying ? own.carryingFull : own.carrying}
+                className={alwaysCarried >= carrying ? own.carryingFull : own.carrying}
                 data-always-count=""
               >
-                {requiredTools.length} always, {tools.length} granted
-                {requiredTools.length >= carrying && ` — leaves no room to search`}
+                {alwaysCarried} always, {grantedTotal} granted
+                {alwaysCarried >= carrying && ` — leaves no room to search`}
               </span>
             )}
           </div>
