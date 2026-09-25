@@ -107,6 +107,17 @@
 }
 
 /*
+ * A label and the (?) beside it, on one line with a gap so the question mark
+ * reads as belonging to the label rather than sitting flush against it. Same
+ * shape as the other admin forms' `.labelWithHint`.
+ */
+.labelWithHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/*
  * Directory group names, one per line (#375). Monospace because these are
  * machine strings — a DN with a comma out of place is the whole fault, and a
  * proportional font is where that hides.

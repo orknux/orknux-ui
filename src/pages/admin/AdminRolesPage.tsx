@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ROLE_SCOPES, ROLE_SCOPE_HINT, ROLE_SCOPE_LABEL, createRole, deleteRole, fetchRoles, updateRole } from '../../api/roles';
 import type { Role, RoleScope } from '../../api/roles';
-import type { SessionUser } from '../../api/session';
+import { authMethod } from '../../api/session';
+import type { AuthMethodInfo, SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import lockIcon from '../../assets/lock-keyhole.svg';
 import pencilIcon from '../../assets/pencil.svg';
@@ -84,6 +85,24 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
   const [saving, setSaving] = useState(false);
   /** The role whose removal is waiting to be confirmed. */
   const [confirming, setConfirming] = useState<string | null>(null);
+  /*
+   * How this installation signs people in. Directory groups only mean something
+   * where a directory grants them, so the field for them is drawn only under a
+   * directory sign-in and never on an internal-accounts installation. The same
+   * signal the login page reads to hide the password-reset link. Issue #382.
+   */
+  const [signIn, setSignIn] = useState<AuthMethodInfo | null>(null);
+  const directory = signIn?.method === 'LDAP' || signIn?.method === 'OIDC';
+
+  useEffect(() => {
+    let current = true;
+    authMethod().then((found) => {
+      if (current) setSignIn(found);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -264,9 +283,10 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
               One per line, because that is how somebody pastes a handful of
               group names out of a directory browser.
             */}
+            {directory && (
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="role-matches">
-                {t('Directory groups')}
+              <span className={styles.labelWithHint}>
+                <label className={styles.label} htmlFor="role-matches">{t('Directory groups')}</label>
                 <FieldHint label={t('Directory groups')}>
                   <p>
                     Extra names the directory may use for this role, one per line. A role is
@@ -280,7 +300,7 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
                     capitals do not matter.
                   </p>
                 </FieldHint>
-              </label>
+              </span>
               <textarea
                 id="role-matches"
                 className={styles.textarea}
@@ -290,6 +310,7 @@ export function AdminRolesPage({ session, onSignOut }: AdminRolesPageProps) {
                 onChange={(event) => setDraft({ ...draft, matches: event.target.value })}
               />
             </div>
+            )}
 
             <div className={styles.editorActions}>
               <button type="button" className={styles.ghost} onClick={() => setDraft(null)} disabled={saving}>{t('Cancel')}</button>
