@@ -236,14 +236,34 @@
  * number for both frames, because what the cap buys is the same in both: the
  * fields under this group are still on the screen. Measured in both -
  * `scripts/agent-grants-check.mjs`.
+ *
+ * Draggable taller from there, the way a textarea is - issue #385.
+ *
+ * The 240px window is a small one to read a long list through, so the box
+ * carries a native resize handle at its bottom-right and can be pulled down to
+ * see more at once, then back. `height` rather than `max-height` sets that
+ * 240px as the *starting* height, which is what lets `resize` grow past it: a
+ * bare `max-height` is the ceiling the drag stops at, so it caps the pull
+ * instead of seeding it. `min-height` holds the floor at the same 240px, so
+ * "back" is back to where it began and no further; `max-height` is now the
+ * ceiling the drag reaches, kept off the fields below at 70vh. The starting
+ * height is unchanged, so nothing here looks different until it is dragged -
+ * and the cap the grants check measures is this starting height.
+ *
+ * `overflow: auto` rather than `overflow-y`, because a resize handle only
+ * shows on a box whose overflow is not visible on either axis; the rows wrap
+ * rather than run wide, so the across-axis scrollbar it allows never appears.
  */
 .checkList {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  max-height: 240px;
-  overflow-y: auto;
+  height: 240px;
+  min-height: 240px;
+  max-height: 70vh;
+  overflow: auto;
+  resize: vertical;
   /* Room for the hover border, which a box with no padding clips. */
   padding: 1px;
 }
