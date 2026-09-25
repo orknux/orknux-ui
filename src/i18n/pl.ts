@@ -1715,6 +1715,7 @@ export const PL: Record<string, string> = {
   "Listening - press when you have finished": "Słucham — naciśnij, gdy skończysz",
   "Speaking - press to cut in": "Mówię — naciśnij, aby wejść w słowo",
   "Speak — it answers when you stop.": "Mów — odpowie, gdy przestaniesz.",
+  "Text to speech": "Zamiana tekstu na mowę",
   "Stop and transcribe": "Zatrzymaj i zapisz jako tekst",
   "Stop speaking and listen": "Przestań mówić i słuchaj",
   "Stop this turn and listen": "Zakończ tę turę i słuchaj",

@@ -90,6 +90,7 @@ import redoIcon from '../../assets/redo.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
+import volumeIcon from '../../assets/volume-2.svg';
 import { ActionDialog } from '../../components/ActionDialog';
 import { ActionForm } from '../../components/ActionForm';
 import { AppShell } from '../../components/AppShell';
@@ -2984,7 +2985,14 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     return free ?? place;
   }
 
-  function addNode(kind: NodeKind) {
+  /*
+   * `presetActionId` points an Action node at a definition the moment it is
+   * made, rather than leaving it empty for the picker. It is what the "Text to
+   * speech" shortcut uses to drop in a node already pointed at the workspace's
+   * Speak action; the name and icon effects then read that action the same way
+   * they do for one chosen by hand, so nothing else has to be set here.
+   */
+  function addNode(kind: NodeKind, presetActionId: string | null = null) {
     const key = freshKey(kind);
     setNodes((current) => [
       ...current.map((node) => ({ ...node, selected: false })),
@@ -2998,7 +3006,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           description: null,
           agentId: null,
           triggerId: null,
-          actionId: null,
+          actionId: presetActionId,
           conditionId: null,
           objectId: null,
           // Prose until a shape is chosen, which is what an agent always was.
@@ -3048,6 +3056,23 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     // The store only learns about the node on the next tick, so select it then.
     requestAnimationFrame(() => updateNode(key, { selected: true }));
     setSaved(false);
+  }
+
+  /**
+   * Text to speech, from the Add menu.
+   *
+   * A workflow speaks through an Action whose subtype is Speak (issue #264),
+   * not a node kind of its own - so somebody looking for "Text to speech" in a
+   * menu of node kinds never found it. This is the shortcut that makes it
+   * findable: it drops an Action node already pointed at the workspace's Speak
+   * action where one is shared, so the node arrives named and ready. Where the
+   * workspace has none yet, it still adds the Action node and opens its picker,
+   * which is where a Speak action is chosen or made - one step closer than the
+   * bare word "Action" ever was.
+   */
+  function addSpeechNode() {
+    const speak = actions.find((one) => one.subtype === 'SPEAK' && one.workflowId === null);
+    addNode('ACTION', speak?.id ?? null);
   }
 
   /**
@@ -4348,6 +4373,28 @@ Change the keystroke in Preferences.`}
                     {NODE_KIND_LABEL[kind]}
                   </button>
                 ))}
+                {/*
+                  Text to speech, spelled out.
+
+                  Speaking out loud is an Action's Speak subtype (issue #264),
+                  not a node kind - so it sat one level below this menu, behind
+                  the word "Action", where nobody hunting for "speech" would
+                  look. The shortcut is the fix that costs nothing: an Action
+                  node pointed straight at the Speak action, named for what it
+                  does the moment it lands.
+                */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.addItem}
+                  onClick={() => {
+                    setAdding(false);
+                    addSpeechNode();
+                  }}
+                >
+                  <img src={volumeIcon} alt="" width={14} height={14} />
+                  {t('Text to speech')}
+                </button>
               </div>
             )}
           </div>
