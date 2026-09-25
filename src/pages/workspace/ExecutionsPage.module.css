@@ -76,6 +76,15 @@
   gap: var(--space-12);
 }
 
+/* Refresh and Auto, above the table beside the filters rather than in the
+   header. Issue #425. */
+.filtersRight {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+}
+
 .filter,
 .searchBox {
   display: flex;

@@ -148,17 +148,6 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
           <h1 className={styles.title}>{t('Executions')}</h1>
           <p className={styles.subtitle}>{t('View and monitor workflow execution runs')}</p>
         </div>
-        {/* Runs arrive while the page is open — a trigger fires, a step finishes —
-            and nothing here polls, so this is how the list catches up. */}
-        <div className={styles.headerActions}>
-          <AutoRefresh onRefresh={load} busy={loading} />
-          {/* The label does not change: a word that flips every few seconds
-              under auto-refresh is movement, not information. */}
-          <button type="button" className={styles.refresh} onClick={load} disabled={loading}>
-            <img src={refreshIcon} alt="" width={14} height={14} />
-            {t('Refresh')}
-          </button>
-        </div>
       </header>
 
       {/*
@@ -226,6 +215,19 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
           />
         </div>
 
+        {/* Above the table with the filters rather than up in the header: runs
+            arrive while the page is open - a trigger fires, a step finishes -
+            and this is how the list catches up. Issue #425. */}
+        <div className={styles.filtersRight}>
+          <AutoRefresh onRefresh={load} busy={loading} />
+          {/* The label does not change: a word that flips every few seconds
+              under auto-refresh is movement, not information. Disabled only on
+              the first load, so it does not blink each tick. Issues #421, #425. */}
+          <button type="button" className={styles.refresh} onClick={load} disabled={loading && runs === null}>
+            <img src={refreshIcon} alt="" width={14} height={14} />
+            {t('Refresh')}
+          </button>
+        </div>
       </div>
 
       <section className={styles.card}>
