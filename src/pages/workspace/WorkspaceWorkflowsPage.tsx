@@ -365,7 +365,14 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>
 
-          {loading && <p className={styles.notice}><Loader /></p>}
+          {/*
+            Only while there is nothing yet to show. On every auto-refresh tick
+            `loading` turns true again, and a loader line drawn above the rows
+            each time shoves the whole table down and back - the jump #422 is
+            about. The rows stay mounted and keyed by id through a background
+            refresh, so gate the loader on the first load alone.
+          */}
+          {loading && workflows === null && <p className={styles.notice}><Loader /></p>}
           {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
           {!loading && error === null && workflows?.content.length === 0 && (
             <p className={styles.notice}>
