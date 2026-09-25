@@ -195,9 +195,8 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             either. Prefix is the front of the key rather than a column of its
             own, and Lines is a count of the transcript, so neither is an order.
           */}
-          {/* A leading dot says whether an agent is at work in the session; the
-              heading is blank because a dot needs no word over it. Issue #404. */}
-          <span className={styles.colStatus} aria-hidden="true" />
+          {/* A leading dot says whether an agent is at work in the session. Issue #404. */}
+          <span className={styles.colStatus}>{t('Status')}</span>
           <ColumnHeader
             label={t('Session')}
             order="KEY"

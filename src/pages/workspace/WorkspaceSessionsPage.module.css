@@ -173,11 +173,10 @@
   padding: 0 var(--space-16);
 }
 
-/* A narrow leading column carrying only the status dot. Issue #404. */
+/* A leading column: the word Status in the header, the dot in each row. #404. */
 .colStatus {
   flex-shrink: 0;
-  width: 44px;
-  padding-right: 0;
+  width: 78px;
 }
 
 /* Green while an agent is at work in the session, and drawn but colourless
