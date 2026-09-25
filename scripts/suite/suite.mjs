@@ -2256,6 +2256,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'scratchpad-budget-check',
+    what: 'Admin Settings sets how many bytes a session\'s scratchpads may hold, in KB, and the server keeps it in bytes',
+    needs: ['workspace'],
+    /*
+     * Issue #411. The field is in kilobytes and the server keeps bytes; this
+     * checks the two agree and the box round-trips. What the bound does to a
+     * write is ScratchpadTest's business. Leaves the setting as it found it.
+     */
+  },
+  {
     name: 'sessions-list-columns-check',
     what: 'the sessions list shows a green dot for an active session and a count of the subagents each fanned out into',
     needs: ['workspace'],

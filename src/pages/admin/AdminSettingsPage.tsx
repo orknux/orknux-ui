@@ -5,6 +5,7 @@ import {
   setAgentSleepSeconds,
   setAgentSleepTimes,
   setAgentMaxSubagents,
+  setScratchpadBudgetBytes,
   setCommandMarker,
   setAttachmentsEnabled,
   setSessionsRemovable,
@@ -72,6 +73,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [sleeps, setSleeps] = useState('');
   /** How many other agents one agent may ask in one conversation. Issue #380. */
   const [asks, setAsks] = useState('');
+  // Held and typed in KB; the server keeps bytes. Issue #411.
+  const [padBudget, setPadBudget] = useState('');
   /** What marks a command in a message, installation-wide. Issue #402. */
   const [marker, setMarker] = useState('');
 
@@ -100,6 +103,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
+        setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
         setMarker(held.commandMarker);
       })
       .catch((cause: unknown) => {
@@ -130,6 +134,11 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
+        {
+          typed: padBudget,
+          held: Math.round(settings.scratchpadBudgetBytes / 1024),
+          write: (kb: number) => setScratchpadBudgetBytes(kb * 1024),
+        },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
@@ -400,6 +409,34 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many other agents an agent may ask')}
                 />
                 <span className={styles.retentionUnit}>{t('agents')}</span>
+              </div>
+            </div>
+
+            {/* How much a session's scratchpads may hold in all. Set in KB;
+                the server keeps bytes. Issue #411. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How much a session’s scratchpads may hold')}</p>
+                  <FieldHint label={t('How much a session’s scratchpads may hold')}>
+                    {t('A scratchpad is a working file an agent keeps within a session - a document it drafts, code it writes, notes it organises - and this bounds how much one conversation’s scratchpads may occupy in all, so an agent told to write something long cannot grow them without limit. Counted across every scratchpad the session holds. Between 1 and 65536 KB.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="scratchpad-budget"
+                  name="scratchpadBudget"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={65536}
+                  value={padBudget}
+                  onChange={(event) => setPadBudget(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How much a session’s scratchpads may hold, in kilobytes')}
+                />
+                <span className={styles.retentionUnit}>{t('KB')}</span>
               </div>
             </div>
 

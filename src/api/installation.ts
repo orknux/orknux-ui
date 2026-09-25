@@ -107,6 +107,15 @@ export interface InstallationSettings {
   agentMaxSubagents: number;
   /** What a fresh installation allows, before anybody changed it. */
   agentMaxSubagentsConfigured: number;
+  /**
+   * How many bytes one session's scratchpads may hold in all. Issue #411.
+   *
+   * A scratchpad is a working file a model writes at will; this bounds how much
+   * one conversation's pads can occupy, counted across all of them.
+   */
+  scratchpadBudgetBytes: number;
+  /** What a fresh installation allows before anybody sets it. */
+  scratchpadBudgetBytesConfigured: number;
   /** What marks a command in a message here; a workspace may carry its own. Issue #402. */
   commandMarker: string;
   /** What a fresh installation starts on. */
@@ -139,7 +148,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'sessionsRemovable';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
@@ -315,6 +324,17 @@ export async function setAgentMaxSubagents(count: number): Promise<InstallationS
     { count },
   );
   return data.setAgentMaxSubagents;
+}
+
+/** How many bytes one session's scratchpads may hold in all. Issue #411. */
+export async function setScratchpadBudgetBytes(bytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setScratchpadBudgetBytes: InstallationSettings }>(
+    `mutation SetScratchpadBudgetBytes($bytes: Int!) {
+       setScratchpadBudgetBytes(bytes: $bytes) { ${FIELDS} }
+     }`,
+    { bytes },
+  );
+  return data.setScratchpadBudgetBytes;
 }
 
 /** What marks a command in a message that starts a run, installation-wide. Issue #402. */
