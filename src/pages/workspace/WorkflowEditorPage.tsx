@@ -5601,9 +5601,16 @@ Change the keystroke in Preferences.`}
                                     }
                                   />
                                 ) : (
-                                  <label className={styles.parameterName} htmlFor={`node-mapping-${mapping.name}`}>
-                                    {mapping.name}
-                                  </label>
+                                  <span className={styles.parameterNameRow}>
+                                    <label className={styles.parameterName} htmlFor={`node-mapping-${mapping.name}`}>
+                                      {mapping.name}
+                                    </label>
+                                    {draft.kind === 'AGENT' && mapping.name === 'skillIds' && (
+                                      <FieldHint label={t('Skill IDs')}>
+                                        {t('The ids of skills to load for the model before it starts, whether or not it would ask - written here, comma-separated, or pointed at another node such as a Slack trigger’s commands. An id that names no skill is refused when written here, and noted in the run when it came with the message. Leave empty to load nothing by force.')}
+                                      </FieldHint>
+                                    )}
+                                  </span>
                                 )}
                                 {draft.kind === 'OBJECT' && draft.objectId === null && (
                                   <button

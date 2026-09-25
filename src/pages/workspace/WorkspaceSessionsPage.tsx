@@ -6,6 +6,8 @@ import type { LlmSessionOrder, LlmSessionPage } from '../../api/llmSessions';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
+import toggleOffIcon from '../../assets/toggle-off.svg';
+import toggleOnIcon from '../../assets/toggle-on.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
@@ -168,15 +170,19 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
           </button>
           {/* Off by default: the list is the conversations, and their subagent
               sessions are on each conversation's own page. Issue #389. */}
-          <label className={styles.subagentsSwitch}>
-            <input
-              type="checkbox"
-              checked={includeSubagents}
-              onChange={(event) => setIncludeSubagents(event.target.checked)}
+          <span className={styles.subagentsSwitch}>
+            <button
+              type="button"
+              className={styles.subagentsToggle}
+              role="switch"
+              aria-checked={includeSubagents}
               data-include-subagents
-            />
+              onClick={() => setIncludeSubagents((held) => !held)}
+            >
+              <img src={includeSubagents ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
+            </button>
             {t('Subagent sessions')}
-          </label>
+          </span>
         </div>
       </div>
 

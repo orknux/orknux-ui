@@ -892,6 +892,13 @@
   color: var(--color-text-muted);
 }
 
+/* The param label with its optional (?) beside it (#400). */
+.parameterNameRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
 /*
  * Copies the definition's wording over the node's. Only shown once the two have
  * actually drifted, so it is an answer to something visible rather than a button

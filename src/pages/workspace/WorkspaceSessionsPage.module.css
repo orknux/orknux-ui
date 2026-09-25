@@ -260,6 +260,7 @@
 }
 
 /* The switch that lists the subagent sessions beside the conversations (#389). */
+/* The switch that lists the subagent sessions beside the conversations (#389, #400). */
 .subagentsSwitch {
   display: inline-flex;
   align-items: center;
@@ -268,5 +269,13 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   white-space: nowrap;
+}
+
+.subagentsToggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
   cursor: pointer;
 }
