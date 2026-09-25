@@ -105,7 +105,10 @@ export interface Workspace {
    * Orknux's own syntax, because Slack polices `/`. One to three characters,
    * none a letter or a digit. Issue #381.
    */
-  commandMarker: string;
+  /** Null follows the installation's; a workspace may carry its own. Issue #402. */
+  commandMarker: string | null;
+  /** What marks a command here when the workspace has said nothing: the installation's. */
+  commandMarkerDefault: string;
   /**
    * How many seconds one run of a tool or function here may hold its thread,
    * where the tool or function has no timeout of its own.
@@ -183,7 +186,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault commandMarker ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -386,9 +389,10 @@ export async function setWorkspaceAgentMaxSubagents(
 }
 
 /** One to three characters, none a letter, a digit or a space; refused otherwise. Issue #381. */
-export async function setWorkspaceCommandMarker(workspaceId: string, marker: string): Promise<Workspace> {
+/** Null (or empty) clears it, so the workspace follows the installation's. Issue #402. */
+export async function setWorkspaceCommandMarker(workspaceId: string, marker: string | null): Promise<Workspace> {
   const data = await graphql<{ setWorkspaceCommandMarker: Workspace }>(
-    `mutation SetWorkspaceCommandMarker($workspaceId: ID!, $marker: String!) {
+    `mutation SetWorkspaceCommandMarker($workspaceId: ID!, $marker: String) {
        setWorkspaceCommandMarker(workspaceId: $workspaceId, marker: $marker) { ${WORKSPACE_FIELDS} }
      }`,
     { workspaceId, marker },

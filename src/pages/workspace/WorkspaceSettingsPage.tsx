@@ -393,7 +393,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             ? ''
             : String(found.agentMaxSubagents),
         );
-        setMarker(found?.commandMarker ?? '!');
+        setMarker(found?.commandMarker ?? '');
         setFunctionTimeout(
           found?.functionTimeoutSeconds === null || found?.functionTimeoutSeconds === undefined
             ? ''
@@ -577,7 +577,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
       }
       if (touched.has('marker')) {
-        latest = await setWorkspaceCommandMarker(workspaceId, marker.trim());
+        latest = await setWorkspaceCommandMarker(workspaceId, marker.trim() === '' ? null : marker.trim());
       }
       if (touched.has('functionTimeout')) {
         latest = await setWorkspaceFunctionTimeout(
@@ -662,7 +662,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setShare(held.defaultMemoryShare);
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
-    setMarker(held.commandMarker);
+    setMarker(held.commandMarker ?? '');
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
     setToolTimeout(held.toolTimeoutSeconds === null ? '' : String(held.toolTimeoutSeconds));
     setCompanion(held.companionModelId ?? '');
@@ -1134,6 +1134,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               type="text"
               maxLength={3}
               spellCheck={false}
+              placeholder={workspace === null ? '' : workspace.commandMarkerDefault}
               value={marker}
               onChange={(event) => { touch('marker'); setMarker(event.target.value); }}
             />

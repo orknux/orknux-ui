@@ -5,6 +5,7 @@ import {
   setAgentSleepSeconds,
   setAgentSleepTimes,
   setAgentMaxSubagents,
+  setCommandMarker,
   setAttachmentsEnabled,
   setSessionsRemovable,
   setChatEnabled,
@@ -71,6 +72,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [sleeps, setSleeps] = useState('');
   /** How many other agents one agent may ask in one conversation. Issue #380. */
   const [asks, setAsks] = useState('');
+  /** What marks a command in a message, installation-wide. Issue #402. */
+  const [marker, setMarker] = useState('');
 
   useEffect(() => {
     /*
@@ -97,6 +100,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
+        setMarker(held.commandMarker);
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -396,6 +400,40 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many other agents an agent may ask')}
                 />
                 <span className={styles.retentionUnit}>{t('agents')}</span>
+              </div>
+            </div>
+
+            {/* What marks a command in a message that starts a run; a workspace
+                may carry its own. Text, so it saves on its own. Issue #402. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Command marker')}</p>
+                  <FieldHint label={t('Command marker')}>
+                    {t('What marks a command in a message that starts a run - with ! as the marker, "@orknux !review" carries the command review, which an agent node’s Skill IDs can load a skill from. Orknux’s own syntax, because Slack intercepts a message starting with / and refuses one it does not know. One to three characters, none a letter or a digit, so ordinary words are never commands. A workspace may set its own in its settings.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="command-marker"
+                  name="commandMarker"
+                  className={styles.input}
+                  type="text"
+                  maxLength={3}
+                  spellCheck={false}
+                  value={marker}
+                  onChange={(event) => setMarker(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Command marker')}
+                />
+                {saved && <span className={styles.savedMark}>{t('Saved.')}</span>}
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  disabled={busy || marker.trim() === '' || marker.trim() === settings.commandMarker}
+                  onClick={() => void save(() => setCommandMarker(marker.trim()))}
+                >{t('Save')}</button>
               </div>
             </div>
 

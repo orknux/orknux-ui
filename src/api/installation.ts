@@ -107,6 +107,10 @@ export interface InstallationSettings {
   agentMaxSubagents: number;
   /** What a fresh installation allows, before anybody changed it. */
   agentMaxSubagentsConfigured: number;
+  /** What marks a command in a message here; a workspace may carry its own. Issue #402. */
+  commandMarker: string;
+  /** What a fresh installation starts on. */
+  commandMarkerConfigured: string;
   /**
    * Whether a conversation may be thrown away.
    *
@@ -135,7 +139,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured commandMarker commandMarkerConfigured ' +
   'sessionsRemovable';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
@@ -311,6 +315,17 @@ export async function setAgentMaxSubagents(count: number): Promise<InstallationS
     { count },
   );
   return data.setAgentMaxSubagents;
+}
+
+/** What marks a command in a message that starts a run, installation-wide. Issue #402. */
+export async function setCommandMarker(marker: string): Promise<InstallationSettings> {
+  const data = await graphql<{ setCommandMarker: InstallationSettings }>(
+    `mutation SetCommandMarker($marker: String!) {
+       setCommandMarker(marker: $marker) { ${FIELDS} }
+     }`,
+    { marker },
+  );
+  return data.setCommandMarker;
 }
 
 /**
