@@ -429,7 +429,11 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     type="button"
                     className={styles.refresh}
                     onClick={refresh}
-                    disabled={loading}
+                    /* Disabled only while the first load is in flight, not on
+                       every auto-refresh: a button that dimmed and undimmed each
+                       second read as blinking. Once the transcript is here the
+                       button stays pressable. Issue #421. */
+                    disabled={loading && events === null}
                   >
                     <img src={refreshIcon} alt="" width={14} height={14} />
                     {t('Refresh')}
