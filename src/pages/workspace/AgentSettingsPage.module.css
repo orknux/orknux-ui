@@ -347,6 +347,34 @@ select.input {
 }
 
 /*
+ * The execution-history heading as a toggle: collapsed by default, opened on a
+ * press, because the firing log runs long. Issue #427.
+ */
+.historyToggle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+/* The toggle owns the spacing under the heading, so a closed card is tight. */
+.historyToggle .cardHeading {
+  margin: 0;
+}
+
+.historyCaret {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/*
  * What a trigger has done, on the trigger's own page. Issue #357.
  *
  * The same rows the triggers list opens under a row, in a card: a time, what

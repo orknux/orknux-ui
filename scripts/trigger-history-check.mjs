@@ -92,13 +92,16 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/triggers/${TRIGGER}`, { waitUnti
 record(await drawn(page, "the trigger's page"), "the trigger's own page is on screen");
 
 const shown = await page
-  .locator('h2', { hasText: 'History' })
+  .locator('h2', { hasText: 'Execution history' })
   .first()
   .waitFor({ timeout: 20_000 })
   .then(() => true)
   .catch(() => false);
-record(shown, 'it has a History of its own, without going back to the list');
+record(shown, 'it has an Execution history of its own, without going back to the list');
 if (!shown) await clean();
+
+// Collapsed by default now; open it before reading the firings. Issue #427.
+await page.locator('[data-execution-history-toggle]').click();
 
 /*
  * Waited for rather than slept past: the page is drawn from the trigger and the

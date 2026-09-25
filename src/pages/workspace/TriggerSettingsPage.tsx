@@ -79,6 +79,8 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
   const [saved, setSaved] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  /** Whether the execution history is drawn; collapsed by default - it runs long. Issue #427. */
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const list = `/workspace/${workspaceId}/triggers`;
 
@@ -174,9 +176,22 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
               down, a definition nothing instances - are recorded nowhere else,
               and finding them meant going back to the list.
             */}
+            {/* Collapsed by default and opened on a press - the firing log runs
+                to many rows and pushes everything below it down. Named
+                "Execution history" to set it apart from a component's revision
+                history. Issue #427. */}
             <section className={styles.card}>
-              <h2 className={styles.cardHeading}>{t('History')}</h2>
-              <TriggerFirings triggerId={triggerId} styles={LOG_STYLES} />
+              <button
+                type="button"
+                className={styles.historyToggle}
+                aria-expanded={historyOpen}
+                data-execution-history-toggle=""
+                onClick={() => setHistoryOpen((was) => !was)}
+              >
+                <span className={styles.historyCaret} aria-hidden="true">{historyOpen ? '▾' : '▸'}</span>
+                <h2 className={styles.cardHeading}>{t('Execution history')}</h2>
+              </button>
+              {historyOpen && <TriggerFirings triggerId={triggerId} styles={LOG_STYLES} />}
             </section>
 
             {/*
