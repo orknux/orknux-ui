@@ -952,6 +952,16 @@ function NodeDetailsPanel({
           </Link>
         </PanelField>
       )}
+      {/* The conversation this step talked into, when it kept one. An agent
+          node with a session wired to it writes its turns there, and this is
+          the way from the run to it. Issue #387. */}
+      {step.sessionId !== null && (
+        <PanelField label={t('Session')}>
+          <Link className={styles.panelLink} to={`/workspace/${workspaceId}/sessions/${step.sessionId}`}>
+            {t('Open session')}
+          </Link>
+        </PanelField>
+      )}
       <PanelField label={t('Status')}>
         <span className={`${styles.statusBadge} ${styles[stepStatusClass(step.status)]}`}>
           <span className={styles.statusDot} aria-hidden="true" />

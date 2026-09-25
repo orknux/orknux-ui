@@ -2256,6 +2256,17 @@ export const TESTS = [
      */
   },
   {
+    name: 'run-step-session-link-check',
+    what: 'an agent step on a run links to the session it kept, and a step that kept none links nowhere',
+    needs: ['workspace'],
+    /*
+     * Issue #387. The run is a fixture and only its two agent steps matter:
+     * one carries a sessionId and shows an Open session link to it, the other
+     * carries none and shows nothing. What fills that field on a real run is
+     * AgentNodeRunnerTest's business. Changes nothing.
+     */
+  },
+  {
     name: 'run-graph-check',
     what: "the run's graph stays on the canvas, including while the run is read again",
     needs: ['fixture'],
