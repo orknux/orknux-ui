@@ -163,12 +163,42 @@
   background: var(--color-surface-raised);
 }
 
+.colStatus,
 .colKey,
 .colPrefix,
 .colCount,
+.colSubs,
 .colOpened,
 .colSpoken {
   padding: 0 var(--space-16);
+}
+
+/* A narrow leading column carrying only the status dot. Issue #404. */
+.colStatus {
+  flex-shrink: 0;
+  width: 44px;
+  padding-right: 0;
+}
+
+/* Green while an agent is at work in the session, and drawn but colourless
+   otherwise - a fixed circle so the rows line up whether lit or not. #404. */
+.statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.statusActive {
+  background: var(--color-success, #3fb950);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success, #3fb950) 22%, transparent);
+}
+
+/* How many subagent sessions this one started. Issue #403. */
+.colSubs {
+  flex-shrink: 0;
+  width: 110px;
 }
 
 /* The key takes the slack: it is the only thing on the row that identifies it. */

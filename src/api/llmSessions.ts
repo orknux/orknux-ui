@@ -17,6 +17,10 @@ export interface LlmSession {
   createdAt: string;
   /** Null on a session nothing has been recorded in yet. */
   lastEventAt: string | null;
+  /** Whether an agent is at work in it right now: something unfinished, or a line within the last minute. Issue #404. */
+  active: boolean;
+  /** How many sessions were started under this one, so the list says which conversations fanned out. Issue #403. */
+  subagentCount: number;
   /**
    * What the agents in this conversation wrote down for themselves. Issue #371.
    *
@@ -94,7 +98,7 @@ export const EVENT_KIND_LABEL: Record<LlmSessionEventKind, string> = {
 /** In the order a turn takes: something is put to the agent, it calls, it answers. */
 export const EVENT_KINDS: LlmSessionEventKind[] = ['USER', 'AGENT', 'TOOL', 'THINKING', 'NOTE', 'SYSTEM'];
 
-const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt';
+const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount';
 
 /** What one opened session adds, and a row of the list does not. Issue #371. */
 const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;

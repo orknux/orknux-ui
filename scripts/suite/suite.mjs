@@ -2256,6 +2256,17 @@ export const TESTS = [
      */
   },
   {
+    name: 'sessions-list-columns-check',
+    what: 'the sessions list shows a green dot for an active session and a count of the subagents each fanned out into',
+    needs: ['workspace'],
+    /*
+     * Issues #403, #404. The rows are a fixture: what makes a session active
+     * and what its subagent count is are LlmSessionTest's business. Here the
+     * dot lights for the active row and not the quiet one, and the count reads
+     * where there is one. Changes nothing.
+     */
+  },
+  {
     name: 'run-step-session-link-check',
     what: 'an agent step on a run links to the session it kept, and a step that kept none links nowhere',
     needs: ['workspace'],

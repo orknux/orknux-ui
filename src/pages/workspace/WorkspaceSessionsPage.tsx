@@ -195,6 +195,9 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             either. Prefix is the front of the key rather than a column of its
             own, and Lines is a count of the transcript, so neither is an order.
           */}
+          {/* A leading dot says whether an agent is at work in the session; the
+              heading is blank because a dot needs no word over it. Issue #404. */}
+          <span className={styles.colStatus} aria-hidden="true" />
           <ColumnHeader
             label={t('Session')}
             order="KEY"
@@ -205,6 +208,7 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
           />
           <span className={styles.colPrefix}>{t('Prefix')}</span>
           <span className={styles.colCount}>{t('Lines')}</span>
+          <span className={styles.colSubs}>{t('Subagents')}</span>
           <ColumnHeader
             label={t('Opened')}
             order="CREATED"
@@ -277,11 +281,26 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             className={styles.row}
             to={`/workspace/${workspaceId}/sessions/${one.id}`}
           >
+            {/* Green while an agent is at work in it, nothing once it has gone
+                quiet - the same rule the session's family panel uses. Issue #404. */}
+            <span className={styles.colStatus}>
+              <span
+                className={one.active ? `${styles.statusDot} ${styles.statusActive}` : styles.statusDot}
+                data-session-status={one.active ? 'active' : 'inactive'}
+                title={one.active ? t('Active') : t('Inactive')}
+                aria-label={one.active ? t('Active') : t('Inactive')}
+              />
+            </span>
             <span className={`${styles.colKey} ${styles.key}`}>{one.key}</span>
             <span className={`${styles.colPrefix} ${styles.muted}`}>
               {one.keyPrefix ?? <span className={styles.nothing}>—</span>}
             </span>
             <span className={`${styles.colCount} ${styles.muted}`}>{one.eventCount}</span>
+            {/* How many sessions this one started by asking another agent; a
+                plain conversation shows nothing rather than a nought. Issue #403. */}
+            <span className={`${styles.colSubs} ${styles.muted}`} data-session-subagents={one.subagentCount}>
+              {one.subagentCount === 0 ? <span className={styles.nothing}>—</span> : one.subagentCount}
+            </span>
             <span className={`${styles.colOpened} ${styles.muted}`}>{timeAgo(one.createdAt)}</span>
             <span className={`${styles.colSpoken} ${styles.muted}`}>
               {/* Null is a session opened and never spoken in, which sorts last
