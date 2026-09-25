@@ -14,7 +14,8 @@ export type ConfirmKind =
   | 'removeLibrary'
   | 'bundleLibrary'
   | 'unloadPlugin'
-  | 'removeComment';
+  | 'removeComment'
+  | 'removeSession';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -24,7 +25,7 @@ export type ConfirmKind =
  * kind that deletes something arrived wearing the amber warning of a kind that
  * merely switches something off.
  */
-const DESTRUCTIVE = new Set<ConfirmKind>(['remove', 'deleteChat', 'removeComment', 'unloadPlugin']);
+const DESTRUCTIVE = new Set<ConfirmKind>(['remove', 'deleteChat', 'removeComment', 'unloadPlugin', 'removeSession']);
 
 export interface ConfirmDialogProps {
   /** What is being acted on, named, or null when the dialog is closed. */
@@ -158,6 +159,16 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
           Remove the comment {name} wrote? It goes for good — the words, anything that came with it, and
           the copy whoever was told about it was sent. The issue's history will say a comment was removed,
           and never what it said.
+        </>
+      ),
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeSession: {
+      title: t('Remove session'),
+      message: (
+        <>
+          Remove {name}, and everything said in it? The transcript, the notes its agents left, and every
+          session an agent in it started by asking another go with it. There is no way back from this one.
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),

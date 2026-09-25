@@ -53,6 +53,15 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [order, setOrder] = useState<LlmSessionOrder>('LAST_EVENT');
   const [ascending, setAscending] = useState(false);
+  /**
+   * Whether the sessions an agent started by asking another are listed too.
+   *
+   * Off to start: every ask lands a session beside the conversation it belongs
+   * to, so a list of all of them is mostly subagent sessions, and somebody
+   * scanning a workspace's conversations wants the conversations. The rest are
+   * a switch away here, and always on the conversation's own page. Issue #389.
+   */
+  const [includeSubagents, setIncludeSubagents] = useState(false);
 
   /**
    * A heading pressed: the same column turns round, a different one starts on
@@ -74,7 +83,7 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => setPage(1), [debouncedSearch, order, ascending]);
+  useEffect(() => setPage(1), [debouncedSearch, order, ascending, includeSubagents]);
 
   const load = useCallback(() => {
     if (workspaceId === '') return;
@@ -86,6 +95,7 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
       size: pageSize,
       order,
       ascending,
+      includeSubagents,
     })
       .then((found) => {
         setSessions(found);
@@ -96,7 +106,7 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
         setError(cause instanceof Error ? cause.message : t('Could not load the sessions.'));
         setLoading(false);
       });
-  }, [workspaceId, debouncedSearch, page, pageSize, order, ascending]);
+  }, [workspaceId, debouncedSearch, page, pageSize, order, ascending, includeSubagents]);
 
   useEffect(load, [load]);
 
@@ -156,6 +166,17 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
           >
             {ascending ? '↑' : '↓'}
           </button>
+          {/* Off by default: the list is the conversations, and their subagent
+              sessions are on each conversation's own page. Issue #389. */}
+          <label className={styles.subagentsSwitch}>
+            <input
+              type="checkbox"
+              checked={includeSubagents}
+              onChange={(event) => setIncludeSubagents(event.target.checked)}
+              data-include-subagents
+            />
+            {t('Subagent sessions')}
+          </label>
         </div>
       </div>
 

@@ -77,17 +77,15 @@ await page.route('**/graphql', async (route) => {
 await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${MAIN}`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the session'), 'a session opens');
 
-const toggle = page.locator('[data-family-toggle]');
-record(await toggle.count().then((many) => many === 1), 'the top right has a button for the sessions in this conversation');
-record(await page.locator('#session-family').count().then((many) => many === 0), 'and the panel is shut until it is pressed');
-
-await toggle.click();
+// The panel is simply there where there is a family - no button to open it,
+// because a thing that exists should not have to be asked for. Issue #388.
+record(await page.locator('[data-family-toggle]').count().then((many) => many === 0), 'there is no button to open it');
 const opened = await page
   .locator('#session-family')
   .waitFor({ timeout: 10_000 })
   .then(() => true)
   .catch(() => false);
-record(opened, 'pressing it opens the panel on the right');
+record(opened, 'the panel is there beside the transcript, without being asked for');
 if (!opened) await finish(browser);
 
 const rows = page.locator('[data-session-member]');
@@ -122,8 +120,12 @@ record(where !== null && where.panelLeft >= where.transcriptRight - 1, 'drawn on
 await page.locator('[data-session-member="424243"]').click();
 await page.waitForTimeout(1200);
 record(
-  page.url().includes('/sessions/424243') && page.url().includes('family=1'),
-  `clicking a session draws it on the left, with the panel kept open (${page.url()})`,
+  page.url().includes('/sessions/424243'),
+  `clicking a session draws it on the left (${page.url()})`,
+);
+record(
+  await page.locator('#session-family').count().then((many) => many === 1),
+  'and the panel is still there, because that session has a family too',
 );
 record(
   await page.locator('[data-session-member][aria-current="page"]').getAttribute('data-session-member').then((id) => id === '424243'),

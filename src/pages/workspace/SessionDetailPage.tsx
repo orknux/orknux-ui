@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { startChat } from '../../api/chat';
 import { fetchInstallationSettings } from '../../api/installation';
@@ -22,13 +22,13 @@ import type {
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
-import branchIcon from '../../assets/git-branch.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
 import { BackLink } from '../../components/BackLink';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { usePageWithin } from '../../components/pageWithin';
@@ -227,7 +227,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
 
   const navigate = useNavigate();
 
-  const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState(false);
   /*
    * Whether this installation lets a conversation be thrown away.
    *
@@ -353,27 +353,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    * and the panel is the same panel on the next one. The query string is
    * what carries "open" from one page to the next.
    */
-  const [searchParams, setSearchParams] = useSearchParams();
-  const panelOpen = searchParams.get('family') === '1';
   const [family, setFamily] = useState<LlmSessionMember[] | null>(null);
   const loadFamily = useCallback(() => {
-    if (sessionId === '' || !panelOpen) return;
+    if (sessionId === '') return;
     fetchLlmSessionFamily(sessionId)
       .then(setFamily)
       .catch(() => setFamily(null));
-  }, [sessionId, panelOpen]);
+  }, [sessionId]);
   useEffect(loadFamily, [loadFamily]);
   /* Status dots follow the transcript's refresh, so a subagent finishing goes orange with it. */
   useEffect(() => {
-    if (!panelOpen) return;
     loadFamily();
-  }, [events, panelOpen, loadFamily]);
-  const togglePanel = () => {
-    const next = new URLSearchParams(searchParams);
-    if (panelOpen) next.delete('family');
-    else next.set('family', '1');
-    setSearchParams(next, { replace: true });
-  };
+  }, [events, loadFamily]);
+  /*
+   * The panel is simply there where there is a family - a session with
+   * subagent sessions draws it beside its transcript, level with the search
+   * bar, and one with none draws nothing. It was a button that opened it;
+   * a thing that exists should not have to be asked for. Issue #388.
+   */
+  const hasFamily = family !== null && family.length > 1;
 
   return (
     <AppShell
@@ -385,8 +383,6 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       title={held?.key}
       scrollContent
     >
-      <div className={panelOpen ? styles.split : undefined}>
-      <div className={styles.main}>
       <header className={styles.contentHeader}>
         <p className={styles.breadcrumb}>
           <BackLink to={`/workspace/${workspaceId}/sessions`} label={t('Sessions')} />
@@ -423,20 +419,6 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     decided how often they want to be interrupted has decided
                     it everywhere.
                   */}
-                  <button
-                    type="button"
-                    className={panelOpen ? `${styles.familyButton} ${styles.familyButtonOpen}` : styles.familyButton}
-                    onClick={togglePanel}
-                    aria-pressed={panelOpen}
-                    aria-controls="session-family"
-                    data-family-toggle
-                  >
-                    <img src={branchIcon} alt="" width={14} height={14} />
-                    {t('Sessions')}
-                    {family !== null && family.length > 1 && (
-                      <span className={styles.familyCount}>{family.length}</span>
-                    )}
-                  </button>
                   <AutoRefresh onRefresh={refresh} busy={loading} />
                   {/* The label does not change: a word that flips every few
                       seconds under auto-refresh is movement, not information. */}
@@ -488,21 +470,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   {removable && (
                   <button
                     type="button"
-                    className={confirming ? styles.removeArmed : styles.remove}
-                    onClick={() => {
-                      if (!confirming) {
-                        setConfirming(true);
-                        return;
-                      }
-                      void removeLlmSession(held.id)
-                        .then(() => navigate(`/workspace/${workspaceId}/sessions`))
-                        .catch((cause: unknown) =>
-                          setRemoveError(cause instanceof Error ? cause.message : t('That could not be removed.')),
-                        );
-                    }}
-                    onBlur={() => setConfirming(false)}
+                    className={styles.remove}
+                    onClick={() => setRemoving(true)}
                   >
-                    {confirming ? t('Remove it, and everything said in it') : t('Remove session')}
+                    {t('Remove session')}
                   </button>
                   )}
                 </div>
@@ -558,6 +529,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         </section>
       )}
 
+      <div className={hasFamily ? styles.split : undefined}>
+      <div className={styles.main}>
       {!missing && (
         <>
           <div className={styles.filterBar}>
@@ -674,15 +647,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         </>
       )}
       </div>
-      {panelOpen && (
+      {hasFamily && (
         <aside id="session-family" className={styles.family} aria-label={t('Sessions in this conversation')}>
           <p className={styles.familyTitle}>{t('Sessions')}</p>
-          {family === null && (
-            <p className={styles.familyNote}>
-              <Loader />
-            </p>
-          )}
-          {family !== null && (
+          {(
             <ul className={styles.familyList}>
               {family.map((member) => {
                 const current = member.id === sessionId;
@@ -695,7 +663,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                       data-session-member={member.id}
                       data-session-active={member.active ? 'true' : 'false'}
                       onClick={() =>
-                        navigate({ pathname: `/workspace/${workspaceId}/sessions/${member.id}`, search: '?family=1' })
+                        navigate(`/workspace/${workspaceId}/sessions/${member.id}`)
                       }
                     >
                       {/*
@@ -717,12 +685,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               })}
             </ul>
           )}
-          {family !== null && family.length === 1 && (
-            <p className={styles.familyNote}>{t('No agent in this session has asked another yet.')}</p>
-          )}
         </aside>
       )}
       </div>
+      <ConfirmDialog
+        subject={removing && held !== null ? held.key : null}
+        kind="removeSession"
+        onClose={() => setRemoving(false)}
+        onConfirm={async () => {
+          if (held === null) return;
+          try {
+            await removeLlmSession(held.id);
+            setRemoving(false);
+            navigate(`/workspace/${workspaceId}/sessions`);
+          } catch (cause) {
+            setRemoveError(cause instanceof Error ? cause.message : t('That could not be removed.'));
+            throw cause;
+          }
+        }}
+      />
     </AppShell>
   );
 }

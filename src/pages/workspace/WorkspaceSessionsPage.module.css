@@ -258,3 +258,15 @@
   align-items: center;
   gap: var(--space-6);
 }
+
+/* The switch that lists the subagent sessions beside the conversations (#389). */
+.subagentsSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-left: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}

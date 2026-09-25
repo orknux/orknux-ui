@@ -141,13 +141,15 @@ export async function fetchLlmSessions(
     size?: number;
     order?: LlmSessionOrder;
     ascending?: boolean;
+    /** Whether the sessions started by asking another agent are listed too; off, main sessions only. Issue #389. */
+    includeSubagents?: boolean;
   } = {},
 ): Promise<LlmSessionPage> {
   const data = await graphql<{ llmSessions: LlmSessionPage }>(
     `query ($workspaceId: ID!, $search: String, $page: Int, $size: Int,
-            $order: LlmSessionOrder, $ascending: Boolean) {
+            $order: LlmSessionOrder, $ascending: Boolean, $includeSubagents: Boolean) {
        llmSessions(workspaceId: $workspaceId, search: $search, page: $page, size: $size,
-                   order: $order, ascending: $ascending) {
+                   order: $order, ascending: $ascending, includeSubagents: $includeSubagents) {
          totalElements
          content { ${SESSION_FIELDS} }
        }
@@ -159,6 +161,7 @@ export async function fetchLlmSessions(
       size: options.size ?? 20,
       order: options.order ?? null,
       ascending: options.ascending ?? null,
+      includeSubagents: options.includeSubagents ?? false,
     },
   );
   return data.llmSessions;
