@@ -358,6 +358,16 @@
   --kind-soft: var(--color-surface-raised);
 }
 
+/*
+ * A note the agent kept for itself. Amber, the colour of a thing marked to
+ * come back to, so the few lines meant to survive the transcript are the ones
+ * that catch the eye down the left of it. Issue #409.
+ */
+.kindNote {
+  --kind-colour: var(--color-amber);
+  --kind-soft: var(--color-amber-soft);
+}
+
 .eventHead {
   display: flex;
   align-items: center;
@@ -520,58 +530,6 @@
 
 .noticeError {
   color: var(--color-danger);
-}
-
-/* ---- What the agent wrote down for itself (#371) ---- */
-
-/*
- * Above the transcript and set apart from it, because it is not part of what was
- * said: a transcript is what happened, and these are the few lines an agent
- * decided it must not lose.
- */
-.notes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  margin: 0 var(--space-24) var(--space-16);
-  padding: var(--space-12) var(--space-16);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-8);
-}
-
-.notesHeading {
-  margin: 0;
-  font-weight: 600;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}
-
-.notesList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.note {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-12);
-}
-
-.noteText {
-  color: var(--color-text-primary);
-}
-
-/* Which agent, because a conversation can be shared between several. */
-.noteWho {
-  flex: none;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
 }
 
 /* ---- the session's family, opened from the top right (#379) ---- */

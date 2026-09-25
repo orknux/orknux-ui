@@ -69,6 +69,9 @@ const KIND_CLASS: Record<LlmSessionEventKind, string> = {
   // it is the badge, not a colour of its own. A fifth rule down the left of a
   // transcript is a fifth thing to learn for a line that is already labelled.
   THINKING: 'kindAgent',
+  // A note the agent kept for itself — its own rule, so a reader scanning the
+  // log picks out the few lines that were meant to survive it. Issue #409.
+  NOTE: 'kindNote',
 };
 
 /**
@@ -505,29 +508,11 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       </header>
 
       {/*
-        What the agents here wrote down for themselves. Issue #371.
-
-        Above the transcript rather than in it, because it is not part of what
-        was said: a transcript is what happened, and these are the few lines an
-        agent decided it must not lose. Somebody reading a conversation to work
-        out what an agent was doing wants them first, and they are the shortest
-        thing on the page.
+        The notes an agent wrote down for itself are lines in the log now, in
+        time order with the rest, drawn as a NOTE event. They used to sit in a
+        block above the transcript; a reader following a conversation wants a
+        note where it was written, not lifted out of it. Issues #371, #409.
       */}
-      {!missing && (held?.notes?.length ?? 0) > 0 && (
-        <section className={styles.notes} aria-label={t('What the agent wrote down')}>
-          <h2 className={styles.notesHeading}>{t('Agent notes')}</h2>
-          <ul className={styles.notesList}>
-            {held?.notes?.map((one) => (
-              <li key={one.id} className={styles.note}>
-                <span className={styles.noteText}>{one.note}</span>
-                <span className={styles.noteWho}>
-                  {one.writtenBy} · {timeAgo(one.writtenAt)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <div className={hasFamily ? styles.split : undefined}>
       <div className={styles.main}>

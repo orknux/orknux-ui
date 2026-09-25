@@ -39,7 +39,7 @@ export type LlmSessionOrder = 'KEY' | 'CREATED' | 'LAST_EVENT';
  * TOOL is the call and not what came back: the arguments the model sent, which
  * is why that one line is often JSON and often long.
  */
-export type LlmSessionEventKind = 'AGENT' | 'TOOL' | 'USER' | 'SYSTEM' | 'THINKING';
+export type LlmSessionEventKind = 'AGENT' | 'TOOL' | 'USER' | 'SYSTEM' | 'THINKING' | 'NOTE';
 
 /** What a transcript is ordered by. */
 export type LlmSessionEventOrder = 'AT' | 'KIND';
@@ -88,10 +88,11 @@ export const EVENT_KIND_LABEL: Record<LlmSessionEventKind, string> = {
   USER: 'User',
   SYSTEM: 'System',
   THINKING: 'Thinking',
+  NOTE: 'Note',
 };
 
 /** In the order a turn takes: something is put to the agent, it calls, it answers. */
-export const EVENT_KINDS: LlmSessionEventKind[] = ['USER', 'AGENT', 'TOOL', 'THINKING', 'SYSTEM'];
+export const EVENT_KINDS: LlmSessionEventKind[] = ['USER', 'AGENT', 'TOOL', 'THINKING', 'NOTE', 'SYSTEM'];
 
 const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt';
 
