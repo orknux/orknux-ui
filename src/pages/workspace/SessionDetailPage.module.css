@@ -654,3 +654,90 @@
   background: var(--color-surface-raised);
   font-size: var(--text-xs);
 }
+
+/* ---- The agent's setup at the start of the session (#391) ---- */
+
+/*
+ * Collapsed by default and opened on a press, because the system prompt alone
+ * can be a page. Above the transcript, since it is the context the whole log is
+ * read against rather than a line in it.
+ */
+.agentDetails {
+  margin: 0 var(--space-24) var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.agentToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.agentCaret {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.agentTitle {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Which agent, and its model, so the closed header still says who answered. */
+.agentWho {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: var(--space-12) 0 0;
+}
+
+.agentRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.agentKey {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.agentValue {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* The whole prompt, wrapped, in the tab-safe monospace the transcript uses. */
+.agentPrompt {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}

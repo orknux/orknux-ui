@@ -32,6 +32,25 @@ export interface LlmSession {
    * every note in the workspace to draw a page that shows none of them.
    */
   notes?: LlmSessionNote[];
+  /**
+   * The agent's setup as it stood when the session opened. Issue #391.
+   *
+   * Snapshotted once - the model, system prompt, and grants - so the log reads
+   * with the context its words were said in. Absent on a row of the list and
+   * on a session no agent has written into.
+   */
+  agentDetails?: SessionAgentDetails | null;
+}
+
+/** The agent's setup at the start of a session. Issue #391. */
+export interface SessionAgentDetails {
+  agent: string;
+  model: string | null;
+  systemPrompt: string | null;
+  tools: string[];
+  skills: string[];
+  memory: string[];
+  connections: string[];
 }
 
 /** What a list of sessions is ordered by, in the words the server uses. */
@@ -101,7 +120,9 @@ export const EVENT_KINDS: LlmSessionEventKind[] = ['USER', 'AGENT', 'TOOL', 'THI
 const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount';
 
 /** What one opened session adds, and a row of the list does not. Issue #371. */
-const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
+const ONE_SESSION_FIELDS =
+  `${SESSION_FIELDS} notes { id note writtenBy writtenAt } ` +
+  'agentDetails { agent model systemPrompt tools skills memory connections }';
 
 /**
  * One session of a family: the main session and every one an agent in it

@@ -244,6 +244,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [held, setHeld] = useState<LlmSession | null>(null);
   const [missing, setMissing] = useState(false);
+  /** Whether the agent-details header is expanded; collapsed by default - it can be long. Issue #391. */
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [events, setEvents] = useState<LlmSessionEventPage | null>(null);
   const [page, setPage] = usePageWithin(sessionId);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
@@ -517,6 +519,55 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         block above the transcript; a reader following a conversation wants a
         note where it was written, not lifted out of it. Issues #371, #409.
       */}
+
+      {/*
+        The agent's setup as it stood when the session opened, so the log reads
+        with the context its words were said in. Collapsed by default - the
+        system prompt alone can be a page - and opened on a press. Issue #391.
+      */}
+      {!missing && held?.agentDetails != null && (
+        <section className={styles.agentDetails} aria-label={t('Agent details')}>
+          <button
+            type="button"
+            className={styles.agentToggle}
+            aria-expanded={detailsOpen}
+            data-agent-details-toggle=""
+            onClick={() => setDetailsOpen((was) => !was)}
+          >
+            <span className={styles.agentCaret} aria-hidden="true">{detailsOpen ? '▾' : '▸'}</span>
+            <span className={styles.agentTitle}>{t('Agent details')}</span>
+            <span className={styles.agentWho}>
+              {held.agentDetails.agent}
+              {held.agentDetails.model != null ? ` · ${held.agentDetails.model}` : ''}
+            </span>
+          </button>
+          {detailsOpen && (
+            <dl className={styles.agentGrid}>
+              {held.agentDetails.systemPrompt != null && held.agentDetails.systemPrompt !== '' && (
+                <div className={styles.agentRow}>
+                  <dt className={styles.agentKey}>{t('System prompt')}</dt>
+                  <dd className={styles.agentValue}>
+                    <pre className={styles.agentPrompt}>{held.agentDetails.systemPrompt}</pre>
+                  </dd>
+                </div>
+              )}
+              {([
+                [t('Tools'), held.agentDetails.tools],
+                [t('Skills'), held.agentDetails.skills],
+                [t('Memory'), held.agentDetails.memory],
+                [t('Connections'), held.agentDetails.connections],
+              ] as const).map(([label, list]) =>
+                list.length === 0 ? null : (
+                  <div key={label} className={styles.agentRow}>
+                    <dt className={styles.agentKey}>{label}</dt>
+                    <dd className={styles.agentValue}>{list.join(', ')}</dd>
+                  </div>
+                ),
+              )}
+            </dl>
+          )}
+        </section>
+      )}
 
       <div className={hasFamily ? styles.split : undefined}>
       <div className={styles.main}>
