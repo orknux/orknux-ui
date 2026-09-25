@@ -156,6 +156,20 @@
  * down the right of the list rather than each sitting wherever its own name
  * happens to end.
  */
+/* The box a carried row's new name is typed into (#383). */
+.entryRename {
+  margin-left: auto;
+  min-width: 14ch;
+  padding: 2px var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface);
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
 .entryAction {
   margin-left: auto;
   padding: 2px var(--space-8);

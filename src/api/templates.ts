@@ -1,4 +1,4 @@
-import type { ComponentBinding, ComponentExclusion, ComponentKind, ExportDepth, ImportPlan } from './transfer';
+import type { ComponentBinding, ComponentExclusion, ComponentRename, ComponentKind, ExportDepth, ImportPlan } from './transfer';
 import { PLAN_FIELDS } from './transfer';
 import { graphql } from './client';
 import { t } from '../i18n';
@@ -91,19 +91,20 @@ export async function componentTemplatePlan(
   templateId: string,
   bindings: ComponentBinding[] = [],
   exclude: ComponentExclusion[] = [],
+  rename: ComponentRename[] = [],
 ): Promise<ImportPlan> {
   const data = await graphql<{ componentTemplatePlan: ImportPlan }>(
     `query ComponentTemplatePlan(
        $workspaceId: ID!, $templateId: ID!,
-       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!]
+       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!], $rename: [ComponentRenameInput!]
      ) {
        componentTemplatePlan(
-         workspaceId: $workspaceId, templateId: $templateId, bindings: $bindings, exclude: $exclude
+         workspaceId: $workspaceId, templateId: $templateId, bindings: $bindings, exclude: $exclude, rename: $rename
        ) {
          ${PLAN_FIELDS}
        }
      }`,
-    { workspaceId, templateId, bindings, exclude },
+    { workspaceId, templateId, bindings, exclude, rename },
   );
   return data.componentTemplatePlan;
 }
@@ -113,19 +114,20 @@ export async function useComponentTemplate(
   templateId: string,
   bindings: ComponentBinding[] = [],
   exclude: ComponentExclusion[] = [],
+  rename: ComponentRename[] = [],
 ): Promise<ImportPlan> {
   const data = await graphql<{ useComponentTemplate: ImportPlan }>(
     `mutation UseComponentTemplate(
        $workspaceId: ID!, $templateId: ID!,
-       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!]
+       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!], $rename: [ComponentRenameInput!]
      ) {
        useComponentTemplate(
-         workspaceId: $workspaceId, templateId: $templateId, bindings: $bindings, exclude: $exclude
+         workspaceId: $workspaceId, templateId: $templateId, bindings: $bindings, exclude: $exclude, rename: $rename
        ) {
          ${PLAN_FIELDS}
        }
      }`,
-    { workspaceId, templateId, bindings, exclude },
+    { workspaceId, templateId, bindings, exclude, rename },
   );
   return data.useComponentTemplate;
 }

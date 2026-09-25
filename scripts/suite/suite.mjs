@@ -2887,6 +2887,21 @@ export const TESTS = [
      */
   },
   {
+    name: 'import-choices-check',
+    what: 'a tool an agent points at can be left out of an import, and a carried component given a name',
+    needs: ['workspace', 'fixture'],
+    /*
+     * Issue #383. An agent copied between workspaces was refused over tools a
+     * plugin brought; what the importer makes of those is ImportChoicesTest's.
+     * This is the dialog's two new controls: Leave out on a "Not here" tool
+     * row, so the agent arrives without it, and Rename on a carried row, with
+     * the agent's grant following the name chosen.
+     *
+     * Makes a tool and an agent in the fixture's workspace, imports them into
+     * the empty one, and removes all of it.
+     */
+  },
+  {
     name: 'import-leave-out-check',
     what: 'Leave out is offered on what a file carries, and takes dependants with it',
     needs: ['workflow', 'fixture'],

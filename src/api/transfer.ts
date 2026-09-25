@@ -62,6 +62,12 @@ export interface ImportEntry {
    */
   carried: boolean;
   /**
+   * Whether this reference may be left out: a tool an agent points at, which
+   * the agent can arrive without. The one kind of reference the dialog offers
+   * to remove, beside everything the file carries. Issue #383.
+   */
+  droppable: boolean;
+  /**
    * The name in the file, and the key a binding answers by.
    *
    * For a model, the provider's name and the model's. Opaque: it is compared
@@ -117,9 +123,16 @@ export interface ComponentExclusion {
   name: string;
 }
 
+/** The name one carried component is to have here, chosen rather than left to the clash rule. Issue #383. */
+export interface ComponentRename {
+  kind: ComponentKind;
+  name: string;
+  targetName: string;
+}
+
 export const PLAN_FIELDS = `
   formatVersion producedBy depth importable problems
-  entries { kind external carried name targetName disposition detail }
+  entries { kind external carried droppable name targetName disposition detail }
 `;
 
 export async function exportComponent(
@@ -142,19 +155,20 @@ export async function componentImportPlan(
   envelope: string,
   bindings: ComponentBinding[] = [],
   exclude: ComponentExclusion[] = [],
+  rename: ComponentRename[] = [],
 ): Promise<ImportPlan> {
   const data = await graphql<{ componentImportPlan: ImportPlan }>(
     `query ComponentImportPlan(
        $workspaceId: ID!, $envelope: String!,
-       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!]
+       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!], $rename: [ComponentRenameInput!]
      ) {
        componentImportPlan(
-         workspaceId: $workspaceId, envelope: $envelope, bindings: $bindings, exclude: $exclude
+         workspaceId: $workspaceId, envelope: $envelope, bindings: $bindings, exclude: $exclude, rename: $rename
        ) {
          ${PLAN_FIELDS}
        }
      }`,
-    { workspaceId, envelope, bindings, exclude },
+    { workspaceId, envelope, bindings, exclude, rename },
   );
   return data.componentImportPlan;
 }
@@ -164,19 +178,20 @@ export async function importComponents(
   envelope: string,
   bindings: ComponentBinding[] = [],
   exclude: ComponentExclusion[] = [],
+  rename: ComponentRename[] = [],
 ): Promise<ImportPlan> {
   const data = await graphql<{ importComponents: ImportPlan }>(
     `mutation ImportComponents(
        $workspaceId: ID!, $envelope: String!,
-       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!]
+       $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!], $rename: [ComponentRenameInput!]
      ) {
        importComponents(
-         workspaceId: $workspaceId, envelope: $envelope, bindings: $bindings, exclude: $exclude
+         workspaceId: $workspaceId, envelope: $envelope, bindings: $bindings, exclude: $exclude, rename: $rename
        ) {
          ${PLAN_FIELDS}
        }
      }`,
-    { workspaceId, envelope, bindings, exclude },
+    { workspaceId, envelope, bindings, exclude, rename },
   );
   return data.importComponents;
 }

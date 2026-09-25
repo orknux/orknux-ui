@@ -118,7 +118,9 @@ async function rows() {
       .map((item) => {
         const spans = item.querySelectorAll(':scope > span > span');
         if (spans.length < 3) return null;
-        const button = item.querySelector('button');
+        // The Leave out / Keep control, by name: a carried row offers Rename
+        // beside it now (#383), and the first button is not the one measured.
+        const button = item.querySelector('button[aria-label^="Leave out"], button[aria-label^="Keep"]');
         return {
           kind: spans[0].textContent.trim(),
           name: spans[1].textContent.trim(),

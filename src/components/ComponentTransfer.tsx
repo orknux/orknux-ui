@@ -4,6 +4,7 @@ import type {
   BindingChoice,
   ComponentBinding,
   ComponentExclusion,
+  ComponentRename,
   ComponentKind,
   ExportDepth,
   ExternalKind,
@@ -248,13 +249,13 @@ export function ImportComponentsButton({ workspaceId, onImported, label = t('Imp
    * should do and what re-rendering should not.
    */
   const planFor = useCallback(
-    (bindings: ComponentBinding[], exclude: ComponentExclusion[]) =>
-      componentImportPlan(workspaceId, envelope ?? '', bindings, exclude),
+    (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
+      componentImportPlan(workspaceId, envelope ?? '', bindings, exclude, rename),
     [workspaceId, envelope],
   );
   const commit = useCallback(
-    (bindings: ComponentBinding[], exclude: ComponentExclusion[]) =>
-      importComponents(workspaceId, envelope ?? '', bindings, exclude),
+    (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
+      importComponents(workspaceId, envelope ?? '', bindings, exclude, rename),
     [workspaceId, envelope],
   );
 
@@ -298,9 +299,9 @@ interface ImportDialogProps {
    * needs binding is asking for the plan, and answering is asking again with the
    * answers attached. Must be stable while one file is open.
    */
-  planFor: (bindings: ComponentBinding[], exclude: ComponentExclusion[]) => Promise<ImportPlan>;
-  /** Does it, with the answers that were given and whatever was left out. */
-  commit: (bindings: ComponentBinding[], exclude: ComponentExclusion[]) => Promise<ImportPlan>;
+  planFor: (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) => Promise<ImportPlan>;
+  /** Does it, with the answers that were given, whatever was left out, and the names chosen. */
+  commit: (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) => Promise<ImportPlan>;
   onClose: () => void;
   /** Called once something was actually created. */
   onImported: () => void;
@@ -339,6 +340,16 @@ function ImportDialog({
    * because of a neighbour is the neighbour's business rather than its own.
    */
   const [exclude, setExclude] = useState<ComponentExclusion[]>([]);
+  /**
+   * The names chosen for carried components, and which row's box is open.
+   *
+   * Sent with every plan like the exclusions are, and judged by the server:
+   * a name that is taken comes back as a problem on that row rather than
+   * being moved along, because somebody typed it. Issue #383.
+   */
+  const [renames, setRenames] = useState<ComponentRename[]>([]);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [typed, setTyped] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /*
@@ -361,10 +372,12 @@ function ImportDialog({
     setPlan(null);
     setBindings([]);
     setExclude([]);
+    setRenames([]);
+    setRenaming(null);
     setError(null);
     setImporting(false);
     setBusy(true);
-    planFor([], [])
+    planFor([], [], [])
       .then((first) => {
         if (current) setPlan(first);
       })
@@ -392,7 +405,7 @@ function ImportDialog({
       .filter((binding) => !(binding.kind === external && binding.name === entry.name))
       .concat(targetId === '' ? [] : [{ kind: external, name: entry.name, targetId }]);
     setBindings(next);
-    await replan(next, exclude);
+    await replan(next, exclude, renames);
   }
 
   /**
@@ -410,14 +423,27 @@ function ImportDialog({
       .filter((one) => !(one.kind === kind && one.name === entry.name))
       .concat(out ? [{ kind, name: entry.name }] : []);
     setExclude(next);
-    await replan(bindings, next);
+    await replan(bindings, next, renames);
   }
 
-  async function replan(withBindings: ComponentBinding[], without: ComponentExclusion[]) {
+  /** One carried row given a name, or its name given back, and the plan again. */
+  async function rename(entry: ImportEntry, targetName: string) {
+    if (entry.kind === null) return;
+    const kind = entry.kind;
+    const wanted = targetName.trim();
+    const next = renames
+      .filter((one) => !(one.kind === kind && one.name === entry.name))
+      .concat(wanted === '' || wanted === entry.name ? [] : [{ kind, name: entry.name, targetName: wanted }]);
+    setRenames(next);
+    setRenaming(null);
+    await replan(bindings, exclude, next);
+  }
+
+  async function replan(withBindings: ComponentBinding[], without: ComponentExclusion[], named: ComponentRename[]) {
     setBusy(true);
     setError(null);
     try {
-      setPlan(await planFor(withBindings, without));
+      setPlan(await planFor(withBindings, without, named));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not read that file.'));
     }
@@ -429,7 +455,7 @@ function ImportDialog({
     setImporting(true);
     setError(null);
     try {
-      await commit(bindings, exclude);
+      await commit(bindings, exclude, renames);
       onImported();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not import it.'));
@@ -513,9 +539,10 @@ function ImportDialog({
             {references && (
               <p className={styles.leaveOutLead}>
                 Leave out anything the file <em>{t('carries')}</em> and it will not be created — what is kept then
-                points at this workspace's own of that name, where there is one. The rest of the list is what
-                the file points at and does not carry, so there is nothing there to take away: those have to
-                be here already, or be said to mean one of this workspace's own.
+                points at this workspace's own of that name, where there is one — or give it a name of your
+                own here. A tool an agent points at can be left out too, and the agent arrives without it.
+                The rest of the list is what the file points at and does not carry, so there is nothing there
+                to take away: those have to be here already, or be said to mean one of this workspace's own.
               </p>
             )}
 
@@ -555,12 +582,48 @@ function ImportDialog({
                         {DISPOSITION_LABEL[entry.disposition]}
                       </span>
                       {/*
-                        Offered only where the file holds the thing. Everything
-                        else on this list is a name it points at, and a control
-                        that offered to remove one of those would be lying about
-                        what it does.
+                        A name of the person's own, for what the file carries.
+                        The box opens on the row and the plan is asked again on
+                        Enter or on leaving it; a taken name comes back as the
+                        row's own problem. Issue #383.
                       */}
-                      {entry.carried && (
+                      {entry.carried && !out && renaming === entryKey(entry) && (
+                        <input
+                          className={styles.entryRename}
+                          value={typed}
+                          autoFocus
+                          spellCheck={false}
+                          aria-label={`New name for ${entry.name}`}
+                          onChange={(event) => setTyped(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') void rename(entry, typed);
+                            if (event.key === 'Escape') setRenaming(null);
+                          }}
+                          onBlur={() => void rename(entry, typed)}
+                        />
+                      )}
+                      {entry.carried && !out && renaming !== entryKey(entry) && (
+                        <button
+                          type="button"
+                          className={styles.entryAction}
+                          disabled={busy}
+                          onClick={() => {
+                            setTyped(entry.targetName);
+                            setRenaming(entryKey(entry));
+                          }}
+                          aria-label={`Rename ${entry.name}`}
+                        >
+                          {t('Rename')}
+                        </button>
+                      )}
+                      {/*
+                        Offered where the file holds the thing, and on the one
+                        kind of reference an agent can do without - a tool it
+                        points at. Everything else on this list is a name the
+                        file points at, and a control that offered to remove
+                        one of those would be lying about what it does.
+                      */}
+                      {(entry.carried || entry.droppable) && (
                         <button
                           type="button"
                           className={styles.entryAction}
@@ -778,13 +841,13 @@ export function UseTemplateButton({ workspaceId, kind, onImported, label = t('Us
 
   const templateId = chosen?.id ?? '';
   const planFor = useCallback(
-    (bindings: ComponentBinding[], exclude: ComponentExclusion[]) =>
-      componentTemplatePlan(workspaceId, templateId, bindings, exclude),
+    (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
+      componentTemplatePlan(workspaceId, templateId, bindings, exclude, rename),
     [workspaceId, templateId],
   );
   const commit = useCallback(
-    (bindings: ComponentBinding[], exclude: ComponentExclusion[]) =>
-      useComponentTemplate(workspaceId, templateId, bindings, exclude),
+    (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
+      useComponentTemplate(workspaceId, templateId, bindings, exclude, rename),
     [workspaceId, templateId],
   );
 
