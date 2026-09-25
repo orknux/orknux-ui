@@ -194,8 +194,18 @@ async function readGroup(root, what) {
       kept: rows
         .filter((row) => row.hasAttribute('data-kept'))
         .map((row) => row.getAttribute('data-grant-name')),
+      /*
+        Granted either way the row draws it: a checkbox on the grant lists that
+        have one, and a tri-state control on the tools list, where granted is
+        any state that is not Hide. Issue #413.
+      */
       ticked: rows
-        .filter((row) => row.querySelector('input[type="checkbox"]')?.checked === true)
+        .filter((row) => {
+          const box = row.querySelector('input[type="checkbox"]');
+          if (box !== null) return box.checked === true;
+          const state = row.querySelector('[data-tool-state]')?.getAttribute('data-tool-state');
+          return state != null && state !== 'hide';
+        })
         .map((row) => row.getAttribute('data-grant-name')),
       marks: node.querySelectorAll('mark').length,
       /* The one-press grant, and which way round it is pointing. */
@@ -331,7 +341,9 @@ async function measure(root, where) {
    * one name is a prefix of another picks the wrong row.
    */
   const keepBox = root.locator(`[data-grants="tools"] [data-grant-rows] > [data-grant-name="${keep}"]`);
-  await keepBox.locator('input[type="checkbox"]').check();
+  // The tools list grants through a tri-state control now: one click on an
+  // ungranted row cycles it Hide -> Offer, which is the grant. Issue #413.
+  await keepBox.locator('[data-tool-state]').click();
 
   const granted = await readGroup(root, 'tools');
   record(
@@ -431,9 +443,10 @@ async function measure(root, where) {
   );
 
   // Put back the one grant the drill started from, so what follows reads the
-  // list it expects.
+  // list it expects. Ungranted, its control is Hide; one click cycles it to
+  // Offer, which grants it. Issue #413.
   if (!undone.ticked.includes(keep)) {
-    await keepBox.locator('input[type="checkbox"]').check();
+    await keepBox.locator('[data-tool-state]').click();
     await page.waitForTimeout(150);
   }
 
@@ -456,8 +469,15 @@ async function measure(root, where) {
   record(cleared.marks === 0, `${where}: and nothing is left marked`);
 
   // The form put back as it was found. Nothing here is ever saved, but a panel
-  // closed and reopened should not look as though somebody had edited it.
-  await keepBox.locator('input[type="checkbox"]').uncheck();
+  // closed and reopened should not look as though somebody had edited it. Cycle
+  // the control back to Hide wherever it stands - at most three presses round
+  // the loop. Issue #413.
+  const keepPill = keepBox.locator('[data-tool-state]');
+  for (let press = 0; press < 3; press += 1) {
+    if ((await keepPill.getAttribute('data-tool-state')) === 'hide') break;
+    await keepPill.click();
+    await page.waitForTimeout(120);
+  }
 
   // ---- #173: the two paragraphs, and where their (?) went ------------------
 

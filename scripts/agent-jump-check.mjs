@@ -319,8 +319,10 @@ const firstTool = page
   .locator('[data-grants="tools"] [data-grant-rows] > [data-grant-name]:has(a)')
   .first();
 const toolName = await firstTool.getAttribute('data-grant-name');
-const tick = firstTool.locator('input[type="checkbox"]');
-const wasTicked = await tick.isChecked();
+// The tools list grants through a tri-state control now, not a checkbox: its
+// state is what a jump must leave untouched. Issue #413.
+const toolPill = firstTool.locator('[data-tool-state]');
+const wasState = await toolPill.getAttribute('data-tool-state');
 
 const typed = 'Jump check was here';
 await page.fill('#agent-description', typed);
@@ -334,7 +336,10 @@ record(
   new URL(toolTab.url()).pathname.startsWith(`/workspace/${WORKSPACE}/tools/`),
   `pressing a tool's mark lands on its editor (${new URL(toolTab.url()).pathname})`,
 );
-record((await tick.isChecked()) === wasTicked, `and does not grant ${JSON.stringify(toolName)} on the way`);
+record(
+  (await toolPill.getAttribute('data-tool-state')) === wasState,
+  `and does not grant ${JSON.stringify(toolName)} on the way`,
+);
 record(new URL(page.url()).pathname === settings, 'the form is still on screen behind it');
 record(
   (await page.locator('#agent-description').inputValue()) === typed,

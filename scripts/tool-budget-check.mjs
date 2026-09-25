@@ -8,10 +8,9 @@
  * context they occupy is paid for on every round of every turn.
  *
  * The eviction and the searching are pinned in ToolBudgetTest. What is measured
- * here is the form, where the two settings are one decision: the second column
- * appears when a ceiling is typed and not before, because without one nothing is
- * ever dropped and marking a row would be marking it against something that
- * never happens.
+ * here is the form. A tool's grant is one control that cycles Hide, Offer and
+ * Always on each press (#413); the count of what always travels appears beside
+ * the box once a ceiling is typed, because without one nothing is ever dropped.
  *
  * Makes an agent and removes it.
  */
@@ -85,59 +84,37 @@ record(
   'which opens empty, meaning as many as the provider allows',
 );
 
-/* ------------------------------ the column follows the ceiling ------------ */
+/* ------------------------------ the control and the count ----------------- */
 
-const always = page.locator('[class*="_grantAlways_"]');
+/* The granted tool loads Offered - available, not yet always carried. #413. */
+const pill = page.locator(`[data-grant-name="${TOOL}"] [data-tool-state]`);
 record(
-  await always.count().then((many) => many === 0),
-  'and with no ceiling there is no second column, because nothing is ever dropped',
+  await pill.getAttribute('data-tool-state').then((state) => state === 'offer'),
+  'a granted tool reads as Offered',
 );
 
+/* The count beside the box appears once a ceiling is typed. */
 await box.fill('10');
-const appeared = await always
-  .first()
+const count = page.locator('[data-always-count]').first();
+const appeared = await count
   .waitFor({ timeout: 10_000 })
   .then(() => true)
   .catch(() => false);
-record(appeared, 'typing a ceiling brings out the column that marks what always travels');
-
-/*
- * And not on the rows it would mean nothing for. finish_answer is a flag rather
- * than a tool: the server stores only granted names, so a tick there was dropped
- * on save while the form went on showing it.
- */
-record(
-  await page
-    .locator('[data-grant-name="finish_answer"] [class*="_grantAlways_"]')
-    .count()
-    .then((many) => many === 0),
-  'but not on the rows that are flags rather than tools, where the mark would be dropped on save',
-);
-
-/* The count beside the box, which is what makes the number mean something. */
-const count = await page.locator('[data-always-count]').first().innerText().catch(() => '');
-console.log(`count: ${count}`);
-record(count.includes('0 always'), `it counts what is marked as it is typed (${count})`);
+record(appeared, 'typing a ceiling brings out the count of what always travels');
+record((await count.innerText()).includes('0 always'), `nothing is marked always yet (${await count.innerText()})`);
 
 /* ------------------------------------------------ what a mark stores ------ */
 
-/*
- * The granted tool's own row, not the first "always" on the page.
- *
- * Two rows of this list are flags rather than tools - finish_answer and the
- * picture link - and the first press of this check landed on one of them. The
- * mark was sent, the server dropped it because it is not a granted tool, and the
- * form went on showing it ticked. Those rows no longer offer the column at all,
- * which is what the assertion below is about as much as this press is.
- */
-const row = page.locator(`[data-grant-name="${TOOL}"]`);
-await row.locator('[class*="_grantAlways_"] input[type="checkbox"]').check();
+/* Clicking the granted tool's control cycles it Offer -> Always. */
+await pill.click();
+record(
+  await pill.getAttribute('data-tool-state').then((state) => state === 'always'),
+  'clicking a granted tool marks it Always',
+);
 
 /*
- * The count is what says the mark landed in the form rather than only in the
- * DOM - a checkbox inside a label can be toggled twice by one press, once by
- * the input and once by the label forwarding it, which leaves the box looking
- * ticked and the state where it started.
+ * The count is what says the mark landed in the form rather than only on the
+ * button: it reads requiredTools, so "1 always" is the form holding it.
  */
 const marked = await page
   .waitForFunction(() => document.querySelector('[data-always-count]')?.textContent?.includes('1 always'), {
@@ -145,7 +122,53 @@ const marked = await page
   })
   .then(() => true)
   .catch(() => false);
-record(marked, 'ticking it is counted, so the mark reached the form and not only the checkbox');
+record(marked, 'and that reaches the count, so the form has it, not only the button');
+
+/*
+ * A capability flag has no Offer state. finish_answer is always carried when
+ * on rather than searched for, so its control cycles Hide and Always only,
+ * never Offer between them. #413.
+ */
+const flag = page.locator('[data-grant-name="finish_answer"] [data-tool-state]');
+if ((await flag.count()) > 0) {
+  const start = await flag.getAttribute('data-tool-state');
+  await flag.click();
+  const one = await flag.getAttribute('data-tool-state');
+  await flag.click();
+  const two = await flag.getAttribute('data-tool-state');
+  record(
+    one !== 'offer' && two !== 'offer' && [start, one, two].includes('always'),
+    `a capability flag reads Hide or Always, never Offer (${start} -> ${one} -> ${two})`,
+  );
+}
+
+/* ------------------------------------------- the status filter ----------- */
+
+/*
+ * The list narrows to one status. Only where the list is long enough to draw
+ * its filters at all, which is where a filter earns its keep. Issue #413.
+ */
+const statusFilter = page.locator('[data-tool-status-filter]');
+if ((await statusFilter.count()) > 0) {
+  await statusFilter.selectOption('always');
+  await page.waitForTimeout(400);
+  record(
+    (await page.locator(`[data-grant-name="${TOOL}"] [data-tool-state="always"]`).count()) > 0,
+    'filtering to Always shows the tool marked always',
+  );
+  record(
+    (await page.locator('[data-grant-rows] > [data-grant-name] [data-tool-state="offer"]').count()) === 0,
+    'and nothing that is merely offered',
+  );
+  await statusFilter.selectOption('hide');
+  await page.waitForTimeout(400);
+  record(
+    (await page.locator(`[data-grant-name="${TOOL}"]`).count()) === 0,
+    'filtering to Hide leaves the always-carried tool out',
+  );
+  await statusFilter.selectOption('all');
+  await page.waitForTimeout(300);
+}
 
 /*
  * What the save actually sends, printed. The first run of this check passed

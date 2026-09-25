@@ -352,6 +352,8 @@ function GrantList<Item>({
   const [search, setSearch] = useState('');
   /** Which plugin is being shown, or '' for all of them. */
   const [group, setGroup] = useState('');
+  /** Which status to show, on a list that has them: 'all', 'hide', 'offer', 'always'. Issue #413. */
+  const [status, setStatus] = useState('all');
   const items = catalogue.items;
   const needle = search.trim().toLowerCase();
 
@@ -415,6 +417,49 @@ function GrantList<Item>({
   const orphans = granted.filter((name) => !rows.some((row) => row.name === name));
 
   const shown = rows.filter((row) => row.inGroup && (row.matches || row.ticked));
+
+  /*
+   * A tool's grant as one cycling control: Hide, Offer, Always. Issue #413.
+   *
+   * Only where the caller offers the Always state at all (`onMark`), which is
+   * the tools list; every other grant list stays a plain tick. A row that
+   * cannot be Always - the two capability flags in the tools list - cycles
+   * between the first two only.
+   */
+  type ToolState = 'hide' | 'offer' | 'always';
+  const toolState = (row: { name: string; ticked: boolean }): ToolState => {
+    if (!row.ticked) return 'hide';
+    // A row that cannot be marked - the two capability flags - is one that is
+    // always carried when on rather than searched for, so its on-state reads
+    // as Always, not Offer. It has no middle state. Issue #413.
+    const canAlways = markable?.(row.name) ?? true;
+    if (!canAlways) return 'always';
+    return (marked?.includes(row.name) ?? false) ? 'always' : 'offer';
+  };
+  const cycleTool = (row: { name: string; ticked: boolean }) => {
+    const state = toolState(row);
+    if (state === 'hide') {
+      // Hide -> Offer for a tool, Hide -> Always for a flag (both are "grant it").
+      onChange([...granted, row.name]);
+    } else if (state === 'offer') {
+      // Reachable only for a markable tool: Offer -> Always.
+      onMark?.([...(marked ?? []), row.name]);
+    } else {
+      // Always -> Hide, dropping any mark it carried.
+      onChange(granted.filter((one) => one !== row.name));
+      onMark?.((marked ?? []).filter((one) => one !== row.name));
+    }
+  };
+  /* The rows the status filter leaves, on a list that has statuses. Issue #413. */
+  const visible =
+    onMark !== undefined && status !== 'all' ? shown.filter((row) => toolState(row) === status) : shown;
+  const STATE_LABEL: Record<ToolState, string> = { hide: t('Hide'), offer: t('Offer'), always: t('Always') };
+  const STATE_TITLE: Record<ToolState, string> = {
+    hide: t('Hidden — the agent cannot use this. Click to offer it.'),
+    offer: t('Offered — available, loaded when a job needs it once a tool limit is set. Click to always carry it.'),
+    always: t('Always — carried in front of the model every turn, once a tool limit is set. Click to hide it.'),
+  };
+  const STATE_CLASS: Record<ToolState, string> = { hide: own.stateHide, offer: own.stateOffer, always: own.stateAlways };
 
   /*
    * What a press of "grant these" acts on: the rows the filter and the search
@@ -538,6 +583,23 @@ function GrantList<Item>({
               ))}
             </select>
           )}
+
+          {/* Narrow to one status - what is pinned, offered, or off. Only on a
+              list that has statuses, which is the tools list. Issue #413. */}
+          {onMark !== undefined && (
+            <select
+              className={own.grantGroup}
+              value={status}
+              aria-label={t('Which tool status to list')}
+              data-tool-status-filter=""
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option value="all">{t('Any status')}</option>
+              <option value="always">{t('Always')}</option>
+              <option value="offer">{t('Offer')}</option>
+              <option value="hide">{t('Hide')}</option>
+            </select>
+          )}
         </div>
       )}
 
@@ -563,7 +625,7 @@ function GrantList<Item>({
 
       {(items.length > 0 || orphans.length > 0) && (
         <div className={own.checkList} data-grant-rows="">
-          {shown.map((row) => {
+          {visible.map((row) => {
             const meta = metaOf?.(row.item);
             const opens = linkOf?.(row.item) ?? null;
             return (
@@ -587,56 +649,63 @@ function GrantList<Item>({
                 */
                 data-kept={row.matches ? undefined : ''}
               >
-                <label className={own.grantToggle}>
-                  <input
-                    type="checkbox"
-                    checked={row.ticked}
-                    onChange={(event) =>
-                      onChange(
-                        event.target.checked
-                          ? [...granted, row.name]
-                          : granted.filter((one) => one !== row.name),
-                      )
-                    }
-                  />
-                  {/*
-                    The typed part picked out, by the matcher the manual's search
-                    already uses - so the two cannot disagree about what matched.
-                  */}
-                  <span className={own.grantName}>
-                    {segments(row.name, search).map((part, index) =>
-                      part.match ? (
-                        <mark key={index} className={own.grantMark}>
-                          {part.text}
-                        </mark>
-                      ) : (
-                        <span key={index}>{part.text}</span>
-                      ),
-                    )}
-                  </span>
-                </label>
                 {/*
-                  Always carried, rather than found when it is wanted. #372.
-
-                  Only on a granted row, because marking something this agent
-                  does not have is a statement about nothing - and only where
-                  the caller asked the question at all, which is where a ceiling
-                  has been typed.
+                  The typed part picked out, by the matcher the manual's search
+                  already uses - so the two cannot disagree about what matched.
                 */}
-                {onMark !== undefined && row.ticked && (markable?.(row.name) ?? true) && (
-                  <label className={own.grantAlways} title={t('Always carried, rather than found when needed')}>
+                {onMark !== undefined ? (
+                  /*
+                    A tool's grant as one control cycling Hide -> Offer ->
+                    Always on each press, rather than a tick and a second tick
+                    beside it. Issue #413.
+                  */
+                  <div className={own.grantToggle}>
+                    <button
+                      type="button"
+                      className={`${own.stateToggle} ${STATE_CLASS[toolState(row)]}`}
+                      data-tool-state={toolState(row)}
+                      onClick={() => cycleTool(row)}
+                      title={STATE_TITLE[toolState(row)]}
+                      aria-label={`${row.name}: ${STATE_LABEL[toolState(row)]}`}
+                    >
+                      {STATE_LABEL[toolState(row)]}
+                    </button>
+                    <span className={own.grantName}>
+                      {segments(row.name, search).map((part, index) =>
+                        part.match ? (
+                          <mark key={index} className={own.grantMark}>
+                            {part.text}
+                          </mark>
+                        ) : (
+                          <span key={index}>{part.text}</span>
+                        ),
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <label className={own.grantToggle}>
                     <input
                       type="checkbox"
-                      checked={marked?.includes(row.name) ?? false}
+                      checked={row.ticked}
                       onChange={(event) =>
-                        onMark(
+                        onChange(
                           event.target.checked
-                            ? [...(marked ?? []), row.name]
-                            : (marked ?? []).filter((one) => one !== row.name),
+                            ? [...granted, row.name]
+                            : granted.filter((one) => one !== row.name),
                         )
                       }
                     />
-                    <span>{t('always')}</span>
+                    <span className={own.grantName}>
+                      {segments(row.name, search).map((part, index) =>
+                        part.match ? (
+                          <mark key={index} className={own.grantMark}>
+                            {part.text}
+                          </mark>
+                        ) : (
+                          <span key={index}>{part.text}</span>
+                        ),
+                      )}
+                    </span>
                   </label>
                 )}
                 {meta !== undefined && meta !== null && meta !== false && (
@@ -678,7 +747,7 @@ function GrantList<Item>({
               <span className={own.checkCount}>{t('not in this workspace')}</span>
             </div>
           ))}
-          {shown.length === 0 && <p className={own.emptyNote}>{t('Nothing by that name.')}</p>}
+          {visible.length === 0 && <p className={own.emptyNote}>{t('Nothing by that name.')}</p>}
         </div>
       )}
     </div>
@@ -1421,7 +1490,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           styles={styles}
           catalogue={toolCatalogue}
           empty={t("No tools in this workspace yet.")}
-          hint={t('The workspace\'s own tools, and the tools its plugins offer — a granted name is offered to the model either way.')}
+          hint={t('The workspace\'s own tools, and the tools its plugins offer. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. Two rows here are built-in capabilities rather than tools: they are always carried when on, so they read Hide or Always with no Offer between.')}
           keyOf={(tool) => tool.id}
           nameOf={(tool) => tool.name}
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
@@ -1445,12 +1514,13 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             setRequiredTools((held) => held.filter((one) => kept.includes(one)));
           }}
           /*
-            The second column, and only where a ceiling has been typed. Without
-            one nothing is ever dropped, so marking a row would be marking it
-            against something that never happens. #372.
+            The Always state, kept whether or not a ceiling is set. It has no
+            effect without one - nothing is ever dropped, so every offered tool
+            is carried - but the choice is remembered for when a limit is set,
+            so the control reads the same three states at all times. #372, #413.
           */
-          marked={carrying === null ? undefined : requiredTools}
-          onMark={carrying === null ? undefined : setRequiredTools}
+          marked={requiredTools}
+          onMark={setRequiredTools}
           /*
             The two flags in this list are not tools and cannot be marked: the
             server stores only what is granted, so a tick on one of them was
