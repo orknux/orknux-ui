@@ -2244,6 +2244,18 @@ export const TESTS = [
      */
   },
   {
+    name: 'run-view-kept-check',
+    what: "a run's canvas stays where somebody put it: through a refresh, a resize, and a browser reload",
+    needs: ['workspace'],
+    /*
+     * The first framing path had learnt to stop once a hand was on the canvas;
+     * a second, keyed on the nodes rebuilt by every refresh, had not - and a
+     * reload started from nothing. The hand outranks both now and the
+     * viewport is kept per run for the tab. The zoom is a synthetic pinch,
+     * because a headless wheel does not reach d3-zoom. Changes nothing.
+     */
+  },
+  {
     name: 'run-graph-check',
     what: "the run's graph stays on the canvas, including while the run is read again",
     needs: ['fixture'],

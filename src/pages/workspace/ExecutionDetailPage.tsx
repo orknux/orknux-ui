@@ -8,7 +8,7 @@ import {
   ReactFlow,
   useReactFlow,
 } from '@xyflow/react';
-import type { ReactFlowInstance } from '@xyflow/react';
+import type { ReactFlowInstance, Viewport } from '@xyflow/react';
 import type { Edge, Node, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -302,11 +302,26 @@ const PADDING = 1.2;
  * Keyed on which steps there are rather than how many, so selecting one (which
  * rebuilds the node objects) does not yank the viewport back mid-inspection.
  */
-function FitWhenReady({ signature, held }: { signature: string; held: { current: boolean } }) {
+function FitWhenReady({ signature, held, runId }: { signature: string; held: { current: boolean }; runId: string }) {
   const flow = useReactFlow();
 
   useEffect(() => {
     if (signature === '') return;
+    /*
+     * Where somebody left the canvas, put back before anything is framed.
+     *
+     * A browser reload - the F5 kind, or a tab restored - starts this page
+     * from nothing, and framing on arrival threw away the zoom somebody had
+     * settled on a minute earlier. The viewport is kept per run for the tab's
+     * lifetime, written on every pan or zoom, and a page that finds one opens
+     * on it and stays out of the way, the way a hand on the canvas does.
+     */
+    const kept = keptViewport(runId);
+    if (kept !== null) {
+      held.current = true;
+      flow.setViewport(kept);
+      return;
+    }
     /*
      * Not once somebody has moved the canvas themselves.
      *
@@ -339,6 +354,29 @@ function FitWhenReady({ signature, held }: { signature: string; held: { current:
 
 /** Long enough for a slow layout, short enough not to be seen as a jump. */
 const LATE_FIT_MS = 250;
+
+/** Where a run's canvas is kept between reloads: this tab, this run. */
+const viewportKey = (runId: string) => `run-view:${runId}`;
+
+function keptViewport(runId: string): Viewport | null {
+  try {
+    const held = sessionStorage.getItem(viewportKey(runId));
+    if (held === null) return null;
+    const parsed = JSON.parse(held) as Partial<Viewport>;
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number' || typeof parsed.zoom !== 'number') return null;
+    return { x: parsed.x, y: parsed.y, zoom: parsed.zoom };
+  } catch {
+    return null;
+  }
+}
+
+function keepViewport(runId: string, viewport: Viewport): void {
+  try {
+    sessionStorage.setItem(viewportKey(runId), JSON.stringify(viewport));
+  } catch {
+    // A tab that keeps nothing frames on arrival, as it always did.
+  }
+}
 
 /**
  * Why a run names a workflow it cannot open.
@@ -455,6 +493,15 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   useEffect(() => {
     if (flow === null || nodes.length === 0) return;
     const fit = () => {
+      /*
+       * Not once somebody has moved the canvas, or a reload put it back where
+       * they left it. This is the second framing path on the page, keyed on
+       * the nodes - which are rebuilt on every refresh of the run, every
+       * second while it goes - and it was the one that kept pulling the zoom
+       * back after the first had learnt to stop: the refresh rebuilt the
+       * nodes, this ran, and the hand on the canvas counted for nothing.
+       */
+      if (viewHeld.current) return;
       const element = document.querySelector<HTMLElement>('.react-flow');
       if (element !== null) frameGraph(flow, element);
     };
@@ -728,14 +775,25 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                       onMoveStart={() => {
                         viewHeld.current = true;
                       }}
+                      // And where it ended up, kept for a reload of this tab.
+                      onMoveEnd={(_, viewport) => {
+                        viewHeld.current = true;
+                        keepViewport(executionId, viewport);
+                      }}
                       onPaneClick={() => setSelectedKey(null)}
                       nodesDraggable={false}
                       nodesConnectable={false}
                       edgesFocusable={false}
-                      fitView
+                      // No fitView prop: it used to do nothing (see frameGraph) and,
+                      // once the nodes were measured, did the wrong thing - a fit on
+                      // initialisation, clamped to a minimum zoom of 0.5, landing on
+                      // top of the viewport a reload had just put back. The page
+                      // frames the graph itself, and a run wider than the card sits
+                      // below 0.5, so the floor is lowered to what framing shows.
+                      minZoom={0.1}
                       proOptions={{ hideAttribution: true }}
                     >
-                      <FitWhenReady signature={signature} held={viewHeld} />
+                      <FitWhenReady signature={signature} held={viewHeld} runId={executionId} />
                       <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#27272a" />
                     </ReactFlow>
                   </div>
