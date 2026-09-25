@@ -34,6 +34,7 @@ import {
   UseTemplateButton,
 } from '../../components/ComponentTransfer';
 import { Loader } from '../../components/Loader';
+import { CatalogNameDialog } from '../../components/CatalogNameDialog';
 import { Markdown } from '../../components/Markdown';
 import { NameDialog } from '../../components/NameDialog';
 import { UsedBy } from '../../components/UsedBy';
@@ -100,6 +101,8 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
   /** Whether the catalog column is folded away; the list is not always the work. */
   const [foldedCatalogs, setFoldedCatalogs] = useState(false);
   const [creating, setCreating] = useState(false);
+  /** Which catalog naming dialog is open: making a new one, or renaming one. */
+  const [naming, setNaming] = useState<{ mode: 'new' } | { mode: 'rename'; id: string; name: string } | null>(null);
 
   const current = catalogs?.find((catalog) => catalog.id === selected) ?? null;
   /** A plugin's catalog is selected by name behind a prefix, so ids cannot clash. */
@@ -167,23 +170,28 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
     }
   }
 
-  async function handleNewCatalog() {
-    const name = window.prompt(t('Name the catalog'));
-    if (name === null || name.trim() === '') return;
-    await guard(async () => {
-      const created = await createSkillCatalog(workspaceId, name.trim());
-      await loadCatalogs(created.id);
-    });
+  function handleNewCatalog() {
+    setNaming({ mode: 'new' });
   }
 
-  async function handleRenameCatalog() {
+  function handleRenameCatalog() {
     if (current === null) return;
-    const name = window.prompt(t('Rename the catalog'), current.name);
-    if (name === null || name.trim() === '' || name.trim() === current.name) return;
-    await guard(async () => {
-      await renameSkillCatalog(current.id, name.trim());
-      await loadCatalogs(current.id);
-    });
+    setNaming({ mode: 'rename', id: current.id, name: current.name });
+  }
+
+  async function submitCatalogName(name: string) {
+    if (naming === null) return;
+    if (naming.mode === 'rename') {
+      // An unchanged name is not a rename; close without troubling the server.
+      if (name !== naming.name) {
+        await renameSkillCatalog(naming.id, name);
+        await loadCatalogs(naming.id);
+      }
+    } else {
+      const created = await createSkillCatalog(workspaceId, name);
+      await loadCatalogs(created.id);
+    }
+    setNaming(null);
   }
 
   async function handleDeleteCatalog() {
@@ -579,6 +587,16 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
           });
           navigate(`/workspace/${workspaceId}/skills/${created.id}`);
         }}
+      />
+
+      <CatalogNameDialog
+        open={naming !== null}
+        title={naming?.mode === 'rename' ? t('Rename the catalog') : t('Name the catalog')}
+        message={t('A catalog is the set of skills an agent is granted at once.')}
+        submitLabel={naming?.mode === 'rename' ? t('Rename') : t('Create')}
+        initialName={naming?.mode === 'rename' ? naming.name : ''}
+        onClose={() => setNaming(null)}
+        onSubmit={submitCatalogName}
       />
     </AppShell>
   );

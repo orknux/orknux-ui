@@ -32,6 +32,7 @@ import plusIcon from '../../assets/plus.svg';
 import searchIcon from '../../assets/search.svg';
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
+import { CatalogNameDialog } from '../../components/CatalogNameDialog';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
 import { RevealToggle } from '../../components/RevealToggle';
@@ -176,6 +177,8 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
   const [error, setError] = useState<string | null>(null);
   /** Whether the catalog column is folded away; the list is not always the work. */
   const [foldedCatalogs, setFoldedCatalogs] = useState(false);
+  /** Which catalog naming dialog is open: making a new one, or renaming one. */
+  const [naming, setNaming] = useState<{ mode: 'new' } | { mode: 'rename'; id: string; name: string } | null>(null);
 
   /*
    * What a variable may be beyond the three built in, and the connections a
@@ -274,23 +277,28 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
     void guard(() => loadVariables());
   }, [loadVariables]);
 
-  async function handleNewCatalog() {
-    const name = window.prompt(t('Name the catalog'));
-    if (name === null || name.trim() === '') return;
-    await guard(async () => {
-      const made = await createVariableCatalog(workspaceId, name.trim());
-      await loadCatalogs(made.id);
-    });
+  function handleNewCatalog() {
+    setNaming({ mode: 'new' });
   }
 
-  async function handleRenameCatalog() {
+  function handleRenameCatalog() {
     if (current === null) return;
-    const name = window.prompt(t('Rename the catalog'), current.name);
-    if (name === null || name.trim() === '') return;
-    await guard(async () => {
-      await renameVariableCatalog(current.id, name.trim());
-      await loadCatalogs(current.id);
-    });
+    setNaming({ mode: 'rename', id: current.id, name: current.name });
+  }
+
+  async function submitCatalogName(name: string) {
+    if (naming === null) return;
+    if (naming.mode === 'rename') {
+      // An unchanged name is not a rename; close without troubling the server.
+      if (name !== naming.name) {
+        await renameVariableCatalog(naming.id, name);
+        await loadCatalogs(naming.id);
+      }
+    } else {
+      const made = await createVariableCatalog(workspaceId, name);
+      await loadCatalogs(made.id);
+    }
+    setNaming(null);
   }
 
   async function handleDeleteCatalog() {
@@ -508,6 +516,16 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
           )}
         </section>
       </div>
+
+      <CatalogNameDialog
+        open={naming !== null}
+        title={naming?.mode === 'rename' ? t('Rename the catalog') : t('Name the catalog')}
+        message={t('A catalog groups related values and secrets under one name.')}
+        submitLabel={naming?.mode === 'rename' ? t('Rename') : t('Create')}
+        initialName={naming?.mode === 'rename' ? naming.name : ''}
+        onClose={() => setNaming(null)}
+        onSubmit={submitCatalogName}
+      />
     </AppShell>
   );
 }
