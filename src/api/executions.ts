@@ -2,7 +2,7 @@ import { graphql } from './client';
 import type { PageOf } from './client';
 import type { EdgeBranch, NodeKind } from './graph';
 
-export type ExecutionStatus = 'RUNNING' | 'COMPLETED' | 'FAILED';
+export type ExecutionStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
 export type ExecutionTrigger = 'WEBHOOK' | 'MANUAL' | 'SCHEDULE' | 'API';
 
 export interface Execution {
@@ -254,6 +254,7 @@ export const STATUS_LABEL: Record<ExecutionStatus, string> = {
   RUNNING: 'Running',
   COMPLETED: 'Completed',
   FAILED: 'Failed',
+  STOPPED: 'Stopped',
 };
 
 export const TRIGGER_LABEL: Record<ExecutionTrigger, string> = {
@@ -327,6 +328,21 @@ export async function fetchExecution(id: string): Promise<ExecutionDetail | null
 export async function rerunExecution(id: string): Promise<ExecutionDetail> {
   const data = await graphql<{ rerunExecution: ExecutionDetail }>(RERUN_MUTATION, { id });
   return data.rerunExecution;
+}
+
+/**
+ * Asks a running execution to stop. Issue #395.
+ *
+ * The engine ends it before its next step; a stopped run is terminal and does
+ * not resume. Answers with the run as it stands - running still, until the
+ * engine notices - so a page that polls sees it become stopped.
+ */
+export async function stopExecution(id: string): Promise<ExecutionDetail> {
+  const data = await graphql<{ stopExecution: ExecutionDetail }>(
+    `mutation StopExecution($id: ID!) { stopExecution(id: $id) { ${EXECUTION_DETAIL_FIELDS} } }`,
+    { id },
+  );
+  return data.stopExecution;
 }
 
 /**

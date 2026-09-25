@@ -189,6 +189,7 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
               { value: 'RUNNING', label: t('Running') },
               { value: 'COMPLETED', label: t('Completed') },
               { value: 'FAILED', label: t('Failed') },
+              { value: 'STOPPED', label: t('Stopped') },
             ]}
           />
 

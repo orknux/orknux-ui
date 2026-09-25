@@ -351,6 +351,12 @@
   color: var(--color-danger-solid);
 }
 
+/* A run ended by request: neither done nor failed, drawn quietly. Issue #395. */
+.stopped {
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+}
+
 /* ---- Loading / empty / error ---- */
 
 .notice {

@@ -194,6 +194,32 @@ a.refresh {
   cursor: not-allowed;
 }
 
+/* Stop a running run: shaped like Re-run but in the danger colour, since it
+   ends the run for good. Issue #395. */
+.stop {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: var(--space-8) var(--space-16);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-danger-solid, var(--color-danger));
+  cursor: pointer;
+}
+
+.stop:hover:not(:disabled) {
+  border-color: var(--color-danger);
+}
+
+.stop:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ---- Status badges ---- */
 
 .statusBadge,
@@ -231,6 +257,12 @@ a.refresh {
 .failed {
   background: var(--color-danger-soft);
   color: var(--color-danger-solid);
+}
+
+/* A run ended by request: neither done nor failed, drawn quietly. Issue #395. */
+.stopped {
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
 }
 
 .pending {

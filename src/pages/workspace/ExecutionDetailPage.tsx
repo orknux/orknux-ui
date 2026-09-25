@@ -19,6 +19,7 @@ import {
   formatDuration,
   rerunExecution,
   rerunExecutionStep,
+  stopExecution,
 } from '../../api/executions';
 import { ImageZoom } from '../../components/ImageZoom';
 import type { Picture } from '../../components/ImageZoom';
@@ -396,6 +397,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   const [logFilter, setLogFilter] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rerunning, setRerunning] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(() => {
@@ -541,6 +543,24 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   }
 
   /*
+   * Asks the run to stop. The engine ends it before its next step and a stopped
+   * run is terminal, so this shows the run as it comes back - running still,
+   * until the engine notices - and the auto-refresh reads it becoming stopped.
+   * Issue #395.
+   */
+  async function handleStop() {
+    if (stopping) return;
+    setStopping(true);
+    try {
+      setRun(await stopExecution(executionId));
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : t('Could not stop the run.'));
+    } finally {
+      setStopping(false);
+    }
+  }
+
+  /*
    * The panel calls this and shows what comes back out of it. It deliberately
    * does not catch: which steps can be started from is the server's judgement,
    * and the panel puts the server's own sentence beside the button it refused.
@@ -639,6 +659,13 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                 {refreshing ? t('Refreshing…') : 'Refresh'}
               </button>
               <AutoRefresh onRefresh={load} busy={refreshing} />
+              {/* Only while it is running: a stopped run is terminal, so once
+                  it has ended there is nothing to stop. Issue #395. */}
+              {run?.status === 'RUNNING' && (
+                <button type="button" className={styles.stop} onClick={handleStop} disabled={stopping}>
+                  {stopping ? t('Stopping…') : t('Stop')}
+                </button>
+              )}
               <button type="button" className={styles.rerun} onClick={handleRerun} disabled={run === null || rerunning}>
                 <img src={refreshIcon} alt="" width={14} height={14} />
                 {rerunning ? t('Queueing…') : 'Re-run'}
