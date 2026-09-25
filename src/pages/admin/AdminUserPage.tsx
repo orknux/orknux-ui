@@ -440,23 +440,29 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
                     </FieldHint>
                   </span>
 
-                  {tokens.map((token) => (
-                    <div key={token.id} className={styles.token}>
-                      <span className={styles.tokenName}>{token.name}</span>
-                      <span className={styles.tokenWhen}>
-                        {token.lastUsedAt === null ? 'never used' : 'used ' + timeAgo(token.lastUsedAt)}
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.textButton}
-                        onClick={() => {
-                          void deleteUserToken(token.id).then(() =>
-                            setTokens(tokens.filter((held) => held.id !== token.id)),
-                          );
-                        }}
-                      >{t('Revoke')}</button>
+                  {tokens.length === 0 ? (
+                    <p className={styles.fieldNote}>{t('No tokens yet.')}</p>
+                  ) : (
+                    <div className={styles.tokenList}>
+                      {tokens.map((token) => (
+                        <div key={token.id} className={styles.token}>
+                          <span className={styles.tokenName}>{token.name}</span>
+                          <span className={styles.tokenWhen}>
+                            {token.lastUsedAt === null ? 'never used' : 'used ' + timeAgo(token.lastUsedAt)}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.textButton}
+                            onClick={() => {
+                              void deleteUserToken(token.id).then(() =>
+                                setTokens(tokens.filter((held) => held.id !== token.id)),
+                              );
+                            }}
+                          >{t('Revoke')}</button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
 
                   <div className={styles.row}>
                     <input
@@ -472,7 +478,7 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
                       className={styles.save}
                       onClick={() => void mintToken()}
                       disabled={saving || tokenName.trim() === ''}
-                    >{t('Make Token')}</button>
+                    >{t('Generate Token')}</button>
                   </div>
 
                   {/* The one time it is ever on screen. */}

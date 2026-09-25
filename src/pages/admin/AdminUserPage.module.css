@@ -218,6 +218,13 @@
   color: var(--color-accent-brand);
 }
 
+/* The issued tokens, grouped so the list reads apart from the create row below. */
+.tokenList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
 .token {
   display: flex;
   align-items: baseline;

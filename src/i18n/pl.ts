@@ -314,7 +314,8 @@ export const PL: Record<string, string> = {
   "Format Shortcut": "Skrót do formatowania",
   "Formatting": "Formatowanie",
   "Allow and Load": "Zezwól i wczytaj",
-  "Make Token": "Utwórz token",
+  "Generate Token": "Wygeneruj token",
+  "No tokens yet.": "Brak tokenów.",
   "Reset password": "Zresetuj hasło",
   "New password": "Nowe hasło",
   "Password": "Hasło",
@@ -998,7 +999,6 @@ export const PL: Record<string, string> = {
   "A plugin's functions are available in every workspace, and run out of the plugin's own text in its own sandbox. What a plugin needs to be told is set per workspace, on that workspace's Plugins page. Loading a file with a name already in the list replaces it.": "Funkcje wtyczki dostępne są w każdej przestrzeni roboczej i działają z własnego tekstu wtyczki, w jej własnej piaskownicy. To, co trzeba wtyczce przekazać, ustawia się osobno dla każdej przestrzeni roboczej, na jej stronie Wtyczki. Wczytanie pliku o nazwie już obecnej na liście zastępuje poprzedni.",
   "No plugins are loaded into this installation, so there is nothing to configure.": "Do tej instalacji nie wczytano żadnych wtyczek, więc nie ma czego konfigurować.",
   "It asks the server to do these on its behalf.": "Prosi też serwer, by robił za nią te rzeczy.",
-  "The workspace's own tools, and the tools its plugins offer — a granted name is offered to the model either way.": "Własne narzędzia przestrzeni roboczej oraz narzędzia oferowane przez wtyczki — przyznana nazwa trafia do modelu tak czy tak.",
   "The sandbox a plugin runs in switches these off for everything, because a plugin is somebody else's code running on this installation. Accepting turns them on for this plugin alone, and records who agreed and when. A plugin edited later to need something more is refused again, with the new list, rather than arriving under this answer.": "Piaskownica, w której działa wtyczka, wyłącza to wszystko dla każdego, bo wtyczka to cudzy kod działający w tej instalacji. Zgoda włącza je wyłącznie dla tej wtyczki i zapisuje, kto się zgodził i kiedy. Wtyczka zmieniona później tak, że potrzebuje czegoś więcej, zostanie odrzucona ponownie, z nową listą, zamiast wejść pod tę zgodą.",
 
   // --- access, users and what is decided elsewhere -----------------------
@@ -1345,7 +1345,6 @@ export const PL: Record<string, string> = {
   "Remove Provider": "Usuń dostawcę",
   "Remove session": "Usuń sesję",
   "Remove workflow": "Usuń przepływ pracy",
-  "Remove it, and everything said in it": "Usuń go wraz ze wszystkim, co w nim powiedziano",
   "Remove this action from the workspace": "Usuń tę akcję z przestrzeni roboczej",
   "Remove this condition from the workspace": "Usuń ten warunek z przestrzeni roboczej",
   "Remove this machine, and everything on it that belonged to a session": "Usuń tę maszynę wraz ze wszystkim, co należało na niej do sesji",
