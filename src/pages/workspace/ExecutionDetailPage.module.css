@@ -8,6 +8,39 @@
 }
 
 /*
+ * No gap once the rail is open: the handle between the column and the rail is
+ * the gap now, and it is exactly as wide as this used to be. A gap as well would
+ * put 24px on each side of it and push the two half a handle further apart than
+ * they have ever been.
+ */
+.layoutWithPanel {
+  gap: 0;
+}
+
+/*
+ * While the rail is being dragged, the whole row says so.
+ *
+ * The cursor, because the pointer is captured by the handle and can be well
+ * outside it - over the graph, over the JSON - and reverting to a text caret
+ * halfway through a drag reads as the drag having been dropped. The selection,
+ * because a press that began on the handle would otherwise sweep a selection
+ * across whichever column the pointer crosses.
+ */
+.layoutDragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/*
+ * The rail's handle runs the height of the row rather than of its own content:
+ * this row is aligned to the top, so a handle left to itself would be 24px of
+ * nothing beside a panel it is meant to divide the page from.
+ */
+.panelHandle {
+  align-self: stretch;
+}
+
+/*
  * The page header belongs to the whole page, not to the left column.
  *
  * It used to sit inside that column, so the panel beside it started level with
@@ -389,9 +422,14 @@ a.refresh {
   width: 100%;
 }
 
+/*
+ * No height here. It is 332px until somebody drags the bottom edge, and the page
+ * sets it - see `DEFAULT_GRAPH`. A height in this rule as well would be a second
+ * opinion about the opening size that the inline one silently wins, so the one
+ * left over is the one that cannot drift.
+ */
 .canvas {
   width: 100%;
-  height: 332px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-6);
@@ -615,12 +653,26 @@ a.refresh {
   background: var(--color-surface-raised);
 }
 
+/*
+ * A `max-height` here used to be the whole of the log's size, and it was also
+ * what stopped it being dragged: the page sets a height now, and a max-height of
+ * 340px would cap every drag at the size it started from. The 340px lives in
+ * `DEFAULT_LOGS` instead.
+ *
+ * A height rather than a cap does mean a box of 340px even for a log with four
+ * lines in it, where the cap drew a box of four lines. That is the trade a
+ * handle needs - a cap cannot be dragged past what the content asks for, so on a
+ * short log the handle would be a control that does nothing - and it costs less
+ * than it sounds: of the twelve most recent runs on the machine this was written
+ * on, all twelve had more log than the 340px box, from 338px to 716px of it.
+ * What this panel is is a window onto something bigger, which is the whole
+ * reason for being able to make it bigger.
+ */
 .terminal {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  max-height: 340px;
   padding: var(--space-16) var(--space-20);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -680,8 +732,11 @@ a.refresh {
    * beside a value. At 260 a payload wrapped every few tokens and a picture
    * arrived as a thumbnail, so the panel was a column of things too small to
    * read next to a graph with room to spare.
+   *
+   * 390 is where it opens, not where it stays: the page sets the width from
+   * `DEFAULT_PANEL` and the left edge can be dragged, because what is wide
+   * enough for one step's JSON is not wide enough for the next one's.
    */
-  width: 390px;
   padding: var(--space-24);
   background: var(--color-surface);
   border: 1px solid var(--color-border);

@@ -2319,6 +2319,24 @@ export const TESTS = [
      */
   },
   {
+    name: 'run-panels-check',
+    what: "the run page's graph, log and node rail, each dragged to a size and each keeping it",
+    needs: ['fixture'],
+    /*
+     * Issue #434. Three windows onto things much bigger than the window - a whole
+     * run's shape in 332px, a log of very long lines four at a time, a step's
+     * JSON and its picture in 390px - and none of them could be made bigger.
+     *
+     * Drives all three handles: the two heights by their bottom edge, the rail by
+     * its left edge with the main column giving way. What it is really for is the
+     * three things a drag quietly stops doing - the floor and the ceiling, the
+     * size surviving a reload per panel, and the handle answering arrows - plus
+     * the one thing peculiar to this page, that React Flow fills the box rather
+     * than being clipped by it. Needs one run with steps in it, which it finds
+     * rather than starts, and changes nothing but this browser's own storage.
+     */
+  },
+  {
     name: 'graph-lines-check',
     what: 'the lines between the boxes stay drawn, on the run page and in the editor',
     needs: ['fixture', 'workflow'],

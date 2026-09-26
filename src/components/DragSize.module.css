@@ -1,0 +1,87 @@
+/*
+ * The handle a panel is dragged by. One look, wherever it is.
+ *
+ * It began between the function editor's two columns, and this is that rule
+ * moved out whole rather than a second one written to match it.
+ *
+ * The whole 24px is the target, which is a comfortable thing to aim at, while
+ * only the line inside it is drawn - a 24px bar between two cards would read as
+ * a third column. It lights on hover and on focus, so the thing that can be
+ * taken hold of is the thing that looks like it can.
+ */
+.handle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  /* Or the browser takes the drag as a scroll and the panel never moves. */
+  touch-action: none;
+}
+
+.handle::before {
+  content: '';
+  background: var(--color-border);
+  border-radius: var(--radius-4);
+  /* Thickness and colour only. Nothing here is positioned, so nothing lags a drag. */
+  transition:
+    width 120ms ease,
+    height 120ms ease,
+    background 120ms ease;
+}
+
+/* A vertical line divides left from right, so it is dragged across. */
+.vertical {
+  width: 24px;
+  cursor: col-resize;
+}
+
+.vertical::before {
+  width: 2px;
+  height: 100%;
+}
+
+/*
+ * A horizontal one divides top from bottom. Shorter than the vertical handle's
+ * width because it is stacked with what it sizes rather than beside it: the
+ * card's own gap is already above it, so 24px of its own would read as a band of
+ * empty card under every panel.
+ */
+.horizontal {
+  width: 100%;
+  height: 12px;
+  cursor: row-resize;
+}
+
+.horizontal::before {
+  width: 100%;
+  height: 2px;
+}
+
+.handle:hover::before,
+.handle:focus-visible::before,
+.dragging::before {
+  background: var(--color-accent-brand);
+}
+
+.vertical:hover::before,
+.vertical:focus-visible::before,
+.vertical.dragging::before {
+  width: 4px;
+}
+
+.horizontal:hover::before,
+.horizontal:focus-visible::before,
+.horizontal.dragging::before {
+  height: 4px;
+}
+
+/*
+ * The lit bar is the focus indicator. A ring around a 24px column of nothing
+ * would draw a box in the gap between two cards and say less than this does.
+ */
+.handle:focus-visible {
+  outline: none;
+}

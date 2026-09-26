@@ -41,6 +41,7 @@ import terminalIcon from '../../assets/terminal.svg';
 import { AppShell } from '../../components/AppShell';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { BackLink } from '../../components/BackLink';
+import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from '../../components/DragSize';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
@@ -356,6 +357,64 @@ function FitWhenReady({ signature, held, runId }: { signature: string; held: { c
 /** Long enough for a slow layout, short enough not to be seen as a jump. */
 const LATE_FIT_MS = 250;
 
+/* -------------------------------------------------------------- the panels
+ *
+ * Three windows onto things much bigger than the window.
+ *
+ * The graph is a run's whole shape in 332px, which for anything past half a
+ * dozen steps is a picture zoomed out until the boxes are unreadable. The log is
+ * one long line per step and about four of them at a time. The node panel holds
+ * a step's input and output as JSON and a picture it drew, in 390px.
+ *
+ * All three can be dragged now - the graph and the log by their bottom edge, the
+ * node panel by its left edge, with the main column giving way - and each keeps
+ * what it was dragged to. One key per panel, so making the log tall to read one
+ * run does not also commit to a tall graph.
+ *
+ * The sizes they open at are the sizes they have always had, so nothing on this
+ * page looks different until it is dragged.
+ */
+const GRAPH_KEY = 'orknux.run.graph-height';
+const LOGS_KEY = 'orknux.run.logs-height';
+const PANEL_KEY = 'orknux.run.panel-width';
+
+const DEFAULT_GRAPH = 332;
+const DEFAULT_LOGS = 340;
+const DEFAULT_PANEL = 390;
+
+/*
+ * How little each can be dragged to.
+ *
+ * The graph's floor is about two node boxes and the space between them - below
+ * that there is no picture, only a corner of one. The log's is three or four
+ * lines, which is what makes it a log rather than a strip. The panel's is the
+ * width its own headings and buttons need before they start wrapping mid-word.
+ */
+const MIN_GRAPH = 160;
+const MIN_LOGS = 120;
+const MIN_PANEL = 300;
+
+/*
+ * And how much.
+ *
+ * The heights are capped against the window rather than at a number: "as tall as
+ * this screen, less the page header" is a ceiling somebody can reach and cannot
+ * drag past, where a fixed number is short on a tall screen and off the bottom
+ * on a short one.
+ *
+ * The panel's ceiling is what the row can spare once the main column still has
+ * room for a graph - it is the main column that gives way, and a rail dragged
+ * over the whole page would leave nothing to look at the details of.
+ */
+const PAGE_CHROME = 160;
+const MIN_MAIN = 460;
+
+/** The handle's own track: the room between the two columns, which neither gets. */
+const HANDLE_WIDTH = 24;
+
+/** One press of an arrow key. Coarse enough that a few presses get somewhere. */
+const NUDGE = 24;
+
 /** Where a run's canvas is kept between reloads: this tab, this run. */
 const viewportKey = (runId: string) => `run-view:${runId}`;
 
@@ -461,6 +520,46 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
    * re-render for every pan would be a re-render for every pixel of one.
    */
   const viewHeld = useRef(false);
+
+  /*
+   * What the three panels have been dragged to.
+   *
+   * `src/components/DragSize.tsx` is the whole of the mechanism - the pointer,
+   * the keyboard, the clamp and the one line of storage - and it is the same one
+   * the function editor's divider uses. What is said here is only what this page
+   * knows: which edge each panel is taken hold of by, and how little and how much
+   * of it is any use.
+   */
+  const tall = useWindowHeight();
+  const graph = useDragSize({
+    storageKey: GRAPH_KEY,
+    initial: DEFAULT_GRAPH,
+    min: MIN_GRAPH,
+    max: Math.max(MIN_GRAPH, tall - PAGE_CHROME),
+    edge: 'bottom',
+    nudge: NUDGE,
+  });
+  const logs = useDragSize({
+    storageKey: LOGS_KEY,
+    initial: DEFAULT_LOGS,
+    min: MIN_LOGS,
+    max: Math.max(MIN_LOGS, tall - PAGE_CHROME),
+    edge: 'bottom',
+    nudge: NUDGE,
+  });
+  /** The row the column and the panel share, watched: the panel's ceiling is a share of it. */
+  const [setLayout, room] = useRoom('width');
+  const widestPanel = Math.max(MIN_PANEL, room - HANDLE_WIDTH - MIN_MAIN);
+  const panel = useDragSize({
+    storageKey: PANEL_KEY,
+    initial: DEFAULT_PANEL,
+    min: MIN_PANEL,
+    // Null until the row has been measured; a ceiling worked out from a width of
+    // zero is the floor, and would throw away a stored width on the first pass.
+    max: room === 0 ? null : widestPanel,
+    edge: 'left',
+    nudge: NUDGE,
+  });
 
   const edges: Edge[] = useMemo(() => {
     const outcomes = new Map(
@@ -688,7 +787,20 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
         </header>
       </div>
 
-      <div className={selected === null ? styles.layout : `${styles.layout} ${styles.layoutWithPanel}`}>
+      <div
+        className={[
+          styles.layout,
+          selected === null ? null : styles.layoutWithPanel,
+          // While the rail is being dragged the whole row says so: the pointer is
+          // captured by the handle and can be well outside it, and a press that
+          // began on the handle would otherwise sweep a selection across the
+          // column it crosses.
+          panel.dragging ? styles.layoutDragging : null,
+        ]
+          .filter((one) => one !== null)
+          .join(' ')}
+        ref={setLayout}
+      >
         <div className={styles.main}>
           {loadError !== null ? (
             <section className={styles.card}>
@@ -789,7 +901,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                 {run !== null && run.steps.length === 0 ? (
                   <p className={styles.notice}>{t('No step detail was recorded for this run.')}</p>
                 ) : (
-                  <div className={styles.canvas}>
+                  <div className={styles.canvas} id="run-graph" style={{ height: graph.size }}>
                     <ReactFlow
                       onInit={(instance) => setFlow(instance)}
                       nodes={nodes}
@@ -825,6 +937,34 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                     </ReactFlow>
                   </div>
                 )}
+
+                {/*
+                  The graph's bottom edge, taken hold of.
+
+                  Only where there is a graph: the card draws a sentence instead
+                  when the run recorded no steps, and a handle for the height of a
+                  sentence is a control that does nothing.
+
+                  Nothing here tells React Flow about the new height. It does not
+                  need telling - the canvas already has a ResizeObserver on it
+                  that reframes the graph, which is what the panel opening used to
+                  be the only reason for - and the flow fills whatever box it is
+                  given, so a drag that arrives before the reframe shows more
+                  background rather than a clipped picture.
+                */}
+                {run !== null && run.steps.length > 0 && (
+                  <ResizeHandle
+                    orientation="horizontal"
+                    label={t('Height of the workflow graph')}
+                    controls="run-graph"
+                    valueNow={graph.size}
+                    valueMin={MIN_GRAPH}
+                    valueMax={Math.max(MIN_GRAPH, tall - PAGE_CHROME)}
+                    title={t('Drag to change the height; double-click to put it back')}
+                    dragging={graph.dragging}
+                    handlers={graph.handlers}
+                  />
+                )}
               </section>
 
               <section className={styles.card}>
@@ -857,7 +997,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   </div>
                 </div>
 
-                <div className={styles.terminal}>
+                <div className={styles.terminal} id="run-logs" style={{ height: logs.size }}>
                   {visibleLogs.length === 0 ? (
                     <p className={styles.terminalEmpty}>
                       {run?.logs.length === 0 ? t('This run produced no log.') : t('Nothing matches that filter.')}
@@ -871,10 +1011,49 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                     ))
                   )}
                 </div>
+
+                {/*
+                  A log line here is one long line, and about four of them fitted
+                  in the 340px this box has always been. It is the panel on this
+                  page most worth dragging and the one with least to go wrong: a
+                  taller box is more lines and nothing else.
+                */}
+                <ResizeHandle
+                  orientation="horizontal"
+                  label={t('Height of the log')}
+                  controls="run-logs"
+                  valueNow={logs.size}
+                  valueMin={MIN_LOGS}
+                  valueMax={Math.max(MIN_LOGS, tall - PAGE_CHROME)}
+                  title={t('Drag to change the height; double-click to put it back')}
+                  dragging={logs.dragging}
+                  handlers={logs.handlers}
+                />
               </section>
             </>
           )}
         </div>
+
+        {selected !== null && (
+          /*
+            The panel's left edge, standing in the gap that used to be between the
+            column and the rail. `.layoutWithPanel` takes that gap away, so the
+            two are exactly as far apart as they have always been and there is
+            something in between to take hold of.
+          */
+          <ResizeHandle
+            orientation="vertical"
+            className={styles.panelHandle}
+            label={t('Width of the node details')}
+            controls="run-node-details"
+            valueNow={panel.size}
+            valueMin={MIN_PANEL}
+            valueMax={widestPanel}
+            title={t('Drag to change the width; double-click to put it back')}
+            dragging={panel.dragging}
+            handlers={panel.handlers}
+          />
+        )}
 
         {selected !== null && (
           <NodeDetailsPanel
@@ -886,6 +1065,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
             pictures={(run?.pictures ?? []).filter((picture) => picture.nodeKey === selected.key)}
             speeches={(run?.speeches ?? []).filter((speech) => speech.nodeKey === selected.key)}
             runEnded={run !== null && run.status !== 'RUNNING'}
+            width={panel.size}
             onRerunFromHere={rerunFromStep}
             onClose={() => setSelectedKey(null)}
           />
@@ -911,6 +1091,7 @@ function NodeDetailsPanel({
   pictures,
   speeches,
   runEnded,
+  width,
   onRerunFromHere,
   onClose,
 }: {
@@ -922,6 +1103,8 @@ function NodeDetailsPanel({
   speeches: ExecutionSpeech[];
   /** True once the run has finished, so a pending step was never reached. */
   runEnded: boolean;
+  /** What the rail has been dragged to; the page owns the number, the panel wears it. */
+  width: number;
   /** Starts the workflow again from this step; rejects with the server's words. */
   onRerunFromHere: (nodeKey: string) => Promise<void>;
   onClose: () => void;
@@ -961,7 +1144,7 @@ function NodeDetailsPanel({
           : null;
 
   return (
-    <aside className={styles.panel} aria-label={t('Node details')}>
+    <aside className={styles.panel} id="run-node-details" style={{ width }} aria-label={t('Node details')}>
       <div className={styles.panelHeader}>
         <h2 className={styles.panelTitle}>{t('Node Details')}</h2>
         <button type="button" className={styles.panelClose} onClick={onClose} aria-label={t('Close node details')}>
