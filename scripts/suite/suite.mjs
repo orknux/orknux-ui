@@ -2327,6 +2327,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-settings-save-check',
+    what: 'the workspace settings page saves from its header, with the note beside the button',
+    needs: ['workspace'],
+    /* Issue #452; #386's shape, arrived at the one page it had missed. */
+  },
+  {
     name: 'tools-named-check',
     what: 'Admin Settings sets up to how many findable tools find_tools names outright',
     needs: ['workspace'],

@@ -6,6 +6,22 @@
   width: 100%;
 }
 
+/* The heading and the save on one line: #386's shape, arrived here in #452. */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 .title {
   margin: 0;
   font-weight: 700;

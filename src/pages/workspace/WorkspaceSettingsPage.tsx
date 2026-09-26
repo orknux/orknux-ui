@@ -835,8 +835,35 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      {/*
+        The save in the header, where every other editor's is since #386: this
+        page is long, and a button at the foot of it is one somebody scrolls
+        past on the way out. The note beside it says which of the three states
+        the page is in, and a refusal takes its place where there is one - the
+        server names the setting in its sentence, which is what lets one line
+        stand for a page of fields. Issue #452.
+      */}
       <header className={styles.header}>
-        <h1 className={styles.title}>{t('Workspace Settings')}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>{t('Workspace Settings')}</h1>
+          <div className={styles.headerActions}>
+            {saveError !== null ? (
+              <p className={styles.error} role="alert">{saveError}</p>
+            ) : (
+              <p className={styles.pageActionsNote}>
+                {savedAll ? t('Saved.') : dirty ? t('Not saved yet.') : ''}
+              </p>
+            )}
+            <button
+              type="button"
+              className={styles.save}
+              onClick={() => void saveAll()}
+              disabled={workspace === null || saving || !dirty || refusal !== null}
+            >
+              {saving ? t('Saving…') : t('Save Changes')}
+            </button>
+          </div>
+        </div>
       </header>
 
       {/*
@@ -2189,38 +2216,6 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         </div>
       </section>
 
-      {/*
-        One Save, at the foot of the page, for everything above it.
-        
-        Sticky, because this page is long enough that the button would otherwise
-        be somewhere a reader has to remember to go back to - and a settings page
-        whose save is off screen while you are typing is one where changes get
-        left behind on the way out.
-
-        The refusal is drawn here rather than beside the field it is about, and
-        that is a real cost: the server names the setting in its sentence, which
-        is what makes it bearable. The alternative - a message in each card - is
-        what this page had, and the thing that made it unreadable.
-      */}
-      <div className={styles.pageActions}>
-        <div className={styles.pageActionsInner}>
-          {saveError !== null ? (
-            <p className={styles.error} role="alert">{saveError}</p>
-          ) : (
-            <p className={styles.pageActionsNote}>
-              {savedAll ? t('Saved.') : dirty ? t('Not saved yet.') : ''}
-            </p>
-          )}
-          <button
-            type="button"
-            className={styles.save}
-            onClick={() => void saveAll()}
-            disabled={workspace === null || saving || !dirty || refusal !== null}
-          >
-            {saving ? t('Saving…') : t('Save Changes')}
-          </button>
-        </div>
-      </div>
     </AppShell>
   );
 }
