@@ -38,10 +38,16 @@ const { builtInTools } = await graphql(`{ builtInTools { name governance } }`);
 const byName = builtInTools.filter((one) => one.governance === 'GRANT').map((one) => one.name);
 record(byName.length > 0, `the server declares ${byName.length} built-ins switched by name`);
 
-const missing = byName.filter((name) => !agent.tools.includes(name));
+/*
+ * Every one that used to be handed out without asking. draw_picture was a
+ * name grant before #444 - ticked by somebody or not held - so V302 leaves it
+ * as it was; an agent that never had it still does not, and that is right.
+ */
+const OPT_IN_BEFORE = ['draw_picture'];
+const missing = byName.filter((name) => !OPT_IN_BEFORE.includes(name) && !agent.tools.includes(name));
 record(
   missing.length === 0,
-  `an existing agent holds every one of them without anybody ticking anything (missing: ${missing.join(', ') || 'none'})`,
+  `an existing agent holds every one it was being handed without anybody ticking anything (missing: ${missing.join(', ') || 'none'})`,
 );
 record(
   agent.finishAccess === true && agent.pictureLinkAccess === true,
@@ -71,7 +77,12 @@ async function cycleTo(named, wanted) {
 }
 
 record((await control('finish_answer').count()) === 1, 'the row is in the Tools list, where the grants are');
-record((await stateOf('finish_answer')) === 'always', `and it reads Always (${await stateOf('finish_answer')})`);
+/*
+ * Always where the agent carries a ceiling, Offer where it does not: V302 marked
+ * Always only under a ceiling, since without one every offered tool is carried
+ * and the two states are the same thing. Either reads as held.
+ */
+record(['always', 'offer'].includes(await stateOf('finish_answer')), `and it reads as held (${await stateOf('finish_answer')})`);
 
 /* ---------------------------------------------------- hiding it is stored */
 
@@ -122,7 +133,7 @@ record(
  * is not.
  */
 record((await control('picture_link').count()) === 1, 'picture_link is in the same list');
-record((await stateOf('picture_link')) === 'always', 'and reads Always to begin with too');
+record(['always', 'offer'].includes(await stateOf('picture_link')), `and reads as held to begin with too (${await stateOf('picture_link')})`);
 
 await cycleTo('picture_link', 'hide');
 await page.getByRole('button', { name: /^Save/ }).first().click();
