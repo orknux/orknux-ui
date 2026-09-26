@@ -14,7 +14,7 @@
  *   the word is on it     - a faded card on its own reads as a card that failed
  *                           to load.
  *   it survives a save    - the switch is read back from the server and from a
- *                           reloaded editor, where the button reads Enable.
+ *                           reloaded editor, where the switch is off.
  *   the run skips it      - a three-node chain is run with the middle switched
  *                           off: its step is skipped and says why, the node
  *                           after it is handed what the node before produced,
@@ -150,7 +150,7 @@ record(before !== null && before.opacity === 1 && !before.marked, `a node that r
 
 if (!(await selectNode(page, canvasNode('middle'), 'the middle node'))) await clean();
 await page.waitForSelector('[data-check="node-enabled"]', { timeout: 20_000 });
-record((await toggle().innerText()).trim() === 'Disable', 'the panel offers Disable on a node that runs');
+record((await toggle().getAttribute('aria-checked')) === 'true', 'the panel shows the switch on for a node that runs');
 
 await toggle().click();
 await page.waitForTimeout(900);
@@ -161,7 +161,7 @@ record(
   `switched off, the card is drawn at about half (opacity ${dimmed?.opacity})`,
 );
 record(dimmed !== null && dimmed.says, 'and carries the word Disabled');
-record((await toggle().innerText()).trim() === 'Enable', 'the button now offers Enable');
+record((await toggle().getAttribute('aria-checked')) === 'false', 'the switch is now off');
 
 const others = await Promise.all([drawnAs('first'), drawnAs('last')]);
 record(
@@ -183,7 +183,7 @@ record(
 );
 if (!(await selectNode(page, canvasNode('middle'), 'the middle node'))) await clean();
 await page.waitForSelector('[data-check="node-enabled"]', { timeout: 20_000 });
-record((await toggle().innerText()).trim() === 'Enable', 'and its panel opens on Enable');
+record((await toggle().getAttribute('aria-checked')) === 'false', 'and its panel opens with the switch off');
 
 /* ---------------------------------------------------------- a trigger has none */
 

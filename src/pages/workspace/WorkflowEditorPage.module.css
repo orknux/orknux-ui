@@ -1344,6 +1344,52 @@ select.input {
 }
 
 /*
+ * A switch, for a node's Enabled: the same one a condition's Negate is, so
+ * the two states of a thing read the same way wherever they are asked.
+ * Issue #439.
+ */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.toggleLabel {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  width: 44px;
+  height: 22px;
+  padding: 2px;
+  background: var(--color-surface-raised);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.toggleOn {
+  justify-content: flex-end;
+  background: var(--color-success-solid);
+}
+
+.knob {
+  width: 18px;
+  height: 18px;
+  background: var(--color-text-primary);
+  border-radius: 999px;
+}
+
+/*
  * Turning, on the node being turned.
  *
  * At the selected node's top-right corner, which is where a control that acts

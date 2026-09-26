@@ -4814,33 +4814,6 @@ Change the keystroke in Preferences.`}
                     <label className={styles.label} htmlFor="node-name">
                       {t('Node Name')}
                     </label>
-                    {/*
-                      The switch, up here beside the name rather than down among
-                      the settings, because it is not a setting of the node: it
-                      is whether the node takes part at all, and somebody
-                      switching a step off while they try the rest wants it at
-                      the top of the panel, not three screens down. A button
-                      that says what pressing it does - Disable on a node that
-                      runs, Enable on one that does not - rather than a checkbox
-                      whose tick has to be read against a label. Not on a
-                      trigger, which has no switch here: a run has to start
-                      somewhere, and the trigger's own Enabled is where a
-                      trigger is silenced. Issue #439.
-                    */}
-                    {draft.kind !== 'TRIGGER' && (
-                      <span className={styles.labelLinks}>
-                        <FieldHint label={t('Disable')}>
-                          {t('A disabled node stays on the graph with its lines and is skipped by a run, which hands what reached it straight on. A disabled condition takes its upper way out.')}
-                        </FieldHint>
-                        <button
-                          type="button"
-                          className={styles.parameterSync}
-                          data-check="node-enabled"
-                          aria-pressed={draft.enabled === false}
-                          onClick={() => setDraft({ ...draft, enabled: draft.enabled === false })}
-                        >{draft.enabled === false ? t('Enable') : t('Disable')}</button>
-                      </span>
-                    )}
                   </span>
                   <div className={`${styles.inputWrapper} ${styles.inputActive}`}>
                     <input
@@ -6390,6 +6363,44 @@ Change the keystroke in Preferences.`}
                     >{t('Turn')}</button>
                   </div>
                 </div>
+
+                {/*
+                  Whether the node takes part at all - the one switch on the
+                  panel that is not a setting of the node's work, so it sits
+                  with the node's own things, icon and facing, rather than
+                  among its parameters. A switch and not a button that says
+                  Disable, because it is a state to be read at a glance, not
+                  an act; the same switch a condition's Negate is. Not on a
+                  trigger, which has no switch here: a run has to start
+                  somewhere, and the trigger's own Enabled is where a trigger
+                  is silenced. Issue #439.
+                */}
+                {draft.kind !== 'TRIGGER' && (
+                  <div className={styles.field}>
+                    <span className={styles.labelWithHint}>
+                      <label className={styles.label} htmlFor="node-enabled">{t('Enabled')}</label>
+                      <FieldHint label={t('Enabled')}>
+                        {t('A disabled node stays on the graph with its lines and is skipped by a run, which hands what reached it straight on. A disabled condition takes its upper way out.')}
+                      </FieldHint>
+                    </span>
+                    <div className={styles.toggleRow}>
+                      <span className={styles.toggleLabel}>
+                        {draft.enabled === false ? t('Disabled') : t('Runs as part of the workflow')}
+                      </span>
+                      <button
+                        type="button"
+                        id="node-enabled"
+                        data-check="node-enabled"
+                        className={draft.enabled === false ? styles.toggle : `${styles.toggle} ${styles.toggleOn}`}
+                        onClick={() => setDraft({ ...draft, enabled: draft.enabled === false })}
+                        role="switch"
+                        aria-checked={draft.enabled !== false}
+                      >
+                        <span className={styles.knob} />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/*
                   An image node is named here too, and was not.
