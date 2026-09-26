@@ -7,6 +7,10 @@ import {
   setAgentMaxSubagents,
   setScratchpadBudgetBytes,
   setToolsNamedInSearch,
+  setScratchpadFileBudgetBytes,
+  setScratchpadKeepDays,
+  setToolSummariesFullUpTo,
+  setToolSummaryTrimPercent,
   setCommandMarker,
   setAttachmentsEnabled,
   setSessionsRemovable,
@@ -78,6 +82,12 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [padBudget, setPadBudget] = useState('');
   /** Up to how many findable tools find_tools names outright. Issue #442. */
   const [named, setNamed] = useState('');
+  /** How many tools fit in a briefing whole, and what each further block costs. Issue #481. */
+  /** What a session's files may come to, in MB, and how long a pad is kept. Issues #491, #492. */
+  const [fileBudget, setFileBudget] = useState('');
+  const [keepDays, setKeepDays] = useState('');
+  const [summariesFull, setSummariesFull] = useState('');
+  const [summaryTrim, setSummaryTrim] = useState('');
   /** What marks a command in a message, installation-wide. Issue #402. */
   const [marker, setMarker] = useState('');
 
@@ -108,6 +118,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setAsks(String(held.agentMaxSubagents));
         setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
         setNamed(String(held.toolsNamedInSearch));
+        setFileBudget(String(Math.round(held.scratchpadFileBudgetBytes / (1024 * 1024))));
+        setKeepDays(String(held.scratchpadKeepDays));
+        setSummariesFull(String(held.toolSummariesFullUpTo));
+        setSummaryTrim(String(held.toolSummaryTrimPercent));
         setMarker(held.commandMarker);
       })
       .catch((cause: unknown) => {
@@ -144,6 +158,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           write: (kb: number) => setScratchpadBudgetBytes(kb * 1024),
         },
         { typed: named, held: settings.toolsNamedInSearch, write: setToolsNamedInSearch },
+        {
+          typed: fileBudget,
+          held: Math.round(settings.scratchpadFileBudgetBytes / (1024 * 1024)),
+          write: (mb: number) => setScratchpadFileBudgetBytes(mb * 1024 * 1024),
+        },
+        { typed: keepDays, held: settings.scratchpadKeepDays, write: setScratchpadKeepDays },
+        { typed: summariesFull, held: settings.toolSummariesFullUpTo, write: setToolSummariesFullUpTo },
+        { typed: summaryTrim, held: settings.toolSummaryTrimPercent, write: setToolSummaryTrimPercent },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
@@ -471,6 +493,117 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many findable tools are named outright')}
                 />
                 <span className={styles.retentionUnit}>{t('tools')}</span>
+              </div>
+            </div>
+
+            {/* What a session's pictures may come to, and how long its
+                workings are kept at all. Issues #491 and #492. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Files kept per session')}</p>
+                  <FieldHint label={t('Files kept per session')}>
+                    {t('A scratchpad can hold a picture or a document as well as text, and those are megabytes each that live as long as the session does. Past this, the oldest files in that session are removed until it is under again — the newest being the one in use — and the agent is told which went. Text scratchpads are never touched. Between 1 and 512 MB.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="scratchpad-file-budget"
+                  name="scratchpadFileBudget"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={512}
+                  value={fileBudget}
+                  onChange={(event) => setFileBudget(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Files kept per session')}
+                />
+                <span className={styles.retentionUnit}>{t('MB')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Scratchpads are kept for')}</p>
+                  <FieldHint label={t('Scratchpads are kept for')}>
+                    {t('How long a scratchpad nobody has touched is kept before a sweeper removes it. Counted from the last change, so a document still being worked on survives. The session and its transcript are left alone: these are the workings beside it. Zero keeps them for ever, which suits an installation that treats them as part of the record. Between 0 and 1825 days.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="scratchpad-keep-days"
+                  name="scratchpadKeepDays"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={1825}
+                  value={keepDays}
+                  onChange={(event) => setKeepDays(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Scratchpads are kept for')}
+                />
+                <span className={styles.retentionUnit}>{t('days')}</span>
+              </div>
+            </div>
+
+            {/* Every tool an agent holds is named in its system prompt with a
+                phrase saying what it is for. Cheap at twenty tools and not at
+                three hundred, so the lines are cut as the list grows - and by
+                how much is the installation's, not a number in the source.
+                Issue #481. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Tools whose summary is kept in full')}</p>
+                  <FieldHint label={t('Tools whose summary is kept in full')}>
+                    {t('An agent’s system prompt names every tool it holds with a short phrase, so it knows what it has instead of guessing words for a search. Up to this many tools each phrase is kept whole; for every further block of this many, the percentage below comes off what is kept, cut from the end so the first words survive. Between 10 and 1000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tool-summaries-full-up-to"
+                  name="toolSummariesFullUpTo"
+                  className={styles.input}
+                  type="number"
+                  min={10}
+                  max={1000}
+                  value={summariesFull}
+                  onChange={(event) => setSummariesFull(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Tools whose summary is kept in full')}
+                />
+                <span className={styles.retentionUnit}>{t('tools')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Trimmed off each further block')}</p>
+                  <FieldHint label={t('Trimmed off each further block')}>
+                    {t('How much comes off a tool’s phrase for each further block of tools past the number above: at 25%, an agent holding twice that many keeps three quarters of each phrase and one holding three times keeps half. Cut from the end, so what is written first survives. Zero switches the trimming off. Between 0 and 50.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tool-summary-trim-percent"
+                  name="toolSummaryTrimPercent"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={summaryTrim}
+                  onChange={(event) => setSummaryTrim(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Trimmed off each further block')}
+                />
+                <span className={styles.retentionUnit}>{t('percent')}</span>
               </div>
             </div>
 

@@ -9,6 +9,7 @@ import { fetchPluginTools } from '../api/plugins';
 import { fetchMcpServers, fetchWorkspaceConnections } from '../api/integrations';
 import type { McpServer, WorkspaceConnection } from '../api/integrations';
 import { fetchMemoryCatalogs } from '../api/memory';
+import { fetchWorkspace } from '../api/workspaces';
 import type { MemoryCatalog } from '../api/memory';
 import { answers, fetchModels } from '../api/models';
 import type { Model } from '../api/models';
@@ -158,6 +159,8 @@ interface GrantableTool {
    * list. Issue #444.
    */
   governance: BuiltInToolGovernance | null;
+  /** The phrase it is listed by in a briefing, shown on hover. Issue #481. */
+  summary: string | null;
 }
 
 /**
@@ -233,6 +236,24 @@ const BUILT_IN = 'Built in';
  * nothing. Null for a row that is switched here - a workspace's, a plugin's,
  * or a built-in governed by its name. Issue #444.
  */
+/**
+ * Why a built-in row cannot be pressed while the workspace has not said so.
+ * Issue #482.
+ *
+ * The rows stay where they are, read their state, and say this on hover. The
+ * tools Orknux brings are what everything else assumes: an agent without a
+ * scratchpad retypes files, one that cannot say it has finished answers in
+ * prose, one without a clock invents today's date - and none of that reads as a
+ * missing tool to whoever is watching it happen.
+ */
+function fixedAsBuiltIn(): string {
+  return t(
+    'Orknux brings this tool, and it is offered to every agent. ' +
+      'Allow unsafe built-in tool visibility in this workspace’s settings to change it, ' +
+      'knowing that an agent missing one of these behaves in ways this product cannot stand behind.',
+  );
+}
+
 function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
   switch (governance) {
     case 'SKILL_CATALOGS':
@@ -312,6 +333,13 @@ interface GrantListProps<Item> {
   keyOf: (item: Item) => string;
   /** The name the grant is stored under, which is also the name searched. */
   nameOf: (item: Item) => string;
+  /**
+   * The line a row shows on hover: a tool's summary, a skill's description.
+   *
+   * What the list cannot afford to draw and a person still wants to read.
+   * Issues #480 and #481.
+   */
+  titleOf?: (item: Item) => string | null;
   /**
    * What the grant is stored as, where that is not the name on the row.
    *
@@ -416,6 +444,7 @@ function GrantList<Item>({
   empty,
   keyOf,
   nameOf,
+  titleOf,
   storedAs,
   metaOf,
   linkOf,
@@ -766,6 +795,9 @@ function GrantList<Item>({
                 key={keyOf(row.item)}
                 className={row.matches ? own.checkRow : `${own.checkRow} ${own.checkRowKept}`}
                 data-grant-name={row.name}
+                /* A tool's summary, a skill's description: what the row has no
+                   room for and a person reading it wants. #480, #481. */
+                title={titleOf?.(row.item) ?? undefined}
                 /*
                   What a check finds a kept row by. CSS modules hash the class
                   names this project writes, so the class cannot be asked for
@@ -925,6 +957,26 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [shellAccess, setShellAccess] = useState(agent.shellAccess);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
+  /*
+   * Whether this workspace has said its agents may have a built-in hidden.
+   * Issue #482: while it has not, those rows are drawn read-only with the
+   * reason on hover. Read rather than held in form state - it is the
+   * workspace's answer, changed on the workspace's own settings page.
+   */
+  const [unsafeBuiltIns, setUnsafeBuiltIns] = useState(false);
+  useEffect(() => {
+    if (workspaceId === '') return;
+    let live = true;
+    fetchWorkspace(workspaceId)
+      .then((held) => {
+        if (live) setUnsafeBuiltIns(held?.unsafeBuiltInTools ?? false);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [workspaceId]);
+
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
   /** Which skills inside those catalogs are out of reach, and which are always loaded. Issue #480. */
   const [hiddenSkills, setHiddenSkills] = useState<string[]>(agent.hiddenSkills);
@@ -1122,6 +1174,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         off: false,
         link: null,
         governance: tool.governance,
+        // A built-in's own line is its description, which the server writes.
+        summary: null,
       }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -1130,6 +1184,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         off: !tool.enabled,
         link: `/workspace/${workspaceId}/tools/${tool.id}`,
         governance: null,
+        summary: tool.summary,
       })));
       const taken = new Set(rows.map((row) => row.name));
       for (const offer of offered) {
@@ -1145,6 +1200,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           // page to go to; one with a run of its own has no page.
           link: offer.functionId === null ? null : `/workspace/${workspaceId}/functions/${offer.functionId}`,
           governance: null,
+          summary: null,
         });
       }
       return rows;
@@ -1736,6 +1792,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           nameOf={(skill) => skill.name}
           storedAs={(skill) => skill.key}
           metaOf={(skill) => skill.plugin ?? skill.catalog}
+          titleOf={(skill) => skill.description}
           linkOf={(skill) => skill.link}
           groupOf={(skill) => skill.plugin ?? null}
           /*
@@ -1792,7 +1849,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           */
           marked={requiredTools}
           onMark={setRequiredTools}
-          fixedOf={(tool) => fixedBecause(tool.governance)}
+          /*
+            Read-only while the workspace has not allowed it, for every row the
+            server brings: the state is still drawn and the reason is on hover.
+            The ones that come with a wider grant say that instead, because
+            that is the more specific thing to know. Issue #482.
+          */
+          fixedOf={(tool) =>
+            fixedBecause(tool.governance) ??
+            (tool.governance === 'GRANT' && !unsafeBuiltIns ? fixedAsBuiltIn() : null)
+          }
+          titleOf={(tool) => tool.summary}
         />
 
         {/*

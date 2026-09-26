@@ -98,6 +98,11 @@ export interface Workspace {
    * applies; zero takes the tool off the table here. Issue #380.
    */
   agentMaxSubagents: number | null;
+  /**
+   * Whether an agent here may have a built-in tool hidden from it. False, and
+   * the agent's Tools list draws those rows fixed while it is. Issue #482.
+   */
+  unsafeBuiltInTools: boolean;
   /** What an agent here gets when the field above is null, so the box can show it. */
   agentMaxSubagentsDefault: number;
   /**
@@ -186,7 +191,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -203,6 +208,24 @@ export async function fetchWorkspace(id: string): Promise<Workspace | null> {
     { id },
   );
   return data.workspace;
+}
+
+/**
+ * Whether this workspace's agents may have a built-in tool hidden. Issue #482.
+ *
+ * Off is what almost everybody should keep: the tools Orknux brings are what
+ * the product is built on, and an agent missing one behaves in ways this
+ * product cannot stand behind. What this opens is the ability to switch those
+ * rows, never the switching itself.
+ */
+export async function setWorkspaceUnsafeBuiltInTools(workspaceId: string, allowed: boolean): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceUnsafeBuiltInTools: Workspace }>(
+    `mutation ($workspaceId: ID!, $allowed: Boolean!) {
+       setWorkspaceUnsafeBuiltInTools(workspaceId: $workspaceId, allowed: $allowed) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, allowed },
+  );
+  return data.setWorkspaceUnsafeBuiltInTools;
 }
 
 /** Null clears it, which switches those jobs off rather than falling back. */

@@ -31,6 +31,7 @@ import {
   setWorkspaceToolTimeout,
   setWorkspaceTaskMaxTurns,
   setWorkspaceAgentMaxSubagents,
+  setWorkspaceUnsafeBuiltInTools,
   setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
   setWorkspaceChatTimestamps,
@@ -307,6 +308,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [turns, setTurns] = useState('');
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
+  /** Whether a built-in tool may be hidden from an agent here. Issue #482. */
+  const [unsafeBuiltIns, setUnsafeBuiltIns] = useState(false);
   /** What marks a command in a message that starts a run here; `!` to start. Issue #381. */
   const [marker, setMarker] = useState('');
   /**
@@ -639,6 +642,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('turns')) {
         latest = await setWorkspaceTaskMaxTurns(workspaceId, wantedTurns);
       }
+      if (touched.has('unsafeBuiltIns')) {
+        latest = await setWorkspaceUnsafeBuiltInTools(workspaceId, unsafeBuiltIns);
+      }
       if (touched.has('asks')) {
         latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
       }
@@ -728,6 +734,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setShare(held.defaultMemoryShare);
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
+    setUnsafeBuiltIns(held.unsafeBuiltInTools);
     setMarker(held.commandMarker ?? '');
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
     setToolTimeout(held.toolTimeoutSeconds === null ? '' : String(held.toolTimeoutSeconds));
@@ -1443,6 +1450,30 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           same reason the turns are, and empty means Admin -> Settings applies.
           Issue #380.
         */}
+        {/*
+          Whether a built-in tool may be taken away from an agent here.
+          Issue #482.
+
+          Off, and off is what almost everybody should keep. What it switches is
+          the ability to switch: the rows stay on the agent's Tools list and
+          become pressable. The hint says what is being accepted, because this
+          is the one setting here whose cost lands on somebody watching an agent
+          behave oddly rather than on whoever set it.
+        */}
+        <div className={styles.checkRowWithHint}>
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={unsafeBuiltIns}
+              onChange={(event) => { touch('unsafeBuiltIns'); setUnsafeBuiltIns(event.target.checked); }}
+            />
+            <span>{t('Allow unsafe built-in tool visibility')}</span>
+          </label>
+          <FieldHint label={t('Allow unsafe built-in tool visibility')}>
+            {t('Lets an agent here have one of the tools Orknux brings hidden from it. Off, and those rows are drawn but cannot be pressed. Turning it on is at your own risk: these tools are what the product is built on, and an agent missing one behaves in ways we cannot stand behind — it retypes a file it could have kept in a scratchpad, answers in prose because it cannot say it has finished, or invents today’s date. None of that reads as a missing tool to whoever is watching.')}
+          </FieldHint>
+        </div>
+
         <div className={styles.field}>
           <span className={styles.labelWithHint}>
             <label className={styles.label} htmlFor="workspace-max-subagents">

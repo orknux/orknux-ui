@@ -906,6 +906,43 @@
   font-size: var(--text-md);
 }
 
+/*
+ * Two tabs rather than a trail. Issue #485: "Transcript / a-file.html" read as
+ * a path somebody had navigated into, when it is two views of one session -
+ * and the pad's name told you nothing about what the other tab held.
+ */
+.subviewTab {
+  padding: var(--space-4) var(--space-10);
+  max-width: 22rem;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--radius-6);
+  background: none;
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.subviewTab:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.subviewTab:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.subviewTabHere {
+  border-color: var(--color-border);
+  background: var(--color-bg-subtle, var(--color-bg));
+  font-weight: 600;
+  color: var(--color-text-primary);
+  cursor: default;
+}
+
 .subviewBack {
   padding: 0;
   background: none;

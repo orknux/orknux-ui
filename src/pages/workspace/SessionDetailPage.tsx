@@ -924,19 +924,42 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               becoming something else. The transcript is the way back, and it is
               a link once there is anywhere to come back from. Issue #429.
             */}
-            <p className={styles.subview} data-subview={creating ? 'new' : openPad === null ? 'transcript' : 'scratchpad'}>
-              {showTranscript ? (
-                <span className={styles.subviewHere}>{t('Transcript')}</span>
-              ) : (
-                <>
-                  <button type="button" className={styles.subviewBack} onClick={backToTranscript}>
-                    {t('Transcript')}
-                  </button>
-                  <span className={styles.subviewSep}>/</span>
-                  <span className={styles.subviewHere}>{creating ? t('New scratchpad') : openPad}</span>
-                </>
-              )}
-            </p>
+            <div
+              className={styles.subview}
+              role="tablist"
+              aria-label={t('Session view')}
+              data-subview={creating ? 'new' : openPad === null ? 'transcript' : 'scratchpad'}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={showTranscript}
+                className={showTranscript ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
+                onClick={backToTranscript}
+              >
+                {t('Transcript')}
+              </button>
+              {/*
+                The second tab is the pad being read, or the word itself where
+                none is open - pressing it then opens the newest, which is what
+                somebody reaching for the tab is after. Disabled where the
+                session has no pads at all, since there is nowhere to go.
+              */}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!showTranscript}
+                className={!showTranscript ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
+                disabled={showTranscript && (scratchpads === null || scratchpads.length === 0)}
+                onClick={() => {
+                  if (!showTranscript) return;
+                  const newest = scratchpads?.[0];
+                  if (newest !== undefined) openScratchpad(newest.name);
+                }}
+              >
+                {creating ? t('New scratchpad') : (openPad ?? t('Scratchpad'))}
+              </button>
+            </div>
             <p className={styles.meta}>
               {held === null ? (
                 'Loading…'

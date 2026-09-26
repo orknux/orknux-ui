@@ -83,6 +83,8 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
   const [tool, setTool] = useState<Tool | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  /** The phrase this tool is listed by in an agent's briefing. Issue #481. */
+  const [summary, setSummary] = useState('');
   const [source, setSource] = useState('');
   /**
    * What this tool takes, in the order the sandbox passes it.
@@ -192,6 +194,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
     setTool(found);
     setName(found.name);
     setDescription(found.description ?? '');
+    setSummary(found.summary ?? '');
     setSource(found.typescript ?? found.source);
     setParams(found.params);
     setExternals(found.externals.map((external) => external.variableId));
@@ -652,6 +655,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
       const stored = await updateTool(tool.id, {
         name: name.trim(),
         description: description.trim(),
+        summary: summary.trim(),
         source: emitted.javascript,
         typescript: source,
         // A half-written row is not a parameter yet, and sending it would be
@@ -707,6 +711,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
     return (
       name.trim() !== tool.name.trim() ||
       description.trim() !== (tool.description ?? '').trim() ||
+      summary.trim() !== (tool.summary ?? '').trim() ||
       // The timeout as the field holds it against the one stored, both spelled
       // as text: empty is the workspace default on either side.
       timeoutSeconds.trim() !== (tool.timeoutSeconds == null ? '' : String(tool.timeoutSeconds)) ||
@@ -719,7 +724,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
       // And the libraries, which it knows nothing about either.
       librariesMoved
     );
-  }, [tool, name, description, timeoutSeconds, source, panelMoved, importsMoved, librariesMoved]);
+  }, [tool, name, description, summary, timeoutSeconds, source, panelMoved, importsMoved, librariesMoved]);
 
   /*
    * The three ways out, and the question before any of them: a link, a Back
@@ -969,6 +974,27 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                       setSaved(false);
                     }}
                     placeholder={t('What an agent reads to decide whether to call this.')}
+                  />
+                </div>
+                <div className={styles.field}>
+                  <span className={styles.headingWithHint}>
+                    <label className={styles.label} htmlFor="tool-summary">
+                      {t('Summary')}
+                    </label>
+                    <FieldHint label={t('Summary')}>
+                      {t('The phrase this tool is listed by in an agent’s system prompt, where every tool it holds is named at once. At most 50 characters. Put what matters at the front: an agent holding many tools has these lines trimmed from the end, by however much Admin → Settings says, so the first words are the ones that survive. Left empty, the first words of the description above stand in.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="tool-summary"
+                    className={styles.input}
+                    value={summary}
+                    maxLength={50}
+                    onChange={(event) => {
+                      setSummary(event.target.value);
+                      setSaved(false);
+                    }}
+                    placeholder={t('Reads a row from the orders table')}
                   />
                 </div>
                 <div className={styles.field}>

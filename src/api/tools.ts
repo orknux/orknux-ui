@@ -36,6 +36,11 @@ export interface Tool {
   name: string;
   /** What the tool is for. An agent reads this to decide whether to call it. */
   description: string | null;
+  /**
+   * The phrase it is listed by where every tool is listed at once, 50
+   * characters at most, or null where nobody wrote one. Issue #481.
+   */
+  summary: string | null;
   /** The JavaScript that runs. */
   source: string;
   /** The TypeScript it was compiled from, which is what the editor opens. */
@@ -91,7 +96,7 @@ function asInput(param: ToolParam): { name: string; type: ValueType; objectId?: 
 }
 
 const TOOL_FIELDS =
-  'id workspaceId name description source typescript ' +
+  'id workspaceId name description summary source typescript ' +
   'params { name type objectId objectName } ' +
   'externals { variableId name type } ' +
   'imports { functionId name function { name description signature returnType returnObjectName } } ' +
@@ -143,6 +148,7 @@ export async function fetchTool(id: string): Promise<Tool | null> {
 export interface CreateToolInput {
   name: string;
   description?: string;
+  summary?: string;
   /**
    * The compiled JavaScript. Sent together with `typescript` or not at all: a
    * tool whose halves were written apart is one whose editor and sandbox
@@ -179,6 +185,7 @@ export async function createTool(workspaceId: string, input: CreateToolInput): P
 export interface UpdateToolInput {
   name?: string;
   description?: string;
+  summary?: string;
   /** The compiled JavaScript. Sent together with `typescript` or not at all. */
   source?: string;
   typescript?: string;

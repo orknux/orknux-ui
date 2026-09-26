@@ -126,6 +126,20 @@ export interface InstallationSettings {
    * Issue #442.
    */
   toolsNamedInSearch: number;
+  /**
+   * How many tools an agent may hold before the lines in its briefing are cut,
+   * and by how much each further block of that many cuts them. Issue #481.
+   */
+  /** What the files in one session's scratchpads may come to, in bytes. Issue #491. */
+  scratchpadFileBudgetBytes: number;
+  scratchpadFileBudgetBytesConfigured: number;
+  /** How long a scratchpad nobody touches is kept, in days; zero is for ever. Issue #492. */
+  scratchpadKeepDays: number;
+  scratchpadKeepDaysConfigured: number;
+  toolSummariesFullUpTo: number;
+  toolSummariesFullUpToConfigured: number;
+  toolSummaryTrimPercent: number;
+  toolSummaryTrimPercentConfigured: number;
   /** What a fresh installation names before anybody changed it. */
   toolsNamedInSearchConfigured: number;
   /**
@@ -157,7 +171,9 @@ const FIELDS =
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
-  'toolsNamedInSearch toolsNamedInSearchConfigured sessionsRemovable';
+  'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
+  'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
+  'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -347,6 +363,38 @@ export async function setScratchpadBudgetBytes(bytes: number): Promise<Installat
 
 /** What marks a command in a message that starts a run, installation-wide. Issue #402. */
 /** Up to how many findable tools find_tools names outright. Issue #442. */
+export async function setScratchpadFileBudgetBytes(bytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setScratchpadFileBudgetBytes: InstallationSettings }>(
+    `mutation ($bytes: Float!) { setScratchpadFileBudgetBytes(bytes: $bytes) { ${FIELDS} } }`,
+    { bytes },
+  );
+  return data.setScratchpadFileBudgetBytes;
+}
+
+export async function setScratchpadKeepDays(days: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setScratchpadKeepDays: InstallationSettings }>(
+    `mutation ($days: Int!) { setScratchpadKeepDays(days: $days) { ${FIELDS} } }`,
+    { days },
+  );
+  return data.setScratchpadKeepDays;
+}
+
+export async function setToolSummariesFullUpTo(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setToolSummariesFullUpTo: InstallationSettings }>(
+    `mutation ($count: Int!) { setToolSummariesFullUpTo(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setToolSummariesFullUpTo;
+}
+
+export async function setToolSummaryTrimPercent(percent: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setToolSummaryTrimPercent: InstallationSettings }>(
+    `mutation ($percent: Int!) { setToolSummaryTrimPercent(percent: $percent) { ${FIELDS} } }`,
+    { percent },
+  );
+  return data.setToolSummaryTrimPercent;
+}
+
 export async function setToolsNamedInSearch(count: number): Promise<InstallationSettings> {
   const data = await graphql<{ setToolsNamedInSearch: InstallationSettings }>(
     `mutation SetToolsNamedInSearch($count: Int!) {
