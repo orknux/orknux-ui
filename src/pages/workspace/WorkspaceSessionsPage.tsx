@@ -5,7 +5,6 @@ import { fetchLlmSessions } from '../../api/llmSessions';
 import type { LlmSessionOrder, LlmSessionPage } from '../../api/llmSessions';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
-import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
@@ -34,12 +33,6 @@ const SEARCH_PAUSE_MS = 300;
  * Asked of the server rather than sorted here, for the reason every paged list
  * has: sorting the rows on screen orders the page and not the workspace.
  */
-const ORDERS: { label: string; order: LlmSessionOrder }[] = [
-  { label: t('Last spoken in'), order: 'LAST_EVENT' },
-  { label: t('Opened'), order: 'CREATED' },
-  { label: t('Key'), order: 'KEY' },
-];
-
 /**
  * The conversations this workspace's agents have kept.
  *
@@ -143,24 +136,15 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
         </div>
 
         <div className={styles.sortRow}>
-          <label className={styles.sortLabel} htmlFor="session-order">{t('Sort')}</label>
-          <span className={styles.selectWrapper}>
-            <select
-              id="session-order"
-              className={styles.sortSelect}
-              value={order}
-              onChange={(event) => setOrder(event.target.value as LlmSessionOrder)}
-            >
-              {ORDERS.map((one) => (
-                <option key={one.order} value={one.order}>
-                  {one.label}
-                </option>
-              ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
-          </span>
-          {/* A direction has two states, so it is a switch. The arrow says which
-              way it is now, not which way pressing it would go. */}
+          {/*
+            No Sort box. Every column sorts from its own header since #419, so a
+            second control naming three of them was a second way to say the same
+            thing, in words that did not match the headers - and two controls
+            that can disagree are worse than either.
+
+            The direction switch stays: it says which way the list is now, and
+            it is the one thing a header press cannot show before you press it.
+          */}
           <button
             type="button"
             className={styles.sortDirection}
@@ -204,16 +188,16 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
       <section className={styles.card}>
         <div className={styles.tableHeader}>
           {/*
-            The headings press for the same three orders the Sort box offers, and
-            the two controls are one piece of state - issue #358 asked for the
-            column, and a page with two controls that disagree is worse than
-            either. Prefix is the front of the key rather than a column of its
-            own, and Lines is a count of the transcript, so neither is an order.
+            Every column presses, which is what took the Sort box away. Issue
+            #419: Lines and Subagents are counts over other tables rather than
+            columns of the session, so the server orders them in the query - see
+            LlmSessionOrder. Prefix is the front of the key rather than a column
+            of its own, so it is the one heading that does not press.
           */}
           {/* A leading dot says whether an agent is at work in the session. Issue #404. */}
           <span className={styles.colStatus}>{t('Status')}</span>
           <ColumnHeader
-            label={t('Session')}
+            label={t('Key')}
             order="KEY"
             current={order}
             ascending={ascending}
@@ -221,8 +205,22 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             className={styles.colKey}
           />
           <span className={styles.colPrefix}>{t('Prefix')}</span>
-          <span className={styles.colCount}>{t('Lines')}</span>
-          <span className={styles.colSubs}>{t('Subagents')}</span>
+          <ColumnHeader
+            label={t('Lines')}
+            order="LINES"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colCount}
+          />
+          <ColumnHeader
+            label={t('Subagents')}
+            order="SUBAGENTS"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colSubs}
+          />
           <ColumnHeader
             label={t('Opened')}
             order="CREATED"

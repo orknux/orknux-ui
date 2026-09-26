@@ -78,7 +78,12 @@ export interface SessionAgentDetails {
 }
 
 /** What a list of sessions is ordered by, in the words the server uses. */
-export type LlmSessionOrder = 'KEY' | 'CREATED' | 'LAST_EVENT';
+/**
+ * What the list is ordered by. Lines and Subagents are counts over other tables
+ * rather than columns of the session, so the server orders those in the query.
+ * Issue #419.
+ */
+export type LlmSessionOrder = 'KEY' | 'CREATED' | 'LAST_EVENT' | 'LINES' | 'SUBAGENTS';
 
 /**
  * What one line of a transcript is.
