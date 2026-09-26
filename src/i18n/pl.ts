@@ -2097,7 +2097,7 @@ export const PL: Record<string, string> = {
   "Granted by the memory catalogs — switch it there.": "Przyznane przez katalogi pamięci — przełącz tam.",
   "Granted by Orknux access — switch it there.": "Przyznane przez dostęp do Orknux — przełącz tam.",
   "Granted by shell access — switch it there.": "Przyznane przez dostęp do powłoki — przełącz tam.",
-  "Findable": "Do znalezienia",
+  "Findable tools": "Narzędzia do znalezienia",
   "The workspace's own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools, the orknux_ and shell_ tools — reads the state of that grant and is switched there.":
     "Własne narzędzia przestrzeni roboczej, narzędzia oferowane przez jej wtyczki i narzędzia, które Orknux wnosi sam, wymienione pod Wbudowane. Każdy wiersz zmienia stan po kliknięciu. Ukryj: agent nie może go użyć. Oferuj: jest dostępne i ładowane, gdy zadanie tego potrzebuje, po ustawieniu poniżej limitu narzędzi — bez limitu każde oferowane narzędzie jest po prostu niesione. Zawsze: jest przed modelem w każdej turze, co ma znaczenie po ustawieniu limitu. Narzędzie wbudowane, które przychodzi z szerszym uprawnieniem — narzędzia umiejętności i pamięci, narzędzia orknux_ i shell_ — odczytuje stan tego uprawnienia i tam się je przełącza.",
   // A session's runs: the newest, and a press for the rest (#463).

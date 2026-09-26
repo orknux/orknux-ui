@@ -916,7 +916,16 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
             </span>
             <span className={`${styles.colAuthor} ${styles.muted}`}>{plugin.author ?? '—'}</span>
             <span className={`${styles.colSource} ${styles.muted}`}>
-              {plugin.marketplaceKey !== null ? t('Marketplace') : t('Local')}
+              {/*
+                Where it came from, and "Built in" is a third answer: a plugin
+                the release brings is neither the catalog's nor somebody's file.
+                It cannot be unloaded, so the bin is not drawn for it. Issue #474.
+              */}
+              {plugin.builtIn
+                ? t('Built in')
+                : plugin.marketplaceKey !== null
+                  ? t('Marketplace')
+                  : t('Local')}
             </span>
           </>
         )}
@@ -991,7 +1000,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
            * say so - the confirm was the word "Unload" beside "Cancel", which
            * is the shape of a question nobody reads.
            */}
-          {asFile && (
+          {asFile && !plugin.builtIn && (
             <button
               type="button"
               className={styles.rowAction}

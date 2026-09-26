@@ -334,7 +334,7 @@ function AgentDetailsBlock({
           </div>
           {/*
             Tools is every tool the model was handed - the grants, the built-ins
-            and what the turn lent - and Findable, drawn only where there is
+            and what the turn lent - and Findable tools, drawn only where there is
             one, is the part found rather than carried under the agent's
             ceiling. Two lines rather than one with a marker, because "which of
             these did the model actually have in front of it" is the question
@@ -342,7 +342,7 @@ function AgentDetailsBlock({
           */}
           {([
             [t('Tools'), details.tools],
-            [t('Findable'), details.findable],
+            [t('Findable tools'), details.findable],
             [t('Skills'), details.skills],
             [t('Memory'), details.memory],
             [t('Connections'), details.connections],
@@ -572,10 +572,34 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    * makes this page worth refreshing at all: the run is still going, and the
    * next tool call is the thing being waited for.
    */
+  /*
+   * The session's scratchpads: the working files an agent kept within the
+   * conversation, listed below the sessions panel. Issue #429.
+   *
+   * Its own, and the shared ones of the sessions it was started under - the same
+   * files the agent's tools see. Listed without their content, which is fetched
+   * one at a time when one is opened.
+   */
+  const [scratchpads, setScratchpads] = useState<SessionScratchpad[] | null>(null);
+  const loadScratchpads = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionScratchpads(sessionId)
+      .then(setScratchpads)
+      .catch(() => setScratchpads(null));
+  }, [sessionId]);
+  useEffect(loadScratchpads, [loadScratchpads]);
+
   const refresh = useCallback(() => {
     loadSession();
     load();
-  }, [loadSession, load]);
+    /*
+     * And the pads, which an agent writes while somebody is watching this page.
+     * They were loaded once and then only after an edit of your own, so a file
+     * a running agent had just written was not there until a reload - on the
+     * one screen whose whole point is watching work happen. Issue #479.
+     */
+    loadScratchpads();
+  }, [loadSession, load, loadScratchpads]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -607,23 +631,6 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    * a thing that exists should not have to be asked for. Issue #388.
    */
   const hasFamily = family !== null && family.length > 1;
-
-  /*
-   * The session's scratchpads: the working files an agent kept within the
-   * conversation, listed below the sessions panel. Issue #429.
-   *
-   * Its own, and the shared ones of the sessions it was started under - the same
-   * files the agent's tools see. Listed without their content, which is fetched
-   * one at a time when one is opened.
-   */
-  const [scratchpads, setScratchpads] = useState<SessionScratchpad[] | null>(null);
-  const loadScratchpads = useCallback(() => {
-    if (sessionId === '') return;
-    fetchSessionScratchpads(sessionId)
-      .then(setScratchpads)
-      .catch(() => setScratchpads(null));
-  }, [sessionId]);
-  useEffect(loadScratchpads, [loadScratchpads]);
 
   /*
    * Which subview the body is showing: the transcript, one scratchpad's content,
