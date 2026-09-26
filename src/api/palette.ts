@@ -118,7 +118,7 @@ const QUERIES: { kind: EntityKind; query: string; read: (data: any) => NamedEnti
      */
     kind: 'Issue',
     query: `query PaletteIssues($workspaceId: ID!, $size: Int!) {
-      workspaceIssues(workspaceId: $workspaceId, size: $size, status: OPEN) {
+      workspaceIssues(workspaceId: $workspaceId, size: $size, status: "OPEN") {
         content { number title }
       }
     }`,

@@ -1,8 +1,107 @@
+import type { CSSProperties } from 'react';
+
 import { graphql } from './client';
 import { t } from '../i18n';
 
-/** Where an issue is in its life: open, picked up, up for review, then closed. */
-export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'REVIEW' | 'CLOSED';
+/**
+ * Where an issue is in its life, as the key of one of the workspace's statuses.
+ *
+ * A string and not a union, since #428: the workspace decides its statuses and
+ * the four everybody starts with - OPEN, IN_PROGRESS, REVIEW, CLOSED - are the
+ * defaults rather than the whole. What a key is called, what colour it wears and
+ * whether it counts as done are read off the workspace's definitions
+ * (`fetchIssueStatuses`), through the helpers beside them below.
+ */
+export type IssueStatus = string;
+
+/**
+ * One status a workspace's issues can be in, as the settings page, the filter
+ * bar and the status button read it.
+ *
+ * The key is what an issue holds and never changes; the label is what people
+ * read. Exactly one is initial - where a new issue lands - and any number count
+ * as closed, since fixed and won't-fix are both done.
+ */
+export interface IssueStatusDefinition {
+  id: string;
+  key: string;
+  label: string;
+  /** A CSS colour, or null for the interface's own choice - see `statusColor`. */
+  color: string | null;
+  position: number;
+  initial: boolean;
+  closed: boolean;
+  /** How many issues here hold it. Read by the settings card, and by what refuses a removal. */
+  inUse: number;
+}
+
+/**
+ * What the four seeded keys are called and coloured before the definitions
+ * arrive, or where a workspace has none.
+ *
+ * The same words and the same tokens the pages hard-coded until #428, so a
+ * workspace that never touches its statuses looks exactly as it did. Anything
+ * else falls back to the key and to a neutral colour until the definitions say
+ * otherwise, which they do a moment later.
+ */
+const SEEDED_STATUS_LABEL: Record<string, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: t('In progress'),
+  REVIEW: t('Review'),
+  CLOSED: 'Closed',
+};
+
+const SEEDED_STATUS_COLOR: Record<string, string> = {
+  OPEN: 'var(--color-accent-brand)',
+  IN_PROGRESS: 'var(--color-accent-warning, #f59e0b)',
+  REVIEW: 'var(--color-violet, #8b5cf6)',
+  CLOSED: 'var(--color-text-muted)',
+};
+
+/** What a status is called here, in the words the workspace chose. */
+export function statusLabel(status: IssueStatus, definitions: IssueStatusDefinition[]): string {
+  return definitions.find((one) => one.key === status)?.label ?? SEEDED_STATUS_LABEL[status] ?? status;
+}
+
+/** The colour a status's dot and badge wear: the workspace's, or the interface's for the four it knows. */
+export function statusColor(status: IssueStatus, definitions: IssueStatusDefinition[]): string {
+  return (
+    definitions.find((one) => one.key === status)?.color ??
+    SEEDED_STATUS_COLOR[status] ??
+    'var(--color-text-secondary)'
+  );
+}
+
+/**
+ * Whether a status counts as done. Off the flag where the definitions are
+ * here, and off the one seeded key that always did where they are not yet.
+ */
+export function isClosedStatus(status: IssueStatus, definitions: IssueStatusDefinition[]): boolean {
+  const known = definitions.find((one) => one.key === status);
+  return known === undefined ? status === 'CLOSED' : known.closed;
+}
+
+/** Where a new issue lands here: the one initial status, or OPEN until the definitions say. */
+export function initialStatus(definitions: IssueStatusDefinition[]): IssueStatus {
+  return definitions.find((one) => one.initial)?.key ?? 'OPEN';
+}
+
+/**
+ * The status after this one, walking the workspace's list in order and round
+ * to the start - which is what the status button does with one press. Until
+ * the definitions arrive the four seeded keys are walked the way they always
+ * were.
+ */
+export function nextStatus(status: IssueStatus, definitions: IssueStatusDefinition[]): IssueStatus {
+  const keys = definitions.length > 0 ? definitions.map((one) => one.key) : Object.keys(SEEDED_STATUS_LABEL);
+  const at = keys.indexOf(status);
+  return keys[(at + 1) % keys.length] ?? keys[0] ?? status;
+}
+
+/** The colour as an inline style the stylesheets read back as `--status-color`. */
+export function statusStyle(status: IssueStatus, definitions: IssueStatusDefinition[]): CSSProperties {
+  return { '--status-color': statusColor(status, definitions) } as CSSProperties;
+}
 
 /** What a list is ordered by, in the words the server uses. */
 export type IssueOrder = 'NUMBER' | 'TITLE' | 'UPDATED' | 'LAST_COMMENT' | 'TYPE';
@@ -34,14 +133,6 @@ export interface IssueType {
  * there are three values here rather than two.
  */
 export type IssueTypeFilter = string | null;
-
-/** What each state is called where somebody reads it. */
-export const ISSUE_STATUS_LABEL: Record<IssueStatus, string> = {
-  OPEN: 'Open',
-  IN_PROGRESS: t('In progress'),
-  REVIEW: t('Review'),
-  CLOSED: 'Closed',
-};
 
 /**
  * What kind of thing an issue is assigned to.
@@ -396,7 +487,7 @@ export async function fetchIssues(
   } = {},
 ): Promise<IssuePage> {
   const data = await graphql<{ workspaceIssues: IssuePage }>(
-    `query ($workspaceId: ID!, $status: IssueStatus, $typeId: ID, $search: String, $page: Int, $size: Int,
+    `query ($workspaceId: ID!, $status: String, $typeId: ID, $search: String, $page: Int, $size: Int,
             $order: IssueOrder, $ascending: Boolean) {
        workspaceIssues(workspaceId: $workspaceId, status: $status, typeId: $typeId, search: $search,
                        page: $page, size: $size, order: $order, ascending: $ascending) {
@@ -487,6 +578,72 @@ export async function deleteIssueType(id: string): Promise<boolean> {
     { id },
   );
   return data.deleteIssueType;
+}
+
+const STATUS_FIELDS = 'id key label color position initial closed inUse';
+
+/**
+ * The statuses this workspace's issues move through, in order.
+ *
+ * Its own read, like the types: the filter bar, the issue page and the settings
+ * card all want it, and only the last cares about the counts it carries.
+ */
+export async function fetchIssueStatuses(workspaceId: string): Promise<IssueStatusDefinition[]> {
+  const data = await graphql<{ issueStatuses: IssueStatusDefinition[] }>(
+    `query ($workspaceId: ID!) { issueStatuses(workspaceId: $workspaceId) { ${STATUS_FIELDS} } }`,
+    { workspaceId },
+  );
+  return data.issueStatuses;
+}
+
+/** At the end of the list. The key is upper snake case and is the server's to check. */
+export async function addIssueStatus(
+  workspaceId: string,
+  key: string,
+  label: string,
+  color?: string,
+): Promise<IssueStatusDefinition> {
+  const data = await graphql<{ addIssueStatus: IssueStatusDefinition }>(
+    `mutation ($workspaceId: ID!, $key: String!, $label: String!, $color: String) {
+       addIssueStatus(workspaceId: $workspaceId, key: $key, label: $label, color: $color) { ${STATUS_FIELDS} }
+     }`,
+    { workspaceId, key, label, color: color?.trim() || null },
+  );
+  return data.addIssueStatus;
+}
+
+/** Each field left alone when absent; an empty colour clears it. The key never changes. */
+export async function updateIssueStatus(
+  id: string,
+  changes: { label?: string; color?: string; closed?: boolean },
+): Promise<IssueStatusDefinition> {
+  const data = await graphql<{ updateIssueStatus: IssueStatusDefinition }>(
+    `mutation ($id: ID!, $label: String, $color: String, $closed: Boolean) {
+       updateIssueStatus(id: $id, label: $label, color: $color, closed: $closed) { ${STATUS_FIELDS} }
+     }`,
+    { id, label: changes.label ?? null, color: changes.color ?? null, closed: changes.closed ?? null },
+  );
+  return data.updateIssueStatus;
+}
+
+/** The whole list in its new order - every one of the workspace's, once each. */
+export async function reorderIssueStatuses(workspaceId: string, ids: string[]): Promise<IssueStatusDefinition[]> {
+  const data = await graphql<{ reorderIssueStatuses: IssueStatusDefinition[] }>(
+    `mutation ($workspaceId: ID!, $ids: [ID!]!) {
+       reorderIssueStatuses(workspaceId: $workspaceId, ids: $ids) { ${STATUS_FIELDS} }
+     }`,
+    { workspaceId, ids },
+  );
+  return data.reorderIssueStatuses;
+}
+
+/** Refused, in words, for the initial one, the last closed one, and one issues hold. */
+export async function removeIssueStatus(id: string): Promise<boolean> {
+  const data = await graphql<{ removeIssueStatus: boolean }>(
+    `mutation ($id: ID!) { removeIssueStatus(id: $id) }`,
+    { id },
+  );
+  return data.removeIssueStatus;
 }
 
 /** People, agents and models together: the box searches all three at once. */

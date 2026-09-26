@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { formatSize, isShowable } from '../../api/attachments';
 import {
-  ISSUE_STATUS_LABEL,
   addIssueLink,
   attachToIssue,
   commentOnIssue,
@@ -14,11 +13,17 @@ import {
   fetchIssue,
   fetchIssueHistory,
   fetchIssueLabels,
+  fetchIssueStatuses,
   fetchIssueTypes,
+  initialStatus,
+  isClosedStatus,
   issueAttachmentUrl,
+  nextStatus,
   readRelation,
   removeIssueAttachment,
   removeIssueLink,
+  statusLabel,
+  statusStyle,
   updateIssue,
   uploadIssueAttachments,
 } from '../../api/issues';
@@ -29,6 +34,7 @@ import type {
   IssueEvent,
   IssueHistory,
   IssueStatus,
+  IssueStatusDefinition,
   IssueType,
 } from '../../api/issues';
 import type { SessionUser } from '../../api/session';
@@ -179,6 +185,12 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
    */
   const [typeId, setTypeId] = useState<string>('');
   const [types, setTypes] = useState<IssueType[]>([]);
+  /**
+   * The workspace's statuses, in order: what the button walks, what each is
+   * called and coloured, and which of them count as done. Empty until they
+   * arrive, when the four seeded keys are drawn as they always were.
+   */
+  const [definitions, setDefinitions] = useState<IssueStatusDefinition[]>([]);
   const [status, setStatus] = useState<IssueStatus>('OPEN');
   const [comment, setComment] = useState('');
   /** Whether the description is being written rather than read. */
@@ -420,6 +432,13 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
       .catch(() => setTypes([]));
   }, [workspaceId]);
 
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchIssueStatuses(workspaceId)
+      .then(setDefinitions)
+      .catch(() => setDefinitions([]));
+  }, [workspaceId]);
+
   /**
    * Stores what the form holds.
    *
@@ -586,20 +605,15 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
     save: () => save(false),
   });
 
-  /**
+  /*
    * Moving an issue along, in one click from wherever it is.
    *
-   * Open leads to in progress and in progress to closed, because that is the
-   * order work actually happens in; closed leads back to open, which is what
-   * reopening means. The button says where it is now and its title says where
-   * pressing it goes, so nothing has to be guessed from an arrow.
+   * The button walks the workspace's statuses in the workspace's order and
+   * round to the start, because that order is the order work happens in here -
+   * it is what the administrator arranged. The button says where the issue is
+   * now and its title says where pressing it goes, so nothing has to be guessed
+   * from an arrow. `nextStatus` in the API module is the walk.
    */
-  function nextStatus(from: IssueStatus): IssueStatus {
-    if (from === 'OPEN') return 'IN_PROGRESS';
-    if (from === 'IN_PROGRESS') return 'REVIEW';
-    return from === 'REVIEW' ? 'CLOSED' : 'OPEN';
-  }
-
   async function setIssueStatus(wanted: IssueStatus) {
     if (creating || saving) return;
     if (issue === null) return;
@@ -617,8 +631,18 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
 
   /** The one-click move, for the places that offer it. */
   async function toggleStatus() {
-    await setIssueStatus(nextStatus(status));
+    await setIssueStatus(nextStatus(status, definitions));
   }
+
+  /**
+   * Where "Close issue" puts it, and where "Reopen issue" brings it back.
+   *
+   * The first status the workspace counts as closed, and the one new issues
+   * start in - read off the flags rather than the names, so a workspace that
+   * calls done "Released" closes to Released.
+   */
+  const closedTarget = definitions.find((one) => one.closed)?.key ?? 'CLOSED';
+  const closed = isClosedStatus(status, definitions);
 
   /**
    * Hands the issue to the agent it is assigned to.
@@ -1089,6 +1113,7 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                 <History
                   history={history}
                   error={historyError}
+                  statuses={definitions}
                   onShowComment={(id) => {
                     setTab('issue');
                     /*
@@ -1291,6 +1316,7 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                   issueId={issue.id}
                   number={issue.number}
                   related={issue.related}
+                  statuses={definitions}
                   onChanged={setIssue}
                 />
               )}
@@ -1467,10 +1493,10 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                       <button
                         type="button"
                         className={styles.ghost}
-                        onClick={() => void setIssueStatus(status === 'CLOSED' ? 'OPEN' : 'CLOSED')}
+                        onClick={() => void setIssueStatus(closed ? initialStatus(definitions) : closedTarget)}
                         disabled={saving}
                       >
-                        {status === 'CLOSED' ? t('Reopen issue') : t('Close issue')}
+                        {closed ? t('Reopen issue') : t('Close issue')}
                       </button>
                       <button
                         type="button"
@@ -1492,24 +1518,17 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                 <span className={styles.label}>Status</span>
                 <button
                   type="button"
-                  className={
-                    status === 'OPEN'
-                      ? styles.statusOpen
-                      : status === 'IN_PROGRESS'
-                        ? styles.statusProgress
-                        : status === 'REVIEW'
-                          ? styles.statusReview
-                          : styles.statusClosed
-                  }
+                  className={styles.statusButton}
+                  style={statusStyle(status, definitions)}
                   onClick={() => void toggleStatus()}
                   disabled={creating || saving}
                   title={
                     creating
                       ? t('A new issue opens when it is filed')
-                      : `Press for ${ISSUE_STATUS_LABEL[nextStatus(status)].toLowerCase()}`
+                      : `Press for ${statusLabel(nextStatus(status, definitions), definitions).toLowerCase()}`
                   }
                 >
-                  {ISSUE_STATUS_LABEL[status]}
+                  {statusLabel(status, definitions)}
                 </button>
               </div>
 
@@ -1561,7 +1580,7 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
               {!creating &&
                 issue !== null &&
                 issue.assignee?.kind === 'AGENT' &&
-                issue.status !== 'CLOSED' && (
+                !isClosedStatus(issue.status, definitions) && (
                   <div className={styles.sideField} data-testid="issue-ai">
                     <span className={styles.labelWithHint}>
                       <span className={styles.label}>Start by AI</span>
@@ -2001,6 +2020,8 @@ interface HistoryProps {
   /** Null while it is being fetched, which is only ever the first moment. */
   history: IssueHistory | null;
   error: string | null;
+  /** The workspace's statuses, so a status line reads as its label rather than its key. */
+  statuses: IssueStatusDefinition[];
   /** Takes the reader to a comment in full, on the tab that has the thread. */
   onShowComment: (commentId: string) => void;
 }
@@ -2014,7 +2035,7 @@ interface HistoryProps {
  * is drawn as plainly as the rest, because an issue older than the record has
  * to say so rather than show a quiet week it never had.
  */
-function History({ history, error, onShowComment }: HistoryProps) {
+function History({ history, error, statuses, onShowComment }: HistoryProps) {
   if (error !== null) {
     return (
       <p className={styles.error} role="alert">
@@ -2058,7 +2079,7 @@ function History({ history, error, onShowComment }: HistoryProps) {
             </span>
             <div className={styles.historyBody}>
               <p className={styles.historyText}>
-                {said(event)}{' '}
+                {said(event, statuses)}{' '}
                 <time
                   className={styles.historyWhen}
                   dateTime={event.at}
@@ -2096,7 +2117,7 @@ function History({ history, error, onShowComment }: HistoryProps) {
  * columns and different sentences - and a history nobody can read at a glance
  * is a history nobody reads.
  */
-function said(event: IssueEvent) {
+function said(event: IssueEvent, statuses: IssueStatusDefinition[]) {
   const who = <strong>{event.actor}</strong>;
   switch (event.kind) {
     case 'OPENED':
@@ -2104,7 +2125,7 @@ function said(event: IssueEvent) {
     case 'STATUS':
       return (
         <>
-          {who} changed the status from {statusName(event.was)} to {statusName(event.became)}
+          {who} changed the status from {statusName(event.was, statuses)} to {statusName(event.became, statuses)}
         </>
       );
     case 'TYPE':
@@ -2196,9 +2217,14 @@ function said(event: IssueEvent) {
   }
 }
 
-/** A status in the words the rest of the page uses, or as it arrived. */
-function statusName(status: string | null) {
+/**
+ * A status in the words the rest of the page uses, or as it arrived.
+ *
+ * The history holds the key, which never changes; the label is what the
+ * workspace calls it today. A key nothing is called any more - a status since
+ * removed - reads as the key, which is still true of what happened.
+ */
+function statusName(status: string | null, statuses: IssueStatusDefinition[]) {
   if (status === null) return 'nothing';
-  const known = ISSUE_STATUS_LABEL[status as IssueStatus];
-  return <em>{known ?? status}</em>;
+  return <em>{statusLabel(status, statuses)}</em>;
 }

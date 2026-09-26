@@ -16,7 +16,8 @@ export type ConfirmKind =
   | 'unloadPlugin'
   | 'removeComment'
   | 'removeSession'
-  | 'removeScratchpad';
+  | 'removeScratchpad'
+  | 'removeIssueStatus';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -33,6 +34,7 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'unloadPlugin',
   'removeSession',
   'removeScratchpad',
+  'removeIssueStatus',
 ]);
 
 export interface ConfirmDialogProps {
@@ -177,6 +179,22 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
         <>
           Remove {name}, and everything said in it? The transcript, the notes its agents left, and every
           session an agent in it started by asking another go with it. There is no way back from this one.
+        </>
+      ),
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeIssueStatus: {
+      title: t('Remove issue status'),
+      /*
+       * Short, because the server has already refused everything that would
+       * make this dangerous: a status issues hold, the one new issues start in,
+       * the last that counts as closed. What is left to say is that the history
+       * keeps the key, so nothing already written becomes untrue.
+       */
+      message: (
+        <>
+          Remove the status {name} from this workspace? No issue holds it. Where the history says an issue
+          was once in it, it will say so by the key from now on.
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),

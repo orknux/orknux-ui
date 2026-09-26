@@ -2379,6 +2379,15 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'issue-statuses-check',
+    what: 'a status the workspace adds reaches the settings card, the filter bar and the status button',
+    needs: ['workspace'],
+    /*
+     * Issue #428. It adds a status of its own, files an issue to walk through
+     * it, and takes both away again, so the seeded fixture is as it was.
+     */
+  },
+  {
     name: 'remove-comment-check',
     what: 'a comment comes off a thread, without the question quoting it back or the history losing it',
     needs: ['workspace'],

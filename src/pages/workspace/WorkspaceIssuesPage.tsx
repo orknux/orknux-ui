@@ -1,8 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { ISSUE_STATUS_LABEL, fetchIssueLabels, fetchIssueTypes, fetchIssues } from '../../api/issues';
-import type { Issue, IssueOrder, IssuePage, IssueStatus, IssueType, IssueTypeFilter } from '../../api/issues';
+import {
+  fetchIssueLabels,
+  fetchIssueStatuses,
+  fetchIssueTypes,
+  fetchIssues,
+  initialStatus,
+  statusLabel,
+  statusStyle,
+} from '../../api/issues';
+import type {
+  Issue,
+  IssueOrder,
+  IssuePage,
+  IssueStatus,
+  IssueStatusDefinition,
+  IssueType,
+  IssueTypeFilter,
+} from '../../api/issues';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { initialsOf } from '../../api/users';
@@ -36,14 +52,21 @@ const SEARCH_PAUSE_MS = 300;
  */
 const STALE_AFTER_MS = 30_000;
 
-/** Open first, because that is what somebody arriving is looking at. */
-const FILTERS: { label: string; status: IssueStatus | null }[] = [
-  { label: t('Open'), status: 'OPEN' },
-  { label: t('In progress'), status: 'IN_PROGRESS' },
-  { label: t('Review'), status: 'REVIEW' },
-  { label: t('Closed'), status: 'CLOSED' },
-  { label: t('All'), status: null },
-];
+/**
+ * One tab per status the workspace has, in the workspace's order, and All.
+ *
+ * Read off the definitions rather than written here since #428: the list is the
+ * workspace's, and a filter bar that knew four names would show a tracker with
+ * a fifth status no way to see it. The initial status comes first because the
+ * order is the workspace's and that is where it puts it - which is also what
+ * somebody arriving is looking at.
+ */
+function filtersOf(definitions: IssueStatusDefinition[]): { label: string; status: IssueStatus | null }[] {
+  return [
+    ...definitions.map((one) => ({ label: one.label, status: one.key })),
+    { label: t('All'), status: null },
+  ];
+}
 
 /**
  * What the list can be ordered by, in the words somebody would use.
@@ -87,6 +110,8 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
   const [issues, setIssues] = useState<IssuePage | null>(null);
   const [labels, setLabels] = useState<string[]>([]);
   const [types, setTypes] = useState<IssueType[]>([]);
+  /** The workspace's statuses, in order: the tabs, and what each dot is called and coloured. */
+  const [definitions, setDefinitions] = useState<IssueStatusDefinition[]>([]);
 
   /*
    * The filters live in the address, not in this component.
@@ -109,7 +134,8 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
    * has to say so.
    */
   const wanted = params.get('status');
-  const status: IssueStatus | null = wanted === null ? 'OPEN' : wanted === 'all' ? null : (wanted as IssueStatus);
+  const opening = initialStatus(definitions);
+  const status: IssueStatus | null = wanted === null ? opening : wanted === 'all' ? null : wanted;
   /*
    * The type filter, in the address like the rest, and with three states
    * rather than two: absent is every issue, the word `untyped` is the ones
@@ -294,6 +320,19 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
       .catch(() => setTypes([]));
   }, [workspaceId]);
 
+  /*
+   * And the statuses, for the same reason and at the same moment: they change
+   * when an administrator changes them in the settings, not with the list.
+   * A failed read leaves the four seeded keys to draw by, so the page still
+   * says Open and Closed rather than nothing.
+   */
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchIssueStatuses(workspaceId)
+      .then(setDefinitions)
+      .catch(() => setDefinitions([]));
+  }, [workspaceId]);
+
   return (
     <AppShell
       user={shellUser(session)}
@@ -332,9 +371,9 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
 
         <div className={styles.filters}>
           <div className={styles.tabs} role="group" aria-label={t('Filter by status')}>
-            {FILTERS.map((filter) => (
+            {filtersOf(definitions).map((filter) => (
               <button
-                key={filter.label}
+                key={filter.status ?? 'all'}
                 type="button"
                 className={status === filter.status ? styles.tabActive : styles.tab}
                 onClick={() => filterBy({ status: filter.status ?? 'all' })}
@@ -431,7 +470,7 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
           )}
           {!loading && issues?.content.length === 0 && (
             <p className={styles.notice}>
-              {search.trim() === '' && status === 'OPEN'
+              {search.trim() === '' && status === opening
                 ? t('Nothing open. That is either good news or an empty tracker.')
                 : t('Nothing matches that.')}
             </p>
@@ -460,17 +499,10 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
                 <span className={styles.rowMain}>
                   <span className={styles.rowTitle}>
                     <span
-                      className={
-                        issue.status === 'OPEN'
-                          ? styles.dotOpen
-                          : issue.status === 'IN_PROGRESS'
-                            ? styles.dotProgress
-                            : issue.status === 'REVIEW'
-                              ? styles.dotReview
-                              : styles.dotClosed
-                      }
+                      className={styles.dot}
+                      style={statusStyle(issue.status, definitions)}
                       aria-hidden="true"
-                      title={ISSUE_STATUS_LABEL[issue.status]}
+                      title={statusLabel(issue.status, definitions)}
                     />
                     <span className={styles.issueTitle}>{issue.title}</span>
                   </span>
@@ -481,18 +513,8 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
                       most often scanned for should not depend on remembering
                       what amber meant.
                     */}
-                    <span
-                      className={
-                        issue.status === 'OPEN'
-                          ? styles.stateOpen
-                          : issue.status === 'IN_PROGRESS'
-                            ? styles.stateProgress
-                            : issue.status === 'REVIEW'
-                              ? styles.stateReview
-                              : styles.stateClosed
-                      }
-                    >
-                      {ISSUE_STATUS_LABEL[issue.status]}
+                    <span className={styles.state} style={statusStyle(issue.status, definitions)}>
+                      {statusLabel(issue.status, definitions)}
                     </span>
                     {/*
                       The time it says it is showing.

@@ -287,35 +287,29 @@
   cursor: pointer;
 }
 
-.statusOpen,
-.statusProgress,
-.statusReview,
-.statusClosed {
+/*
+ * The status, as a button that moves it along.
+ *
+ * One rule wearing whatever colour the page hands it in `--status-color`,
+ * rather than a class per status: the statuses are the workspace's since #428
+ * and a stylesheet cannot know what it will add. The list's dot uses the same
+ * variable, so whatever tells somebody an issue is in hand looks the same in
+ * both places.
+ */
+.statusButton {
   align-self: flex-start;
   padding: var(--space-4) var(--space-12);
+  background: color-mix(in srgb, var(--status-color, var(--color-text-secondary)) 18%, transparent);
+  border: 1px solid var(--status-color, var(--color-text-secondary));
   border-radius: var(--radius-4);
   font-family: inherit;
   font-weight: 600;
   font-size: var(--text-sm);
+  color: var(--status-color, var(--color-text-secondary));
   cursor: pointer;
 }
 
-.statusOpen {
-  background: var(--color-accent-brand-soft);
-  border: 1px solid var(--color-accent-brand);
-  color: var(--color-accent-brand);
-}
-
-.statusClosed {
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-}
-
-.statusProgress:disabled,
-.statusOpen:disabled,
-.statusReview:disabled,
-.statusClosed:disabled {
+.statusButton:disabled {
   opacity: 0.6;
   cursor: default;
 }
@@ -442,23 +436,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-}
-
-/*
- * The third state, in the same amber the list uses for a dot: whatever tells
- * somebody an issue is in hand should look the same in both places.
- */
-.statusProgress {
-  background: color-mix(in srgb, var(--color-accent-warning, #f59e0b) 18%, transparent);
-  border-color: var(--color-accent-warning, #f59e0b);
-  color: var(--color-accent-warning, #f59e0b);
-}
-
-/* Done and awaiting review, between in-progress and closed. Violet. Issue #428. */
-.statusReview {
-  background: color-mix(in srgb, var(--color-violet, #8b5cf6) 18%, transparent);
-  border-color: var(--color-violet, #8b5cf6);
-  color: var(--color-violet, #8b5cf6);
 }
 
 /*

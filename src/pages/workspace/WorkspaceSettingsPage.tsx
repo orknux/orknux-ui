@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { fetchMemoryBudget } from '../../api/agents';
 import type { SessionMemoryBudget } from '../../api/agents';
-import { createIssueType, deleteIssueType, fetchIssueTypes, renameIssueType } from '../../api/issues';
-import type { IssueType } from '../../api/issues';
+import {
+  addIssueStatus,
+  createIssueType,
+  deleteIssueType,
+  fetchIssueStatuses,
+  fetchIssueTypes,
+  removeIssueStatus,
+  renameIssueType,
+  reorderIssueStatuses,
+  statusStyle,
+  updateIssueStatus,
+} from '../../api/issues';
+import type { IssueStatusDefinition, IssueType } from '../../api/issues';
 import { answers, fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
@@ -32,6 +44,7 @@ import type { Workspace } from '../../api/workspaces';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import { AppShell } from '../../components/AppShell';
 import { CatalogueNote, useCatalogue } from '../../components/Catalogue';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { CHUNKING_DEFAULT } from '../../components/readAloud';
@@ -97,6 +110,29 @@ const A_MINUTE = 60_000;
 
 /** A percentage is already what a person reads, so it converts by nothing. */
 const AS_IS = 1;
+
+/**
+ * The key a status label suggests: "Won't fix" is WONTFIX, "Needs info" is
+ * NEEDS_INFO.
+ *
+ * Upper snake case is what the server takes and what an agent writes on a tool
+ * call, and nobody should have to know that to add a status - so the key is
+ * filled in from the label as it is typed and stays editable. Accents are
+ * dropped rather than kept, because a key is an identifier and `ZAMKNIĘTE` is
+ * not one the server accepts; a key that would start with a digit is prefixed,
+ * for the same reason.
+ */
+function keyFrom(label: string): string {
+  const bare = label
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ł/g, 'l')
+    .replace(/Ł/g, 'L')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return (/^[0-9]/.test(bare) ? `S_${bare}` : bare).slice(0, 32);
+}
 
 /**
  * What a box shows for a stored value, and nothing at all for a workspace that
@@ -227,6 +263,29 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [typeBusy, setTypeBusy] = useState(false);
   /** Which type is being renamed, and to what. Null while none is. */
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+
+  /*
+   * The statuses this workspace's issues move through - issue #428.
+   *
+   * Beside the types and shaped like them: one short list the workspace owns,
+   * on the card about its tracker. What differs is that a status has an order,
+   * a colour and two flags the server enforces - where new issues start, what
+   * counts as done - so the row carries more controls than a type's does, and
+   * the rules are drawn as disabled buttons with the reason in their title
+   * rather than as buttons that go on to be refused.
+   */
+  const [statuses, setStatuses] = useState<IssueStatusDefinition[]>([]);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusBusy, setStatusBusy] = useState(false);
+  /** Which status is being relabelled, and to what. Null while none is. */
+  const [relabelling, setRelabelling] = useState<{ id: string; label: string } | null>(null);
+  const [newStatusLabel, setNewStatusLabel] = useState('');
+  const [newStatusKey, setNewStatusKey] = useState('');
+  /** Whether the key box has been typed in, after which the label stops filling it. */
+  const [keyTyped, setKeyTyped] = useState(false);
+  const [newStatusColor, setNewStatusColor] = useState('');
+  /** The status being asked about before it is taken off, or null. */
+  const [removingStatus, setRemovingStatus] = useState<IssueStatusDefinition | null>(null);
 
   /*
    * The Agents card - issue #226.
@@ -472,6 +531,13 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       .catch(() => setTypes([]));
   }, [workspaceId]);
 
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchIssueStatuses(workspaceId)
+      .then(setStatuses)
+      .catch(() => setStatuses([]));
+  }, [workspaceId]);
+
   /*
    * Two questions about the drafted share, asked after the drag has stopped.
    *
@@ -704,6 +770,63 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     }
   }
 
+  /*
+   * The same wrapper for the statuses, for the same reason: the refusal is the
+   * server's sentence, printed as it stands. It knows how many issues hold a
+   * status and which one new issues start in; this page only knows what it was
+   * last told.
+   */
+  async function withStatuses(work: () => Promise<unknown>) {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    setStatusError(null);
+    try {
+      await work();
+      setStatuses(await fetchIssueStatuses(workspaceId));
+    } catch (cause) {
+      setStatusError(cause instanceof Error ? cause.message : t('Could not change the issue statuses.'));
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
+  /** Swaps a status with its neighbour and sends the whole order, which is what the server takes. */
+  function moveStatus(at: number, by: -1 | 1) {
+    const ids = statuses.map((one) => one.id);
+    const other = at + by;
+    if (other < 0 || other >= ids.length) return;
+    [ids[at], ids[other]] = [ids[other], ids[at]];
+    void withStatuses(() => reorderIssueStatuses(workspaceId, ids));
+  }
+
+  function addStatus() {
+    const label = newStatusLabel.trim();
+    const key = newStatusKey.trim();
+    if (label === '' || key === '') return;
+    void withStatuses(async () => {
+      await addIssueStatus(workspaceId, key, label, newStatusColor);
+      setNewStatusLabel('');
+      setNewStatusKey('');
+      setNewStatusColor('');
+      setKeyTyped(false);
+    });
+  }
+
+  /**
+   * Why a status cannot be removed, or null where it can.
+   *
+   * The same three rules the server enforces, asked here so the button is
+   * disabled with the reason in its title rather than pressed and refused.
+   * The server still decides; this only decides whether to offer it.
+   */
+  function cannotRemove(one: IssueStatusDefinition): string | null {
+    if (one.initial) return t('Where a new issue starts');
+    if (one.closed && statuses.filter((other) => other.closed).length === 1) return t('The only closed status');
+    if (one.inUse === 1) return t('1 issue holds it');
+    if (one.inUse > 1) return `${one.inUse} issues hold it`;
+    return null;
+  }
+
   return (
     <AppShell
       user={shellUser(session)}
@@ -910,6 +1033,199 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               {typeError}
             </p>
           )}
+
+          {/*
+            The statuses, under the types on the same card - issue #428.
+
+            One row each, in the workspace's order, which is also the order the
+            filter bar and the status button walk. The label is the rename
+            control, as a type's name is; the key beside it is what an issue
+            holds and is not editable, because two hundred issues hold it.
+          */}
+          <div className={styles.field} data-testid="issue-statuses">
+            <span className={styles.labelWithHint}>
+              <span className={styles.label}>{t('Issue statuses')}</span>
+              <FieldHint label={t('Issue statuses')}>
+                {t('Where an issue can be, in the order the filter bar and the status button walk. The first is where a new issue starts: it cannot count as closed or be removed. Anything ticked closed counts as done, and one of those has to stay. A status issues hold stays until they are moved off it. The key is what an issue stores and what an agent names on a tool call; the label is what people read.')}
+              </FieldHint>
+            </span>
+            <ul className={styles.typeList}>
+              {statuses.map((one, at) => {
+                const blocked = cannotRemove(one);
+                return (
+                  <li key={one.id} className={styles.statusRow}>
+                    <span className={styles.statusDot} style={statusStyle(one.key, statuses)} aria-hidden="true" />
+                    {relabelling?.id === one.id ? (
+                      <input
+                        className={`${styles.input} ${styles.typeName}`}
+                        aria-label={`Rename ${one.label}`}
+                        value={relabelling.label}
+                        maxLength={60}
+                        autoFocus
+                        onChange={(event) => setRelabelling({ id: one.id, label: event.target.value })}
+                        onBlur={() => setRelabelling(null)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') setRelabelling(null);
+                          if (event.key !== 'Enter') return;
+                          const wanted = relabelling.label.trim();
+                          setRelabelling(null);
+                          if (wanted === '' || wanted === one.label) return;
+                          void withStatuses(() => updateIssueStatus(one.id, { label: wanted }));
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.typeName}
+                        title={t('Rename')}
+                        onClick={() => setRelabelling({ id: one.id, label: one.label })}
+                      >
+                        {one.label}
+                      </button>
+                    )}
+                    <span className={styles.statusKey}>{one.key}</span>
+                    {/*
+                      Ticked is "counts as done". Disabled on the initial status
+                      rather than refused, since the server would refuse it and
+                      a box that cannot be ticked says so before the press.
+                    */}
+                    <label className={styles.statusClosed}>
+                      <input
+                        type="checkbox"
+                        checked={one.closed}
+                        disabled={statusBusy || one.initial}
+                        onChange={(event) =>
+                          void withStatuses(() => updateIssueStatus(one.id, { closed: event.target.checked }))
+                        }
+                      />
+                      {t('closed')}
+                    </label>
+                    <span className={styles.typeCount}>
+                      {one.inUse === 1 ? t('1 issue') : `${one.inUse} issues`}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.statusMove}
+                      title={t('Move up')}
+                      aria-label={`Move ${one.label} up`}
+                      disabled={statusBusy || at === 0}
+                      onClick={() => moveStatus(at, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.statusMove}
+                      title={t('Move down')}
+                      aria-label={`Move ${one.label} down`}
+                      disabled={statusBusy || at === statuses.length - 1}
+                      onClick={() => moveStatus(at, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.typeRemove}
+                      title={blocked ?? t('Remove')}
+                      aria-label={`Remove ${one.label}`}
+                      disabled={statusBusy || blocked !== null}
+                      onClick={() => setRemovingStatus(one)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
+              {statuses.length === 0 && <li className={styles.typeNone}>{t('None yet.')}</li>}
+            </ul>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="new-issue-status">{t('Add a status')}</label>
+            {/*
+              Three boxes and a button: what it is called, the key it will go
+              by, and a colour if the workspace wants one. The key fills itself
+              in from the label until somebody types in it, and stays
+              editable - see `keyFrom`.
+            */}
+            <div className={styles.statusAdd}>
+              <div className={styles.inputWrapper}>
+                <input
+                  id="new-issue-status"
+                  className={`${styles.input} ${styles.prose}`}
+                  type="text"
+                  value={newStatusLabel}
+                  maxLength={60}
+                  placeholder={t('Needs info')}
+                  onChange={(event) => {
+                    setNewStatusLabel(event.target.value);
+                    if (!keyTyped) setNewStatusKey(keyFrom(event.target.value));
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return;
+                    event.preventDefault();
+                    addStatus();
+                  }}
+                />
+              </div>
+              <div className={styles.inputWrapper}>
+                <input
+                  className={styles.input}
+                  type="text"
+                  aria-label={t('Key')}
+                  value={newStatusKey}
+                  maxLength={32}
+                  placeholder="WONTFIX"
+                  onChange={(event) => {
+                    const typed = event.target.value;
+                    setKeyTyped(typed !== '');
+                    setNewStatusKey(typed.toUpperCase().replace(/[^A-Z0-9_]/g, '_'));
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return;
+                    event.preventDefault();
+                    addStatus();
+                  }}
+                />
+              </div>
+              <div className={styles.inputWrapper}>
+                <span className={styles.statusDot} style={{ '--status-color': newStatusColor || 'transparent' } as CSSProperties} aria-hidden="true" />
+                <input
+                  className={styles.input}
+                  type="text"
+                  aria-label={t('Colour')}
+                  value={newStatusColor}
+                  maxLength={32}
+                  placeholder="#8b5cf6"
+                  onChange={(event) => setNewStatusColor(event.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className={styles.save}
+                disabled={newStatusLabel.trim() === '' || newStatusKey.trim() === '' || statusBusy}
+                onClick={addStatus}
+              >{t('Add')}</button>
+            </div>
+          </div>
+
+          {statusError !== null && (
+            <p className={styles.error} role="alert">
+              {statusError}
+            </p>
+          )}
+
+          <ConfirmDialog
+            subject={removingStatus?.label ?? null}
+            kind="removeIssueStatus"
+            onClose={() => setRemovingStatus(null)}
+            onConfirm={async () => {
+              if (removingStatus === null) return;
+              await removeIssueStatus(removingStatus.id);
+              setStatuses(await fetchIssueStatuses(workspaceId));
+              setRemovingStatus(null);
+            }}
+          />
         </section>
       )}
 

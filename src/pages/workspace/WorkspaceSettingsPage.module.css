@@ -383,6 +383,82 @@ select.input {
   min-width: 0;
 }
 
+/* ---- The statuses a workspace's issues move through (issue #428) ---- */
+
+/*
+ * A type's row with more on it: the colour, the key, whether it counts as
+ * done, and where it sits. The same frame, so the two lists on this card read
+ * as one kind of thing.
+ */
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+/* The same dot the list draws, in the colour the page hands it. */
+.statusDot {
+  display: block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-color, var(--color-text-secondary));
+}
+
+/* What an issue holds and an agent names: an identifier, drawn as one. */
+.statusKey {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.statusClosed {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.statusMove {
+  padding: 0 var(--space-4);
+  background: none;
+  border: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.statusMove:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.statusMove:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Label, key, colour, Add - in that order, because that is the order somebody thinks of them. */
+.statusAdd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.statusAdd .inputWrapper {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
 /*
  * One Save for the whole page, and it follows the reader down it.
  *

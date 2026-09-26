@@ -4,13 +4,14 @@ import { Link } from 'react-router-dom';
 import {
   ISSUE_RELATION_KINDS,
   ISSUE_RELATION_LABEL,
-  ISSUE_STATUS_LABEL,
   fetchIssue,
   fetchIssuesToLink,
+  isClosedStatus,
   relateIssue,
+  statusLabel,
   unrelateIssue,
 } from '../api/issues';
-import type { Issue, IssueRef, IssueRelation, IssueRelationKind } from '../api/issues';
+import type { Issue, IssueRef, IssueRelation, IssueRelationKind, IssueStatusDefinition } from '../api/issues';
 import styles from './IssueRelationList.module.css';
 import { t } from '../i18n';
 
@@ -24,6 +25,8 @@ export interface IssueRelationListProps {
   number: number;
   /** What this issue is linked to, already read from this issue's side. */
   related: IssueRelation[];
+  /** The workspace's statuses, so the far issue's reads as its label and strikes through when done. */
+  statuses: IssueStatusDefinition[];
   /** The issue as the server now has it, so the page redraws from one answer. */
   onChanged: (issue: Issue) => void;
 }
@@ -50,6 +53,7 @@ export function IssueRelationList({
   issueId,
   number,
   related,
+  statuses,
   onChanged,
 }: IssueRelationListProps) {
   const [adding, setAdding] = useState(false);
@@ -199,8 +203,8 @@ export function IssueRelationList({
               >
                 <span className={styles.number}>#{one.number}</span>
                 <span className={styles.optionTitle}>{one.title}</span>
-                <span className={one.status === 'CLOSED' ? styles.statusClosed : styles.status}>
-                  {ISSUE_STATUS_LABEL[one.status]}
+                <span className={isClosedStatus(one.status, statuses) ? styles.statusClosed : styles.status}>
+                  {statusLabel(one.status, statuses)}
                 </span>
               </button>
             ))}
@@ -225,8 +229,8 @@ export function IssueRelationList({
                 <span className={styles.number}>#{one.number}</span>
                 <span className={styles.title}>{one.title}</span>
               </Link>
-              <span className={one.status === 'CLOSED' ? styles.statusClosed : styles.status}>
-                {ISSUE_STATUS_LABEL[one.status]}
+              <span className={isClosedStatus(one.status, statuses) ? styles.statusClosed : styles.status}>
+                {statusLabel(one.status, statuses)}
               </span>
               {/*
                 Offered to anybody who can see both, unlike the cross on a file

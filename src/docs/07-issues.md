@@ -62,7 +62,7 @@ Everything else is in the address:
 
 | Written | Means |
 | --- | --- |
-| `status` | `OPEN`, `IN_PROGRESS`, `CLOSED` or `all`; absent means open |
+| `status` | one of the workspace's status keys - `OPEN`, `IN_PROGRESS`, `REVIEW`, `CLOSED` until it changes them - or `all`; absent means the first |
 | `q` | what is in the search box |
 | `order` | `NUMBER`, `TITLE`, `UPDATED` or `LAST_COMMENT` |
 | `dir` | `asc`; anything else is descending |

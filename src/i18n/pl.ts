@@ -1865,6 +1865,21 @@ export const PL: Record<string, string> = {
   // --- issue types ---------------------------------------------------------------
   "Issue type": "Rodzaj zgłoszenia",
   "Issue types": "Rodzaje zgłoszeń",
+  // --- issue statuses, on the same card (#428) ------------------------------
+  "Issue statuses": "Statusy zgłoszeń",
+  "Where an issue can be, in the order the filter bar and the status button walk. The first is where a new issue starts: it cannot count as closed or be removed. Anything ticked closed counts as done, and one of those has to stay. A status issues hold stays until they are moved off it. The key is what an issue stores and what an agent names on a tool call; the label is what people read.":
+    "Gdzie może być zgłoszenie, w kolejności, w jakiej idą pasek filtrów i przycisk statusu. Pierwszy to ten, w którym zaczyna nowe zgłoszenie: nie może liczyć się jako zamknięty ani zostać usunięty. Wszystko oznaczone jako zamknięte liczy się jako zakończone i jeden taki musi zostać. Status, w którym są zgłoszenia, zostaje, dopóki nie zostaną z niego przeniesione. Klucz to to, co zgłoszenie przechowuje i co agent podaje w wywołaniu narzędzia; etykieta to to, co czytają ludzie.",
+  "Add a status": "Dodaj status",
+  "Needs info": "Do uzupełnienia",
+  "Colour": "Kolor",
+  "closed": "zamknięty",
+  "Move up": "Przenieś wyżej",
+  "Move down": "Przenieś niżej",
+  "Where a new issue starts": "Tu zaczyna nowe zgłoszenie",
+  "The only closed status": "Jedyny status zamknięty",
+  "1 issue holds it": "Jest w nim 1 zgłoszenie",
+  "Could not change the issue statuses.": "Nie udało się zmienić statusów zgłoszeń.",
+  "Remove issue status": "Usuń status zgłoszenia",
   "Add a type": "Dodaj rodzaj",
   "Any type": "Dowolny rodzaj",
   "Untyped": "Bez rodzaju",
@@ -1969,7 +1984,6 @@ export const PL: Record<string, string> = {
 
   // --- one-word labels, which is what the menu is made of -------------------
   "Assignee": "Przypisany",
-  "Closed": "Zamknięte",
   "Completed": "Zakończone",
   "Running": "W trakcie",
   "Failed": "Nie powiodło się",
