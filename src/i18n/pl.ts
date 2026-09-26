@@ -2034,4 +2034,25 @@ export const PL: Record<string, string> = {
   "{kind} (no longer offered)": "{kind} (już nieoferowany)",
   "This workspace has no {kind} connections yet. Add one on the Integrations page and it will be offered here.":
     "Ta przestrzeń robocza nie ma jeszcze połączeń rodzaju {kind}. Dodaj je na stronie Integracji, a pojawi się tutaj.",
+  // Image node parameters (#423). The values themselves (hd, vivid, 1024x1024)
+  // are passed to the model as words and are not translated.
+  "Quality": "Jakość",
+  "Style": "Styl",
+  "Model default": "Domyślne modelu",
+  "Standard": "Standardowa",
+  "HD": "HD",
+  "Low": "Niska",
+  "Medium": "Średnia",
+  "High": "Wysoka",
+  "Vivid": "Wyrazisty",
+  "Natural": "Naturalny",
+  "Search sizes…": "Szukaj rozmiarów…",
+  "Search qualities…": "Szukaj jakości…",
+  "Search styles…": "Szukaj stylów…",
+  "Width by height in pixels. Model default leaves it to the model; a size the model does not offer is refused by the provider when the run reaches it.":
+    "Szerokość na wysokość w pikselach. Domyślne modelu pozostawia wybór modelowi; rozmiar, którego model nie oferuje, dostawca odrzuci, gdy uruchomienie do niego dotrze.",
+  "DALL-E 3 takes standard or hd; gpt-image-1 takes low, medium or high. The word is passed to the model as it is, so pick one the model knows.":
+    "DALL-E 3 przyjmuje standard lub hd; gpt-image-1 przyjmuje low, medium lub high. Słowo trafia do modelu bez zmian, więc wybierz takie, które model zna.",
+  "Vivid leans towards dramatic, hyper-real pictures and natural towards lifelike ones. Only a model that takes a style honours it.":
+    "Vivid skłania się ku dramatycznym, hiperrealistycznym obrazom, a natural ku realistycznym. Tylko model przyjmujący styl go uwzględni.",
 };

@@ -32,7 +32,7 @@ import { BASE, WORKSPACE, WORKFLOW, open, record, finish } from './suite/harness
  */
 const NODE_FIELDS =
   'key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey ' +
-  'imageModelId outputName icon orientation yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds ' +
+  'imageModelId imageSize imageQuality imageStyle outputName icon orientation yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds ' +
   'retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds x y ' +
   'mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId }';
 

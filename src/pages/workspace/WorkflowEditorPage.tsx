@@ -204,6 +204,14 @@ interface NodeData extends Record<string, unknown> {
   /** The image model an image node draws with; null until one is picked. */
   imageModelId: string | null;
   /**
+   * What an image node asks of the drawing beyond its prompt - size, quality,
+   * style - each as the word the image endpoint takes. Null is the model's own
+   * default, which is what every image node drew at before there was a choice.
+   */
+  imageSize: string | null;
+  imageQuality: string | null;
+  imageStyle: string | null;
+  /**
    * What this node calls what it produces, so a later node can point a
    * reference at it. Only an agent node has one.
    */
@@ -252,6 +260,54 @@ function sameMappings(left: NodeMapping[], right: NodeMapping[]): boolean {
         (mapping.sourceNodeKey ?? null) === (right[index].sourceNodeKey ?? null),
     )
   );
+}
+
+/**
+ * What an image node may ask of the drawing beyond its prompt, and in which
+ * words. The same three lists the server holds a save to (`ImageNodeParameters`
+ * in WorkflowGraphAPI.kt), so a value picked here is a value the save keeps.
+ *
+ * Quality lists both vocabularies on purpose: DALL-E 3 says standard or hd and
+ * gpt-image-1 says low, medium or high, the node does not know which model it
+ * will be pointed at, and the word goes to the model as it is. A size is its
+ * own label - "1024x1024" is what the endpoint takes and what somebody reads.
+ */
+const IMAGE_SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792', '512x512', '256x256'];
+const IMAGE_QUALITIES = ['standard', 'hd', 'low', 'medium', 'high'];
+const IMAGE_STYLES = ['vivid', 'natural'];
+
+/*
+ * The words on screen for each, as literal `t('…')` calls rather than a table
+ * of strings handed to `t`: the catalogue check reads the source for literal
+ * calls, and a label it cannot see is a translation it reports as orphaned.
+ * Resolved at render, when the language is known.
+ */
+function imageQualityLabel(quality: string): string {
+  switch (quality) {
+    case 'standard':
+      return t('Standard');
+    case 'hd':
+      return t('HD');
+    case 'low':
+      return t('Low');
+    case 'medium':
+      return t('Medium');
+    case 'high':
+      return t('High');
+    default:
+      return quality;
+  }
+}
+
+function imageStyleLabel(style: string): string {
+  switch (style) {
+    case 'vivid':
+      return t('Vivid');
+    case 'natural':
+      return t('Natural');
+    default:
+      return style;
+  }
 }
 
 /** The whole of a workspace's catalogue fits in the picker. */
@@ -2571,6 +2627,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               outputObjectId: node.outputObjectId ?? null,
               outputNodeKey: node.outputNodeKey ?? null,
               imageModelId: node.imageModelId ?? null,
+              imageSize: node.imageSize ?? null,
+              imageQuality: node.imageQuality ?? null,
+              imageStyle: node.imageStyle ?? null,
               outputName: node.outputName ?? null,
               icon: node.icon ?? null,
               orientation: node.orientation ?? null,
@@ -3013,6 +3072,10 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           outputObjectId: null,
           outputNodeKey: null,
           imageModelId: null,
+          // The model's own defaults until somebody says otherwise.
+          imageSize: null,
+          imageQuality: null,
+          imageStyle: null,
           /*
            * An agent starts with its answer named.
            *
@@ -3202,6 +3265,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.outputObjectId === draft.outputObjectId &&
           data.outputNodeKey === draft.outputNodeKey &&
           data.imageModelId === draft.imageModelId &&
+          data.imageSize === draft.imageSize &&
+          data.imageQuality === draft.imageQuality &&
+          data.imageStyle === draft.imageStyle &&
           data.outputName === draft.outputName &&
           data.icon === draft.icon &&
           data.orientation === draft.orientation &&
@@ -3642,6 +3708,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           outputObjectId: data.outputObjectId,
           outputNodeKey: data.outputNodeKey,
           imageModelId: data.imageModelId,
+          imageSize: data.imageSize,
+          imageQuality: data.imageQuality,
+          imageStyle: data.imageStyle,
           outputName: data.outputName,
           icon: data.icon,
           orientation: data.orientation ?? null,
@@ -5508,6 +5577,81 @@ Change the keystroke in Preferences.`}
                       searchPlaceholder={t('Search image models…')}
                     />
                   </div>
+                )}
+                {/*
+                  What the drawing is asked for beyond the prompt: the three
+                  parameters every OpenAI-shaped image endpoint takes, and only
+                  those. Each is a picker with the model's own default pinned
+                  at the top, so leaving one alone has a name on screen rather
+                  than being the absence of a choice - and so a size that was
+                  chosen can be un-chosen. The server holds each to this list.
+                */}
+                {draft.kind === 'IMAGE' && (
+                  <>
+                    <div className={styles.field}>
+                      <span className={styles.labelRow}>
+                        <span className={styles.labelWithHint}>
+                          <label className={styles.label} htmlFor="node-image-size">
+                            {t('Size')}
+                          </label>
+                          <FieldHint label={t('Size')}>
+                            {t('Width by height in pixels. Model default leaves it to the model; a size the model does not offer is refused by the provider when the run reaches it.')}
+                          </FieldHint>
+                        </span>
+                      </span>
+                      <DefinitionPicker
+                        id="node-image-size"
+                        value={draft.imageSize ?? ''}
+                        options={IMAGE_SIZES.map((size) => ({ value: size, label: size }))}
+                        pinned={{ value: '', label: t('Model default') }}
+                        onChoose={(chosen) => setDraft({ ...draft, imageSize: chosen || null })}
+                        placeholder={t('Model default')}
+                        searchPlaceholder={t('Search sizes…')}
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <span className={styles.labelRow}>
+                        <span className={styles.labelWithHint}>
+                          <label className={styles.label} htmlFor="node-image-quality">
+                            {t('Quality')}
+                          </label>
+                          <FieldHint label={t('Quality')}>
+                            {t('DALL-E 3 takes standard or hd; gpt-image-1 takes low, medium or high. The word is passed to the model as it is, so pick one the model knows.')}
+                          </FieldHint>
+                        </span>
+                      </span>
+                      <DefinitionPicker
+                        id="node-image-quality"
+                        value={draft.imageQuality ?? ''}
+                        options={IMAGE_QUALITIES.map((quality) => ({ value: quality, label: imageQualityLabel(quality) }))}
+                        pinned={{ value: '', label: t('Model default') }}
+                        onChoose={(chosen) => setDraft({ ...draft, imageQuality: chosen || null })}
+                        placeholder={t('Model default')}
+                        searchPlaceholder={t('Search qualities…')}
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <span className={styles.labelRow}>
+                        <span className={styles.labelWithHint}>
+                          <label className={styles.label} htmlFor="node-image-style">
+                            {t('Style')}
+                          </label>
+                          <FieldHint label={t('Style')}>
+                            {t('Vivid leans towards dramatic, hyper-real pictures and natural towards lifelike ones. Only a model that takes a style honours it.')}
+                          </FieldHint>
+                        </span>
+                      </span>
+                      <DefinitionPicker
+                        id="node-image-style"
+                        value={draft.imageStyle ?? ''}
+                        options={IMAGE_STYLES.map((style) => ({ value: style, label: imageStyleLabel(style) }))}
+                        pinned={{ value: '', label: t('Model default') }}
+                        onChoose={(chosen) => setDraft({ ...draft, imageStyle: chosen || null })}
+                        placeholder={t('Model default')}
+                        searchPlaceholder={t('Search styles…')}
+                      />
+                    </div>
+                  </>
                 )}
                 {((draft.kind === 'ACTION' && draft.actionId !== null) ||
                   draft.kind === 'IMAGE' ||
