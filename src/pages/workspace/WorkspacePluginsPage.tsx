@@ -7,8 +7,8 @@ import {
   setPluginParameter,
 } from '../../api/plugins';
 import type { PluginParameterSetting, WorkspacePlugin } from '../../api/plugins';
-import { fetchWorkspaceConnections } from '../../api/integrations';
-import type { WorkspaceConnection } from '../../api/integrations';
+import { fetchWorkspaceConnections, offersConnection } from '../../api/integrations';
+import type { PluginConnectionType, WorkspaceConnection } from '../../api/integrations';
 import type { SessionUser } from '../../api/session';
 import type { Variable } from '../../api/variables';
 import puzzleIcon from '../../assets/puzzle.svg';
@@ -28,7 +28,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './WorkspacePluginsPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface WorkspacePluginsPageProps {
   session: SessionUser;
@@ -425,6 +425,8 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
                         <ParameterRow
                           key={parameter.name}
                           pluginId={entry.plugin.id}
+                          pluginKey={entry.plugin.key}
+                          kinds={entry.plugin.connectionTypes}
                           parameter={parameter}
                           variables={variables}
                           connections={connections}
@@ -526,6 +528,10 @@ function Summary({ entry }: { entry: WorkspacePlugin }) {
 
 interface ParameterRowProps {
   pluginId: string;
+  /** What the plugin calls itself, which is the first half of a kind it declares - `key/name`. */
+  pluginKey: string;
+  /** The kinds of connection this plugin declares, so a picker can name one as the plugin does. */
+  kinds: PluginConnectionType[];
   parameter: PluginParameterSetting;
   variables: Variable[];
   connections: WorkspaceConnection[];
@@ -565,6 +571,8 @@ interface ParameterRowProps {
  */
 function ParameterRow({
   pluginId,
+  pluginKey,
+  kinds,
   parameter,
   variables,
   connections,
@@ -581,12 +589,18 @@ function ParameterRow({
   useEffect(() => setTyped(parameter.literal ?? ''), [parameter.literal]);
 
   const takesConnection = parameter.type.toLowerCase() === 'connection';
-  /** The connections this parameter may name: the declared kind's, or all of them. */
+  /**
+   * The connections this parameter may name: the declared kind's, or all of
+   * them. A kind that is not SLACK, SMTP or HTTP is one this plugin declares
+   * itself, and then only the connections wearing its label are offered - two
+   * Prometheus servers to a Prometheus plugin, and not the wiki beside them.
+   */
   const offeredConnections = takesConnection
-    ? connections.filter(
-        (held) => parameter.connectionType === null || held.type === parameter.connectionType,
-      )
+    ? connections.filter((held) => offersConnection(held, parameter.connectionType, pluginKey))
     : [];
+  /** What the declared kind is called on screen: the plugin's label for its own, the name for a core one. */
+  const kindLabel =
+    kinds.find((kind) => kind.name === parameter.connectionType)?.label ?? parameter.connectionType ?? '';
   /** What the picker shows for the stored choice: the name, or that it is gone. */
   const storedConnection =
     takesConnection && parameter.literal !== null
@@ -868,7 +882,7 @@ function ParameterRow({
         <p className={styles.parameterNote}>
           {parameter.connectionType === null
             ? t('This workspace has no connections yet. Add one on the Integrations page and it will be offered here.')
-            : `This workspace has no ${parameter.connectionType} connections yet. Add one on the Integrations page and it will be offered here.`}
+            : tf('This workspace has no {kind} connections yet. Add one on the Integrations page and it will be offered here.', { kind: kindLabel })}
         </p>
       )}
 

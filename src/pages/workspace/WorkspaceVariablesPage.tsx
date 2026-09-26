@@ -18,7 +18,7 @@ import {
 import type { Variable, VariableCatalog, VariableKind, VariableOrder, VariableType } from '../../api/variables';
 import { fetchVariableTypes } from '../../api/variables';
 import type { ScalarType, VariableTypeOffer } from '../../api/variables';
-import { fetchWorkspaceConnections } from '../../api/integrations';
+import { fetchWorkspaceConnections, offersConnection } from '../../api/integrations';
 import type { WorkspaceConnection } from '../../api/integrations';
 import { ListValueField } from '../../components/ListValueField';
 import { TypedValueField } from '../../components/TypedValueField';
@@ -830,8 +830,10 @@ function VariableTable({
           const held = draft.args[parameter.name] ?? '';
           const set = (value: string) => change({ args: { ...draft.args, [parameter.name]: value } });
           if (parameter.type.toLowerCase() === 'connection') {
-            const candidates = connections.filter(
-              (one) => parameter.connectionType === null || one.type === parameter.connectionType,
+            // The declared kind's connections, which for a kind the plugin
+            // itself declares are the ones wearing its label. #363.
+            const candidates = connections.filter((one) =>
+              offersConnection(one, parameter.connectionType, offer.plugin),
             );
             return (
               <label key={parameter.name}>

@@ -12,6 +12,30 @@ import { t } from '../i18n';
  * a webhook *trigger* is and now the only thing that word means here.
  */
 export type ConnectionType = 'SLACK' | 'SMTP' | 'HTTP';
+/** The kinds the server itself knows, which is what `ConnectionType` spells. */
+export const CORE_CONNECTION_TYPES: readonly ConnectionType[] = ['SLACK', 'SMTP', 'HTTP'];
+
+/**
+ * A kind of connection a plugin declares. Issue #363.
+ *
+ * An HTTP connection wearing a label: the URL, the auth type and the secret are
+ * the generic HTTP ones, and only the name is the plugin's - so a workspace can
+ * hold two Prometheus servers labelled as such rather than as two "HTTP
+ * endpoint" rows, and the plugin's own picker can offer only its own hosts.
+ * `id` is `pluginKey/name`, which is what a connection stores as `pluginType`.
+ */
+export interface PluginConnectionType {
+  id: string;
+  /** The plugin's own word for it, which a parameter's `connectionType` names. */
+  name: string;
+  /** What the rows and the Type menu show. */
+  label: string;
+  description: string | null;
+  /** What the URL box suggests when this kind is chosen; null takes the generic one. */
+  urlPlaceholder: string | null;
+  pluginKey: string;
+  pluginName: string;
+}
 /** How the session with a mail server is secured; the port follows from it. */
 export type MailSecurity = 'NONE' | 'STARTTLS' | 'TLS';
 export type AuthType = 'NONE' | 'API_KEY' | 'BEARER_TOKEN' | 'BASIC';
@@ -37,6 +61,12 @@ export interface WorkspaceConnection {
   workspaceId: string;
   name: string;
   type: ConnectionType;
+  /**
+   * The plugin kind this connection is labelled as - a `PluginConnectionType`
+   * id - or null for a core type and a plain HTTP endpoint. Only ever set on an
+   * HTTP connection: the label is the plugin's, the wire is the generic one.
+   */
+  pluginType: string | null;
   url: string;
   urlOverride: string | null;
   effectiveUrl: string;
@@ -115,7 +145,7 @@ export interface McpServerCheck {
 
 const CONNECTION_FIELDS = 'id name type url';
 const WORKSPACE_CONNECTION_FIELDS =
-  'id workspaceId name type url urlOverride effectiveUrl authType headers { name value } inherited secretSet ' +
+  'id workspaceId name type pluginType url urlOverride effectiveUrl authType headers { name value } inherited secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing ' +
   'appTokenSet appTokenVariableId appTokenVariableName appTokenVariableCatalog appTokenVariableMissing ' +
   'userTokenSet userTokenVariableId userTokenVariableName userTokenVariableCatalog userTokenVariableMissing ' +
@@ -253,6 +283,24 @@ const REVEAL_MCP_SECRET_MUTATION = `
   }
 `;
 
+const PLUGIN_CONNECTION_TYPES_QUERY = `
+  query PluginConnectionTypes {
+    pluginConnectionTypes { id name label description urlPlaceholder pluginKey pluginName }
+  }
+`;
+
+/**
+ * Every kind of connection the loaded plugins declare, across the installation.
+ *
+ * Not per workspace: a plugin is loaded once for everyone, and so is what it
+ * calls its hosts. Empty where no plugin declares one, which is the ordinary
+ * state of an installation, and the Type menu then offers the core kinds alone.
+ */
+export async function fetchPluginConnectionTypes(): Promise<PluginConnectionType[]> {
+  const data = await graphql<{ pluginConnectionTypes: PluginConnectionType[] }>(PLUGIN_CONNECTION_TYPES_QUERY);
+  return data.pluginConnectionTypes;
+}
+
 /** `page` is 0-based, matching the server. */
 /** What the admin list can be put in the order of; see `orders` on the server. */
 export type AdminConnectionOrder = 'NAME' | 'TYPE' | 'URL';
@@ -317,6 +365,11 @@ export async function createWorkspaceConnection(input: {
   name: string;
   type: ConnectionType;
   /**
+   * The plugin kind to label it as, sent with `type: 'HTTP'`. Omitted for a core
+   * kind and for a plain endpoint; see `WorkspaceConnection.pluginType`.
+   */
+  pluginType?: string;
+  /**
    * Where the service is. Omitted for the kinds that address themselves: a Slack
    * connection always talks to the Web API, and the server writes that in
    * whatever the client sends, so there is nothing here worth asking for.
@@ -358,6 +411,8 @@ export async function updateWorkspaceConnection(
      * only be chosen when it was created and never corrected afterwards.
      */
     type?: ConnectionType;
+    /** Omitted leaves the label alone; an empty string clears it back to a plain endpoint. */
+    pluginType?: string;
     authType?: AuthType;
     secret?: string;
     secretVariableId?: string;
@@ -686,6 +741,54 @@ export function connectionTypeLabel(type: ConnectionType): string {
     case 'HTTP':
       return t('HTTP endpoint');
   }
+}
+
+/**
+ * What a connection's kind reads as, the plugin's label where it wears one.
+ *
+ * A connection labelled by a plugin is shown as the plugin names it - "Prometheus
+ * server" - rather than as the "HTTP endpoint" it is underneath, which is the
+ * whole point of the label. One whose plugin has since been unloaded shows the
+ * stored id: it is still not a plain endpoint, and saying so is better than
+ * saying nothing about it.
+ */
+export function connectionKindLabel(
+  connection: Pick<WorkspaceConnection, 'type' | 'pluginType'>,
+  kinds: readonly PluginConnectionType[],
+): string {
+  if (connection.pluginType === null) return connectionTypeLabel(connection.type);
+  return kinds.find((kind) => kind.id === connection.pluginType)?.label ?? connection.pluginType;
+}
+
+/**
+ * How a plugin kind is offered in a Type menu: its label, and the plugin's name
+ * after it only where two plugins label a kind the same way. "Prometheus" on its
+ * own is enough until a second plugin also calls something Prometheus.
+ */
+export function pluginKindOptionLabel(kind: PluginConnectionType, offered: readonly PluginConnectionType[]): string {
+  const shared = offered.some(
+    (other) => other.id !== kind.id && other.label.toLowerCase() === kind.label.toLowerCase(),
+  );
+  return shared ? `${kind.label} · ${kind.pluginName}` : kind.label;
+}
+
+/**
+ * Whether a connection is one a plugin parameter may name.
+ *
+ * `connectionType` on a parameter is either a core kind - SLACK, SMTP, HTTP -
+ * or the name of a kind the plugin declares itself, in which case only the
+ * connections labelled `pluginKey/name` are its own. A parameter asking for HTTP
+ * takes every HTTP connection, labelled or not: a labelled one is still an HTTP
+ * endpoint, and a plugin that asked for any of those meant any of those.
+ */
+export function offersConnection(
+  connection: Pick<WorkspaceConnection, 'type' | 'pluginType'>,
+  connectionType: string | null,
+  pluginKey: string,
+): boolean {
+  if (connectionType === null) return true;
+  if ((CORE_CONNECTION_TYPES as readonly string[]).includes(connectionType)) return connection.type === connectionType;
+  return connection.pluginType === `${pluginKey}/${connectionType}`;
 }
 
 /** The auth column reads "API Key ••••" once credentials are stored. */

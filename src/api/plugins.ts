@@ -1,5 +1,6 @@
 import { compile } from '../components/monaco';
 import { ApiError, graphql } from './client';
+import type { PluginConnectionType } from './integrations';
 import { t } from '../i18n';
 
 /**
@@ -36,6 +37,12 @@ export interface Plugin {
    * because the answers belong to a workspace and the question does not.
    */
   declaredParameters: PluginParameterDeclaration[];
+  /**
+   * The kinds of connection it declares - a Prometheus plugin's "server", a
+   * wiki plugin's "wiki" - each an HTTP connection wearing the plugin's label.
+   * Empty for a plugin that names none, which is most of them. Issue #363.
+   */
+  connectionTypes: PluginConnectionType[];
   /**
    * What the sandbox was relaxed to allow this plugin, because somebody said so.
    *
@@ -360,6 +367,7 @@ const PLUGIN_FIELDS = `
   declaredFunctions { name description returnType signature params { name type } }
   skills { name description content }
   declaredParameters { name description type required secret }
+  connectionTypes { id name label description urlPlaceholder pluginKey pluginName }
   permissions { name summary }
   permissionsAcceptedAt permissionsAcceptedBy
 `;

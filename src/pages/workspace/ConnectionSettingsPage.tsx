@@ -4,9 +4,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
   authTypeLabel,
+  connectionKindLabel,
   connectionTypeLabel,
   disconnectWorkspaceConnection,
+  fetchPluginConnectionTypes,
   fetchWorkspaceConnection,
+  pluginKindOptionLabel,
   revealWorkspaceConnectionAppToken,
   revealWorkspaceConnectionUserToken,
   revealWorkspaceConnectionSecret,
@@ -14,7 +17,14 @@ import {
   testWorkspaceConnection,
   updateWorkspaceConnection,
 } from '../../api/integrations';
-import type { AuthType, ConnectionStatus, ConnectionType, MailSecurity, WorkspaceConnection } from '../../api/integrations';
+import type {
+  AuthType,
+  ConnectionStatus,
+  ConnectionType,
+  MailSecurity,
+  PluginConnectionType,
+  WorkspaceConnection,
+} from '../../api/integrations';
 import type { SessionUser } from '../../api/session';
 import { fetchSlackBotUsers } from '../../api/triggers';
 import type { SlackBotUser } from '../../api/triggers';
@@ -30,7 +40,7 @@ import type { SecretFieldHandle, SecretSource } from '../../components/SecretFie
 import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface ConnectionSettingsPageProps {
   session: SessionUser;
@@ -124,6 +134,17 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
    */
   const [type, setType] = useState<ConnectionType | null>(null);
   /**
+   * The plugin label being chosen, beside the kind. Issue #363.
+   *
+   * Null until the menu is touched, so opening the page and saving a credential
+   * does not rewrite the label; the id of a plugin kind once one is picked; and
+   * an empty string once a core kind is picked over a label, which is what the
+   * server takes as "clear it".
+   */
+  const [pluginChoice, setPluginChoice] = useState<string | null>(null);
+  /** The kinds the loaded plugins declare; empty where none does. */
+  const [kinds, setKinds] = useState<PluginConnectionType[]>([]);
+  /**
    * The two credentials, each holding its own answer to the same question.
    *
    * This is the whole of #244. One switch above the card cannot say "the bot
@@ -188,8 +209,36 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
     };
   }, [connectionId]);
 
+  useEffect(() => {
+    let current = true;
+    fetchPluginConnectionTypes()
+      .then((found) => {
+        if (current) setKinds(found);
+      })
+      .catch(() => {
+        // The menu offers the core kinds alone, as it did before plugins had any.
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
+
   /** What is on the page now: the choice if one has been made, else what is stored. */
   const kind = type ?? connection?.type ?? null;
+  /** The plugin label in force: the one chosen, else the one stored; empty for none. */
+  const pluginType = pluginChoice ?? connection?.pluginType ?? '';
+  /**
+   * What the Type menu stands on. A plugin kind's id where one is in force, so
+   * the menu says "Prometheus server" and not the HTTP it is underneath.
+   */
+  const typeChoice = pluginType !== '' ? pluginType : (kind ?? '');
+
+  /** One pick answers both questions: which kind, and whether a plugin labels it. */
+  function chooseType(picked: string) {
+    const labelled = kinds.some((one) => one.id === picked) || picked === connection?.pluginType;
+    setType(labelled ? 'HTTP' : (picked as ConnectionType));
+    setPluginChoice(labelled ? picked : '');
+  }
   const mail = kind === 'SMTP';
   /*
    * One Slack kind, where there were two.
@@ -369,6 +418,11 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
         // Only when it has actually been changed, so opening the page and
         // saving a credential does not also rewrite the kind.
         type: type !== null && type !== connection?.type ? type : undefined,
+        // The same rule for the label: only once the menu has been touched and
+        // only where it changed. An empty string is the server's word for
+        // "clear it", so a core kind picked over a label clears it.
+        pluginType:
+          pluginChoice !== null && pluginChoice !== (connection?.pluginType ?? '') ? pluginChoice : undefined,
         // Not for Slack, whose controls are gone: the server overwrites
         // authType on every save, and a Slack connection has nowhere else to
         // point. Sending them would write settings the form no longer shows.
@@ -518,7 +572,7 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
             {locked || connection === null ? (
               <ReadOnlyField
                 label={t('Type')}
-                value={connection === null ? '' : connectionTypeLabel(connection.type)}
+                value={connection === null ? '' : connectionKindLabel(connection, kinds)}
                 locked={locked}
               />
             ) : (
@@ -529,14 +583,35 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
                     id="connection-type"
                     name="type"
                     className={styles.input}
-                    value={kind ?? connection.type}
-                    onChange={(event) => setType(event.target.value as ConnectionType)}
+                    value={typeChoice}
+                    onChange={(event) => chooseType(event.target.value)}
                   >
                     {CONNECTION_TYPES.map((candidate) => (
                       <option key={candidate} value={candidate}>
                         {connectionTypeLabel(candidate)}
                       </option>
                     ))}
+                    {/* The plugins' kinds, offered as the dialog that creates a connection offers them. */}
+                    {kinds.length > 0 && (
+                      <optgroup label={t('From plugins')}>
+                        {kinds.map((one) => (
+                          <option key={one.id} value={one.id} title={one.description ?? undefined}>
+                            {pluginKindOptionLabel(one, kinds)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {/*
+                      The label it wears, even where no loaded plugin declares it
+                      any more: the connection is still set to it, and the menu
+                      must not report a plain endpoint over a label that is
+                      stored. Picking anything else is how it is cleared.
+                    */}
+                    {connection.pluginType !== null && !kinds.some((one) => one.id === connection.pluginType) && (
+                      <option value={connection.pluginType}>
+                        {tf('{kind} (no longer offered)', { kind: connection.pluginType })}
+                      </option>
+                    )}
                   </select>
                 </div>
               </div>

@@ -2029,4 +2029,9 @@ export const PL: Record<string, string> = {
     "licząc od chwili, w której zapytało. Odpowiedź teraz kasuje ten termin.",
   "Running…": "Uruchamianie…",
   "Save this function first — a run is of what is stored.": "Najpierw zapisz tę funkcję — uruchamiane jest to, co zapisano.",
+  // Plugin connection kinds (#363). `{kind}` is the plugin's own label - or,
+  // where the plugin is gone, the id the connection stores - and is never wrapped.
+  "{kind} (no longer offered)": "{kind} (już nieoferowany)",
+  "This workspace has no {kind} connections yet. Add one on the Integrations page and it will be offered here.":
+    "Ta przestrzeń robocza nie ma jeszcze połączeń rodzaju {kind}. Dodaj je na stronie Integracji, a pojawi się tutaj.",
 };

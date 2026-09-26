@@ -1,8 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { authTypeLabel, createWorkspaceConnection } from '../api/integrations';
-import type { AuthType, ConnectionType, HttpHeader, MailSecurity, WorkspaceConnection } from '../api/integrations';
+import {
+  authTypeLabel,
+  createWorkspaceConnection,
+  fetchPluginConnectionTypes,
+  pluginKindOptionLabel,
+} from '../api/integrations';
+import type {
+  AuthType,
+  ConnectionType,
+  HttpHeader,
+  MailSecurity,
+  PluginConnectionType,
+  WorkspaceConnection,
+} from '../api/integrations';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
 import { FieldHint } from './FieldHint';
@@ -61,7 +73,15 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [name, setName] = useState('');
-  const [type, setType] = useState<ConnectionType | ''>('');
+  /**
+   * What the Type menu is on: a core kind, or the id of a kind a plugin
+   * declares. Issue #363. One value rather than a type and a label side by
+   * side, because the menu is one control and a plugin kind's id - `key/name` -
+   * cannot be mistaken for SLACK, SMTP or HTTP.
+   */
+  const [choice, setChoice] = useState('');
+  /** The plugin kinds on offer, read when the dialog opens; empty where no plugin declares one. */
+  const [kinds, setKinds] = useState<PluginConnectionType[]>([]);
   const [url, setUrl] = useState('');
   const [authType, setAuthType] = useState<AuthType>('BEARER_TOKEN');
   /**
@@ -93,7 +113,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
 
     if (open && !dialog.open) {
       setName('');
-      setType('');
+      setChoice('');
       setUrl('');
       setAuthType('BEARER_TOKEN');
       secret.clear();
@@ -111,6 +131,31 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
       dialog.close();
     }
   }, [open]);
+
+  /*
+   * Read each time the dialog opens rather than once: a plugin loaded while
+   * this page was up should be on the menu the next time it is opened. A read
+   * that fails leaves the core kinds, which is the menu as it always was.
+   */
+  useEffect(() => {
+    if (!open) return;
+    let current = true;
+    fetchPluginConnectionTypes()
+      .then((found) => {
+        if (current) setKinds(found);
+      })
+      .catch(() => {
+        if (current) setKinds([]);
+      });
+    return () => {
+      current = false;
+    };
+  }, [open]);
+
+  /** The plugin kind chosen, when the menu is on one. */
+  const pluginKind = kinds.find((kind) => kind.id === choice) ?? null;
+  /** What the server is told the connection is: a plugin kind is an HTTP one wearing a label. */
+  const type: ConnectionType | '' = pluginKind !== null ? 'HTTP' : (choice as ConnectionType | '');
 
   const slack = type === 'SLACK';
   const mail = type === 'SMTP';
@@ -177,6 +222,9 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
         workspaceId,
         name: name.trim(),
         type,
+        // The label, where a plugin's kind was chosen: the rest of what is sent
+        // is exactly what a plain HTTP endpoint sends.
+        pluginType: pluginKind?.id,
         // Neither is sent for Slack: the server fills the URL and the auth type
         // in itself, last, so anything sent here would only be overwritten. A
         // mail server has a login of its own and no auth type to choose.
@@ -250,8 +298,8 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                 id="workspace-connection-type"
                 name="connectionType"
                 className={`${styles.input} ${styles.select}`}
-                value={type}
-                onChange={(event) => setType(event.target.value as ConnectionType | '')}
+                value={choice}
+                onChange={(event) => setChoice(event.target.value)}
                 required
               >
                 <option value="" disabled>{t('Select type...')}</option>
@@ -260,6 +308,21 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                     {TYPE_LABELS[candidate]}
                   </option>
                 ))}
+                {/*
+                  The kinds the loaded plugins declare, under their own heading
+                  as the variables page groups a plugin's types. Each is an HTTP
+                  endpoint wearing the plugin's label, so choosing one asks for
+                  what HTTP asks for and nothing more.
+                */}
+                {kinds.length > 0 && (
+                  <optgroup label={t('From plugins')}>
+                    {kinds.map((kind) => (
+                      <option key={kind.id} value={kind.id} title={kind.description ?? undefined}>
+                        {pluginKindOptionLabel(kind, kinds)}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
@@ -277,7 +340,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                 name="connectionUrl"
                 className={`${styles.input} ${styles.inputMono}`}
                 type="text"
-                placeholder={mail ? 'smtp.example.com' : 'https://'}
+                placeholder={mail ? 'smtp.example.com' : (pluginKind?.urlPlaceholder ?? 'https://')}
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
                 required

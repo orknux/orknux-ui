@@ -3,12 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
   authLabel,
-  connectionTypeLabel,
+  connectionKindLabel,
   fetchMcpServers,
+  fetchPluginConnectionTypes,
   fetchWorkspaceConnections,
   statusLabel,
 } from '../../api/integrations';
-import type { ConnectionStatus, McpServer, WorkspaceConnection } from '../../api/integrations';
+import type { ConnectionStatus, McpServer, PluginConnectionType, WorkspaceConnection } from '../../api/integrations';
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
@@ -76,6 +77,11 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
 
   const [servers, setServers] = useState<McpServer[] | null>(null);
   const [connections, setConnections] = useState<WorkspaceConnection[] | null>(null);
+  /**
+   * The kinds the loaded plugins declare, so a row labelled by one reads as the
+   * plugin names it rather than as the HTTP endpoint it is underneath. #363.
+   */
+  const [kinds, setKinds] = useState<PluginConnectionType[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   /*
@@ -114,7 +120,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     );
   }, [servers, serverAsked]);
 
-  /** A connection is found by its name or by what kind it is. */
+  /** A connection is found by its name or by what kind it is - the label shown, or the type underneath. */
   const matchingConnections = useMemo(() => {
     const looking = connectionAsked.trim().toLowerCase();
     if (connections === null) return null;
@@ -122,9 +128,10 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     return connections.filter(
       (held) =>
         held.name.toLowerCase().includes(looking) ||
-        held.type.toLowerCase().includes(looking),
+        held.type.toLowerCase().includes(looking) ||
+        connectionKindLabel(held, kinds).toLowerCase().includes(looking),
     );
-  }, [connections, connectionAsked]);
+  }, [connections, connectionAsked, kinds]);
 
   /** The slice of an already-filtered list that belongs on the page being shown. */
   function slice<T>(all: T[] | null, page: number, size: number): T[] | null {
@@ -144,7 +151,9 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     return held.name;
   };
   const connectionKey = (held: WorkspaceConnection) => {
-    if (connectionOrder === 'TYPE') return held.type;
+    // By what the column shows, so two plugin kinds sort by their labels
+    // rather than falling together under the HTTP they both are.
+    if (connectionOrder === 'TYPE') return connectionKindLabel(held, kinds);
     if (connectionOrder === 'STATUS') return held.status;
     return held.name;
   };
@@ -164,10 +173,17 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setError(null);
-    Promise.all([fetchMcpServers(workspaceId), fetchWorkspaceConnections(workspaceId)])
-      .then(([loadedServers, loadedConnections]) => {
+    Promise.all([
+      fetchMcpServers(workspaceId),
+      fetchWorkspaceConnections(workspaceId),
+      // Labels only: a list that cannot read them still lists the connections,
+      // with the labelled rows showing the id they store.
+      fetchPluginConnectionTypes().catch((): PluginConnectionType[] => []),
+    ])
+      .then(([loadedServers, loadedConnections, loadedKinds]) => {
         setServers(loadedServers);
         setConnections(loadedConnections);
+        setKinds(loadedKinds);
       })
       .catch((cause: unknown) => {
         setServers(null);
@@ -370,7 +386,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             <span
               className={`${styles.colGrow} ${connection.status === 'CONNECTED' ? styles.type : styles.typeMuted}`}
             >
-              {connectionTypeLabel(connection.type)}
+              {connectionKindLabel(connection, kinds)}
             </span>
             <span className={`${styles.colMeta} ${styles.status}`} title={connection.lastCheckMessage ?? undefined}>
               <span className={statusDot(connection.status)} aria-hidden="true" />

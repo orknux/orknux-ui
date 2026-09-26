@@ -2861,6 +2861,21 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'plugin-connection-kind-check',
+    what: "a plugin's connection kinds: offered by label in the dialog and on the page, worn by a row in the list, and the only thing the plugin's own picker offers",
+    needs: ['workspace'],
+    /*
+     * No plugin in any fixture declares a kind, so the kinds are canned: the
+     * `pluginConnectionTypes` query is answered here, one of the check's own
+     * connections is relabelled on the way back, and a plugin asking for that
+     * kind is added to the plugins list. The create and update mutations are
+     * captured and answered rather than sent on - what is asserted is what the
+     * screens send, and a `pluginType` no loaded plugin declares must not land
+     * in the database. The live half asserts the menu with whatever the server
+     * really declares, which today is nothing.
+     */
+  },
+  {
     name: 'slack-target-check',
     what: 'both places a Slack target is typed offering what the connection can see and saying what it makes of it, and neither refusing anything',
     needs: ['workspace'],
