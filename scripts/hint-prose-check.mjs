@@ -171,9 +171,15 @@ const IN_THE_OPEN = [
   },
   {
     file: 'src/pages/workspace/SessionDetailPage.tsx',
-    says: 'No agent in this session has asked another yet.',
+    says: 'None in this session yet.',
     because: 'status',
-    why: 'the state of the sessions panel - a family of one - on the list that would have shown the rest (#379)',
+    why: 'the state of the scratchpad panel - empty - on the list that would have shown them (#429)',
+  },
+  {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'Could not load the scratchpads.',
+    because: 'status',
+    why: 'what the scratchpad panel is showing when its one query did not answer (#429)',
   },
   {
     file: 'src/pages/admin/AdminPluginsPage.tsx',
