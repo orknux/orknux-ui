@@ -1141,7 +1141,18 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="new-issue-status">{t('Add a status')}</label>
+            <span className={styles.labelWithHint}>
+              <span className={styles.label}>{t('Add a status')}</span>
+              {/*
+                Three unlabelled boxes read as a riddle, and were reported as
+                one. Each box wears its own word now, and the (?) says what the
+                three are for in one sentence - behind the control, as the rule
+                says, not in a paragraph under the row.
+              */}
+              <FieldHint label={t('Add a status')}>
+                {t('The label is what people read; the key is what an issue stores and an agent names, in upper case and filled in from the label until it is typed; the colour is optional, as a hex code.')}
+              </FieldHint>
+            </span>
             {/*
               Three boxes and a button: what it is called, the key it will go
               by, and a colour if the workspace wants one. The key fills itself
@@ -1150,6 +1161,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             */}
             <div className={styles.statusAdd}>
               <div className={styles.inputWrapper}>
+                <label className={styles.statusAddName} htmlFor="new-issue-status">{t('Label')}</label>
                 <input
                   id="new-issue-status"
                   className={`${styles.input} ${styles.prose}`}
@@ -1169,10 +1181,11 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
                 />
               </div>
               <div className={styles.inputWrapper}>
+                <label className={styles.statusAddName} htmlFor="new-issue-status-key">{t('Key')}</label>
                 <input
+                  id="new-issue-status-key"
                   className={styles.input}
                   type="text"
-                  aria-label={t('Key')}
                   value={newStatusKey}
                   maxLength={32}
                   placeholder="WONTFIX"
@@ -1189,11 +1202,12 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
                 />
               </div>
               <div className={styles.inputWrapper}>
+                <label className={styles.statusAddName} htmlFor="new-issue-status-colour">{t('Colour')}</label>
                 <span className={styles.statusDot} style={{ '--status-color': newStatusColor || 'transparent' } as CSSProperties} aria-hidden="true" />
                 <input
+                  id="new-issue-status-colour"
                   className={styles.input}
                   type="text"
-                  aria-label={t('Colour')}
                   value={newStatusColor}
                   maxLength={32}
                   placeholder="#8b5cf6"

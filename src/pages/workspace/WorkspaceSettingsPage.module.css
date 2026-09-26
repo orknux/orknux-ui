@@ -460,6 +460,17 @@ select.input {
 }
 
 /*
+ * The word each box goes by, inside the box's own frame: "Key" before the box
+ * the key is typed in. One word, muted, so the example in the placeholder still
+ * reads as the example and the word as the name.
+ */
+.statusAddName {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/*
  * One Save for the whole page, and it follows the reader down it.
  *
  * Sticky rather than sitting at the foot: this page is several screens long,

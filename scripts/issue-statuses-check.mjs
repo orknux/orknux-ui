@@ -60,6 +60,24 @@ try {
     const colour = await dot.evaluate((el) => getComputedStyle(el).backgroundColor);
     record(colour === 'rgb(139, 92, 246)', `the colour reaches the dot (${colour})`);
     record((await section.locator('button[data-hint="Issue statuses"]').count()) === 1, 'the explanation is behind the (?)');
+
+    /*
+     * The row that adds one. Three boxes with nothing on them was reported as
+     * "what are those fields for?" - so each wears its word, and the (?) beside
+     * the row's label says what the three are in one sentence.
+     */
+    record((await page.locator('button[data-hint="Add a status"]').count()) === 1, 'the add row has a (?) of its own');
+    for (const [id, word] of [
+      ['new-issue-status', 'Label'],
+      ['new-issue-status-key', 'Key'],
+      ['new-issue-status-colour', 'Colour'],
+    ]) {
+      const named = page.locator(`label[for="${id}"]`);
+      record(
+        (await named.count()) === 1 && (await named.isVisible()) && (await named.innerText()).trim() === word,
+        `and the ${word.toLowerCase()} box is labelled "${word}" where it can be read`,
+      );
+    }
     await page.screenshot({ path: shot('issue-statuses-settings.png') });
   }
 
