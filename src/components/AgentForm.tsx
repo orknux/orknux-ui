@@ -12,7 +12,8 @@ import { fetchMemoryCatalogs } from '../api/memory';
 import type { MemoryCatalog } from '../api/memory';
 import { answers, fetchModels } from '../api/models';
 import type { Model } from '../api/models';
-import { fetchPluginSkillCatalogs, fetchSkillCatalogs } from '../api/skills';
+import { fetchPluginSkillCatalogs, fetchSkillCatalogs, fetchWorkspaceSkills } from '../api/skills';
+import type { Skill } from '../api/skills';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
@@ -101,6 +102,8 @@ export interface AgentFormProps {
 
 /** The whole of a workspace's tools fits in the list. */
 const TOOL_PAGE_SIZE = 100;
+/** And the skills, whose rows say what happens to each one. Issue #480. */
+const SKILL_PAGE_SIZE = 200;
 
 /**
  * How many of the workspace's other agents the picker offers.
@@ -166,6 +169,28 @@ interface GrantableTool {
  * lists feeding one field. What tells them apart is the row's muted word: the
  * plugin's name, where a workspace catalog shows how many skills it holds.
  */
+/**
+ * One skill, on the list that says what happens to each. Issue #480.
+ *
+ * Drawn by name and stored by id, which is why the list passes `storedAs`: the
+ * id is what a graph writes, what a command writes, and what the agent's two
+ * lists hold, and the name is what a person reads.
+ */
+interface GrantableSkill {
+  /** The skill's id, prefixed by its catalog so two catalogs' rows cannot collide. */
+  id: string;
+  /** What the agent's lists store: the skill's own id. */
+  key: string;
+  name: string;
+  /** The catalog it lives in, which is what the grant above switches. */
+  catalog: string;
+  /** The plugin that brought it, or null for the workspace's own. */
+  plugin: string | null;
+  description: string | null;
+  /** The skill's page, or null for one a plugin brought. */
+  link: string | null;
+}
+
 interface GrantableCatalog {
   /** The catalog's id, or the plugin's key behind a prefix so the two cannot collide. */
   id: string;
@@ -287,6 +312,15 @@ interface GrantListProps<Item> {
   keyOf: (item: Item) => string;
   /** The name the grant is stored under, which is also the name searched. */
   nameOf: (item: Item) => string;
+  /**
+   * What the grant is stored as, where that is not the name on the row.
+   *
+   * The skills list is the one: a skill is stored by its id - the string a
+   * graph and a command write - and drawn by its name, which is the thing a
+   * person reads. Every other list stores what it draws, so this is left out
+   * and the name is both. Issue #480.
+   */
+  storedAs?: (item: Item) => string;
   /** The muted word at the end of a row: how much it holds, or `off`. */
   metaOf?: (item: Item) => ReactNode;
   /**
@@ -382,6 +416,7 @@ function GrantList<Item>({
   empty,
   keyOf,
   nameOf,
+  storedAs,
   metaOf,
   linkOf,
   hint,
@@ -438,6 +473,8 @@ function GrantList<Item>({
    */
   const rows = items.map((item) => {
     const name = nameOf(item);
+    /** What the grant lists hold for this row: its id, or its name. Issue #480. */
+    const value = storedAs?.(item) ?? name;
     /*
      * The two narrowings are not the same thing, and do not behave the same.
      *
@@ -456,8 +493,9 @@ function GrantList<Item>({
     return {
       item,
       name,
+      value,
       inGroup,
-      ticked: granted.includes(name),
+      ticked: granted.includes(value),
       matches: needle === '' || name.toLowerCase().includes(needle),
       /** Why the row is read-only, or null where its control works. Issue #444. */
       fixed: fixedOf?.(item) ?? null,
@@ -488,7 +526,7 @@ function GrantList<Item>({
    * the only way to drop one becomes editing something else. Drawn last, marked
    * as unknown, and revocable - which is the one thing anybody wants from it.
    */
-  const orphans = granted.filter((name) => !rows.some((row) => row.name === name));
+  const orphans = granted.filter((name) => !rows.some((row) => row.value === name));
 
   const shown = rows.filter((row) => row.inGroup && (row.matches || row.ticked));
 
@@ -502,26 +540,26 @@ function GrantList<Item>({
    * fixed, which reads the grant it comes with and cannot be pressed.
    */
   type ToolState = 'hide' | 'offer' | 'always';
-  const toolState = (row: { name: string; ticked: boolean; fixed: string | null }): ToolState => {
+  const toolState = (row: { value: string; ticked: boolean; fixed: string | null }): ToolState => {
     if (!row.ticked) return 'hide';
     // A fixed row is carried whenever the grant it comes with is on - there is
     // no mark to read - so its on-state is Always, never Offer. Issue #444.
     if (row.fixed !== null) return 'always';
-    return (marked?.includes(row.name) ?? false) ? 'always' : 'offer';
+    return (marked?.includes(row.value) ?? false) ? 'always' : 'offer';
   };
-  const cycleTool = (row: { name: string; ticked: boolean; fixed: string | null }) => {
+  const cycleTool = (row: { value: string; ticked: boolean; fixed: string | null }) => {
     if (row.fixed !== null) return;
     const state = toolState(row);
     if (state === 'hide') {
       // Hide -> Offer: the grant.
-      onChange([...granted, row.name]);
+      onChange([...granted, row.value]);
     } else if (state === 'offer') {
       // Offer -> Always.
-      onMark?.([...(marked ?? []), row.name]);
+      onMark?.([...(marked ?? []), row.value]);
     } else {
       // Always -> Hide, dropping any mark it carried.
-      onChange(granted.filter((one) => one !== row.name));
-      onMark?.((marked ?? []).filter((one) => one !== row.name));
+      onChange(granted.filter((one) => one !== row.value));
+      onMark?.((marked ?? []).filter((one) => one !== row.value));
     }
   };
   /* The rows the status filter leaves, on a list that has statuses. Issue #413. */
@@ -607,7 +645,7 @@ function GrantList<Item>({
             className={own.grantAll}
             data-grant-all={allPicked ? 'clear' : 'grant'}
             onClick={() => {
-              const names = picked.map((row) => row.name);
+              const names = picked.map((row) => row.value);
               onChange(
                 allPicked
                   ? granted.filter((one) => !names.includes(one))
@@ -784,8 +822,8 @@ function GrantList<Item>({
                       onChange={(event) =>
                         onChange(
                           event.target.checked
-                            ? [...granted, row.name]
-                            : granted.filter((one) => one !== row.name),
+                            ? [...granted, row.value]
+                            : granted.filter((one) => one !== row.value),
                         )
                       }
                     />
@@ -888,6 +926,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
+  /** Which skills inside those catalogs are out of reach, and which are always loaded. Issue #480. */
+  const [hiddenSkills, setHiddenSkills] = useState<string[]>(agent.hiddenSkills);
+  const [requiredSkills, setRequiredSkills] = useState<string[]>(agent.requiredSkills);
   const [tools, setTools] = useState<string[]>(agent.tools);
   /** Which of the workspace's connections it may name, by id - see the grant list below. */
   const [connectionIds, setConnectionIds] = useState<string[]>(agent.connectionIds);
@@ -983,6 +1024,67 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     [workspaceId],
     { skip: noWorkspace },
   );
+  /*
+   * Every skill inside the catalogs, one row each. Issue #480.
+   *
+   * The catalog grant above says what is in scope; this list says what happens
+   * to each skill in it - Hidden, Offered, or Always in front of the model. It
+   * draws every skill the workspace and its plugins have rather than only the
+   * granted ones, because a row for a skill whose catalog is not granted still
+   * has something true to say: it is out of scope, which is what Hide reads as.
+   */
+  const skillsCatalogue = useCatalogue<GrantableSkill>(
+    'skills',
+    async () => {
+      const [held, brought, catalogs] = await Promise.all([
+        fetchWorkspaceSkills(workspaceId, 0, SKILL_PAGE_SIZE),
+        fetchPluginSkillCatalogs(),
+        fetchSkillCatalogs(workspaceId),
+      ]);
+      const named = new Map<string, string>(catalogs.map((catalog) => [catalog.id, catalog.name]));
+      const rows: GrantableSkill[] = held.content
+        .filter((skill: Skill) => skill.enabled)
+        .map((skill: Skill) => ({
+          id: `ws:${skill.id}`,
+          key: skill.key,
+          name: skill.name,
+          catalog: named.get(skill.catalogId) ?? '',
+          plugin: null,
+          description: skill.description,
+          link: `/workspace/${workspaceId}/skills/${skill.id}`,
+        }));
+      for (const offer of brought) {
+        for (const skill of offer.skills) {
+          rows.push({
+            id: `ps:${offer.name}:${skill.key}`,
+            key: skill.key,
+            name: skill.name,
+            catalog: offer.name,
+            plugin: offer.plugin,
+            description: skill.description,
+            link: null,
+          });
+        }
+      }
+      return rows;
+    },
+    [workspaceId],
+    { skip: noWorkspace },
+  );
+
+  /*
+   * Which skill ids are in scope, and which of those are offered. Issue #480.
+   *
+   * In scope is every skill in a granted catalog; offered is those less the
+   * hidden ones. Both are worked out here rather than stored, so ticking a
+   * catalog above immediately gives its skills rows that read Offer, and
+   * unticking it takes them back to Hide without anything having to be written.
+   */
+  const inScopeSkills = (skillsCatalogue.items ?? [])
+    .filter((skill) => skillCatalogs.includes(skill.catalog))
+    .map((skill) => skill.key);
+  const offeredSkills = inScopeSkills.filter((id) => !hiddenSkills.includes(id));
+
   /*
    * The workspace's tools and the tools its plugins offer, as one list - see
    * `GrantableTool` for why it is one. The plugin rows are the plugins'
@@ -1247,6 +1349,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         shellAccess,
         memoryCatalogs,
         skillCatalogs,
+        hiddenSkills,
+        requiredSkills,
         tools,
         connectionIds,
         agentIds,
@@ -1264,6 +1368,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setShellAccess(updated.shellAccess);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
+      setHiddenSkills(updated.hiddenSkills);
+      setRequiredSkills(updated.requiredSkills);
       setTools(updated.tools);
       setConnectionIds(updated.connectionIds);
       setAgentIds(updated.agentIds);
@@ -1605,6 +1711,48 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           linkOf={(catalog) => catalog.link}
           granted={skillCatalogs}
           onChange={setSkillCatalogs}
+        />
+
+        {/*
+          And what happens to each skill inside those catalogs. Issue #480.
+
+          The catalog above is the scope; this list is the three states, the
+          same control the tools list uses and for the same reason - a workspace
+          that grants a folder of nine skills should not have to split the
+          folder to keep one page from one agent, and a page that is how this
+          agent works should not wait to be loaded.
+
+          Drawn by name, stored by id: the id is what a command writes and what
+          the two lists hold.
+        */}
+        <GrantList<GrantableSkill>
+          label={t('Skills')}
+          what="skills"
+          styles={styles}
+          catalogue={skillsCatalogue}
+          empty={t('No skills in this workspace yet.')}
+          hint={t('Every skill in the catalogs above, and what happens to each. Hide: the agent cannot see or load it, even though its catalog is granted. Offer: it is listed for the agent, which loads it when it applies — this is what every skill does unless you say otherwise. Always: its whole page is in front of the model every turn, for instructions that are how this agent works rather than something to read when it applies. Always costs that page on every turn.')}
+          keyOf={(skill) => skill.id}
+          nameOf={(skill) => skill.name}
+          storedAs={(skill) => skill.key}
+          metaOf={(skill) => skill.plugin ?? skill.catalog}
+          linkOf={(skill) => skill.link}
+          groupOf={(skill) => skill.plugin ?? null}
+          /*
+            Ticked means offered, and the server stores the opposite - the
+            skills that are hidden - so what a granted catalog holds is ticked
+            unless its id is in the hidden list. A row whose catalog is not
+            granted is out of scope and reads as Hide.
+          */
+          granted={offeredSkills}
+          onChange={(ids) => {
+            const wanted = new Set(ids);
+            setHiddenSkills(inScopeSkills.filter((id) => !wanted.has(id)));
+            // A skill nobody can see is not one to put in front of the model.
+            setRequiredSkills((held) => held.filter((id) => wanted.has(id)));
+          }}
+          marked={requiredSkills}
+          onMark={setRequiredSkills}
         />
 
         {/*

@@ -32,6 +32,13 @@ export interface Agent {
   /** Which skill catalogs it may draw on. */
   skillCatalogs: string[];
   /**
+   * The skills inside those catalogs this agent may not see, by id, and the
+   * ones whose page is in front of the model every turn. What is stored is the
+   * exception either way: a skill in neither list is offered. Issue #480.
+   */
+  hiddenSkills: string[];
+  requiredSkills: string[];
+  /**
    * Which tools it may call, by name: the workspace's, the plugins', and the
    * server's own built-ins.
    *
@@ -135,7 +142,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs tools connectionIds agentIds maxTools requiredTools icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds maxTools requiredTools icon memoryShare maxRounds';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
@@ -310,6 +317,8 @@ export async function updateAgent(
     memoryCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];
+    hiddenSkills?: string[];
+    requiredSkills?: string[];
     /** Which tools it may call; left out, the grant is unchanged. */
     tools?: string[];
     /** Which of the workspace's connections it may name; left out, the grant is unchanged. */

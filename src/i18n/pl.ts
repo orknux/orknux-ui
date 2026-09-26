@@ -129,6 +129,8 @@ export const PL: Record<string, string> = {
   "Tool results": "Wyniki narzędzi",
   "Create Tool": "Utwórz narzędzie",
   "Skills": "Umiejętności",
+  "No skills in this workspace yet.": "W tej przestrzeni nie ma jeszcze żadnych umiejętności.",
+  "Every skill in the catalogs above, and what happens to each. Hide: the agent cannot see or load it, even though its catalog is granted. Offer: it is listed for the agent, which loads it when it applies — this is what every skill does unless you say otherwise. Always: its whole page is in front of the model every turn, for instructions that are how this agent works rather than something to read when it applies. Always costs that page on every turn.": "Każda umiejętność z powyższych katalogów i to, co się z nią dzieje. Ukryj: agent jej nie widzi i nie wczyta, choć katalog jest przyznany. Oferuj: jest wypisana dla agenta, który wczytuje ją, gdy jest potrzebna — tak działa każda umiejętność, jeśli nie powiesz inaczej. Zawsze: cała jej strona jest przed modelem w każdej turze, dla instrukcji mówiących, jak ten agent pracuje, a nie do przeczytania przy okazji. Zawsze kosztuje tę stronę w każdej turze.",
   "Skill Details": "Szczegóły umiejętności",
   "Skill definition": "Definicja umiejętności",
   "Skill Catalogs": "Katalogi umiejętności",
