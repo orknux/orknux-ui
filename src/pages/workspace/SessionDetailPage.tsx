@@ -957,7 +957,13 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   if (newest !== undefined) openScratchpad(newest.name);
                 }}
               >
-                {creating ? t('New scratchpad') : (openPad ?? t('Scratchpad'))}
+                {/*
+                  The tab is named for what it shows, not for what is in it: a
+                  label that changes when you press it reads as the page having
+                  moved somewhere else. Which pad is open is said above, where
+                  the pad is.
+                */}
+                {t('Scratchpad')}
               </button>
             </div>
             <p className={styles.meta}>

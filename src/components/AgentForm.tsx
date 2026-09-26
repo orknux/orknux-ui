@@ -228,6 +228,9 @@ const SEARCH_FROM = 8;
  */
 const BUILT_IN = 'Built in';
 
+/** The catalog the server brings its own skills in; see `BuiltInSkills`. Issue #468. */
+const BUILT_IN_SKILLS = 'orknux_skills';
+
 /**
  * Why a built-in that comes with a wider grant cannot be switched on its row.
  *
@@ -1112,7 +1115,12 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             key: skill.key,
             name: skill.name,
             catalog: offer.name,
-            plugin: offer.plugin,
+            /*
+             * The server's own catalog reads Built in, as its tools do on the
+             * list below: a filter offering "Orknux" beside three plugins says
+             * nothing about which of them the release brings.
+             */
+            plugin: offer.name === BUILT_IN_SKILLS ? BUILT_IN : offer.plugin,
             description: skill.description,
             link: null,
           });
