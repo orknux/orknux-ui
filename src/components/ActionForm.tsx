@@ -12,6 +12,8 @@ import {
   SUBTYPES_BY_TYPE,
   createAction,
   deleteAction,
+  fetchPluginActions,
+  pluginActionKey,
   updateAction,
 } from '../api/actions';
 import type {
@@ -21,6 +23,8 @@ import type {
   ActionType,
   ArgumentMapping,
   ConnectionActionKind,
+  PluginAction,
+  PluginActionParam,
 } from '../api/actions';
 import { NEW_CONDITION, fetchWorkspaceConditions } from '../api/conditions';
 import type { Condition } from '../api/conditions';
@@ -217,6 +221,36 @@ const NEW_FUNCTION_ROW = { value: NEW_FUNCTION, label: t('+ New function') };
 const NEW_CONDITION_ROW = { value: NEW_CONDITION, label: t('+ New condition') };
 
 /**
+ * The plugin action an existing action points at, as the picker stores it.
+ *
+ * One string rather than two fields, because the picker holds one value: the
+ * plugin's key and the action's name joined, which is the address the server
+ * resolves it by. Empty for every other subtype.
+ */
+function storedPluginPick(action: Action | null): string {
+  if (action === null || action.pluginKey === null || action.pluginAction === null) return '';
+  return pluginActionKey(action.pluginKey, action.pluginAction);
+}
+
+/** The two halves of a pick, split where `pluginActionKey` joined them. */
+function pickHalves(pick: string): { pluginKey: string; pluginAction: string } | null {
+  const at = pick.indexOf('/');
+  if (at <= 0 || at === pick.length - 1) return null;
+  return { pluginKey: pick.slice(0, at), pluginAction: pick.slice(at + 1) };
+}
+
+/**
+ * "commands: array", "threadTs?: string" - a declared input or output as the
+ * plugins list spells one, with the description where the plugin wrote one.
+ */
+function declaredRow(param: PluginActionParam): { text: string; title?: string } {
+  return {
+    text: `${param.name}${param.required ? '' : '?'}: ${param.type.toLowerCase()}`,
+    title: param.description ?? undefined,
+  };
+}
+
+/**
  * What an action does, and how to change it.
  *
  * What it asks for follows the type and the subtype, which is the whole of the
@@ -300,6 +334,13 @@ export function ActionForm({
    */
   const [newFunctionName, setNewFunctionName] = useState(NEW_FUNCTION_NAME);
   const [mappings, setMappings] = useState<ArgumentMapping[]>(action?.mappings ?? []);
+  /**
+   * Which plugin's block a Plugin Action runs, as "plugin/action". Issue #438.
+   *
+   * Nothing else is asked for it: what the block takes and hands on is its
+   * declaration, read off the plugin by the server, so the form only shows it.
+   */
+  const [pluginPick, setPluginPick] = useState(() => storedPluginPick(action));
   const [conditionExpression, setConditionExpression] = useState(action?.conditionExpression ?? '');
   const [conditionId, setConditionId] = useState(action?.conditionId ?? '');
   const [timeoutSeconds, setTimeoutSeconds] = useState(String(action?.timeoutSeconds ?? 3600));
@@ -376,10 +417,23 @@ export function ActionForm({
     { skip: idle || subtype !== 'HTTP_REQUEST' },
   );
 
+  /*
+   * The fifth, and only for a plugin action: what the loaded plugins declare
+   * for a workflow to run. Installation-wide, like the plugins themselves, and
+   * asked for the way the variables are - when the subtype is one.
+   */
+  const pluginActionCatalogue = useCatalogue<PluginAction>(
+    'plugin actions',
+    () => fetchPluginActions(workspaceId),
+    [workspaceId, subtype],
+    { skip: idle || subtype !== 'PLUGIN_ACTION' },
+  );
+
   const connections: WorkspaceConnection[] = connectionCatalogue.items;
   const functions: WorkspaceFunction[] = functionCatalogue.items;
   const conditions: Condition[] = conditionCatalogue.items;
   const variables: Variable[] = variableCatalogue.items;
+  const pluginActions: PluginAction[] = pluginActionCatalogue.items;
 
   /**
    * The connections a mail may go through, which is the mail servers and nothing
@@ -422,6 +476,54 @@ export function ActionForm({
     () => conditions.map((held) => ({ value: held.id, label: held.name, hint: held.description })),
     [conditions],
   );
+
+  const chosenPluginAction = useMemo(
+    () => pluginActions.find((held) => pluginActionKey(held.pluginKey, held.name) === pluginPick) ?? null,
+    [pluginActions, pluginPick],
+  );
+
+  /**
+   * Whether the block this action points at is one no loaded plugin declares.
+   *
+   * Read off the server's answer rather than off the list: the label is null
+   * exactly when the plugin has been unloaded, switched off or edited so it no
+   * longer offers the block, and the action refuses to run until it does again.
+   * Only while the picker is still on that block - choosing another is the fix.
+   */
+  const pickGone =
+    action !== null &&
+    action.subtype === 'PLUGIN_ACTION' &&
+    action.pluginActionLabel === null &&
+    pluginPick !== '' &&
+    pluginPick === storedPluginPick(action);
+
+  /*
+   * "Slack — Respond in Slack", searched by the plugin's name and the action's
+   * as well as by what it does, so a block is found by the plugin somebody
+   * remembers it belonging to.
+   *
+   * A block nothing declares any more is still a row, so the closed box says
+   * what the action points at rather than reading as a field nobody filled in;
+   * the sentence beside it says the rest.
+   */
+  const pluginActionOptions = useMemo(() => {
+    const offered = pluginActions.map((held) => ({
+      value: pluginActionKey(held.pluginKey, held.name),
+      label: `${held.pluginName} — ${held.label}`,
+      hint: held.description ?? undefined,
+    }));
+    if (!pickGone || pluginActionCatalogue.loading) return offered;
+    const halves = pickHalves(pluginPick);
+    if (halves === null) return offered;
+    return [
+      ...offered,
+      {
+        value: pluginPick,
+        label: `${halves.pluginKey} — ${halves.pluginAction}`,
+        hint: t('No longer offered by the plugin.'),
+      },
+    ];
+  }, [pluginActions, pickGone, pluginActionCatalogue.loading, pluginPick]);
 
   // The arguments to map are the chosen function's, in the order it takes them.
   // Empty by default: an argument nobody fills in is taken from the field of
@@ -494,11 +596,13 @@ export function ActionForm({
         ? url.trim() !== ''
         : subtype === 'FUNCTION'
           ? functionId !== '' && (functionId !== NEW_FUNCTION || validFunctionName(newFunctionName))
-          : subtype === 'INLINE_CONDITION'
-            ? conditionExpression.trim() !== ''
-            : subtype === 'CONDITION'
-              ? conditionId !== ''
-              : Number(durationSeconds) > 0);
+          : subtype === 'PLUGIN_ACTION'
+            ? pickHalves(pluginPick) !== null
+            : subtype === 'INLINE_CONDITION'
+              ? conditionExpression.trim() !== ''
+              : subtype === 'CONDITION'
+                ? conditionId !== ''
+                : Number(durationSeconds) > 0);
 
   /**
    * Everything this form holds, in the shape the server takes.
@@ -508,6 +612,9 @@ export function ActionForm({
    * whether anything actually changed.
    */
   function settingsNow(chosen: string = functionId) {
+  // The two halves of the pick, which is what the server stores; null on
+  // every other subtype, so switching away from a plugin action clears them.
+  const picked = subtype === 'PLUGIN_ACTION' ? pickHalves(pluginPick) : null;
   return {
       name: name.trim(),
       subtype,
@@ -535,6 +642,8 @@ export function ActionForm({
       headerRows: subtype === 'HTTP_REQUEST' && headersReadable ? sentRows(headerRows) : undefined,
       functionId: subtype === 'FUNCTION' ? chosen : null,
       mappings: subtype === 'FUNCTION' ? mappings : [],
+      pluginKey: picked?.pluginKey ?? null,
+      pluginAction: picked?.pluginAction ?? null,
       conditionExpression: subtype === 'INLINE_CONDITION' ? conditionExpression.trim() : null,
       conditionId: subtype === 'CONDITION' ? conditionId : null,
       timeoutSeconds:
@@ -1304,6 +1413,93 @@ export function ActionForm({
             </>
           )}
 
+          {/*
+            A block a plugin declares for a workflow to run. Issue #438.
+
+            One picker and nothing to fill in under it: what the block takes
+            and what it hands on are its declaration, which the server reads
+            off the plugin and seeds each input as a reference to the field of
+            its own name. So the lists under the picker are drawn, not asked -
+            they are what a node pointed at this will take and give, on the
+            screen where somebody is deciding whether this is the block they
+            meant.
+          */}
+          {subtype === 'PLUGIN_ACTION' && (
+            <>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="action-plugin-action">
+                    {t('Plugin Action')}
+                  </label>
+                  <FieldHint label={t('Plugin Action')}>
+                    {t('A block one of the loaded plugins declares for workflows. Its inputs and outputs are the plugin\'s, read off the declaration each time the action runs; a node fills each input from the field of the same name unless it is wired to something else.')}
+                  </FieldHint>
+                </span>
+                <DefinitionPicker
+                  id="action-plugin-action"
+                  value={pluginPick}
+                  options={pluginActionOptions}
+                  onChoose={setPluginPick}
+                  placeholder={t('Select plugin action…')}
+                  searchPlaceholder={t('Search plugin actions…')}
+                  failure={pluginActionCatalogue.failure}
+                />
+                {/* The empty state: what the picker has instead of rows. A
+                    plugin is loaded under Admin, which the (?) above says. */}
+                <CatalogueNote
+                  catalogue={pluginActionCatalogue}
+                  className={styles.fieldHint}
+                  empty={t('No loaded plugin declares one.')}
+                />
+                {/*
+                  A warning, in the open: the action points at a block no
+                  loaded plugin declares, so it refuses to run until the plugin
+                  is back or the picker is moved. Read off the server's answer,
+                  which is the one that knows.
+                */}
+                {pickGone && (
+                  <p className={styles.error} role="alert">
+                    {t('No loaded plugin offers this action any more.')}
+                  </p>
+                )}
+                {/* A reading of the block just chosen, in the plugin's words:
+                    what it does, as the row's second line said it. */}
+                {chosenPluginAction !== null && chosenPluginAction.description !== null && (
+                  <p className={styles.fieldHint} data-plugin-action-description>
+                    {chosenPluginAction.description}
+                  </p>
+                )}
+              </div>
+
+              {chosenPluginAction !== null && (
+                <>
+                  <div className={styles.field}>
+                    <p className={styles.paramHeading}>{t('Parameters')}</p>
+                    <ParamList
+                      styles={styles}
+                      params={chosenPluginAction.parameters.map(declaredRow)}
+                      listName="plugin-action-parameters"
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <p className={styles.paramHeading}>{t('Outputs')}</p>
+                    {/* None declared is a real answer - the whole result is
+                        handed on under one name - and the list says which. */}
+                    <ParamList
+                      styles={styles}
+                      params={
+                        chosenPluginAction.outputs.length === 0
+                          ? [{ text: 'result: map' }]
+                          : chosenPluginAction.outputs.map(declaredRow)
+                      }
+                      listName="plugin-action-outputs"
+                    />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
           {subtype === 'CONDITION' && (
             <div className={styles.field}>
               {/* What this action waits for is a definition, and what it
@@ -1449,16 +1645,26 @@ export function ActionForm({
             already on the screen: the mapping above takes the inputs one by
             one, and the node itself draws its ports. Three spellings of one
             fact is the panel reading as longer than it is.
+
+            And left out under a plugin action, whose signature *is* the
+            declaration drawn under the picker - the same two lists, a second
+            time, and the copy here would lag the picker until the next save.
           */}
-          {editing && !embedded && (
+          {editing && !embedded && subtype !== 'PLUGIN_ACTION' && (
             <>
               <div className={styles.field}>
                 <p className={styles.paramHeading}>{t('Input Parameters')}</p>
-                <ParamList styles={styles} params={(action?.inputParams ?? []).map((param) => param.display)} />
+                <ParamList
+                  styles={styles}
+                  params={(action?.inputParams ?? []).map((param) => ({ text: param.display }))}
+                />
               </div>
               <div className={styles.field}>
                 <p className={styles.paramHeading}>{t('Output Parameters')}</p>
-                <ParamList styles={styles} params={(action?.outputParams ?? []).map((param) => param.display)} />
+                <ParamList
+                  styles={styles}
+                  params={(action?.outputParams ?? []).map((param) => ({ text: param.display }))}
+                />
               </div>
             </>
           )}
@@ -1549,16 +1755,29 @@ export function ActionForm({
   );
 }
 
-/** What the action needs or produces, read off its settings by the server. */
-function ParamList({ styles, params }: { styles: ActionFormStyles; params: string[] }) {
+/**
+ * What the action needs or produces: read off its settings by the server, or
+ * off a plugin's declaration. A row's `title` is the plugin's own description
+ * of that parameter, where it wrote one; `listName` is for a check to find the
+ * list by.
+ */
+function ParamList({
+  styles,
+  params,
+  listName,
+}: {
+  styles: ActionFormStyles;
+  params: { text: string; title?: string }[];
+  listName?: string;
+}) {
   // An empty state: what the list has instead of rows, so it stays where the
   // rows would have been.
   if (params.length === 0) return <p className={styles.fieldHint}>None.</p>;
   return (
-    <ul className={styles.paramList}>
+    <ul className={styles.paramList} data-param-list={listName}>
       {params.map((param) => (
-        <li key={param} className={styles.paramRow}>
-          {param}
+        <li key={param.text} className={styles.paramRow} title={param.title}>
+          {param.text}
         </li>
       ))}
     </ul>

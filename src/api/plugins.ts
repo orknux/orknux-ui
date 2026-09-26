@@ -1,5 +1,6 @@
 import { compile } from '../components/monaco';
 import { ApiError, graphql } from './client';
+import type { PluginAction } from './actions';
 import type { PluginConnectionType } from './integrations';
 import { t } from '../i18n';
 
@@ -43,6 +44,11 @@ export interface Plugin {
    * Empty for a plugin that names none, which is most of them. Issue #363.
    */
   connectionTypes: PluginConnectionType[];
+  /**
+   * The workflow blocks it declares, for an Action node to be pointed at.
+   * Empty for a plugin that declares none, which is most of them. Issue #438.
+   */
+  actions: PluginAction[];
   /**
    * What the sandbox was relaxed to allow this plugin, because somebody said so.
    *
@@ -368,6 +374,11 @@ const PLUGIN_FIELDS = `
   skills { name description content }
   declaredParameters { name description type required secret }
   connectionTypes { id name label description urlPlaceholder pluginKey pluginName }
+  actions {
+    pluginKey pluginName name label description
+    parameters { name type required description }
+    outputs { name type required description }
+  }
   permissions { name summary }
   permissionsAcceptedAt permissionsAcceptedBy
 `;

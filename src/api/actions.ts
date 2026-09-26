@@ -14,7 +14,9 @@ export type ActionSubtype =
   | 'INLINE_CONDITION'
   | 'CONDITION'
   | 'TIME'
-  | 'SPEAK';
+  | 'SPEAK'
+  /** A block a loaded plugin declares, addressed by plugin key and action name. Issue #438. */
+  | 'PLUGIN_ACTION';
 
 export type ConnectionActionKind = 'SEND_MESSAGE' | 'REPLY_IN_THREAD' | 'CREATE_ISSUE' | 'UPDATE_ISSUE';
 
@@ -116,6 +118,19 @@ export interface Action {
   functionId: string | null;
   functionName: string | null;
   mappings: ArgumentMapping[];
+  /**
+   * Which plugin's block a PLUGIN_ACTION runs, and which block: the two
+   * together are the address, since two plugins may both declare `respond`.
+   * Null on every other subtype.
+   */
+  pluginKey: string | null;
+  pluginAction: string | null;
+  /**
+   * What the plugin calls that block. Null on a PLUGIN_ACTION whose plugin has
+   * been unloaded, switched off or edited so it no longer declares it - the
+   * form says so, since the action will refuse to run until it does again.
+   */
+  pluginActionLabel: string | null;
   conditionExpression: string | null;
   conditionId: string | null;
   conditionName: string | null;
@@ -149,6 +164,7 @@ const ACTION_FIELDS = `
   speechText speechVoice speechModelId
   url method headers headersReadable headerRows { name value variableId variableName }
   functionId functionName mappings { argument expression }
+  pluginKey pluginAction pluginActionLabel
   conditionExpression conditionId conditionName timeoutSeconds retryIntervalSeconds durationSeconds
   icon
   inputParams { name type display }
@@ -260,11 +276,68 @@ export interface ActionInput {
   headerRows?: ActionHeaderInput[];
   functionId?: string | null;
   mappings?: ArgumentMapping[];
+  pluginKey?: string | null;
+  pluginAction?: string | null;
   conditionExpression?: string | null;
   conditionId?: string | null;
   timeoutSeconds?: number | null;
   retryIntervalSeconds?: number | null;
   durationSeconds?: number | null;
+}
+
+/** One input a plugin action takes, or one output it hands on. */
+export interface PluginActionParam {
+  name: string;
+  type: ValueType;
+  /** Whether a node has to wire it; always true on an output. */
+  required: boolean;
+  description: string | null;
+}
+
+/**
+ * A workflow block a loaded plugin declares, for an action to be pointed at.
+ *
+ * The parameters become the action's inputs and the outputs its outputs, read
+ * off the declaration by the server - so the form only shows them, and stores
+ * the address: `pluginKey` and `name`.
+ */
+export interface PluginAction {
+  pluginKey: string;
+  pluginName: string;
+  /** The identifier the action stores; `label` is what a person reads. */
+  name: string;
+  label: string;
+  description: string | null;
+  parameters: PluginActionParam[];
+  /** Empty means the whole answer is handed on under `result`. */
+  outputs: PluginActionParam[];
+}
+
+const PLUGIN_ACTION_FIELDS = `
+  pluginKey pluginName name label description
+  parameters { name type required description }
+  outputs { name type required description }
+`;
+
+/**
+ * Every action the plugins that are switched on declare.
+ *
+ * Plugins are installation-wide, so the list is the same for every workspace;
+ * the argument is who is asking.
+ */
+export async function fetchPluginActions(workspaceId: string): Promise<PluginAction[]> {
+  const data = await graphql<{ pluginActions: PluginAction[] }>(
+    `query PluginActions($workspaceId: ID!) {
+       pluginActions(workspaceId: $workspaceId) { ${PLUGIN_ACTION_FIELDS} }
+     }`,
+    { workspaceId },
+  );
+  return data.pluginActions;
+}
+
+/** "plugin/action", which is what a picker stores and what an action is addressed by. */
+export function pluginActionKey(pluginKey: string, name: string): string {
+  return `${pluginKey}/${name}`;
 }
 
 /**
@@ -312,7 +385,7 @@ export const ACTION_TYPE_LABEL: Record<ActionType, string> = {
 
 /** Which subtypes an action of each type can be, in the order the form offers them. */
 export const SUBTYPES_BY_TYPE: Record<ActionType, ActionSubtype[]> = {
-  EXECUTE: ['OUTGOING_CONNECTION', 'SEND_EMAIL', 'HTTP_REQUEST', 'FUNCTION', 'SPEAK'],
+  EXECUTE: ['OUTGOING_CONNECTION', 'SEND_EMAIL', 'HTTP_REQUEST', 'FUNCTION', 'PLUGIN_ACTION', 'SPEAK'],
   WAIT: ['INLINE_CONDITION', 'CONDITION', 'TIME'],
 };
 
@@ -325,6 +398,7 @@ export const ACTION_SUBTYPE_LABEL: Record<ActionSubtype, string> = {
   CONDITION: 'Condition',
   TIME: 'Time',
   SPEAK: t('Speak'),
+  PLUGIN_ACTION: t('Plugin Action'),
 };
 
 /**

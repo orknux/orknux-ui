@@ -2083,9 +2083,18 @@ export const PL: Record<string, string> = {
     "Rozmiary, które każdy węzeł obrazu w tej przestrzeni roboczej oferuje w menu Szablon. Wybór wypełnia szerokość i wysokość węzła; węzeł zachowuje liczby, więc zmiana nazwy lub usunięcie szablonu nie zmienia żadnego zapisanego węzła. Każdy bok ma od 1 do 8192 pikseli; szablon, którego model nie narysuje, jest wyszarzony.",
   // The workflow editor's link to this workflow's runs (#437) and a node switched off (#439).
   "Runs of this workflow": "Uruchomienia tego przepływu",
-  "Disable": "Wyłącz",
-  "Enable": "Włącz",
+  "Runs as part of the workflow": "Działa w ramach przepływu",
   "Disabled": "Wyłączony",
+  // An action pointed at a block a plugin declares (#438).
+  "Plugin Action": "Akcja wtyczki",
+  "Outputs": "Wyjścia",
+  "Select plugin action…": "Wybierz akcję wtyczki…",
+  "Search plugin actions…": "Szukaj akcji wtyczek…",
+  "No loaded plugin declares one.": "Żadna załadowana wtyczka nie deklaruje takiej akcji.",
+  "No loaded plugin offers this action any more.": "Żadna załadowana wtyczka nie oferuje już tej akcji.",
+  "No longer offered by the plugin.": "Wtyczka już tego nie oferuje.",
+  "A block one of the loaded plugins declares for workflows. Its inputs and outputs are the plugin's, read off the declaration each time the action runs; a node fills each input from the field of the same name unless it is wired to something else.":
+    "Blok, który jedna z załadowanych wtyczek deklaruje dla przepływów. Jego wejścia i wyjścia należą do wtyczki i są odczytywane z deklaracji przy każdym uruchomieniu akcji; węzeł wypełnia każde wejście polem o tej samej nazwie, o ile nie podłączono go do czegoś innego.",
   "A disabled node stays on the graph with its lines and is skipped by a run, which hands what reached it straight on. A disabled condition takes its upper way out.":
     "Wyłączony węzeł zostaje na grafie ze swoimi liniami, a uruchomienie go pomija, przekazując dalej to, co do niego dotarło. Wyłączony warunek wychodzi górnym wyjściem.",
 };

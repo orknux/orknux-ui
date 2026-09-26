@@ -636,6 +636,22 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'plugin-action-check',
+    what: "an action pointed at a block a plugin's actions() declares: picked, drawn, saved, listed, and orphaned",
+    needs: ['workspace'],
+    /*
+     * Issue #438. It loads a scratch plugin shaped as Slack's `respond` is and
+     * unloads it again, so `alone` for the reason plugin-tool-grant-check is:
+     * while it is in, its block is in every workspace's picker.
+     *
+     * The last leg is the one worth the check. The plugin is unloaded with the
+     * action still pointing at it, and the page has to say so - a picker that
+     * silently read as unfilled would send somebody to choose a different
+     * block when the fix is to load the plugin back.
+     */
+    alone: true,
+  },
+  {
     name: 'plugin-catalog-check',
     what: 'the plugins screen opens on Local, and says what a marketplace outage costs',
     // Reads the admin screen and stubs the catalog call in the browser; it

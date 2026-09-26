@@ -863,6 +863,17 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
               </span>
             )}
             {/*
+              The blocks a workflow's Action node can be pointed at, each as
+              the picker names it and, in brackets, as the action stores it -
+              the second is what a row on the Actions list is matched by when
+              the plugin stops offering one. Issue #438.
+            */}
+            {plugin.actions.length > 0 && (
+              <span className={styles.declares} data-plugin-actions={plugin.key}>
+                runs {plugin.actions.map((one) => `${one.label} (${one.name})`).join('  ·  ')}
+              </span>
+            )}
+            {/*
               What the sandbox was relaxed to allow it, and on whose word.
               Only where there is any: a plugin that asked for nothing would
               otherwise grow a line saying so under every row, the way the
