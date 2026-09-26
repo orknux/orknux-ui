@@ -250,7 +250,7 @@ console.log(`opened ${session.key} (#${session.id}, ${session.eventCount} lines)
 const { llmSessionEvents } = await graphql(
   `query($id: ID!) {
      llmSessionEvents(sessionId: $id, page: 0, size: 200, order: AT, ascending: true) {
-       content { id kind actor at agentDetails { agent model systemPrompt tools findable skills memory connections } }
+       content { id kind actor at agentDetails { agent agentId model systemPrompt tools findable skills memory connections } }
      }
    }`,
   { id: session.id },
@@ -279,6 +279,29 @@ record(
   details[0]?.agentDetails?.systemPrompt?.includes(FIRST.prompt) === true &&
     details[1]?.agentDetails?.systemPrompt?.includes(SECOND.prompt) === true,
   'and each carries the setup it was answered with, resolved for the page',
+);
+/*
+ * And the rest of what the model read. The agent node keeps a session, so it
+ * lends the agent scratchpads, and #445 puts what a lent tool says about itself
+ * into the system turn - which means the recorded prompt is longer than the
+ * agent's own prose and says so. This is the half #454 was about: the record
+ * used to be `agent.systemPrompt` and nothing else, so it was right only about
+ * agents whose instructions happened to be all there was.
+ */
+record(
+  (details[0]?.agentDetails?.systemPrompt?.length ?? 0) > FIRST.prompt.length &&
+    details[0]?.agentDetails?.systemPrompt?.includes('You have scratchpads') === true,
+  'and carries what the round appended to it, not the agent\'s own field alone',
+);
+/*
+ * Which agent it was, by id. The name alone means a reader wanting the setup
+ * behind it goes and finds it on the Agents list, and two agents in a workspace
+ * may be called nearly the same thing.
+ */
+record(
+  String(details[0]?.agentDetails?.agentId) === String(firstAgent) &&
+    String(details[1]?.agentDetails?.agentId) === String(secondAgent),
+  `each line names the agent it is about, by id (${details.map((one) => one.agentDetails?.agentId).join(', ')})`,
 );
 /*
  * The tools are what the model was handed, not the grant list. Issue #446: an
@@ -345,6 +368,27 @@ if (await drawn(page, 'the session transcript')) {
     'each closed header says "Agent details" and names its agent, in the order they answered',
   );
 
+  /*
+   * And the name leads to the agent. Read as the href the browser resolved
+   * rather than as an attribute, so a path built out of the wrong id or with the
+   * workspace left out fails here. Issue #454.
+   */
+  const links = await page.$$eval('[data-agent-details] [data-agent-details-link]', (nodes) =>
+    nodes.map((node) => node.getAttribute('href')),
+  );
+  console.log(`links: ${JSON.stringify(links)}`);
+  record(
+    links[0] === `/workspace/${WORKSPACE}/agents/${firstAgent}/settings` &&
+      links[1] === `/workspace/${WORKSPACE}/agents/${secondAgent}/settings`,
+    'the agent named in each header is a link to that agent\'s own page',
+  );
+  /* A link in the header, and not inside the press: pressing it must not also open the block. */
+  const nested = await page.$$eval(
+    '[data-agent-details-toggle] [data-agent-details-link]',
+    (nodes) => nodes.length,
+  );
+  record(nested === 0, `the link sits beside the toggle rather than inside it (${nested} inside)`);
+
   /* Where the blocks fall among the lines, read off the page rather than assumed. */
   const order = await page.$$eval('[data-agent-details], article[class*="_event_"]', (nodes) =>
     nodes.map((node) => (node.hasAttribute('data-agent-details') ? `D:${node.getAttribute('data-agent-details')}` : 'L')),
@@ -382,6 +426,28 @@ if (await drawn(page, 'the session transcript')) {
     'pressing the first block shows that agent\'s system prompt',
   );
   record(!opened.includes(SECOND.prompt), 'and not the other agent\'s: each block opens on its own');
+
+  /*
+   * The prompt is a section of its own, under a heading, and drawn as the text
+   * the model was given rather than as one line of it. Issue #454: the row was
+   * left out altogether where the field was blank, which is what it was for most
+   * agents - so a reader could not tell an agent that was told nothing from a
+   * record that did not keep what it was told.
+   */
+  const shown = await page.$$eval('[data-agent-details] [data-agent-details-prompt]', (nodes) =>
+    nodes.map((node) => node.textContent ?? ''),
+  );
+  record(shown.length === 1, `the opened block draws its system prompt in a section of its own (${shown.length})`);
+  record(
+    shown[0]?.includes(FIRST.prompt) === true && shown[0]?.includes('You have scratchpads') === true,
+    'and draws the whole of what was sent, the round\'s own paragraph included',
+  );
+  /* Wrapped as written, so a prompt with blank lines and indentation reads as it was sent. */
+  const wrapping = await page
+    .locator('[data-agent-details] [data-agent-details-prompt] pre')
+    .first()
+    .evaluate((node) => getComputedStyle(node).whiteSpace);
+  record(wrapping === 'pre-wrap', `the prompt keeps its own line breaks and still wraps (${wrapping})`);
 
   await page.screenshot({ path: shot('session-agent-details.png') });
 }
