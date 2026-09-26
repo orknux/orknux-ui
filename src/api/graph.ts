@@ -118,6 +118,16 @@ export interface GraphNode {
    */
   retryBudgetSeconds?: number | null;
   /**
+   * Whether a run does this node's work.
+   *
+   * Off, the node stays on the graph with its lines and a run walks straight
+   * through it: the step is recorded as skipped and what reached it is handed
+   * on unchanged. For switching one piece off while the rest is tried. Absent
+   * is on, which is what every node was; the server refuses it off on a
+   * trigger.
+   */
+  enabled?: boolean;
+  /**
    * What this node passes, decided here rather than on the definition. Seeded
    * from the action when one is picked; editing it touches only this node.
    */
@@ -230,7 +240,7 @@ const GRAPH_FIELDS = `
   nodes {
     key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId imageSize imageQuality imageStyle outputName icon orientation
     yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds
-    retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds x y
+    retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds enabled x y
     mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId }
     inputs { name type display }
     outputs { name type display }

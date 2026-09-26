@@ -437,6 +437,39 @@ export const TESTS = [
      */
   },
 
+  {
+    name: 'editor-runs-link-check',
+    what: "the editor's link to this workflow's runs: guarded, landing filtered, and the filter in the address",
+    needs: ['workspace'],
+    /*
+     * Issue #437. Makes two workflows of one Object node each, runs both once
+     * and removes them: the second exists so that "only this workflow's rows"
+     * is a claim about a row that has to be kept out, not about an empty list.
+     *
+     * The guard is measured by what the server holds. A node is renamed and
+     * the link pressed, and the graph on the server has to carry the new name
+     * - that is the promise every way out of the editor makes, and a link that
+     * navigated without keeping it would read as working in a screenshot.
+     */
+  },
+  {
+    name: 'node-disable-check',
+    what: 'a node switched off: drawn at half, kept by a save, skipped by a run, and shown skipped on the run page',
+    needs: ['workspace'],
+    /*
+     * Issue #439. Makes a workflow of three Object nodes and a trigger, runs
+     * it once with the middle node switched off, and removes it. Object nodes
+     * because they run to completion with no model behind them, so the run's
+     * own record - the step skipped and saying why, the node after it handed
+     * exactly what reached the disabled one - can be read back from a seeded
+     * installation.
+     *
+     * The dimming is asserted as a number with a floor and a ceiling rather
+     * than as "not one": a fade of five percent passes "it changed" and is
+     * invisible on a canvas, and a card at a tenth reads as a rendering fault.
+     */
+  },
+
   // --- the (?) that replaced the prose --------------------------------------
   {
     name: 'hint-hover-check',

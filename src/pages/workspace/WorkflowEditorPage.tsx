@@ -178,6 +178,17 @@ interface NodeData extends Record<string, unknown> {
   retryJitter?: number | null;
   /** The longest this node may go on being attempted for; null is no limit. */
   retryBudgetSeconds?: number | null;
+  /**
+   * Whether a run does this node's work.
+   *
+   * Off, the node stays where it is with every line it had, drawn dimmed, and
+   * a run walks straight through it: the step is skipped and what reached it
+   * goes on unchanged. The thing this is for is trying the rest of a graph
+   * without the one node that costs something - a message sent, a model asked
+   * - and without deleting it and redrawing its lines afterwards. Absent is
+   * on. A trigger has no switch: a run has to start somewhere. Issue #439.
+   */
+  enabled?: boolean;
   name: string;
   description: string | null;
   /** The agent an agent node instances; it supplies the model and instructions. */
@@ -1476,9 +1487,21 @@ function GraphNodeView({ data, selected }: NodeProps) {
   const facing = FACING[node.orientation ?? 'LEFT_TO_RIGHT'];
   const facingName = FACING_LABEL[node.orientation ?? 'LEFT_TO_RIGHT'];
   const turn = useContext(TurnNode);
+  /*
+   * A node switched off is drawn faded, with the word on it. Faded because the
+   * node is still there - its lines still join it and a run still passes
+   * through it - and a picture that hid it would hide a step the run records;
+   * the word because a faded card on its own reads as a node that failed to
+   * load. The lines are left as they are: what passes along them is exactly
+   * what passed before, which is the point of the switch. Issue #439.
+   */
+  const disabled = node.enabled === false;
+  const classes = [styles.node];
+  if (selected) classes.push(styles.nodeSelected);
+  if (disabled) classes.push(styles.nodeDisabled);
 
   return (
-    <div className={selected ? `${styles.node} ${styles.nodeSelected}` : styles.node}>
+    <div className={classes.join(' ')} data-disabled={disabled ? 'true' : undefined}>
       {/*
         Only on the selected node, so the canvas is not covered in handles. A
         node grows on its own to fit what it holds; this is for when a graph
@@ -1552,6 +1575,7 @@ function GraphNodeView({ data, selected }: NodeProps) {
         <div className={styles.metaRow}>
           {node.icon !== null && <Icon name={node.icon} className={styles.nodeIcon} />}
           <span className={styles.kindLabel}>{NODE_KIND_LABEL[node.kind]}</span>
+          {disabled && <span className={styles.disabledTag}>{t('Disabled')}</span>}
           {node.kind === 'AGENT' && <span className={styles.activeDot} aria-hidden="true" />}
         </div>
         <div className={styles.nodeText}>
@@ -2607,6 +2631,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               retryMaxWaitSeconds: node.retryMaxWaitSeconds ?? null,
               retryJitter: node.retryJitter ?? null,
               retryBudgetSeconds: node.retryBudgetSeconds ?? null,
+              enabled: node.enabled ?? true,
               agentId: node.agentId,
               triggerId: node.triggerId,
               actionId: node.actionId,
@@ -3137,6 +3162,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           retryMaxWaitSeconds: null,
           retryJitter: null,
           retryBudgetSeconds: null,
+          // On: a node is added to be run, and switching one off is a decision
+          // about a node that already exists.
+          enabled: true,
           /*
            * Every other kind takes its icon from the definition it points at.
            * A session points at nothing - the key it holds is the whole of it -
@@ -3315,6 +3343,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.retryMaxWaitSeconds === draft.retryMaxWaitSeconds &&
           data.retryJitter === draft.retryJitter &&
           data.retryBudgetSeconds === draft.retryBudgetSeconds &&
+          data.enabled === draft.enabled &&
           sameMappings(data.mappings, shown.mappings);
         if (same) return node;
         setSaved(false);
@@ -3772,6 +3801,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               : null,
           retryJitter: (data.retryAttempts ?? 1) > 1 ? (data.retryJitter ?? null) : null,
           retryBudgetSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBudgetSeconds ?? null) : null,
+          // Always on for a trigger, whatever the data says: the server refuses
+          // a disabled one, and the panel offers no switch to make one.
+          enabled: data.kind === 'TRIGGER' ? true : (data.enabled ?? true),
           mappings: data.mappings,
           x: node.position.x,
           y: node.position.y,
@@ -4394,6 +4426,26 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           >
             <img src={pencilIcon} alt="" width={14} height={14} />
           </Link>
+          {/*
+            The way from the graph to what it has done.
+
+            Runs had a page and the editor did not point at it: somebody who had
+            just pressed Run and come back to fix something had to go out
+            through the sidebar and pick the workflow again from a list of them
+            all. The link lands on the runs page already narrowed to this
+            workflow, and it goes through the same guard every other way out of
+            here does - the graph is stored first, so a run somebody opens is a
+            run of the graph they were looking at. Issue #437.
+          */}
+          <Link
+            to={`/workspace/${workspaceId}/executions?workflowId=${workflowId}`}
+            className={styles.renameButton}
+            onClick={leavingFor(`/workspace/${workspaceId}/executions?workflowId=${workflowId}`)}
+            aria-label={t('Runs of this workflow')}
+            title={t('Runs of this workflow')}
+          >
+            <img src={activityIcon} alt="" width={14} height={14} />
+          </Link>
           <span className={status === 'PUBLISHED' ? `${styles.badge} ${styles.badgeLive}` : styles.badge}>
             {status === 'PUBLISHED' ? 'Published' : 'Draft'}
           </span>
@@ -4758,9 +4810,38 @@ Change the keystroke in Preferences.`}
             <>
               <div className={styles.fields}>
                 <div className={styles.field}>
-                  <label className={styles.label} htmlFor="node-name">
-                    {t('Node Name')}
-                  </label>
+                  <span className={styles.labelRow}>
+                    <label className={styles.label} htmlFor="node-name">
+                      {t('Node Name')}
+                    </label>
+                    {/*
+                      The switch, up here beside the name rather than down among
+                      the settings, because it is not a setting of the node: it
+                      is whether the node takes part at all, and somebody
+                      switching a step off while they try the rest wants it at
+                      the top of the panel, not three screens down. A button
+                      that says what pressing it does - Disable on a node that
+                      runs, Enable on one that does not - rather than a checkbox
+                      whose tick has to be read against a label. Not on a
+                      trigger, which has no switch here: a run has to start
+                      somewhere, and the trigger's own Enabled is where a
+                      trigger is silenced. Issue #439.
+                    */}
+                    {draft.kind !== 'TRIGGER' && (
+                      <span className={styles.labelLinks}>
+                        <FieldHint label={t('Disable')}>
+                          {t('A disabled node stays on the graph with its lines and is skipped by a run, which hands what reached it straight on. A disabled condition takes its upper way out.')}
+                        </FieldHint>
+                        <button
+                          type="button"
+                          className={styles.parameterSync}
+                          data-check="node-enabled"
+                          aria-pressed={draft.enabled === false}
+                          onClick={() => setDraft({ ...draft, enabled: draft.enabled === false })}
+                        >{draft.enabled === false ? t('Enable') : t('Disable')}</button>
+                      </span>
+                    )}
+                  </span>
                   <div className={`${styles.inputWrapper} ${styles.inputActive}`}>
                     <input
                       id="node-name"

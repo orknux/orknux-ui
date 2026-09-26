@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import {
@@ -68,7 +68,34 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
     'RUN',
   ]);
   const [status, setStatus] = useState<ExecutionStatus | ''>('');
-  const [workflowId, setWorkflowId] = useState('');
+  /*
+   * The workflow filter lives in the address, not only in state.
+   *
+   * The editor links here with `?workflowId=` so that "the runs of this
+   * workflow" is one press rather than a press and a pick from a list of every
+   * workflow in the workspace - and a filter somebody can paste into a chat is
+   * a filter, where one that lives in component state is a thing they had set
+   * once. Read on load as the starting value; written back when the Select
+   * changes, replacing the entry rather than pushing one, because five picks
+   * from the list should not be five presses of Back to leave. Only this
+   * filter, for now: it is the one anything links to. Issue #437.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const workflowId = searchParams.get('workflowId') ?? '';
+  const setWorkflowId = useCallback(
+    (chosen: string) => {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          if (chosen === '') next.delete('workflowId');
+          else next.set('workflowId', chosen);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
   const [days, setDays] = useState<number | ''>(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');

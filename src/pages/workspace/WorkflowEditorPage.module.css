@@ -367,6 +367,37 @@
   border-color: var(--color-accent-brand);
 }
 
+/*
+ * A node switched off. Faded rather than hidden or greyed out: it is still on
+ * the graph, its lines still join it and a run still walks through it, so the
+ * picture has to say "here, but not taking part" rather than "gone". About
+ * half, because a quarter reads as a rendering fault and three quarters as
+ * nothing at all - the same distance that tells a disabled control from a live
+ * one everywhere else. The lines are React Flow's own and are left as they
+ * are: what passes along them is exactly what passed before. Issue #439.
+ */
+.nodeDisabled {
+  opacity: 0.45;
+}
+
+/*
+ * The word on a faded node, so a dimmed card is read as switched off rather
+ * than as a card that failed to load. Amber for the reason the toolbar's
+ * Switched off badge is: not an error, not a state of the graph, and a thing
+ * to notice before publishing.
+ */
+.disabledTag {
+  padding: 0 var(--space-6);
+  background: var(--color-amber-soft);
+  border-radius: var(--radius-4);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-amber);
+}
+
 .accentBar {
   position: absolute;
   top: 0;
