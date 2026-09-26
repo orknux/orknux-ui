@@ -383,22 +383,28 @@ function SessionRuns({ workspaceId, sessionId }: { workspaceId: string; sessionI
           {t('The workflow run or runs whose agent steps wrote into this session. Opening one shows what it did.')}
         </FieldHint>
       </span>
-      {links.length === 1 ? (
-        row(links[0])
-      ) : (
-        <>
-          <button
-            type="button"
-            className={styles.runsToggle}
-            aria-expanded={open}
-            data-session-runs-toggle=""
-            onClick={() => setOpen((was) => !was)}
-          >
-            {open ? '▾' : '▸'} {links.length}
-          </button>
-          {open && <div className={styles.runsList}>{links.map(row)}</div>}
-        </>
+      {/*
+        The newest run, always drawn, and the rest behind a press.
+
+        It used to be a bare count where there was more than one, so a session
+        several runs had written into showed a number and no run at all - which
+        is the one thing anybody opening this wants: the run that last said
+        something. Newest first throughout, which is the order the server
+        answers in. Issue #463.
+      */}
+      {row(links[0])}
+      {links.length > 1 && (
+        <button
+          type="button"
+          className={styles.runsToggle}
+          aria-expanded={open}
+          data-session-runs-toggle=""
+          onClick={() => setOpen((was) => !was)}
+        >
+          {open ? '▾' : '▸'} {links.length - 1} {t('more')}
+        </button>
       )}
+      {open && links.length > 1 && <div className={styles.runsList}>{links.slice(1).map(row)}</div>}
     </div>
   );
 }
