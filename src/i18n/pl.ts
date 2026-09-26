@@ -2048,25 +2048,31 @@ export const PL: Record<string, string> = {
   "{kind} (no longer offered)": "{kind} (już nieoferowany)",
   "This workspace has no {kind} connections yet. Add one on the Integrations page and it will be offered here.":
     "Ta przestrzeń robocza nie ma jeszcze połączeń rodzaju {kind}. Dodaj je na stronie Integracji, a pojawi się tutaj.",
-  // Image node parameters (#423). The values themselves (hd, vivid, 1024x1024)
-  // are passed to the model as words and are not translated.
+  // Image node parameters (#423, #431). The values themselves (hd, vivid,
+  // 1024x1024, auto) are the model's own words and are not translated.
   "Quality": "Jakość",
   "Style": "Styl",
   "Model default": "Domyślne modelu",
-  "Standard": "Standardowa",
-  "HD": "HD",
-  "Low": "Niska",
-  "Medium": "Średnia",
-  "High": "Wysoka",
-  "Vivid": "Wyrazisty",
-  "Natural": "Naturalny",
-  "Search sizes…": "Szukaj rozmiarów…",
-  "Search qualities…": "Szukaj jakości…",
-  "Search styles…": "Szukaj stylów…",
-  "Width by height in pixels. Model default leaves it to the model; a size the model does not offer is refused by the provider when the run reaches it.":
-    "Szerokość na wysokość w pikselach. Domyślne modelu pozostawia wybór modelowi; rozmiar, którego model nie oferuje, dostawca odrzuci, gdy uruchomienie do niego dotrze.",
-  "DALL-E 3 takes standard or hd; gpt-image-1 takes low, medium or high. The word is passed to the model as it is, so pick one the model knows.":
-    "DALL-E 3 przyjmuje standard lub hd; gpt-image-1 przyjmuje low, medium lub high. Słowo trafia do modelu bez zmian, więc wybierz takie, które model zna.",
-  "Vivid leans towards dramatic, hyper-real pictures and natural towards lifelike ones. Only a model that takes a style honours it.":
-    "Vivid skłania się ku dramatycznym, hiperrealistycznym obrazom, a natural ku realistycznym. Tylko model przyjmujący styl go uwzględni.",
+  "Search…": "Szukaj…",
+  "Width": "Szerokość",
+  "Height": "Wysokość",
+  "Preset": "Szablon",
+  "Preset…": "Szablon…",
+  "Manage presets": "Zarządzaj szablonami",
+  "Size presets": "Szablony rozmiarów",
+  "Add a preset": "Dodaj szablon",
+  "Thumbnail": "Miniatura",
+  "Remove size preset": "Usuń szablon rozmiaru",
+  "A preset needs a name and two sides from 1 to 8192 pixels.":
+    "Szablon potrzebuje nazwy i dwóch boków od 1 do 8192 pikseli.",
+  "Width and height in pixels, each from {min} to {max} and a multiple of {step}. Both empty leaves the size to the model. A preset fills both; one greyed out is a size this model cannot draw.":
+    "Szerokość i wysokość w pikselach, każda od {min} do {max} i będąca wielokrotnością {step}. Oba puste pozostawiają rozmiar modelowi. Szablon wypełnia oba; wyszarzony to rozmiar, którego ten model nie narysuje.",
+  "The sizes this model draws, as width by height in pixels. Model default leaves it to the model.":
+    "Rozmiary, które ten model rysuje, jako szerokość na wysokość w pikselach. Domyślne modelu pozostawia wybór modelowi.",
+  "The qualities this model takes, in its own words - they go to the model as they are. Model default leaves it to the model.":
+    "Jakości, które ten model przyjmuje, jego własnymi słowami - trafiają do modelu bez zmian. Domyślne modelu pozostawia wybór modelowi.",
+  "The styles this model takes: vivid leans towards dramatic, hyper-real pictures and natural towards lifelike ones. Model default leaves it to the model.":
+    "Style, które ten model przyjmuje: vivid skłania się ku dramatycznym, hiperrealistycznym obrazom, a natural ku realistycznym. Domyślne modelu pozostawia wybór modelowi.",
+  "The sizes every image node in this workspace offers in its Preset menu. Picking one fills the node’s width and height; the node keeps the numbers, so renaming or removing a preset changes no saved node. Each side is 1 to 8192 pixels; a model that cannot draw a preset shows it greyed out.":
+    "Rozmiary, które każdy węzeł obrazu w tej przestrzeni roboczej oferuje w menu Szablon. Wybór wypełnia szerokość i wysokość węzła; węzeł zachowuje liczby, więc zmiana nazwy lub usunięcie szablonu nie zmienia żadnego zapisanego węzła. Każdy bok ma od 1 do 8192 pikseli; szablon, którego model nie narysuje, jest wyszarzony.",
 };

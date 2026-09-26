@@ -51,7 +51,7 @@ export interface GraphNode {
    * What an IMAGE node asks of the drawing beyond its prompt: the size as
    * WIDTHxHEIGHT in pixels, the quality and the style, each as the word the
    * image endpoint takes. Null is the model's own default. The server holds
-   * each to the list the editor offers.
+   * each to what the node's model takes - see `fetchImageModelParameters`.
    */
   imageSize?: string | null;
   imageQuality?: string | null;
@@ -316,6 +316,40 @@ export async function fetchActionParameterDefaults(
     { workspaceId, actionId },
   );
   return data.actionParameterDefaults;
+}
+
+/** How an image parameter is asked for: one word off a list, or a width and a height. */
+export type ImageParameterKind = 'CHOICE' | 'DIMENSIONS';
+
+/**
+ * One parameter an image model's endpoint takes, and the values it takes for it.
+ *
+ * Only the parameters the endpoint takes come back, so the panel draws one
+ * control per entry and nothing for the rest: DALL-E 3 gets a size, a quality
+ * and a style; gpt-image-1 a size and a quality; a self-hosted model a width
+ * and a height. Issue #431.
+ */
+export interface ImageParameterSpec {
+  /** `size`, `quality` or `style`. */
+  name: string;
+  kind: ImageParameterKind;
+  /** What a CHOICE may be, as the endpoint spells it; empty for DIMENSIONS. */
+  choices: string[];
+  /** The bounds DIMENSIONS take, in pixels; null on a CHOICE. */
+  minSide: number | null;
+  maxSide: number | null;
+  step: number | null;
+}
+
+/** What this model's endpoint takes beyond a prompt. Asked when a model is picked on an image node. */
+export async function fetchImageModelParameters(modelId: string): Promise<ImageParameterSpec[]> {
+  const data = await graphql<{ imageModelParameters: ImageParameterSpec[] }>(
+    `query ImageModelParameters($modelId: ID!) {
+       imageModelParameters(modelId: $modelId) { name kind choices minSide maxSide step }
+     }`,
+    { modelId },
+  );
+  return data.imageModelParameters;
 }
 
 export async function publishWorkflow(workspaceId: string, workflowId: string): Promise<WorkflowGraph> {

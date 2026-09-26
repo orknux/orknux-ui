@@ -66,6 +66,9 @@ import type { WorkspaceConnection } from '../../api/integrations';
 import { createObject, fetchObject, fetchWorkspaceObjects, updateObject } from '../../api/objects';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
+import { fetchImageSizePresets } from '../../api/imagePresets';
+import type { ImageSizePreset } from '../../api/imagePresets';
+import { ImageSizePresetsDialog } from '../../components/ImageSizePresetsDialog';
 import type { WorkflowObject } from '../../api/objects';
 import { ObjectForm, asProperty, asRow, kindsOf, typeOf, typeOptionsOf } from '../../components/ObjectForm';
 import type { ObjectFormStyles, Row } from '../../components/ObjectForm';
@@ -112,6 +115,8 @@ import { Loader } from '../../components/Loader';
 import { SlackTargetField } from '../../components/SlackTargetField';
 import { TrashIcon } from '../../components/TrashIcon';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { fetchImageModelParameters } from '../../api/graph';
+import type { ImageParameterSpec } from '../../api/graph';
 import {
   matches,
   useAddShortcut,
@@ -124,7 +129,7 @@ import {
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import styles from './WorkflowEditorPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface WorkflowEditorPageProps {
   session: SessionUser;
@@ -263,51 +268,25 @@ function sameMappings(left: NodeMapping[], right: NodeMapping[]): boolean {
 }
 
 /**
- * What an image node may ask of the drawing beyond its prompt, and in which
- * words. The same three lists the server holds a save to (`ImageNodeParameters`
- * in WorkflowGraphAPI.kt), so a value picked here is a value the save keeps.
- *
- * Quality lists both vocabularies on purpose: DALL-E 3 says standard or hd and
- * gpt-image-1 says low, medium or high, the node does not know which model it
- * will be pointed at, and the word goes to the model as it is. A size is its
- * own label - "1024x1024" is what the endpoint takes and what somebody reads.
+ * A `WIDTHxHEIGHT` taken apart for the two boxes, each side as typed - so a
+ * half-typed pair ("800x") comes back as it was left rather than as nothing.
+ * Anything else, `auto` say, is neither side.
  */
-const IMAGE_SIZES = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792', '512x512', '256x256'];
-const IMAGE_QUALITIES = ['standard', 'hd', 'low', 'medium', 'high'];
-const IMAGE_STYLES = ['vivid', 'natural'];
-
-/*
- * The words on screen for each, as literal `t('…')` calls rather than a table
- * of strings handed to `t`: the catalogue check reads the source for literal
- * calls, and a label it cannot see is a translation it reports as orphaned.
- * Resolved at render, when the language is known.
- */
-function imageQualityLabel(quality: string): string {
-  switch (quality) {
-    case 'standard':
-      return t('Standard');
-    case 'hd':
-      return t('HD');
-    case 'low':
-      return t('Low');
-    case 'medium':
-      return t('Medium');
-    case 'high':
-      return t('High');
-    default:
-      return quality;
-  }
+function sidesOf(size: string | null): { width: string; height: string } {
+  const found = /^(\d*)x(\d*)$/.exec(size ?? '');
+  return found === null ? { width: '', height: '' } : { width: found[1], height: found[2] };
 }
 
-function imageStyleLabel(style: string): string {
-  switch (style) {
-    case 'vivid':
-      return t('Vivid');
-    case 'natural':
-      return t('Natural');
-    default:
-      return style;
-  }
+/** The two boxes put back together; both empty is the model's default. */
+function sizeOf(width: string, height: string): string | null {
+  return width === '' && height === '' ? null : `${width}x${height}`;
+}
+
+/** Whether a preset is one this model's endpoint would draw. */
+function fits(preset: ImageSizePreset, spec: ImageParameterSpec): boolean {
+  const inside = (side: number) =>
+    side >= (spec.minSide ?? 1) && side <= (spec.maxSide ?? Number.MAX_SAFE_INTEGER) && side % (spec.step ?? 1) === 0;
+  return inside(preset.width) && inside(preset.height);
 }
 
 /** The whole of a workspace's catalogue fits in the picker. */
@@ -2440,6 +2419,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [shapeError, setShapeError] = useState<string | null>(null);
   /** The workspace's image models, for an image node's model picker. */
   const [imageModels, setImageModels] = useState<Model[]>([]);
+  /**
+   * What the chosen image model's endpoint takes beyond a prompt, one entry per
+   * parameter; null while no model is chosen or the answer is on its way. The
+   * panel draws one control per entry and nothing for the rest. Issue #431.
+   */
+  const [imageSpec, setImageSpec] = useState<ImageParameterSpec[] | null>(null);
+  /** The workspace's size presets, for the Preset menu beside Width and Height. */
+  const [imagePresets, setImagePresets] = useState<ImageSizePreset[]>([]);
+  const [managingPresets, setManagingPresets] = useState(false);
 
   /*
    * Where the graph has been, so Ctrl+Z can put it back.
@@ -2727,7 +2715,54 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     fetchModels(workspaceId)
       .then((all) => setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled)))
       .catch(() => setImageModels([]));
+    fetchImageSizePresets(workspaceId)
+      .then(setImagePresets)
+      .catch(() => setImagePresets([]));
   }, [workspaceId]);
+
+  /*
+   * What the image node's model takes, asked when the model is picked.
+   *
+   * The controls follow the answer: a DALL-E 3 gets three pickers, a
+   * gpt-image-1 two, a self-hosted model a width and a height. A parameter the
+   * model does not take is taken off the draft as well, because the save would
+   * refuse it and there would be no control on screen to clear it from - the
+   * one way a node could be stuck unsaveable.
+   */
+  const imageModelId = draft?.kind === 'IMAGE' ? draft.imageModelId : null;
+  useEffect(() => {
+    if (imageModelId === null) {
+      setImageSpec(null);
+      return;
+    }
+    let stale = false;
+    setImageSpec(null);
+    fetchImageModelParameters(imageModelId)
+      .then((spec) => {
+        if (stale) return;
+        setImageSpec(spec);
+        const takes = new Set(spec.map((one) => one.name));
+        setDraft((held) => {
+          if (held === null || held.kind !== 'IMAGE' || held.imageModelId !== imageModelId) return held;
+          const trimmed = {
+            imageSize: takes.has('size') ? held.imageSize : null,
+            imageQuality: takes.has('quality') ? held.imageQuality : null,
+            imageStyle: takes.has('style') ? held.imageStyle : null,
+          };
+          return trimmed.imageSize === held.imageSize &&
+            trimmed.imageQuality === held.imageQuality &&
+            trimmed.imageStyle === held.imageStyle
+            ? held
+            : { ...held, ...trimmed };
+        });
+      })
+      .catch(() => {
+        if (!stale) setImageSpec(null);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [imageModelId]);
 
 
   /**
@@ -5579,80 +5614,150 @@ Change the keystroke in Preferences.`}
                   </div>
                 )}
                 {/*
-                  What the drawing is asked for beyond the prompt: the three
-                  parameters every OpenAI-shaped image endpoint takes, and only
-                  those. Each is a picker with the model's own default pinned
-                  at the top, so leaving one alone has a name on screen rather
-                  than being the absence of a choice - and so a size that was
-                  chosen can be un-chosen. The server holds each to this list.
+                  What the drawing is asked for beyond the prompt, and only what
+                  this model's endpoint takes: one control per entry of the
+                  spec the server answered for the chosen model, nothing for a
+                  parameter it does not list. A word off a list is a picker
+                  with the model's own default pinned at the top, so leaving
+                  one alone has a name on screen; a free size is a width, a
+                  height and the workspace's presets. Issue #431.
                 */}
-                {draft.kind === 'IMAGE' && (
-                  <>
-                    <div className={styles.field}>
-                      <span className={styles.labelRow}>
-                        <span className={styles.labelWithHint}>
-                          <label className={styles.label} htmlFor="node-image-size">
-                            {t('Size')}
-                          </label>
-                          <FieldHint label={t('Size')}>
-                            {t('Width by height in pixels. Model default leaves it to the model; a size the model does not offer is refused by the provider when the run reaches it.')}
-                          </FieldHint>
+                {draft.kind === 'IMAGE' &&
+                  (imageSpec ?? []).map((spec) => {
+                    if (spec.kind === 'DIMENSIONS') {
+                      const sides = sidesOf(draft.imageSize);
+                      const chosen = imagePresets.find(
+                        (one) => String(one.width) === sides.width && String(one.height) === sides.height,
+                      );
+                      return (
+                        <div key={spec.name} className={styles.field} data-testid="image-size-dimensions">
+                          <span className={styles.labelRow}>
+                            <span className={styles.labelWithHint}>
+                              <label className={styles.label} htmlFor="node-image-width">
+                                {t('Size')}
+                              </label>
+                              <FieldHint label={t('Size')}>
+                                {tf(
+                                  'Width and height in pixels, each from {min} to {max} and a multiple of {step}. Both empty leaves the size to the model. A preset fills both; one greyed out is a size this model cannot draw.',
+                                  { min: spec.minSide ?? 1, max: spec.maxSide ?? '', step: spec.step ?? 1 },
+                                )}
+                              </FieldHint>
+                            </span>
+                            <span className={styles.labelLinks}>
+                              <button
+                                type="button"
+                                className={styles.definitionLink}
+                                onClick={() => setManagingPresets(true)}
+                              >
+                                {t('Manage presets')}
+                              </button>
+                            </span>
+                          </span>
+                          <div className={styles.imageSizeRow}>
+                            <div className={styles.inputWrapper}>
+                              <input
+                                id="node-image-width"
+                                className={`${styles.input} ${styles.inputMono}`}
+                                type="number"
+                                min={spec.minSide ?? 1}
+                                max={spec.maxSide ?? undefined}
+                                step={spec.step ?? 1}
+                                placeholder={t('Width')}
+                                aria-label={t('Width')}
+                                value={sides.width}
+                                onChange={(event) =>
+                                  setDraft({ ...draft, imageSize: sizeOf(event.target.value, sides.height) })
+                                }
+                              />
+                            </div>
+                            <span className={styles.imageSizeBy} aria-hidden="true">
+                              ×
+                            </span>
+                            <div className={styles.inputWrapper}>
+                              <input
+                                id="node-image-height"
+                                className={`${styles.input} ${styles.inputMono}`}
+                                type="number"
+                                min={spec.minSide ?? 1}
+                                max={spec.maxSide ?? undefined}
+                                step={spec.step ?? 1}
+                                placeholder={t('Height')}
+                                aria-label={t('Height')}
+                                value={sides.height}
+                                onChange={(event) =>
+                                  setDraft({ ...draft, imageSize: sizeOf(sides.width, event.target.value) })
+                                }
+                              />
+                            </div>
+                          </div>
+                          {/* On its own line: three controls across a 240px panel left the menu a sliver. */}
+                          <div className={styles.inputWrapper}>
+                            <select
+                              id="node-image-preset"
+                              className={`${styles.input} ${styles.select}`}
+                              aria-label={t('Preset')}
+                              value={chosen?.id ?? ''}
+                              onChange={(event) => {
+                                const picked = imagePresets.find((one) => one.id === event.target.value);
+                                if (picked === undefined) return;
+                                setDraft({ ...draft, imageSize: `${picked.width}x${picked.height}` });
+                              }}
+                            >
+                              <option value="">{t('Preset…')}</option>
+                              {imagePresets.map((one) => (
+                                <option key={one.id} value={one.id} disabled={!fits(one, spec)}>
+                                  {one.name} ({one.width}×{one.height})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const held =
+                      spec.name === 'size' ? draft.imageSize : spec.name === 'quality' ? draft.imageQuality : draft.imageStyle;
+                    const field = spec.name === 'size' ? 'imageSize' : spec.name === 'quality' ? 'imageQuality' : 'imageStyle';
+                    const label = spec.name === 'size' ? t('Size') : spec.name === 'quality' ? t('Quality') : t('Style');
+                    /*
+                     * A value the model no longer offers - saved against another
+                     * model, or before the lists were the model's - stays visible
+                     * as a row of its own, so it can be seen and re-picked rather
+                     * than held invisibly until the save refuses it.
+                     */
+                    const options = spec.choices.map((choice) => ({ value: choice, label: choice }));
+                    if (held !== null && held !== '' && !spec.choices.includes(held)) {
+                      options.push({ value: held, label: held });
+                    }
+                    return (
+                      <div key={spec.name} className={styles.field} data-testid={`image-${spec.name}-choice`}>
+                        <span className={styles.labelRow}>
+                          <span className={styles.labelWithHint}>
+                            <label className={styles.label} htmlFor={`node-image-${spec.name}`}>
+                              {label}
+                            </label>
+                            <FieldHint label={label}>
+                              {spec.name === 'size' &&
+                                t('The sizes this model draws, as width by height in pixels. Model default leaves it to the model.')}
+                              {spec.name === 'quality' &&
+                                t('The qualities this model takes, in its own words - they go to the model as they are. Model default leaves it to the model.')}
+                              {spec.name === 'style' &&
+                                t('The styles this model takes: vivid leans towards dramatic, hyper-real pictures and natural towards lifelike ones. Model default leaves it to the model.')}
+                            </FieldHint>
+                          </span>
                         </span>
-                      </span>
-                      <DefinitionPicker
-                        id="node-image-size"
-                        value={draft.imageSize ?? ''}
-                        options={IMAGE_SIZES.map((size) => ({ value: size, label: size }))}
-                        pinned={{ value: '', label: t('Model default') }}
-                        onChoose={(chosen) => setDraft({ ...draft, imageSize: chosen || null })}
-                        placeholder={t('Model default')}
-                        searchPlaceholder={t('Search sizes…')}
-                      />
-                    </div>
-                    <div className={styles.field}>
-                      <span className={styles.labelRow}>
-                        <span className={styles.labelWithHint}>
-                          <label className={styles.label} htmlFor="node-image-quality">
-                            {t('Quality')}
-                          </label>
-                          <FieldHint label={t('Quality')}>
-                            {t('DALL-E 3 takes standard or hd; gpt-image-1 takes low, medium or high. The word is passed to the model as it is, so pick one the model knows.')}
-                          </FieldHint>
-                        </span>
-                      </span>
-                      <DefinitionPicker
-                        id="node-image-quality"
-                        value={draft.imageQuality ?? ''}
-                        options={IMAGE_QUALITIES.map((quality) => ({ value: quality, label: imageQualityLabel(quality) }))}
-                        pinned={{ value: '', label: t('Model default') }}
-                        onChoose={(chosen) => setDraft({ ...draft, imageQuality: chosen || null })}
-                        placeholder={t('Model default')}
-                        searchPlaceholder={t('Search qualities…')}
-                      />
-                    </div>
-                    <div className={styles.field}>
-                      <span className={styles.labelRow}>
-                        <span className={styles.labelWithHint}>
-                          <label className={styles.label} htmlFor="node-image-style">
-                            {t('Style')}
-                          </label>
-                          <FieldHint label={t('Style')}>
-                            {t('Vivid leans towards dramatic, hyper-real pictures and natural towards lifelike ones. Only a model that takes a style honours it.')}
-                          </FieldHint>
-                        </span>
-                      </span>
-                      <DefinitionPicker
-                        id="node-image-style"
-                        value={draft.imageStyle ?? ''}
-                        options={IMAGE_STYLES.map((style) => ({ value: style, label: imageStyleLabel(style) }))}
-                        pinned={{ value: '', label: t('Model default') }}
-                        onChoose={(chosen) => setDraft({ ...draft, imageStyle: chosen || null })}
-                        placeholder={t('Model default')}
-                        searchPlaceholder={t('Search styles…')}
-                      />
-                    </div>
-                  </>
-                )}
+                        <DefinitionPicker
+                          id={`node-image-${spec.name}`}
+                          value={held ?? ''}
+                          options={options}
+                          pinned={{ value: '', label: t('Model default') }}
+                          onChoose={(picked) => setDraft({ ...draft, [field]: picked || null })}
+                          placeholder={t('Model default')}
+                          searchPlaceholder={t('Search…')}
+                        />
+                      </div>
+                    );
+                  })}
                 {((draft.kind === 'ACTION' && draft.actionId !== null) ||
                   draft.kind === 'IMAGE' ||
                   draft.kind === 'AGENT' ||
@@ -6425,6 +6530,14 @@ Change the keystroke in Preferences.`}
         kind="disable"
         onClose={() => setSwitchingOff(false)}
         onConfirm={() => switchTo(false)}
+      />
+
+      <ImageSizePresetsDialog
+        open={managingPresets}
+        workspaceId={workspaceId}
+        presets={imagePresets}
+        onChange={setImagePresets}
+        onClose={() => setManagingPresets(false)}
       />
 
       <ConfirmDialog

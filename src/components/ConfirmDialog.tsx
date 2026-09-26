@@ -17,7 +17,8 @@ export type ConfirmKind =
   | 'removeComment'
   | 'removeSession'
   | 'removeScratchpad'
-  | 'removeIssueStatus';
+  | 'removeIssueStatus'
+  | 'removeImageSizePreset';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -35,6 +36,7 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeSession',
   'removeScratchpad',
   'removeIssueStatus',
+  'removeImageSizePreset',
 ]);
 
 export interface ConfirmDialogProps {
@@ -195,6 +197,21 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
         <>
           Remove the status {name} from this workspace? No issue holds it. Where the history says an issue
           was once in it, it will say so by the key from now on.
+        </>
+      ),
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeImageSizePreset: {
+      title: t('Remove size preset'),
+      /*
+       * Short, because nothing depends on a preset: a node stores the numbers
+       * it filled in, so every node drawn with this size goes on drawing at it.
+       * What is left to say is exactly that.
+       */
+      message: (
+        <>
+          Remove the size preset {name} from this workspace&apos;s menu? Nodes already set to its size keep
+          their numbers; only the shortcut goes.
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),

@@ -1,0 +1,122 @@
+/*
+ * The list of a workspace's image size presets, in the shape the issue
+ * statuses take on the settings page: a bordered row each, the name as the
+ * edit control, the size beside it, and the move and remove marks at the end.
+ */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+/* The name is the edit control, as a status's label is. */
+.nameButton {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.size {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.input {
+  min-width: 0;
+  padding: var(--space-4) var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent-brand);
+}
+
+.name {
+  flex: 1 1 0;
+}
+
+.side {
+  flex: 0 0 72px;
+  width: 72px;
+  font-family: var(--font-mono);
+}
+
+.by {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.done,
+.move,
+.remove {
+  flex: none;
+  padding: 0 var(--space-6);
+  background: none;
+  border: 0;
+  font-family: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.done {
+  font-size: var(--text-sm);
+  color: var(--color-accent-brand);
+}
+
+.done:hover:not(:disabled),
+.move:hover:not(:disabled),
+.remove:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.done:disabled,
+.move:disabled,
+.remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.none {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}

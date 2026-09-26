@@ -1648,3 +1648,25 @@ select.input {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/* ---- An image node's free size: width, height and the workspace's presets (#431) ---- */
+
+/*
+ * The two boxes and the menu on one line, because a size is one thing read as
+ * "800 × 600" and three fields stacked would read as three settings.
+ */
+.imageSizeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.imageSizeRow .inputWrapper {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.imageSizeBy {
+  flex: none;
+  color: var(--color-text-muted);
+}

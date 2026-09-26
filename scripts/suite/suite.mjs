@@ -707,6 +707,18 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'image-parameters-check',
+    what: "an image node draws only the controls its model takes, and a free size has the workspace's presets",
+    /*
+     * Issue #431. Makes two image models of its own and takes them away, and
+     * adds a preset to the workspace's menu that it removes itself. Alone,
+     * because those models are in every picker on the workspace while the walk
+     * runs. The graph is never saved.
+     */
+    needs: ['workflow'],
+    alone: true,
+  },
+  {
     name: 'sieve-memory-check',
     what: 'the origin sieve on Functions and Tools survives a refresh, per list',
     // Reads two lists and sets a select; it creates nothing, so it runs
