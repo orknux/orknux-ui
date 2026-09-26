@@ -10,6 +10,11 @@ import {
   fetchLlmSessionEvents,
   removeLlmSession,
   fetchLlmSessionFamily,
+  fetchSessionScratchpads,
+  fetchSessionScratchpad,
+  createSessionScratchpad,
+  writeSessionScratchpad,
+  deleteSessionScratchpad,
 } from '../../api/llmSessions';
 import type {
   LlmSession,
@@ -18,6 +23,8 @@ import type {
   LlmSessionEventOrder,
   LlmSessionEventPage,
   LlmSessionMember,
+  SessionScratchpad,
+  SessionScratchpadContent,
 } from '../../api/llmSessions';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -145,6 +152,17 @@ function thoughtFor(millis: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ${Math.round(seconds - minutes * 60)}s`;
+}
+
+/** How many bytes a piece of text is, the unit the scratchpad budget is spent in. */
+function byteLength(text: string): number {
+  return new TextEncoder().encode(text).length;
+}
+
+/** A byte count in the words a person reads: bytes under a kilobyte, then KB. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 /** One line of the transcript: what happened, and for a tool, what came back. */
@@ -378,6 +396,133 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    */
   const hasFamily = family !== null && family.length > 1;
 
+  /*
+   * The session's scratchpads: the working files an agent kept within the
+   * conversation, listed below the sessions panel. Issue #429.
+   *
+   * Its own, and the shared ones of the sessions it was started under - the same
+   * files the agent's tools see. Listed without their content, which is fetched
+   * one at a time when one is opened.
+   */
+  const [scratchpads, setScratchpads] = useState<SessionScratchpad[] | null>(null);
+  const loadScratchpads = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionScratchpads(sessionId)
+      .then(setScratchpads)
+      .catch(() => setScratchpads(null));
+  }, [sessionId]);
+  useEffect(loadScratchpads, [loadScratchpads]);
+
+  /*
+   * Which subview the body is showing: the transcript, one scratchpad's content,
+   * or the form for a new one. The three are mutually exclusive - opening a pad
+   * closes the form, and going back to the transcript closes both - so the
+   * subtitle reads as one place at a time rather than a silent body swap.
+   */
+  const [openPad, setOpenPad] = useState<string | null>(null);
+  const [padContent, setPadContent] = useState<SessionScratchpadContent | null>(null);
+  const [padDraft, setPadDraft] = useState('');
+  const [padLoading, setPadLoading] = useState(false);
+  const [padError, setPadError] = useState<string | null>(null);
+  const [savingPad, setSavingPad] = useState(false);
+  /** The pad the confirm dialog is asking about, or null when it is closed. */
+  const [removingPad, setRemovingPad] = useState<string | null>(null);
+  /** Whether the new-scratchpad form is open, and what has been typed into it. */
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [creatingBusy, setCreatingBusy] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  /* A different session is a different set of pads; drop back to its transcript. */
+  useEffect(() => {
+    setOpenPad(null);
+    setPadContent(null);
+    setCreating(false);
+  }, [sessionId]);
+
+  const backToTranscript = useCallback(() => {
+    setOpenPad(null);
+    setPadContent(null);
+    setPadError(null);
+    setCreating(false);
+  }, []);
+
+  const openScratchpad = useCallback(
+    (name: string) => {
+      if (sessionId === '') return;
+      setCreating(false);
+      setOpenPad(name);
+      setPadContent(null);
+      setPadError(null);
+      setPadLoading(true);
+      fetchSessionScratchpad(sessionId, name)
+        .then((pad) => {
+          setPadLoading(false);
+          if (pad === null) {
+            setPadError(t('That scratchpad is no longer here.'));
+            return;
+          }
+          setPadContent(pad);
+          setPadDraft(pad.content);
+        })
+        .catch((cause: unknown) => {
+          setPadLoading(false);
+          setPadError(cause instanceof Error ? cause.message : t('Could not open that scratchpad.'));
+        });
+    },
+    [sessionId],
+  );
+
+  const savePad = useCallback(() => {
+    if (padContent === null || sessionId === '') return;
+    setSavingPad(true);
+    setPadError(null);
+    writeSessionScratchpad(sessionId, padContent.name, padDraft)
+      .then((updated) => {
+        setSavingPad(false);
+        setPadContent(updated);
+        setPadDraft(updated.content);
+        loadScratchpads();
+      })
+      .catch((cause: unknown) => {
+        setSavingPad(false);
+        setPadError(cause instanceof Error ? cause.message : t('That could not be saved.'));
+      });
+  }, [padContent, padDraft, sessionId, loadScratchpads]);
+
+  const startCreate = useCallback(() => {
+    setCreating(true);
+    setOpenPad(null);
+    setPadContent(null);
+    setCreateError(null);
+    setNewName('');
+    setNewDescription('');
+    setNewContent('');
+  }, []);
+
+  const submitNew = useCallback(() => {
+    if (sessionId === '') return;
+    setCreatingBusy(true);
+    setCreateError(null);
+    createSessionScratchpad(sessionId, newName.trim(), newDescription.trim() || null, newContent)
+      .then((created) => {
+        setCreatingBusy(false);
+        setCreating(false);
+        loadScratchpads();
+        openScratchpad(created.name);
+      })
+      .catch((cause: unknown) => {
+        setCreatingBusy(false);
+        setCreateError(cause instanceof Error ? cause.message : t('That scratchpad could not be created.'));
+      });
+  }, [sessionId, newName, newDescription, newContent, loadScratchpads, openScratchpad]);
+
+  /* The body shows the transcript only when no pad is open and the form is shut. */
+  const showTranscript = openPad === null && !creating;
+  const showAside = !missing && held !== null;
+
   return (
     <AppShell
       user={shellUser(session)}
@@ -493,6 +638,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                 {removeError}
               </p>
             )}
+            {/*
+              Which subview the body is showing, so switching to a scratchpad
+              reads as going somewhere rather than the transcript quietly
+              becoming something else. The transcript is the way back, and it is
+              a link once there is anywhere to come back from. Issue #429.
+            */}
+            <p className={styles.subview} data-subview={creating ? 'new' : openPad === null ? 'transcript' : 'scratchpad'}>
+              {showTranscript ? (
+                <span className={styles.subviewHere}>{t('Transcript')}</span>
+              ) : (
+                <>
+                  <button type="button" className={styles.subviewBack} onClick={backToTranscript}>
+                    {t('Transcript')}
+                  </button>
+                  <span className={styles.subviewSep}>/</span>
+                  <span className={styles.subviewHere}>{creating ? t('New scratchpad') : openPad}</span>
+                </>
+              )}
+            </p>
             <p className={styles.meta}>
               {held === null ? (
                 'Loading…'
@@ -569,9 +733,9 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         </section>
       )}
 
-      <div className={hasFamily ? styles.split : undefined}>
+      <div className={showAside ? styles.split : undefined}>
       <div className={styles.main}>
-      {!missing && (
+      {!missing && showTranscript && (
         <>
           <div className={styles.filterBar}>
             <div className={styles.searchInput}>
@@ -686,7 +850,124 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           </section>
         </>
       )}
+
+      {/*
+        One scratchpad, opened in place of the transcript. Issue #429.
+
+        The document itself, in a textarea that is saved back through the same
+        service the agent writes with - so a refusal it would give the agent, a
+        paste over the byte budget, is the message shown here too. Deleting is
+        the owner's only; an inherited pad shows no Delete, the way the service
+        would refuse one.
+      */}
+      {!missing && openPad !== null && (
+        <section className={styles.padView} aria-label={t('Scratchpad')}>
+          {padLoading && (
+            <p className={styles.notice}>
+              <Loader />
+            </p>
+          )}
+          {padError !== null && (
+            <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
+              {padError}
+            </p>
+          )}
+          {padContent !== null && (
+            <>
+              {padContent.description !== null && padContent.description !== '' && (
+                <p className={styles.padDescription}>{padContent.description}</p>
+              )}
+              <textarea
+                className={styles.padTextarea}
+                value={padDraft}
+                spellCheck={false}
+                onChange={(event) => setPadDraft(event.target.value)}
+                aria-label={t('Scratchpad content')}
+                data-scratchpad-content={padContent.name}
+              />
+              <div className={styles.padActions}>
+                <span className={styles.padSize}>{formatBytes(byteLength(padDraft))}</span>
+                <div className={styles.padButtons}>
+                  {/* Only the owner may delete; an inherited pad refuses, so it is not offered. */}
+                  {padContent.ownedHere && (
+                    <button
+                      type="button"
+                      className={styles.remove}
+                      onClick={() => setRemovingPad(padContent.name)}
+                    >
+                      {t('Delete')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.padSave}
+                    disabled={savingPad || padDraft === padContent.content}
+                    onClick={savePad}
+                  >
+                    {savingPad ? t('Saving…') : t('Save')}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* The form for a new scratchpad, in place of the transcript. Issue #429. */}
+      {!missing && creating && (
+        <section className={styles.padView} aria-label={t('New scratchpad')}>
+          <div className={styles.createForm}>
+            <label className={styles.createLabel} htmlFor="new-pad-name">{t('Name')}</label>
+            <input
+              id="new-pad-name"
+              className={styles.createInput}
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              autoFocus
+            />
+            <label className={styles.createLabel} htmlFor="new-pad-description">{t('Description')}</label>
+            <input
+              id="new-pad-description"
+              className={styles.createInput}
+              value={newDescription}
+              placeholder={t('Optional')}
+              onChange={(event) => setNewDescription(event.target.value)}
+            />
+            <label className={styles.createLabel} htmlFor="new-pad-content">{t('Content')}</label>
+            <textarea
+              id="new-pad-content"
+              className={styles.padTextarea}
+              value={newContent}
+              spellCheck={false}
+              onChange={(event) => setNewContent(event.target.value)}
+            />
+            {createError !== null && (
+              <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
+                {createError}
+              </p>
+            )}
+            <div className={styles.padActions}>
+              <span className={styles.padSize}>{formatBytes(byteLength(newContent))}</span>
+              <div className={styles.padButtons}>
+                <button type="button" className={styles.continue} onClick={backToTranscript}>
+                  {t('Cancel')}
+                </button>
+                <button
+                  type="button"
+                  className={styles.padSave}
+                  disabled={creatingBusy || newName.trim() === ''}
+                  onClick={submitNew}
+                >
+                  {creatingBusy ? t('Creating…') : t('Create')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
       </div>
+      {showAside && (
+      <div className={styles.rail}>
       {hasFamily && (
         <aside id="session-family" className={styles.family} aria-label={t('Sessions in this conversation')}>
           <p className={styles.familyTitle}>{t('Sessions')}</p>
@@ -730,7 +1011,74 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           )}
         </aside>
       )}
+      {/*
+        The session's scratchpads, below the sessions panel. A working file an
+        agent kept within the conversation; clicking one opens it in place of the
+        transcript, and the + starts a new one. Issue #429.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('Scratchpads in this session')}>
+        <div className={styles.scratchpadHead}>
+          <p className={styles.familyTitle}>{t('Scratchpads')}</p>
+          <button
+            type="button"
+            className={styles.scratchpadAdd}
+            onClick={startCreate}
+            title={t('New scratchpad')}
+            aria-label={t('New scratchpad')}
+            data-scratchpad-add=""
+          >
+            +
+          </button>
+        </div>
+        {scratchpads === null ? (
+          <p className={styles.familyNote}>{t('Could not load the scratchpads.')}</p>
+        ) : scratchpads.length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {scratchpads.map((pad) => {
+              const current = !creating && pad.name === openPad;
+              return (
+                <li key={pad.name}>
+                  <button
+                    type="button"
+                    className={current ? `${styles.padRow} ${styles.padRowCurrent}` : styles.padRow}
+                    aria-current={current ? 'page' : undefined}
+                    data-scratchpad={pad.name}
+                    onClick={() => openScratchpad(pad.name)}
+                  >
+                    <span className={styles.padRowTop}>
+                      <span className={styles.padRowName}>{pad.name}</span>
+                      <span className={styles.padRowBytes}>{formatBytes(pad.bytes)}</span>
+                    </span>
+                    {pad.description !== null && pad.description !== '' && (
+                      <span className={styles.padRowDesc}>{pad.description}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </aside>
       </div>
+      )}
+      </div>
+      <ConfirmDialog
+        subject={removingPad}
+        kind="removeScratchpad"
+        onClose={() => setRemovingPad(null)}
+        onConfirm={async () => {
+          const name = removingPad;
+          if (name === null || sessionId === '') return;
+          /* A refusal here (an inherited pad, say) is thrown, and the dialog shows it. */
+          await deleteSessionScratchpad(sessionId, name);
+          setRemovingPad(null);
+          /* If the one just removed was open, fall back to the transcript. */
+          if (openPad === name) backToTranscript();
+          loadScratchpads();
+        }}
+      />
       <ConfirmDialog
         subject={removing && held !== null ? held.key : null}
         kind="removeSession"

@@ -545,10 +545,21 @@
   min-width: 0;
 }
 
-.family {
+/*
+ * The right rail: the sessions panel and, below it, the session's scratchpads.
+ * Sticky as a whole so both follow a long transcript. Issue #429.
+ */
+.rail {
   position: sticky;
   top: 0;
   flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.family,
+.scratchpads {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
@@ -556,6 +567,240 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-8);
+}
+
+/* At phone width the rail drops under the body rather than squeezing it. */
+@media (max-width: 720px) {
+  .split {
+    flex-direction: column;
+  }
+
+  .rail {
+    position: static;
+    flex-basis: auto;
+  }
+}
+
+/* ---- The session's scratchpads (#429) ---- */
+
+.scratchpadHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.scratchpadAdd {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.scratchpadAdd:hover {
+  border-color: var(--color-accent-brand);
+  color: var(--color-accent-brand);
+}
+
+.padRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.padRow:hover,
+.padRowCurrent {
+  background: var(--color-surface);
+}
+
+.padRowTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.padRowName {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.padRowBytes {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.padRowDesc {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- One scratchpad, and the new-scratchpad form (#429) ---- */
+
+.padView {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: 100%;
+}
+
+.padDescription {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.padTextarea {
+  width: 100%;
+  min-height: 360px;
+  padding: var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  resize: vertical;
+}
+
+.padTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent-brand);
+}
+
+.padActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.padSize {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.padButtons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.padSave {
+  flex: none;
+  padding: var(--space-6) var(--space-14);
+  background: var(--color-accent-brand);
+  border: 1px solid var(--color-accent-brand);
+  border-radius: var(--radius-6);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-on-accent, #fff);
+  cursor: pointer;
+}
+
+.padSave:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.padSave:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.createForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.createLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.createInput {
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.createInput:focus {
+  outline: none;
+  border-color: var(--color-accent-brand);
+}
+
+/* ---- The subview line: transcript, or a named scratchpad (#429) ---- */
+
+.subview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.subviewBack {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-accent-brand);
+  cursor: pointer;
+}
+
+.subviewBack:hover {
+  text-decoration: underline;
+}
+
+.subviewSep {
+  color: var(--color-text-muted);
+}
+
+.subviewHere {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .familyTitle {

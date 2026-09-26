@@ -219,6 +219,105 @@ export async function removeLlmSession(id: string): Promise<boolean> {
 }
 
 /**
+ * One of a session's scratchpads, listed beside the transcript. Issue #429.
+ *
+ * A working file an agent kept within the conversation. Named and sized without
+ * the content: a list is scanned rather than read, and a pad can be a whole
+ * page. The content is fetched one at a time with `fetchSessionScratchpad`.
+ */
+export interface SessionScratchpad {
+  /** Its name within the session — how the agent addresses it, like a filename. */
+  name: string;
+  /** What it is for, in a line, or null where none was set. */
+  description: string | null;
+  /** Its size in bytes, which is what the session's scratchpad budget is spent in. */
+  bytes: number;
+  /** Whether the sessions started under the owner may read and add to it. */
+  shared: boolean;
+  /** Whether this session owns it, or only inherited it shared from an ancestor — only the owner may delete it. */
+  ownedHere: boolean;
+}
+
+/** One scratchpad opened: the listed row, with the document itself. Issue #429. */
+export interface SessionScratchpadContent extends SessionScratchpad {
+  /** The document itself. */
+  content: string;
+}
+
+const SCRATCHPAD_FIELDS = 'name description bytes shared ownedHere';
+const SCRATCHPAD_CONTENT_FIELDS = `${SCRATCHPAD_FIELDS} content`;
+
+/** A session's scratchpads: its own, and the shared ones of the sessions it was started under. */
+export async function fetchSessionScratchpads(sessionId: string): Promise<SessionScratchpad[]> {
+  const data = await graphql<{ sessionScratchpads: SessionScratchpad[] }>(
+    `query ($sessionId: ID!) { sessionScratchpads(sessionId: $sessionId) { ${SCRATCHPAD_FIELDS} } }`,
+    { sessionId },
+  );
+  return data.sessionScratchpads;
+}
+
+/** One scratchpad, with its content. Null where the session has none by that name. */
+export async function fetchSessionScratchpad(
+  sessionId: string,
+  name: string,
+): Promise<SessionScratchpadContent | null> {
+  const data = await graphql<{ sessionScratchpad: SessionScratchpadContent | null }>(
+    `query ($sessionId: ID!, $name: String!) {
+       sessionScratchpad(sessionId: $sessionId, name: $name) { ${SCRATCHPAD_CONTENT_FIELDS} }
+     }`,
+    { sessionId, name },
+  );
+  return data.sessionScratchpad;
+}
+
+/**
+ * Makes a new scratchpad in the session. Issue #429.
+ *
+ * Rejected in words — a name taken here, one over the byte budget — so the form
+ * shows why. `content` and `description` are optional; a pad may start empty.
+ */
+export async function createSessionScratchpad(
+  sessionId: string,
+  name: string,
+  description: string | null,
+  content: string,
+): Promise<SessionScratchpadContent> {
+  const data = await graphql<{ createSessionScratchpad: SessionScratchpadContent }>(
+    `mutation ($sessionId: ID!, $name: String!, $description: String, $content: String) {
+       createSessionScratchpad(sessionId: $sessionId, name: $name, description: $description, content: $content) {
+         ${SCRATCHPAD_CONTENT_FIELDS}
+       }
+     }`,
+    { sessionId, name, description: description || null, content },
+  );
+  return data.createSessionScratchpad;
+}
+
+/** Replaces a scratchpad's whole content. Rejected in words when it would go over the byte budget. */
+export async function writeSessionScratchpad(
+  sessionId: string,
+  name: string,
+  content: string,
+): Promise<SessionScratchpadContent> {
+  const data = await graphql<{ writeSessionScratchpad: SessionScratchpadContent }>(
+    `mutation ($sessionId: ID!, $name: String!, $content: String!) {
+       writeSessionScratchpad(sessionId: $sessionId, name: $name, content: $content) { ${SCRATCHPAD_CONTENT_FIELDS} }
+     }`,
+    { sessionId, name, content },
+  );
+  return data.writeSessionScratchpad;
+}
+
+/** Removes one of a session's scratchpads. Only the owner may; an inherited one is refused in words. */
+export async function deleteSessionScratchpad(sessionId: string, name: string): Promise<boolean> {
+  const data = await graphql<{ deleteSessionScratchpad: boolean }>(
+    `mutation ($sessionId: ID!, $name: String!) { deleteSessionScratchpad(sessionId: $sessionId, name: $name) }`,
+    { sessionId, name },
+  );
+  return data.deleteSessionScratchpad;
+}
+
+/**
  * One session's transcript.
  *
  * `kinds` left out asks for every kind — as does an empty list, which is the

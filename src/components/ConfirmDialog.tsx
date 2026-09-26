@@ -15,7 +15,8 @@ export type ConfirmKind =
   | 'bundleLibrary'
   | 'unloadPlugin'
   | 'removeComment'
-  | 'removeSession';
+  | 'removeSession'
+  | 'removeScratchpad';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -25,7 +26,14 @@ export type ConfirmKind =
  * kind that deletes something arrived wearing the amber warning of a kind that
  * merely switches something off.
  */
-const DESTRUCTIVE = new Set<ConfirmKind>(['remove', 'deleteChat', 'removeComment', 'unloadPlugin', 'removeSession']);
+const DESTRUCTIVE = new Set<ConfirmKind>([
+  'remove',
+  'deleteChat',
+  'removeComment',
+  'unloadPlugin',
+  'removeSession',
+  'removeScratchpad',
+]);
 
 export interface ConfirmDialogProps {
   /** What is being acted on, named, or null when the dialog is closed. */
@@ -172,6 +180,15 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeScratchpad: {
+      title: t('Delete scratchpad'),
+      message: (
+        <>
+          Delete the scratchpad {name}? Its content goes with it, and there is no way back from this one.
+        </>
+      ),
+      button: submitting ? t('Deleting…') : t('Delete'),
     },
     deleteChat: {
       title: t('Delete chat'),
