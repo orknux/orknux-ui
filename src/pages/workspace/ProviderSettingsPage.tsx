@@ -56,6 +56,14 @@ const API_VERSIONS = ['2024-06-01', '2024-08-01-preview', '2024-10-21', '2025-01
 
 const DEFAULT_SCOPE = 'https://cognitiveservices.azure.com/.default';
 
+/** An empty box is no default throttle; a number is a rate, requests possibly fractional. */
+function toNumber(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /** What each type's endpoint usually looks like, as a hint and nothing more. */
 function endpointHint(type: ProviderType): string {
   switch (type) {
@@ -102,6 +110,13 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
    * Turning it off is the deliberate act, so it is never the starting state.
    */
   const [checkEnabled, setCheckEnabled] = useState(true);
+  /*
+   * The throttle defaults this provider hands its models. Empty is no default:
+   * a model may still set its own rate. Retry-After defaults to obeyed. #426.
+   */
+  const [throttleTokens, setThrottleTokens] = useState('');
+  const [throttleRequests, setThrottleRequests] = useState('');
+  const [acceptRetryAfter, setAcceptRetryAfter] = useState(true);
   /**
    * The one secret this provider has, whatever it is called this minute.
    *
@@ -211,6 +226,9 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
     setClientId(found.clientId ?? '');
     setScope(found.scope ?? DEFAULT_SCOPE);
     setCheckEnabled(found.checkEnabled);
+    setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
+    setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
+    setAcceptRetryAfter(found.acceptRetryAfter);
     key.reset({ stored: found.secretSet, variable: found.secretVariableId });
   }
 
@@ -310,6 +328,9 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
       clientId: entra ? clientId.trim() || null : null,
       scope: entra ? scope.trim() || null : null,
       checkEnabled,
+      throttleTokensPerSecond: toNumber(throttleTokens),
+      throttleRequestsPerSecond: toNumber(throttleRequests),
+      acceptRetryAfter,
     };
   }
 
@@ -744,6 +765,64 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                 />
               </div>
             )}
+          </section>
+
+          {/*
+            The rate this provider's models default to, and whether they wait
+            out a 429's Retry-After. Per model in the end, because limits differ
+            by model — a model overrides these — but the defaults live here where
+            one number can cover a provider's whole shelf. Issue #426.
+          */}
+          <section className={styles.card}>
+            <span className={styles.labelWithHint}>
+              <h2 className={styles.cardTitle}>{t('Throttle')}</h2>
+              {/* About the card, not a field: what holding under a rate is for. */}
+              <FieldHint label={t('Throttle')}>
+                {t('Hold under the provider\'s limit instead of being turned away with a 429.')}
+              </FieldHint>
+            </span>
+            <div className={styles.divider} />
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="throttle-tokens">{t('Tokens per second')}</label>
+                <input
+                  id="throttle-tokens"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={throttleTokens}
+                  onChange={(event) => {
+                    setThrottleTokens(event.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder={t('No default')}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="throttle-requests">{t('Requests per second')}</label>
+                <input
+                  id="throttle-requests"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={throttleRequests}
+                  onChange={(event) => {
+                    setThrottleRequests(event.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder={t('No default')}
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+            <label className={styles.checkboxField}>
+              <input
+                type="checkbox"
+                checked={acceptRetryAfter}
+                onChange={(event) => {
+                  setAcceptRetryAfter(event.target.checked);
+                  setSaved(false);
+                }}
+              />
+              <span>{t('Obey Retry-After')}</span>
+            </label>
           </section>
 
           <div className={styles.footer}>

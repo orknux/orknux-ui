@@ -15,6 +15,7 @@ import {
   setModelEnabled,
   updateModel,
   updateModelQuotas,
+  updateModelThrottle,
 } from '../../api/models';
 import type { Model, ModelUsage, ResetInterval } from '../../api/models';
 import type { SessionUser } from '../../api/session';
@@ -82,6 +83,17 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [tokenLimit, setTokenLimit] = useState('');
   const [resetInterval, setResetInterval] = useState<ResetInterval>('MONTHLY');
   const [requestsPerMinute, setRequestsPerMinute] = useState('');
+  /*
+   * This model's own throttle, apart from the quotas: empty inherits the
+   * provider's default, 0 turns that rate off, and Retry-After is a third state
+   * — inherit the provider, obey, or ignore — so it is a select, not a box. #426.
+   */
+  const [throttleTokens, setThrottleTokens] = useState('');
+  const [throttleRequests, setThrottleRequests] = useState('');
+  const [retryAfter, setRetryAfter] = useState<'inherit' | 'obey' | 'ignore'>('inherit');
+  const [throttleError, setThrottleError] = useState<string | null>(null);
+  const [throttleSaved, setThrottleSaved] = useState(false);
+  const [throttleSaving, setThrottleSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -163,6 +175,9 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     setTokenLimit(found.tokenLimit === null ? '' : String(found.tokenLimit));
     setResetInterval(found.resetInterval);
     setRequestsPerMinute(found.requestsPerMinute === null ? '' : String(found.requestsPerMinute));
+    setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
+    setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
+    setRetryAfter(found.acceptRetryAfter === null ? 'inherit' : found.acceptRetryAfter ? 'obey' : 'ignore');
   }
 
   async function handleToggle() {
@@ -255,6 +270,34 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
       setSaveError(cause instanceof Error ? cause.message : t('Could not save the quotas.'));
     } finally {
       setSaving(false);
+    }
+  }
+
+  /**
+   * The model's throttle, saved on its own. null on a rate inherits the
+   * provider's default and 0 turns it off; Retry-After's inherit is null, so
+   * the three-way select round-trips through null rather than a false.
+   */
+  async function handleSaveThrottle(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (model === null || throttleSaving) return;
+
+    setThrottleSaving(true);
+    setThrottleError(null);
+    setThrottleSaved(false);
+    try {
+      apply(
+        await updateModelThrottle(model.id, {
+          throttleTokensPerSecond: toNumber(throttleTokens),
+          throttleRequestsPerSecond: toNumber(throttleRequests),
+          acceptRetryAfter: retryAfter === 'inherit' ? null : retryAfter === 'obey',
+        }),
+      );
+      setThrottleSaved(true);
+    } catch (cause) {
+      setThrottleError(cause instanceof Error ? cause.message : t('Could not save the throttle.'));
+    } finally {
+      setThrottleSaving(false);
     }
   }
 
@@ -691,6 +734,79 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
               {saved && saveError === null && <p className={styles.saved}>{t('Saved.')}</p>}
               <button type="submit" className={styles.primaryButton} disabled={saving}>
                 {saving ? t('Saving…') : t('Save Changes')}
+              </button>
+            </div>
+          </form>
+
+          {/*
+            The model's own throttle, its own card and its own Save like the
+            quotas above — a quota is what the workspace will allow, a throttle
+            is the pace a call is let out at. Empty inherits the provider's
+            default; a typed 0 turns that rate off though the provider sets one.
+          */}
+          <form className={styles.card} onSubmit={handleSaveThrottle}>
+            <span className={styles.labelWithHint}>
+              <h2 className={styles.sectionHeading}>{t('Throttle')}</h2>
+              {/* About the section: what an empty box and a typed 0 each mean. */}
+              <FieldHint label={t('Throttle')}>
+                {t('Empty inherits the provider\'s default, 0 turns a dimension off.')}
+              </FieldHint>
+            </span>
+
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="throttle-tokens">{t('Tokens per second')}</label>
+                <input
+                  id="throttle-tokens"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={throttleTokens}
+                  onChange={(event) => setThrottleTokens(event.target.value)}
+                  placeholder={t('Inherit')}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="throttle-requests">{t('Requests per second')}</label>
+                <input
+                  id="throttle-requests"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={throttleRequests}
+                  onChange={(event) => setThrottleRequests(event.target.value)}
+                  placeholder={t('Inherit')}
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="retry-after">{t('Obey Retry-After')}</label>
+                <div className={styles.selectWrapper}>
+                  <select
+                    id="retry-after"
+                    className={`${styles.input} ${styles.select}`}
+                    value={retryAfter}
+                    onChange={(event) => setRetryAfter(event.target.value as 'inherit' | 'obey' | 'ignore')}
+                  >
+                    <option value="inherit">{t('Inherit provider')}</option>
+                    <option value="obey">{t('Obey')}</option>
+                    <option value="ignore">{t('Ignore')}</option>
+                  </select>
+                  <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+                </div>
+              </div>
+              <div className={styles.field} />
+            </div>
+
+            <div className={styles.formFooter}>
+              {throttleError !== null && (
+                <p className={styles.saveError} role="alert">
+                  {throttleError}
+                </p>
+              )}
+              {throttleSaved && throttleError === null && <p className={styles.saved}>{t('Saved.')}</p>}
+              <button type="submit" className={styles.primaryButton} disabled={throttleSaving}>
+                {throttleSaving ? t('Saving…') : t('Save Changes')}
               </button>
             </div>
           </form>

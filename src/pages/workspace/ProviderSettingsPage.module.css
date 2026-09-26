@@ -195,6 +195,24 @@
   min-width: 0;
 }
 
+/*
+ * The boolean in the Throttle group. The provider's own booleans elsewhere are
+ * a toggle, but this reads as one item in a list of three fields rather than a
+ * setting on its own, so it takes the tick the model page's throttle uses too.
+ */
+.checkboxField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.checkboxField input {
+  accent-color: var(--color-accent-brand);
+}
+
 /* ---- Authentication method ---- */
 
 .segmented {

@@ -53,6 +53,12 @@ export interface ModelProvider {
    * it, and so does every chat and task the provider serves.
    */
   checkEnabled: boolean;
+  /** The default tokens a second this provider's models hold under; null is no default. Issue #426. */
+  throttleTokensPerSecond: number | null;
+  /** The default requests a second, possibly below one; null is no default. Issue #426. */
+  throttleRequestsPerSecond: number | null;
+  /** Whether a 429's Retry-After is obeyed by default, ahead of a node's retry. Issue #426. */
+  acceptRetryAfter: boolean;
   status: ProviderStatus;
   lastCheckMessage: string | null;
   lastCheckedAt: string | null;
@@ -94,6 +100,11 @@ export interface Model {
   tokenLimit: number | null;
   resetInterval: ResetInterval;
   requestsPerMinute: number | null;
+  /** This model's own throttle; null on a rate inherits the provider, 0 turns it off. Issue #426. */
+  throttleTokensPerSecond: number | null;
+  throttleRequestsPerSecond: number | null;
+  /** Whether it obeys a 429's Retry-After; null inherits the provider. Issue #426. */
+  acceptRetryAfter: boolean | null;
   inputCostPerMillion: number | null;
   outputCostPerMillion: number | null;
   /** Which voice a SPEECH model reads in; null sends none and takes the provider's. */
@@ -151,11 +162,13 @@ export interface ModelUsage {
 
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
-  'checkEnabled status lastCheckMessage lastCheckedAt secretSet ' +
+  'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
+  'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput enabled ' +
-  'tokenLimit resetInterval requestsPerMinute inputCostPerMillion outputCostPerMillion voice skipEmptyLines ' +
+  'tokenLimit resetInterval requestsPerMinute throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
+  'inputCostPerMillion outputCostPerMillion voice skipEmptyLines ' +
   'imageCostPerImage';
 const USAGE_FIELDS =
   'modelId days from to empty requests inputTokens outputTokens totalTokens averageLatencyMillis ' +
@@ -254,6 +267,11 @@ export interface ProviderInput {
   scope?: string | null;
   /** Whether the timed sweep may call it. The button is not governed by this. */
   checkEnabled?: boolean;
+  /** Default throttle for this provider's models; null clears a rate to no default. Issue #426. */
+  throttleTokensPerSecond?: number | null;
+  throttleRequestsPerSecond?: number | null;
+  /** Whether a 429's Retry-After is obeyed by default. Issue #426. */
+  acceptRetryAfter?: boolean;
 }
 
 export async function createProvider(
@@ -353,6 +371,27 @@ export async function updateModelQuotas(id: string, input: QuotasInput): Promise
     { id, input },
   );
   return data.updateModelQuotas;
+}
+
+/**
+ * A model's rate throttle, saved together. Null on a rate inherits the
+ * provider's default, 0 turns that dimension off, null acceptRetryAfter
+ * inherits the provider's choice. Issue #426.
+ */
+export interface ThrottleInput {
+  throttleTokensPerSecond: number | null;
+  throttleRequestsPerSecond: number | null;
+  acceptRetryAfter: boolean | null;
+}
+
+export async function updateModelThrottle(id: string, input: ThrottleInput): Promise<Model> {
+  const data = await graphql<{ updateModelThrottle: Model }>(
+    `mutation UpdateModelThrottle($id: ID!, $input: ModelThrottleInput!) {
+       updateModelThrottle(id: $id, input: $input) { ${MODEL_FIELDS} }
+     }`,
+    { id, input },
+  );
+  return data.updateModelThrottle;
 }
 
 export async function setModelEnabled(id: string, enabled: boolean): Promise<Model> {
