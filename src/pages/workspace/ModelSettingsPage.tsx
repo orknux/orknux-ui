@@ -77,9 +77,6 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [voice, setVoice] = useState('');
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   const [imageCost, setImageCost] = useState('');
-  const [windowError, setWindowError] = useState<string | null>(null);
-  const [windowSaved, setWindowSaved] = useState(false);
-  const [windowSaving, setWindowSaving] = useState(false);
   const [tokenLimit, setTokenLimit] = useState('');
   const [resetInterval, setResetInterval] = useState<ResetInterval>('MONTHLY');
   const [requestsPerMinute, setRequestsPerMinute] = useState('');
@@ -91,10 +88,15 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [throttleTokens, setThrottleTokens] = useState('');
   const [throttleRequests, setThrottleRequests] = useState('');
   const [retryAfter, setRetryAfter] = useState<'inherit' | 'obey' | 'ignore'>('inherit');
-  const [throttleError, setThrottleError] = useState<string | null>(null);
-  const [throttleSaved, setThrottleSaved] = useState(false);
-  const [throttleSaving, setThrottleSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /*
+   * One save, one message. The window, the quotas and the throttle were three
+   * cards with a Save each, so a page that had all three edited needed three
+   * presses, and the one at the top was out of sight while the box being typed
+   * in was at the bottom. They are one press in the header now - issue #386,
+   * which left this page for last because it had no single form to tie a
+   * header button to - and these three are what that press reports.
+   */
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -209,83 +211,55 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const reads = model?.kind === 'SPEECH';
 
   /**
-   * The window and the reserved answer, saved.
+   * Everything on this page that can be changed, saved in one press.
    *
-   * `updateModel` replaces a model's own details rather than patching them —
-   * the schema says as much, and the form that was meant to send every field
-   * was never built, which is why there was nowhere at all to record a window.
-   * So the fields this card does not show are sent back exactly as they were
-   * loaded: leaving one out would clear it.
+   * Three mutations, because they are three things on the server: the model's
+   * own details, what the workspace allows it, and the pace it is let out at.
+   * One press here, because the person pressing does not care which is which -
+   * they edited a page and want the page kept.
+   *
+   * One after another rather than at once. Each answers with the whole model,
+   * and three in flight would answer in whatever order they landed, so the one
+   * applied last could carry another's field as it was before that one wrote
+   * it. In order, the last answer is the model with all three in it.
+   *
+   * **The details.** `updateModel` replaces a model's own details rather than
+   * patching them — the schema says as much, and the form that was meant to
+   * send every field was never built, which is why there was nowhere at all to
+   * record a window. So the fields this page does not show are sent back
+   * exactly as they were loaded: leaving one out would clear it.
+   *
+   * **The throttle.** null on a rate inherits the provider's default and 0
+   * turns it off; Retry-After's inherit is null, so the three-way select
+   * round-trips through null rather than a false.
    */
-  async function handleSaveWindow(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (model === null || windowSaving) return;
-
-    setWindowSaving(true);
-    setWindowError(null);
-    setWindowSaved(false);
-    try {
-      apply(
-        await updateModel(model.id, {
-          name: model.name,
-          modelId: model.modelId,
-          kind: model.kind,
-          contextWindow: toNumber(contextWindow),
-          maxOutput: toNumber(maxOutput),
-          inputCostPerMillion: model.inputCostPerMillion,
-          outputCostPerMillion: model.outputCostPerMillion,
-          voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
-          skipEmptyLines: reads ? skipEmptyLines : model.skipEmptyLines,
-          // Sent back whatever it was, for the reason above: this mutation
-          // replaces a model's details rather than patching them, so a field
-          // this card does not show is a field left out and therefore cleared.
-          imageCostPerImage: draws ? toNumber(imageCost) : model.imageCostPerImage,
-        }),
-      );
-      setWindowSaved(true);
-    } catch (cause) {
-      setWindowError(cause instanceof Error ? cause.message : t('Could not save the context window.'));
-    } finally {
-      setWindowSaving(false);
-    }
-  }
-
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveAll() {
     if (model === null || saving) return;
 
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
-      apply(
-        await updateModelQuotas(model.id, {
-          tokenLimit: toNumber(tokenLimit),
-          resetInterval,
-          requestsPerMinute: toNumber(requestsPerMinute),
-        }),
-      );
-      setSaved(true);
-    } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : t('Could not save the quotas.'));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  /**
-   * The model's throttle, saved on its own. null on a rate inherits the
-   * provider's default and 0 turns it off; Retry-After's inherit is null, so
-   * the three-way select round-trips through null rather than a false.
-   */
-  async function handleSaveThrottle(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (model === null || throttleSaving) return;
-
-    setThrottleSaving(true);
-    setThrottleError(null);
-    setThrottleSaved(false);
-    try {
+      await updateModel(model.id, {
+        name: model.name,
+        modelId: model.modelId,
+        kind: model.kind,
+        contextWindow: toNumber(contextWindow),
+        maxOutput: toNumber(maxOutput),
+        inputCostPerMillion: model.inputCostPerMillion,
+        outputCostPerMillion: model.outputCostPerMillion,
+        voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
+        skipEmptyLines: reads ? skipEmptyLines : model.skipEmptyLines,
+        // Sent back whatever it was, for the reason above: this mutation
+        // replaces a model's details rather than patching them, so a field
+        // this page does not show is a field left out and therefore cleared.
+        imageCostPerImage: draws ? toNumber(imageCost) : model.imageCostPerImage,
+      });
+      await updateModelQuotas(model.id, {
+        tokenLimit: toNumber(tokenLimit),
+        resetInterval,
+        requestsPerMinute: toNumber(requestsPerMinute),
+      });
       apply(
         await updateModelThrottle(model.id, {
           throttleTokensPerSecond: toNumber(throttleTokens),
@@ -293,12 +267,18 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
           acceptRetryAfter: retryAfter === 'inherit' ? null : retryAfter === 'obey',
         }),
       );
-      setThrottleSaved(true);
+      setSaved(true);
     } catch (cause) {
-      setThrottleError(cause instanceof Error ? cause.message : t('Could not save the throttle.'));
+      setSaveError(cause instanceof Error ? cause.message : t('Could not save the model.'));
     } finally {
-      setThrottleSaving(false);
+      setSaving(false);
     }
+  }
+
+  /** Enter in any box on any of the three cards is the same press as the header's Save. */
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void saveAll();
   }
 
   async function handleRemove() {
@@ -334,7 +314,33 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{model?.name ?? '…'}</span>
         </p>
-        <h1 className={styles.pageTitle}>{model?.name ?? 'Model'}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{model?.name ?? 'Model'}</h1>
+          {/*
+            The one Save, beside the title, so saving never needs a scroll to the
+            foot of a card - and one rather than three, so a page with three cards
+            edited is one press rather than three. Issue #386.
+          */}
+          {model !== null && (
+            <div className={styles.headerActions}>
+              {saved && saveError === null && <p className={styles.saved}>{t('Saved.')}</p>}
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => void saveAll()}
+                disabled={saving}
+              >
+                {saving ? t('Saving…') : t('Save Changes')}
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Under the title rather than at the foot of a card: it is where the press was. */}
+        {saveError !== null && (
+          <p className={styles.saveError} role="alert">
+            {saveError}
+          </p>
+        )}
       </header>
 
       {loadError !== null ? (
@@ -402,7 +408,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
             key would be wrong for all but one of them, and it is this row that
             everything sizing a prompt reads.
           */}
-          <form className={styles.card} onSubmit={handleSaveWindow}>
+          <form className={styles.card} onSubmit={handleSubmit}>
             <h2 className={styles.sectionHeading}>{draws ? t('Price') : t('Context Window')}</h2>
 
             <div className={styles.fieldRow}>
@@ -500,18 +506,6 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                   </span>
                 </div>
               )}
-            </div>
-
-            <div className={styles.formFooter}>
-              {windowError !== null && (
-                <p className={styles.saveError} role="alert">
-                  {windowError}
-                </p>
-              )}
-              {windowSaved && windowError === null && <p className={styles.saved}>{t('Saved.')}</p>}
-              <button type="submit" className={styles.primaryButton} disabled={windowSaving}>
-                {windowSaving ? t('Saving…') : t('Save Changes')}
-              </button>
             </div>
           </form>
 
@@ -653,7 +647,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
             )}
           </section>
 
-          <form className={styles.card} onSubmit={handleSave}>
+          <form className={styles.card} onSubmit={handleSubmit}>
             <h2 className={styles.sectionHeading}>{t('Quotas & Limits')}</h2>
 
             <div className={styles.fieldRow}>
@@ -724,27 +718,15 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
               </div>
               <div className={styles.field} />
             </div>
-
-            <div className={styles.formFooter}>
-              {saveError !== null && (
-                <p className={styles.saveError} role="alert">
-                  {saveError}
-                </p>
-              )}
-              {saved && saveError === null && <p className={styles.saved}>{t('Saved.')}</p>}
-              <button type="submit" className={styles.primaryButton} disabled={saving}>
-                {saving ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
           </form>
 
           {/*
-            The model's own throttle, its own card and its own Save like the
-            quotas above — a quota is what the workspace will allow, a throttle
-            is the pace a call is let out at. Empty inherits the provider's
-            default; a typed 0 turns that rate off though the provider sets one.
+            The model's own throttle, on its own card like the quotas above — a
+            quota is what the workspace will allow, a throttle is the pace a
+            call is let out at. Empty inherits the provider's default; a typed 0
+            turns that rate off though the provider sets one.
           */}
-          <form className={styles.card} onSubmit={handleSaveThrottle}>
+          <form className={styles.card} onSubmit={handleSubmit}>
             <span className={styles.labelWithHint}>
               <h2 className={styles.sectionHeading}>{t('Throttle')}</h2>
               {/* About the section: what an empty box and a typed 0 each mean. */}
@@ -796,18 +778,6 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                 </div>
               </div>
               <div className={styles.field} />
-            </div>
-
-            <div className={styles.formFooter}>
-              {throttleError !== null && (
-                <p className={styles.saveError} role="alert">
-                  {throttleError}
-                </p>
-              )}
-              {throttleSaved && throttleError === null && <p className={styles.saved}>{t('Saved.')}</p>}
-              <button type="submit" className={styles.primaryButton} disabled={throttleSaving}>
-                {throttleSaving ? t('Saving…') : t('Save Changes')}
-              </button>
             </div>
           </form>
 

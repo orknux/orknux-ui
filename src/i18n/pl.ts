@@ -398,7 +398,6 @@ export const PL: Record<string, string> = {
   "Obey": "Przestrzegaj",
   "Ignore": "Ignoruj",
   "Empty inherits the provider's default, 0 turns a dimension off.": "Puste dziedziczy domyślne ustawienie dostawcy, 0 wyłącza dany wymiar.",
-  "Could not save the throttle.": "Nie udało się zapisać ograniczania tempa.",
   "No one": "Nikt",
   "None": "Brak",
   "Optional": "Opcjonalne",
@@ -1117,13 +1116,12 @@ export const PL: Record<string, string> = {
   "Could not save the agent.": "Nie udało się zapisać agenta.",
   "Could not save the condition.": "Nie udało się zapisać warunku.",
   "Could not save the connection.": "Nie udało się zapisać połączenia.",
-  "Could not save the context window.": "Nie udało się zapisać okna kontekstu.",
   "Could not save the credentials.": "Nie udało się zapisać poświadczeń.",
   "Could not save the issue.": "Nie udało się zapisać zgłoszenia.",
   "Could not save the memory.": "Nie udało się zapisać wspomnienia.",
+  "Could not save the model.": "Nie udało się zapisać modelu.",
   "Could not save the object.": "Nie udało się zapisać obiektu.",
   "Could not save the provider.": "Nie udało się zapisać dostawcy.",
-  "Could not save the quotas.": "Nie udało się zapisać limitów.",
   "Could not save the role.": "Nie udało się zapisać roli.",
   "Could not save the rule.": "Nie udało się zapisać reguły.",
   "Could not save the server.": "Nie udało się zapisać serwera.",
@@ -1875,6 +1873,9 @@ export const PL: Record<string, string> = {
   "Where an issue can be, in the order the filter bar and the status button walk. The first is where a new issue starts: it cannot count as closed or be removed. Anything ticked closed counts as done, and one of those has to stay. A status issues hold stays until they are moved off it. The key is what an issue stores and what an agent names on a tool call; the label is what people read.":
     "Gdzie może być zgłoszenie, w kolejności, w jakiej idą pasek filtrów i przycisk statusu. Pierwszy to ten, w którym zaczyna nowe zgłoszenie: nie może liczyć się jako zamknięty ani zostać usunięty. Wszystko oznaczone jako zamknięte liczy się jako zakończone i jeden taki musi zostać. Status, w którym są zgłoszenia, zostaje, dopóki nie zostaną z niego przeniesione. Klucz to to, co zgłoszenie przechowuje i co agent podaje w wywołaniu narzędzia; etykieta to to, co czytają ludzie.",
   "Add a status": "Dodaj status",
+  "The label is what people read; the key is what an issue stores and an agent names, in upper case and filled in from the label until it is typed; the colour is optional, as a hex code.":
+    "Etykieta to to, co czytają ludzie; klucz to to, co przechowuje zgłoszenie i co podaje agent, wielkimi literami i uzupełniany z etykiety, dopóki nie zostanie wpisany; kolor jest opcjonalny, jako kod szesnastkowy.",
+  "Label": "Etykieta",
   "Needs info": "Do uzupełnienia",
   "Colour": "Kolor",
   "closed": "zamknięty",
@@ -2080,4 +2081,11 @@ export const PL: Record<string, string> = {
     "Style, które ten model przyjmuje: vivid skłania się ku dramatycznym, hiperrealistycznym obrazom, a natural ku realistycznym. Domyślne modelu pozostawia wybór modelowi.",
   "The sizes every image node in this workspace offers in its Preset menu. Picking one fills the node’s width and height; the node keeps the numbers, so renaming or removing a preset changes no saved node. Each side is 1 to 8192 pixels; a model that cannot draw a preset shows it greyed out.":
     "Rozmiary, które każdy węzeł obrazu w tej przestrzeni roboczej oferuje w menu Szablon. Wybór wypełnia szerokość i wysokość węzła; węzeł zachowuje liczby, więc zmiana nazwy lub usunięcie szablonu nie zmienia żadnego zapisanego węzła. Każdy bok ma od 1 do 8192 pikseli; szablon, którego model nie narysuje, jest wyszarzony.",
+  // The workflow editor's link to this workflow's runs (#437) and a node switched off (#439).
+  "Runs of this workflow": "Uruchomienia tego przepływu",
+  "Disable": "Wyłącz",
+  "Enable": "Włącz",
+  "Disabled": "Wyłączony",
+  "A disabled node stays on the graph with its lines and is skipped by a run, which hands what reached it straight on. A disabled condition takes its upper way out.":
+    "Wyłączony węzeł zostaje na grafie ze swoimi liniami, a uruchomienie go pomija, przekazując dalej to, co do niego dotarło. Wyłączony warunek wychodzi górnym wyjściem.",
 };

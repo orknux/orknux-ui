@@ -32,6 +32,25 @@
   color: var(--color-text-primary);
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+/*
+ * Where the Save button sits, beside the title - so saving never needs a scroll
+ * to the foot of a card, and the three cards below share the one press. Issue
+ * #386. The row lays the button and its "Saved." out like the card feet did.
+ */
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 .pageTitle {
   margin: 0;
   font-weight: 700;
@@ -498,24 +517,15 @@
   color: var(--color-text-muted);
 }
 
-.formFooter {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-16);
-  width: 100%;
-}
-
+/* Under the title row, on a line of its own, where the press that failed was. */
 .saveError {
   margin: 0;
-  margin-right: auto;
   font-size: var(--text-md);
   color: var(--color-danger);
 }
 
 .saved {
   margin: 0;
-  margin-right: auto;
   font-size: var(--text-md);
   color: var(--color-success-solid);
 }

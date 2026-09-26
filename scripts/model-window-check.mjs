@@ -17,6 +17,12 @@
  * model's details rather than patching them, so a card sending only its own two
  * fields would quietly clear the name, the id and the prices.
  *
+ * The Save is the page's one Save, in the header - the three cards used to
+ * carry one each, and were reported as three buttons for one page. So the same
+ * press is asked to carry a quota and a throttle typed on the other two cards
+ * as well: one press, three groups stored, or the merge is a button that moved
+ * and nothing else.
+ *
  * **That it is the number the rest of the application reads.** The same model
  * is asked for a session memory budget before and after: refused first, in the
  * sentence that names this screen, and worked out afterwards against the window
@@ -36,6 +42,9 @@ const SCRATCH = 'windowCheckScratch_';
 /** What is typed in. Not round numbers a form could invent by itself. */
 const WINDOW = 131072;
 const OUTPUT = 8192;
+/** Typed on the other two cards, to prove the one press reaches them. */
+const LIMIT = 750000;
+const PACE = 12;
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -82,6 +91,7 @@ const readModel = async () =>
          model(id: $id) {
            id name modelId kind contextWindow maxOutput enabled
            inputCostPerMillion outputCostPerMillion tokenLimit resetInterval
+           throttleTokensPerSecond
          }
        }`,
       { id: made.id },
@@ -127,6 +137,13 @@ await page.waitForSelector('#context-window', { timeout: 20_000 });
 const form = page.locator('form:has(#context-window)');
 const windowBox = page.locator('#context-window');
 const output = page.locator('#max-output');
+/*
+ * The one Save, in the header. Found by its words rather than by `type=submit`,
+ * because the point is that there is no submit button left on any card. The
+ * header is the page's - the one with the title in it - not the shell's top bar.
+ */
+const header = page.locator('header:has(h1)');
+const save = header.getByRole('button', { name: 'Save Changes' });
 
 record((await windowBox.inputValue()) === '', 'the model arrives with the window box empty, which is "not recorded"');
 record((await output.inputValue()) === '', 'and with the max output box empty');
@@ -134,21 +151,34 @@ record(
   (await form.locator('button[data-hint="Context Window"]').count()) === 1,
   'the field carries the (?) that says what the number is for',
 );
+record((await save.count()) === 1, 'the page has one Save Changes, beside its title');
+record(
+  (await page.getByRole('button', { name: 'Save Changes' }).count()) === 1 &&
+    (await page.locator('form button[type="submit"]').count()) === 0,
+  'and none on the three cards under it',
+);
+record(
+  (await page.getByRole('button', { name: 'Apply' }).count()) === 1,
+  'while the usage window keeps its Apply, which is a filter and not a save',
+);
 
 await windowBox.fill(String(WINDOW));
 await output.fill(String(OUTPUT));
-await form.locator('button[type="submit"]').click();
+// The other two cards, in the same press.
+await page.locator('#token-limit').fill(String(LIMIT));
+await page.locator('#throttle-tokens').fill(String(PACE));
+await save.click();
 /*
  * Waited for the word, not for 1.2 seconds. The save is a round trip, and how
  * long it takes is the server's - beside another worker it took longer, and the
  * card was read before it had said anything.
  */
-await form.getByText('Saved.', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
+await header.getByText('Saved.', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
 await page.waitForTimeout(200);
 
 record(
-  (await form.innerText()).includes('Saved.'),
-  'saving the card says so, on the card that was saved',
+  (await header.innerText()).includes('Saved.'),
+  'saving says so, in the header where the button is',
 );
 await page.screenshot({ path: shot('model-window-saved.png') });
 
@@ -156,6 +186,10 @@ const stored = await readModel();
 record(
   stored.contextWindow === WINDOW && stored.maxOutput === OUTPUT,
   `the window and the output are stored on the model (${stored.contextWindow} / ${stored.maxOutput})`,
+);
+record(
+  stored.tokenLimit === LIMIT && Number(stored.throttleTokensPerSecond) === PACE,
+  `and so are the quota and the throttle typed on the other two cards (${stored.tokenLimit} / ${stored.throttleTokensPerSecond})`,
 );
 record(
   stored.name === made.name && stored.modelId === made.modelId && stored.kind === made.kind,
@@ -192,7 +226,7 @@ record(
  * without it a number typed by mistake could never be taken off, only replaced.
  */
 await page.locator('#context-window').fill('');
-await page.locator('form:has(#context-window) button[type="submit"]').click();
+await save.click();
 await page.waitForTimeout(1200);
 const cleared = await readModel();
 record(cleared.contextWindow === null, 'emptying the box takes the window off again');
