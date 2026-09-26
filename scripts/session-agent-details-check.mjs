@@ -23,6 +23,18 @@
  *                              agent's prompt and not the other's
  *   nothing above the log    - the block is a line of the transcript now; the
  *                              old header over the transcript is gone
+ *   the prompt that was sent - the recorded system prompt is the text the model
+ *                              read: the agent's own prose *and* what the round
+ *                              appended to it, which for a node that keeps a
+ *                              session includes the paragraph its lent
+ *                              scratchpads say about themselves. It used to be
+ *                              `agent.systemPrompt` alone - one paragraph of it,
+ *                              and null for every agent whose whole instruction
+ *                              is what it was granted (#454)
+ *   and it leads to the agent - the name in the header is a link to the agent's
+ *                              own page, which is where the setup behind a name
+ *                              is; before #454 the name was plain text and the
+ *                              id was not kept at all
  *
  * ---------------------------------------------------------------------------
  * Why the fixture is a workflow run, and why it needs no model that answers
@@ -257,8 +269,15 @@ record(
   details[0]?.actor === FIRST.name && details[1]?.actor === SECOND.name,
   `in the order the agents answered: ${details.map((one) => one.actor).join(', ') || 'none'}`,
 );
+/*
+ * Carries the setup, rather than being it: since #454 what is recorded is the
+ * whole system turn the model was given - the agent's own prompt, then the
+ * grants briefing, then whatever a lent shed said about itself - so the
+ * agent's prompt is the start of it and not the whole.
+ */
 record(
-  details[0]?.agentDetails?.systemPrompt === FIRST.prompt && details[1]?.agentDetails?.systemPrompt === SECOND.prompt,
+  details[0]?.agentDetails?.systemPrompt?.includes(FIRST.prompt) === true &&
+    details[1]?.agentDetails?.systemPrompt?.includes(SECOND.prompt) === true,
   'and each carries the setup it was answered with, resolved for the page',
 );
 /*
@@ -312,7 +331,14 @@ if (await drawn(page, 'the session transcript')) {
   const many = await toggles.count();
   record(many === 2, `the transcript draws two Agent details blocks, one per change of setup (${many})`);
 
-  const headers = await toggles.allInnerTexts();
+  /*
+   * The header row rather than the button: the press is "Agent details" and
+   * the agent's name sits beside it, outside the button, because it carries a
+   * link to the agent and a link inside a button is not a thing.
+   */
+  const headers = await page.$$eval('[data-agent-details]', (nodes) =>
+    nodes.map((node) => (node.firstElementChild?.textContent ?? '').replace(/\s+/g, ' ').trim()),
+  );
   console.log(`headers: ${JSON.stringify(headers)}`);
   record(
     headers[0]?.includes('Agent details') && headers[0]?.includes(FIRST.name) && headers[1]?.includes(SECOND.name),
