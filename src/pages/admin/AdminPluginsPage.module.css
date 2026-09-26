@@ -458,6 +458,19 @@
  * against it: they sit side by side and a pair at two heights reads as one
  * button and one afterthought.
  */
+/*
+ * Why a plugin the release brings has no Uninstall beside it. Issue #500.
+ *
+ * Where a button would be, so the space reads as answered rather than as a
+ * control that failed to draw.
+ */
+.builtInNote {
+  align-self: center;
+  max-width: 34ch;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .dangerAction {
   composes: primaryAction;
   background: var(--color-danger);

@@ -1647,6 +1647,22 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                         {open.installed && (() => {
                           const here = installedOf(open);
                           if (here === undefined) return null;
+                          /*
+                            A plugin the release brings cannot be uninstalled -
+                            the next start writes it back - so the button is not
+                            drawn for one. Switching it off is the decision that
+                            holds, and it is the switch on the row above. Issues
+                            #474 and #500: the button was drawn, pressing it
+                            failed, and a control that always fails reads as the
+                            product being broken.
+                          */
+                          if (here.builtIn) {
+                            return (
+                              <span className={styles.builtInNote}>
+                                {t('Ships with Orknux — switch it off above rather than uninstalling it.')}
+                              </span>
+                            );
+                          }
                           return (
                             <button
                               type="button"
