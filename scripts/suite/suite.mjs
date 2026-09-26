@@ -2327,6 +2327,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'tools-named-check',
+    what: 'Admin Settings sets up to how many findable tools find_tools names outright',
+    needs: ['workspace'],
+    /*
+     * Issue #442. The number was in the source; now it is a box. What the
+     * number does to find_tools is ToolSearchTest's business. Leaves the
+     * setting as it found it.
+     */
+  },
+  {
     name: 'sessions-list-columns-check',
     what: 'the sessions list shows a green dot for an active session and a count of the subagents each fanned out into',
     needs: ['workspace'],

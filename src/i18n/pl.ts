@@ -2011,6 +2011,10 @@ export const PL: Record<string, string> = {
   "Thought": "Myślało",
   "for": "przez",
 
+  // --- the agent's setup, where in the log it started answering (#391, #441) --
+  "Agent details": "Szczegóły agenta",
+  "System prompt": "Prompt systemowy",
+
   // --- drawing a picture -------------------------------------------------------
   "This picture is gone.": "Tego obrazu już nie ma.",
   "Text-to-image Model": "Model tekstu na obraz",
@@ -2085,6 +2089,11 @@ export const PL: Record<string, string> = {
   "Runs of this workflow": "Uruchomienia tego przepływu",
   "Runs as part of the workflow": "Działa w ramach przepływu",
   "Disabled": "Wyłączony",
+  // How many findable tools find_tools names outright (#442).
+  "How many findable tools are named outright": "Ile znajdowalnych narzędzi jest wymienianych z nazwy",
+  "An agent granted more tools than it carries is given find_tools to look the rest up. Up to this many of them, find_tools names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.":
+    "Agent, któremu przyznano więcej narzędzi, niż nosi, dostaje find_tools, by wyszukać resztę. Do tylu z nich find_tools wymienia każde z nazwy w swoim opisie i gdy wyszukiwanie nic nie znajdzie, więc model prosi o narzędzie po nazwie, zamiast zgadywać słowa do wyszukania; powyżej narzędzie mówi tylko, ile ich jest. Nazwy są krótkie, więc kilkadziesiąt kosztuje mniej niż pełna deklaracja jednego narzędzia; mały model może czytać długą listę gorzej niż duży. Zero nigdy ich nie wymienia. Od 0 do 500.",
+  "tools": "narzędzi",
   // An action pointed at a block a plugin declares (#438).
   "Plugin Action": "Akcja wtyczki",
   "Outputs": "Wyjścia",

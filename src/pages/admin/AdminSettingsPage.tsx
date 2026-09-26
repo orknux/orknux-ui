@@ -6,6 +6,7 @@ import {
   setAgentSleepTimes,
   setAgentMaxSubagents,
   setScratchpadBudgetBytes,
+  setToolsNamedInSearch,
   setCommandMarker,
   setAttachmentsEnabled,
   setSessionsRemovable,
@@ -75,6 +76,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [asks, setAsks] = useState('');
   // Held and typed in KB; the server keeps bytes. Issue #411.
   const [padBudget, setPadBudget] = useState('');
+  /** Up to how many findable tools find_tools names outright. Issue #442. */
+  const [named, setNamed] = useState('');
   /** What marks a command in a message, installation-wide. Issue #402. */
   const [marker, setMarker] = useState('');
 
@@ -104,6 +107,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
         setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
+        setNamed(String(held.toolsNamedInSearch));
         setMarker(held.commandMarker);
       })
       .catch((cause: unknown) => {
@@ -139,6 +143,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           held: Math.round(settings.scratchpadBudgetBytes / 1024),
           write: (kb: number) => setScratchpadBudgetBytes(kb * 1024),
         },
+        { typed: named, held: settings.toolsNamedInSearch, write: setToolsNamedInSearch },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
@@ -437,6 +442,35 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How much a session’s scratchpads may hold, in kilobytes')}
                 />
                 <span className={styles.retentionUnit}>{t('KB')}</span>
+              </div>
+            </div>
+
+            {/* Up to how many findable tools find_tools names outright, so a
+                model asks for one by name rather than guessing words. A number
+                somebody can change, not one in the source. Issue #442. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How many findable tools are named outright')}</p>
+                  <FieldHint label={t('How many findable tools are named outright')}>
+                    {t('An agent granted more tools than it carries is given find_tools to look the rest up. Up to this many of them, find_tools names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tools-named-in-search"
+                  name="toolsNamedInSearch"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={named}
+                  onChange={(event) => setNamed(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many findable tools are named outright')}
+                />
+                <span className={styles.retentionUnit}>{t('tools')}</span>
               </div>
             </div>
 

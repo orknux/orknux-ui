@@ -121,6 +121,14 @@ export interface InstallationSettings {
   /** What a fresh installation starts on. */
   commandMarkerConfigured: string;
   /**
+   * Up to how many findable tools find_tools names outright in its own
+   * description, so a model asks for one by name; zero never names them.
+   * Issue #442.
+   */
+  toolsNamedInSearch: number;
+  /** What a fresh installation names before anybody changed it. */
+  toolsNamedInSearchConfigured: number;
+  /**
    * Whether a conversation may be thrown away.
    *
    * A session is the record of what an agent was asked and what it answered,
@@ -149,7 +157,7 @@ const FIELDS =
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
-  'sessionsRemovable';
+  'toolsNamedInSearch toolsNamedInSearchConfigured sessionsRemovable';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -338,6 +346,17 @@ export async function setScratchpadBudgetBytes(bytes: number): Promise<Installat
 }
 
 /** What marks a command in a message that starts a run, installation-wide. Issue #402. */
+/** Up to how many findable tools find_tools names outright. Issue #442. */
+export async function setToolsNamedInSearch(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setToolsNamedInSearch: InstallationSettings }>(
+    `mutation SetToolsNamedInSearch($count: Int!) {
+       setToolsNamedInSearch(count: $count) { ${FIELDS} }
+     }`,
+    { count },
+  );
+  return data.setToolsNamedInSearch;
+}
+
 export async function setCommandMarker(marker: string): Promise<InstallationSettings> {
   const data = await graphql<{ setCommandMarker: InstallationSettings }>(
     `mutation SetCommandMarker($marker: String!) {
