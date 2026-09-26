@@ -2089,6 +2089,14 @@ export const PL: Record<string, string> = {
   "Runs of this workflow": "Uruchomienia tego przepływu",
   "Runs as part of the workflow": "Działa w ramach przepływu",
   "Disabled": "Wyłączony",
+  // Every built-in tool as a row on the agent's Tools list (#444), and what the model held (#446).
+  "Granted by the skill catalogs — switch it there.": "Przyznane przez katalogi umiejętności — przełącz tam.",
+  "Granted by the memory catalogs — switch it there.": "Przyznane przez katalogi pamięci — przełącz tam.",
+  "Granted by Orknux access — switch it there.": "Przyznane przez dostęp do Orknux — przełącz tam.",
+  "Granted by shell access — switch it there.": "Przyznane przez dostęp do powłoki — przełącz tam.",
+  "Findable": "Do znalezienia",
+  "The workspace's own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools, the orknux_ and shell_ tools — reads the state of that grant and is switched there.":
+    "Własne narzędzia przestrzeni roboczej, narzędzia oferowane przez jej wtyczki i narzędzia, które Orknux wnosi sam, wymienione pod Wbudowane. Każdy wiersz zmienia stan po kliknięciu. Ukryj: agent nie może go użyć. Oferuj: jest dostępne i ładowane, gdy zadanie tego potrzebuje, po ustawieniu poniżej limitu narzędzi — bez limitu każde oferowane narzędzie jest po prostu niesione. Zawsze: jest przed modelem w każdej turze, co ma znaczenie po ustawieniu limitu. Narzędzie wbudowane, które przychodzi z szerszym uprawnieniem — narzędzia umiejętności i pamięci, narzędzia orknux_ i shell_ — odczytuje stan tego uprawnienia i tam się je przełącza.",
   // How many findable tools find_tools names outright (#442).
   "How many findable tools are named outright": "Ile znajdowalnych narzędzi jest wymienianych z nazwy",
   "An agent granted more tools than it carries is given find_tools to look the rest up. Up to this many of them, find_tools names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.":

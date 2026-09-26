@@ -49,7 +49,17 @@ export interface SessionAgentDetails {
   agent: string;
   model: string | null;
   systemPrompt: string | null;
+  /**
+   * Every tool the model was handed on each turn, by name - what was granted,
+   * the server's built-ins, and what the turn lent it. Not the grant list
+   * alone, which left out most of what the model could call. Issue #446.
+   */
   tools: string[];
+  /**
+   * The tools it finds rather than carries, where the agent has a ceiling of
+   * its own; empty otherwise, and empty on a line written before #446.
+   */
+  findable: string[];
   skills: string[];
   memory: string[];
   connections: string[];
@@ -137,7 +147,7 @@ const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEv
 const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
 
 /** What an AGENT_DETAILS line carries, and the rest carry as null. Issue #441. */
-const AGENT_DETAILS_FIELDS = 'agentDetails { agent model systemPrompt tools skills memory connections }';
+const AGENT_DETAILS_FIELDS = 'agentDetails { agent model systemPrompt tools findable skills memory connections }';
 
 /**
  * One session of a family: the main session and every one an agent in it

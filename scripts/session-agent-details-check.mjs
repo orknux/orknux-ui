@@ -238,7 +238,7 @@ console.log(`opened ${session.key} (#${session.id}, ${session.eventCount} lines)
 const { llmSessionEvents } = await graphql(
   `query($id: ID!) {
      llmSessionEvents(sessionId: $id, page: 0, size: 200, order: AT, ascending: true) {
-       content { id kind actor at agentDetails { agent model systemPrompt tools skills memory connections } }
+       content { id kind actor at agentDetails { agent model systemPrompt tools findable skills memory connections } }
      }
    }`,
   { id: session.id },
@@ -260,6 +260,24 @@ record(
 record(
   details[0]?.agentDetails?.systemPrompt === FIRST.prompt && details[1]?.agentDetails?.systemPrompt === SECOND.prompt,
   'and each carries the setup it was answered with, resolved for the page',
+);
+/*
+ * The tools are what the model was handed, not the grant list. Issue #446: an
+ * agent granted nothing of the workspace's still had finish_answer lent by the
+ * node and a note to write, and the block said it had no tools at all.
+ */
+const handed = details[0]?.agentDetails?.tools ?? [];
+record(
+  handed.includes('finish_answer') && handed.includes('note_to_self') && handed.includes('current_time'),
+  `the setup names the built-ins the model was handed, lent ones included (${handed.join(', ') || 'none'})`,
+);
+record(
+  handed.join(',') === [...handed].sort().join(','),
+  'and names them sorted, so the same setup is the same text',
+);
+record(
+  (details[0]?.agentDetails?.findable ?? []).length === 0,
+  'an agent with no ceiling of its own finds nothing rather than carrying it',
 );
 /* Where it falls: A's before anything A said, B's before anything B said. */
 const firstSaid = lines.findIndex((one) => one.kind !== 'AGENT_DETAILS');

@@ -59,11 +59,22 @@ if (TOOL === null) {
   await clean();
 }
 
+/*
+ * The server's own tools, which a fresh agent holds Always from the start and
+ * which are rows of this list like anything else. Issue #444. Read here so the
+ * grant below keeps them: `tools` replaces the list, and a fixture that sent
+ * only the workspace tool would be measuring an agent nobody has.
+ */
+const { builtInTools } = await graphql(`{ builtInTools { name governance } }`);
+const BY_NAME = builtInTools.filter((one) => one.governance === 'GRANT').map((one) => one.name);
+const WITH_GRANT = builtInTools.filter((one) => one.governance !== 'GRANT');
+console.log(`built-ins: ${BY_NAME.length} by name, ${WITH_GRANT.length} with a wider grant`);
+
 await graphql(
   `mutation($id: ID!, $name: String!, $tools: [String!]) {
      updateAgent(id: $id, input: { name: $name, tools: $tools }) { tools }
    }`,
-  { id: AGENT, name: made.createAgent.name, tools: [TOOL] },
+  { id: AGENT, name: made.createAgent.name, tools: [TOOL, ...BY_NAME] },
 );
 
 /* -------------------------------------------------------------------- drive */
@@ -88,9 +99,59 @@ record(
 
 /* The granted tool loads Offered - available, not yet always carried. #413. */
 const pill = page.locator(`[data-grant-name="${TOOL}"] [data-tool-state]`);
+await pill.waitFor({ timeout: 20_000 }).catch(() => undefined);
+// The catalogues arrive in waves; a row read while they settle is the wrong row.
+await page.waitForTimeout(1500);
 record(
   await pill.getAttribute('data-tool-state').then((state) => state === 'offer'),
   'a granted tool reads as Offered',
+);
+
+/* ----------------------------------------- every built-in is a row -------- */
+
+/*
+ * The list is complete. Issue #444: the server's own tools were switched in
+ * five places and shown in one, so the list somebody reads to see what an agent
+ * may do said nothing about most of what it could do. Every name the server
+ * declares is a row now, and the fresh agent holds every by-name one Always.
+ */
+const rowless = [];
+const notAlways = [];
+for (const name of BY_NAME) {
+  const row = page.locator(`[data-grant-name="${name}"] [data-tool-state]`);
+  if ((await row.count()) !== 1) rowless.push(name);
+  else if ((await row.getAttribute('data-tool-state')) !== 'always') notAlways.push(name);
+}
+record(rowless.length === 0, `every built-in switched by name is a row (${BY_NAME.length}; missing: ${rowless.join(', ') || 'none'})`);
+record(notAlways.length === 0, `and a fresh agent reads Always on each (not: ${notAlways.join(', ') || 'none'})`);
+
+/*
+ * The ones that come with a wider grant are rows too, read-only: this agent
+ * holds no catalogs and no access, so each reads Hide, cannot be pressed, and
+ * says where the switch is.
+ */
+const unfixed = [];
+for (const one of WITH_GRANT) {
+  const row = page.locator(`[data-grant-name="${one.name}"] [data-tool-state]`);
+  const ok =
+    (await row.count()) === 1 &&
+    (await row.getAttribute('data-tool-fixed')) !== null &&
+    (await row.isDisabled()) &&
+    (await row.getAttribute('data-tool-state')) === 'hide' &&
+    /switch it there/.test((await row.getAttribute('title')) ?? '');
+  if (!ok) unfixed.push(one.name);
+}
+record(
+  unfixed.length === 0,
+  `every built-in that comes with a grant is a read-only row reading that grant (${WITH_GRANT.length}; wrong: ${unfixed.join(', ') || 'none'})`,
+);
+
+/* And the count over the heading includes them all: `n of m granted`. */
+const heading = (await page.locator('[data-grants="tools"] [data-grant-count]').innerText()).trim();
+const counted = /^(\d+) of (\d+) granted/.exec(heading);
+record(
+  counted !== null && Number(counted[1]) >= BY_NAME.length + 1 && Number(counted[2]) >= BY_NAME.length + WITH_GRANT.length + 1,
+  `the count includes the built-ins - "${heading}" for ${BY_NAME.length} + ${WITH_GRANT.length} built-in rows and the tool`,
 );
 
 /* The count beside the box appears once a ceiling is typed. */
@@ -139,22 +200,32 @@ const marked = await page
 record(marked, 'and pinning one tool adds one to the count, so the form has it, not only the button');
 
 /*
- * A capability flag has no Offer state. finish_answer is always carried when
- * on rather than searched for, so its control cycles Hide and Always only,
- * never Offer between them. #413.
+ * A built-in switched by name cycles all three states like any other tool.
+ * finish_answer was a flag with no Offer between Hide and Always (#413); since
+ * #444 it is a name in the grant list, so Always -> Hide -> Offer -> Always.
  */
 const flag = page.locator('[data-grant-name="finish_answer"] [data-tool-state]');
-if ((await flag.count()) > 0) {
-  const start = await flag.getAttribute('data-tool-state');
-  await flag.click();
-  const one = await flag.getAttribute('data-tool-state');
-  await flag.click();
-  const two = await flag.getAttribute('data-tool-state');
-  record(
-    one !== 'offer' && two !== 'offer' && [start, one, two].includes('always'),
-    `a capability flag reads Hide or Always, never Offer (${start} -> ${one} -> ${two})`,
-  );
-}
+const start = await flag.getAttribute('data-tool-state');
+await flag.click();
+const one = await flag.getAttribute('data-tool-state');
+await flag.click();
+const two = await flag.getAttribute('data-tool-state');
+await flag.click();
+const three = await flag.getAttribute('data-tool-state');
+record(
+  start === 'always' && one === 'hide' && two === 'offer' && three === 'always',
+  `a built-in cycles Always -> Hide -> Offer -> Always like any tool (${start} -> ${one} -> ${two} -> ${three})`,
+);
+
+/*
+ * Hiding one is the server withholding it: the name leaves `tools`, and with
+ * it the Always mark. BuiltInToolsTest pins that a name off the list is
+ * neither declared to the model nor answered; what is measured here is that
+ * the form's Hide reaches the list the server reads.
+ */
+const note = page.locator('[data-grant-name="note_to_self"] [data-tool-state]');
+await note.click();
+record((await note.getAttribute('data-tool-state')) === 'hide', 'note_to_self can be hidden');
 
 /* ------------------------------------------- the status filter ----------- */
 
@@ -200,12 +271,20 @@ page.on('request', (request) => {
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2500);
 
-const stored = await graphql(`query($id: ID!) { agent(id: $id) { maxTools requiredTools } }`, { id: AGENT });
+const stored = await graphql(`query($id: ID!) { agent(id: $id) { maxTools tools requiredTools } }`, { id: AGENT });
 console.log(`stored: ${JSON.stringify(stored.agent)}`);
 record(stored.agent.maxTools === 10, `the ceiling reaches the server (${stored.agent.maxTools})`);
 record(
   stored.agent.requiredTools.includes(TOOL),
   `and the tool marked as always carried is stored against it (${JSON.stringify(stored.agent.requiredTools)})`,
+);
+record(
+  !stored.agent.tools.includes('note_to_self') && !stored.agent.requiredTools.includes('note_to_self'),
+  'and the hidden built-in has left the list the server offers by, mark and all',
+);
+record(
+  stored.agent.tools.includes('current_time') && stored.agent.requiredTools.includes('current_time'),
+  'while the ones left alone are still on it, Always',
 );
 
 /* -------------------------------------------------- and the bound --------- */

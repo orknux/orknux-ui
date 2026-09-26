@@ -27,27 +27,20 @@ export interface Agent {
   orknuxAccess: boolean;
   /** Whether it may open a shell on one of the installation's machines. */
   shellAccess: boolean;
-  /**
-   * Whether it may end its turn by saying so, rather than by writing prose.
-   *
-   * On until somebody turns it off, which is why it is a flag and not a name in
-   * `tools`: that list is what an agent was *given*, and an ending is not
-   * something to be given. The Tools list draws it as a row all the same,
-   * because that list is where somebody looks to see what an agent may do.
-   */
-  finishAccess: boolean;
-  /**
-   * Whether it may ask for an address for a picture it drew.
-   *
-   * On until somebody turns it off, and a flag for the same reason
-   * `finishAccess` is: what the grants list holds is what an agent was given.
-   */
-  pictureLinkAccess: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
   /** Which skill catalogs it may draw on. */
   skillCatalogs: string[];
-  /** Which of the workspace's tools it may call. */
+  /**
+   * Which tools it may call, by name: the workspace's, the plugins', and the
+   * server's own built-ins.
+   *
+   * The built-ins are names here too since issue #444 - `finish_answer`,
+   * `picture_link`, `save_artifact`, the note, the clock, the scratchpad -
+   * where three of them were flags on the agent and the rest were handed out
+   * without asking. `fetchBuiltInTools` says which names, so the form draws a
+   * row for each; the server offers and withholds by the same list.
+   */
   tools: string[];
   /** Which of the workspace's connections it may name when a tool takes one. */
   connectionIds: string[];
@@ -142,7 +135,35 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess finishAccess pictureLinkAccess memoryCatalogs skillCatalogs tools connectionIds agentIds maxTools requiredTools icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs tools connectionIds agentIds maxTools requiredTools icon memoryShare maxRounds';
+
+/**
+ * What switches one of the server's own tools on an agent. Issue #444.
+ *
+ * `GRANT` is a row on the Tools list with the same Hide, Offer, Always control
+ * as any other tool. The rest come with a wider grant - the skill catalogs, the
+ * memory catalogs, orknux access, shell access - and are drawn as rows so the
+ * list is complete, but switched where that grant is switched.
+ */
+export type BuiltInToolGovernance = 'GRANT' | 'SKILL_CATALOGS' | 'MEMORY_CATALOGS' | 'ORKNUX_ACCESS' | 'SHELL_ACCESS';
+
+/** One of the tools the server brings itself, and what switches it. */
+export interface BuiltInTool {
+  /** The name the model calls it by, which is also the name `Agent.tools` stores. */
+  name: string;
+  governance: BuiltInToolGovernance;
+}
+
+/**
+ * Every tool the server brings itself. The same list for every workspace, and
+ * the same list the server offers and withholds by - which is the point: a
+ * row here that the server did not know, or a tool it hands out that is not a
+ * row, is the fault #444 was filed about.
+ */
+export async function fetchBuiltInTools(): Promise<BuiltInTool[]> {
+  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance } }`);
+  return data.builtInTools;
+}
 
 const WORKSPACE_AGENTS_QUERY = `
   query WorkspaceAgents(
@@ -286,10 +307,6 @@ export async function updateAgent(
     orknuxAccess?: boolean;
     /** Whether it may open a shell on a machine; left out, the grant is unchanged. */
     shellAccess?: boolean;
-    /** Whether it may end its turn by saying so; left out, it is unchanged. */
-    finishAccess?: boolean;
-    /** Whether it may ask for a picture's address; left out, it is unchanged. */
-    pictureLinkAccess?: boolean;
     memoryCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];

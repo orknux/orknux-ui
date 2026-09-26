@@ -295,8 +295,17 @@ function AgentDetailsBlock({ details, at }: { details: SessionAgentDetails; at: 
               </dd>
             </div>
           )}
+          {/*
+            Tools is every tool the model was handed - the grants, the built-ins
+            and what the turn lent - and Findable, drawn only where there is
+            one, is the part found rather than carried under the agent's
+            ceiling. Two lines rather than one with a marker, because "which of
+            these did the model actually have in front of it" is the question
+            a reader of a ceilinged agent's log is asking. Issue #446.
+          */}
           {([
             [t('Tools'), details.tools],
+            [t('Findable'), details.findable],
             [t('Skills'), details.skills],
             [t('Memory'), details.memory],
             [t('Connections'), details.connections],

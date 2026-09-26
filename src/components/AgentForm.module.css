@@ -433,6 +433,16 @@
   color: var(--color-amber, #d29922);
 }
 
+/*
+ * A row switched by the grant it comes with rather than here. It keeps the
+ * colour of the state it reads, so the list still says what the model gets,
+ * and loses the hand so nobody presses a control that does nothing. #444.
+ */
+.stateFixed {
+  cursor: default;
+  opacity: 0.7;
+}
+
 .grantJump {
   display: inline-flex;
   flex: none;

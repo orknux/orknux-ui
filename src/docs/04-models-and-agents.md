@@ -361,6 +361,16 @@ everything else it could be granted, and can be switched off there. A chat agent
 draws into the conversation; an agent in a run files the picture against the
 step that drew it, where the run log shows it under that node.
 
+**Every tool Orknux brings itself is in that list**, under **Built in**: the
+note an agent writes to itself, its to-do list, the clock, its scratchpads,
+saving a file, finding a connection, asking another agent, finishing a turn,
+drawing and the picture link. Each has the same Hide, Offer, Always control as
+a workspace's or a plugin's tool, and an agent starts with all of them on and
+Always. The built-ins that come with a wider grant — the skill tools with the
+skill catalogs, the memories with the memory catalogs, the `orknux_` tools with
+Orknux access, the shells with shell access — are rows too, so the list is
+complete, but they read that grant and are switched where it is switched.
+
 What the tool hands back to the model is a **key**, not a link: the picture's
 bytes go into the session's own store, and a key is what a tool that uploads a
 file takes. That is the difference between a picture somebody is shown in Slack
@@ -370,8 +380,8 @@ punctuation, not a delivery.
 **Putting one in the middle of the text.** A key is not an address, so an agent
 that wants the picture at a particular point in what it writes asks for one:
 **picture_link** in a run, **task_picture_link** in a task. Both take the key
-and answer with markdown to place. Both are ticked in the agent's Tools list
-until somebody unticks them — the switch is for an agent whose answers are read
+and answer with markdown to place. The row is on in the agent's Tools list
+until somebody hides it — the switch is for an agent whose answers are read
 somewhere this installation is not, where an address here resolves to nothing
 for the reader.
 
@@ -390,8 +400,8 @@ what the step answers with, for a node that needs something to work with;
 passing nothing is the ordinary case, because what was made went somewhere the
 workflow is not.
 
-It is ticked for every agent until somebody unticks it, in the same Tools list
-as the grants. Untick it for the agent whose next node needs a real answer.
+It is on for every agent until somebody hides it, in the same Tools list as
+the grants. Hide it for the agent whose next node needs a real answer.
 
 ## Artifacts
 

@@ -689,8 +689,8 @@ export const TESTS = [
   },
   {
     name: 'finish-answer-grant-check',
-    what: "finish_answer is ticked in an agent's Tools list to begin with, and unticking it is stored",
-    // Drives one agent's settings and puts the switch back as it found it.
+    what: "an existing agent holds every built-in Always in its Tools list, and hiding one is stored as the name leaving the list",
+    // Drives one agent's settings and puts the rows back as it found them. #444.
     needs: ['workspace'],
   },
   {
@@ -1890,11 +1890,11 @@ export const TESTS = [
      * it, where a model is already choosing from a list it cannot hold in mind.
      *
      * The eviction is ToolBudgetTest's. Measured here is the form, where the
-     * ceiling and the marks are one decision: the second column appears when a
-     * number is typed and not before, and it does not appear on the two rows
-     * that are flags rather than tools - the first run of this check ticked one
-     * of those, the server dropped it because it is not a granted tool, and the
-     * form went on showing it ticked.
+     * ceiling and the marks are one decision: the count appears when a number
+     * is typed and not before, and every row cycles Hide, Offer, Always - the
+     * server's own tools included, which since #444 are rows of this list like
+     * anything else, held Always by a fresh agent, and switched off by hiding
+     * the row. The ones that come with a wider grant are rows too, read-only.
      *
      * Makes an agent and removes it.
      */

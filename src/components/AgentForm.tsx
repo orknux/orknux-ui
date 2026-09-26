@@ -3,8 +3,8 @@ import type { FormEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
-import { fetchMemoryBudget, fetchWorkspaceAgents, updateAgent } from '../api/agents';
-import type { Agent, SessionMemoryBudget } from '../api/agents';
+import { fetchBuiltInTools, fetchMemoryBudget, fetchWorkspaceAgents, updateAgent } from '../api/agents';
+import type { Agent, BuiltInToolGovernance, SessionMemoryBudget } from '../api/agents';
 import { fetchPluginTools } from '../api/plugins';
 import { fetchMcpServers, fetchWorkspaceConnections } from '../api/integrations';
 import type { McpServer, WorkspaceConnection } from '../api/integrations';
@@ -141,12 +141,20 @@ interface GrantableTool {
   id: string;
   /** What the grant is stored under, for both kinds alike. */
   name: string;
-  /** The plugin that offers it, or null for the workspace's own tools. */
+  /** The plugin that offers it, `BUILT_IN` for the server's own, or null for the workspace's own tools. */
   plugin: string | null;
   /** Only a workspace tool can be switched off; a plugin's tool is on while its plugin is loaded. */
   off: boolean;
   /** The row's own page: the tool editor, or the page of the function a plugin tool fronts. Null where it has none. */
   link: string | null;
+  /**
+   * What switches a built-in, or null for a workspace's or a plugin's tool.
+   *
+   * `GRANT` is a row like any other. The rest come with a wider grant and are
+   * drawn read-only, reading the state of that grant - see `fixedOf` on the
+   * list. Issue #444.
+   */
+  governance: BuiltInToolGovernance | null;
 }
 
 /**
@@ -186,28 +194,34 @@ const SEARCH_FROM = 8;
  *
  * A group of its own rather than mixed into the workspace's: where a tool
  * comes from is what tells two rows of the same name apart, and "built in" is
- * an answer the way a plugin's name is.
+ * an answer the way a plugin's name is. Every built-in is a row here since
+ * issue #444 - the server's inventory says which - so this is the one list
+ * somebody reads to see what an agent may do, and it is complete.
  */
 const BUILT_IN = 'Built in';
 
 /**
- * The one row in the Tools list that is not a grant.
+ * Why a built-in that comes with a wider grant cannot be switched on its row.
  *
- * It is a flag on the agent - on until it is turned off - and it is drawn here
- * because this list is what somebody reads to see what an agent may do. The
- * name is the server's; see `FinishAnswerTools`.
+ * Printed as the disabled control's title, so the reader who tries to press it
+ * is told where the switch is rather than left with a button that does
+ * nothing. Null for a row that is switched here - a workspace's, a plugin's,
+ * or a built-in governed by its name. Issue #444.
  */
-const FINISH_ANSWER = 'finish_answer';
-
-/**
- * The other row that is a flag rather than a grant.
- *
- * A drawing tool answers with a key, which is what a tool that uploads a file
- * takes; this is the door for the other case - markdown for placing the
- * picture inside what the agent writes. On until it is turned off, because an
- * agent that can draw usually has somewhere to put what it drew.
- */
-const PICTURE_LINK = 'picture_link';
+function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
+  switch (governance) {
+    case 'SKILL_CATALOGS':
+      return t('Granted by the skill catalogs — switch it there.');
+    case 'MEMORY_CATALOGS':
+      return t('Granted by the memory catalogs — switch it there.');
+    case 'ORKNUX_ACCESS':
+      return t('Granted by Orknux access — switch it there.');
+    case 'SHELL_ACCESS':
+      return t('Granted by shell access — switch it there.');
+    default:
+      return null;
+  }
+}
 
 /**
  * The widest share the slider offers.
@@ -318,15 +332,16 @@ interface GrantListProps<Item> {
   marked?: string[];
   onMark?: (marked: string[]) => void;
   /**
-   * Whether this row is one the mark means anything for.
+   * Why this row cannot be switched here, or null where it can.
    *
-   * Two rows of the tools list are flags rather than grants - `finish_answer`
-   * and the picture link - and marking one of those is a statement about
-   * nothing: the server stores only what is granted, so the tick vanished on
-   * save and the form looked as though it had kept it. A control that can be
-   * pressed and does nothing is worse than one that is not there.
+   * The built-ins that come with a wider grant - the skill tools with the
+   * skill catalogs, the memories with the memory catalogs, `orknux_*` with
+   * orknux access, the shells with shell access - are rows so the list is
+   * complete, and read Always or Hide off that grant. Their control is
+   * disabled and says so, because a control that can be pressed and does
+   * nothing is worse than one that is not there. Issue #444.
    */
-  markable?: (name: string) => boolean;
+  fixedOf?: (item: Item) => string | null;
 }
 
 /**
@@ -375,7 +390,7 @@ function GrantList<Item>({
   onChange,
   marked,
   onMark,
-  markable,
+  fixedOf,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /** Which plugin is being shown, or '' for all of them. */
@@ -444,6 +459,8 @@ function GrantList<Item>({
       inGroup,
       ticked: granted.includes(name),
       matches: needle === '' || name.toLowerCase().includes(needle),
+      /** Why the row is read-only, or null where its control works. Issue #444. */
+      fixed: fixedOf?.(item) ?? null,
     };
   });
 
@@ -479,27 +496,27 @@ function GrantList<Item>({
    * A tool's grant as one cycling control: Hide, Offer, Always. Issue #413.
    *
    * Only where the caller offers the Always state at all (`onMark`), which is
-   * the tools list; every other grant list stays a plain tick. A row that
-   * cannot be Always - the two capability flags in the tools list - cycles
-   * between the first two only.
+   * the tools list; every other grant list stays a plain tick. Every row of
+   * the tools list cycles all three since #444 - the built-ins included, which
+   * are names in the grant list like anything else - except a row that is
+   * fixed, which reads the grant it comes with and cannot be pressed.
    */
   type ToolState = 'hide' | 'offer' | 'always';
-  const toolState = (row: { name: string; ticked: boolean }): ToolState => {
+  const toolState = (row: { name: string; ticked: boolean; fixed: string | null }): ToolState => {
     if (!row.ticked) return 'hide';
-    // A row that cannot be marked - the two capability flags - is one that is
-    // always carried when on rather than searched for, so its on-state reads
-    // as Always, not Offer. It has no middle state. Issue #413.
-    const canAlways = markable?.(row.name) ?? true;
-    if (!canAlways) return 'always';
+    // A fixed row is carried whenever the grant it comes with is on - there is
+    // no mark to read - so its on-state is Always, never Offer. Issue #444.
+    if (row.fixed !== null) return 'always';
     return (marked?.includes(row.name) ?? false) ? 'always' : 'offer';
   };
-  const cycleTool = (row: { name: string; ticked: boolean }) => {
+  const cycleTool = (row: { name: string; ticked: boolean; fixed: string | null }) => {
+    if (row.fixed !== null) return;
     const state = toolState(row);
     if (state === 'hide') {
-      // Hide -> Offer for a tool, Hide -> Always for a flag (both are "grant it").
+      // Hide -> Offer: the grant.
       onChange([...granted, row.name]);
     } else if (state === 'offer') {
-      // Reachable only for a markable tool: Offer -> Always.
+      // Offer -> Always.
       onMark?.([...(marked ?? []), row.name]);
     } else {
       // Always -> Hide, dropping any mark it carried.
@@ -528,7 +545,9 @@ function GrantList<Item>({
    * search never claimed to be about, which is the same silent loss the
    * never-hide-a-ticked-row rule exists to prevent.
    */
-  const picked = rows.filter((row) => row.inGroup && row.matches);
+  // A fixed row is not the press's to grant or clear: it is switched with the
+  // grant it comes with, and a press that reached it would do nothing. #444.
+  const picked = rows.filter((row) => row.inGroup && row.matches && row.fixed === null);
   const matching = picked.length;
   /*
    * Ticked rows that the search does not name, and which are on screen anyway.
@@ -728,13 +747,20 @@ function GrantList<Item>({
                     beside it. Issue #413.
                   */
                   <div className={own.grantToggle}>
+                    {/*
+                      Disabled rather than absent on a fixed row, so the row
+                      still reads its state - Always or Hide, off the grant it
+                      comes with - and the title says where the switch is. #444.
+                    */}
                     <button
                       type="button"
-                      className={`${own.stateToggle} ${STATE_CLASS[toolState(row)]}`}
+                      className={`${own.stateToggle} ${STATE_CLASS[toolState(row)]}${row.fixed === null ? '' : ` ${own.stateFixed}`}`}
                       data-tool-state={toolState(row)}
+                      data-tool-fixed={row.fixed === null ? undefined : ''}
+                      disabled={row.fixed !== null}
                       onClick={() => cycleTool(row)}
-                      title={STATE_TITLE[toolState(row)]}
-                      aria-label={`${row.name}: ${STATE_LABEL[toolState(row)]}`}
+                      title={row.fixed ?? STATE_TITLE[toolState(row)]}
+                      aria-label={`${row.name}: ${STATE_LABEL[toolState(row)]}${row.fixed === null ? '' : `. ${row.fixed}`}`}
                     >
                       {STATE_LABEL[toolState(row)]}
                     </button>
@@ -859,18 +885,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
   const [shellAccess, setShellAccess] = useState(agent.shellAccess);
-  /*
-   * Ticked until somebody unticks it.
-   *
-   * Drawn as a row in the Tools list rather than as a switch of its own, for
-   * the reason that list gives: it is where somebody looks to see what an
-   * agent may do. Held here as a flag because that is what it is on the
-   * server - an agent is not *granted* the right to stop - and the row is
-   * folded in and out of the granted names below.
-   */
-  const [finishAccess, setFinishAccess] = useState(agent.finishAccess !== false);
-  /** Ticked until somebody unticks it; see `PICTURE_LINK`. */
-  const [pictureLinkAccess, setPictureLinkAccess] = useState(agent.pictureLinkAccess !== false);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
@@ -891,16 +905,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * is not a number reads the same as empty.
    */
   const carrying = maxTools.trim() === '' || Number.isNaN(Number(maxTools)) ? null : Number(maxTools);
-  /*
-   * What is always carried, and what is granted in all - the counter's two
-   * numbers. The built-in capabilities that are on (finish_answer, the picture
-   * link) are always carried too, not searched for, so they count towards both:
-   * a counter that left them out said "0 always" beside a built-in row reading
-   * Always. Issue #413.
-   */
-  const builtinsOn = (finishAccess ? 1 : 0) + (pictureLinkAccess ? 1 : 0);
-  const alwaysCarried = requiredTools.length + builtinsOn;
-  const grantedTotal = tools.length + builtinsOn;
   const [icon, setIcon] = useState<string | null>(agent.icon ?? null);
   /**
    * The share of the model's window a session may take back, or null to follow
@@ -991,44 +995,39 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const toolCatalogue = useCatalogue<GrantableTool>(
     'tools',
     async () => {
-      const [held, offered] = await Promise.all([
+      const [builtIn, held, offered] = await Promise.all([
+        fetchBuiltInTools(),
         fetchWorkspaceTools(workspaceId, 0, TOOL_PAGE_SIZE),
         fetchPluginTools(),
       ]);
       /*
-       * The one tool this application brings itself.
+       * The tools this application brings itself, first. Issue #444.
        *
-       * In the list rather than beside it as a switch of its own: this list is
-       * where somebody looks to see what an agent may do, and a capability
-       * that is not in it is a capability nobody finds. Granted by name like
-       * every other row - the server reads the same list.
-       *
-       * It draws only inside a workflow, where there is a step to file the
-       * picture against; in a chat the composer's own button is the door and
-       * the agent is offered nothing, so granting it to an agent that only
-       * ever chats costs nothing and does nothing.
+       * In the list rather than beside it as switches of their own: this list
+       * is where somebody looks to see what an agent may do, and a capability
+       * that is not in it is a capability nobody finds. Three of them were
+       * here - the drawing, the ending, the picture link - and the rest were
+       * handed to every agent without a row to say so. The server's inventory
+       * is the list now, so a built-in it adds is a row here the same day, and
+       * one governed by its name is granted by name like every other row - the
+       * server reads the same list. The ones that come with a wider grant are
+       * rows too, read-only, saying which grant; see `fixedBecause`.
        */
-      const rows: GrantableTool[] = [
-        { id: 'built-in:draw_picture', name: 'draw_picture', plugin: BUILT_IN, off: false, link: null },
-        /*
-         * And the ending, which is ticked to begin with.
-         *
-         * Every other row here is a capability somebody decided to hand over.
-         * This one is how a turn stops: an agent that has posted its reply
-         * itself has nothing left to write, and without this it either repeats
-         * the message or answers with nothing - which reads as a failure and is
-         * retried. Unticking it suits a workflow whose next node needs an
-         * answer to work with.
-         */
-        { id: 'built-in:finish_answer', name: FINISH_ANSWER, plugin: BUILT_IN, off: false, link: null },
-        { id: 'built-in:picture_link', name: PICTURE_LINK, plugin: BUILT_IN, off: false, link: null },
-      ];
+      const rows: GrantableTool[] = builtIn.map((tool) => ({
+        id: `built-in:${tool.name}`,
+        name: tool.name,
+        plugin: BUILT_IN,
+        off: false,
+        link: null,
+        governance: tool.governance,
+      }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
         name: tool.name,
         plugin: null,
         off: !tool.enabled,
         link: `/workspace/${workspaceId}/tools/${tool.id}`,
+        governance: null,
       })));
       const taken = new Set(rows.map((row) => row.name));
       for (const offer of offered) {
@@ -1043,6 +1042,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           // A tool fronting one of the plugin's functions has that function's
           // page to go to; one with a run of its own has no page.
           link: offer.functionId === null ? null : `/workspace/${workspaceId}/functions/${offer.functionId}`,
+          governance: null,
         });
       }
       return rows;
@@ -1050,6 +1050,41 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     [workspaceId],
     { skip: noWorkspace },
   );
+
+  /*
+   * Which built-ins come with a wider grant, and which of those are on now.
+   *
+   * Read off the catalogue and the form's own state, so a row for `skill_load`
+   * reads Always the moment a skill catalog is ticked above it and Hide the
+   * moment the last one is unticked - the row is a view of that grant, never a
+   * second switch for it. They are folded into the granted names so the count
+   * beside the heading and beside the tool limit include them, and folded out
+   * again before anything is stored: the server derives them too. Issue #444.
+   */
+  const comesWithGrant = (governance: BuiltInToolGovernance | null): boolean => {
+    switch (governance) {
+      case 'SKILL_CATALOGS':
+        return skillCatalogs.length > 0;
+      case 'MEMORY_CATALOGS':
+        return memoryCatalogs.length > 0;
+      case 'ORKNUX_ACCESS':
+        return orknuxAccess;
+      case 'SHELL_ACCESS':
+        return shellAccess;
+      default:
+        return false;
+    }
+  };
+  const fixedRows = toolCatalogue.items.filter((tool) => fixedBecause(tool.governance) !== null);
+  const fixedNames = new Set(fixedRows.map((tool) => tool.name));
+  const fixedOn = fixedRows.filter((tool) => comesWithGrant(tool.governance)).map((tool) => tool.name);
+  /*
+   * What is always carried, and what is granted in all - the counter's two
+   * numbers. A built-in that comes with a grant is carried whenever that grant
+   * is on, not searched for, so it counts towards both. Issues #413, #444.
+   */
+  const alwaysCarried = requiredTools.length + fixedOn.length;
+  const grantedTotal = tools.length + fixedOn.length;
   /*
    * The registered servers, which this form asks for only to know where each
    * chip's own page is - issue #251.
@@ -1210,8 +1245,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         mcpServers,
         orknuxAccess,
         shellAccess,
-        finishAccess,
-        pictureLinkAccess,
         memoryCatalogs,
         skillCatalogs,
         tools,
@@ -1229,8 +1262,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
       setShellAccess(updated.shellAccess);
-      setFinishAccess(updated.finishAccess !== false);
-      setPictureLinkAccess(updated.pictureLinkAccess !== false);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setTools(updated.tools);
@@ -1588,23 +1619,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           styles={styles}
           catalogue={toolCatalogue}
           empty={t("No tools in this workspace yet.")}
-          hint={t('The workspace\'s own tools, and the tools its plugins offer. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. Two rows here are built-in capabilities rather than tools: they are always carried when on, so they read Hide or Always with no Offer between.')}
+          hint={t('The workspace\'s own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools, the orknux_ and shell_ tools — reads the state of that grant and is switched there.')}
           keyOf={(tool) => tool.id}
           nameOf={(tool) => tool.name}
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
           linkOf={(tool) => tool.link}
           groupOf={(tool) => tool.plugin ?? null}
-          granted={[
-            ...tools,
-            ...(finishAccess ? [FINISH_ANSWER] : []),
-            ...(pictureLinkAccess ? [PICTURE_LINK] : []),
-          ]}
+          granted={[...tools, ...fixedOn]}
           onChange={(names) => {
-            // Two rows of this list are flags rather than grants, so they are
-            // taken out of the names before the rest are stored.
-            setFinishAccess(names.includes(FINISH_ANSWER));
-            setPictureLinkAccess(names.includes(PICTURE_LINK));
-            const kept = names.filter((one) => one !== FINISH_ANSWER && one !== PICTURE_LINK);
+            // The rows that come with a grant are views of it, not grants of
+            // their own, so they are taken out before the rest are stored. #444.
+            const kept = names.filter((one) => !fixedNames.has(one));
             setTools(kept);
             // A tool that is no longer granted cannot be one that always
             // travels: the mark is about a grant, and one left behind would be
@@ -1619,12 +1644,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           */
           marked={requiredTools}
           onMark={setRequiredTools}
-          /*
-            The two flags in this list are not tools and cannot be marked: the
-            server stores only what is granted, so a tick on one of them was
-            dropped on save while the form went on showing it.
-          */
-          markable={(name) => name !== FINISH_ANSWER && name !== PICTURE_LINK}
+          fixedOf={(tool) => fixedBecause(tool.governance)}
         />
 
         {/*

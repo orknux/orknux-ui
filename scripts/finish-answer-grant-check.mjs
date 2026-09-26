@@ -1,19 +1,18 @@
 /**
- * `finish_answer` is ticked to begin with, and can be unticked.
+ * The server's own tools are on for an agent to begin with, and hiding one is
+ * stored. Issues #413, #444.
  *
- * Every other row in an agent's Tools list is a capability somebody decided to
- * hand over, so the list starts empty and a tick is a decision. This one is the
- * other way round: it is how a turn *stops*. An agent that posted its reply
- * itself - a Slack message, a file it uploaded - has nothing left to write, and
- * without a way to say so it either repeats the message or answers with
- * nothing, which the provider reports as an empty message, which the run reads
- * as a failure, which is retried, which posts the whole thing a second time.
- *
- * So it is a switch on the agent rather than a grant, drawn in the grant list
- * because that list is where somebody looks to see what an agent may do. What
- * this measures is that being on by default survives a save and a reload, and
- * that unticking it is recorded - which is the half a defaulted-on flag gets
- * wrong: it is easy to draw a tick, and easy to store nothing behind it.
+ * `finish_answer` used to be a flag on the agent drawn as a tick in the Tools
+ * list; since #444 it is a name in `tools` like every other built-in - the
+ * note, the clock, the scratchpad, saving a file, the picture link - with the
+ * same Hide, Offer, Always control, and every built-in is a row. What this
+ * measures is that an agent that exists holds every one of them Always without
+ * anybody having pressed anything (V302 gave existing agents what they were
+ * being handed; a new agent starts with all of them), that hiding one is
+ * stored as the name leaving `tools`, and that the old `finishAccess` and
+ * `pictureLinkAccess` answers read the list - which is the half a derived
+ * switch gets wrong: it is easy to draw Always, and easy to store nothing
+ * behind it.
  *
  * It puts the agent back the way it found it.
  */
@@ -23,7 +22,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 
 const { workspaceAgents } = await graphql(
   `query ($w: ID!) {
-     workspaceAgents(workspaceId: $w, page: 0, size: 20) { content { id name finishAccess } }
+     workspaceAgents(workspaceId: $w, page: 0, size: 20) { content { id name tools requiredTools finishAccess pictureLinkAccess } }
    }`,
   { w: WORKSPACE },
 );
@@ -33,115 +32,116 @@ if (agent === undefined) {
   await finish(browser);
 }
 
+/* ------------------------------------------ what an existing agent holds */
+
+const { builtInTools } = await graphql(`{ builtInTools { name governance } }`);
+const byName = builtInTools.filter((one) => one.governance === 'GRANT').map((one) => one.name);
+record(byName.length > 0, `the server declares ${byName.length} built-ins switched by name`);
+
+const missing = byName.filter((name) => !agent.tools.includes(name));
 record(
-  agent.finishAccess === true,
-  `an agent has it to begin with, without anybody ticking anything (${agent.finishAccess})`,
+  missing.length === 0,
+  `an existing agent holds every one of them without anybody ticking anything (missing: ${missing.join(', ') || 'none'})`,
+);
+record(
+  agent.finishAccess === true && agent.pictureLinkAccess === true,
+  `and the old switches read the list (${agent.finishAccess}, ${agent.pictureLinkAccess})`,
 );
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agent.id}/settings`, {
   waitUntil: 'domcontentloaded',
 });
-await page.waitForSelector('text=Tools', { timeout: 20_000 });
-// The form fetches its catalogues before it can draw a row in any of them.
-await page.waitForFunction(
-  () => [...document.querySelectorAll('label')].some((one) => one.textContent.includes('finish_answer')),
-  { timeout: 20_000 },
-);
+await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
+await page.waitForSelector('[data-grant-name="finish_answer"] [data-tool-state]', { timeout: 20_000 });
 // The catalogues arrive after the form does, and a row clicked while the
 // list behind it is still settling is a click the next render undoes.
 await page.waitForTimeout(2000);
 
-/** One row of the Tools list, its tick, and what the list says it is. */
-const row = (named = 'finish_answer') =>
-  page.evaluate((wanted) => {
-    const labels = [...document.querySelectorAll('label')];
-    const found = labels.find((one) => one.textContent.includes(wanted));
-    if (found === undefined) return null;
-    const box = found.querySelector('input[type="checkbox"]');
-    return {
-      ticked: box?.checked === true,
-      says: found.textContent.replace(/\s+/g, ' ').trim().slice(0, 80),
-    };
-  }, named);
+/** One row's control: its state, and whether it can be pressed. */
+const control = (named) => page.locator(`[data-grant-name="${named}"] [data-tool-state]`);
+const stateOf = async (named) => control(named).getAttribute('data-tool-state');
 
-const opened = await row();
-record(opened !== null, 'the row is in the Tools list, where the grants are');
-record(opened?.ticked === true, `and it is ticked (${opened?.says})`);
-/* ------------------------------------------------- unticking it is recorded */
+/** Presses the control round its cycle until it reads `wanted`; at most three presses. */
+async function cycleTo(named, wanted) {
+  for (let press = 0; press < 3; press += 1) {
+    if ((await stateOf(named)) === wanted) return;
+    await control(named).click();
+    await page.waitForTimeout(250);
+  }
+}
 
-await page.locator('label', { hasText: 'finish_answer' }).locator('input[type="checkbox"]').click();
-await page.waitForTimeout(600);
-record((await row())?.ticked === false, 'it can be unticked');
+record((await control('finish_answer').count()) === 1, 'the row is in the Tools list, where the grants are');
+record((await stateOf('finish_answer')) === 'always', `and it reads Always (${await stateOf('finish_answer')})`);
 
-await page.getByRole('button', { name: 'Save' }).first().click();
+/* ---------------------------------------------------- hiding it is stored */
+
+await cycleTo('finish_answer', 'hide');
+record((await stateOf('finish_answer')) === 'hide', 'it can be hidden');
+
+await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(1500);
 
 const after = (
-  await graphql(`query ($id: ID!) { agent(id: $id) { finishAccess } }`, { id: agent.id })
+  await graphql(`query ($id: ID!) { agent(id: $id) { tools requiredTools finishAccess } }`, { id: agent.id })
 ).agent;
 record(
-  after.finishAccess === false,
-  `the server holds what was unticked, rather than a default that outlives it (${after.finishAccess})`,
+  !after.tools.includes('finish_answer') && !after.requiredTools.includes('finish_answer'),
+  `the server holds the hiding as the name leaving the list (${after.tools.length} tools)`,
 );
+record(after.finishAccess === false, `and the old switch reads it (${after.finishAccess})`);
 
 await page.reload({ waitUntil: 'domcontentloaded' });
-await page.waitForSelector('text=Tools', { timeout: 20_000 });
-// The form fetches its catalogues before it can draw a row in any of them.
-await page.waitForFunction(
-  () => [...document.querySelectorAll('label')].some((one) => one.textContent.includes('finish_answer')),
-  { timeout: 20_000 },
-);
-// The catalogues arrive after the form does, and a row clicked while the
-// list behind it is still settling is a click the next render undoes.
+await page.waitForSelector('[data-grant-name="finish_answer"] [data-tool-state]', { timeout: 20_000 });
 await page.waitForTimeout(2000);
 record(
-  (await row())?.ticked === false,
-  'and the form comes back unticked rather than ticked again by the default',
+  (await stateOf('finish_answer')) === 'hide',
+  'and the form comes back hidden rather than on again by a default',
 );
 
 /* ------------------------------------------------------ and back on it goes */
 
-await page.locator('label', { hasText: 'finish_answer' }).locator('input[type="checkbox"]').click();
-await page.waitForTimeout(600);
-await page.getByRole('button', { name: 'Save' }).first().click();
+await cycleTo('finish_answer', 'always');
+await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(1500);
 
 const restored = (
-  await graphql(`query ($id: ID!) { agent(id: $id) { finishAccess } }`, { id: agent.id })
+  await graphql(`query ($id: ID!) { agent(id: $id) { tools requiredTools finishAccess } }`, { id: agent.id })
 ).agent;
-record(restored.finishAccess === true, 'ticking it again turns it back on');
+record(
+  restored.tools.includes('finish_answer') && restored.requiredTools.includes('finish_answer') && restored.finishAccess === true,
+  'marking it Always again puts it back on the list, and the switch reads it',
+);
 
-/* ------------------------------------- the other row that is a flag, not a grant */
+/* ------------------------------------------ the picture link, the same way */
 
 /*
- * `picture_link` is the same arrangement: on until it is unticked. The drawing
+ * `picture_link` is the same arrangement, and was the other flag. The drawing
  * tools answer with a key, and this is the door a model knocks on when it wants
- * the picture inside what it writes - which is worth having, and worth being
- * able to take away from an agent whose answers are read somewhere this
- * installation is not.
+ * the picture inside what it writes - worth having, and worth being able to
+ * take away from an agent whose answers are read somewhere this installation
+ * is not.
  */
-const linking = await row('picture_link');
-record(linking !== null, 'picture_link is in the same list');
-record(linking?.ticked === true, 'and it is ticked to begin with too');
+record((await control('picture_link').count()) === 1, 'picture_link is in the same list');
+record((await stateOf('picture_link')) === 'always', 'and reads Always to begin with too');
 
-await page.locator('label', { hasText: 'picture_link' }).locator('input[type="checkbox"]').click();
-await page.waitForTimeout(600);
-await page.getByRole('button', { name: 'Save' }).first().click();
+await cycleTo('picture_link', 'hide');
+await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(1500);
 
 const linked = (
-  await graphql(`query ($id: ID!) { agent(id: $id) { pictureLinkAccess } }`, { id: agent.id })
+  await graphql(`query ($id: ID!) { agent(id: $id) { tools pictureLinkAccess } }`, { id: agent.id })
 ).agent;
-record(linked.pictureLinkAccess === false, `unticking it is stored (${linked.pictureLinkAccess})`);
-
-await page.locator('label', { hasText: 'picture_link' }).locator('input[type="checkbox"]').click();
-await page.waitForTimeout(600);
-await page.getByRole('button', { name: 'Save' }).first().click();
-await page.waitForTimeout(1500);
 record(
-  (await graphql(`query ($id: ID!) { agent(id: $id) { pictureLinkAccess } }`, { id: agent.id }))
-    .agent.pictureLinkAccess === true,
-  'and it goes back on',
+  !linked.tools.includes('picture_link') && linked.pictureLinkAccess === false,
+  `hiding it is stored, and the old switch reads it (${linked.pictureLinkAccess})`,
 );
+
+await cycleTo('picture_link', 'always');
+await page.getByRole('button', { name: /^Save/ }).first().click();
+await page.waitForTimeout(1500);
+const relinked = (
+  await graphql(`query ($id: ID!) { agent(id: $id) { tools pictureLinkAccess } }`, { id: agent.id })
+).agent;
+record(relinked.tools.includes('picture_link') && relinked.pictureLinkAccess === true, 'and it goes back on');
 
 await finish(browser);
