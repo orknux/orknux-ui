@@ -974,15 +974,17 @@
   font-size: var(--text-xs);
 }
 
-/* ---- The agent's setup at the start of the session (#391) ---- */
+/* ---- The agent's setup, where in the log it started answering (#391, #441) ---- */
 
 /*
  * Collapsed by default and opened on a press, because the system prompt alone
- * can be a page. Above the transcript, since it is the context the whole log is
- * read against rather than a line in it.
+ * can be a page. A block in the transcript's column rather than a line of it -
+ * raised, so it reads as context around the lines and not as something anybody
+ * said - and spaced by the transcript's own gap, since it sits between its
+ * lines now rather than above them.
  */
 .agentDetails {
-  margin: 0 var(--space-24) var(--space-16);
+  margin: 0;
   padding: var(--space-12) var(--space-16);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -1016,6 +1018,8 @@
 
 /* Which agent, and its model, so the closed header still says who answered. */
 .agentWho {
+  flex: 1;
+  min-width: 0;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   overflow: hidden;

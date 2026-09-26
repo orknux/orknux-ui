@@ -24,6 +24,7 @@ import type {
   LlmSessionEventOrder,
   LlmSessionEventPage,
   LlmSessionMember,
+  SessionAgentDetails,
   SessionExecutionLink,
   SessionScratchpad,
   SessionScratchpadContent,
@@ -83,6 +84,11 @@ const KIND_CLASS: Record<LlmSessionEventKind, string> = {
   // A note the agent kept for itself — its own rule, so a reader scanning the
   // log picks out the few lines that were meant to survive it. Issue #409.
   NOTE: 'kindNote',
+  // The agent's setup is drawn as its own block rather than a line, so this
+  // only colours the filter chip: muted, like the machinery's own notes,
+  // because it is the record of what answered and not part of the
+  // conversation. Issue #441.
+  AGENT_DETAILS: 'kindSystem',
 };
 
 /**
@@ -241,6 +247,74 @@ function EventLine({ event }: { event: LlmSessionEvent }) {
 }
 
 /**
+ * The agent's setup, where in the log an agent started answering with it.
+ * Issues #391, #441.
+ *
+ * A block in the transcript rather than a line of it, drawn at each
+ * AGENT_DETAILS event: the first one opens the log with the context its words
+ * were said in, and every later one marks where a different agent took the
+ * thread or the same agent was edited between turns. It used to be drawn once,
+ * above the transcript, from a snapshot the session kept of whichever agent
+ * opened it - right about the first turn and silently wrong about the rest of
+ * a shared session.
+ *
+ * Collapsed by default - the system prompt alone can be a page, and a log with
+ * three of these open would be three pages of prompt between the turns - and
+ * opened on a press. The closed header still says who and with what model, so a
+ * reader scanning the log sees the handover without opening anything.
+ */
+function AgentDetailsBlock({ details, at }: { details: SessionAgentDetails; at: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className={styles.agentDetails} aria-label={t('Agent details')} data-agent-details={details.agent}>
+      <button
+        type="button"
+        className={styles.agentToggle}
+        aria-expanded={open}
+        data-agent-details-toggle=""
+        onClick={() => setOpen((was) => !was)}
+      >
+        <span className={styles.agentCaret} aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span className={styles.agentTitle}>{t('Agent details')}</span>
+        <span className={styles.agentWho}>
+          {` · ${details.agent}`}
+          {details.model != null ? ` · ${details.model}` : ''}
+        </span>
+        <span className={styles.at} title={at}>
+          {timeOfDay(at)}
+        </span>
+      </button>
+      {open && (
+        <dl className={styles.agentGrid}>
+          {details.systemPrompt != null && details.systemPrompt !== '' && (
+            <div className={styles.agentRow}>
+              <dt className={styles.agentKey}>{t('System prompt')}</dt>
+              <dd className={styles.agentValue}>
+                <pre className={styles.agentPrompt}>{details.systemPrompt}</pre>
+              </dd>
+            </div>
+          )}
+          {([
+            [t('Tools'), details.tools],
+            [t('Skills'), details.skills],
+            [t('Memory'), details.memory],
+            [t('Connections'), details.connections],
+          ] as const).map(([label, list]) =>
+            list.length === 0 ? null : (
+              <div key={label} className={styles.agentRow}>
+                <dt className={styles.agentKey}>{label}</dt>
+                <dd className={styles.agentValue}>{list.join(', ')}</dd>
+              </div>
+            ),
+          )}
+        </dl>
+      )}
+    </section>
+  );
+}
+
+/**
  * The workflow run or runs that wrote into this session. Issue #420.
  *
  * A session is keyed by what a run computed rather than by the run, so more than
@@ -346,8 +420,6 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [held, setHeld] = useState<LlmSession | null>(null);
   const [missing, setMissing] = useState(false);
-  /** Whether the agent-details header is expanded; collapsed by default - it can be long. Issue #391. */
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [events, setEvents] = useState<LlmSessionEventPage | null>(null);
   const [page, setPage] = usePageWithin(sessionId);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
@@ -775,53 +847,11 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       */}
 
       {/*
-        The agent's setup as it stood when the session opened, so the log reads
-        with the context its words were said in. Collapsed by default - the
-        system prompt alone can be a page - and opened on a press. Issue #391.
+        The agent's setup is a line of the log as well, drawn as a block where
+        an agent started answering with it - see AgentDetailsBlock. It used to
+        be drawn once here, above the transcript, for the agent that opened the
+        session. Issues #391, #441.
       */}
-      {!missing && held?.agentDetails != null && (
-        <section className={styles.agentDetails} aria-label={t('Agent details')}>
-          <button
-            type="button"
-            className={styles.agentToggle}
-            aria-expanded={detailsOpen}
-            data-agent-details-toggle=""
-            onClick={() => setDetailsOpen((was) => !was)}
-          >
-            <span className={styles.agentCaret} aria-hidden="true">{detailsOpen ? '▾' : '▸'}</span>
-            <span className={styles.agentTitle}>{t('Agent details')}</span>
-            <span className={styles.agentWho}>
-              {held.agentDetails.agent}
-              {held.agentDetails.model != null ? ` · ${held.agentDetails.model}` : ''}
-            </span>
-          </button>
-          {detailsOpen && (
-            <dl className={styles.agentGrid}>
-              {held.agentDetails.systemPrompt != null && held.agentDetails.systemPrompt !== '' && (
-                <div className={styles.agentRow}>
-                  <dt className={styles.agentKey}>{t('System prompt')}</dt>
-                  <dd className={styles.agentValue}>
-                    <pre className={styles.agentPrompt}>{held.agentDetails.systemPrompt}</pre>
-                  </dd>
-                </div>
-              )}
-              {([
-                [t('Tools'), held.agentDetails.tools],
-                [t('Skills'), held.agentDetails.skills],
-                [t('Memory'), held.agentDetails.memory],
-                [t('Connections'), held.agentDetails.connections],
-              ] as const).map(([label, list]) =>
-                list.length === 0 ? null : (
-                  <div key={label} className={styles.agentRow}>
-                    <dt className={styles.agentKey}>{label}</dt>
-                    <dd className={styles.agentValue}>{list.join(', ')}</dd>
-                  </div>
-                ),
-              )}
-            </dl>
-          )}
-        </section>
-      )}
 
       <div className={showAside ? styles.split : undefined}>
       <div className={styles.main}>
@@ -921,7 +951,16 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               return (
                 <div key={event.id}>
                   {newDay && <p className={styles.day}>{day}</p>}
-                  <EventLine event={event} />
+                  {/*
+                    The agent's setup where it started answering, as the block
+                    the log used to open with - and a plain line where the
+                    record could not be read, so nothing is hidden. Issue #441.
+                  */}
+                  {event.kind === 'AGENT_DETAILS' && event.agentDetails !== null ? (
+                    <AgentDetailsBlock details={event.agentDetails} at={event.at} />
+                  ) : (
+                    <EventLine event={event} />
+                  )}
                 </div>
               );
             })}

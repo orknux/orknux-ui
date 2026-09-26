@@ -33,17 +33,18 @@ export interface LlmSession {
    * every note in the workspace to draw a page that shows none of them.
    */
   notes?: LlmSessionNote[];
-  /**
-   * The agent's setup as it stood when the session opened. Issue #391.
-   *
-   * Snapshotted once - the model, system prompt, and grants - so the log reads
-   * with the context its words were said in. Absent on a row of the list and
-   * on a session no agent has written into.
-   */
-  agentDetails?: SessionAgentDetails | null;
 }
 
-/** The agent's setup at the start of a session. Issue #391. */
+/**
+ * An agent's setup as it stood when it started answering - the model, system
+ * prompt, and grants. Issues #391, #441.
+ *
+ * The payload of an AGENT_DETAILS line. The log carries one wherever the setup
+ * answering changed: a session two agents take turns in has one at each
+ * handover, and an agent edited between turns leaves one saying so. The server
+ * also keeps the latest on the session itself, which nothing here asks for -
+ * the page draws each where it falls in the transcript.
+ */
 export interface SessionAgentDetails {
   agent: string;
   model: string | null;
@@ -61,9 +62,11 @@ export type LlmSessionOrder = 'KEY' | 'CREATED' | 'LAST_EVENT';
  * What one line of a transcript is.
  *
  * TOOL is the call and not what came back: the arguments the model sent, which
- * is why that one line is often JSON and often long.
+ * is why that one line is often JSON and often long. AGENT_DETAILS is the setup
+ * of the agent that started answering at that point, carried in `agentDetails`
+ * rather than read out of `content`.
  */
-export type LlmSessionEventKind = 'AGENT' | 'TOOL' | 'USER' | 'SYSTEM' | 'THINKING' | 'NOTE';
+export type LlmSessionEventKind = 'AGENT' | 'TOOL' | 'USER' | 'SYSTEM' | 'THINKING' | 'NOTE' | 'AGENT_DETAILS';
 
 /** What a transcript is ordered by. */
 export type LlmSessionEventOrder = 'AT' | 'KIND';
@@ -93,6 +96,12 @@ export interface LlmSessionEvent {
    */
   millis: number | null;
   at: string;
+  /**
+   * The agent's setup an AGENT_DETAILS line carries, and null on every other
+   * kind - or on a line whose record could not be read, which is drawn as a
+   * plain line. Issue #441.
+   */
+  agentDetails: SessionAgentDetails | null;
 }
 
 export interface LlmSessionPage {
@@ -113,17 +122,22 @@ export const EVENT_KIND_LABEL: Record<LlmSessionEventKind, string> = {
   SYSTEM: 'System',
   THINKING: 'Thinking',
   NOTE: 'Note',
+  AGENT_DETAILS: 'Agent details',
 };
 
-/** In the order a turn takes: something is put to the agent, it calls, it answers. */
-export const EVENT_KINDS: LlmSessionEventKind[] = ['USER', 'AGENT', 'TOOL', 'THINKING', 'NOTE', 'SYSTEM'];
+/**
+ * In the order a turn takes: the agent's setup is logged, something is put to
+ * it, it calls, it answers.
+ */
+export const EVENT_KINDS: LlmSessionEventKind[] = ['AGENT_DETAILS', 'USER', 'AGENT', 'TOOL', 'THINKING', 'NOTE', 'SYSTEM'];
 
 const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount';
 
 /** What one opened session adds, and a row of the list does not. Issue #371. */
-const ONE_SESSION_FIELDS =
-  `${SESSION_FIELDS} notes { id note writtenBy writtenAt } ` +
-  'agentDetails { agent model systemPrompt tools skills memory connections }';
+const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
+
+/** What an AGENT_DETAILS line carries, and the rest carry as null. Issue #441. */
+const AGENT_DETAILS_FIELDS = 'agentDetails { agent model systemPrompt tools skills memory connections }';
 
 /**
  * One session of a family: the main session and every one an agent in it
@@ -160,7 +174,7 @@ export interface LlmSessionNote {
   writtenAt: string;
 }
 
-const EVENT_FIELDS = 'id kind actor content result millis at';
+const EVENT_FIELDS = `id kind actor content result millis at ${AGENT_DETAILS_FIELDS}`;
 
 export async function fetchLlmSessions(
   workspaceId: string,

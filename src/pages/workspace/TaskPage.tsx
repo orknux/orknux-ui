@@ -645,7 +645,15 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                       {line.kind !== 'AGENT' && <span className={styles.actor}>{line.actor}</span>}
                       <span className={styles.when}>{timeAgo(line.at)}</span>
                     </span>
-                    {line.content !== null && (
+                    {/*
+                      The agent's setup, said as which agent on which model -
+                      the whole snapshot is a page of JSON, and the session page
+                      is where it opens. Issue #441.
+                    */}
+                    {line.content !== null && line.kind === 'AGENT_DETAILS' && (
+                      <div className={styles.said}>{agentDetailsSummary(line.content)}</div>
+                    )}
+                    {line.content !== null && line.kind !== 'AGENT_DETAILS' && (
                       <div className={styles.said}>
                         <Markdown>{line.content}</Markdown>
                       </div>
@@ -703,7 +711,31 @@ const SPEAKER: Record<string, string> = {
   SYSTEM: 'Note',
   TOOL: 'Tool',
   AGENT: 'Agent',
+  AGENT_DETAILS: 'Agent details',
 };
+
+/**
+ * An AGENT_DETAILS line's content, in the words this page draws it with.
+ * Issue #441.
+ *
+ * The line carries the agent's whole setup as JSON, and the session page draws
+ * that as a block that opens. A task is one agent's conversation, so what this
+ * page wants from it is the one fact that could have changed between turns -
+ * which agent, on which model - rather than a page of prompt rendered as
+ * markdown. The session page has the rest. Falls back to the text where the
+ * record cannot be read, so nothing is hidden.
+ */
+function agentDetailsSummary(content: string): string {
+  try {
+    const held = JSON.parse(content) as { agent?: unknown; model?: unknown };
+    const agent = typeof held.agent === 'string' ? held.agent : '';
+    const model = typeof held.model === 'string' ? held.model : null;
+    if (agent === '') return content;
+    return model === null ? agent : `${agent} · ${model}`;
+  } catch {
+    return content;
+  }
+}
 
 /**
  * A line arriving, put where it belongs.
@@ -728,6 +760,10 @@ function merged(held: LlmSessionEvent[], step: TaskStep): LlmSessionEvent[] {
     result: step.result,
     millis: step.millis,
     at: step.at,
+    // A step arrives as the stream sends it, without the resolved setup an
+    // AGENT_DETAILS line carries on the session page; this page reads what it
+    // needs out of the content instead. Issue #441.
+    agentDetails: null,
   };
   const at = held.findIndex((seen) => seen.id === line.id);
   if (at !== -1) {

@@ -1,0 +1,349 @@
+/**
+ * A session's log says which agent's setup each stretch of it was answered
+ * under - issues #391 and #441.
+ *
+ * #391 kept one snapshot of the agent's setup on the session and drew it once
+ * above the transcript, for whichever agent opened it. A session is not one
+ * agent's: a Slack thread's session is answered by whichever agent node a run
+ * points at it, and an agent is edited between turns, so that one block was
+ * right about the first turn and silently wrong about the rest. #441 writes an
+ * AGENT_DETAILS line where an agent starts responding with a setup that differs
+ * from the last one logged, and the page draws the block at each such line.
+ *
+ * What is measured, against a real session:
+ *
+ *   two agents, three turns  - agent A answers, A answers again unchanged, then
+ *                              B answers: the server holds exactly two
+ *                              AGENT_DETAILS lines, A's then B's, and each
+ *                              carries the setup the page draws
+ *   the page, oldest first   - two "Agent details" blocks, in that order, each
+ *                              naming its agent in the closed header
+ *   collapsed by default     - neither block shows its system prompt until it
+ *                              is pressed, and pressing the first shows that
+ *                              agent's prompt and not the other's
+ *   nothing above the log    - the block is a line of the transcript now; the
+ *                              old header over the transcript is gone
+ *
+ * ---------------------------------------------------------------------------
+ * Why the fixture is a workflow run, and why it needs no model that answers
+ *
+ * There is no mutation that makes a session - a session exists because an agent
+ * node carrying a `sessionKey` ran - so this builds one the way
+ * session-pages-check does: a scratch workflow of a session node wired to an
+ * agent node, run under one key. The agent's setup is written into the session
+ * *before* the model is asked, the way the question is, so a provider that
+ * cannot be reached still leaves the line this check is about; the step fails
+ * and the run ends, and nothing below reads how.
+ *
+ * The two agents are made here and removed after, each pointed at the model of
+ * whichever agent the workspace already has one on, so that a workspace built
+ * from nothing works the same as the one this was written on. They are made
+ * rather than found because the check needs two with *different* setups, and
+ * the surest way to know two prompts differ is to have written both.
+ *
+ * What it cannot sweep is the three executions the runs leave; nothing removes
+ * an execution, and `removeWorkflow` leaves them behind.
+ * ---------------------------------------------------------------------------
+ */
+import { BASE, WORKSPACE, open, record, drawn, shot, finish } from './suite/harness.mjs';
+import { anyOf } from './suite/named.mjs';
+
+const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
+
+/* ----------------------------------------------------------------- fixture */
+
+const STAMP = Date.now();
+const PREFIX = 'zzDetails441';
+
+const FIRST = { name: `${PREFIX} first ${STAMP}`, prompt: `You summarise incidents. (${STAMP})` };
+const SECOND = { name: `${PREFIX} second ${STAMP}`, prompt: `You decide what is urgent. (${STAMP})` };
+
+/*
+ * Anything a run that died halfway through left behind: sessions, workflows and
+ * the two scratch agents. Swept at the start as well as the end, because the
+ * sweep also cleans up after runs the suite's timeout killed, which no `finally`
+ * can.
+ */
+async function sweep() {
+  const left = await graphql(
+    `query($id: ID!) {
+       llmSessions(workspaceId: $id, page: 0, size: 200) { content { id key } }
+       workspaceWorkflows(workspaceId: $id, page: 0, size: 200) { content { id name } }
+       workspaceAgents(workspaceId: $id, page: 0, size: 200) { content { id name } }
+     }`,
+    { id: WORKSPACE },
+  );
+  for (const old of left.llmSessions.content.filter((one) => one.key.includes(PREFIX))) {
+    await graphql(`mutation($id: ID!) { removeLlmSession(id: $id) }`, { id: old.id }).catch(() => undefined);
+    console.log(`swept session ${old.key} (#${old.id})`);
+  }
+  for (const old of left.workspaceWorkflows.content.filter((one) => one.name.startsWith(PREFIX))) {
+    await graphql(`mutation($id: ID!) { removeWorkflow(id: $id) }`, { id: old.id }).catch(() => undefined);
+    console.log(`swept workflow ${old.name} (#${old.id})`);
+  }
+  for (const old of left.workspaceAgents.content.filter((one) => one.name.startsWith(PREFIX))) {
+    await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: old.id }).catch(() => undefined);
+    console.log(`swept agent ${old.name} (#${old.id})`);
+  }
+}
+
+await sweep();
+
+/*
+ * A model to point the two scratch agents at: whichever one an agent here that
+ * is switched on already has. The model need not answer - see the header - it
+ * only has to be chosen, because an agent node with no model fails before it
+ * opens the session.
+ */
+const LENDER = await anyOf(graphql, 'agent', WORKSPACE, null, {
+  override: process.env.ORKNUX_AGENT,
+  fits: async (row) => {
+    const found = await graphql(`query($id: ID!) { agent(id: $id) { enabled modelId } }`, { id: row.id });
+    return found.agent?.enabled === true && found.agent?.modelId !== null;
+  },
+});
+if (LENDER === null) {
+  record(false, 'no agent here is switched on with a model chosen, so there is no model to point the fixture at');
+  await finish(browser);
+}
+const { agent: lender } = await graphql(`query($id: ID!) { agent(id: $id) { modelId } }`, { id: LENDER });
+const MODEL = lender.modelId;
+
+/** One scratch agent with its own prompt, on the borrowed model. */
+async function makeAgent({ name, prompt }) {
+  const made = await graphql(
+    `mutation($input: CreateAgentInput!) { createAgent(input: $input) { id } }`,
+    { input: { workspaceId: WORKSPACE, name, type: 'LLM', systemPrompt: prompt } },
+  );
+  const id = made.createAgent.id;
+  await graphql(`mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }`, {
+    id,
+    input: { name, systemPrompt: prompt, modelId: MODEL },
+  });
+  console.log(`made agent ${name} (#${id}) on model #${MODEL}`);
+  return id;
+}
+
+const firstAgent = await makeAgent(FIRST);
+const secondAgent = await makeAgent(SECOND);
+
+const WORKFLOW_NAME = `${PREFIX} ${STAMP}`;
+const made = await graphql(`mutation($input: CreateWorkflowInput!) { createWorkflow(input: $input) { id name } }`, {
+  input: {
+    workspaceId: WORKSPACE,
+    name: WORKFLOW_NAME,
+    description: 'Made by scripts/session-agent-details-check.mjs to open a session, and removed again after.',
+  },
+});
+const WORKFLOW = made.createWorkflow.id;
+console.log(`made workflow ${WORKFLOW_NAME} (#${WORKFLOW})`);
+
+/*
+ * A session node wired to an agent node, and nothing else. Saved again between
+ * runs with the node pointed at the other agent, which is exactly what a Slack
+ * thread's session sees when a different run answers in it: the same key, a
+ * different agent. A run starts from the graph as it stands, so re-saving is
+ * all a re-pointing takes.
+ */
+async function pointAt(agentId) {
+  const graph = await graphql(
+    `mutation($ws: ID!, $id: ID!, $input: WorkflowGraphInput!) {
+       saveWorkflowGraph(workspaceId: $ws, workflowId: $id, input: $input) { workflowId problems { message } }
+     }`,
+    {
+      ws: WORKSPACE,
+      id: WORKFLOW,
+      input: {
+        nodes: [
+          {
+            key: 'session',
+            kind: 'SESSION',
+            name: 'the conversation this belongs to',
+            x: 40,
+            y: 40,
+            mappings: [
+              { name: 'sessionKeyPrefix', expression: PREFIX, mode: 'VALUE' },
+              { name: 'sessionKey', expression: `thread-${STAMP}`, mode: 'VALUE' },
+            ],
+          },
+          {
+            key: 'agent',
+            kind: 'AGENT',
+            name: `${PREFIX} asks`,
+            agentId,
+            outputName: 'said',
+            x: 420,
+            y: 40,
+            mappings: [{ name: 'prompt', expression: 'Say hello.', mode: 'VALUE' }],
+          },
+        ],
+        edges: [{ source: 'session', target: 'agent' }],
+      },
+    },
+  );
+  console.log(
+    `graph points at #${agentId}: ${graph.saveWorkflowGraph.problems.map((one) => one.message).join('; ') || 'no problems'}`,
+  );
+}
+
+/** One run, waited out. Hands back how it ended, so a fixture that failed says so. */
+async function runIt(patience = 120_000) {
+  const { startExecution } = await graphql(
+    `mutation($ws: ID!, $id: ID!) { startExecution(workspaceId: $ws, workflowId: $id) { id status } }`,
+    { ws: WORKSPACE, id: WORKFLOW },
+  );
+  const upTo = Date.now() + patience;
+  let status = startExecution.status;
+  while (status === 'RUNNING' && Date.now() < upTo) {
+    await page.waitForTimeout(1000);
+    const asked = await graphql(`query($id: ID!) { execution(id: $id) { status } }`, { id: startExecution.id }).catch(
+      () => null,
+    );
+    if (asked !== null) status = asked.execution.status;
+  }
+  return status;
+}
+
+/* Three turns: the first agent twice, unchanged, then the second. */
+await pointAt(firstAgent);
+console.log(`turn 1, ${FIRST.name}: ${await runIt()}`);
+console.log(`turn 2, ${FIRST.name} again: ${await runIt()}`);
+await pointAt(secondAgent);
+console.log(`turn 3, ${SECOND.name}: ${await runIt()}`);
+
+const { llmSessions } = await graphql(
+  `query($id: ID!) { llmSessions(workspaceId: $id, page: 0, size: 200) { content { id key eventCount } } }`,
+  { id: WORKSPACE },
+);
+const session = llmSessions.content.find((one) => one.key === `${PREFIX}:thread-${STAMP}`) ?? null;
+
+/** Everything made here, gone again. */
+async function tidy() {
+  await sweep();
+}
+
+if (session === null) {
+  record(
+    false,
+    'the runs opened no session, so there is nothing to read. The workspace holds: ' +
+      `${llmSessions.content.map((one) => one.key).join(', ') || '(nothing)'}`,
+  );
+  await tidy();
+  await finish(browser);
+}
+console.log(`opened ${session.key} (#${session.id}, ${session.eventCount} lines)`);
+
+/* --------------------------------------------------- what the server holds */
+
+const { llmSessionEvents } = await graphql(
+  `query($id: ID!) {
+     llmSessionEvents(sessionId: $id, page: 0, size: 200, order: AT, ascending: true) {
+       content { id kind actor at agentDetails { agent model systemPrompt tools skills memory connections } }
+     }
+   }`,
+  { id: session.id },
+);
+const lines = llmSessionEvents.content;
+const details = lines.filter((one) => one.kind === 'AGENT_DETAILS');
+console.log(`transcript: ${lines.length} lines, ${details.length} of them AGENT_DETAILS`);
+
+/*
+ * Two, not three. The second turn was the same agent with the same setup, and a
+ * line for it would be a line saying nothing had changed - a session one agent
+ * talks in for a week would fill with them.
+ */
+record(details.length === 2, `three turns by two agents leave two AGENT_DETAILS lines, not one per turn (${details.length})`);
+record(
+  details[0]?.actor === FIRST.name && details[1]?.actor === SECOND.name,
+  `in the order the agents answered: ${details.map((one) => one.actor).join(', ') || 'none'}`,
+);
+record(
+  details[0]?.agentDetails?.systemPrompt === FIRST.prompt && details[1]?.agentDetails?.systemPrompt === SECOND.prompt,
+  'and each carries the setup it was answered with, resolved for the page',
+);
+/* Where it falls: A's before anything A said, B's before anything B said. */
+const firstSaid = lines.findIndex((one) => one.kind !== 'AGENT_DETAILS');
+const secondDetails = lines.findIndex((one) => one.kind === 'AGENT_DETAILS' && one.actor === SECOND.name);
+const lastBefore = lines.slice(0, secondDetails).filter((one) => one.kind !== 'AGENT_DETAILS').length;
+record(
+  lines[0]?.kind === 'AGENT_DETAILS' && firstSaid > 0,
+  'the first line of the log is the first agent\'s setup, before anything was said',
+);
+record(
+  secondDetails > 0 && lastBefore > 0 && secondDetails < lines.length - 1,
+  'the second agent\'s setup sits between the turns, where it took the thread',
+);
+
+/* --------------------------------------------------------------- the page */
+
+const toggles = page.locator('[data-agent-details-toggle]');
+
+await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${session.id}`, { waitUntil: 'domcontentloaded' });
+if (await drawn(page, 'the session transcript')) {
+  /*
+   * Oldest first, so "in order" means the order the agents answered in. The
+   * page opens newest-first - a transcript is read to see how a turn ended.
+   */
+  const direction = page.locator('button[aria-label="Oldest first"], button[aria-label="Newest first"]');
+  if ((await direction.getAttribute('aria-label')) === 'Newest first') {
+    await direction.click();
+  }
+  await toggles.nth(1).waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
+  await page.waitForTimeout(400);
+
+  const many = await toggles.count();
+  record(many === 2, `the transcript draws two Agent details blocks, one per change of setup (${many})`);
+
+  const headers = await toggles.allInnerTexts();
+  console.log(`headers: ${JSON.stringify(headers)}`);
+  record(
+    headers[0]?.includes('Agent details') && headers[0]?.includes(FIRST.name) && headers[1]?.includes(SECOND.name),
+    'each closed header says "Agent details" and names its agent, in the order they answered',
+  );
+
+  /* Where the blocks fall among the lines, read off the page rather than assumed. */
+  const order = await page.$$eval('[data-agent-details], article[class*="_event_"]', (nodes) =>
+    nodes.map((node) => (node.hasAttribute('data-agent-details') ? `D:${node.getAttribute('data-agent-details')}` : 'L')),
+  );
+  console.log(`drawn order: ${order.join(' ')}`);
+  record(order[0] === `D:${FIRST.name}`, 'the first block opens the log');
+  const secondAt = order.indexOf(`D:${SECOND.name}`);
+  record(
+    secondAt > 1 && order.slice(1, secondAt).some((one) => one === 'L') && order.slice(secondAt + 1).some((one) => one === 'L'),
+    'the second block sits between the lines, where the other agent took the thread',
+  );
+
+  /* The old header over the transcript is gone: nothing agent-details-shaped sits above the filter bar. */
+  const above = await page.evaluate(() => {
+    const bar = document.querySelector('[class*="_filterBar_"]')?.getBoundingClientRect();
+    const blocks = [...document.querySelectorAll('[data-agent-details]')].map((one) => one.getBoundingClientRect().top);
+    return bar === undefined ? null : blocks.filter((top) => top < bar.top).length;
+  });
+  record(above === 0, `no block is drawn above the transcript any more (${above ?? 'no filter bar found'} above it)`);
+
+  /* Collapsed by default: neither prompt is on the page until a press. */
+  const body = await page.locator('body').innerText();
+  record(
+    (await toggles.first().getAttribute('aria-expanded')) === 'false' &&
+      (await toggles.nth(1).getAttribute('aria-expanded')) === 'false',
+    'both blocks are collapsed by default',
+  );
+  record(!body.includes(FIRST.prompt) && !body.includes(SECOND.prompt), 'and neither system prompt is on the page until pressed');
+
+  await toggles.first().click();
+  await page.waitForTimeout(300);
+  const opened = await page.locator('body').innerText();
+  record(
+    (await toggles.first().getAttribute('aria-expanded')) === 'true' && opened.includes(FIRST.prompt),
+    'pressing the first block shows that agent\'s system prompt',
+  );
+  record(!opened.includes(SECOND.prompt), 'and not the other agent\'s: each block opens on its own');
+
+  await page.screenshot({ path: shot('session-agent-details.png') });
+}
+
+/* ------------------------------------------------------------------ tidy up */
+
+await tidy();
+
+await finish(browser);

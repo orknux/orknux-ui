@@ -2779,6 +2779,24 @@ export const TESTS = [
   },
 
   {
+    name: 'session-agent-details-check',
+    what: "a session's log draws each agent's setup where that agent started answering, and only where it changed",
+    needs: ['workspace'],
+    /*
+     * Issues #391 and #441. What is written - a line where the setup answering
+     * differs from the last one logged, none where it is the same - is pinned in
+     * AgentNodeRunnerTest; this is the other end, against a real session: two
+     * scratch agents take turns in one session over three runs, the server holds
+     * two AGENT_DETAILS lines in their order, and the page draws a collapsed
+     * block at each, in order, opening on a press.
+     *
+     * The fixture is built the way session-pages-check builds its own, and for
+     * the same reason it needs no model that answers: the setup is written into
+     * the session before the model is asked. 'workspace' rather than 'model'.
+     */
+  },
+
+  {
     name: 'chat-copy-check',
     what: "the copy control under the message it copies, on the bubble's edge and not the column's",
     needs: ['workspace'],
