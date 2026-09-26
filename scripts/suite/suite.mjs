@@ -2338,7 +2338,7 @@ export const TESTS = [
   },
   {
     name: 'sessions-list-columns-check',
-    what: 'the sessions list shows a green dot for an active session and a count of the subagents each fanned out into',
+    what: 'the sessions list shows a green dot for an active session, a count of the subagents each fanned out into, and catches up on Refresh and Auto',
     needs: ['workspace'],
     /*
      * Issues #403, #404. The rows are a fixture: what makes a session active

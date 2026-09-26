@@ -32,9 +32,13 @@ const ROWS = [
   },
 ];
 
+/* How many times the list has been asked for, for the refresh half. Issue #449. */
+let asked = 0;
+
 await page.route('**/graphql', async (route) => {
   const body = route.request().postData() ?? '';
   if (body.includes('llmSessions(')) {
+    asked += 1;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -86,5 +90,33 @@ const fannedText = await row('issue:42').locator('[data-session-subagents]').inn
 record(fannedText.trim() === '3', `and draws the number (${JSON.stringify(fannedText)})`);
 const plainText = await row('thread:C9').locator('[data-session-subagents]').innerText();
 record(plainText.trim() !== '0', `a plain conversation shows nothing rather than a nought (${JSON.stringify(plainText)})`);
+
+/* ------------------------------------------------------- catching up ------ */
+
+/*
+ * The list catches up the way the runs list does: a Refresh whose label never
+ * changes, and an Auto interval shared with that page. A tick asks the server
+ * again and moves nothing - the rows are keyed, so the one on screen is the
+ * same element after the tick. Issue #449.
+ */
+const refresh = page.getByRole('button', { name: /^Refresh$/ });
+record((await refresh.count()) === 1, 'there is a Refresh button on the sessions list');
+const auto = page.getByLabel('Refresh automatically');
+record((await auto.count()) === 1, 'and an Auto interval beside it');
+
+const before = asked;
+await refresh.click();
+await page.waitForTimeout(600);
+record(asked === before + 1, `pressing Refresh asks for the list again (${asked - before} request)`);
+
+const rowBefore = await row('issue:42').evaluate((el) => { el.dataset.mark = 'kept'; return true; });
+await auto.selectOption('1');
+await page.waitForTimeout(2600);
+record(rowBefore && asked >= before + 3, `Auto at 1s keeps asking (${asked - before - 1} ticks in 2.5s)`);
+record(
+  (await row('issue:42').getAttribute('data-mark')) === 'kept',
+  'and a tick replaces the rows in place - the row on screen is the same element',
+);
+await auto.selectOption('0');
 
 await finish(browser);

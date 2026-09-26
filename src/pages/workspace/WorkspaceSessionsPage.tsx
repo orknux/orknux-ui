@@ -6,10 +6,12 @@ import type { LlmSessionOrder, LlmSessionPage } from '../../api/llmSessions';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
+import { AutoRefresh } from '../../components/AutoRefresh';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import { Loader } from '../../components/Loader';
@@ -183,6 +185,19 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             </button>
             {t('Subagent sessions')}
           </span>
+        </div>
+
+        {/* The list changes while it is open - a dot lights, a count grows, a
+            session is spoken in - so it catches up the way the runs list does:
+            an interval shared with that page, and a Refresh whose label never
+            changes. Rows are keyed by id and replaced in place, so a tick moves
+            nothing. Issue #449. */}
+        <div className={styles.filtersRight}>
+          <AutoRefresh onRefresh={load} busy={loading} />
+          <button type="button" className={styles.refresh} onClick={load} disabled={loading && sessions === null}>
+            <img src={refreshIcon} alt="" width={14} height={14} />
+            {t('Refresh')}
+          </button>
         </div>
       </div>
 
