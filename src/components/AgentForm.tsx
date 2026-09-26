@@ -18,6 +18,7 @@ import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { CatalogueNote, useCatalogue } from './Catalogue';
 import type { Catalogue } from './Catalogue';
+import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from './DragSize';
 import { FieldHint } from './FieldHint';
 import { IconField } from './IconField';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
@@ -109,6 +110,21 @@ const TOOL_PAGE_SIZE = 100;
  * two or three a specialist actually delegates to.
  */
 const AGENT_CHOICES = 100;
+
+/**
+ * How short a grant list can be dragged. Two rows and a scrollbar: enough to
+ * see there is a list, and that it goes on.
+ */
+const LIST_MIN = 80;
+
+/**
+ * How tall one can be dragged, as a share of the window.
+ *
+ * The same 70vh the stylesheet used to cap the native handle at: taller than
+ * this and the fields under the list are off the screen, which is what the
+ * bound on these lists was for in the first place - issue #172.
+ */
+const LIST_SHARE = 0.7;
 
 /**
  * One row of the Tools grant: a workspace tool, or a tool a plugin offers.
@@ -368,6 +384,35 @@ function GrantList<Item>({
   const [status, setStatus] = useState('all');
   const items = catalogue.items;
   const needle = search.trim().toLowerCase();
+
+  /*
+   * How tall the rows' box is, and the handle that changes it - issue #385,
+   * done again.
+   *
+   * The box used to open at a fixed 240px with a native resize corner, which
+   * drew a list of three rows as three rows and 200px of nothing above the
+   * corner. It opens at the height of its content now, up to the 240px the
+   * stylesheet caps it at, and is dragged from there by the same handle the run
+   * page and the function editor use: `initial: null` leaves the opening height
+   * to the content, and only a drag turns it into a number. One key per list,
+   * so the tools list dragged tall does not drag the connections list with it.
+   *
+   * The box is measured so a drag begins from where the content put it; it is
+   * the border box, because the height a drag sets is one.
+   */
+  const [watchBox, drawnHeight] = useRoom('height', 'border');
+  const tall = useWindowHeight();
+  const ceiling = Math.max(LIST_MIN, Math.round(tall * LIST_SHARE));
+  const height = useDragSize({
+    storageKey: `orknux.agent.${what.replace(/\s+/g, '-')}-height`,
+    initial: null,
+    measured: drawnHeight,
+    min: LIST_MIN,
+    max: ceiling,
+    edge: 'bottom',
+  });
+  /** What the handle says it controls. */
+  const boxId = useId();
 
   /*
    * Worked out on the way past rather than memoised. This is one `includes` per
@@ -636,7 +681,18 @@ function GrantList<Item>({
       )}
 
       {(items.length > 0 || orphans.length > 0) && (
-        <div className={own.checkList} data-grant-rows="">
+        /*
+          Content-high until dragged, then the dragged height. The second class
+          takes the stylesheet's cap off, since a max-height would stop the drag
+          at the height it began from.
+        */
+        <div
+          className={height.size === null ? own.checkList : `${own.checkList} ${own.checkListSized}`}
+          id={boxId}
+          ref={watchBox}
+          style={height.size === null ? undefined : { height: height.size }}
+          data-grant-rows=""
+        >
           {visible.map((row) => {
             const meta = metaOf?.(row.item);
             const opens = linkOf?.(row.item) ?? null;
@@ -761,6 +817,24 @@ function GrantList<Item>({
           ))}
           {visible.length === 0 && <p className={own.emptyNote}>{t('Nothing by that name.')}</p>}
         </div>
+      )}
+
+      {/*
+        The box's bottom edge, taken hold of. Only under a box: a handle under
+        the "none yet" line would be a control that sizes nothing.
+      */}
+      {(items.length > 0 || orphans.length > 0) && (
+        <ResizeHandle
+          orientation="horizontal"
+          label={`Height of the ${what} list`}
+          controls={boxId}
+          valueNow={height.size ?? Math.round(drawnHeight)}
+          valueMin={LIST_MIN}
+          valueMax={ceiling}
+          title={t('Drag to change the height; double-click to put it back')}
+          dragging={height.dragging}
+          handlers={height.handlers}
+        />
       )}
     </div>
   );

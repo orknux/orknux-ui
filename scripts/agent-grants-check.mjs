@@ -379,6 +379,21 @@ async function measure(root, where) {
     `${where}: the count says how much is granted and how much matched - "${filtered.count}"`,
   );
   record(filtered.boxHeight <= CAP, `${where}: the box is still bounded while filtered (${filtered.boxHeight}px)`);
+  /*
+   * And no taller than what is left in it. The box used to open at a fixed
+   * 240px, so a search that left two rows drew two rows and 200px of nothing
+   * above the resize corner - reported as "redundant empty spaces above drag".
+   * It is content-high up to the cap now, and this is where the check has a
+   * short list to prove it with: the rows the search left.
+   */
+  record(
+    filtered.wanted < CAP - 40,
+    `${where}: the filtered rows want ${filtered.wanted}px, well under the cap, so a short list can be measured`,
+  );
+  record(
+    filtered.boxHeight <= filtered.wanted + 2,
+    `${where}: and the box is no taller than they are - ${filtered.boxHeight}px for ${filtered.wanted}px of rows`,
+  );
   // The picture of the thing that was argued about: one match, and a grant kept
   // beside it in a dashed row.
   await page.screenshot({ path: shot(`agent-grants-${where.replace(' ', '-')}-filtered.png`) });
@@ -467,6 +482,42 @@ async function measure(root, where) {
   );
   record(cleared.kept.length === 0, `${where}: nothing is marked kept once nothing is searched for`);
   record(cleared.marks === 0, `${where}: and nothing is left marked`);
+
+  // ---- #385: dragged taller, and put back --------------------------------
+
+  /*
+   * The cap is a cap on how the list *opens*, not on how tall it can be made:
+   * the handle under the box pulls it past 240px, and a double-click on the
+   * handle puts it back to the content. Measured by dragging rather than by
+   * reading a style, because a `max-height` left on the box is exactly the
+   * defect that would pass a style read and stop a real drag at 240px.
+   *
+   * Put back before the check moves on, and that is load-bearing: the height is
+   * remembered per list in localStorage, so a drag left standing would open the
+   * next frame's tools list at the dragged height and fail its cap assertion.
+   */
+  const handle = root.locator('[data-grants="tools"] [role="separator"]');
+  record((await handle.count()) === 1, `${where}: the Tools list carries a handle to drag it taller by`);
+  const grip = await handle.boundingBox();
+  if (grip !== null) {
+    const middle = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+    await page.mouse.move(middle.x, middle.y);
+    await page.mouse.down();
+    await page.mouse.move(middle.x, middle.y + 160, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    const pulled = await readGroup(root, 'tools');
+    record(
+      pulled.boxHeight >= cleared.boxHeight + 140 && pulled.boxHeight <= cleared.boxHeight + 180,
+      `${where}: dragging the handle 160px down makes the box ${pulled.boxHeight}px, from ${cleared.boxHeight}px`,
+    );
+    record(pulled.boxHeight > CAP, `${where}: which is past the ${CAP}px it opened at`);
+
+    await handle.dblclick();
+    await page.waitForTimeout(200);
+    const back = await readGroup(root, 'tools');
+    record(back.boxHeight <= CAP, `${where}: and a double-click on the handle puts it back to ${back.boxHeight}px`);
+  }
 
   // The form put back as it was found. Nothing here is ever saved, but a panel
   // closed and reopened should not look as though somebody had edited it. Cycle

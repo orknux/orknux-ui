@@ -36,8 +36,23 @@ export type DragEdge = 'bottom' | 'left';
 export interface DragSizeOptions {
   /** Where the chosen size is written down. One key per panel, not per page. */
   storageKey: string;
-  /** What the panel is worth until somebody says otherwise: the size it always had. */
-  initial: number;
+  /**
+   * What the panel is worth until somebody says otherwise: the size it always had.
+   *
+   * Null leaves that to the content. The panel is then as big as what is in it,
+   * up to whatever cap its stylesheet puts on that, and `size` is null for as
+   * long as nothing has been dragged - a list of three rows is three rows tall,
+   * not a fixed box with empty space above the handle. A drag begins from
+   * `measured`, because a delta has to begin from a number and the content chose
+   * this one; a reset goes back to the content rather than to a number.
+   */
+  initial: number | null;
+  /**
+   * How big the panel is drawn now, for a drag that begins from a size the
+   * content chose. Read only while `initial` is null and nothing has been
+   * dragged; `useRoom` on the panel itself is the usual source.
+   */
+  measured?: number;
   /** The floor, so it cannot be dragged to nothing. */
   min: number;
   /**
@@ -64,7 +79,7 @@ export interface DragHandlers {
   onDoubleClick(): void;
 }
 
-export interface DragSize {
+export interface DragSize<Size extends number | null = number> {
   /**
    * What to draw.
    *
@@ -73,8 +88,11 @@ export interface DragSize {
    * still leaves the rest of the page. Clamped for the drawing only - what was
    * chosen is still what is stored, so a bigger window gives it back rather than
    * having quietly forgotten it on the way through.
+   *
+   * Null only for a panel whose `initial` is null and which nobody has dragged:
+   * the content is deciding, and there is no number to draw.
    */
-  size: number;
+  size: Size;
   /** Whether a pointer is holding the handle, for the row to say so. */
   dragging: boolean;
   /** Back to the size the page opens at, for one dragged somewhere unhelpful. */
@@ -82,8 +100,15 @@ export interface DragSize {
   handlers: DragHandlers;
 }
 
-export function useDragSize(options: DragSizeOptions): DragSize {
-  const { storageKey, initial, min, max, edge, nudge = 24 } = options;
+/*
+ * Two signatures for one hook, so a page that names a starting size never has
+ * to ask whether `size` is null: it is not, and the type says so. Only a panel
+ * that leaves its opening size to the content gets the nullable answer.
+ */
+export function useDragSize(options: DragSizeOptions & { initial: number }): DragSize;
+export function useDragSize(options: DragSizeOptions & { initial: null }): DragSize<number | null>;
+export function useDragSize(options: DragSizeOptions): DragSize<number | null> {
+  const { storageKey, initial, measured, min, max, edge, nudge = 24 } = options;
   /** What the panel has been dragged to, or null before anything has been read. */
   const [wanted, setWanted] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -107,11 +132,17 @@ export function useDragSize(options: DragSizeOptions): DragSize {
     }
   }, [storageKey]);
 
-  /** Writes the size down. A browser that will not remember is no reason to refuse the drag. */
+  /**
+   * Writes the size down. A browser that will not remember is no reason to refuse the drag.
+   *
+   * Null is "nothing chosen", so the key comes out rather than holding a zero
+   * the next read would have to know to ignore.
+   */
   const remember = useCallback(
-    (size: number) => {
+    (size: number | null) => {
       try {
-        window.localStorage.setItem(storageKey, String(Math.round(size)));
+        if (size === null) window.localStorage.removeItem(storageKey);
+        else window.localStorage.setItem(storageKey, String(Math.round(size)));
       } catch {
         // Private mode, or storage full. The panel still resizes; it just does
         // not survive the next visit, which is better than a drag that does
@@ -123,7 +154,14 @@ export function useDragSize(options: DragSizeOptions): DragSize {
 
   const ceiling = max === null ? Number.POSITIVE_INFINITY : Math.max(min, max);
   const clamp = (to: number) => Math.round(Math.min(Math.max(to, min), ceiling));
-  const size = clamp(wanted ?? initial);
+  const chosen = wanted ?? initial;
+  const size = chosen === null ? null : clamp(chosen);
+  /**
+   * The number a drag or a nudge begins from: what is drawn, whichever of the
+   * two decided it. A panel the content is sizing has been measured; one that
+   * has not been measured yet starts from the floor rather than from nothing.
+   */
+  const from = size ?? measured ?? min;
 
   function reset() {
     setWanted(initial);
@@ -137,7 +175,7 @@ export function useDragSize(options: DragSizeOptions): DragSize {
       // pointer crosses, and the drag ends with half the page highlighted.
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      held.current = { from: edge === 'bottom' ? event.clientY : event.clientX, origin: size };
+      held.current = { from: edge === 'bottom' ? event.clientY : event.clientX, origin: from };
       setDragging(true);
     },
     onPointerMove(event) {
@@ -175,7 +213,7 @@ export function useDragSize(options: DragSizeOptions): DragSize {
       if (by !== 0) {
         // Kept from the page behind, which would scroll instead.
         event.preventDefault();
-        const next = clamp(size + by);
+        const next = clamp(from + by);
         setWanted(next);
         remember(next);
         return;
@@ -199,21 +237,32 @@ export function useDragSize(options: DragSizeOptions): DragSize {
  * the row is often not rendered at all on the first pass - a page still loading,
  * a panel not yet opened - and an effect reading a ref would find nothing on the
  * pass that matters and never be run again.
+ *
+ * `box` says which edge is measured. The content box is the room *inside*
+ * something, which is what a ceiling wants; the border box is how big the thing
+ * itself is drawn, which is what a drag that begins from a content-chosen size
+ * wants - the height it will set is a border-box height, and a drag that began
+ * from the content height would shrink the panel by its padding on the first
+ * frame.
  */
-export function useRoom(axis: 'width' | 'height'): [(held: HTMLElement | null) => void, number] {
+export function useRoom(
+  axis: 'width' | 'height',
+  box: 'content' | 'border' = 'content',
+): [(held: HTMLElement | null) => void, number] {
   const [held, setHeld] = useState<HTMLElement | null>(null);
   const [room, setRoom] = useState(0);
 
   useEffect(() => {
     if (held === null) return;
     const watch = new ResizeObserver((entries) => {
-      const box = entries[0]?.contentRect;
-      const seen = axis === 'width' ? box?.width : box?.height;
-      if (seen !== undefined) setRoom(seen);
+      const entry = entries[0];
+      if (entry === undefined) return;
+      const rect = box === 'border' ? entry.target.getBoundingClientRect() : entry.contentRect;
+      setRoom(axis === 'width' ? rect.width : rect.height);
     });
     watch.observe(held);
     return () => watch.disconnect();
-  }, [held, axis]);
+  }, [held, axis, box]);
 
   return [setHeld, room];
 }

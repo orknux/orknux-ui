@@ -237,35 +237,33 @@
  * fields under this group are still on the screen. Measured in both -
  * `scripts/agent-grants-check.mjs`.
  *
- * Draggable taller from there, the way a textarea is - issue #385.
+ * A cap, not a height. The first draggable version of this - issue #385 - set
+ * `height: 240px` so the native `resize` corner could grow past it, and a list
+ * of three rows then drew three rows and 200px of nothing above the corner.
+ * `max-height` draws a short list short and a long one at 240px with a
+ * scrollbar, which is what the bound was ever for. What a bare cap cannot do is
+ * be dragged past, so the drag is not the native corner any more: `GrantList`
+ * carries a `ResizeHandle` under the box and, once dragged, sets the height
+ * inline and puts `.checkListSized` on to take this cap off. The 70vh ceiling
+ * and the 80px floor live with the handle, in `AgentForm.tsx`.
  *
- * The 240px window is a small one to read a long list through, so the box
- * carries a native resize handle at its bottom-right and can be pulled down to
- * see more at once, then back. `height` rather than `max-height` sets that
- * 240px as the *starting* height, which is what lets `resize` grow past it: a
- * bare `max-height` is the ceiling the drag stops at, so it caps the pull
- * instead of seeding it. `min-height` holds the floor at the same 240px, so
- * "back" is back to where it began and no further; `max-height` is now the
- * ceiling the drag reaches, kept off the fields below at 70vh. The starting
- * height is unchanged, so nothing here looks different until it is dragged -
- * and the cap the grants check measures is this starting height.
- *
- * `overflow: auto` rather than `overflow-y`, because a resize handle only
- * shows on a box whose overflow is not visible on either axis; the rows wrap
- * rather than run wide, so the across-axis scrollbar it allows never appears.
+ * `overflow: auto` rather than `overflow-y`: the rows wrap rather than run
+ * wide, so the across-axis scrollbar it allows never appears.
  */
 .checkList {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  height: 240px;
-  min-height: 240px;
-  max-height: 70vh;
+  max-height: 240px;
   overflow: auto;
-  resize: vertical;
   /* Room for the hover border, which a box with no padding clips. */
   padding: 1px;
+}
+
+/* Once dragged the height is the form's to say, and a cap would stop the drag where it began. */
+.checkListSized {
+  max-height: none;
 }
 
 .checkRow {
