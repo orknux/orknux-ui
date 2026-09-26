@@ -741,6 +741,58 @@
   flex-direction: column;
   gap: var(--space-12);
   width: 100%;
+  /*
+   * The clearance, taken back for a document. The shell keeps
+   * `--quick-chat-clearance` under every page so that a page's last *control* is
+   * not under the floating launcher - and the controls here are at the top now,
+   * so what that room holds is 112px of nothing under the editor. Left in, it is
+   * either the empty space #457 is about or, if the editor takes the room
+   * anyway, a page that scrolls to nothing. AppShell's `.contentFills` does the
+   * same for the chat's composer, which also means to reach the bottom.
+   */
+  margin-bottom: calc(var(--space-16) - var(--quick-chat-clearance));
+}
+
+/*
+ * Except at the width where the rail drops under the body: there what follows
+ * the editor is the panels rather than the foot of the page, and pulling them up
+ * would draw them over the document. Here rather than in the block above,
+ * because a media query carries no weight of its own - the later rule is the one
+ * that wins, whichever window it was written for.
+ */
+@media (max-width: 720px) {
+  .padView {
+    margin-bottom: 0;
+  }
+}
+
+/*
+ * The file's name and what can be done to it, on one line above the document -
+ * #386's shape, arrived here in #457. What was under the box was a footer bar,
+ * and a document as tall as the page put it off the bottom of the screen.
+ */
+.padHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.padName,
+.padFormTitle {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A scratchpad is a file, and its name is read character by character. */
+.padName {
+  font-family: var(--font-mono);
 }
 
 .padDescription {
@@ -751,7 +803,17 @@
 
 .padTextarea {
   width: 100%;
-  min-height: 360px;
+  /*
+   * As tall as what is left under it, measured rather than counted - the page
+   * sets `--pad-room` from where this box actually starts, so a row added above
+   * it moves the number instead of breaking it. See SessionDetailPage.tsx.
+   *
+   * The floor is for a short window, where a page taller than its window
+   * scrolls; the fallback is only for the frame between the first paint and the
+   * measurement. Issue #457.
+   */
+  height: var(--pad-room, 60vh);
+  min-height: 260px;
   padding: var(--space-12);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -768,13 +830,6 @@
   border-color: var(--color-accent-brand);
 }
 
-.padActions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-}
-
 .padSize {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -783,6 +838,7 @@
 
 .padButtons {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--space-8);
 }
@@ -991,11 +1047,23 @@
   border-radius: var(--radius-8);
 }
 
-.agentToggle {
+/*
+ * The header row. What used to be one button is a row holding the toggle, the
+ * agent's name as a link to it, and the time: a link inside a button is a
+ * control inside a control, and pressing the name would have opened the block on
+ * the way to the page. Issue #454.
+ */
+.agentHead {
   display: flex;
   align-items: center;
   gap: var(--space-8);
   width: 100%;
+}
+
+.agentToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
   padding: 0;
   background: none;
   border: 0;
@@ -1025,6 +1093,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The name, which leads to the agent it names. Issue #454. */
+.agentLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.agentLink:hover,
+.agentLink:focus-visible {
+  color: var(--color-accent);
+  text-decoration: underline;
 }
 
 .agentGrid {

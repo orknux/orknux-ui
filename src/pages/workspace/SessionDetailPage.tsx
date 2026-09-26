@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { startChat } from '../../api/chat';
@@ -262,39 +262,76 @@ function EventLine({ event }: { event: LlmSessionEvent }) {
  * three of these open would be three pages of prompt between the turns - and
  * opened on a press. The closed header still says who and with what model, so a
  * reader scanning the log sees the handover without opening anything.
+ *
+ * The name leads to the agent, and is a link beside the toggle rather than
+ * inside it: a link within a button is a control within a control, and pressing
+ * it would open the block on the way to the page. Plain text on a line written
+ * before the id was kept, which is the only case there is nowhere to go. Issue
+ * #454.
  */
-function AgentDetailsBlock({ details, at }: { details: SessionAgentDetails; at: string }) {
+function AgentDetailsBlock({
+  details,
+  at,
+  workspaceId,
+}: {
+  details: SessionAgentDetails;
+  at: string;
+  workspaceId: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <section className={styles.agentDetails} aria-label={t('Agent details')} data-agent-details={details.agent}>
-      <button
-        type="button"
-        className={styles.agentToggle}
-        aria-expanded={open}
-        data-agent-details-toggle=""
-        onClick={() => setOpen((was) => !was)}
-      >
-        <span className={styles.agentCaret} aria-hidden="true">{open ? '▾' : '▸'}</span>
-        <span className={styles.agentTitle}>{t('Agent details')}</span>
+      <div className={styles.agentHead}>
+        <button
+          type="button"
+          className={styles.agentToggle}
+          aria-expanded={open}
+          data-agent-details-toggle=""
+          onClick={() => setOpen((was) => !was)}
+        >
+          <span className={styles.agentCaret} aria-hidden="true">{open ? '▾' : '▸'}</span>
+          <span className={styles.agentTitle}>{t('Agent details')}</span>
+        </button>
         <span className={styles.agentWho}>
-          {` · ${details.agent}`}
+          {' · '}
+          {details.agentId === null ? (
+            details.agent
+          ) : (
+            <Link
+              className={styles.agentLink}
+              to={`/workspace/${workspaceId}/agents/${details.agentId}/settings`}
+              aria-label={t('Open the agent\'s definition')}
+              data-agent-details-link={details.agentId}
+            >
+              {details.agent}
+            </Link>
+          )}
           {details.model != null ? ` · ${details.model}` : ''}
         </span>
         <span className={styles.at} title={at}>
           {timeOfDay(at)}
         </span>
-      </button>
+      </div>
       {open && (
         <dl className={styles.agentGrid}>
-          {details.systemPrompt != null && details.systemPrompt !== '' && (
-            <div className={styles.agentRow}>
-              <dt className={styles.agentKey}>{t('System prompt')}</dt>
-              <dd className={styles.agentValue}>
-                <pre className={styles.agentPrompt}>{details.systemPrompt}</pre>
-              </dd>
-            </div>
-          )}
+          {/*
+            Always drawn, and "none" where there was nothing. Issue #454: the row
+            was left out where the prompt was empty, so a reader could not tell
+            an agent that was told nothing from a record that did not keep what
+            it was told - and until that issue the field held only
+            `agent.systemPrompt`, so most agents drew no row at all.
+          */}
+          <div className={styles.agentRow}>
+            <dt className={styles.agentKey}>{t('System prompt')}</dt>
+            <dd className={styles.agentValue} data-agent-details-prompt="">
+              <pre className={styles.agentPrompt}>
+                {details.systemPrompt != null && details.systemPrompt.trim() !== ''
+                  ? details.systemPrompt
+                  : t('none')}
+              </pre>
+            </dd>
+          </div>
           {/*
             Tools is every tool the model was handed - the grants, the built-ins
             and what the turn lent - and Findable, drawn only where there is
@@ -367,7 +404,11 @@ function SessionRuns({ workspaceId, sessionId }: { workspaceId: string; sessionI
       data-session-run={link.id}
     >
       <span className={styles.runName}>{link.workflowName}</span>
+      {/* Which run: two runs of one workflow read the same otherwise, and the
+          number is what anybody quoting one says. Issue #464. */}
       <span className={styles.runMeta}>
+        {`#${link.id}`}
+        {' · '}
         {t(STATUS_LABEL[link.status])}
         {' · '}
         {timeAgo(link.startedAt)}
@@ -690,6 +731,67 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       });
   }, [sessionId, newName, newDescription, newContent, loadScratchpads, openScratchpad]);
 
+  /**
+   * The editor's box, so the room under it is measured rather than counted.
+   *
+   * A scratchpad is a document - a page of HTML, a story, a file of code - and
+   * the box it was read in was 360px of one, with the rest of the window empty
+   * below it. What is written here is `--pad-room`: how much of the frame is
+   * left under where the editor actually starts, the way the plugin catalog's
+   * panes are given theirs (see `--catalog-room` there). A row added above the
+   * editor moves the number instead of making it wrong, which is the one thing
+   * a constant in the stylesheet could never do. Issue #457.
+   *
+   * On every render and on resize. Reading a rect is cheap, and this is a screen
+   * somebody is looking at rather than a loop.
+   */
+  const editorBox = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    function measure() {
+      const box = editorBox.current;
+      if (box === null) return;
+
+      /*
+       * Measured against the frame the page scrolls inside rather than against
+       * the window, and from a distance that does not change as it scrolls.
+       *
+       * `rect.top` alone would have been the window's answer, and it moves when
+       * the page is scrolled: a keystroke re-renders, the box is measured from
+       * further up, and the editor grows by however far somebody had scrolled -
+       * which makes more to scroll. Where the box starts *within* the frame is
+       * the same number at every scroll position, so the height it is given is
+       * too.
+       *
+       * Everything under it comes out of the same walk: the room the shell keeps
+       * at the foot of every page, and the clearance the pad view takes back out
+       * of it (see `.padView` in the stylesheet).
+       */
+      let frame: HTMLElement = document.documentElement;
+      let tail = 0;
+      for (let up = box.parentElement; up !== null; up = up.parentElement) {
+        const style = getComputedStyle(up);
+        tail += (Number.parseFloat(style.marginBottom) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
+        if (/auto|scroll/.test(style.overflowY)) {
+          frame = up;
+          break;
+        }
+      }
+      const above =
+        box.getBoundingClientRect().top - frame.getBoundingClientRect().top + frame.scrollTop;
+
+      // A floor, so a short window leaves a document somebody can still read
+      // rather than a sliver - a page taller than its window scrolls, which is
+      // the ordinary way out of that.
+      const room = Math.max(frame.clientHeight - above - tail, 260);
+      box.style.setProperty('--pad-room', `${Math.round(room)}px`);
+    }
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
+
   /* The body shows the transcript only when no pad is open and the form is shut. */
   const showTranscript = openPad === null && !creating;
   const showAside = !missing && held !== null;
@@ -972,7 +1074,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     record could not be read, so nothing is hidden. Issue #441.
                   */}
                   {event.kind === 'AGENT_DETAILS' && event.agentDetails !== null ? (
-                    <AgentDetailsBlock details={event.agentDetails} at={event.at} />
+                    <AgentDetailsBlock details={event.agentDetails} at={event.at} workspaceId={workspaceId} />
                   ) : (
                     <EventLine event={event} />
                   )}
@@ -1018,20 +1120,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           )}
           {padContent !== null && (
             <>
-              {padContent.description !== null && padContent.description !== '' && (
-                <p className={styles.padDescription}>{padContent.description}</p>
-              )}
-              <textarea
-                className={styles.padTextarea}
-                value={padDraft}
-                spellCheck={false}
-                onChange={(event) => setPadDraft(event.target.value)}
-                aria-label={t('Scratchpad content')}
-                data-scratchpad-content={padContent.name}
-              />
-              <div className={styles.padActions}>
-                <span className={styles.padSize}>{formatBytes(byteLength(padDraft))}</span>
+              {/*
+                The file's name, and the two acts on it, on one line above the
+                document - which is where every editor's Save has been since
+                #386. They sat in a bar under the box, and a document given the
+                height of the page is a bar somebody has to come back up from.
+                Issue #457.
+              */}
+              <div className={styles.padHeader}>
+                <h2 className={styles.padName} data-scratchpad-open={padContent.name}>
+                  {padContent.name}
+                </h2>
                 <div className={styles.padButtons}>
+                  <span className={styles.padSize}>{formatBytes(byteLength(padDraft))}</span>
                   {/* Only the owner may delete; an inherited pad refuses, so it is not offered. */}
                   {padContent.ownedHere && (
                     <button
@@ -1052,6 +1153,18 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   </button>
                 </div>
               </div>
+              {padContent.description !== null && padContent.description !== '' && (
+                <p className={styles.padDescription}>{padContent.description}</p>
+              )}
+              <textarea
+                ref={editorBox}
+                className={styles.padTextarea}
+                value={padDraft}
+                spellCheck={false}
+                onChange={(event) => setPadDraft(event.target.value)}
+                aria-label={t('Scratchpad content')}
+                data-scratchpad-content={padContent.name}
+              />
             </>
           )}
         </section>
@@ -1060,6 +1173,31 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       {/* The form for a new scratchpad, in place of the transcript. Issue #429. */}
       {!missing && creating && (
         <section className={styles.padView} aria-label={t('New scratchpad')}>
+          {/* The same header the open pad has, so both halves of this view keep
+              their controls in the one place. Issue #457. */}
+          <div className={styles.padHeader}>
+            <h2 className={styles.padFormTitle}>{t('New scratchpad')}</h2>
+            <div className={styles.padButtons}>
+              <span className={styles.padSize}>{formatBytes(byteLength(newContent))}</span>
+              <button type="button" className={styles.continue} onClick={backToTranscript}>
+                {t('Cancel')}
+              </button>
+              <button
+                type="button"
+                className={styles.padSave}
+                disabled={creatingBusy || newName.trim() === ''}
+                onClick={submitNew}
+              >
+                {creatingBusy ? t('Creating…') : t('Create')}
+              </button>
+            </div>
+          </div>
+          {/* Under the header rather than at the foot of the form: it is where the press was. */}
+          {createError !== null && (
+            <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
+              {createError}
+            </p>
+          )}
           <div className={styles.createForm}>
             <label className={styles.createLabel} htmlFor="new-pad-name">{t('Name')}</label>
             <input
@@ -1079,33 +1217,13 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
             />
             <label className={styles.createLabel} htmlFor="new-pad-content">{t('Content')}</label>
             <textarea
+              ref={editorBox}
               id="new-pad-content"
               className={styles.padTextarea}
               value={newContent}
               spellCheck={false}
               onChange={(event) => setNewContent(event.target.value)}
             />
-            {createError !== null && (
-              <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
-                {createError}
-              </p>
-            )}
-            <div className={styles.padActions}>
-              <span className={styles.padSize}>{formatBytes(byteLength(newContent))}</span>
-              <div className={styles.padButtons}>
-                <button type="button" className={styles.continue} onClick={backToTranscript}>
-                  {t('Cancel')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.padSave}
-                  disabled={creatingBusy || newName.trim() === ''}
-                  onClick={submitNew}
-                >
-                  {creatingBusy ? t('Creating…') : t('Create')}
-                </button>
-              </div>
-            </div>
           </div>
         </section>
       )}

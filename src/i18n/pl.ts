@@ -2014,6 +2014,9 @@ export const PL: Record<string, string> = {
   // --- the agent's setup, where in the log it started answering (#391, #441) --
   "Agent details": "Szczegóły agenta",
   "System prompt": "Prompt systemowy",
+  // What the row says where the round sent no system turn at all (#454). Drawn
+  // rather than left out, so "told nothing" and "not recorded" read differently.
+  "none": "brak",
 
   // --- drawing a picture -------------------------------------------------------
   "This picture is gone.": "Tego obrazu już nie ma.",

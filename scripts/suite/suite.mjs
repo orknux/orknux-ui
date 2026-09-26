@@ -2803,6 +2803,28 @@ export const TESTS = [
   },
 
   {
+    name: 'scratchpad-editor-check',
+    what: 'a scratchpad opens as a document in the room the page has left, with Delete and Save beside its name',
+    needs: ['workspace'],
+    /*
+     * Issue #457. The editor was 360px of a document in a 900px window, with the
+     * two acts on the file in a bar underneath it. Both halves are measured
+     * rather than asserted to have changed: the height against the room between
+     * the editor's top and the foot of the window, in four window sizes and at
+     * phone width, because a constant in the stylesheet passes in the one window
+     * it was written for and fails in every other;
+     * and the controls by where they are drawn, above the box and to the right of
+     * the file's name, with nothing pressable left below it.
+     *
+     * It borrows the newest session the workspace has and makes a scratchpad in
+     * it, rather than running a workflow to produce a session of its own the way
+     * session-pages-check does: what is being measured is the shape of the
+     * editor, and any session draws it. The pad is removed afterwards, and any
+     * pad of its own left by a run that died is swept first.
+     */
+  },
+
+  {
     name: 'chat-copy-check',
     what: "the copy control under the message it copies, on the bubble's edge and not the column's",
     needs: ['workspace'],

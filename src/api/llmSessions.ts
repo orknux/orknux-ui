@@ -47,7 +47,19 @@ export interface LlmSession {
  */
 export interface SessionAgentDetails {
   agent: string;
+  /**
+   * Which agent it is, so the block can lead to its page - null on a line
+   * written before the id was kept, and on nothing else. Issue #454.
+   */
+  agentId: string | null;
   model: string | null;
+  /**
+   * The whole system text the model was sent: the agent's instructions or the
+   * node's replacement for them, the grants briefing after it, a skill the step
+   * forced, the shape the answer is held to, and what a lent tool says about
+   * itself. Issue #454: this used to be the agent's own `systemPrompt` field,
+   * which is one paragraph of that and null on most agents.
+   */
   systemPrompt: string | null;
   /**
    * Every tool the model was handed on each turn, by name - what was granted,
@@ -147,7 +159,8 @@ const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEv
 const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
 
 /** What an AGENT_DETAILS line carries, and the rest carry as null. Issue #441. */
-const AGENT_DETAILS_FIELDS = 'agentDetails { agent model systemPrompt tools findable skills memory connections }';
+const AGENT_DETAILS_FIELDS =
+  'agentDetails { agent agentId model systemPrompt tools findable skills memory connections }';
 
 /**
  * One session of a family: the main session and every one an agent in it

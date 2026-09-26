@@ -651,7 +651,29 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                       is where it opens. Issue #441.
                     */}
                     {line.content !== null && line.kind === 'AGENT_DETAILS' && (
-                      <div className={styles.said}>{agentDetailsSummary(line.content)}</div>
+                      <div className={styles.said}>
+                        {/*
+                          And the agent it names leads to the agent. A task is one
+                          agent's conversation, so the link is the same one the
+                          session page draws - the setup behind the name is a page
+                          away rather than a search of the Agents list. Plain text
+                          on a line written before the id was kept. Issue #454.
+                        */}
+                        {(() => {
+                          const said = agentDetailsSummary(line.content);
+                          return said.agentId === null ? (
+                            said.text
+                          ) : (
+                            <Link
+                              to={`/workspace/${workspaceId}/agents/${said.agentId}/settings`}
+                              aria-label={t('Open the agent\'s definition')}
+                              data-agent-details-link={said.agentId}
+                            >
+                              {said.text}
+                            </Link>
+                          );
+                        })()}
+                      </div>
                     )}
                     {line.content !== null && line.kind !== 'AGENT_DETAILS' && (
                       <div className={styles.said}>
@@ -724,16 +746,22 @@ const SPEAKER: Record<string, string> = {
  * which agent, on which model - rather than a page of prompt rendered as
  * markdown. The session page has the rest. Falls back to the text where the
  * record cannot be read, so nothing is hidden.
+ *
+ * With the agent's id beside the words since #454, so the line can lead to the
+ * agent. Null where the record is older than that or could not be read, and then
+ * the summary is drawn as the plain text it always was.
  */
-function agentDetailsSummary(content: string): string {
+function agentDetailsSummary(content: string): { text: string; agentId: string | null } {
   try {
-    const held = JSON.parse(content) as { agent?: unknown; model?: unknown };
+    const held = JSON.parse(content) as { agent?: unknown; model?: unknown; agentId?: unknown };
     const agent = typeof held.agent === 'string' ? held.agent : '';
     const model = typeof held.model === 'string' ? held.model : null;
-    if (agent === '') return content;
-    return model === null ? agent : `${agent} · ${model}`;
+    // A number in the JSON, which is what a URL needs as a string.
+    const agentId = typeof held.agentId === 'number' ? String(held.agentId) : null;
+    if (agent === '') return { text: content, agentId: null };
+    return { text: model === null ? agent : `${agent} · ${model}`, agentId };
   } catch {
-    return content;
+    return { text: content, agentId: null };
   }
 }
 
