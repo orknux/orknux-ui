@@ -157,6 +157,80 @@
   color: var(--color-text-secondary);
 }
 
+/*
+  The workflow run or runs that wrote into this session. Issue #420. A single
+  run is a link; several sit behind a toggle that expands into the list.
+*/
+.runs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.runsLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.runRow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-6);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.runRow:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.runName {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.runMeta {
+  flex: none;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.runsToggle {
+  flex: none;
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-6);
+  border: 1px solid var(--color-border);
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.runsToggle:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.runsList {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
 .gone {
   margin: 0;
   font-size: var(--text-base);

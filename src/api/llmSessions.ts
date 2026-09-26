@@ -1,4 +1,5 @@
 import { graphql } from './client';
+import type { ExecutionStatus } from './executions';
 
 /**
  * A conversation an agent kept, found by the key whoever ran it computed.
@@ -315,6 +316,41 @@ export async function deleteSessionScratchpad(sessionId: string, name: string): 
     { sessionId, name },
   );
   return data.deleteSessionScratchpad;
+}
+
+/**
+ * A workflow run that wrote into a session, as the session page links to it.
+ * Issue #420.
+ *
+ * The reverse of what a run records: an agent step files which session it talked
+ * into, and this reads a session back to the runs that produced it. Small on
+ * purpose — enough to tell one run from another where several wrote into one
+ * session, and the id to open it.
+ */
+export interface SessionExecutionLink {
+  id: string;
+  /** The name the workflow had when the run started. */
+  workflowName: string;
+  /** ISO-8601 offset date-time. */
+  startedAt: string;
+  status: ExecutionStatus;
+}
+
+/**
+ * The workflow run or runs that wrote into a session, newest first.
+ *
+ * Usually one; several where more than one run computed the same session key.
+ * Empty for a session nothing wrote into, such as a chat — so the page draws no
+ * control rather than an empty one.
+ */
+export async function fetchSessionExecutions(sessionId: string): Promise<SessionExecutionLink[]> {
+  const data = await graphql<{ sessionExecutions: SessionExecutionLink[] }>(
+    `query ($sessionId: ID!) {
+       sessionExecutions(sessionId: $sessionId) { id workflowName startedAt status }
+     }`,
+    { sessionId },
+  );
+  return data.sessionExecutions;
 }
 
 /**

@@ -1393,6 +1393,10 @@ export const PL: Record<string, string> = {
   "Unpin chat": "Odepnij czat",
   "Close the quick chat": "Zamknij szybki czat",
   "Continue in chat": "Kontynuuj w czacie",
+  "Workflow run": "Przebieg przepływu",
+  "Workflow runs": "Przebiegi przepływu",
+  "The workflow run or runs whose agent steps wrote into this session. Opening one shows what it did.":
+    "Przebieg lub przebiegi przepływu, których kroki agenta zapisały się w tej sesji. Otwarcie jednego pokazuje, co zrobił.",
   "Read this answer aloud": "Przeczytaj tę odpowiedź na głos",
   "Stop reading": "Przestań czytać",
   "Record a message": "Nagraj wiadomość",

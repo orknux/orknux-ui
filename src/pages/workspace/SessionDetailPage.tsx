@@ -12,6 +12,7 @@ import {
   fetchLlmSessionFamily,
   fetchSessionScratchpads,
   fetchSessionScratchpad,
+  fetchSessionExecutions,
   createSessionScratchpad,
   writeSessionScratchpad,
   deleteSessionScratchpad,
@@ -23,9 +24,11 @@ import type {
   LlmSessionEventOrder,
   LlmSessionEventPage,
   LlmSessionMember,
+  SessionExecutionLink,
   SessionScratchpad,
   SessionScratchpadContent,
 } from '../../api/llmSessions';
+import { STATUS_LABEL } from '../../api/executions';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
@@ -36,6 +39,7 @@ import { BackLink } from '../../components/BackLink';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { usePageWithin } from '../../components/pageWithin';
@@ -233,6 +237,86 @@ function EventLine({ event }: { event: LlmSessionEvent }) {
         </>
       )}
     </article>
+  );
+}
+
+/**
+ * The workflow run or runs that wrote into this session. Issue #420.
+ *
+ * A session is keyed by what a run computed rather than by the run, so more than
+ * one run can land in one - and each records which session its agent talked
+ * into. Read the other way round, that names the run behind a session: one
+ * button where a single run wrote it, and a list that opens where several did,
+ * each row enough to tell them apart. A session nothing wrote into - a chat -
+ * draws nothing at all, which is why the whole control is absent rather than
+ * empty.
+ */
+function SessionRuns({ workspaceId, sessionId }: { workspaceId: string; sessionId: string }) {
+  const [links, setLinks] = useState<SessionExecutionLink[] | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (sessionId === '') return undefined;
+    let abandoned = false;
+    setOpen(false);
+    fetchSessionExecutions(sessionId)
+      .then((found) => {
+        if (!abandoned) setLinks(found);
+      })
+      .catch(() => {
+        if (!abandoned) setLinks(null);
+      });
+    return () => {
+      abandoned = true;
+    };
+  }, [sessionId]);
+
+  // Nothing wrote into it, or the lookup failed: no control rather than an empty one.
+  if (links === null || links.length === 0) return null;
+
+  const label = links.length === 1 ? t('Workflow run') : t('Workflow runs');
+
+  const row = (link: SessionExecutionLink) => (
+    <Link
+      key={link.id}
+      className={styles.runRow}
+      to={`/workspace/${workspaceId}/executions/${link.id}`}
+      data-session-run={link.id}
+    >
+      <span className={styles.runName}>{link.workflowName}</span>
+      <span className={styles.runMeta}>
+        {t(STATUS_LABEL[link.status])}
+        {' · '}
+        {timeAgo(link.startedAt)}
+      </span>
+    </Link>
+  );
+
+  return (
+    <div className={styles.runs}>
+      <span className={styles.runsLabel}>
+        {label}
+        <FieldHint label={t('Workflow runs')}>
+          {t('The workflow run or runs whose agent steps wrote into this session. Opening one shows what it did.')}
+        </FieldHint>
+      </span>
+      {links.length === 1 ? (
+        row(links[0])
+      ) : (
+        <>
+          <button
+            type="button"
+            className={styles.runsToggle}
+            aria-expanded={open}
+            data-session-runs-toggle=""
+            onClick={() => setOpen((was) => !was)}
+          >
+            {open ? '▾' : '▸'} {links.length}
+          </button>
+          {open && <div className={styles.runsList}>{links.map(row)}</div>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -673,6 +757,12 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                 </>
               )}
             </p>
+            {/*
+              The workflow run or runs that wrote into this session. A single run
+              is a link straight to it; several expand into a list. A session
+              nothing wrote into draws nothing. Issue #420.
+            */}
+            {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
           </>
         )}
       </header>
