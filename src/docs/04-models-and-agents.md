@@ -437,7 +437,7 @@ The server also brings **skills** that say how to use all of this -
 *Diagrams and charts*, *Complex HTML*, *Making a PDF* and *Delegating* - and
 `skill_search`, which looks inside skills' pages, so an agent holding a key and
 unsure what to do with it can find the page that says. For fun there are voices:
-*Angryman*, *Niceman*, *Jokeman* and *Crazyman*, each answering the same facts
+*Angryman*, *Niceman*, *Jokeman*, *Crazyman* and *Rimeman*, each answering the same facts
 in its own way.
 
 ## Finding a tool
