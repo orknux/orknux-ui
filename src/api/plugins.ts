@@ -77,11 +77,6 @@ export interface Plugin {
    * granted from the same field every other catalog is.
    */
   skills: PluginSkillDeclaration[];
-  /**
-   * Whether the release brought this plugin itself: written at boot, accepted
-   * because running this version is the acceptance, and not removable. Issue #474.
-   */
-  builtIn: boolean;
   /** Where it came from, when that was the marketplace. Null for a file or a URL. */
   marketplaceKey: string | null;
   marketplaceVersion: string | null;
@@ -374,7 +369,7 @@ export interface PluginSkillDeclaration {
 
 const PLUGIN_FIELDS = `
   id key name filename sizeBytes apiVersion sha256 uploadedAt uploadedBy
-  enabled builtIn libraries marketplaceKey marketplaceVersion icon iconDark summary author version
+  enabled libraries marketplaceKey marketplaceVersion icon iconDark summary author version
   declaredFunctions { name description returnType signature params { name type } }
   skills { name description content }
   declaredParameters { name description type required secret }
