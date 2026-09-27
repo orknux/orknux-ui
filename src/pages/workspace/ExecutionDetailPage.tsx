@@ -16,6 +16,7 @@ import {
   STATUS_LABEL,
   TRIGGER_LABEL,
   fetchExecution,
+  fetchWorkspaceExecutions,
   formatDuration,
   rerunExecution,
   rerunExecutionStep,
@@ -629,21 +630,56 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
     return line.message.toLowerCase().includes(logFilter.trim().toLowerCase());
   });
 
+  /**
+   * Starts a run from this one and follows it the moment it exists. Issue #540.
+   *
+   * With the inline engine - Temporal off, which is how a development server
+   * runs - a run happens on the thread that asked for it, so the mutation does
+   * not answer until the whole new run has finished: minutes, for an agent. The
+   * new run was visibly going on its own page while this button read
+   * "Queueing…" for all of it. So while the answer is awaited, the newest runs
+   * of this workflow are looked at once a second, and the one whose startedFrom
+   * is this run is followed as soon as it appears. Temporal answers at once
+   * and the answer wins; either way somebody lands on the new run.
+   */
+  async function followRerun(start: () => Promise<ExecutionDetail>) {
+    const pressed = Date.now();
+    let followed = false;
+    const go = (id: string) => {
+      if (followed) return;
+      followed = true;
+      // Cleared as it leaves: the new run's page may be this component again,
+      // and would otherwise inherit a button still reading "Queueing…".
+      setRerunning(false);
+      navigate(`/workspace/${workspaceId}/executions/${id}`);
+    };
+    const watch = window.setInterval(() => {
+      if (followed || !run) return;
+      void (async () => {
+        const recent = await fetchWorkspaceExecutions(workspaceId, 0, 5, { workflowId: run.workflowId });
+        for (const candidate of recent.content) {
+          if (followed) return;
+          // Only runs started since the press; a second either side for clocks.
+          if (new Date(candidate.startedAt).getTime() < pressed - 1000) continue;
+          if (candidate.id === executionId) continue;
+          const detail = await fetchExecution(candidate.id);
+          if (detail?.startedFrom === executionId) go(candidate.id);
+        }
+      })().catch(() => undefined);
+    }, 1000);
+    try {
+      const queued = await start();
+      go(queued.id);
+    } finally {
+      window.clearInterval(watch);
+    }
+  }
+
   async function handleRerun() {
     if (rerunning) return;
     setRerunning(true);
     try {
-      const queued = await rerunExecution(executionId);
-      /*
-        The queued run is a new one; follow it rather than staying on the old.
-
-        Routed rather than reloaded. Issue #514: `window.location.assign`
-        restarts the whole application, and for as long as that takes the
-        button still reads "Queueing…" for a run that has already started. It
-        looked stuck, and the only evidence otherwise was the new run appearing
-        elsewhere. Routing swaps the page at once and unmounts this one.
-      */
-      navigate(`/workspace/${workspaceId}/executions/${queued.id}`);
+      await followRerun(() => rerunExecution(executionId));
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : t('Could not re-run.'));
     } finally {
@@ -681,10 +717,9 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
    * and the panel puts the server's own sentence beside the button it refused.
    */
   async function rerunFromStep(nodeKey: string) {
-    const queued = await rerunExecutionStep(executionId, nodeKey);
-    // A run started from a step is still a new run; follow it, as Re-run does -
-    // routed rather than reloaded, for the reason above. Issue #514.
-    navigate(`/workspace/${workspaceId}/executions/${queued.id}`);
+    // A run started from a step is still a new run; follow it as Re-run does,
+    // as soon as it exists rather than once it has finished. Issue #514, #540.
+    await followRerun(() => rerunExecutionStep(executionId, nodeKey));
   }
 
   function downloadLogs() {
