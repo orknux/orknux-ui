@@ -204,3 +204,39 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/*
+ * What copying a workspace came to. Issue #408.
+ *
+ * Above the list rather than in a dialog: it is a report to read once and
+ * act on - which variables to set, what did not come - and a dialog would
+ * have somebody dismiss it before they had.
+ */
+.copyResult {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-12);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised, var(--color-surface));
+}
+
+.copyLine {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.copyNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.copyFailed {
+  margin: 0 0 var(--space-12);
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}

@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
-import { fetchWorkspaces } from '../../api/workspaces';
+import { duplicateWorkspace, fetchWorkspaces, type WorkspaceCopy } from '../../api/workspaces';
 import checkCircleIcon from '../../assets/check-circle.svg';
+import copyIcon from '../../assets/copy.svg';
 import layersIcon from '../../assets/layers.svg';
 import monitorIcon from '../../assets/monitor.svg';
 import plusIcon from '../../assets/plus.svg';
@@ -33,6 +34,10 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
   const [pageSize, setPageSize] = usePageSize('admin-workspaces');
   const [order, ascending, sortBy] = useTableSort<WorkspaceOrder>('admin-workspaces', 'NAME');
   const [creating, setCreating] = useState(false);
+  /* Copying a workspace, and what came of it. Issue #408. */
+  const [copying, setCopying] = useState<string | null>(null);
+  const [copied, setCopied] = useState<WorkspaceCopy | null>(null);
+  const [copyFailed, setCopyFailed] = useState<string | null>(null);
   // Bumped after a write so both tables refetch, audit log included.
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -98,6 +103,32 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
             <span className={styles.colActions} aria-hidden="true" />
           </div>
 
+          {/*
+            What the copy came to, said in full. Issue #408: a copy that
+            quietly lost three agents would be worse than one that refused, so
+            what could not be carried is named where somebody will read it.
+          */}
+          {copied !== null && (
+            <div className={styles.copyResult} role="status">
+              <p className={styles.copyLine}>
+                {t('Copied to {name}: ').replace('{name}', copied.workspace.name)}
+                {copied.carried.map((one) => `${one.count} ${one.kind}`).join(', ') || t('nothing to carry')}
+              </p>
+              {copied.variablesToSet.length > 0 && (
+                <p className={styles.copyNote}>
+                  {t('These variables came without their values and need setting: ')}
+                  {copied.variablesToSet.join(', ')}
+                </p>
+              )}
+              {copied.problems.map((problem) => (
+                <p key={problem} className={styles.copyNote}>{problem}</p>
+              ))}
+            </div>
+          )}
+          {copyFailed !== null && (
+            <p className={styles.copyFailed} role="alert">{copyFailed}</p>
+          )}
+
           <TableState state={workspaces} emptyMessage={t("No workspaces yet.")} />
 
           {workspaces.data?.content.map((workspace) => (
@@ -112,6 +143,34 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
               </div>
               <span className={`${styles.colDescription} ${styles.description}`}>{workspace.description ?? '—'}</span>
               <span className={styles.colActions}>
+                {/*
+                  Copying one. Issue #408: a working setup is a lot of small
+                  decisions, and the only way to a second one was to make every
+                  decision again by hand - which nobody does accurately.
+                */}
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  disabled={copying !== null}
+                  aria-label={`Duplicate ${workspace.name}`}
+                  title={`Duplicate ${workspace.name}`}
+                  onClick={() => {
+                    setCopying(workspace.id);
+                    setCopied(null);
+                    setCopyFailed(null);
+                    duplicateWorkspace(workspace.id, `${workspace.name} copy`)
+                      .then((made) => {
+                        setCopied(made);
+                        setReloadToken((was) => was + 1);
+                      })
+                      .catch((cause: unknown) => {
+                        setCopyFailed(cause instanceof Error ? cause.message : t('That workspace was not copied.'));
+                      })
+                      .finally(() => setCopying(null));
+                  }}
+                >
+                  <img src={copyIcon} alt="" width={16} height={16} />
+                </button>
                 <Link
                   className={styles.rowAction}
                   to={`/admin/workspaces/${workspace.id}/settings`}

@@ -595,6 +595,36 @@ export interface NewWorkspace {
   description?: string;
 }
 
+/**
+ * What copying a workspace came to. Issue #408.
+ *
+ * Said in full rather than as a count: a copy that quietly lost three agents
+ * would be worse than one that refused, so what could not be carried is named
+ * and so is every variable somebody has to go and set.
+ */
+export interface WorkspaceCopy {
+  workspace: Workspace;
+  carried: { kind: string; count: number }[];
+  variablesToSet: string[];
+  problems: string[];
+}
+
+/** Copies a whole workspace into a new one. Issue #408. */
+export async function duplicateWorkspace(id: string, name: string): Promise<WorkspaceCopy> {
+  const data = await graphql<{ duplicateWorkspace: WorkspaceCopy }>(
+    `mutation DuplicateWorkspace($id: ID!, $name: String!) {
+       duplicateWorkspace(id: $id, name: $name) {
+         workspace { id name description }
+         carried { kind count }
+         variablesToSet
+         problems
+       }
+     }`,
+    { id, name },
+  );
+  return data.duplicateWorkspace;
+}
+
 export async function createWorkspace(input: NewWorkspace): Promise<Workspace> {
   const data = await graphql<{ createWorkspace: Workspace }>(CREATE_WORKSPACE_MUTATION, { input });
   return data.createWorkspace;
