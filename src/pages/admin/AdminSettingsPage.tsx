@@ -348,7 +348,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
 
         {settings !== null && (
           <>
-            <h2 className={styles.sectionHeading}>
+            <h2 id="chat" className={styles.sectionHeading}>
               <span className={styles.headingWithHint}>
                 {t('Chat')}
                 <FieldHint label={t('Chat')}>
@@ -417,6 +417,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.retentionUnit}>{t('rounds')}</span>
               </div>
             </div>
+
+
+            <h2 id="agents" className={styles.sectionHeading}>{t('Agents')}</h2>
 
             {/*
               The other way an agent can end a turn: waiting. Some work is not
@@ -531,6 +534,35 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
+
+            <h2 id="tool-calls" className={styles.sectionHeading}>{t('Tool calls')}</h2>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Tool calls allowed in one message')}</p>
+                  <FieldHint label={t('Tool calls allowed in one message')}>
+                    {t('How many tools one message may ask for at once. The guard above counts across rounds and cannot see a single message that asks for the same thing a hundred times, which is what a decode looks like when it comes apart. Calls over this are refused with the rule quoted back, not dropped, so the model is told why. Between 1 and 500.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="max-tool-calls-at-once"
+                  name="maxToolCallsAtOnce"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={callsAtOnce}
+                  onChange={(event) => setCallsAtOnce(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Tool calls allowed in one message')}
+                />
+                <span className={styles.retentionUnit}>{t('calls')}</span>
+              </div>
+            </div>
+
             {/*
               The loop guard. Issue #516.
 
@@ -563,6 +595,150 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.retentionUnit}>{t('calls')}</span>
               </div>
             </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Counted within')}</p>
+                  <FieldHint label={t('Counted within')}>
+                    {t('How close together those calls have to be. Calls further apart than this do not count, which is what lets an agent poll something deliberately: it checks, waits, and checks again, and the older calls fall outside the window. Set it below the interval anything here is meant to poll at. Between 1 second and a day.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="repeated-tool-calls-window"
+                  name="repeatedToolCallsWindowSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={86400}
+                  value={repeatWindow}
+                  onChange={(event) => setRepeatWindow(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Counted within')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Warnings before the turn ends')}</p>
+                  <FieldHint label={t('Warnings before the turn ends')}>
+                    {t('A turn that is going round in circles is first told so, and asked to finish with what it has - which is usually something, since the work often happened before the loop started. This is how many times it is told before the turn is ended instead. Between 1 and 10.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="repeated-tool-call-warnings"
+                  name="repeatedToolCallWarnings"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={loopWarnings}
+                  onChange={(event) => setLoopWarnings(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Warnings before the turn ends')}
+                />
+                <span className={styles.retentionUnit}>{t('warnings')}</span>
+              </div>
+            </div>
+
+
+            <h2 id="tool-list" className={styles.sectionHeading}>{t('Tool list')}</h2>
+
+            {/* Up to how many findable tools tool_find names outright, so a
+                model asks for one by name rather than guessing words. A number
+                somebody can change, not one in the source. Issue #442. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How many findable tools are named outright')}</p>
+                  <FieldHint label={t('How many findable tools are named outright')}>
+                    {t('An agent granted more tools than it carries is given tool_find to find the rest. Up to this many of them, tool_find names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tools-named-in-search"
+                  name="toolsNamedInSearch"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={named}
+                  onChange={(event) => setNamed(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many findable tools are named outright')}
+                />
+                <span className={styles.retentionUnit}>{t('tools')}</span>
+              </div>
+            </div>
+
+            {/* Every tool an agent holds is named in its system prompt with a
+                phrase saying what it is for. Cheap at twenty tools and not at
+                three hundred, so the lines are cut as the list grows - and by
+                how much is the installation's, not a number in the source.
+                Issue #481. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Tools whose summary is kept in full')}</p>
+                  <FieldHint label={t('Tools whose summary is kept in full')}>
+                    {t('An agent’s system prompt names every tool it holds with a short phrase, so it knows what it has instead of guessing words for a search. Up to this many tools each phrase is kept whole; for every further block of this many, the percentage below comes off what is kept, cut from the end so the first words survive. Between 10 and 1000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tool-summaries-full-up-to"
+                  name="toolSummariesFullUpTo"
+                  className={styles.input}
+                  type="number"
+                  min={10}
+                  max={1000}
+                  value={summariesFull}
+                  onChange={(event) => setSummariesFull(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Tools whose summary is kept in full')}
+                />
+                <span className={styles.retentionUnit}>{t('tools')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Trimmed off each further block')}</p>
+                  <FieldHint label={t('Trimmed off each further block')}>
+                    {t('How much comes off a tool’s phrase for each further block of tools past the number above: at 25%, an agent holding twice that many keeps three quarters of each phrase and one holding three times keeps half. Cut from the end, so what is written first survives. Zero switches the trimming off. Between 0 and 50.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tool-summary-trim-percent"
+                  name="toolSummaryTrimPercent"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={summaryTrim}
+                  onChange={(event) => setSummaryTrim(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Trimmed off each further block')}
+                />
+                <span className={styles.retentionUnit}>{t('percent')}</span>
+              </div>
+            </div>
+
+
+            <h2 id="sessions" className={styles.sectionHeading}>{t('Sessions')}</h2>
 
             <div className={styles.setting}>
               <div className={styles.settingText}>
@@ -667,31 +843,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Drawn picture size')}</p>
-                  <FieldHint label={t('Drawn picture size')}>
-                    {t('How many times its own size a diagram or chart is drawn as a picture. At its natural size a flowchart is a few hundred pixels wide with one-pixel lines, which barely show on a phone. Twice is twice as thick a line for four times the bytes. Between 1 and 4.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="drawing-scale"
-                  className={styles.input}
-                  type="number"
-                  min={1}
-                  max={4}
-                  value={drawScale}
-                  onChange={(event) => setDrawScale(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('Drawn picture size')}
-                />
-                <span className={styles.retentionUnit}>{t('times')}</span>
-              </div>
-            </div>
-
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('Longest value kept in a transcript')}</p>
                   <FieldHint label={t('Longest value kept in a transcript')}>
                     {t('How much of any one value is stored. This bounds the record and not the answer: a tool hands the agent whatever it hands it, and this decides how much survives into a later turn. It was set for payloads - a base64 image on its way somewhere - and a skill is the opposite case, instructions the agent is meant to still be holding. Raise it where transcripts matter more than table size. Between 100 and 100000.')}
@@ -715,83 +866,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Tool calls allowed in one message')}</p>
-                  <FieldHint label={t('Tool calls allowed in one message')}>
-                    {t('How many tools one message may ask for at once. The guard above counts across rounds and cannot see a single message that asks for the same thing a hundred times, which is what a decode looks like when it comes apart. Calls over this are refused with the rule quoted back, not dropped, so the model is told why. Between 1 and 500.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="max-tool-calls-at-once"
-                  name="maxToolCallsAtOnce"
-                  className={styles.input}
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={callsAtOnce}
-                  onChange={(event) => setCallsAtOnce(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('Tool calls allowed in one message')}
-                />
-                <span className={styles.retentionUnit}>{t('calls')}</span>
-              </div>
-            </div>
 
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Counted within')}</p>
-                  <FieldHint label={t('Counted within')}>
-                    {t('How close together those calls have to be. Calls further apart than this do not count, which is what lets an agent poll something deliberately: it checks, waits, and checks again, and the older calls fall outside the window. Set it below the interval anything here is meant to poll at. Between 1 second and a day.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="repeated-tool-calls-window"
-                  name="repeatedToolCallsWindowSeconds"
-                  className={styles.input}
-                  type="number"
-                  min={1}
-                  max={86400}
-                  value={repeatWindow}
-                  onChange={(event) => setRepeatWindow(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('Counted within')}
-                />
-                <span className={styles.retentionUnit}>{t('seconds')}</span>
-              </div>
-            </div>
-
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Warnings before the turn ends')}</p>
-                  <FieldHint label={t('Warnings before the turn ends')}>
-                    {t('A turn that is going round in circles is first told so, and asked to finish with what it has - which is usually something, since the work often happened before the loop started. This is how many times it is told before the turn is ended instead. Between 1 and 10.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="repeated-tool-call-warnings"
-                  name="repeatedToolCallWarnings"
-                  className={styles.input}
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={loopWarnings}
-                  onChange={(event) => setLoopWarnings(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('Warnings before the turn ends')}
-                />
-                <span className={styles.retentionUnit}>{t('warnings')}</span>
-              </div>
-            </div>
+            <h2 id="scratchpads" className={styles.sectionHeading}>{t('Scratchpads')}</h2>
 
             {/* How much a session's scratchpads may hold in all. Set in KB;
                 the server keeps bytes. Issue #411. */}
@@ -818,35 +894,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How much a session’s scratchpads may hold, in kilobytes')}
                 />
                 <span className={styles.retentionUnit}>{t('KB')}</span>
-              </div>
-            </div>
-
-            {/* Up to how many findable tools tool_find names outright, so a
-                model asks for one by name rather than guessing words. A number
-                somebody can change, not one in the source. Issue #442. */}
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('How many findable tools are named outright')}</p>
-                  <FieldHint label={t('How many findable tools are named outright')}>
-                    {t('An agent granted more tools than it carries is given tool_find to find the rest. Up to this many of them, tool_find names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="tools-named-in-search"
-                  name="toolsNamedInSearch"
-                  className={styles.input}
-                  type="number"
-                  min={0}
-                  max={500}
-                  value={named}
-                  onChange={(event) => setNamed(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('How many findable tools are named outright')}
-                />
-                <span className={styles.retentionUnit}>{t('tools')}</span>
               </div>
             </div>
 
@@ -904,62 +951,36 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
-            {/* Every tool an agent holds is named in its system prompt with a
-                phrase saying what it is for. Cheap at twenty tools and not at
-                three hundred, so the lines are cut as the list grows - and by
-                how much is the installation's, not a number in the source.
-                Issue #481. */}
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Tools whose summary is kept in full')}</p>
-                  <FieldHint label={t('Tools whose summary is kept in full')}>
-                    {t('An agent’s system prompt names every tool it holds with a short phrase, so it knows what it has instead of guessing words for a search. Up to this many tools each phrase is kept whole; for every further block of this many, the percentage below comes off what is kept, cut from the end so the first words survive. Between 10 and 1000.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="tool-summaries-full-up-to"
-                  name="toolSummariesFullUpTo"
-                  className={styles.input}
-                  type="number"
-                  min={10}
-                  max={1000}
-                  value={summariesFull}
-                  onChange={(event) => setSummariesFull(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('Tools whose summary is kept in full')}
-                />
-                <span className={styles.retentionUnit}>{t('tools')}</span>
-              </div>
-            </div>
+
+            <h2 id="drawing" className={styles.sectionHeading}>{t('Drawing')}</h2>
 
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Trimmed off each further block')}</p>
-                  <FieldHint label={t('Trimmed off each further block')}>
-                    {t('How much comes off a tool’s phrase for each further block of tools past the number above: at 25%, an agent holding twice that many keeps three quarters of each phrase and one holding three times keeps half. Cut from the end, so what is written first survives. Zero switches the trimming off. Between 0 and 50.')}
+                  <p className={styles.settingLabel}>{t('Drawn picture size')}</p>
+                  <FieldHint label={t('Drawn picture size')}>
+                    {t('How many times its own size a diagram or chart is drawn as a picture. At its natural size a flowchart is a few hundred pixels wide with one-pixel lines, which barely show on a phone. Twice is twice as thick a line for four times the bytes. Between 1 and 4.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="tool-summary-trim-percent"
-                  name="toolSummaryTrimPercent"
+                  id="drawing-scale"
                   className={styles.input}
                   type="number"
-                  min={0}
-                  max={50}
-                  value={summaryTrim}
-                  onChange={(event) => setSummaryTrim(event.target.value)}
+                  min={1}
+                  max={4}
+                  value={drawScale}
+                  onChange={(event) => setDrawScale(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Trimmed off each further block')}
+                  aria-label={t('Drawn picture size')}
                 />
-                <span className={styles.retentionUnit}>{t('percent')}</span>
+                <span className={styles.retentionUnit}>{t('times')}</span>
               </div>
             </div>
+
+
+            <h2 id="commands" className={styles.sectionHeading}>{t('Commands')}</h2>
 
             {/* What marks a command in a message that starts a run; a workspace
                 may carry its own. Text, so it saves on its own. Issue #402. */}

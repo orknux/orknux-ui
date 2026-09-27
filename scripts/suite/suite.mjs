@@ -490,6 +490,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'admin-settings-sections-check',
+    what: 'the installation settings page is in sections, each one reachable from Quick actions',
+    needs: [],
+  },
+  {
     name: 'hint-settings-check',
     what: 'the workspace settings pages moved their prose, and kept what should stay printed',
     needs: ['workspace'],
