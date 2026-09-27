@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Background,
   BackgroundVariant,
@@ -455,6 +455,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logFilter, setLogFilter] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [rerunning, setRerunning] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -633,10 +634,25 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
     setRerunning(true);
     try {
       const queued = await rerunExecution(executionId);
-      // The queued run is a new one; follow it rather than staying on the old.
-      window.location.assign(`/workspace/${workspaceId}/executions/${queued.id}`);
+      /*
+        The queued run is a new one; follow it rather than staying on the old.
+
+        Routed rather than reloaded. Issue #514: `window.location.assign`
+        restarts the whole application, and for as long as that takes the
+        button still reads "Queueing…" for a run that has already started. It
+        looked stuck, and the only evidence otherwise was the new run appearing
+        elsewhere. Routing swaps the page at once and unmounts this one.
+      */
+      navigate(`/workspace/${workspaceId}/executions/${queued.id}`);
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : t('Could not re-run.'));
+    } finally {
+      /*
+        Always, rather than only when it failed. A navigation that does not
+        happen - a route that will not match, a guard that sends somebody
+        elsewhere - would otherwise leave the button saying "Queueing…" for
+        good, which is the bug this is fixing rather than a smaller cousin of it.
+      */
       setRerunning(false);
     }
   }
@@ -666,8 +682,9 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
    */
   async function rerunFromStep(nodeKey: string) {
     const queued = await rerunExecutionStep(executionId, nodeKey);
-    // A run started from a step is still a new run; follow it, as Re-run does.
-    window.location.assign(`/workspace/${workspaceId}/executions/${queued.id}`);
+    // A run started from a step is still a new run; follow it, as Re-run does -
+    // routed rather than reloaded, for the reason above. Issue #514.
+    navigate(`/workspace/${workspaceId}/executions/${queued.id}`);
   }
 
   function downloadLogs() {
@@ -1129,6 +1146,9 @@ function NodeDetailsPanel({
        * here would mean a second, worse copy of them going stale on its own.
        */
       setRefusal(cause instanceof Error ? cause.message : t('Could not re-run from this step.'));
+    } finally {
+      // Always. Issue #514: cleared only on the failure, a re-run that worked
+      // left this button reading "Queueing…" until the page was reloaded.
       setRerunning(false);
     }
   }

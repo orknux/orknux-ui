@@ -2016,6 +2016,11 @@ export const PL: Record<string, string> = {
   // --- the agent's setup, where in the log it started answering (#391, #441) --
   "Agent details": "Szczegóły agenta",
   "System prompt": "Prompt systemowy",
+  "How many of those may work at once": "Ile z nich może pracować naraz",
+  "at once": "naraz",
+  "A different number from the one above: that bounds how many an agent may ask in a conversation, this bounds how many are working at the same time. It began to matter when asking stopped blocking - before that they ran one after another whatever this said. An ask past the ceiling waits its turn rather than being refused, because a refusal would send the model round again with the same ask in other words. Counted per conversation, so one busy conversation cannot starve the rest. Between 1 and 20.": "Inna liczba niż powyżej: tamta ogranicza, ilu agentów można zapytać w rozmowie, ta ogranicza, ilu pracuje jednocześnie. Zaczęła mieć znaczenie, gdy pytanie przestało blokować - wcześniej działali jeden po drugim, cokolwiek tu ustawiono. Pytanie ponad limit czeka na swoją kolej, zamiast zostać odrzucone, bo odrzucenie odesłałoby model z tym samym pytaniem innymi słowami. Liczone na rozmowę, więc jedna zajęta rozmowa nie zagłodzi pozostałych. Od 1 do 20.",
+  "~{n} tokens": "~{n} tokenów",
+  "Estimated, at four characters to a token": "Szacunkowo, po cztery znaki na token",
   // What the row says where the round sent no system turn at all (#454). Drawn
   // rather than left out, so "told nothing" and "not recorded" read differently.
   "none": "brak",

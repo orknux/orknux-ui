@@ -280,6 +280,24 @@ function AgentDetailsBlock({
 }) {
   const [open, setOpen] = useState(false);
 
+  /*
+    What the prompt costs, as a phrase rather than a number on its own.
+    Issue #515: "12.4k tokens" is a thing somebody can act on; "12,412" beside
+    a heading is a number they have to work out the units of.
+
+    Four characters to a token, which is what the rest of the product budgets a
+    context window with - see CHARS_PER_TOKEN on the server. It is an estimate
+    and the hover says so, because the real count is the model's own tokeniser
+    and differs between models.
+  */
+  const promptCost = (() => {
+    const written = details.systemPrompt?.trim() ?? '';
+    if (written === '') return null;
+    const tokens = Math.round(written.length / 4);
+    const shown = tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : `${tokens}`;
+    return t('~{n} tokens').replace('{n}', shown);
+  })();
+
   return (
     <section className={styles.agentDetails} aria-label={t('Agent details')} data-agent-details={details.agent}>
       <div className={styles.agentHead}>
@@ -323,7 +341,27 @@ function AgentDetailsBlock({
             `agent.systemPrompt`, so most agents drew no row at all.
           */}
           <div className={styles.agentRow}>
-            <dt className={styles.agentKey}>{t('System prompt')}</dt>
+            <dt className={styles.agentKey}>
+              {t('System prompt')}
+              {/*
+                What it costs, beside what it says. Issue #515.
+
+                The prompt is the one part of a turn nobody chose the length of
+                at the time - it is assembled from the agent's own words, its
+                skills, its tools and whatever the turn lent - and it is paid
+                for on every single call. A reader looking at a session and
+                wondering where the window went had to count it themselves.
+
+                An estimate, and it says so: the real number is the model's own
+                tokeniser and differs by model. Four characters to a token is
+                what the rest of the product budgets with.
+              */}
+              {promptCost !== null && (
+                <span className={styles.agentCost} title={t('Estimated, at four characters to a token')}>
+                  {promptCost}
+                </span>
+              )}
+            </dt>
             <dd className={styles.agentValue} data-agent-details-prompt="">
               <pre className={styles.agentPrompt}>
                 {details.systemPrompt != null && details.systemPrompt.trim() !== ''

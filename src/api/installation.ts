@@ -108,6 +108,28 @@ export interface InstallationSettings {
   /** What a fresh installation allows, before anybody changed it. */
   agentMaxSubagentsConfigured: number;
   /**
+   * How many of those asks may be working at once. Issue #461.
+   *
+   * A different number from the one above, and one that only started meaning
+   * anything when asking stopped blocking (#462): before that the asks ran one
+   * after another whatever this said.
+   */
+  agentMaxSubagentsAtOnce: number;
+  agentMaxSubagentsAtOnceConfigured: number;
+  /**
+   * The loop guard. Issue #516.
+   *
+   * Repetition on its own is not the fault - an agent watching something calls
+   * the same tool with the same arguments and is working. What makes it a loop
+   * is how close together the calls are.
+   */
+  maxRepeatedToolCalls: number;
+  maxRepeatedToolCallsConfigured: number;
+  repeatedToolCallsWindowSeconds: number;
+  repeatedToolCallsWindowSecondsConfigured: number;
+  repeatedToolCallWarnings: number;
+  repeatedToolCallWarningsConfigured: number;
+  /**
    * How many bytes one session's scratchpads may hold in all. Issue #411.
    *
    * A scratchpad is a working file a model writes at will; this bounds how much
@@ -170,7 +192,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable';
@@ -348,6 +370,52 @@ export async function setAgentMaxSubagents(count: number): Promise<InstallationS
     { count },
   );
   return data.setAgentMaxSubagents;
+}
+
+/**
+ * How many asks may be working at once. Issue #461.
+ *
+ * One past the ceiling waits its turn rather than being refused: a refusal
+ * sends a model round again with the same ask in other words.
+ */
+export async function setAgentMaxSubagentsAtOnce(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setAgentMaxSubagentsAtOnce: InstallationSettings }>(
+    `mutation SetAgentMaxSubagentsAtOnce($count: Int!) {
+       setAgentMaxSubagentsAtOnce(count: $count) { ${FIELDS} }
+     }`,
+    { count },
+  );
+  return data.setAgentMaxSubagentsAtOnce;
+}
+
+/**
+ * The loop guard. Issue #516.
+ *
+ * Three numbers rather than one: how many identical calls, how close together
+ * they have to be to count, and how often a turn is told before it ends.
+ */
+export async function setMaxRepeatedToolCalls(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setMaxRepeatedToolCalls: InstallationSettings }>(
+    `mutation SetMaxRepeatedToolCalls($count: Int!) { setMaxRepeatedToolCalls(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setMaxRepeatedToolCalls;
+}
+
+export async function setRepeatedToolCallsWindowSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setRepeatedToolCallsWindowSeconds: InstallationSettings }>(
+    `mutation SetWindow($seconds: Int!) { setRepeatedToolCallsWindowSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setRepeatedToolCallsWindowSeconds;
+}
+
+export async function setRepeatedToolCallWarnings(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setRepeatedToolCallWarnings: InstallationSettings }>(
+    `mutation SetWarnings($count: Int!) { setRepeatedToolCallWarnings(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setRepeatedToolCallWarnings;
 }
 
 /** How many bytes one session's scratchpads may hold in all. Issue #411. */

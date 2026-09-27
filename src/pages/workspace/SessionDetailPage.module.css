@@ -1165,6 +1165,21 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * What the system prompt costs, beside its heading. Issue #515.
+ *
+ * Quieter than the label it follows, because it is a fact about the prompt
+ * rather than a second heading - and lower case, since it is a measurement and
+ * not a field name.
+ */
+.agentCost {
+  margin-left: var(--space-8);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-text-subtle, var(--color-text-muted));
+  opacity: 0.75;
+}
+
 .agentValue {
   margin: 0;
   font-size: var(--text-md);

@@ -5,6 +5,10 @@ import {
   setAgentSleepSeconds,
   setAgentSleepTimes,
   setAgentMaxSubagents,
+  setAgentMaxSubagentsAtOnce,
+  setMaxRepeatedToolCalls,
+  setRepeatedToolCallsWindowSeconds,
+  setRepeatedToolCallWarnings,
   setScratchpadBudgetBytes,
   setToolsNamedInSearch,
   setScratchpadFileBudgetBytes,
@@ -78,6 +82,11 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [sleeps, setSleeps] = useState('');
   /** How many other agents one agent may ask in one conversation. Issue #380. */
   const [asks, setAsks] = useState('');
+  const [atOnce, setAtOnce] = useState('');
+  /* The loop guard, three numbers. Issue #516. */
+  const [repeats, setRepeats] = useState('');
+  const [repeatWindow, setRepeatWindow] = useState('');
+  const [loopWarnings, setLoopWarnings] = useState('');
   // Held and typed in KB; the server keeps bytes. Issue #411.
   const [padBudget, setPadBudget] = useState('');
   /** Up to how many findable tools find_tools names outright. Issue #442. */
@@ -116,6 +125,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
+        setAtOnce(String(held.agentMaxSubagentsAtOnce));
+        setRepeats(String(held.maxRepeatedToolCalls));
+        setRepeatWindow(String(held.repeatedToolCallsWindowSeconds));
+        setLoopWarnings(String(held.repeatedToolCallWarnings));
         setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
         setNamed(String(held.toolsNamedInSearch));
         setFileBudget(String(Math.round(held.scratchpadFileBudgetBytes / (1024 * 1024))));
@@ -152,6 +165,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
+        { typed: atOnce, held: settings.agentMaxSubagentsAtOnce, write: setAgentMaxSubagentsAtOnce },
+        { typed: repeats, held: settings.maxRepeatedToolCalls, write: setMaxRepeatedToolCalls },
+        {
+          typed: repeatWindow,
+          held: settings.repeatedToolCallsWindowSeconds,
+          write: setRepeatedToolCallsWindowSeconds,
+        },
+        { typed: loopWarnings, held: settings.repeatedToolCallWarnings, write: setRepeatedToolCallWarnings },
         {
           typed: padBudget,
           held: Math.round(settings.scratchpadBudgetBytes / 1024),
@@ -436,6 +457,118 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many other agents an agent may ask')}
                 />
                 <span className={styles.retentionUnit}>{t('agents')}</span>
+              </div>
+            </div>
+
+            {/* And how many of those may be going at the same time. Issue #461. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How many of those may work at once')}</p>
+                  <FieldHint label={t('How many of those may work at once')}>
+                    {t('A different number from the one above: that bounds how many an agent may ask in a conversation, this bounds how many are working at the same time. It began to matter when asking stopped blocking - before that they ran one after another whatever this said. An ask past the ceiling waits its turn rather than being refused, because a refusal would send the model round again with the same ask in other words. Counted per conversation, so one busy conversation cannot starve the rest. Between 1 and 20.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="agent-max-subagents-at-once"
+                  name="agentMaxSubagentsAtOnce"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={atOnce}
+                  onChange={(event) => setAtOnce(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many of those may work at once')}
+                />
+                <span className={styles.retentionUnit}>{t('at once')}</span>
+              </div>
+            </div>
+
+            {/*
+              The loop guard. Issue #516.
+
+              Three fields together, because none of them means anything alone:
+              a count with no window would stop an agent that checks something
+              every minute, and a window with no count would stop nothing.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Identical tool calls before a turn is stopped')}</p>
+                  <FieldHint label={t('Identical tool calls before a turn is stopped')}>
+                    {t('The same tool, the same arguments and the same answer, that many times inside the window below, and the turn is told it is going round in circles. Repetition on its own is fine - an agent watching something calls the same tool and is working - so what makes it a loop is how close together the calls are. Two sessions once spent their whole budget this way, one of them calling the same pair a hundred and fifty times. Between 2 and 50.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="max-repeated-tool-calls"
+                  name="maxRepeatedToolCalls"
+                  className={styles.input}
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={repeats}
+                  onChange={(event) => setRepeats(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Identical tool calls before a turn is stopped')}
+                />
+                <span className={styles.retentionUnit}>{t('calls')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Counted within')}</p>
+                  <FieldHint label={t('Counted within')}>
+                    {t('How close together those calls have to be. Calls further apart than this do not count, which is what lets an agent poll something deliberately: it checks, waits, and checks again, and the older calls fall outside the window. Set it below the interval anything here is meant to poll at. Between 1 second and a day.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="repeated-tool-calls-window"
+                  name="repeatedToolCallsWindowSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={86400}
+                  value={repeatWindow}
+                  onChange={(event) => setRepeatWindow(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Counted within')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Warnings before the turn ends')}</p>
+                  <FieldHint label={t('Warnings before the turn ends')}>
+                    {t('A turn that is going round in circles is first told so, and asked to finish with what it has - which is usually something, since the work often happened before the loop started. This is how many times it is told before the turn is ended instead. Between 1 and 10.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="repeated-tool-call-warnings"
+                  name="repeatedToolCallWarnings"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={loopWarnings}
+                  onChange={(event) => setLoopWarnings(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Warnings before the turn ends')}
+                />
+                <span className={styles.retentionUnit}>{t('warnings')}</span>
               </div>
             </div>
 
