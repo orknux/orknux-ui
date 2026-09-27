@@ -31,6 +31,7 @@ import {
   setWorkspaceToolTimeout,
   setWorkspaceTaskMaxTurns,
   setWorkspaceAgentMaxSubagents,
+  setWorkspaceMaxToolCallsAtOnce,
   setWorkspaceUnsafeBuiltInTools,
   setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
@@ -308,6 +309,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [turns, setTurns] = useState('');
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
+  const [callsAtOnce, setCallsAtOnce] = useState('');
   /** Whether a built-in tool may be hidden from an agent here. Issue #482. */
   const [unsafeBuiltIns, setUnsafeBuiltIns] = useState(false);
   /** What marks a command in a message that starts a run here; `!` to start. Issue #381. */
@@ -454,6 +456,11 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           found?.agentMaxSubagents === null || found?.agentMaxSubagents === undefined
             ? ''
             : String(found.agentMaxSubagents),
+        );
+        setCallsAtOnce(
+          found?.maxToolCallsAtOnce === null || found?.maxToolCallsAtOnce === undefined
+            ? ''
+            : String(found.maxToolCallsAtOnce),
         );
         setMarker(found?.commandMarker ?? '');
         setFunctionTimeout(
@@ -648,6 +655,12 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('asks')) {
         latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
       }
+      if (touched.has('callsAtOnce')) {
+        latest = await setWorkspaceMaxToolCallsAtOnce(
+          workspaceId,
+          callsAtOnce.trim() === '' ? null : Number(callsAtOnce),
+        );
+      }
       if (touched.has('marker')) {
         latest = await setWorkspaceCommandMarker(workspaceId, marker.trim() === '' ? null : marker.trim());
       }
@@ -734,6 +747,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setShare(held.defaultMemoryShare);
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
+    setCallsAtOnce(held.maxToolCallsAtOnce === null ? '' : String(held.maxToolCallsAtOnce));
     setUnsafeBuiltIns(held.unsafeBuiltInTools);
     setMarker(held.commandMarker ?? '');
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
@@ -1494,6 +1508,36 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               placeholder={workspace === null ? '' : String(workspace.agentMaxSubagentsDefault)}
               value={asks}
               onChange={(event) => { touch('asks'); setAsks(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        {/*
+          How many tools one message here may ask for at once. The repetition
+          guard counts across rounds and cannot see a single message that asks
+          for the same thing a hundred times, which is what a decode looks like
+          when it comes apart. Issue #518.
+        */}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-calls-at-once">
+              {t('Tool Calls Per Message')}
+            </label>
+            <FieldHint label={t('Tool Calls Per Message')}>
+              {t('How many tools one message from an agent here may ask for at once. A model reading a handful of files in one go is doing something ordinary; the same call repeated fifty times in one message is a decode that has come apart, and everything after the limit is refused with the rule quoted back so the model is told why rather than left with calls that never answered. Left empty, the installation’s number is used. Between 1 and 500.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-calls-at-once"
+              className={styles.input}
+              type="number"
+              min={1}
+              max={500}
+              placeholder={workspace === null ? '' : String(workspace.maxToolCallsAtOnceDefault)}
+              value={callsAtOnce}
+              onChange={(event) => { touch('callsAtOnce'); setCallsAtOnce(event.target.value); }}
             />
           </div>
         </div>

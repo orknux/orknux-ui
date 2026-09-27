@@ -98,6 +98,7 @@ export interface Workspace {
    * applies; zero takes the tool off the table here. Issue #380.
    */
   agentMaxSubagents: number | null;
+  maxToolCallsAtOnce: number | null;
   /**
    * Whether an agent here may have a built-in tool hidden from it. False, and
    * the agent's Tools list draws those rows fixed while it is. Issue #482.
@@ -105,6 +106,7 @@ export interface Workspace {
   unsafeBuiltInTools: boolean;
   /** What an agent here gets when the field above is null, so the box can show it. */
   agentMaxSubagentsDefault: number;
+  maxToolCallsAtOnceDefault: number;
   /**
    * What marks a command in a message that starts a run here - `!review`.
    * Orknux's own syntax, because Slack polices `/`. One to three characters,
@@ -191,7 +193,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -398,6 +400,19 @@ export async function setWorkspaceTaskMaxTurns(
 }
 
 /** Null clears it, which puts the workspace back on the installation's number. Issue #380. */
+export async function setWorkspaceMaxToolCallsAtOnce(
+  workspaceId: string,
+  count: number | null,
+): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceMaxToolCallsAtOnce: Workspace }>(
+    `mutation SetWorkspaceMaxToolCallsAtOnce($workspaceId: ID!, $count: Int) {
+       setWorkspaceMaxToolCallsAtOnce(workspaceId: $workspaceId, count: $count) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, count },
+  );
+  return data.setWorkspaceMaxToolCallsAtOnce;
+}
+
 export async function setWorkspaceAgentMaxSubagents(
   workspaceId: string,
   count: number | null,

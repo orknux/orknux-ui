@@ -7,6 +7,7 @@ import {
   setAgentMaxSubagents,
   setAgentMaxSubagentsAtOnce,
   setMaxRepeatedToolCalls,
+  setMaxToolCallsAtOnce,
   setRepeatedToolCallsWindowSeconds,
   setRepeatedToolCallWarnings,
   setScratchpadBudgetBytes,
@@ -85,6 +86,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [atOnce, setAtOnce] = useState('');
   /* The loop guard, three numbers. Issue #516. */
   const [repeats, setRepeats] = useState('');
+  const [callsAtOnce, setCallsAtOnce] = useState('');
   const [repeatWindow, setRepeatWindow] = useState('');
   const [loopWarnings, setLoopWarnings] = useState('');
   // Held and typed in KB; the server keeps bytes. Issue #411.
@@ -127,6 +129,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setAsks(String(held.agentMaxSubagents));
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
         setRepeats(String(held.maxRepeatedToolCalls));
+        setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setRepeatWindow(String(held.repeatedToolCallsWindowSeconds));
         setLoopWarnings(String(held.repeatedToolCallWarnings));
         setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
@@ -173,6 +176,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           write: setRepeatedToolCallsWindowSeconds,
         },
         { typed: loopWarnings, held: settings.repeatedToolCallWarnings, write: setRepeatedToolCallWarnings },
+        { typed: callsAtOnce, held: settings.maxToolCallsAtOnce, write: setMaxToolCallsAtOnce },
         {
           typed: padBudget,
           held: Math.round(settings.scratchpadBudgetBytes / 1024),
@@ -515,6 +519,32 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   onChange={(event) => setRepeats(event.target.value)}
                   disabled={busy}
                   aria-label={t('Identical tool calls before a turn is stopped')}
+                />
+                <span className={styles.retentionUnit}>{t('calls')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Tool calls allowed in one message')}</p>
+                  <FieldHint label={t('Tool calls allowed in one message')}>
+                    {t('How many tools one message may ask for at once. The guard above counts across rounds and cannot see a single message that asks for the same thing a hundred times, which is what a decode looks like when it comes apart. Calls over this are refused with the rule quoted back, not dropped, so the model is told why. Between 1 and 500.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="max-tool-calls-at-once"
+                  name="maxToolCallsAtOnce"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={callsAtOnce}
+                  onChange={(event) => setCallsAtOnce(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Tool calls allowed in one message')}
                 />
                 <span className={styles.retentionUnit}>{t('calls')}</span>
               </div>
