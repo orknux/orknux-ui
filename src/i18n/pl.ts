@@ -604,6 +604,7 @@ export const PL: Record<string, string> = {
   "Current Usage": "Bieżące zużycie",
   "Usage Metrics": "Metryki zużycia",
   "Metrics": "Metryki",
+  "{n} parts were not copied": "Nie skopiowano części: {n}",
   "Tool calls": "Wywołania narzędzi",
   "Tool list": "Lista narzędzi",
   "Drawing": "Rysowanie",

@@ -240,3 +240,14 @@
   font-size: var(--text-sm);
   color: var(--color-danger);
 }
+
+/* What a copy left behind, collapsed until asked for; see AdminPage. */
+.copyProblems summary {
+  cursor: pointer;
+  list-style: revert;
+}
+
+.copyProblems[open] {
+  max-height: 40vh;
+  overflow-y: auto;
+}

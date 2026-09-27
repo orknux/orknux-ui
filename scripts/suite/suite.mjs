@@ -490,6 +490,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-copy-problems-check',
+    what: 'what a workspace copy left behind is collapsed until asked for',
+    needs: [],
+  },
+  {
     name: 'admin-settings-sections-check',
     what: 'the installation settings page is in sections, each one reachable from Quick actions',
     needs: [],

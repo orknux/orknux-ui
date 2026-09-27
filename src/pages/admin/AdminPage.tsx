@@ -120,9 +120,22 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                   {copied.variablesToSet.join(', ')}
                 </p>
               )}
-              {copied.problems.map((problem) => (
-                <p key={problem} className={styles.copyNote}>{problem}</p>
-              ))}
+              {/*
+                Collapsed until asked for: a copy of a large workspace can leave
+                behind a hundred parts, one line each, and the list pushed the
+                workspaces themselves off the screen. The count says there is
+                something to read; the lines are one press away.
+              */}
+              {copied.problems.length > 0 && (
+                <details className={styles.copyProblems}>
+                  <summary className={styles.copyNote}>
+                    {t('{n} parts were not copied').replace('{n}', String(copied.problems.length))}
+                  </summary>
+                  {copied.problems.map((problem, at) => (
+                    <p key={at} className={styles.copyNote}>{problem}</p>
+                  ))}
+                </details>
+              )}
             </div>
           )}
           {copyFailed !== null && (
