@@ -9,6 +9,9 @@ import {
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
+  setSessionCompactionKeepTurns,
+  setSessionCompactionSummaryTokens,
+  setSessionCompactionAttempts,
   setRepeatedToolCallsWindowSeconds,
   setRepeatedToolCallWarnings,
   setScratchpadBudgetBytes,
@@ -89,6 +92,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [storedValue, setStoredValue] = useState('');
+  const [compactKeep, setCompactKeep] = useState('');
+  const [compactSummary, setCompactSummary] = useState('');
+  const [compactTries, setCompactTries] = useState('');
   const [repeatWindow, setRepeatWindow] = useState('');
   const [loopWarnings, setLoopWarnings] = useState('');
   // Held and typed in KB; the server keeps bytes. Issue #411.
@@ -133,6 +139,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
+        setCompactKeep(String(held.sessionCompactionKeepTurns));
+        setCompactSummary(String(held.sessionCompactionSummaryTokens));
+        setCompactTries(String(held.sessionCompactionAttempts));
         setRepeatWindow(String(held.repeatedToolCallsWindowSeconds));
         setLoopWarnings(String(held.repeatedToolCallWarnings));
         setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
@@ -181,6 +190,21 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: loopWarnings, held: settings.repeatedToolCallWarnings, write: setRepeatedToolCallWarnings },
         { typed: callsAtOnce, held: settings.maxToolCallsAtOnce, write: setMaxToolCallsAtOnce },
         { typed: storedValue, held: settings.longestStoredValue, write: setLongestStoredValue },
+        {
+          typed: compactKeep,
+          held: settings.sessionCompactionKeepTurns,
+          write: setSessionCompactionKeepTurns,
+        },
+        {
+          typed: compactSummary,
+          held: settings.sessionCompactionSummaryTokens,
+          write: setSessionCompactionSummaryTokens,
+        },
+        {
+          typed: compactTries,
+          held: settings.sessionCompactionAttempts,
+          write: setSessionCompactionAttempts,
+        },
         {
           typed: padBudget,
           held: Math.round(settings.scratchpadBudgetBytes / 1024),
@@ -525,6 +549,81 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Identical tool calls before a turn is stopped')}
                 />
                 <span className={styles.retentionUnit}>{t('calls')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Steps a compacted turn keeps')}</p>
+                  <FieldHint label={t('Steps a compacted turn keeps')}>
+                    {t('When a turn outgrows its model it is summarised and carried on rather than thrown away. This is how many of its most recent steps are kept word for word - the recent end is what the next round is about, and summarising the question being asked is how an agent starts answering something adjacent to it. Between 2 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="session-compaction-keep"
+                  className={styles.input}
+                  type="number"
+                  min={2}
+                  max={100}
+                  value={compactKeep}
+                  onChange={(event) => setCompactKeep(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Steps a compacted turn keeps')}
+                />
+                <span className={styles.retentionUnit}>{t('steps')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Length of that summary')}</p>
+                  <FieldHint label={t('Length of that summary')}>
+                    {t('How long the summary standing in for everything else may be. Long enough to carry what the turn had found out, short enough that compacting is worth doing. Between 100 and 8000 tokens.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="session-compaction-summary"
+                  className={styles.input}
+                  type="number"
+                  min={100}
+                  max={8000}
+                  value={compactSummary}
+                  onChange={(event) => setCompactSummary(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Length of that summary')}
+                />
+                <span className={styles.retentionUnit}>{t('tokens')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Compactions before a turn gives up')}</p>
+                  <FieldHint label={t('Compactions before a turn gives up')}>
+                    {t('How many times one turn may be summarised before it fails instead. A turn still too large after two summaries is not long, it is looping - and compacting a loop for ever is a way of never telling anybody something is wrong. Between 1 and 10.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="session-compaction-attempts"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={compactTries}
+                  onChange={(event) => setCompactTries(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Compactions before a turn gives up')}
+                />
+                <span className={styles.retentionUnit}>{t('times')}</span>
               </div>
             </div>
 

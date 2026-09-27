@@ -32,6 +32,7 @@ import {
   setWorkspaceTaskMaxTurns,
   setWorkspaceAgentMaxSubagents,
   setWorkspaceMaxToolCallsAtOnce,
+  setWorkspaceSessionCompaction,
   setWorkspaceUnsafeBuiltInTools,
   setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
@@ -310,6 +311,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
+  const [compactKeep, setCompactKeep] = useState('');
+  const [compactSummary, setCompactSummary] = useState('');
+  const [compactTries, setCompactTries] = useState('');
   /** Whether a built-in tool may be hidden from an agent here. Issue #482. */
   const [unsafeBuiltIns, setUnsafeBuiltIns] = useState(false);
   /** What marks a command in a message that starts a run here; `!` to start. Issue #381. */
@@ -461,6 +465,22 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           found?.maxToolCallsAtOnce === null || found?.maxToolCallsAtOnce === undefined
             ? ''
             : String(found.maxToolCallsAtOnce),
+        );
+        setCompactKeep(
+          found?.sessionCompactionKeepTurns === null || found?.sessionCompactionKeepTurns === undefined
+            ? ''
+            : String(found.sessionCompactionKeepTurns),
+        );
+        setCompactSummary(
+          found?.sessionCompactionSummaryTokens === null ||
+            found?.sessionCompactionSummaryTokens === undefined
+            ? ''
+            : String(found.sessionCompactionSummaryTokens),
+        );
+        setCompactTries(
+          found?.sessionCompactionAttempts === null || found?.sessionCompactionAttempts === undefined
+            ? ''
+            : String(found.sessionCompactionAttempts),
         );
         setMarker(found?.commandMarker ?? '');
         setFunctionTimeout(
@@ -661,6 +681,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           callsAtOnce.trim() === '' ? null : Number(callsAtOnce),
         );
       }
+      if (touched.has('compaction')) {
+        latest = await setWorkspaceSessionCompaction(
+          workspaceId,
+          compactKeep.trim() === '' ? null : Number(compactKeep),
+          compactSummary.trim() === '' ? null : Number(compactSummary),
+          compactTries.trim() === '' ? null : Number(compactTries),
+          latest?.sessionCompactionModelId ?? null,
+        );
+      }
       if (touched.has('marker')) {
         latest = await setWorkspaceCommandMarker(workspaceId, marker.trim() === '' ? null : marker.trim());
       }
@@ -748,6 +777,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
     setCallsAtOnce(held.maxToolCallsAtOnce === null ? '' : String(held.maxToolCallsAtOnce));
+    setCompactKeep(
+      held.sessionCompactionKeepTurns === null ? '' : String(held.sessionCompactionKeepTurns),
+    );
+    setCompactSummary(
+      held.sessionCompactionSummaryTokens === null ? '' : String(held.sessionCompactionSummaryTokens),
+    );
+    setCompactTries(
+      held.sessionCompactionAttempts === null ? '' : String(held.sessionCompactionAttempts),
+    );
     setUnsafeBuiltIns(held.unsafeBuiltInTools);
     setMarker(held.commandMarker ?? '');
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
@@ -1538,6 +1576,78 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               placeholder={workspace === null ? '' : String(workspace.maxToolCallsAtOnceDefault)}
               value={callsAtOnce}
               onChange={(event) => { touch('callsAtOnce'); setCallsAtOnce(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-compaction-keep">
+              {t('Steps A Compacted Turn Keeps')}
+            </label>
+            <FieldHint label={t('Steps A Compacted Turn Keeps')}>
+              {t('When a turn outgrows its model it is summarised and carried on rather than thrown away. This is how many of its most recent steps are kept word for word; the recent end is what the next round is about. Left empty, the installation\u2019s number is used. Between 2 and 100.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-compaction-keep"
+              className={styles.input}
+              type="number"
+              min={2}
+              max={100}
+              placeholder={workspace === null ? '' : String(workspace.sessionCompactionKeepTurnsDefault)}
+              value={compactKeep}
+              onChange={(event) => { touch('compaction'); setCompactKeep(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-compaction-summary">
+              {t('Length Of That Summary')}
+            </label>
+            <FieldHint label={t('Length Of That Summary')}>
+              {t('How long the summary standing in for everything else may be, in tokens. Long enough to carry what the turn had found out, short enough that compacting is worth doing. Left empty, the installation\u2019s number is used. Between 100 and 8000.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-compaction-summary"
+              className={styles.input}
+              type="number"
+              min={100}
+              max={8000}
+              placeholder={workspace === null ? '' : String(workspace.sessionCompactionSummaryTokensDefault)}
+              value={compactSummary}
+              onChange={(event) => { touch('compaction'); setCompactSummary(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-compaction-attempts">
+              {t('Compactions Before A Turn Gives Up')}
+            </label>
+            <FieldHint label={t('Compactions Before A Turn Gives Up')}>
+              {t('How many times one turn may be summarised before it fails instead. A turn still too large after two summaries is not long, it is looping. Left empty, the installation\u2019s number is used. Between 1 and 10.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-compaction-attempts"
+              className={styles.input}
+              type="number"
+              min={1}
+              max={10}
+              placeholder={workspace === null ? '' : String(workspace.sessionCompactionAttemptsDefault)}
+              value={compactTries}
+              onChange={(event) => { touch('compaction'); setCompactTries(event.target.value); }}
             />
           </div>
         </div>

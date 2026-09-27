@@ -99,6 +99,10 @@ export interface Workspace {
    */
   agentMaxSubagents: number | null;
   maxToolCallsAtOnce: number | null;
+  sessionCompactionKeepTurns: number | null;
+  sessionCompactionSummaryTokens: number | null;
+  sessionCompactionAttempts: number | null;
+  sessionCompactionModelId: string | null;
   /**
    * Whether an agent here may have a built-in tool hidden from it. False, and
    * the agent's Tools list draws those rows fixed while it is. Issue #482.
@@ -107,6 +111,9 @@ export interface Workspace {
   /** What an agent here gets when the field above is null, so the box can show it. */
   agentMaxSubagentsDefault: number;
   maxToolCallsAtOnceDefault: number;
+  sessionCompactionKeepTurnsDefault: number;
+  sessionCompactionSummaryTokensDefault: number;
+  sessionCompactionAttemptsDefault: number;
   /**
    * What marks a command in a message that starts a run here - `!review`.
    * Orknux's own syntax, because Slack polices `/`. One to three characters,
@@ -193,7 +200,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -400,6 +407,25 @@ export async function setWorkspaceTaskMaxTurns(
 }
 
 /** Null clears it, which puts the workspace back on the installation's number. Issue #380. */
+export async function setWorkspaceSessionCompaction(
+  workspaceId: string,
+  keepTurns: number | null,
+  summaryTokens: number | null,
+  attempts: number | null,
+  modelId: string | null,
+): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceSessionCompaction: Workspace }>(
+    `mutation SetWorkspaceSessionCompaction($workspaceId: ID!, $keepTurns: Int, $summaryTokens: Int,
+                                           $attempts: Int, $modelId: ID) {
+       setWorkspaceSessionCompaction(workspaceId: $workspaceId, keepTurns: $keepTurns,
+                                     summaryTokens: $summaryTokens, attempts: $attempts,
+                                     modelId: $modelId) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, keepTurns, summaryTokens, attempts, modelId },
+  );
+  return data.setWorkspaceSessionCompaction;
+}
+
 export async function setWorkspaceMaxToolCallsAtOnce(
   workspaceId: string,
   count: number | null,
