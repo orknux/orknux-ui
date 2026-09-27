@@ -1,0 +1,117 @@
+/*
+ * What this workspace searches the web with. Issue #510.
+ *
+ * Shaped like the general card beside it rather than styled afresh, because it
+ * sits on the same page and a section that looks like a different product is a
+ * section somebody reads twice.
+ */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  padding: var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.label {
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.select,
+.input {
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface-raised, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.select {
+  max-width: 20ch;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The key and what may be done to it, on one line. */
+.set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/*
+ * That a key exists, which is all this page is ever told. Drawn as a statement
+ * rather than as a disabled input full of dots: a box that looks like a field
+ * invites somebody to try to read it, and there is nothing in it to read.
+ */
+.setMark {
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-6);
+  background: var(--color-success-soft, rgb(34 160 90 / 12%));
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.secondary {
+  padding: var(--space-8) var(--space-12);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}

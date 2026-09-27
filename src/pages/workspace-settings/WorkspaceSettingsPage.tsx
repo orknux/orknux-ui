@@ -16,6 +16,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
+import { SearchSettings } from './SearchSettings';
 import styles from './WorkspaceSettingsPage.module.css';
 import { t } from '../../i18n';
 
@@ -340,6 +341,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             )}
             {/* The Save for this form is drawn up in the page header. Issue #386. */}
           </form>
+
+          {/*
+            What this workspace searches with, between the general form and the
+            danger zone. Its own component and its own save: the key is written
+            straight through rather than held until somebody presses the page's
+            Save, because a secret sitting in a form waiting to be submitted is
+            a secret in a browser for longer than it needs to be.
+          */}
+          <SearchSettings workspaceId={workspaceId} />
 
           <section className={`${styles.card} ${styles.dangerCard}`}>
             <h2 className={styles.dangerHeading}>{t('Danger Zone')}</h2>
