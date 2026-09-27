@@ -15,6 +15,14 @@ any of the workspace's agents is used by a node in a workflow — the workflow
 still points at the agent, so the workspace will not go. Empty the graphs that
 use them, or remove the workflows, and the delete goes through.
 
+**Duplicating** one copies its setup: connections, model providers with their
+models, MCP servers, objects, functions, conditions, tools, skills, actions,
+agents, triggers and workflows. Its runs and sessions stay behind - a copy is
+how a workspace is set up, not what it has done - and so do credentials:
+connections, providers and secret variables arrive without them, and the answer
+lists every one that needs setting. Anything that could not come is counted,
+with the reason for each one step away.
+
 ## Roles
 
 ![The roles this installation defines, and what each one opens](/screens/roles.png)
@@ -260,6 +268,13 @@ What this installation allows, for every workspace in it.
   button away; what has already been uploaded stays where it is. It governs the
   files put on an issue as well, whatever the label says, and both use the same
   storage and the same size limit.
+
+The rest of the page is in sections, each reachable from Quick actions: **Agents**
+(how long one may sleep, how many others it may ask and at once), **Tool calls**
+(how many per reply, and when a repeated call counts as a loop), **Tool list**,
+**Sessions** (when a long one is summarised, how much of each value a transcript
+keeps, and whether a conversation can be removed at all), **Scratchpads** (how
+much text and how much in files a session keeps), **Drawing** and **Commands**.
 
 Below each switch, in grey, is what the operator set in the configuration file:
 where attachments are written, what storage they use, and how large one file may

@@ -224,6 +224,12 @@ An agent that holds at least one catalog is offered a tool called
 not pushed into every prompt: the agent asks when it thinks there is something
 to know, the same way it reaches for any other tool.
 
+It can write as well as read. `memory_save` files something new, or rewrites a
+memory by its title; `memory_update` corrects one - new content, a new title, or
+both - and `memory_delete` removes one that is wrong or out of date. All three
+write only into catalogs the agent was granted, and the audit log names the
+agent that did it.
+
 A memory catalog an agent holds cannot be deleted either, and the refusal names
 the agents holding it. Removing one memory from a catalog is not the same act
 and is not refused: the catalog is what an agent is granted, so deleting one
@@ -344,6 +350,23 @@ conversation is. **Remove session** takes the conversation and every line in it,
 says so before it does; nothing makes a session again by hand, because a session
 exists only because a run computed its key.
 
+### When a session grows long
+
+A session past a size - 40,000 tokens unless a workspace or Admin → Settings
+says otherwise, and zero turns it off - has its older turns summarised into one
+line of the log, which the model is given in their place. Nothing is deleted:
+the turns it summarised stay on the page, marked, and the summary says what they
+held. Before this, the oldest turns quietly fell out of what the agent could see.
+
+### Asking another agent
+
+An agent granted others may put a question to one with `ask_agent`, and the
+question runs on its own while the asker carries on: `agent_wait` waits for
+what it asked, `agent_asks` reads what came back, and `agent_list` says what
+each agent it may ask can do - its model, tools, skills and connections - so it
+asks the one that holds the tool the work needs. Each ask is a session of its
+own, listed under the one that asked.
+
 ## Drawing, and looking
 
 An agent can look at a picture and can make one.
@@ -384,6 +407,52 @@ and answer with markdown to place. The row is on in the agent's Tools list
 until somebody hides it — the switch is for an agent whose answers are read
 somewhere this installation is not, where an address here resolves to nothing
 for the reader.
+
+## What an agent makes, and where it goes
+
+An agent does more than answer in words. The server brings the tools for the
+things a support desk actually sends, and each of them answers with a **key** -
+the bytes stay in the session's store, and the key is what every tool that
+sends, uploads or packs a file takes.
+
+- **Diagrams and charts.** `diagram_render` draws mermaid (flowcharts with
+  subgraphs, sequence, class, state, gantt, mindmap) or PlantUML;
+  `charts_render` draws bar, column, line, area, pie, donut and scatter charts
+  from a label and a number each. Either answers a PNG, for a chat, or an SVG,
+  for a page.
+- **Documents.** `pdf_fromHtml` lays HTML out as a PDF, drawing
+  `<pre class="mermaid">` and `<pre class="chart">` blocks as vectors, and reads
+  a stylesheet the page links from the scratchpad of that name.
+  `pdf_fromHtmlZip` does the same from a report already zipped with its
+  stylesheet and pictures.
+- **Pages.** An HTML report is built in scratchpads. A chart or diagram goes in
+  as SVG markup - `scratchpad_append` or `scratchpad_replace` take a key as
+  well as text - and a drawn picture travels beside the page in a zip.
+- **Archives.** `zip_files` packs pads and keys into one archive; `zip_extract`
+  unpacks one somebody sent into pads, so it can be read and changed.
+- **Looking.** `picture_view` shows the model the picture behind a key: an
+  attachment it read, a chart it drew.
+
+The server also brings **skills** that say how to use all of this -
+*Diagrams and charts*, *Complex HTML*, *Making a PDF* and *Delegating* - and
+`skill_search`, which looks inside skills' pages, so an agent holding a key and
+unsure what to do with it can find the page that says. For fun there are voices:
+*Angryman*, *Niceman*, *Jokeman* and *Crazyman*, each answering the same facts
+in its own way.
+
+## Finding a tool
+
+An agent that holds more tools than fit in one request - its own ceiling, or
+the provider's - is sent the ones marked **Always** and finds the rest. Its
+briefing lists every tool it has, each marked *loaded* or *load it first*.
+`tool_find` searches them by words and loads nothing, `tool_describe` shows one
+in full - its whole description and every parameter - and `tool_load` takes the
+exact names it wants for its next message.
+
+Two settings on a model's page matter most for a local model. **Tool calls per
+reply** set to one stops a confused model filling a reply with repeats; and
+**sampling** - temperature, top-p, top-k, min-p, repeat penalty - is sent only
+where it is set, so the server's own defaults hold until somebody chooses.
 
 ## Saying the work is done
 
