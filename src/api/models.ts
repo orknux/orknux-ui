@@ -98,6 +98,12 @@ export interface Model {
   maxOutput: number | null;
   /** Null lets the provider decide; false is one tool call per reply. Issue #530. */
   parallelToolCalls: boolean | null;
+  /** How the model picks its words; null sends nothing. Issue #533. */
+  temperature: number | null;
+  topP: number | null;
+  topK: number | null;
+  minP: number | null;
+  repeatPenalty: number | null;
   enabled: boolean;
   tokenLimit: number | null;
   resetInterval: ResetInterval;
@@ -168,7 +174,7 @@ const PROVIDER_FIELDS =
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
-  'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls enabled ' +
+  'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion voice skipEmptyLines ' +
   'imageCostPerImage';
@@ -331,6 +337,11 @@ export interface ModelDetailsInput {
   contextWindow?: number | null;
   maxOutput?: number | null;
   parallelToolCalls?: boolean | null;
+  temperature?: number | null;
+  topP?: number | null;
+  topK?: number | null;
+  minP?: number | null;
+  repeatPenalty?: number | null;
   inputCostPerMillion?: number | null;
   outputCostPerMillion?: number | null;
   /** Only asked for on a SPEECH model; null sends none and takes the provider's. */

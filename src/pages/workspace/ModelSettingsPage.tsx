@@ -76,6 +76,12 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [maxOutput, setMaxOutput] = useState('');
   /** '' sends nothing and lets the provider decide; 'one' and 'several' say so. Issue #530. */
   const [parallel, setParallel] = useState<'' | 'one' | 'several'>('');
+  // How the model picks its words; '' sends nothing. Issue #533.
+  const [temperature, setTemperature] = useState('');
+  const [topP, setTopP] = useState('');
+  const [topK, setTopK] = useState('');
+  const [minP, setMinP] = useState('');
+  const [repeatPenalty, setRepeatPenalty] = useState('');
   const [voice, setVoice] = useState('');
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   const [imageCost, setImageCost] = useState('');
@@ -174,6 +180,11 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     setContextWindow(found.contextWindow === null ? '' : String(found.contextWindow));
     setMaxOutput(found.maxOutput === null ? '' : String(found.maxOutput));
     setParallel(found.parallelToolCalls === null ? '' : found.parallelToolCalls ? 'several' : 'one');
+    setTemperature(found.temperature === null ? '' : String(found.temperature));
+    setTopP(found.topP === null ? '' : String(found.topP));
+    setTopK(found.topK === null ? '' : String(found.topK));
+    setMinP(found.minP === null ? '' : String(found.minP));
+    setRepeatPenalty(found.repeatPenalty === null ? '' : String(found.repeatPenalty));
     setVoice(found.voice ?? '');
     setSkipEmptyLines(found.skipEmptyLines);
     setImageCost(found.imageCostPerImage === null ? '' : String(found.imageCostPerImage));
@@ -250,6 +261,11 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         contextWindow: toNumber(contextWindow),
         maxOutput: toNumber(maxOutput),
         parallelToolCalls: parallel === '' ? null : parallel === 'several',
+        temperature: toNumber(temperature),
+        topP: toNumber(topP),
+        topK: toNumber(topK),
+        minP: toNumber(minP),
+        repeatPenalty: toNumber(repeatPenalty),
         inputCostPerMillion: model.inputCostPerMillion,
         outputCostPerMillion: model.outputCostPerMillion,
         voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
@@ -486,6 +502,86 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                   <option value="one">{t('One per reply')}</option>
                   <option value="several">{t('Several allowed')}</option>
                 </select>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="temperature">{t('Temperature')}</label>
+                  <FieldHint label={t('Temperature')}>
+                    {t('How freely the model picks its words: 0 always takes the likeliest, higher is looser. Empty sends nothing and the server uses its own default - a local model often runs at the 1.0 stored in its file. Between 0 and 2.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="temperature"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={temperature}
+                  onChange={(event) => setTemperature(event.target.value)}
+                  placeholder={t('Server default')}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="top-p">{t('Top P')}</label>
+                  <FieldHint label={t('Top P')}>
+                    {t('Only the likeliest words that together make up this share are considered. Empty sends nothing. Between 0 and 1.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="top-p"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={topP}
+                  onChange={(event) => setTopP(event.target.value)}
+                  placeholder={t('Server default')}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="top-k">{t('Top K')}</label>
+                  <FieldHint label={t('Top K')}>
+                    {t('Only this many of the likeliest words are considered. For servers that take it - llama.cpp, Ollama, vLLM; a hosted OpenAI model refuses a request carrying it. Empty sends nothing.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="top-k"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={topK}
+                  onChange={(event) => setTopK(event.target.value)}
+                  placeholder={t('Server default')}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="min-p">{t('Min P')}</label>
+                  <FieldHint label={t('Min P')}>
+                    {t('A word is dropped when it is less than this share as likely as the likeliest one. For llama.cpp, Ollama and vLLM; a hosted OpenAI model refuses it. Empty sends nothing. Between 0 and 1.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="min-p"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={minP}
+                  onChange={(event) => setMinP(event.target.value)}
+                  placeholder={t('Server default')}
+                  inputMode="decimal"
+                />
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="repeat-penalty">{t('Repeat Penalty')}</label>
+                  <FieldHint label={t('Repeat Penalty')}>
+                    {t('Makes words the model has just written less likely again; 1 is off. A light 1.05 discourages a model from repeating itself without making it avoid words it needs. For llama.cpp, Ollama and vLLM; a hosted OpenAI model refuses it. Empty sends nothing. Between 0 and 2.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="repeat-penalty"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  value={repeatPenalty}
+                  onChange={(event) => setRepeatPenalty(event.target.value)}
+                  placeholder={t('Server default')}
+                  inputMode="decimal"
+                />
               </div>
                 </>
               )}
