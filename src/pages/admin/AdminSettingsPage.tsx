@@ -103,7 +103,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [loopWarnings, setLoopWarnings] = useState('');
   // Held and typed in KB; the server keeps bytes. Issue #411.
   const [padBudget, setPadBudget] = useState('');
-  /** Up to how many findable tools find_tools names outright. Issue #442. */
+  /** Up to how many findable tools tool_load names outright. Issue #442. */
   const [named, setNamed] = useState('');
   /** How many tools fit in a briefing whole, and what each further block costs. Issue #481. */
   /** What a session's files may come to, in MB, and how long a pad is kept. Issues #491, #492. */
@@ -821,7 +821,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
-            {/* Up to how many findable tools find_tools names outright, so a
+            {/* Up to how many findable tools tool_load names outright, so a
                 model asks for one by name rather than guessing words. A number
                 somebody can change, not one in the source. Issue #442. */}
             <div className={styles.setting}>
@@ -829,7 +829,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('How many findable tools are named outright')}</p>
                   <FieldHint label={t('How many findable tools are named outright')}>
-                    {t('An agent granted more tools than it carries is given find_tools to look the rest up. Up to this many of them, find_tools names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.')}
+                    {t('An agent granted more tools than it carries is given tool_load to load the rest. Up to this many of them, tool_load names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. Between 0 and 500.')}
                   </FieldHint>
                 </span>
               </div>
