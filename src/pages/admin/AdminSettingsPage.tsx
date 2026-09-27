@@ -866,6 +866,49 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
+            {/*
+              Whether a conversation may be thrown away.
+
+              A session is the record of what an agent was asked and what it
+              answered, and on some installations that is the only account of a
+              decision anybody has. Removing one is a person tidying up after a
+              mistyped key or a run they were trying out - which is what it is
+              for - but where the record has to stand it is a hole somebody can
+              put in it with one press and no way back.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Conversations can be removed')}</p>
+                  <FieldHint label={t('Conversations can be removed')}>
+                    {t('A conversation is the record of what an agent was asked and what it answered, and on some installations it is the only account of a decision anybody has. Removing one takes the whole transcript with it and there is no way back, so an installation that has to be able to say what happened should turn this off. On until somebody does, which is how it has always worked.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <button
+                type="button"
+                id="sessions-removable"
+                className={styles.toggle}
+                onClick={() => void save(() => setSessionsRemovable(!settings.sessionsRemovable))}
+                disabled={busy}
+                role="switch"
+                aria-checked={settings.sessionsRemovable}
+                aria-label={
+                  settings.sessionsRemovable
+                    ? t('Stop allowing conversations to be removed')
+                    : t('Allow conversations to be removed')
+                }
+              >
+                <img
+                  src={settings.sessionsRemovable ? toggleOnIcon : toggleOffIcon}
+                  alt=""
+                  width={36}
+                  height={20}
+                  data-keeps-colour
+                />
+              </button>
+            </div>
+
 
             <h2 id="scratchpads" className={styles.sectionHeading}>{t('Scratchpads')}</h2>
 
@@ -1108,48 +1151,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               >
                 <img
                   src={settings.metricsAnonymous ? toggleOnIcon : toggleOffIcon}
-                  alt=""
-                  width={36}
-                  height={20}
-                  data-keeps-colour
-                />
-              </button>
-            </div>
-
-            {/*
-              Whether a conversation may be thrown away.
-
-              A session is the record of what an agent was asked and what it
-              answered, and on some installations that is the only account of a
-              decision anybody has. Removing one is a person tidying up after a
-              mistyped key or a run they were trying out - which is what it is
-              for - but where the record has to stand it is a hole somebody can
-              put in it with one press and no way back.
-            */}
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Conversations can be removed')}</p>
-                  <FieldHint label={t('Conversations can be removed')}>
-                    {t('A conversation is the record of what an agent was asked and what it answered, and on some installations it is the only account of a decision anybody has. Removing one takes the whole transcript with it and there is no way back, so an installation that has to be able to say what happened should turn this off. On until somebody does, which is how it has always worked.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <button
-                type="button"
-                className={styles.toggle}
-                onClick={() => void save(() => setSessionsRemovable(!settings.sessionsRemovable))}
-                disabled={busy}
-                role="switch"
-                aria-checked={settings.sessionsRemovable}
-                aria-label={
-                  settings.sessionsRemovable
-                    ? t('Stop allowing conversations to be removed')
-                    : t('Allow conversations to be removed')
-                }
-              >
-                <img
-                  src={settings.sessionsRemovable ? toggleOnIcon : toggleOffIcon}
                   alt=""
                   width={36}
                   height={20}

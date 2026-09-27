@@ -22,6 +22,7 @@ const SECTIONS = [
   ['tool-calls', 'max-tool-calls-at-once'],
   ['tool-list', 'tools-named-in-search'],
   ['sessions', 'session-compact-after'],
+  ['sessions', 'sessions-removable'],
   ['scratchpads', 'scratchpad-budget'],
   ['drawing', 'drawing-scale'],
   ['commands', 'command-marker'],
@@ -41,7 +42,7 @@ for (const [anchor, field] of SECTIONS) {
   const shown = await heading.isVisible().catch(() => false);
   record(shown, `the ${anchor} section has a heading on the page`);
   const at = await top(`h2#${anchor}`);
-  tops.push(at);
+  if (!tops.some((seen) => seen.anchor === anchor)) tops.push({ anchor, y: at });
   if (field !== null) {
     const fieldAt = await top(`#${field}`);
     record(at !== null && fieldAt !== null && fieldAt > at, `${field} is drawn under the ${anchor} heading`);
@@ -49,7 +50,7 @@ for (const [anchor, field] of SECTIONS) {
 }
 
 /* In the order Quick actions lists them, top to bottom. */
-const ordered = tops.every((y, i) => y !== null && (i === 0 || y > tops[i - 1]));
+const ordered = tops.every(({ y }, i) => y !== null && (i === 0 || y > tops[i - 1].y));
 record(ordered, 'the sections are drawn in the order Quick actions lists them');
 
 /* And a field belongs to its own section, not the next one down. */
@@ -58,5 +59,10 @@ const rounds = await top('#chat-max-rounds');
 const subagents = await top('#agent-max-subagents');
 record(rounds !== null && chatNext !== null && rounds < chatNext, 'chat rounds is above the Agents heading');
 record(subagents !== null && chatNext !== null && subagents > chatNext, 'the subagent setting is below it');
+
+/* The switch that keeps conversations is with the sessions, not under Metrics where it was. */
+const removable = await top('#sessions-removable');
+const nextDown = await top('h2#scratchpads');
+record(removable !== null && nextDown !== null && removable < nextDown, 'the conversations switch is above the Scratchpads heading');
 
 await finish(browser);
