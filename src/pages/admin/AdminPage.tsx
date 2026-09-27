@@ -126,6 +126,12 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                 workspaces themselves off the screen. The count says there is
                 something to read; the lines are one press away.
               */}
+              {copied.credentialsToSet.length > 0 && (
+                <p className={styles.copyNote}>
+                  {t('These came without their credentials and need setting: ')}
+                  {copied.credentialsToSet.join(', ')}
+                </p>
+              )}
               {copied.problems.length > 0 && (
                 <details className={styles.copyProblems}>
                   <summary className={styles.copyNote}>

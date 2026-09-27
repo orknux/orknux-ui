@@ -27,6 +27,7 @@ await page.route('**/graphql', async (route) => {
           workspace: { id: '999999', name: 'Stand-in copy', description: null },
           carried: [{ kind: 'function', count: 3 }],
           variablesToSet: [],
+          credentialsToSet: ['connection Slack outbound'],
           problems: PROBLEMS,
         },
       },
@@ -47,6 +48,12 @@ record(await summary.isVisible().catch(() => false), 'one line says how many par
 
 const firstLine = page.getByText('reason 0', { exact: false });
 record(!(await firstLine.isVisible().catch(() => true)), 'and the lines themselves are not drawn until asked for');
+
+/* What needs a credential is said outright, not behind the fold. */
+record(
+  await page.getByText('connection Slack outbound').isVisible().catch(() => false),
+  'what came without its credentials is named on the page',
+);
 
 if (await summary.isVisible().catch(() => false)) await summary.click();
 record(await firstLine.isVisible().catch(() => false), 'opening it shows them');

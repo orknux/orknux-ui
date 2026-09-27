@@ -650,6 +650,8 @@ export interface WorkspaceCopy {
   workspace: Workspace;
   carried: { kind: string; count: number }[];
   variablesToSet: string[];
+  /** Connections, model providers and MCP servers that came without their credentials. */
+  credentialsToSet: string[];
   problems: string[];
 }
 
@@ -661,6 +663,7 @@ export async function duplicateWorkspace(id: string, name: string): Promise<Work
          workspace { id name description }
          carried { kind count }
          variablesToSet
+         credentialsToSet
          problems
        }
      }`,
