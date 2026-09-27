@@ -74,6 +74,8 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
    */
   const [contextWindow, setContextWindow] = useState('');
   const [maxOutput, setMaxOutput] = useState('');
+  /** '' sends nothing and lets the provider decide; 'one' and 'several' say so. Issue #530. */
+  const [parallel, setParallel] = useState<'' | 'one' | 'several'>('');
   const [voice, setVoice] = useState('');
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   const [imageCost, setImageCost] = useState('');
@@ -171,6 +173,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     setModel(found);
     setContextWindow(found.contextWindow === null ? '' : String(found.contextWindow));
     setMaxOutput(found.maxOutput === null ? '' : String(found.maxOutput));
+    setParallel(found.parallelToolCalls === null ? '' : found.parallelToolCalls ? 'several' : 'one');
     setVoice(found.voice ?? '');
     setSkipEmptyLines(found.skipEmptyLines);
     setImageCost(found.imageCostPerImage === null ? '' : String(found.imageCostPerImage));
@@ -246,6 +249,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         kind: model.kind,
         contextWindow: toNumber(contextWindow),
         maxOutput: toNumber(maxOutput),
+        parallelToolCalls: parallel === '' ? null : parallel === 'several',
         inputCostPerMillion: model.inputCostPerMillion,
         outputCostPerMillion: model.outputCostPerMillion,
         voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
@@ -464,6 +468,24 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                   placeholder={t('Not recorded')}
                   inputMode="numeric"
                 />
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="parallel-tool-calls">{t('Tool Calls Per Reply')}</label>
+                  <FieldHint label={t('Tool Calls Per Reply')}>
+                    {t('Whether one reply may ask for several tools at once. Left to the provider, nothing is sent. One per reply sends parallel_tool_calls false, which a local server such as llama.cpp enforces in its grammar - a model that starts repeating the same calls in one reply then cannot, where otherwise it can write a hundred of them before its output runs out.')}
+                  </FieldHint>
+                </span>
+                <select
+                  id="parallel-tool-calls"
+                  className={styles.input}
+                  value={parallel}
+                  onChange={(event) => setParallel(event.target.value as '' | 'one' | 'several')}
+                >
+                  <option value="">{t('Provider default')}</option>
+                  <option value="one">{t('One per reply')}</option>
+                  <option value="several">{t('Several allowed')}</option>
+                </select>
               </div>
                 </>
               )}

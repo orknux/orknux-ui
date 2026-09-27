@@ -9,6 +9,7 @@ import {
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
+  setDrawingScale,
   setSessionCompactAfterTokens,
   setSessionCompactionKeepTurns,
   setSessionCompactionSummaryTokens,
@@ -93,6 +94,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [storedValue, setStoredValue] = useState('');
+  const [drawScale, setDrawScale] = useState('');
   const [compactAfter, setCompactAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
@@ -141,6 +143,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
+        setDrawScale(String(held.drawingScale));
         setCompactAfter(String(held.sessionCompactAfterTokens));
         setCompactKeep(String(held.sessionCompactionKeepTurns));
         setCompactSummary(String(held.sessionCompactionSummaryTokens));
@@ -193,6 +196,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: loopWarnings, held: settings.repeatedToolCallWarnings, write: setRepeatedToolCallWarnings },
         { typed: callsAtOnce, held: settings.maxToolCallsAtOnce, write: setMaxToolCallsAtOnce },
         { typed: storedValue, held: settings.longestStoredValue, write: setLongestStoredValue },
+        { typed: drawScale, held: settings.drawingScale, write: setDrawingScale },
         {
           typed: compactAfter,
           held: settings.sessionCompactAfterTokens,
@@ -655,6 +659,31 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   onChange={(event) => setCompactTries(event.target.value)}
                   disabled={busy}
                   aria-label={t('Compactions before a turn gives up')}
+                />
+                <span className={styles.retentionUnit}>{t('times')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Drawn picture size')}</p>
+                  <FieldHint label={t('Drawn picture size')}>
+                    {t('How many times its own size a diagram or chart is drawn as a picture. At its natural size a flowchart is a few hundred pixels wide with one-pixel lines, which barely show on a phone. Twice is twice as thick a line for four times the bytes. Between 1 and 4.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="drawing-scale"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={4}
+                  value={drawScale}
+                  onChange={(event) => setDrawScale(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Drawn picture size')}
                 />
                 <span className={styles.retentionUnit}>{t('times')}</span>
               </div>
