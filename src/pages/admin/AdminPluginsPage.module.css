@@ -464,6 +464,24 @@
 }
 
 /*
+ * Why a plugin would not uninstall, under the button that was pressed. Issue #511.
+ *
+ * The page's banner sits at the top and this pane scrolls on its own, so a
+ * refusal that only set the banner was a refusal nobody saw. Full width and
+ * above the tabs, because the sentence names every function still called and
+ * who calls it - which is the part worth reading, and is longer than a line.
+ */
+.paneError {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft, rgb(220 38 38 / 10%));
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/*
  * What a loaded plugin was granted, under its name.
  *
  * The same line as the signatures above it, in amber, because it is the one

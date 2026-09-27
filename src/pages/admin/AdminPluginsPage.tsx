@@ -1644,13 +1644,33 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                               type="button"
                               className={styles.dangerAction}
                               disabled={busy}
-                              // The banner says what went wrong here; there
-                              // is no dialog to carry it.
+                              /*
+                                The refusal is drawn under this button rather
+                                than only in the banner at the top. Issue #511:
+                                a plugin whose functions a workflow still calls
+                                is refused - rightly, since removing one out
+                                from under a running workflow fails at the
+                                moment it runs - and the server says which
+                                functions and who calls them. But this pane
+                                scrolls on its own and the banner is most of a
+                                screen above it, so pressing this produced a
+                                sentence nobody could see and a button that
+                                looked like it did nothing.
+                              */
                               onClick={() => void onUnload(here).catch(() => {})}
                             >{t('Uninstall')}</button>
                           );
                         })()}
                       </div>
+                      {/*
+                        Said here as well as in the banner, because this is
+                        where the press was. Only a refusal about *this*
+                        listing: an error left over from installing something
+                        else would read as a reason this one cannot be removed.
+                      */}
+                      {error !== null && open.installed && (
+                        <p className={styles.paneError} role="alert">{error}</p>
+                      )}
                     </div>
                     {/*
                       Two questions about a listing, two tabs.
