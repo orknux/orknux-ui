@@ -129,6 +129,8 @@ export interface InstallationSettings {
   maxToolCallsAtOnceConfigured: number;
   longestStoredValue: number;
   longestStoredValueConfigured: number;
+  sessionCompactAfterTokens: number;
+  sessionCompactAfterTokensConfigured: number;
   sessionCompactionKeepTurns: number;
   sessionCompactionKeepTurnsConfigured: number;
   sessionCompactionSummaryTokens: number;
@@ -202,7 +204,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable';
@@ -404,6 +406,14 @@ export async function setAgentMaxSubagentsAtOnce(count: number): Promise<Install
  * Three numbers rather than one: how many identical calls, how close together
  * they have to be to count, and how often a turn is told before it ends.
  */
+export async function setSessionCompactAfterTokens(tokens: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setSessionCompactAfterTokens: InstallationSettings }>(
+    `mutation SetCompactAfter($tokens: Int!) { setSessionCompactAfterTokens(tokens: $tokens) { ${FIELDS} } }`,
+    { tokens },
+  );
+  return data.setSessionCompactAfterTokens;
+}
+
 export async function setSessionCompactionKeepTurns(turns: number): Promise<InstallationSettings> {
   const data = await graphql<{ setSessionCompactionKeepTurns: InstallationSettings }>(
     `mutation SetKeep($turns: Int!) { setSessionCompactionKeepTurns(turns: $turns) { ${FIELDS} } }`,

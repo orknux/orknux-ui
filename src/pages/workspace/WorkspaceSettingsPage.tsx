@@ -311,6 +311,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
+  const [sessionAfter, setSessionAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
   const [compactTries, setCompactTries] = useState('');
@@ -465,6 +466,11 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           found?.maxToolCallsAtOnce === null || found?.maxToolCallsAtOnce === undefined
             ? ''
             : String(found.maxToolCallsAtOnce),
+        );
+        setSessionAfter(
+          found?.sessionCompactAfterTokens === null || found?.sessionCompactAfterTokens === undefined
+            ? ''
+            : String(found.sessionCompactAfterTokens),
         );
         setCompactKeep(
           found?.sessionCompactionKeepTurns === null || found?.sessionCompactionKeepTurns === undefined
@@ -684,6 +690,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('compaction')) {
         latest = await setWorkspaceSessionCompaction(
           workspaceId,
+          sessionAfter.trim() === '' ? null : Number(sessionAfter),
           compactKeep.trim() === '' ? null : Number(compactKeep),
           compactSummary.trim() === '' ? null : Number(compactSummary),
           compactTries.trim() === '' ? null : Number(compactTries),
@@ -777,6 +784,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
     setCallsAtOnce(held.maxToolCallsAtOnce === null ? '' : String(held.maxToolCallsAtOnce));
+    setSessionAfter(
+      held.sessionCompactAfterTokens === null ? '' : String(held.sessionCompactAfterTokens),
+    );
     setCompactKeep(
       held.sessionCompactionKeepTurns === null ? '' : String(held.sessionCompactionKeepTurns),
     );
@@ -1576,6 +1586,30 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               placeholder={workspace === null ? '' : String(workspace.maxToolCallsAtOnceDefault)}
               value={callsAtOnce}
               onChange={(event) => { touch('callsAtOnce'); setCallsAtOnce(event.target.value); }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-compact-after">
+              {t('Compact A Session Past')}
+            </label>
+            <FieldHint label={t('Compact A Session Past')}>
+              {t('How long a session\u2019s log may grow before its older turns are read once, replaced by a summary of them, and the conversation carries on. Without this the oldest turns fall past what a turn can carry and the agent forgets the beginning of the conversation with nobody told. The turns are marked rather than deleted, so the transcript still shows every step. Left empty, the installation\u2019s number is used; zero never compacts. Between 1000 and 1000000.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-compact-after"
+              className={styles.input}
+              type="number"
+              min={0}
+              max={1000000}
+              placeholder={workspace === null ? '' : String(workspace.sessionCompactAfterTokensDefault)}
+              value={sessionAfter}
+              onChange={(event) => { touch('compaction'); setSessionAfter(event.target.value); }}
             />
           </div>
         </div>

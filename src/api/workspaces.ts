@@ -99,6 +99,7 @@ export interface Workspace {
    */
   agentMaxSubagents: number | null;
   maxToolCallsAtOnce: number | null;
+  sessionCompactAfterTokens: number | null;
   sessionCompactionKeepTurns: number | null;
   sessionCompactionSummaryTokens: number | null;
   sessionCompactionAttempts: number | null;
@@ -111,6 +112,7 @@ export interface Workspace {
   /** What an agent here gets when the field above is null, so the box can show it. */
   agentMaxSubagentsDefault: number;
   maxToolCallsAtOnceDefault: number;
+  sessionCompactAfterTokensDefault: number;
   sessionCompactionKeepTurnsDefault: number;
   sessionCompactionSummaryTokensDefault: number;
   sessionCompactionAttemptsDefault: number;
@@ -200,7 +202,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
   'voiceSpeechChunking chatShowTimestamps';
@@ -409,19 +411,20 @@ export async function setWorkspaceTaskMaxTurns(
 /** Null clears it, which puts the workspace back on the installation's number. Issue #380. */
 export async function setWorkspaceSessionCompaction(
   workspaceId: string,
+  afterTokens: number | null,
   keepTurns: number | null,
   summaryTokens: number | null,
   attempts: number | null,
   modelId: string | null,
 ): Promise<Workspace> {
   const data = await graphql<{ setWorkspaceSessionCompaction: Workspace }>(
-    `mutation SetWorkspaceSessionCompaction($workspaceId: ID!, $keepTurns: Int, $summaryTokens: Int,
-                                           $attempts: Int, $modelId: ID) {
-       setWorkspaceSessionCompaction(workspaceId: $workspaceId, keepTurns: $keepTurns,
-                                     summaryTokens: $summaryTokens, attempts: $attempts,
-                                     modelId: $modelId) { ${WORKSPACE_FIELDS} }
+    `mutation SetWorkspaceSessionCompaction($workspaceId: ID!, $afterTokens: Int, $keepTurns: Int,
+                                           $summaryTokens: Int, $attempts: Int, $modelId: ID) {
+       setWorkspaceSessionCompaction(workspaceId: $workspaceId, afterTokens: $afterTokens,
+                                     keepTurns: $keepTurns, summaryTokens: $summaryTokens,
+                                     attempts: $attempts, modelId: $modelId) { ${WORKSPACE_FIELDS} }
      }`,
-    { workspaceId, keepTurns, summaryTokens, attempts, modelId },
+    { workspaceId, afterTokens, keepTurns, summaryTokens, attempts, modelId },
   );
   return data.setWorkspaceSessionCompaction;
 }

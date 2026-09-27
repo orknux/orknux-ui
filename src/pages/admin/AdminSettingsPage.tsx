@@ -9,6 +9,7 @@ import {
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
+  setSessionCompactAfterTokens,
   setSessionCompactionKeepTurns,
   setSessionCompactionSummaryTokens,
   setSessionCompactionAttempts,
@@ -92,6 +93,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [storedValue, setStoredValue] = useState('');
+  const [compactAfter, setCompactAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
   const [compactTries, setCompactTries] = useState('');
@@ -139,6 +141,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
+        setCompactAfter(String(held.sessionCompactAfterTokens));
         setCompactKeep(String(held.sessionCompactionKeepTurns));
         setCompactSummary(String(held.sessionCompactionSummaryTokens));
         setCompactTries(String(held.sessionCompactionAttempts));
@@ -190,6 +193,11 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: loopWarnings, held: settings.repeatedToolCallWarnings, write: setRepeatedToolCallWarnings },
         { typed: callsAtOnce, held: settings.maxToolCallsAtOnce, write: setMaxToolCallsAtOnce },
         { typed: storedValue, held: settings.longestStoredValue, write: setLongestStoredValue },
+        {
+          typed: compactAfter,
+          held: settings.sessionCompactAfterTokens,
+          write: setSessionCompactAfterTokens,
+        },
         {
           typed: compactKeep,
           held: settings.sessionCompactionKeepTurns,
@@ -549,6 +557,31 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Identical tool calls before a turn is stopped')}
                 />
                 <span className={styles.retentionUnit}>{t('calls')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Compact a session past')}</p>
+                  <FieldHint label={t('Compact a session past')}>
+                    {t('How long a session\u2019s log may grow before its older turns are read once, replaced by a summary of them, and the conversation carries on. Without this the oldest turns simply fall past what a turn can carry and the agent forgets the beginning with nobody told. The turns are marked rather than deleted, so the transcript still shows every step. Zero never compacts; otherwise between 1000 and 1000000 tokens.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="session-compact-after"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={1000000}
+                  value={compactAfter}
+                  onChange={(event) => setCompactAfter(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Compact a session past')}
+                />
+                <span className={styles.retentionUnit}>{t('tokens')}</span>
               </div>
             </div>
 
