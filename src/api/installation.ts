@@ -127,6 +127,8 @@ export interface InstallationSettings {
   maxRepeatedToolCallsConfigured: number;
   maxToolCallsAtOnce: number;
   maxToolCallsAtOnceConfigured: number;
+  longestStoredValue: number;
+  longestStoredValueConfigured: number;
   repeatedToolCallsWindowSeconds: number;
   repeatedToolCallsWindowSecondsConfigured: number;
   repeatedToolCallWarnings: number;
@@ -194,7 +196,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable';
@@ -396,6 +398,14 @@ export async function setAgentMaxSubagentsAtOnce(count: number): Promise<Install
  * Three numbers rather than one: how many identical calls, how close together
  * they have to be to count, and how often a turn is told before it ends.
  */
+export async function setLongestStoredValue(characters: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setLongestStoredValue: InstallationSettings }>(
+    `mutation SetLongestStoredValue($characters: Int!) { setLongestStoredValue(characters: $characters) { ${FIELDS} } }`,
+    { characters },
+  );
+  return data.setLongestStoredValue;
+}
+
 export async function setMaxToolCallsAtOnce(count: number): Promise<InstallationSettings> {
   const data = await graphql<{ setMaxToolCallsAtOnce: InstallationSettings }>(
     `mutation SetMaxToolCallsAtOnce($count: Int!) { setMaxToolCallsAtOnce(count: $count) { ${FIELDS} } }`,

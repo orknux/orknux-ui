@@ -8,6 +8,7 @@ import {
   setAgentMaxSubagentsAtOnce,
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
+  setLongestStoredValue,
   setRepeatedToolCallsWindowSeconds,
   setRepeatedToolCallWarnings,
   setScratchpadBudgetBytes,
@@ -87,6 +88,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   /* The loop guard, three numbers. Issue #516. */
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
+  const [storedValue, setStoredValue] = useState('');
   const [repeatWindow, setRepeatWindow] = useState('');
   const [loopWarnings, setLoopWarnings] = useState('');
   // Held and typed in KB; the server keeps bytes. Issue #411.
@@ -130,6 +132,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
+        setStoredValue(String(held.longestStoredValue));
         setRepeatWindow(String(held.repeatedToolCallsWindowSeconds));
         setLoopWarnings(String(held.repeatedToolCallWarnings));
         setPadBudget(String(Math.round(held.scratchpadBudgetBytes / 1024)));
@@ -177,6 +180,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         },
         { typed: loopWarnings, held: settings.repeatedToolCallWarnings, write: setRepeatedToolCallWarnings },
         { typed: callsAtOnce, held: settings.maxToolCallsAtOnce, write: setMaxToolCallsAtOnce },
+        { typed: storedValue, held: settings.longestStoredValue, write: setLongestStoredValue },
         {
           typed: padBudget,
           held: Math.round(settings.scratchpadBudgetBytes / 1024),
@@ -521,6 +525,32 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Identical tool calls before a turn is stopped')}
                 />
                 <span className={styles.retentionUnit}>{t('calls')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Longest value kept in a transcript')}</p>
+                  <FieldHint label={t('Longest value kept in a transcript')}>
+                    {t('How much of any one value is stored. This bounds the record and not the answer: a tool hands the agent whatever it hands it, and this decides how much survives into a later turn. It was set for payloads - a base64 image on its way somewhere - and a skill is the opposite case, instructions the agent is meant to still be holding. Raise it where transcripts matter more than table size. Between 100 and 100000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="longest-stored-value"
+                  name="longestStoredValue"
+                  className={styles.input}
+                  type="number"
+                  min={100}
+                  max={100000}
+                  value={storedValue}
+                  onChange={(event) => setStoredValue(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Longest value kept in a transcript')}
+                />
+                <span className={styles.retentionUnit}>{t('characters')}</span>
               </div>
             </div>
 
