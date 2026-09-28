@@ -74,11 +74,16 @@ if (there) {
 
 /* ------------------------------------------------------ the agent's own one */
 
-const { workspaceAgents } = await graphql(
-  `query($w: ID!) { workspaceAgents(workspaceId: $w, size: 1) { content { id name maxRounds } } }`,
-  { w: WORKSPACE },
-);
-const agent = workspaceAgents.content[0] ?? null;
+/*
+ * An agent of its own, made here and deleted afterwards. It used to open the
+ * workspace's first agent and save it through the form twice, which on a
+ * development database is somebody's real agent - reported as "Support
+ * responder" having its settings reset every time the suite ran.
+ */
+const agent = (await graphql(
+  `mutation($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM }) { id name maxRounds } }`,
+  { w: WORKSPACE, n: `zz rounds agent ${Date.now()}` },
+).catch(() => ({ createAgent: null }))).createAgent;
 
 if (agent === null) {
   record(false, 'there is an agent to open');
@@ -132,6 +137,10 @@ if (agent === null) {
 }
 
 /* --------------------------------------------- leave it as it was found ---- */
+
+if (agent !== null) {
+  await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: agent.id }).catch(() => undefined);
+}
 
 await graphql(`mutation($rounds: Int!) { setChatMaxRounds(rounds: $rounds) { chatMaxRounds } }`, {
   rounds: was.chatMaxRounds,

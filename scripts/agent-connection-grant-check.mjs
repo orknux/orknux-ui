@@ -76,16 +76,17 @@ record(connectionId !== undefined, 'the scratch connection exists');
  * The agent form: a Connections grant list, rows by name, the tick stored as
  * the id.
  */
-const { workspaceAgents } = await graphql(
-  `query ($workspaceId: ID!) { workspaceAgents(workspaceId: $workspaceId, page: 0, size: 5) { content { id } } }`,
-  { workspaceId: WORKSPACE },
-);
-if (workspaceAgents.content.length === 0) {
-  record(false, 'no agents in the workspace to open');
+// An agent of its own: saving the workspace's first one reset somebody's real agent.
+const scratchAgent = (await graphql(
+  `mutation($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM }) { id } }`,
+  { w: WORKSPACE, n: `zz connection grant agent ${Date.now()}` },
+).catch(() => ({ createAgent: null }))).createAgent;
+if (scratchAgent === null) {
+  record(false, 'a scratch agent to open');
   await sweep();
   await finish(browser);
 }
-const agentId = workspaceAgents.content[0].id;
+const agentId = scratchAgent.id;
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agentId}/settings`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-grants="connections"] [data-grant-rows]', { timeout: 20_000 });
@@ -195,6 +196,7 @@ await graphql(
   `mutation ($id: ID!) { disconnectWorkspaceConnection(id: $id) }`,
   { id: slack.createWorkspaceConnection.id },
 );
+await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: agentId }).catch(() => undefined);
 record(true, 'the scratch rows are swept');
 
 await finish(browser);

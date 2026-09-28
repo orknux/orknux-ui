@@ -14,7 +14,7 @@
  * switch gets wrong: it is easy to draw Always, and easy to store nothing
  * behind it.
  *
- * It puts the agent back the way it found it.
+ * It works on a scratch agent of its own and deletes it afterwards.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
@@ -33,18 +33,27 @@ const allowUnsafe = (allowed) =>
     a: allowed,
   });
 await allowUnsafe(true);
+// An agent of its own: saving the workspace's first one reset somebody's real agent.
+const scratch = (await graphql(
+  `mutation($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM }) { id } }`,
+  { w: WORKSPACE, n: `zz finish answer agent ${Date.now()}` },
+).catch(() => ({ createAgent: null }))).createAgent;
 const done = async () => {
+  if (scratch !== null) {
+    await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: scratch.id }).catch(() => undefined);
+  }
   await allowUnsafe(unsafeWas).catch(() => undefined);
   await finish(browser);
 };
 
-const { workspaceAgents } = await graphql(
-  `query ($w: ID!) {
-     workspaceAgents(workspaceId: $w, page: 0, size: 20) { content { id name tools requiredTools finishAccess pictureLinkAccess } }
-   }`,
-  { w: WORKSPACE },
-);
-const agent = workspaceAgents.content[0];
+const agent =
+  scratch === null
+    ? undefined
+    : (
+        await graphql(`query ($id: ID!) { agent(id: $id) { id name tools requiredTools finishAccess pictureLinkAccess } }`, {
+          id: scratch.id,
+        })
+      ).agent;
 if (agent === undefined) {
   record(false, 'the workspace has an agent to open; the seed builds one');
   await done();
