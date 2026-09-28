@@ -35,5 +35,11 @@ record(held.name === 'zz details renamed', `the new name is stored (${held.name}
 record(held.modelId === 'new-id', `the new model ID is stored (${held.modelId})`);
 record(held.kind === 'TRANSCRIPTION', `the new type is stored (${held.kind})`);
 
+/* Saved says so, and the next edit puts it away. */
+const savedNote = page.getByText('Saved.', { exact: true });
+record(await savedNote.isVisible().catch(() => false), 'the page says Saved.');
+await nameBox.fill('zz details renamed again');
+record(!(await savedNote.isVisible().catch(() => false)), 'and an edit after it takes Saved. away');
+
 await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: provider.id }).catch(() => undefined);
 await finish(browser);

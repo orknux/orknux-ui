@@ -600,3 +600,8 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* Around the whole page, only to hear its edits; it takes no room of its own. */
+.page {
+  display: contents;
+}

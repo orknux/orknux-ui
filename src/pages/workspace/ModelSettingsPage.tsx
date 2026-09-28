@@ -336,6 +336,8 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      {/* Any edit after a save puts "Saved." away: it said the page agreed with the server, and now it does not. */}
+      <div className={styles.page} onChangeCapture={() => setSaved(false)}>
       <header className={styles.headerBlock}>
         <p className={styles.breadcrumbs}>
           <BackLink to={`/workspace/${workspaceId}/models`} label={t('Models')} />
@@ -958,6 +960,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
           </section>
         </>
       )}
+      </div>
     </AppShell>
   );
 }
