@@ -460,6 +460,16 @@ function GrantList<Item>({
   fixedOf,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
+  /*
+   * Rows switched here since the page opened. These, and only these, stay on
+   * screen against a search: the hazard the rule below guards is a row pressed
+   * a moment ago vanishing from under the pointer. Keeping every granted row
+   * did that too, until every agent held the built-ins - then a search for one
+   * tool drew a hundred and fifty "kept" rows and read as a search that did
+   * nothing.
+   */
+  const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
+  const touch = (value: string) => setTouched((held) => (held.has(value) ? held : new Set(held).add(value)));
   /** Which plugin is being shown, or '' for all of them. */
   const [group, setGroup] = useState('');
   /** Which status to show, on a list that has them: 'all', 'hide', 'offer', 'always'. Issue #413. */
@@ -560,7 +570,7 @@ function GrantList<Item>({
    */
   const orphans = granted.filter((name) => !rows.some((row) => row.value === name));
 
-  const shown = rows.filter((row) => row.inGroup && (row.matches || row.ticked));
+  const shown = rows.filter((row) => row.inGroup && (row.matches || (row.ticked && touched.has(row.value))));
 
   /*
    * A tool's grant as one cycling control: Hide, Offer, Always. Issue #413.
@@ -584,12 +594,15 @@ function GrantList<Item>({
     const state = toolState(row);
     if (state === 'hide') {
       // Hide -> Offer: the grant.
+      touch(row.value);
       onChange([...granted, row.value]);
     } else if (state === 'offer') {
       // Offer -> Always.
+      touch(row.value);
       onMark?.([...(marked ?? []), row.value]);
     } else {
       // Always -> Hide, dropping any mark it carried.
+      touch(row.value);
       onChange(granted.filter((one) => one !== row.value));
       onMark?.((marked ?? []).filter((one) => one !== row.value));
     }
@@ -627,7 +640,7 @@ function GrantList<Item>({
    * border was meant to carry that and plainly does not, because it says
    * "this row is different" without saying why or how many.
    */
-  const kept = rows.filter((row) => row.inGroup && !row.matches && row.ticked).length;
+  const kept = rows.filter((row) => row.inGroup && !row.matches && row.ticked && touched.has(row.value)).length;
 
   /** Whether the press would grant or clear, which is what its label says. */
   const allPicked = matching > 0 && picked.every((row) => row.ticked);
@@ -865,13 +878,14 @@ function GrantList<Item>({
                       type="checkbox"
                       checked={row.fixed !== null || row.ticked}
                       disabled={row.fixed !== null}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        touch(row.value);
                         onChange(
                           event.target.checked
                             ? [...granted, row.value]
                             : granted.filter((one) => one !== row.value),
-                        )
-                      }
+                        );
+                      }}
                     />
                     <span className={own.grantName}>
                       {segments(row.name, search).map((part, index) =>

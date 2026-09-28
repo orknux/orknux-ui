@@ -488,9 +488,21 @@ async function measure(root, where) {
   await search.fill('zzz-nothing-is-called-this');
   await page.waitForTimeout(200);
   const none = await readGroup(root, 'tools');
+  // Only what was switched on this page stays against a search: the row pressed a
+  // moment ago must not vanish from under the pointer, and the agent's other
+  // grants - every built-in, since #444 - must not bury what was searched for.
   record(
-    none.names.length === granted.ticked.length && none.names.includes(keep),
-    `${where}: a word matching nothing leaves the ${granted.ticked.length} grant(s) on screen and nothing else`,
+    none.names.length === 1 && none.names.includes(keep),
+    `${where}: a word matching nothing leaves only the row switched here (${none.names.length}: ${none.names.slice(0, 3).join(', ')})`,
+  );
+
+  // The report: a built-in's name, on an agent holding them all, finds that one.
+  await search.fill('save_arti');
+  await page.waitForTimeout(200);
+  const found = await readGroup(root, 'tools');
+  record(
+    found.names.includes('save_artifact') && found.names.every((name) => name === 'save_artifact' || name === keep),
+    `${where}: searching a built-in's name draws it, not every grant (${found.names.length} row(s))`,
   );
 
   await search.fill('');
