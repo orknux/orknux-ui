@@ -65,5 +65,10 @@ record(
 );
 record((await block.count()) === 0, 'the progress block is gone once it is');
 
+/* And the answer can be put away. */
+const answer = page.locator('[role="status"]', { hasText: 'Copied to' });
+await page.locator('[data-copy-dismiss]').click();
+record((await answer.count()) === 0, 'the answer is dismissed with its close button');
+
 await sweep();
 await finish(browser);

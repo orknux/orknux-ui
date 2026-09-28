@@ -13,6 +13,7 @@ import {
 } from '../../api/workspaces';
 import checkCircleIcon from '../../assets/check-circle.svg';
 import copyIcon from '../../assets/copy.svg';
+import closeIcon from '../../assets/x.svg';
 import layersIcon from '../../assets/layers.svg';
 import monitorIcon from '../../assets/monitor.svg';
 import plusIcon from '../../assets/plus.svg';
@@ -118,6 +119,17 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
           */}
           {copied !== null && (
             <div className={styles.copyResult} role="status">
+              {/* Read once and put away: it stays until dismissed or the next copy. */}
+              <button
+                type="button"
+                className={styles.copyDismiss}
+                onClick={() => setCopied(null)}
+                aria-label={t('Dismiss')}
+                title={t('Dismiss')}
+                data-copy-dismiss=""
+              >
+                <img src={closeIcon} alt="" width={14} height={14} />
+              </button>
               <p className={styles.copyLine}>
                 {t('Copied to {name}: ').replace('{name}', copied.workspace.name)}
                 {copied.carried.map((one) => `${one.count} ${one.kind}`).join(', ') || t('nothing to carry')}

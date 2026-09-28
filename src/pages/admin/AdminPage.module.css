@@ -213,6 +213,7 @@
  * have somebody dismiss it before they had.
  */
 .copyResult {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -274,4 +275,23 @@
 
 .copyBar::-moz-progress-bar {
   background: var(--color-accent-brand);
+}
+
+/* Puts the copy's answer away. Top right, out of the lines it closes. */
+.copyDismiss {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  display: inline-flex;
+  padding: var(--space-4);
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.copyDismiss:hover {
+  opacity: 1;
+  background: var(--color-border);
 }
