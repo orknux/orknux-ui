@@ -850,10 +850,12 @@ function GrantList<Item>({
                     </span>
                   </div>
                 ) : (
-                  <label className={own.grantToggle}>
+                  <label className={own.grantToggle} title={row.fixed ?? undefined}>
+                    {/* A fixed row is held whatever is ticked: drawn ticked, and not the box's to change. */}
                     <input
                       type="checkbox"
-                      checked={row.ticked}
+                      checked={row.fixed !== null || row.ticked}
+                      disabled={row.fixed !== null}
                       onChange={(event) =>
                         onChange(
                           event.target.checked
@@ -1140,8 +1142,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * catalog above immediately gives its skills rows that read Offer, and
    * unticking it takes them back to Hide without anything having to be written.
    */
+  // The server's own catalog is always in scope: every agent holds it, ticked or not.
   const inScopeSkills = (skillsCatalogue.items ?? [])
-    .filter((skill) => skillCatalogs.includes(skill.catalog))
+    .filter((skill) => skill.catalog === BUILT_IN_SKILLS || skillCatalogs.includes(skill.catalog))
     .map((skill) => skill.key);
   const offeredSkills = inScopeSkills.filter((id) => !hiddenSkills.includes(id));
 
@@ -1775,6 +1778,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           linkOf={(catalog) => catalog.link}
           granted={skillCatalogs}
           onChange={setSkillCatalogs}
+          fixedOf={(catalog) =>
+            catalog.name === BUILT_IN_SKILLS ? t('Brought by Orknux, and held by every agent.') : null
+          }
         />
 
         {/*

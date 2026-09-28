@@ -262,7 +262,8 @@ if ((await statusFilter.count()) > 0) {
     'filtering to Always shows the tool marked always',
   );
   record(
-    (await page.locator('[data-grant-rows] > [data-grant-name] [data-tool-state="offer"]').count()) === 0,
+    // The tools list's filter, so the tools list's rows: the skills list below has rows of its own.
+    (await page.locator('[data-grants="tools"] [data-grant-rows] > [data-grant-name] [data-tool-state="offer"]').count()) === 0,
     'and nothing that is merely offered',
   );
   await statusFilter.selectOption('hide');

@@ -2729,6 +2729,16 @@ export const TESTS = [
   },
 
   {
+    name: 'built-in-skills-reach-check',
+    what: 'an agent with no skill catalog still holds the skill tools and the built-in catalog, drawn ticked and fixed',
+    needs: [],
+    /*
+     * Reported: the skill tools followed the catalog grants, so an agent with
+     * none could not load even !caveman. The server half is SkillIdTest's.
+     */
+  },
+
+  {
     name: 'unsafe-built-ins-save-check',
     what: "the workspace's unsafe built-in visibility switch is stored, and a reload draws it as stored",
     needs: [],
