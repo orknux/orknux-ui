@@ -2729,6 +2729,12 @@ export const TESTS = [
   },
 
   {
+    name: 'model-details-edit-check',
+    what: "a model's name, model ID and type are boxes on its page, and Save stores them",
+    needs: [],
+  },
+
+  {
     name: 'speech-node-check',
     what: "the editor's Text to speech adds a node of that name on a Speak action, making the action where there is none",
     needs: [],

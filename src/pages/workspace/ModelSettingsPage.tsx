@@ -17,7 +17,7 @@ import {
   updateModelQuotas,
   updateModelThrottle,
 } from '../../api/models';
-import type { Model, ModelUsage, ResetInterval } from '../../api/models';
+import type { Model, ModelKind, ModelUsage, ResetInterval } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -31,6 +31,9 @@ import { shellUser } from '../../session/user';
 import { UsageChart } from './UsageChart';
 import styles from './ModelSettingsPage.module.css';
 import { t } from '../../i18n';
+
+/** What a model may be switched to here: the kinds a model is made as. A model already of another kind keeps it on the list. */
+const MAKEABLE_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE'];
 
 export interface ModelSettingsPageProps {
   session: SessionUser;
@@ -83,6 +86,10 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [minP, setMinP] = useState('');
   const [repeatPenalty, setRepeatPenalty] = useState('');
   const [voice, setVoice] = useState('');
+  /** The model's own name, model ID and type, editable like the rest - a duplicate arrives as "(copy)". */
+  const [name, setName] = useState('');
+  const [modelIdDraft, setModelIdDraft] = useState('');
+  const [kind, setKind] = useState<ModelKind>('CHAT');
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   const [imageCost, setImageCost] = useState('');
   const [tokenLimit, setTokenLimit] = useState('');
@@ -177,6 +184,9 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
 
   function apply(found: Model) {
     setModel(found);
+    setName(found.name);
+    setModelIdDraft(found.modelId);
+    setKind(found.kind);
     setContextWindow(found.contextWindow === null ? '' : String(found.contextWindow));
     setMaxOutput(found.maxOutput === null ? '' : String(found.maxOutput));
     setParallel(found.parallelToolCalls === null ? '' : found.parallelToolCalls ? 'several' : 'one');
@@ -223,6 +233,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
    * delete the model and make it again.
    */
   const reads = model?.kind === 'SPEECH';
+  const EDITABLE_KINDS = model !== null && !MAKEABLE_KINDS.includes(model.kind) ? [...MAKEABLE_KINDS, model.kind] : MAKEABLE_KINDS;
 
   /**
    * Everything on this page that can be changed, saved in one press.
@@ -255,9 +266,9 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     setSaved(false);
     try {
       await updateModel(model.id, {
-        name: model.name,
-        modelId: model.modelId,
-        kind: model.kind,
+        name: name.trim(),
+        modelId: modelIdDraft.trim(),
+        kind,
         contextWindow: toNumber(contextWindow),
         maxOutput: toNumber(maxOutput),
         parallelToolCalls: parallel === '' ? null : parallel === 'several',
@@ -385,12 +396,39 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                 </Link>
               </div>
               <div className={styles.detail}>
-                <span className={styles.detailLabel}>{t('Type')}</span>
-                <span className={styles.detailValue}>{modelKindLabel(model.kind)}</span>
+                <label className={styles.detailLabel} htmlFor="model-name">{t('Name')}</label>
+                <input
+                  id="model-name"
+                  className={styles.input}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
               </div>
               <div className={styles.detail}>
-                <span className={styles.detailLabel}>{t('Model ID')}</span>
-                <span className={styles.detailMono}>{model.modelId}</span>
+                <label className={styles.detailLabel} htmlFor="model-kind">{t('Type')}</label>
+                <div className={styles.selectWrapper}>
+                  <select
+                    id="model-kind"
+                    className={`${styles.input} ${styles.select}`}
+                    value={kind}
+                    onChange={(event) => setKind(event.target.value as ModelKind)}
+                  >
+                    {EDITABLE_KINDS.map((one) => (
+                      <option key={one} value={one}>{modelKindLabel(one)}</option>
+                    ))}
+                  </select>
+                  <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+                </div>
+              </div>
+              <div className={styles.detail}>
+                <label className={styles.detailLabel} htmlFor="model-id">{t('Model ID')}</label>
+                <input
+                  id="model-id"
+                  className={`${styles.input} ${styles.detailMono}`}
+                  value={modelIdDraft}
+                  onChange={(event) => setModelIdDraft(event.target.value)}
+                  spellCheck={false}
+                />
               </div>
               <div className={styles.detail}>
                 <span className={styles.detailLabel}>{t('Status')}</span>
