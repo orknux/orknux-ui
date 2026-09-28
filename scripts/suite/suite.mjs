@@ -2729,6 +2729,16 @@ export const TESTS = [
   },
 
   {
+    name: 'unsafe-built-ins-save-check',
+    what: "the workspace's unsafe built-in visibility switch is stored, and a reload draws it as stored",
+    needs: [],
+    /*
+     * Reported as not saving. It did save: the page's first load set every draft
+     * but this one, so the switch opened off whatever the server held.
+     */
+  },
+
+  {
     name: 'session-notes-check',
     what: 'a session draws what its agents wrote down for themselves, as lines of its log where they were written',
     needs: ['session'],

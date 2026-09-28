@@ -488,6 +488,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             ? ''
             : String(found.sessionCompactionAttempts),
         );
+        // Missed here while rebuild had it, so the switch saved and opened off.
+        setUnsafeBuiltIns(found?.unsafeBuiltInTools ?? false);
         setMarker(found?.commandMarker ?? '');
         setFunctionTimeout(
           found?.functionTimeoutSeconds === null || found?.functionTimeoutSeconds === undefined
