@@ -1849,6 +1849,16 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     caretAfter.current = null;
   }, [draft]);
 
+  /*
+   * The row the arrows reached, kept in sight. The menus scroll past eight or
+   * so rows, and a highlight moved below the fold is a choice nobody can see.
+   */
+  useEffect(() => {
+    document
+      .querySelectorAll<HTMLElement>('[role="listbox"] [role="option"][aria-selected="true"]')
+      .forEach((row) => row.scrollIntoView({ block: 'nearest' }));
+  }, [commandAt, skillAt]);
+
   function handleComposerKey(event: KeyboardEvent<HTMLTextAreaElement>) {
     /*
      * The menu takes the arrows and Enter while it is open, and nothing else.
@@ -1858,7 +1868,8 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     if (offered.length > 0) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        setCommandAt((at) => (at + 1) % offered.length);
+        // From the row drawn highlighted, which is the first while nothing has been moved to.
+        setCommandAt((at) => (Math.max(at, 0) + 1) % offered.length);
         return;
       }
       if (event.key === 'ArrowUp') {
@@ -1889,7 +1900,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     if (skillsOffered.length > 0) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        setSkillAt((at) => (at + 1) % skillsOffered.length);
+        setSkillAt((at) => (Math.max(at, 0) + 1) % skillsOffered.length);
         return;
       }
       if (event.key === 'ArrowUp') {
@@ -3145,6 +3156,21 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               */}
               {offered.length > 0 && (
                 <div className={styles.commandMenu} role="listbox" aria-label={t('Commands')}>
+                  <button
+                    type="button"
+                    className={styles.commandClose}
+                    aria-label={t('Close suggestions')}
+                    title={t('Close suggestions')}
+                    data-close-suggestions=""
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setCommandAt(-1);
+                      setCommandsShut(true);
+                      composerRef.current?.focus();
+                    }}
+                  >
+                    ×
+                  </button>
                   {offered.map((one, index) => (
                     <button
                       key={one.name}
@@ -3183,6 +3209,21 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               */}
               {skillsOffered.length > 0 && (
                 <div className={styles.commandMenu} role="listbox" aria-label={t('Skills')}>
+                  <button
+                    type="button"
+                    className={styles.commandClose}
+                    aria-label={t('Close suggestions')}
+                    title={t('Close suggestions')}
+                    data-close-suggestions=""
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setSkillAt(-1);
+                      setCommandsShut(true);
+                      composerRef.current?.focus();
+                    }}
+                  >
+                    ×
+                  </button>
                   {skillsOffered.map((one, index) => (
                     <button
                       key={one.key}

@@ -103,4 +103,41 @@ record(
   'and the box still has the focus, so Tab did not move it away',
 );
 
+/* ------------------------------------- the arrows walk the whole list --- */
+
+await box.fill('');
+await box.pressSequentially(`hi ${MARKER}`);
+const options = menu.locator('[role="option"]');
+const names = await options.allInnerTexts();
+const selected = async () => (await menu.locator('[role="option"][aria-selected="true"]').first().innerText().catch(() => '')).split(String.fromCharCode(10))[0];
+record(names.length > 2, `the marker alone offers every skill (${names.length})`);
+await box.press('ArrowDown');
+const second = names[1]?.split(String.fromCharCode(10))[0];
+record((await selected()) === second, `the first Down moves to the second row (${await selected()}, wanted ${second})`);
+for (let i = 0; i < names.length - 2; i += 1) await box.press('ArrowDown');
+const last = names[names.length - 1]?.split(String.fromCharCode(10))[0];
+record((await selected()) === last, `Down to the end reaches the last row (${await selected()})`);
+const lastRow = await menu.locator('[role="option"][aria-selected="true"]').first().boundingBox();
+const frame = await menu.boundingBox();
+record(
+  lastRow !== null && frame !== null && lastRow.y >= frame.y - 1 && lastRow.y + lastRow.height <= frame.y + frame.height + 1,
+  'and that row is scrolled into sight',
+);
+await box.press('ArrowUp');
+record((await selected()) === names[names.length - 2]?.split(String.fromCharCode(10))[0], 'and Up goes back one');
+
+/* ------------------------------------------------- an X puts it away --- */
+
+const close = menu.locator('[data-close-suggestions]');
+const x = await close.boundingBox();
+const around = await menu.boundingBox();
+record(
+  x !== null && around !== null && x.x + x.width > around.x + around.width - 40 && x.y < around.y + 30,
+  `the menu has a close button in its top right corner (${x ? `${Math.round(x.x - around.x)},${Math.round(x.y - around.y)}` : 'none'})`,
+);
+const before = await box.inputValue();
+await close.click();
+record((await menu.count()) === 0, 'pressing it closes the menu');
+record((await box.inputValue()) === before, 'and leaves what was typed');
+
 await clean();

@@ -1650,3 +1650,32 @@ button.attachmentName {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/*
+ * The way out of a suggestion menu, in its top right corner. Sticky, so it
+ * stays there while the rows scroll, and pulled up over the first row rather
+ * than taking a row of its own.
+ */
+.commandClose {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  align-self: flex-end;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-bottom: -22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-4);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.commandClose:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
