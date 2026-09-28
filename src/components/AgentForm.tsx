@@ -1194,8 +1194,15 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                */
               plugin: skill.catalog === BUILT_IN_SKILLS ? BUILT_IN : skill.plugin,
               description: skill.description,
-              // A plugin's skill has no page; its catalog on the Skills page, searched for it, is where it is read.
-              link: `/workspace/${workspaceId}/skills?catalog=${encodeURIComponent(`plugin:${skill.catalog}`)}&q=${encodeURIComponent(skill.name)}`,
+              /*
+               * A plugin's skill has no page; its catalog on the Skills page,
+               * searched for it, is where it is read. A built-in has neither,
+               * so it is not a link.
+               */
+              link:
+                skill.catalog === BUILT_IN_SKILLS
+                  ? null
+                  : `/workspace/${workspaceId}/skills?catalog=${encodeURIComponent(`plugin:${skill.catalog}`)}&q=${encodeURIComponent(skill.name)}`,
             },
       ),
     [workspaceId],
@@ -1251,8 +1258,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         name: tool.name,
         plugin: BUILT_IN,
         off: false,
-        // No page of its own: the manual's chapter on what agents are given is where built-ins are described.
-        link: '/docs/models-and-agents',
+        // No page of its own, so no link: the hover card is where a built-in says what it is.
+        link: null,
         governance: tool.governance,
         // A built-in's own line is the first sentence of what the model is told, which the server writes.
         summary: tool.summary,

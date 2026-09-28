@@ -37,8 +37,8 @@ if (shown) {
   record(box !== null && box.width > 50 && box.height > 20, `with room to read (${box?.width}x${box?.height})`);
   record(!text.includes('No description.') && text.length > 'scratchpad_write'.length + 20, `and says what the tool does (${text.replace(/\s+/g, ' ').slice(0, 120)})`);
 }
-const builtInLink = await row.locator('[data-grant-link]').first().getAttribute('href').catch(() => null);
-record(builtInLink === '/docs/models-and-agents', `a built-in's name goes to the manual's page about them (${builtInLink})`);
+const builtInLinks = await row.locator('[data-grant-link]').count();
+record(builtInLinks === 0, `a built-in's name is not a link, having no page of its own (${builtInLinks})`);
 await page.mouse.move(0, 0);
 record(!(await card.isVisible().catch(() => false)), 'and leaving the row puts it away');
 
