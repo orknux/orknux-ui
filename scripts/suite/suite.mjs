@@ -2729,6 +2729,12 @@ export const TESTS = [
   },
 
   {
+    name: 'speech-node-check',
+    what: "the editor's Text to speech adds a node of that name on a Speak action, making the action where there is none",
+    needs: [],
+  },
+
+  {
     name: 'duplicate-row-check',
     what: 'agents, models, actions, triggers, conditions, objects, skills, tools and memories each duplicate from their row',
     needs: [],

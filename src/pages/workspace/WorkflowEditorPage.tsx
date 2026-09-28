@@ -50,7 +50,7 @@ import type {
   WorkflowStatus,
 } from '../../api/graph';
 import type { SessionUser } from '../../api/session';
-import { fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/actions';
+import { createAction, fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/actions';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Action } from '../../api/actions';
 import type { Agent } from '../../api/agents';
@@ -3111,7 +3111,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * Speak action; the name and icon effects then read that action the same way
    * they do for one chosen by hand, so nothing else has to be set here.
    */
-  function addNode(kind: NodeKind, presetActionId: string | null = null) {
+  function addNode(kind: NodeKind, presetActionId: string | null = null, presetName: string | null = null) {
     const key = freshKey(kind);
     setNodes((current) => [
       ...current.map((node) => ({ ...node, selected: false })),
@@ -3121,7 +3121,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         position: whereNewNodesGo(current),
         data: {
           kind,
-          name: NODE_KIND_LABEL[kind],
+          name: presetName ?? NODE_KIND_LABEL[kind],
           description: null,
           agentId: null,
           triggerId: null,
@@ -3190,15 +3190,32 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * A workflow speaks through an Action whose subtype is Speak (issue #264),
    * not a node kind of its own - so somebody looking for "Text to speech" in a
    * menu of node kinds never found it. This is the shortcut that makes it
-   * findable: it drops an Action node already pointed at the workspace's Speak
-   * action where one is shared, so the node arrives named and ready. Where the
-   * workspace has none yet, it still adds the Action node and opens its picker,
-   * which is where a Speak action is chosen or made - one step closer than the
-   * bare word "Action" ever was.
+   * findable: it drops an Action node pointed at the workspace's Speak action,
+   * named Text to speech. Where the workspace has none yet, it makes one first -
+   * it used to add a bare Action node and leave the finding to whoever pressed
+   * it, which read as the button doing nothing. The action's words are only a
+   * seed: each node says its own, in the speech it passes.
    */
-  function addSpeechNode() {
-    const speak = actions.find((one) => one.subtype === 'SPEAK' && one.workflowId === null);
-    addNode('ACTION', speak?.id ?? null);
+  async function addSpeechNode() {
+    const named = t('Text to speech');
+    let speak = actions.find((one) => one.subtype === 'SPEAK' && one.workflowId === null);
+    if (speak === undefined) {
+      try {
+        speak = await createAction({
+          workspaceId,
+          type: 'EXECUTE',
+          name: named,
+          subtype: 'SPEAK',
+          speechText: t('What this step should say out loud.'),
+        });
+        const made = speak;
+        setActions((all) => [...all, made]);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : t('A Speak action could not be made.'));
+        return;
+      }
+    }
+    addNode('ACTION', speak.id, named);
   }
 
   /**
@@ -4545,7 +4562,7 @@ Change the keystroke in Preferences.`}
                   className={styles.addItem}
                   onClick={() => {
                     setAdding(false);
-                    addSpeechNode();
+                    void addSpeechNode();
                   }}
                 >
                   <img src={volumeIcon} alt="" width={14} height={14} />
