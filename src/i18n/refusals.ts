@@ -197,6 +197,7 @@ const PL: Record<string, string> = {
   MemoryContentInvalid: 'Wspomnienie potrzebuje czegoś do zapamiętania',
   ModelIdInvalid: 'Identyfikator modelu jest wymagany',
   ModelProviderEndpointInvalid: 'Punkt końcowy API dostawcy jest wymagany',
+  ModelProviderInAnotherWorkspace: 'Model można przenieść tylko do dostawcy w jego własnej przestrzeni roboczej',
   IssueCommentEmpty: 'Komentarz musi coś zawierać',
   IssueRelationToItself: 'Zgłoszenia nie da się powiązać z samym sobą',
   IssueRelationElsewhere:

@@ -28,7 +28,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceModelsPage.module.css';
 import { DuplicateButton } from '../../components/ComponentTransfer';
-import { duplicateModel } from '../../api/transfer';
+import { duplicateModel, duplicateModelProvider } from '../../api/transfer';
 import { t } from '../../i18n';
 
 export interface WorkspaceModelsPageProps {
@@ -340,6 +340,15 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
               {providerStatusLabel(provider.status)}
             </span>
             <span className={styles.colActions}>
+              {/* In its own span so a press copies rather than also opening the row. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <DuplicateButton
+                  name={provider.name}
+                  className={styles.rowAction}
+                  run={() => duplicateModelProvider(provider.id).then((made) => made.name)}
+                  onDone={() => load()}
+                />
+              </span>
               <Link
                 className={styles.rowAction}
                 to={`/workspace/${workspaceId}/models/providers/${provider.id}`}

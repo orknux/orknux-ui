@@ -1,6 +1,6 @@
 /**
- * Every list that holds one kind of thing can duplicate a row: agents, models,
- * actions, triggers, conditions, objects, skills, tools and memories.
+ * Every list that holds one kind of thing can duplicate a row: agents, model
+ * providers, models, actions, triggers, conditions, objects, skills, tools and memories.
  *
  * One scratch thing of each, made here and named to sort first, so its row is
  * on the first page whatever the list's order. Pressing its Duplicate button
@@ -107,6 +107,21 @@ if (record(await modelButton.waitFor({ timeout: 20_000 }).then(() => true).catch
     await page.locator('[data-duplicate="aaa dup model (copy)"]').first().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false),
     'models: the copy is drawn as "(copy)"',
   );
+}
+/* A provider's row copies it with its models, so the copy's model is drawn among the models too. */
+const providerButton = page.locator('[data-duplicate="aaa dup provider"]').first();
+if (record(await providerButton.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), 'providers: its row has a Duplicate button')) {
+  await providerButton.click();
+  record(
+    await page.locator('[data-duplicate="aaa dup provider (copy)"]').first().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false),
+    'providers: the copy is drawn as "(copy)"',
+  );
+  const held = (await q(`query($w: ID!) { modelProviders(workspaceId: $w) { id name } }`)).modelProviders;
+  const copy = held.find((one) => one.name === 'aaa dup provider (copy)');
+  const carried = copy === undefined ? [] : (await q(`query($w: ID!) { models(workspaceId: $w) { name providerId } }`)).models
+    .filter((one) => one.providerId === copy.id).map((one) => one.name);
+  record(carried.includes('aaa dup model'), `providers: the copy carries its models (${carried.join(', ') || 'none'})`);
+  if (copy !== undefined) await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: copy.id }).catch(() => undefined);
 }
 await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: provider.id }).catch(() => undefined);
 

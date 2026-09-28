@@ -350,11 +350,13 @@ export interface ModelDetailsInput {
   skipEmptyLines?: boolean;
   /** Only asked for on an IMAGE model, which is billed per picture rather than per token. */
   imageCostPerImage?: number | null;
+  /** The provider to move it to, in the same workspace; left out, it stays where it is. */
+  providerId?: string;
 }
 
 export async function createModel(
   providerId: string,
-  input: Omit<ModelDetailsInput, 'modelId'> & { modelId: string },
+  input: Omit<ModelDetailsInput, 'modelId' | 'providerId'> & { modelId: string },
 ): Promise<Model> {
   const data = await graphql<{ createModel: Model }>(
     `mutation CreateModel($input: CreateModelInput!) { createModel(input: $input) { ${MODEL_FIELDS} } }`,

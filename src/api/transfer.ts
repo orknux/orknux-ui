@@ -313,6 +313,15 @@ export async function duplicateModel(id: string): Promise<{ id: string; name: st
 }
 
 /** A copy of a memory in the same catalog, under "(copy)". */
+/** A copy of a provider beside it, under "(copy)", with its models and without its key. */
+export async function duplicateModelProvider(id: string): Promise<{ id: string; name: string }> {
+  const data = await graphql<{ duplicateModelProvider: { id: string; name: string } }>(
+    `mutation DuplicateModelProvider($id: ID!) { duplicateModelProvider(id: $id) { id name } }`,
+    { id },
+  );
+  return data.duplicateModelProvider;
+}
+
 export async function duplicateMemory(id: string): Promise<{ id: string; title: string }> {
   const data = await graphql<{ duplicateMemory: { id: string; title: string } }>(
     `mutation DuplicateMemory($id: ID!) { duplicateMemory(id: $id) { id title } }`,

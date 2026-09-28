@@ -2741,6 +2741,13 @@ export const TESTS = [
   },
 
   {
+    name: 'model-provider-move-check',
+    what: "a model's provider is a select on its page, and Save moves the model to the one chosen",
+    needs: [],
+    /* The server half - the refusals across workspaces and onto a taken name - is ModelAPITest's. */
+  },
+
+  {
     name: 'speech-node-check',
     what: "the editor's Text to speech adds a node of that name on a Speak action, making the action where there is none",
     needs: [],
@@ -2748,7 +2755,7 @@ export const TESTS = [
 
   {
     name: 'duplicate-row-check',
-    what: 'agents, models, actions, triggers, conditions, objects, skills, tools and memories each duplicate from their row',
+    what: 'agents, model providers, models, actions, triggers, conditions, objects, skills, tools and memories each duplicate from their row',
     needs: [],
     /* The server half - the next free name, the same references - is ComponentDuplicateTest's. */
   },

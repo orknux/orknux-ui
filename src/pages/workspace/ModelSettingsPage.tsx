@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   fetchModel,
   fetchModelUsage,
+  fetchProviders,
   formatChange,
   formatCompact,
   formatLatency,
@@ -17,7 +18,7 @@ import {
   updateModelQuotas,
   updateModelThrottle,
 } from '../../api/models';
-import type { Model, ModelKind, ModelUsage, ResetInterval } from '../../api/models';
+import type { Model, ModelKind, ModelProvider, ModelUsage, ResetInterval } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -90,6 +91,10 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [name, setName] = useState('');
   const [modelIdDraft, setModelIdDraft] = useState('');
   const [kind, setKind] = useState<ModelKind>('CHAT');
+  /** Which provider it is reached through; a change moves it there on save. */
+  const [providerId, setProviderId] = useState('');
+  /** The workspace's providers, for the select; null until they arrive, and the model's own is drawn meanwhile. */
+  const [providers, setProviders] = useState<ModelProvider[] | null>(null);
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   const [imageCost, setImageCost] = useState('');
   const [tokenLimit, setTokenLimit] = useState('');
@@ -155,6 +160,23 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   }, [modelId]);
 
   /*
+   * The providers a model can move to. Their own request, so a failure here
+   * leaves the select holding the one the model is on rather than the page.
+   */
+  useEffect(() => {
+    if (workspaceId === '') return;
+    let abandoned = false;
+    fetchProviders(workspaceId)
+      .then((held) => {
+        if (!abandoned) setProviders(held);
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, [workspaceId]);
+
+  /*
    * The metrics are their own request, for two reasons: the settings should
    * still show if the usage query is the thing that failed, and the window can
    * change without the model having changed.
@@ -187,6 +209,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     setName(found.name);
     setModelIdDraft(found.modelId);
     setKind(found.kind);
+    setProviderId(found.providerId);
     setContextWindow(found.contextWindow === null ? '' : String(found.contextWindow));
     setMaxOutput(found.maxOutput === null ? '' : String(found.maxOutput));
     setParallel(found.parallelToolCalls === null ? '' : found.parallelToolCalls ? 'several' : 'one');
@@ -285,6 +308,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         // replaces a model's details rather than patching them, so a field
         // this page does not show is a field left out and therefore cleared.
         imageCostPerImage: draws ? toNumber(imageCost) : model.imageCostPerImage,
+        providerId,
       });
       await updateModelQuotas(model.id, {
         tokenLimit: toNumber(tokenLimit),
@@ -392,10 +416,26 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
             <h2 className={styles.sectionHeading}>{t('Provider Details')}</h2>
             <div className={styles.detailGrid}>
               <div className={styles.detail}>
-                <span className={styles.detailLabel}>{t('Provider')}</span>
-                <Link className={styles.detailLink} to={`/workspace/${workspaceId}/models/providers/${model.providerId}`}>
-                  {model.providerName}
-                </Link>
+                <label className={styles.detailLabel} htmlFor="model-provider">{t('Provider')}</label>
+                {/*
+                  A select rather than the name: a model can move to another of
+                  the workspace's providers, saved with the rest. Until the list
+                  arrives the one it is on is the only choice, so the box never
+                  reads empty.
+                */}
+                <div className={styles.selectWrapper}>
+                  <select
+                    id="model-provider"
+                    className={`${styles.input} ${styles.select}`}
+                    value={providerId}
+                    onChange={(event) => setProviderId(event.target.value)}
+                  >
+                    {(providers ?? [{ id: model.providerId, name: model.providerName }]).map((one) => (
+                      <option key={one.id} value={one.id}>{one.name}</option>
+                    ))}
+                  </select>
+                  <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+                </div>
               </div>
               <div className={styles.detail}>
                 <label className={styles.detailLabel} htmlFor="model-name">{t('Name')}</label>
