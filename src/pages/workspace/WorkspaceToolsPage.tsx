@@ -14,7 +14,7 @@ import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
-  ExportComponentButton,
+  DuplicateComponentButton, ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
   UseTemplateButton,
@@ -348,6 +348,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
               </span>
               <span className={`${styles.colModified} ${styles.modified}`}>{timeAgo(row.tool.lastModifiedAt)}</span>
               <span className={styles.colActions}>
+                <DuplicateComponentButton workspaceId={workspaceId} kind="TOOL" id={row.tool.id} name={row.tool.name} onDone={() => load()} />
                 <ExportComponentButton workspaceId={workspaceId} kind="TOOL" id={row.tool.id} name={row.tool.name} />
                 <SaveAsTemplateButton
                   workspaceId={workspaceId}

@@ -12,7 +12,7 @@ import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
-  ExportComponentButton,
+  DuplicateComponentButton, ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
   UseTemplateButton,
@@ -262,6 +262,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
             <span className={`${styles.colStatus} ${styles.modified}`}>{held.propertyCount}</span>
             <span className={`${styles.colModified} ${styles.modified}`}>{timeAgo(held.lastModifiedAt)}</span>
             <span className={styles.colActions}>
+              <DuplicateComponentButton workspaceId={workspaceId} kind="OBJECT" id={held.id} name={held.name} onDone={() => load()} />
               <ExportComponentButton workspaceId={workspaceId} kind="OBJECT" id={held.id} name={held.name} />
               <SaveAsTemplateButton
                 workspaceId={workspaceId}

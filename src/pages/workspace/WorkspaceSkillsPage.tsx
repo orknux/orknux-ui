@@ -28,6 +28,7 @@ import toggleOnIcon from '../../assets/toggle-on.svg';
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
 import {
+  DuplicateComponentButton,
   ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
@@ -511,6 +512,14 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                           id={skill.id}
                           name={skill.name}
                           className={styles.iconButton}
+                        />
+                        <DuplicateComponentButton
+                          workspaceId={workspaceId}
+                          kind="SKILL"
+                          id={skill.id}
+                          name={skill.name}
+                          className={styles.iconButton}
+                          onDone={() => void loadSkills()}
                         />
                         <SaveAsTemplateButton
                           workspaceId={workspaceId}

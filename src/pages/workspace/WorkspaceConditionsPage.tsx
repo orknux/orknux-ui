@@ -10,7 +10,7 @@ import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
-  ExportComponentButton,
+  DuplicateComponentButton, ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
   UseTemplateButton,
@@ -154,6 +154,7 @@ export function WorkspaceConditionsPage({ session, onSignOut }: WorkspaceConditi
               </span>
               <span className={`${styles.colDescription} ${styles.muted}`}>{condition.description}</span>
               <span className={styles.colActions}>
+                <DuplicateComponentButton workspaceId={workspaceId} kind="CONDITION" id={condition.id} name={condition.name} onDone={() => load()} />
                 <ExportComponentButton
                   workspaceId={workspaceId}
                   kind="CONDITION"

@@ -31,6 +31,8 @@ import { UsedBy } from '../../components/UsedBy';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceMemoryPage.module.css';
+import { DuplicateButton } from '../../components/ComponentTransfer';
+import { duplicateMemory } from '../../api/transfer';
 import { t } from '../../i18n';
 
 export interface WorkspaceMemoryPageProps {
@@ -380,6 +382,12 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                         </Link>
                       </h2>
                       <div className={styles.cardActions}>
+                        <DuplicateButton
+                          name={memory.title}
+                          className={styles.iconButton}
+                          run={() => duplicateMemory(memory.id).then((made) => made.title)}
+                          onDone={() => void loadMemories()}
+                        />
                         <Link
                           className={styles.iconButton}
                           to={`/workspace/${workspaceId}/memory/${memory.id}`}

@@ -2729,6 +2729,13 @@ export const TESTS = [
   },
 
   {
+    name: 'duplicate-row-check',
+    what: 'agents, models, actions, triggers, conditions, objects, skills, tools and memories each duplicate from their row',
+    needs: [],
+    /* The server half - the next free name, the same references - is ComponentDuplicateTest's. */
+  },
+
+  {
     name: 'workspace-copy-progress-check',
     what: 'duplicating a workspace shows the kind under way, how many of how many, and a bar that moves',
     needs: [],

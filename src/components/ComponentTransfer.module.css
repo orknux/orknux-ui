@@ -398,3 +398,8 @@
   font-size: var(--text-xs);
   color: var(--color-danger);
 }
+
+/* A duplicate that was refused: the reason is its title. */
+.duplicateFailed {
+  outline: 1px solid var(--color-danger, #d9534f);
+}

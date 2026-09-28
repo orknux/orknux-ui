@@ -22,7 +22,7 @@ import { AppShell } from '../../components/AppShell';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
-  ExportComponentButton,
+  DuplicateComponentButton, ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
   UseTemplateButton,
@@ -361,6 +361,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
                 </button>
               </span>
               <span className={styles.colActions}>
+                <DuplicateComponentButton workspaceId={workspaceId} kind="TRIGGER" id={trigger.id} name={trigger.name} className={styles.rowAction} onDone={() => load()} />
                 <ExportComponentButton
                   workspaceId={workspaceId}
                   kind="TRIGGER"

@@ -283,3 +283,40 @@ export const DISPOSITION_LABEL: Record<ImportDisposition, string> = {
   MISSING: t('Not here'),
   EXCLUDE: t('Left out'),
 };
+
+/**
+ * A copy of one component in its own workspace, under the next free name -
+ * "Triage (2)", or `forecast_2` for a name code calls. It points at the same
+ * function, model, tools and objects as the original.
+ */
+export async function duplicateComponent(
+  workspaceId: string,
+  kind: ComponentKind,
+  id: string,
+): Promise<{ kind: ComponentKind; name: string }> {
+  const data = await graphql<{ duplicateComponent: { kind: ComponentKind; name: string } }>(
+    `mutation DuplicateComponent($workspaceId: ID!, $kind: ComponentKind!, $id: ID!) {
+       duplicateComponent(workspaceId: $workspaceId, kind: $kind, id: $id) { kind name }
+     }`,
+    { workspaceId, kind, id },
+  );
+  return data.duplicateComponent;
+}
+
+/** A copy of a model beside it, on the same provider, under "(copy)". */
+export async function duplicateModel(id: string): Promise<{ id: string; name: string }> {
+  const data = await graphql<{ duplicateModel: { id: string; name: string } }>(
+    `mutation DuplicateModel($id: ID!) { duplicateModel(id: $id) { id name } }`,
+    { id },
+  );
+  return data.duplicateModel;
+}
+
+/** A copy of a memory in the same catalog, under "(copy)". */
+export async function duplicateMemory(id: string): Promise<{ id: string; title: string }> {
+  const data = await graphql<{ duplicateMemory: { id: string; title: string } }>(
+    `mutation DuplicateMemory($id: ID!) { duplicateMemory(id: $id) { id title } }`,
+    { id },
+  );
+  return data.duplicateMemory;
+}

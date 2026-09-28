@@ -17,6 +17,7 @@ import {
   KIND_LABEL,
   bindingChoices,
   componentImportPlan,
+  duplicateComponent,
   exportComponent,
   importComponents,
   saveJson,
@@ -30,6 +31,7 @@ import {
   useComponentTemplate,
 } from '../api/templates';
 import chevronDownIcon from '../assets/chevron-down-12.svg';
+import copyIcon from '../assets/copy.svg';
 import downloadIcon from '../assets/download.svg';
 import layersIcon from '../assets/layers.svg';
 import { FieldHint } from './FieldHint';
@@ -60,6 +62,59 @@ import { t } from '../i18n';
  * of those in the file, so there is nothing to remove, and a control offering to
  * remove one would be worse than no control at all.
  */
+
+export interface DuplicateButtonProps {
+  name: string;
+  /** Makes the copy and answers the name it arrived under. */
+  run: () => Promise<string>;
+  /** Told the copy's name once it exists, so the list can show it. */
+  onDone: (made: string) => void;
+  className?: string;
+}
+
+/**
+ * A copy of one row's thing, beside the original. The same button on every
+ * list, whatever it copies: the call is handed in. A refusal is said on the
+ * button itself - its title and a red edge - since a row has no room for a line.
+ */
+export function DuplicateButton({ name, run, onDone, className }: DuplicateButtonProps) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  return (
+    <button
+      type="button"
+      className={`${className ?? styles.rowAction}${failed === null ? '' : ` ${styles.duplicateFailed}`}`}
+      disabled={busy}
+      data-duplicate={name}
+      onClick={() => {
+        setBusy(true);
+        setFailed(null);
+        run()
+          .then((made) => onDone(made))
+          .catch((cause: unknown) => setFailed(cause instanceof Error ? cause.message : t('That could not be copied.')))
+          .finally(() => setBusy(false));
+      }}
+      aria-label={`Duplicate ${name}`}
+      title={failed ?? `Duplicate ${name}`}
+    >
+      <img src={copyIcon} alt="" width={14} height={14} />
+    </button>
+  );
+}
+
+/** [DuplicateButton] for a component the export knows: agents, actions, triggers, conditions, objects, skills, tools. */
+export function DuplicateComponentButton(
+  props: { workspaceId: string; kind: ComponentKind; id: string; name: string; onDone: (made: string) => void; className?: string },
+) {
+  return (
+    <DuplicateButton
+      name={props.name}
+      className={props.className}
+      onDone={props.onDone}
+      run={() => duplicateComponent(props.workspaceId, props.kind, props.id).then((made) => made.name)}
+    />
+  );
+}
 
 export interface ExportComponentButtonProps {
   workspaceId: string;

@@ -10,7 +10,7 @@ import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
-  ExportComponentButton,
+  DuplicateComponentButton, ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
   UseTemplateButton,
@@ -170,6 +170,7 @@ export function WorkspaceActionsPage({ session, onSignOut }: WorkspaceActionsPag
                 {paramSummary(action.outputParams)}
               </span>
               <span className={styles.colActions}>
+                <DuplicateComponentButton workspaceId={workspaceId} kind="ACTION" id={action.id} name={action.name} className={styles.rowAction} onDone={() => load()} />
                 <ExportComponentButton
                   workspaceId={workspaceId}
                   kind="ACTION"

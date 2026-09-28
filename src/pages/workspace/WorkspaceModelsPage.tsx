@@ -27,6 +27,8 @@ import { ordered, useTableSort } from '../../components/tableSort';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceModelsPage.module.css';
+import { DuplicateButton } from '../../components/ComponentTransfer';
+import { duplicateModel } from '../../api/transfer';
 import { t } from '../../i18n';
 
 export interface WorkspaceModelsPageProps {
@@ -499,6 +501,15 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
                   <img src={userPlusIcon} alt="" width={14} height={14} />
                 </button>
               )}
+              {/* In its own span so a press copies rather than also opening the row. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <DuplicateButton
+                  name={model.name}
+                  className={styles.rowAction}
+                  run={() => duplicateModel(model.id).then((made) => made.name)}
+                  onDone={() => load()}
+                />
+              </span>
               <Link
                 className={styles.rowAction}
                 to={`/workspace/${workspaceId}/models/${model.id}`}

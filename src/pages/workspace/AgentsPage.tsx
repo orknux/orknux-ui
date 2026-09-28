@@ -12,7 +12,7 @@ import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import {
-  ExportComponentButton,
+  DuplicateComponentButton, ExportComponentButton,
   ImportComponentsButton,
   SaveAsTemplateButton,
   UseTemplateButton,
@@ -163,6 +163,7 @@ export function AgentsPage({ session, onSignOut }: AgentsPageProps) {
               </button>
             </span>
             <span className={styles.colActions}>
+              <DuplicateComponentButton workspaceId={workspaceId} kind="AGENT" id={agent.id} name={agent.name} className={styles.settings} onDone={() => load()} />
               <ExportComponentButton
                 workspaceId={workspaceId}
                 kind="AGENT"
