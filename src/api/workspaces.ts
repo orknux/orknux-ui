@@ -655,11 +655,36 @@ export interface WorkspaceCopy {
   problems: string[];
 }
 
-/** Copies a whole workspace into a new one. Issue #408. */
-export async function duplicateWorkspace(id: string, name: string): Promise<WorkspaceCopy> {
+/** One moment of a copy: the kind under way, how far into it, and overall. Issue #572. */
+export interface WorkspaceCopyProgress {
+  kind: string;
+  done: number;
+  total: number;
+  overallDone: number;
+  overallTotal: number;
+}
+
+/** How far a copy started under this key has got, or null where none is running. Issue #572. */
+export async function fetchWorkspaceCopyProgress(key: string): Promise<WorkspaceCopyProgress | null> {
+  const data = await graphql<{ workspaceCopyProgress: WorkspaceCopyProgress | null }>(
+    `query WorkspaceCopyProgress($key: String!) {
+       workspaceCopyProgress(key: $key) { kind done total overallDone overallTotal }
+     }`,
+    { key },
+  );
+  return data.workspaceCopyProgress;
+}
+
+/**
+ * Copies a whole workspace into a new one. Issue #408.
+ *
+ * `progressKey` is made up by the caller, which reads how far the copy has got
+ * under it with [fetchWorkspaceCopyProgress] while this is still waiting. #572.
+ */
+export async function duplicateWorkspace(id: string, name: string, progressKey?: string): Promise<WorkspaceCopy> {
   const data = await graphql<{ duplicateWorkspace: WorkspaceCopy }>(
-    `mutation DuplicateWorkspace($id: ID!, $name: String!) {
-       duplicateWorkspace(id: $id, name: $name) {
+    `mutation DuplicateWorkspace($id: ID!, $name: String!, $progressKey: String) {
+       duplicateWorkspace(id: $id, name: $name, progressKey: $progressKey) {
          workspace { id name description }
          carried { kind count }
          variablesToSet
@@ -667,7 +692,7 @@ export async function duplicateWorkspace(id: string, name: string): Promise<Work
          problems
        }
      }`,
-    { id, name },
+    { id, name, progressKey: progressKey ?? null },
   );
   return data.duplicateWorkspace;
 }

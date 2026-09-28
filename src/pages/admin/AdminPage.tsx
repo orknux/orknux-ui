@@ -4,7 +4,13 @@ import { Link } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
-import { duplicateWorkspace, fetchWorkspaces, type WorkspaceCopy } from '../../api/workspaces';
+import {
+  duplicateWorkspace,
+  fetchWorkspaceCopyProgress,
+  fetchWorkspaces,
+  type WorkspaceCopy,
+  type WorkspaceCopyProgress,
+} from '../../api/workspaces';
 import checkCircleIcon from '../../assets/check-circle.svg';
 import copyIcon from '../../assets/copy.svg';
 import layersIcon from '../../assets/layers.svg';
@@ -37,6 +43,8 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
   /* Copying a workspace, and what came of it. Issue #408. */
   const [copying, setCopying] = useState<string | null>(null);
   const [copied, setCopied] = useState<WorkspaceCopy | null>(null);
+  /** How far the copy under way has got, read while it runs. Issue #572. */
+  const [progress, setProgress] = useState<WorkspaceCopyProgress | null>(null);
   const [copyFailed, setCopyFailed] = useState<string | null>(null);
   // Bumped after a write so both tables refetch, audit log included.
   const [reloadToken, setReloadToken] = useState(0);
@@ -148,6 +156,30 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
             <p className={styles.copyFailed} role="alert">{copyFailed}</p>
           )}
 
+          {/*
+            How far the copy has got, while it runs. Issue #572: a large copy
+            showed nothing until it ended, which reads as stuck. The kind under
+            way and how many of how many, over a bar for the whole copy.
+          */}
+          {copying !== null && (
+            <div className={styles.copyResult} role="status" data-copy-progress="">
+              <p className={styles.copyLine}>
+                {progress === null
+                  ? t('Copying the connections and models…')
+                  : t('Copying {kind}: {done} of {total}')
+                      .replace('{kind}', progress.kind)
+                      .replace('{done}', String(progress.done))
+                      .replace('{total}', String(progress.total))}
+              </p>
+              <progress
+                className={styles.copyBar}
+                max={Math.max(progress?.overallTotal ?? 1, 1)}
+                value={progress?.overallDone ?? 0}
+                aria-label={t('How much of the workspace has been copied')}
+              />
+            </div>
+          )}
+
           <TableState state={workspaces} emptyMessage={t("No workspaces yet.")} />
 
           {workspaces.data?.content.map((workspace) => (
@@ -177,7 +209,15 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                     setCopying(workspace.id);
                     setCopied(null);
                     setCopyFailed(null);
-                    duplicateWorkspace(workspace.id, `${workspace.name} copy`)
+                    setProgress(null);
+                    // A key of our own, to ask how far the copy has got while it runs. #572.
+                    const key = crypto.randomUUID();
+                    const polling = window.setInterval(() => {
+                      fetchWorkspaceCopyProgress(key)
+                        .then((step) => { if (step !== null) setProgress(step); })
+                        .catch(() => undefined);
+                    }, 500);
+                    duplicateWorkspace(workspace.id, `${workspace.name} copy`, key)
                       .then((made) => {
                         setCopied(made);
                         setReloadToken((was) => was + 1);
@@ -185,7 +225,11 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                       .catch((cause: unknown) => {
                         setCopyFailed(cause instanceof Error ? cause.message : t('That workspace was not copied.'));
                       })
-                      .finally(() => setCopying(null));
+                      .finally(() => {
+                        window.clearInterval(polling);
+                        setProgress(null);
+                        setCopying(null);
+                      });
                   }}
                 >
                   <img src={copyIcon} alt="" width={16} height={16} />

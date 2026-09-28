@@ -2729,6 +2729,13 @@ export const TESTS = [
   },
 
   {
+    name: 'workspace-copy-progress-check',
+    what: 'duplicating a workspace shows the kind under way, how many of how many, and a bar that moves',
+    needs: [],
+    /* Issue #572. The server half - a step after each component - is WorkspaceDuplicateTest's. */
+  },
+
+  {
     name: 'built-in-skills-reach-check',
     what: 'an agent with no skill catalog still holds the skill tools and the built-in catalog, drawn ticked and fixed',
     needs: [],
