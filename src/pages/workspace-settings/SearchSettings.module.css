@@ -123,3 +123,8 @@
   align-items: center;
   gap: 6px;
 }
+
+/* Saved is green, as on every other page. */
+.saved {
+  color: var(--color-success);
+}

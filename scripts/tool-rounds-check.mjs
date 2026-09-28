@@ -50,6 +50,8 @@ record(there, 'the installation has a box for how many rounds an agent gets');
 
 if (there) {
   record(Number(await box.inputValue()) === was.chatMaxRounds, "and it opens on what the server holds");
+  // Reported: the agent's hint sent people to "Admin" for a setting called something else there.
+  record(await box.getAttribute('aria-label') === 'Tool Rounds', `and it is called Tool Rounds, as on an agent (${await box.getAttribute('aria-label')})`);
 
   await box.fill(String(WANTED));
   // Saved by the page's own button, the way every other number here is.
@@ -92,6 +94,12 @@ if (agent === null) {
     .then(() => true)
     .catch(() => false);
   record(offered, 'an agent has a box of its own for the same number');
+  record(
+    await page.getByRole('button', { name: 'About Tool Rounds' }).first().click()
+      .then(() => page.getByRole('note').filter({ hasText: 'Admin → Settings → Chat' }).first().isVisible())
+      .catch(() => false),
+    "and its hint says where the installation's number is set",
+  );
 
   if (offered) {
     record(

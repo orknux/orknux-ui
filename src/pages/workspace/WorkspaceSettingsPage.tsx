@@ -921,7 +921,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             {saveError !== null ? (
               <p className={styles.error} role="alert">{saveError}</p>
             ) : (
-              <p className={styles.pageActionsNote}>
+              <p className={savedAll ? `${styles.pageActionsNote} ${styles.pageActionsSaved}` : styles.pageActionsNote}>
                 {savedAll ? t('Saved.') : dirty ? t('Not saved yet.') : ''}
               </p>
             )}

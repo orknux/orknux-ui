@@ -168,7 +168,7 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
       )}
 
       {failure !== null && <p className={styles.error} role="alert">{failure}</p>}
-      {saved && failure === null && <p className={styles.note}>{t('Saved.')}</p>}
+      {saved && failure === null && <p className={`${styles.note} ${styles.saved}`}>{t('Saved.')}</p>}
     </section>
   );
 }

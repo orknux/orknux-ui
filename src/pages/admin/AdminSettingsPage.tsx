@@ -401,8 +401,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('How many rounds of tool calls an agent gets')}</p>
-                  <FieldHint label={t('How many rounds of tool calls an agent gets')}>
+                  <p className={styles.settingLabel}>{t('Tool Rounds')}</p>
+                  <FieldHint label={t('Tool Rounds')}>
                     {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. Between 2 and 100.')}
                   </FieldHint>
                 </span>
@@ -418,7 +418,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   value={rounds}
                   onChange={(event) => setRounds(event.target.value)}
                   disabled={busy}
-                  aria-label={t('How many rounds of tool calls an agent gets')}
+                  aria-label={t('Tool Rounds')}
                 />
                 <span className={styles.retentionUnit}>{t('rounds')}</span>
               </div>

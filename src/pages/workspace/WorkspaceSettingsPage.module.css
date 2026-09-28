@@ -521,3 +521,8 @@ select.input {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+/* Saved is green here as on every other page; only "Not saved yet." stays quiet. */
+.pageActionsSaved {
+  color: var(--color-success);
+}

@@ -1835,6 +1835,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'saved-colour-check',
+    what: '"Saved." is the success green on Workspace Settings, as on every other page',
+    needs: ['workspace'],
+    /* Reported: it was drawn in the grey of "Not saved yet." there alone. */
+  },
+  {
     name: 'tool-rounds-check',
     what: 'how many rounds of tool calls an agent gets, set from Admin and per agent',
     needs: ['workspace'],
