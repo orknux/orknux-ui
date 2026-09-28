@@ -189,6 +189,27 @@ check(
   `the page still reads "${state.trim()}" after the task ended`,
 );
 
+/*
+ * Newest first, the way a session's transcript reads, and a press turns it round.
+ * Read off the ids the lines carry, which are the order they were written in.
+ */
+await page.locator('[data-testid="task-log"] [data-kind]').first().waitFor({ timeout: 20_000 });
+const drawnIds = async () =>
+  page.$$eval('[data-testid="task-log"] [data-id]', (rows) => rows.map((row) => Number(row.getAttribute('data-id'))));
+const newestFirst = await drawnIds();
+check(
+  newestFirst.length > 1 && newestFirst.every((id, at) => at === 0 || id < newestFirst[at - 1]),
+  `the log reads newest first (${newestFirst.slice(0, 4).join(', ')})`,
+  `the log does not read newest first (${newestFirst.slice(0, 4).join(', ')})`,
+);
+await page.locator('[data-task-log-order]').click();
+const oldestFirst = await drawnIds();
+check(
+  oldestFirst.every((id, at) => at === 0 || id > oldestFirst[at - 1]),
+  'and the order button turns it round',
+  `the order button did not turn it round (${oldestFirst.slice(0, 4).join(', ')})`,
+);
+
 // --- and it is on the list, where somebody would look for it ----------------
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks`, { waitUntil: 'domcontentloaded' });

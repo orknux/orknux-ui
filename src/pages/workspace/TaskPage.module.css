@@ -404,3 +404,21 @@
 .noticeError {
   color: var(--color-danger);
 }
+
+/* Which way the log reads; the same control the session transcript has. */
+.sortDirection {
+  width: 30px;
+  padding: var(--space-6) 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-align: center;
+  cursor: pointer;
+}
+
+.sortDirection:hover {
+  border-color: var(--color-text-muted);
+}

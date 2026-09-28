@@ -110,6 +110,12 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
 
   const [task, setTask] = useState<Task | null>(null);
   const [log, setLog] = useState<LlmSessionEvent[]>([]);
+  /**
+   * Newest first unless somebody flips it, the way a session's transcript is
+   * drawn. The log itself stays oldest first, which is what the stream merges
+   * into by id; only the drawing turns it round.
+   */
+  const [oldestFirst, setOldestFirst] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [answer, setAnswer] = useState('');
@@ -598,12 +604,22 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                 <span className={styles.muted} data-testid="task-log-count">
                   {log.length} lines
                 </span>
+                <button
+                  type="button"
+                  className={styles.sortDirection}
+                  onClick={() => setOldestFirst((was) => !was)}
+                  title={oldestFirst ? t('Oldest first - press for newest first') : t('Newest first - press for oldest first')}
+                  aria-label={oldestFirst ? t('Oldest first') : t('Newest first')}
+                  data-task-log-order={oldestFirst ? 'oldest' : 'newest'}
+                >
+                  {oldestFirst ? '↑' : '↓'}
+                </button>
               </span>
             </div>
 
             {log.length === 0 && <p className={styles.notice}>{t('Nothing has happened yet.')}</p>}
 
-            {log.map((line) => (
+            {(oldestFirst ? log : [...log].reverse()).map((line) => (
               <div key={line.id} className={styles.line} data-kind={line.kind} data-id={line.id}>
                 {line.kind === 'TOOL' ? (
                   <CallLine
