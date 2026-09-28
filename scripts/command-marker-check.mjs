@@ -36,7 +36,8 @@ record(hasAdmin, 'the installation has a command-marker box in Admin');
 if (hasAdmin) {
   record((await adminBox.inputValue()) === wasInstallation, `it opens on what the server holds (${JSON.stringify(await adminBox.inputValue())})`);
   await adminBox.fill(INST);
-  await page.getByRole('button', { name: /^Save$/ }).last().click();
+  // The page's one Save since the marker lost its own; named for what it saves.
+  await page.getByRole('button', { name: 'Save the settings on this page' }).click();
   await page.waitForTimeout(2000);
   record((await installationMarker()).commandMarker === INST, `the installation marker saves (${JSON.stringify((await installationMarker()).commandMarker)})`);
 }

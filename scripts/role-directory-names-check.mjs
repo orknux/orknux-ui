@@ -43,11 +43,22 @@ record(await drawn(page, 'the roles page'), 'the roles screen is on screen');
 
 await page.getByRole('button', { name: /New Role|Add Role|Create/i }).first().click();
 
+/*
+ * Only where somebody signs in through a directory. The box is names a directory
+ * may send, so on an installation of internal accounts it is left out rather
+ * than drawn over nothing - which is what CI runs, and why this asks first.
+ */
+const signIn = await page.evaluate(() => fetch('/api/auth/method', { credentials: 'include' }).then((r) => r.json()));
+const directory = signIn.method === 'LDAP' || signIn.method === 'OIDC';
 const box = page.locator('#role-matches');
 const there = await box
-  .waitFor({ timeout: 20_000 })
+  .waitFor({ timeout: directory ? 20_000 : 3_000 })
   .then(() => true)
   .catch(() => false);
+if (!directory) {
+  record(!there, `signing in with ${signIn.method}, a role draws no directory box`);
+  await clean();
+}
 record(there, 'a role has a box for the directory groups that grant it');
 if (!there) await clean();
 
