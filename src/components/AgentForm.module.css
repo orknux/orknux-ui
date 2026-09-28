@@ -560,3 +560,9 @@
   color: var(--color-text-muted);
   font-style: italic;
 }
+
+/* A name that cycles its row's state when pressed, as the button beside it does. */
+.grantNamePress {
+  cursor: pointer;
+  user-select: none;
+}

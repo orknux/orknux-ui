@@ -42,6 +42,18 @@ record(builtInLinks === 0, `a built-in's name is not a link, having no page of i
 await page.mouse.move(0, 0);
 record(!(await card.isVisible().catch(() => false)), 'and leaving the row puts it away');
 
+/* A press on the name cycles the row, as the state button does. */
+const pressRow = page.locator(`[data-grant-name="aaa_card_tool_${stamp}"]`).first();
+await pressRow.waitFor({ timeout: 10_000 }).catch(() => undefined);
+const stateOf = () => pressRow.locator('[data-tool-state]').first().getAttribute('data-tool-state');
+const was = await stateOf();
+await pressRow.locator('[data-grant-press]').first().click();
+const now = await stateOf();
+record(was !== null && now !== null && was !== now, `pressing the name cycles the row (${was} -> ${now})`);
+await pressRow.locator('[data-tool-state]').first().click();
+await pressRow.locator('[data-tool-state]').first().click();
+record((await stateOf()) === was, 'and the button still cycles it, all the way round');
+
 /* Only the icon at the row's end opens the page; the name is text. Asked for after the name was made a link. */
 const toolRow = page.locator(`[data-grant-name="aaa_card_tool_${stamp}"]`).first();
 await toolRow.waitFor({ timeout: 10_000 }).catch(() => undefined);

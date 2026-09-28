@@ -874,10 +874,14 @@ function GrantList<Item>({
                     </button>
                     {/*
                       Plain text, not a link: only the icon at the row's end
-                      opens the page, so a press on the name - which reads as
-                      pressing the row - never leaves the form.
+                      opens the page. A press on the name is a press on the
+                      row, so it cycles the state as the button beside it does.
                     */}
-                    <span className={own.grantName}>
+                    <span
+                      className={row.fixed === null ? `${own.grantName} ${own.grantNamePress}` : own.grantName}
+                      onClick={() => cycleTool(row)}
+                      data-grant-press=""
+                    >
                       {segments(row.name, search).map((part, index) =>
                         part.match ? (
                           <mark key={index} className={own.grantMark}>
