@@ -159,6 +159,8 @@ export interface BuiltInTool {
   /** The name the model calls it by, which is also the name `Agent.tools` stores. */
   name: string;
   governance: BuiltInToolGovernance;
+  /** The first sentence of what the model is told about it, for the hover card; null where none was found. */
+  summary: string | null;
 }
 
 /**
@@ -168,7 +170,7 @@ export interface BuiltInTool {
  * row, is the fault #444 was filed about.
  */
 export async function fetchBuiltInTools(): Promise<BuiltInTool[]> {
-  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance } }`);
+  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary } }`);
   return data.builtInTools;
 }
 

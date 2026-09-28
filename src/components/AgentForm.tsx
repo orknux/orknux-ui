@@ -469,6 +469,12 @@ function GrantList<Item>({
    * nothing.
    */
   const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
+  /*
+   * The row whose card is open, and where to draw it. Fixed to the viewport
+   * rather than inside the row: the rows scroll in a box that clips, and a card
+   * cut off at its edge is the summary somebody hovered to read.
+   */
+  const [peek, setPeek] = useState<{ key: string; top: number; left: number } | null>(null);
   const touch = (value: string) => setTouched((held) => (held.has(value) ? held : new Set(held).add(value)));
   /** Which plugin is being shown, or '' for all of them. */
   const [group, setGroup] = useState('');
@@ -822,7 +828,12 @@ function GrantList<Item>({
                    room for and a person reading it wants. #480, #481. Out of
                    reach, the reason instead - that is what somebody hovering
                    a control that does nothing is asking. */
-                title={(row.fixed !== null && !row.ticked ? row.fixed : titleOf?.(row.item)) ?? undefined}
+                title={titleOf === undefined ? ((row.fixed !== null && !row.ticked ? row.fixed : null) ?? undefined) : undefined}
+                onMouseEnter={titleOf === undefined ? undefined : (event) => {
+                  const box = event.currentTarget.getBoundingClientRect();
+                  setPeek({ key: keyOf(row.item), top: box.bottom + 4, left: box.left + 24 });
+                }}
+                onMouseLeave={titleOf === undefined ? undefined : () => setPeek(null)}
                 /*
                   What a check finds a kept row by. CSS modules hash the class
                   names this project writes, so the class cannot be asked for
@@ -859,17 +870,37 @@ function GrantList<Item>({
                     >
                       {STATE_LABEL[toolState(row)]}
                     </button>
-                    <span className={own.grantName}>
-                      {segments(row.name, search).map((part, index) =>
-                        part.match ? (
-                          <mark key={index} className={own.grantMark}>
-                            {part.text}
-                          </mark>
-                        ) : (
-                          <span key={index}>{part.text}</span>
-                        ),
-                      )}
-                    </span>
+                    {/*
+                      The name goes to the row's page, where it has one: a
+                      tool or skill is decided on by what it is, and the page
+                      is where that is. Outside the toggle, so reading it
+                      never switches it.
+                    */}
+                    {opens !== null ? (
+                      <Link className={`${own.grantName} ${own.grantNameLink}`} to={opens} target="_blank" rel="noreferrer" data-grant-link="">
+                        {segments(row.name, search).map((part, index) =>
+                          part.match ? (
+                            <mark key={index} className={own.grantMark}>
+                              {part.text}
+                            </mark>
+                          ) : (
+                            <span key={index}>{part.text}</span>
+                          ),
+                        )}
+                      </Link>
+                    ) : (
+                      <span className={own.grantName}>
+                        {segments(row.name, search).map((part, index) =>
+                          part.match ? (
+                            <mark key={index} className={own.grantMark}>
+                              {part.text}
+                            </mark>
+                          ) : (
+                            <span key={index}>{part.text}</span>
+                          ),
+                        )}
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <label className={own.grantToggle} title={row.fixed ?? undefined}>
@@ -902,6 +933,28 @@ function GrantList<Item>({
                 )}
                 {meta !== undefined && meta !== null && meta !== false && (
                   <span className={own.checkCount}>{meta}</span>
+                )}
+                {peek !== null && peek.key === keyOf(row.item) && createPortal(
+                  /*
+                    What the row is, on hover: its name, where it comes from,
+                    and the line the model is told - or, for a row out of
+                    reach, why. A native title took a second to appear and
+                    showed one line of grey; this is the summary somebody
+                    hovered to read.
+                  */
+                  <div className={own.grantCard} style={{ top: peek.top, left: peek.left }} role="tooltip" data-grant-card="">
+                    <strong className={own.grantCardName}>{row.name}</strong>
+                    {meta !== undefined && meta !== null && meta !== false && (
+                      <span className={own.grantCardMeta}>{meta}</span>
+                    )}
+                    <span className={own.grantCardText}>
+                      {titleOf?.(row.item) ?? t('No description.')}
+                    </span>
+                    {row.fixed !== null && !row.ticked && (
+                      <span className={own.grantCardReason}>{row.fixed}</span>
+                    )}
+                  </div>,
+                  document.body,
                 )}
                 {opens !== null && (
                   <Link
@@ -1208,8 +1261,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         off: false,
         link: null,
         governance: tool.governance,
-        // A built-in's own line is its description, which the server writes.
-        summary: null,
+        // A built-in's own line is the first sentence of what the model is told, which the server writes.
+        summary: tool.summary,
       }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -1234,7 +1287,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           // page to go to; one with a run of its own has no page.
           link: offer.functionId === null ? null : `/workspace/${workspaceId}/functions/${offer.functionId}`,
           governance: null,
-          summary: null,
+          summary: offer.description,
         });
       }
       return rows;

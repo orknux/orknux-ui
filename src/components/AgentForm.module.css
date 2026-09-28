@@ -518,3 +518,55 @@
 .checkRowOut * {
   cursor: not-allowed;
 }
+
+/* A row's name, where it goes to the row's page. */
+.grantNameLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.grantNameLink:hover {
+  color: var(--color-accent-brand);
+  text-decoration: underline;
+}
+
+/*
+ * What a tool or skill is, on hover. Fixed, so the scrolling box the rows are
+ * in cannot clip it, and not a target: it follows the pointer's row and goes
+ * with it.
+ */
+.grantCard {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 420px;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: var(--color-surface-raised);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  font-size: var(--text-sm);
+}
+
+.grantCardName {
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.grantCardMeta {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.grantCardText {
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.grantCardReason {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
