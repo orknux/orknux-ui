@@ -873,36 +873,21 @@ function GrantList<Item>({
                       {STATE_LABEL[toolState(row)]}
                     </button>
                     {/*
-                      The name goes to the row's page, where it has one: a
-                      tool or skill is decided on by what it is, and the page
-                      is where that is. Outside the toggle, so reading it
-                      never switches it.
+                      Plain text, not a link: only the icon at the row's end
+                      opens the page, so a press on the name - which reads as
+                      pressing the row - never leaves the form.
                     */}
-                    {opens !== null ? (
-                      <Link className={`${own.grantName} ${own.grantNameLink}`} to={opens} target="_blank" rel="noreferrer" data-grant-link="">
-                        {segments(row.name, search).map((part, index) =>
-                          part.match ? (
-                            <mark key={index} className={own.grantMark}>
-                              {part.text}
-                            </mark>
-                          ) : (
-                            <span key={index}>{part.text}</span>
-                          ),
-                        )}
-                      </Link>
-                    ) : (
-                      <span className={own.grantName}>
-                        {segments(row.name, search).map((part, index) =>
-                          part.match ? (
-                            <mark key={index} className={own.grantMark}>
-                              {part.text}
-                            </mark>
-                          ) : (
-                            <span key={index}>{part.text}</span>
-                          ),
-                        )}
-                      </span>
-                    )}
+                    <span className={own.grantName}>
+                      {segments(row.name, search).map((part, index) =>
+                        part.match ? (
+                          <mark key={index} className={own.grantMark}>
+                            {part.text}
+                          </mark>
+                        ) : (
+                          <span key={index}>{part.text}</span>
+                        ),
+                      )}
+                    </span>
                   </div>
                 ) : (
                   <label className={own.grantToggle} title={row.fixed ?? undefined}>
@@ -965,6 +950,7 @@ function GrantList<Item>({
                     target="_blank"
                     rel="noreferrer"
                     title={`Opens ${row.name} in a new tab`}
+                    data-grant-link=""
                     aria-label={`Open ${row.name}`}
                   >
                     <OpenDefinitionIcon />

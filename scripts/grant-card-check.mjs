@@ -42,10 +42,20 @@ record(builtInLinks === 0, `a built-in's name is not a link, having no page of i
 await page.mouse.move(0, 0);
 record(!(await card.isVisible().catch(() => false)), 'and leaving the row puts it away');
 
-const toolName = page.locator(`[data-grant-name="aaa_card_tool_${stamp}"] [data-grant-link]`).first();
-record(await toolName.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false), "a workspace tool's name is a link");
-const href = await toolName.getAttribute('href').catch(() => null);
-record(href !== null && href.endsWith(`/tools/${tool.id}`), `to that tool's page (${href})`);
+/* Only the icon at the row's end opens the page; the name is text. Asked for after the name was made a link. */
+const toolRow = page.locator(`[data-grant-name="aaa_card_tool_${stamp}"]`).first();
+await toolRow.waitFor({ timeout: 10_000 }).catch(() => undefined);
+const links = toolRow.locator('a');
+record((await links.count()) === 1, `a workspace tool's row has exactly one link (${await links.count()})`);
+const icon = toolRow.locator('[data-grant-link]').first();
+const href = await icon.getAttribute('href').catch(() => null);
+record(href !== null && href.endsWith(`/tools/${tool.id}`), `the icon goes to that tool's page (${href})`);
+const nameBox = await toolRow.getByText(`aaa_card_tool_${stamp}`, { exact: true }).first().boundingBox();
+const iconBox = await icon.boundingBox();
+record(
+  nameBox !== null && iconBox !== null && iconBox.x > nameBox.x + nameBox.width - 1 && iconBox.width <= 24,
+  `and it is the small icon at the row's end, not the name (${iconBox ? Math.round(iconBox.width) : 'none'}px wide)`,
+);
 
 await graphql(`mutation($id: ID!) { deleteTool(id: $id) }`, { id: tool.id }).catch(() => undefined);
 await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: agent.id }).catch(() => undefined);
