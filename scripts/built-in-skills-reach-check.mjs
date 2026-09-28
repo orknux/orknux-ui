@@ -90,9 +90,12 @@ record(drawnOut !== null, 'the skill in the ungranted catalog has a row');
 if (drawnOut !== null) {
   record(drawnOut.state === 'hide' && drawnOut.control, `it reads Hide and its control is disabled (${drawnOut.state})`);
   record(drawnOut.flagged && drawnOut.opacity < 0.7, `the whole row is drawn dimmed (opacity ${drawnOut.opacity})`);
+  // The reason is in the hover card the grant lists draw, which replaced the native title.
+  await out.hover();
+  const said = await page.locator('[data-grant-card]').first().innerText().catch(() => '');
   record(
-    /not granted/.test(drawnOut.title) && drawnOut.title.includes(catalog.name),
-    `and hovering it says why, naming the catalog (${JSON.stringify(drawnOut.title)})`,
+    /not granted/.test(said) && said.includes(catalog.name),
+    `and hovering it says why, naming the catalog (${JSON.stringify(said.replace(/\s+/g, ' '))})`,
   );
 }
 

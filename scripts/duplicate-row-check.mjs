@@ -127,7 +127,8 @@ await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: provi
 
 const catalog = (await q(`mutation($w: ID!) { createMemoryCatalog(workspaceId: $w, name: "aaa dup memories") { id } }`)).createMemoryCatalog;
 await graphql(`mutation($c: ID!) { createMemory(input: { catalogId: $c, title: "aaa dup memory", content: "Remember this." }) { id } }`, { c: catalog.id });
-await page.goto(`${BASE}/workspace/${W}/memory`, { waitUntil: 'domcontentloaded' });
+// Opened on its own catalog: which one the page shows first depends on what else the workspace holds.
+await page.goto(`${BASE}/workspace/${W}/memory?catalog=${catalog.id}`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'the memory page');
 const memoryButton = page.locator('[data-duplicate="aaa dup memory"]').first();
 if (record(await memoryButton.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), 'memories: its card has a Duplicate button')) {

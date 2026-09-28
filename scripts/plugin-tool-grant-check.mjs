@@ -109,7 +109,11 @@ if (proxy !== undefined) {
 const alone = rows.find((one) => one.name === `${KEY}_standalone`);
 record(alone !== undefined, 'the standalone tool is offered too');
 if (alone !== undefined) {
-  record(alone.href === null, 'with no jump link, because a run of its own has no page');
+  // A run of its own has no page, so its link opens the Tools list searched for it.
+  record(
+    alone.href !== null && alone.href.includes('/tools?q=') && alone.href.includes(encodeURIComponent(`${KEY}_standalone`)),
+    `and jumps to the Tools list searched for it: ${alone.href}`,
+  );
 }
 
 record(
