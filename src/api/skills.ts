@@ -204,3 +204,86 @@ export async function deleteSkill(id: string): Promise<boolean> {
   );
   return data.deleteSkill;
 }
+
+/** The catalog the server brings its own skills in; every agent holds it. Issue #468. */
+export const BUILT_IN_SKILLS = 'orknux_skills';
+
+/**
+ * One skill somebody in this workspace could name, from wherever it came.
+ *
+ * The agent form lists these to say what happens to each, and the chat
+ * composer offers them after the command marker - one fetch and one rule for
+ * both, so the two cannot disagree about what an agent can reach.
+ */
+export interface SkillOffer {
+  /** What a command writes and an agent's lists hold. */
+  key: string;
+  name: string;
+  /** The catalog's name, which is what an agent's grant holds. */
+  catalog: string;
+  /** The plugin's on-screen name, or null for the workspace's own. */
+  plugin: string | null;
+  description: string | null;
+  /** The workspace skill's row id, or null for one a plugin brought. */
+  skillId: string | null;
+}
+
+/** Enabled workspace skills first, then every skill the plugins and the server bring. */
+export async function fetchSkillOffers(workspaceId: string, size = 200): Promise<SkillOffer[]> {
+  const [held, brought, catalogs] = await Promise.all([
+    fetchWorkspaceSkills(workspaceId, 0, size),
+    fetchPluginSkillCatalogs(),
+    fetchSkillCatalogs(workspaceId),
+  ]);
+  const named = new Map<string, string>(catalogs.map((catalog) => [catalog.id, catalog.name]));
+  const offers: SkillOffer[] = held.content
+    .filter((skill) => skill.enabled)
+    .map((skill) => ({
+      key: skill.key,
+      name: skill.name,
+      catalog: named.get(skill.catalogId) ?? '',
+      plugin: null,
+      description: skill.description,
+      skillId: skill.id,
+    }));
+  for (const offer of brought) {
+    for (const skill of offer.skills) {
+      offers.push({
+        key: skill.key,
+        name: skill.name,
+        catalog: offer.name,
+        plugin: offer.plugin,
+        description: skill.description,
+        skillId: null,
+      });
+    }
+  }
+  return offers;
+}
+
+/** In scope for an agent granted these catalogs: theirs, and the server's own, which every agent holds. */
+export function inSkillScope(offer: { catalog: string }, skillCatalogs: readonly string[]): boolean {
+  return offer.catalog === BUILT_IN_SKILLS || skillCatalogs.includes(offer.catalog);
+}
+
+/**
+ * The skills a chat can name, once each by key.
+ *
+ * With an agent: what its catalogs hold, less what it hides. Without one: the
+ * workspace's own and the server's, since no plugin catalog has been granted.
+ */
+export function reachableSkills(
+  offers: readonly SkillOffer[],
+  agent: { skillCatalogs: readonly string[]; hiddenSkills: readonly string[] } | null,
+): SkillOffer[] {
+  const seen = new Set<string>();
+  return offers.filter((offer) => {
+    const reached =
+      agent === null
+        ? offer.plugin === null || offer.catalog === BUILT_IN_SKILLS
+        : inSkillScope(offer, agent.skillCatalogs) && !agent.hiddenSkills.includes(offer.key);
+    if (!reached || seen.has(offer.key.toLowerCase())) return false;
+    seen.add(offer.key.toLowerCase());
+    return true;
+  });
+}

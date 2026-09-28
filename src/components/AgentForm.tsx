@@ -13,8 +13,13 @@ import { fetchWorkspace } from '../api/workspaces';
 import type { MemoryCatalog } from '../api/memory';
 import { answers, fetchModels } from '../api/models';
 import type { Model } from '../api/models';
-import { fetchPluginSkillCatalogs, fetchSkillCatalogs, fetchWorkspaceSkills } from '../api/skills';
-import type { Skill } from '../api/skills';
+import {
+  BUILT_IN_SKILLS,
+  fetchPluginSkillCatalogs,
+  fetchSkillCatalogs,
+  fetchSkillOffers,
+  inSkillScope,
+} from '../api/skills';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
@@ -227,9 +232,6 @@ const SEARCH_FROM = 8;
  * somebody reads to see what an agent may do, and it is complete.
  */
 const BUILT_IN = 'Built in';
-
-/** The catalog the server brings its own skills in; see `BuiltInSkills`. Issue #468. */
-const BUILT_IN_SKILLS = 'orknux_skills';
 
 /**
  * Why a built-in that comes with a wider grant cannot be switched on its row.
@@ -1168,45 +1170,34 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    */
   const skillsCatalogue = useCatalogue<GrantableSkill>(
     'skills',
-    async () => {
-      const [held, brought, catalogs] = await Promise.all([
-        fetchWorkspaceSkills(workspaceId, 0, SKILL_PAGE_SIZE),
-        fetchPluginSkillCatalogs(),
-        fetchSkillCatalogs(workspaceId),
-      ]);
-      const named = new Map<string, string>(catalogs.map((catalog) => [catalog.id, catalog.name]));
-      const rows: GrantableSkill[] = held.content
-        .filter((skill: Skill) => skill.enabled)
-        .map((skill: Skill) => ({
-          id: `ws:${skill.id}`,
-          key: skill.key,
-          name: skill.name,
-          catalog: named.get(skill.catalogId) ?? '',
-          plugin: null,
-          description: skill.description,
-          link: `/workspace/${workspaceId}/skills/${skill.id}`,
-        }));
-      for (const offer of brought) {
-        for (const skill of offer.skills) {
-          rows.push({
-            id: `ps:${offer.name}:${skill.key}`,
-            key: skill.key,
-            name: skill.name,
-            catalog: offer.name,
-            /*
-             * The server's own catalog reads Built in, as its tools do on the
-             * list below: a filter offering "Orknux" beside three plugins says
-             * nothing about which of them the release brings.
-             */
-            plugin: offer.name === BUILT_IN_SKILLS ? BUILT_IN : offer.plugin,
-            description: skill.description,
-            // A plugin's skill has no page; its catalog on the Skills page, searched for it, is where it is read.
-            link: `/workspace/${workspaceId}/skills?catalog=${encodeURIComponent(`plugin:${offer.name}`)}&q=${encodeURIComponent(skill.name)}`,
-          });
-        }
-      }
-      return rows;
-    },
+    async () =>
+      (await fetchSkillOffers(workspaceId, SKILL_PAGE_SIZE)).map((skill) =>
+        skill.skillId !== null
+          ? {
+              id: `ws:${skill.skillId}`,
+              key: skill.key,
+              name: skill.name,
+              catalog: skill.catalog,
+              plugin: null,
+              description: skill.description,
+              link: `/workspace/${workspaceId}/skills/${skill.skillId}`,
+            }
+          : {
+              id: `ps:${skill.catalog}:${skill.key}`,
+              key: skill.key,
+              name: skill.name,
+              catalog: skill.catalog,
+              /*
+               * The server's own catalog reads Built in, as its tools do on the
+               * list below: a filter offering "Orknux" beside three plugins says
+               * nothing about which of them the release brings.
+               */
+              plugin: skill.catalog === BUILT_IN_SKILLS ? BUILT_IN : skill.plugin,
+              description: skill.description,
+              // A plugin's skill has no page; its catalog on the Skills page, searched for it, is where it is read.
+              link: `/workspace/${workspaceId}/skills?catalog=${encodeURIComponent(`plugin:${skill.catalog}`)}&q=${encodeURIComponent(skill.name)}`,
+            },
+      ),
     [workspaceId],
     { skip: noWorkspace },
   );
@@ -1221,7 +1212,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    */
   // The server's own catalog is always in scope: every agent holds it, ticked or not.
   const inScopeSkills = (skillsCatalogue.items ?? [])
-    .filter((skill) => skill.catalog === BUILT_IN_SKILLS || skillCatalogs.includes(skill.catalog))
+    .filter((skill) => inSkillScope(skill, skillCatalogs))
     .map((skill) => skill.key);
   const offeredSkills = inScopeSkills.filter((id) => !hiddenSkills.includes(id));
 
@@ -1912,7 +1903,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             a control that does nothing.
           */
           fixedOf={(skill) =>
-            skill.catalog === BUILT_IN_SKILLS || skillCatalogs.includes(skill.catalog)
+            inSkillScope(skill, skillCatalogs)
               ? null
               : t('Its catalog, {catalog}, is not granted to this agent. Tick it under Skill Catalogs above to use this skill.').replace(
                   '{catalog}',

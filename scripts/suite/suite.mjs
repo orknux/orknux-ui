@@ -1998,6 +1998,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-skill-command-check',
+    what: "a word starting with the workspace's command marker offers the skills, and Tab completes it in place",
+    needs: ['workspace'],
+    /*
+     * Reads the marker off the server rather than assuming one, since it is a
+     * setting. Makes a chat of its own and deletes it; changes no setting.
+     */
+  },
+  {
     name: 'default-memory-catalog-check',
     what: 'every workspace has one memory catalog, and it stays',
     needs: ['workspace'],

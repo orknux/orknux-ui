@@ -33,6 +33,8 @@ import type {
 } from '../../api/chat';
 import { givenUp } from '../../api/sse';
 import { fetchInstallationSettings } from '../../api/installation';
+import { fetchSkillOffers, reachableSkills } from '../../api/skills';
+import type { SkillOffer } from '../../api/skills';
 import {
   attachmentUrl,
   isShowable,
@@ -247,6 +249,22 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * cleared by typing, because the next character is somebody starting again.
    */
   const [commandsShut, setCommandsShut] = useState(false);
+  /*
+   * Every skill the workspace can name, for the menu the command marker opens.
+   * Which of them this chat's agent reaches is worked out per render, since
+   * the agent can change under an open composer.
+   */
+  const [skillOffers, setSkillOffers] = useState<SkillOffer[]>([]);
+  /** The workspace's marker - its own, or the installation's it follows - once read. */
+  const [workspaceMarker, setWorkspaceMarker] = useState<string | null>(null);
+  /** The installation's marker, for a page whose workspace answered nothing. */
+  const [installationMarker, setInstallationMarker] = useState<string | null>(null);
+  /** Where the caret is in the composer, since a skill command may be any word. */
+  const [caret, setCaret] = useState(0);
+  /** Which row of the skill menu is under the caret. */
+  const [skillAt, setSkillAt] = useState(-1);
+  /** Where to put the caret once a completed word has been drawn into the box. */
+  const caretAfter = useRef<number | null>(null);
   const [sending, setSending] = useState(false);
   /**
    * The request answering the turn in flight, so it can be stopped.
@@ -577,6 +595,20 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   }, [workspaceId]);
 
   useEffect(() => {
+    setSkillOffers([]);
+    if (workspaceId === null) return;
+    let abandoned = false;
+    fetchSkillOffers(workspaceId)
+      .then((held) => {
+        if (!abandoned) setSkillOffers(held);
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, [workspaceId]);
+
+  useEffect(() => {
     if (workspaceId === null) return;
     /*
      * Only once the page and the corner agree which workspace this is.
@@ -869,6 +901,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setHears(held?.transcriptionModelId != null);
         setReads(held?.speechModelId != null);
         setShowTimestamps(held?.chatShowTimestamps ?? false);
+        setWorkspaceMarker(held === null ? null : (held.commandMarker ?? held.commandMarkerDefault));
         setChunking(held?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
         setTurnTaking(
           held === null
@@ -885,6 +918,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         if (abandoned) return;
         setHears(false);
         setReads(false);
+        setWorkspaceMarker(null);
         // Nothing rather than a guess: null in all three is exactly "the
         // workspace has decided nothing", which is the panel's own numbers.
         setTurnTaking(null);
@@ -906,7 +940,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
 
   useEffect(() => {
     fetchInstallationSettings()
-      .then((held) => setAttachmentsAllowed(held.attachmentsEnabled))
+      .then((held) => {
+        setAttachmentsAllowed(held.attachmentsEnabled);
+        setInstallationMarker(held.commandMarker);
+      })
       .catch(() => setAttachmentsAllowed(false));
   }, []);
 
@@ -1767,6 +1804,51 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
   /** Which one Enter would run: the row under the caret, or the only match. */
   const chosen = offered.length === 0 ? null : offered[Math.max(0, Math.min(commandAt, offered.length - 1))];
 
+  /*
+   * The skill command being typed, or none. The marker is whatever this
+   * workspace uses - it is a setting, so nothing here names one.
+   *
+   * Unlike a slash, a skill command may be any word of the message, because
+   * the server reads every word that starts with the marker. It must start the
+   * word, though: `a!b` is not a command there, so it opens no menu here.
+   */
+  const marker = workspaceMarker ?? installationMarker;
+  const skillWord = (() => {
+    if (marker === null || marker === '' || commandsShut || offered.length > 0) return null;
+    const at = Math.min(caret, draft.length);
+    const start = draft.slice(0, at).search(/\S*$/);
+    const rest = draft.slice(at).search(/\s|$/);
+    const typed = draft.slice(start, at);
+    if (!typed.startsWith(marker)) return null;
+    const prefix = typed.slice(marker.length);
+    if (!/^[A-Za-z_-]*$/.test(prefix)) return null;
+    return { start, end: at + rest, prefix: prefix.toLowerCase() };
+  })();
+  const chatAgent = current?.agentId == null ? null : (agents.find((one) => one.id === current.agentId) ?? null);
+  const skillsOffered =
+    skillWord === null
+      ? []
+      : reachableSkills(skillOffers, chatAgent).filter((one) => one.key.toLowerCase().startsWith(skillWord.prefix));
+  const skillChosen =
+    skillsOffered.length === 0 ? null : skillsOffered[Math.max(0, Math.min(skillAt, skillsOffered.length - 1))];
+
+  /** Writes the word under the caret as the skill's command, and leaves the caret after it. */
+  function completeSkill(skill: SkillOffer) {
+    if (skillWord === null || marker === null) return;
+    const word = `${marker}${skill.key} `;
+    const after = draft.slice(skillWord.end).replace(/^[ \t]/, '');
+    setDraft(draft.slice(0, skillWord.start) + word + after);
+    caretAfter.current = skillWord.start + word.length;
+    setCaret(caretAfter.current);
+    setSkillAt(-1);
+  }
+
+  useLayoutEffect(() => {
+    if (caretAfter.current === null) return;
+    composerRef.current?.setSelectionRange(caretAfter.current, caretAfter.current);
+    caretAfter.current = null;
+  }, [draft]);
+
   function handleComposerKey(event: KeyboardEvent<HTMLTextAreaElement>) {
     /*
      * The menu takes the arrows and Enter while it is open, and nothing else.
@@ -1800,6 +1882,30 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
         event.preventDefault();
         setDraft(`/${chosen.name}${chosen.argument === null ? '' : ' '}`);
         setCommandAt(-1);
+        return;
+      }
+    }
+
+    if (skillsOffered.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setSkillAt((at) => (at + 1) % skillsOffered.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setSkillAt((at) => (at <= 0 ? skillsOffered.length - 1 : at - 1));
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSkillAt(-1);
+        setCommandsShut(true);
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === 'Tab') && skillChosen !== null) {
+        event.preventDefault();
+        completeSkill(skillChosen);
         return;
       }
     }
@@ -3071,6 +3177,36 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                   ))}
                 </div>
               )}
+              {/*
+                The skills a word starting with the workspace's command marker
+                can name, drawn as the slash menu is so the two read as one.
+              */}
+              {skillsOffered.length > 0 && (
+                <div className={styles.commandMenu} role="listbox" aria-label={t('Skills')}>
+                  {skillsOffered.map((one, index) => (
+                    <button
+                      key={one.key}
+                      type="button"
+                      role="option"
+                      aria-selected={one.key === skillChosen?.key}
+                      className={one.key === skillChosen?.key ? styles.commandOn : styles.command}
+                      onMouseEnter={() => setSkillAt(index)}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        completeSkill(one);
+                        composerRef.current?.focus();
+                      }}
+                    >
+                      <span className={styles.commandName}>
+                        {marker}
+                        {one.key}
+                      </span>
+                      <span className={styles.commandSummary}>{one.name}</span>
+                      {one.description !== null && <span className={styles.commandDetail}>{one.description}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
                 id="chat-composer"
                 ref={composerRef}
@@ -3078,11 +3214,14 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                 value={draft}
                 onChange={(event) => {
                   setDraft(event.target.value);
+                  setCaret(event.target.selectionStart);
+                  setSkillAt(-1);
                   // Typing is somebody starting again, so a menu put away for
                   // the last line does not stay away for this one.
                   setCommandsShut(false);
                 }}
                 onKeyDown={handleComposerKey}
+                onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
                 placeholder={t('Type a message...')}
                 rows={1}
                 aria-label={t('Message')}

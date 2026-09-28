@@ -1640,3 +1640,13 @@ button.attachmentName {
   color: var(--color-text-secondary);
   text-align: left;
 }
+
+/* A skill's description beside its name, read last and cut to one line. */
+.commandDetail {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
