@@ -112,6 +112,14 @@ const names = await options.allInnerTexts();
 const selected = async () => (await menu.locator('[role="option"][aria-selected="true"]').first().innerText().catch(() => '')).split(String.fromCharCode(10))[0];
 record(names.length > 2, `the marker alone offers every skill (${names.length})`);
 await box.press('ArrowDown');
+// The highlight is drawn, not only announced: the selected row's background differs from the rest.
+const painted = await menu.evaluate((node) => {
+  const rows = [...node.querySelectorAll('[role="option"]')];
+  const on = rows.find((row) => row.getAttribute('aria-selected') === 'true');
+  const off = rows.find((row) => row.getAttribute('aria-selected') !== 'true');
+  return on && off ? [getComputedStyle(on).backgroundColor, getComputedStyle(off).backgroundColor] : null;
+});
+record(painted !== null && painted[0] !== painted[1], `the row the arrows reach is drawn highlighted (${painted?.join(' vs ')})`);
 const second = names[1]?.split(String.fromCharCode(10))[0];
 record((await selected()) === second, `the first Down moves to the second row (${await selected()}, wanted ${second})`);
 for (let i = 0; i < names.length - 2; i += 1) await box.press('ArrowDown');
@@ -135,6 +143,7 @@ record(
   x !== null && around !== null && x.x + x.width > around.x + around.width - 40 && x.y < around.y + 30,
   `the menu has a close button in its top right corner (${x ? `${Math.round(x.x - around.x)},${Math.round(x.y - around.y)}` : 'none'})`,
 );
+record(x !== null && x.width >= 28 && x.height >= 28, `big enough to hit (${x ? `${Math.round(x.width)}x${Math.round(x.height)}` : 'none'})`);
 const before = await box.inputValue();
 await close.click();
 record((await menu.count()) === 0, 'pressing it closes the menu');
