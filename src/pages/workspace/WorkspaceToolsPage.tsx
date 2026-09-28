@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { fetchPluginTools } from '../../api/plugins';
 import type { PluginAgentTool } from '../../api/plugins';
@@ -78,7 +78,9 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
   const [serverPaged, setServerPaged] = useState(true);
   const [page, setPage] = usePageWithin(workspaceId);
   const [pageSize, setPageSize] = usePageSize('tools');
-  const [typed, setTyped, asked] = useSearch();
+  // Opened on `?q=` where a link names one tool - the agent form's rows for a plugin's tool, which has no page of its own.
+  const [addressed] = useSearchParams();
+  const [typed, setTyped, asked] = useSearch(300, addressed.get('q') ?? '');
   const [order, ascending, sortBy] = useTableSort<ToolOrder>('tools', 'NAME', true, ['LAST_MODIFIED']);
 
   // A new search is a new list, so it starts at its first page rather

@@ -16,9 +16,9 @@ import { useEffect, useState } from 'react';
  *
  * @returns `[typed, setTyped, asked]`
  */
-export function useSearch(delayMs = 300): [string, (value: string) => void, string] {
-  const [typed, setTyped] = useState('');
-  const [asked, setAsked] = useState('');
+export function useSearch(delayMs = 300, initial = ''): [string, (value: string) => void, string] {
+  const [typed, setTyped] = useState(initial);
+  const [asked, setAsked] = useState(initial);
 
   useEffect(() => {
     const waiting = setTimeout(() => setAsked(typed), delayMs);

@@ -97,7 +97,8 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
   const [pluginCatalogs, setPluginCatalogs] = useState<PluginSkillCatalog[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [skills, setSkills] = useState<PageOf<Skill> | null>(null);
-  const [search, setSearch] = useState('');
+  // Opened on `?q=` where a link names one skill - the agent form's rows for a plugin's skill, which has no page of its own.
+  const [search, setSearch] = useState(() => addressed.get('q') ?? '');
   const [error, setError] = useState<string | null>(null);
   /** Whether the catalog column is folded away; the list is not always the work. */
   const [foldedCatalogs, setFoldedCatalogs] = useState(false);
@@ -121,6 +122,8 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
       // first, so the panel is never showing nothing while catalogs exist.
       setSelected((held) => {
         const wanted = keep ?? held ?? asked;
+        // A plugin's catalog is not among `found`, and is kept as asked: the rail draws it once the plugins' list is in.
+        if (wanted?.startsWith(PLUGIN_PREFIX)) return wanted;
         return found.find((catalog) => catalog.id === wanted)?.id ?? found[0]?.id ?? null;
       });
     },

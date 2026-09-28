@@ -1200,7 +1200,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
              */
             plugin: offer.name === BUILT_IN_SKILLS ? BUILT_IN : offer.plugin,
             description: skill.description,
-            link: null,
+            // A plugin's skill has no page; its catalog on the Skills page, searched for it, is where it is read.
+            link: `/workspace/${workspaceId}/skills?catalog=${encodeURIComponent(`plugin:${offer.name}`)}&q=${encodeURIComponent(skill.name)}`,
           });
         }
       }
@@ -1259,7 +1260,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         name: tool.name,
         plugin: BUILT_IN,
         off: false,
-        link: null,
+        // No page of its own: the manual's chapter on what agents are given is where built-ins are described.
+        link: '/docs/models-and-agents',
         governance: tool.governance,
         // A built-in's own line is the first sentence of what the model is told, which the server writes.
         summary: tool.summary,
@@ -1285,7 +1287,11 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           off: false,
           // A tool fronting one of the plugin's functions has that function's
           // page to go to; one with a run of its own has no page.
-          link: offer.functionId === null ? null : `/workspace/${workspaceId}/functions/${offer.functionId}`,
+          // A tool with a run of its own has no page, so it opens the Tools list searched for it.
+          link:
+            offer.functionId === null
+              ? `/workspace/${workspaceId}/tools?q=${encodeURIComponent(offer.name)}`
+              : `/workspace/${workspaceId}/functions/${offer.functionId}`,
           governance: null,
           summary: offer.description,
         });
