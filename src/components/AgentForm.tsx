@@ -796,11 +796,20 @@ function GrantList<Item>({
               */
               <div
                 key={keyOf(row.item)}
-                className={row.matches ? own.checkRow : `${own.checkRow} ${own.checkRowKept}`}
+                className={[
+                  own.checkRow,
+                  row.matches ? '' : own.checkRowKept,
+                  // Out of reach: fixed and not held, so pressing it could never
+                  // do anything. Drawn as disabled, with the reason on hover.
+                  row.fixed !== null && !row.ticked ? own.checkRowOut : '',
+                ].filter(Boolean).join(' ')}
                 data-grant-name={row.name}
+                data-grant-out={row.fixed !== null && !row.ticked ? '' : undefined}
                 /* A tool's summary, a skill's description: what the row has no
-                   room for and a person reading it wants. #480, #481. */
-                title={titleOf?.(row.item) ?? undefined}
+                   room for and a person reading it wants. #480, #481. Out of
+                   reach, the reason instead - that is what somebody hovering
+                   a control that does nothing is asking. */
+                title={(row.fixed !== null && !row.ticked ? row.fixed : titleOf?.(row.item)) ?? undefined}
                 /*
                   What a check finds a kept row by. CSS modules hash the class
                   names this project writes, so the class cannot be asked for
@@ -1824,6 +1833,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           }}
           marked={requiredSkills}
           onMark={setRequiredSkills}
+          /*
+            A skill whose catalog is not granted is out of scope: it reads Hide
+            and no press can change that, so it says so rather than looking like
+            a control that does nothing.
+          */
+          fixedOf={(skill) =>
+            skill.catalog === BUILT_IN_SKILLS || skillCatalogs.includes(skill.catalog)
+              ? null
+              : t('Its catalog is not granted to this agent. Tick the catalog under Skill Catalogs above to use this skill.')
+          }
         />
 
         {/*

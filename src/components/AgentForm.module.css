@@ -504,3 +504,17 @@
 .inheritedNote {
   composes: shareNote from '../styles/memoryShare.module.css';
 }
+
+/*
+ * A row out of reach: switched elsewhere and off, so no press here can change
+ * it - a skill whose catalog is not granted, a tool whose grant is off. Dimmed
+ * whole, not just its control, so it reads as disabled before anybody tries.
+ */
+.checkRowOut {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.checkRowOut * {
+  cursor: not-allowed;
+}
