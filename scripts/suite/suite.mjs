@@ -749,6 +749,20 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'artifact-miniature-check',
+    what: 'a saved artifact an answer links to is drawn small: a PDF as its first page, a broken one as a tile',
+    // Stubs the answer and the files: a seeded installation has no saved
+    // artifacts - only an agent's tool makes one - and what is measured is
+    // the rendering, the same component a task's log and outcome use.
+    needs: ['workspace'],
+  },
+  {
+    name: 'chat-command-highlight-check',
+    what: 'a block of commands in an answer is coloured: the command, its flags, and the Windows spellings',
+    // Stubs the answer: a seeded installation has no model to ask.
+    needs: ['workspace'],
+  },
+  {
     name: 'parameter-picker-check',
     what: 'a plugin parameter that names its values is answered from a list, and one that does not is typed',
     // Loads a plugin, which is installation-wide: its rows appear in every
@@ -1833,6 +1847,12 @@ export const TESTS = [
      * Files two issues of its own and deletes them, and sweeps what an earlier
      * killed run left.
      */
+  },
+  {
+    name: 'grant-card-check',
+    what: "a tool or skill on the agent page shows its summary on hover, and its name links to its page",
+    needs: ['workspace'],
+    /* Asked for: the native title was a slow grey line, and built-ins and plugin tools had none. */
   },
   {
     name: 'saved-colour-check',

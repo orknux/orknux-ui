@@ -108,3 +108,37 @@ export async function deleteArtifact(id: string): Promise<boolean> {
   const data = await graphql<{ deleteArtifact: boolean }>(DELETE_ARTIFACT_MUTATION, { id });
   return data.deleteArtifact;
 }
+
+/** Where a saved artifact's bytes are, by the number a link to it carries. */
+export function savedArtifactUrl(id: string): string {
+  return `/api/artifacts/${id}`;
+}
+
+/** Where the same bytes are read rather than saved. */
+export function savedArtifactPreviewUrl(id: string): string {
+  return `/api/artifacts/${id}/preview`;
+}
+
+/**
+ * What a saved artifact is, asked of the file itself.
+ *
+ * A link in an answer carries only the number and whatever the model called
+ * it, and a title is a model's word for the file rather than the file's own
+ * type. A HEAD request answers with the type the server holds without handing
+ * the bytes over; a file it will not open for reading answers
+ * application/octet-stream. Null for one that is not there or not this caller's.
+ */
+export async function fetchSavedArtifactType(id: string): Promise<string | null> {
+  // The reading address, because the file's own answers every document as
+  // application/octet-stream - it is a download - and says nothing of what it is.
+  const answer = await fetch(savedArtifactPreviewUrl(id), { method: 'HEAD', credentials: 'same-origin' });
+  if (!answer.ok) return null;
+  return (answer.headers.get('Content-Type') ?? '').toLowerCase().split(';')[0].trim();
+}
+
+/** A saved artifact's bytes, for a page that draws them itself. */
+export async function fetchSavedArtifactBytes(id: string): Promise<ArrayBuffer> {
+  const answer = await fetch(savedArtifactUrl(id), { credentials: 'same-origin' });
+  if (!answer.ok) throw new Error(`Artifact ${id} answered ${answer.status}`);
+  return answer.arrayBuffer();
+}

@@ -385,3 +385,55 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/*
+ * A saved artifact the answer links to, drawn small.
+ *
+ * The same width as a picture's frame so the two share a strip, and taller,
+ * because what is drawn in it is a page: a PDF's first page, portrait, rather
+ * than a picture cropped to fit a landscape box.
+ */
+.page {
+  display: block;
+  width: 132px;
+  height: 172px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted, var(--color-surface));
+}
+
+.markdown .page {
+  /* A tile, not a line of prose: the underline every link in an answer carries is not for it. */
+  text-decoration: none;
+}
+
+.page:hover {
+  border-color: var(--color-accent);
+}
+
+.pageDrawn {
+  display: block;
+  width: 100%;
+}
+
+/* Where there is no page to draw: what the Artifacts page puts in the same place. */
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  height: 100%;
+}
+
+.tileMark {
+  font-size: 32px;
+}
+
+.tileKind {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}

@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import type { ComponentProps } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
-import bash from 'highlight.js/lib/languages/bash';
 import java from 'highlight.js/lib/languages/java';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
 import kotlin from 'highlight.js/lib/languages/kotlin';
+import dos from 'highlight.js/lib/languages/dos';
+import powershell from 'highlight.js/lib/languages/powershell';
 import python from 'highlight.js/lib/languages/python';
+import shell from 'highlight.js/lib/languages/shell';
 import sql from 'highlight.js/lib/languages/sql';
 import typescript from 'highlight.js/lib/languages/typescript';
 import xml from 'highlight.js/lib/languages/xml';
@@ -16,6 +18,8 @@ import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 
 import styles from './Markdown.module.css';
+import { ArtifactMiniature } from './ArtifactMiniature';
+import { commandLine } from './shellGrammar';
 import { ImageZoom } from './ImageZoom';
 import type { Picture } from './ImageZoom';
 import { rehypeIssueLinks } from './issueLinks';
@@ -31,9 +35,26 @@ import { t } from '../i18n';
  * config formats of the documentation, and the languages the product itself is
  * made of.
  *
- * `xml` is what highlight.js calls HTML too.
+ * `xml` is what highlight.js calls HTML too. `bash` is highlight.js's own with
+ * the command names coloured as well - see `commandLine` - and the three after
+ * it are the other ways a model writes a command: `shell` (or `console`) for a
+ * session with prompts, `powershell` and `dos` (`cmd`, `bat`) for Windows.
  */
-const LANGUAGES = { bash, java, javascript, json, kotlin, python, sql, typescript, xml, yaml };
+const LANGUAGES = {
+  bash: commandLine,
+  shell,
+  powershell,
+  dos,
+  java,
+  javascript,
+  json,
+  kotlin,
+  python,
+  sql,
+  typescript,
+  xml,
+  yaml,
+};
 
 export interface MarkdownProps {
   /** What the model wrote, in the markdown it wrote it in. */
@@ -166,6 +187,45 @@ export function pictureLinksIn(markdown: string): PictureLink[] {
   return found;
 }
 
+/**
+ * A link to a file an agent saved: this server's `/api/artifacts/{n}`, with or
+ * without the host in front and with or without `/preview` after. The host is
+ * dropped, because the address a model was handed names the server's base URL
+ * and the bytes are asked of this page's own origin either way.
+ */
+const ARTIFACT_URL = /(?:https?:\/\/[^\s)<>"'/]+)?\/api\/artifacts\/(\d+)(?:\/preview)?(?![\w/])/g;
+
+/** A saved artifact an answer links to, and what the link called it. */
+export interface ArtifactLink {
+  id: string;
+  title: string;
+}
+
+/**
+ * The saved artifacts an answer links to, in the order it links to them.
+ *
+ * Every door, not only the answers that draw picture strips: a task's log is
+ * where an agent says "saved it here", and that line is the one somebody reads
+ * to find the file.
+ */
+export function artifactLinksIn(markdown: string): ArtifactLink[] {
+  const titles = new Map<string, string>();
+  for (const hit of markdown.matchAll(TITLED_LINK)) {
+    const id = [...hit[2].matchAll(ARTIFACT_URL)][0]?.[1];
+    // Emphasis around the title goes; an underscore inside a filename stays.
+    const title = hit[1].replace(/[*`]/g, '').trim().replace(/^_+|_+$/g, '');
+    if (id !== undefined && title !== '' && !titles.has(id)) titles.set(id, title);
+  }
+
+  const found: ArtifactLink[] = [];
+  for (const hit of markdown.matchAll(ARTIFACT_URL)) {
+    if (found.some((one) => one.id === hit[1])) continue;
+    found.push({ id: hit[1], title: titles.get(hit[1]) ?? '' });
+    if (found.length === MOST_PICTURES) break;
+  }
+  return found;
+}
+
 /** The plugin list, exactly as the renderer that takes it declares it. */
 type RehypePlugins = ComponentProps<typeof ReactMarkdown>['rehypePlugins'];
 
@@ -206,6 +266,9 @@ export function Markdown({
     () => (pictureLinks ? pictureLinksIn(children).filter((one) => !broken.includes(one.url)) : []),
     [pictureLinks, children, broken],
   );
+
+  /** Rebuilt only when the prose changes. */
+  const artifacts = useMemo(() => artifactLinksIn(children), [children]);
 
   /*
    * Rebuilt only when the term changes. A fresh array on every render would have
@@ -339,6 +402,14 @@ export function Markdown({
                 <figcaption className={styles.caption}>{picture.title}</figcaption>
               )}
             </figure>
+          ))}
+        </div>
+      )}
+
+      {artifacts.length > 0 && (
+        <div className={styles.gallery} aria-label={t('Files this answer links to')}>
+          {artifacts.map((artifact) => (
+            <ArtifactMiniature key={artifact.id} id={artifact.id} title={artifact.title} />
           ))}
         </div>
       )}
