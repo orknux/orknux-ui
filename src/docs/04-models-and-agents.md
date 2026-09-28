@@ -367,6 +367,18 @@ each agent it may ask can do - its model, tools, skills and connections - so it
 asks the one that holds the tool the work needs. Each ask is a session of its
 own, listed under the one that asked.
 
+An agent that ends its turn before the answer comes is not left without it.
+The answer is delivered to its session: read between two steps if it is still
+working, and otherwise it wakes the agent - a workflow step waits rather than
+finishing, a chat answers again on its own, a finished task carries on.
+
+### Reminders
+
+`timer_set` is a reminder an agent sets for itself: "tell me in 30 seconds to
+check the build". It does not end anything - the agent carries on - and when
+the time is up it is told, with the note it left, the same way an answer
+arrives. Up to the installation's longest wait ahead.
+
 ## Drawing, and looking
 
 An agent can look at a picture and can make one.
