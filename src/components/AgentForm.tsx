@@ -1841,7 +1841,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           fixedOf={(skill) =>
             skill.catalog === BUILT_IN_SKILLS || skillCatalogs.includes(skill.catalog)
               ? null
-              : t('Its catalog is not granted to this agent. Tick the catalog under Skill Catalogs above to use this skill.')
+              : t('Its catalog, {catalog}, is not granted to this agent. Tick it under Skill Catalogs above to use this skill.').replace(
+                  '{catalog}',
+                  skill.catalog,
+                )
           }
         />
 

@@ -90,7 +90,10 @@ record(drawnOut !== null, 'the skill in the ungranted catalog has a row');
 if (drawnOut !== null) {
   record(drawnOut.state === 'hide' && drawnOut.control, `it reads Hide and its control is disabled (${drawnOut.state})`);
   record(drawnOut.flagged && drawnOut.opacity < 0.7, `the whole row is drawn dimmed (opacity ${drawnOut.opacity})`);
-  record(/not granted/.test(drawnOut.title), `and hovering it says why (${JSON.stringify(drawnOut.title)})`);
+  record(
+    /not granted/.test(drawnOut.title) && drawnOut.title.includes(catalog.name),
+    `and hovering it says why, naming the catalog (${JSON.stringify(drawnOut.title)})`,
+  );
 }
 
 await sweep();
