@@ -438,7 +438,9 @@ await save('Create');
 
 const reader = await named(readerName);
 if (reader === null) {
-  record(false, 'creating a provider that reads a workspace secret saved nothing');
+  // What the form said instead, so a red run names the refusal rather than the absence.
+  const said = await page.locator('[role="alert"], [class*="error" i]').allInnerTexts().catch(() => []);
+  record(false, `creating a provider that reads a workspace secret saved nothing (${page.url()}; ${JSON.stringify(said)})`);
 } else {
   record(reader.secretVariableId === held.id, `it is stored against the variable it was pointed at (${reader.secretVariableId})`);
   record(reader.secretSet === false, 'and holds no credential of its own, which is what secretSet now means');

@@ -20,6 +20,24 @@ import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
+/*
+ * Hiding a built-in is gated since #482/#483: the rows are fixed until the
+ * workspace allows unsafe built-in visibility. This check is about what a switch
+ * stores, so it opens the gate for its run and puts it back as it found it.
+ */
+const unsafeWas = (await graphql(`query ($w: ID!) { workspace(id: $w) { unsafeBuiltInTools } }`, { w: WORKSPACE }))
+  .workspace.unsafeBuiltInTools;
+const allowUnsafe = (allowed) =>
+  graphql(`mutation ($w: ID!, $a: Boolean!) { setWorkspaceUnsafeBuiltInTools(workspaceId: $w, allowed: $a) { id } }`, {
+    w: WORKSPACE,
+    a: allowed,
+  });
+await allowUnsafe(true);
+const done = async () => {
+  await allowUnsafe(unsafeWas).catch(() => undefined);
+  await finish(browser);
+};
+
 const { workspaceAgents } = await graphql(
   `query ($w: ID!) {
      workspaceAgents(workspaceId: $w, page: 0, size: 20) { content { id name tools requiredTools finishAccess pictureLinkAccess } }
@@ -29,7 +47,7 @@ const { workspaceAgents } = await graphql(
 const agent = workspaceAgents.content[0];
 if (agent === undefined) {
   record(false, 'the workspace has an agent to open; the seed builds one');
-  await finish(browser);
+  await done();
 }
 
 /* ------------------------------------------ what an existing agent holds */
@@ -155,4 +173,4 @@ const relinked = (
 ).agent;
 record(relinked.tools.includes('picture_link') && relinked.pictureLinkAccess === true, 'and it goes back on');
 
-await finish(browser);
+await done();

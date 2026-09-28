@@ -17,7 +17,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 
 const STAMP = Date.now();
 const NAME = `zzSkillId ${STAMP}!`;
-const DERIVED = `zzSkillId`;
+const DERIVED = `zzskillid`; // lowercased since #435, so a model can type it back
 
 const sweep = async () => {
   const { workspaceSkills } = await graphql(

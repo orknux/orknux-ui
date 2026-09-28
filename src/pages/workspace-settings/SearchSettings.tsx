@@ -72,7 +72,12 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
       </h2>
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor="search-engine">{t('Engine')}</label>
+        {/* What each index is for sits behind the (?), not under the box: a
+            paragraph under a field is prose nobody reads twice. */}
+        <span className={styles.labelRow}>
+          <label className={styles.label} htmlFor="search-engine">{t('Engine')}</label>
+          {chosen !== undefined && <FieldHint label={t('Engine')}>{chosen.description}</FieldHint>}
+        </span>
         <select
           id="search-engine"
           className={styles.select}
@@ -84,13 +89,15 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
             <option key={one.name} value={one.name}>{one.name}</option>
           ))}
         </select>
-        {/* The sentence for whichever is chosen, so the difference is readable
-            without going and finding out what the two indexes are. */}
-        {chosen !== undefined && <p className={styles.note}>{chosen.description}</p>}
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label} htmlFor="search-key">{t('API key')}</label>
+        <span className={styles.labelRow}>
+          <label className={styles.label} htmlFor="search-key">{t('API key')}</label>
+          <FieldHint label={t('API key')}>
+            {t('Kept encrypted and never shown again. The server makes the call, so the key never reaches a model.')}
+          </FieldHint>
+        </span>
         {held.keySet && typing === null ? (
           <div className={styles.set}>
             {/*
@@ -140,14 +147,11 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
             )}
           </div>
         )}
-        <p className={styles.note}>
-          {t('Kept encrypted and never shown again. The server makes the call, so the key never reaches a model.')}
-        </p>
       </div>
 
       {/* Only tavily composes one, so the switch is only drawn where it means something. */}
       {held.engine === 'tavily' && (
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.labelRow}`}>
           <label className={styles.check}>
             <input
               type="checkbox"
@@ -157,7 +161,9 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
             />
             {t('Also compose a short answer over the results')}
           </label>
-          <p className={styles.note}>{t('Costs more than a plain search.')}</p>
+          <FieldHint label={t('Also compose a short answer over the results')}>
+            {t('Costs more than a plain search.')}
+          </FieldHint>
         </div>
       )}
 

@@ -3,9 +3,9 @@
  *
  * The server half is pinned in NoteToSelfTest: what is kept, what is refused,
  * and that a turn with nowhere to put a note is not offered the tool. What is
- * measured here is the other end - that the field is served, and that a session
- * with notes draws them above the transcript rather than beside a heading with
- * nothing under it.
+ * measured here is the other end - that the field is served, and that a note is
+ * a line of the session's log, in time order with the rest, since #409 took them
+ * out of the block that stood above the transcript.
  *
  * ---------------------------------------------------------------------------
  * Why the notes are stubbed and the field is not
@@ -51,16 +51,36 @@ record(
 
 const SESSION = '424242';
 
-/** Oldest first, which is the order an agent wrote them in and reads them back in. */
-const WROTE = [
-  { id: '1', note: 'Steps 1-6 are done.', writtenBy: 'zzNotes first', writtenAt: '2026-09-23T09:00:00Z' },
-  { id: '2', note: 'The failing one is the third.', writtenBy: 'zzNotes second', writtenAt: '2026-09-23T09:05:00Z' },
+/*
+ * A conversation with two notes in it, between what was said. Since #409 a note
+ * is a NOTE line of the log, where it was written, rather than a block lifted out
+ * above the transcript: a reader following a conversation wants the note at the
+ * point the agent chose to keep it.
+ */
+const line = (id, kind, actor, content, at) => ({
+  id, kind, actor, content, result: null, millis: null, at, agentDetails: null,
+});
+const LOG = [
+  line('1', 'USER', 'alice', 'Run the steps and tell me which one fails.', '2026-09-23T08:59:00Z'),
+  line('2', 'NOTE', 'zzNotes first', 'Steps 1-6 are done.', '2026-09-23T09:00:00Z'),
+  line('3', 'AGENT', 'zzNotes first', 'Still working on it.', '2026-09-23T09:02:00Z'),
+  line('4', 'NOTE', 'zzNotes second', 'The failing one is the third.', '2026-09-23T09:05:00Z'),
 ];
 
-let held = WROTE;
+let held = LOG;
 
 await page.route('**/graphql', async (route) => {
   const body = route.request().postData() ?? '';
+  if (body.includes('llmSessionEvents(')) {
+    const asked = JSON.parse(body).variables?.kinds ?? null;
+    const content = held.filter((one) => asked === null || asked.includes(one.kind));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { llmSessionEvents: { totalElements: content.length, content } } }),
+    });
+    return;
+  }
   if (!body.includes('llmSession(')) {
     await route.continue();
     return;
@@ -75,10 +95,10 @@ await page.route('**/graphql', async (route) => {
           workspaceId: WORKSPACE,
           key: 'zzNotes371',
           keyPrefix: 'zzNotes',
-          eventCount: 0,
+          eventCount: held.length,
           createdAt: '2026-09-23T08:00:00Z',
-          lastEventAt: null,
-          notes: held,
+          lastEventAt: held.at(-1)?.at ?? null,
+          notes: [],
         },
       },
     }),
@@ -92,56 +112,41 @@ const openIt = async () => {
 
 record(await openIt(), 'a session opens');
 
-const notes = page.locator('[class*="_notesList_"] li');
+const notes = page.locator('article[class*="_kindNote_"]');
 const there = await notes
   .first()
   .waitFor({ timeout: 20_000 })
   .then(() => true)
   .catch(() => false);
-record(there, 'what the agent wrote down is on the page');
+record(there, 'what the agent wrote down is on the page, as lines of the log');
 if (!there) await finish(browser);
 
 const drawnNotes = await notes.allInnerTexts();
 console.log(`drawn: ${JSON.stringify(drawnNotes)}`);
-record(drawnNotes.length === WROTE.length, `each one is drawn (${drawnNotes.length})`);
+record(drawnNotes.length === 2, `each one is drawn (${drawnNotes.length})`);
 record(
   drawnNotes[0].includes('Steps 1-6 are done.') && drawnNotes[1].includes('The failing one is the third.'),
   'oldest first, which is the order it wrote them in',
 );
-
-/* Which agent wrote it, since a conversation can be shared between several. */
 record(
   drawnNotes[0].includes('zzNotes first') && drawnNotes[1].includes('zzNotes second'),
   'and each says which agent wrote it',
 );
 
-/*
- * Above the transcript rather than in it. A note is not part of what was said -
- * it is the part an agent chose to keep - and somebody reading a conversation to
- * work out what an agent was doing wants the four lines before the four hundred.
- */
-const order = await page.evaluate(() => {
-  const box = (css) => document.querySelector(css)?.getBoundingClientRect() ?? null;
-  const notes = box('[class*="_notes_"]');
-  const transcript = box('[class*="_transcript_"]');
-  return notes === null || transcript === null ? null : { notes: notes.top, transcript: transcript.top };
-});
-console.log(`order: ${JSON.stringify(order)}`);
-record(order !== null && order.notes < order.transcript, 'drawn above the transcript, not inside it');
-
-/* ------------------------------------------- and a conversation with none - */
-
-/*
- * No heading standing over nothing. Most sessions have no notes at all, and a
- * panel that says only that there is nothing in it is a panel every reader pays
- * for so that a handful of them can be told something they already know.
- */
-held = [];
-record(await openIt(), 'a session with nothing written down opens');
-await page.waitForTimeout(1200);
+/* Where it was written: between the lines either side of it, not above them all. */
+const texts = await page.locator('article[class*="_event_"]').allInnerTexts();
+const at = (words) => texts.findIndex((one) => one.includes(words));
 record(
-  await page.locator('[class*="_notesList_"]').count().then((many) => many === 0),
-  'and carries no panel at all, rather than a heading over nothing',
+  at('Run the steps') < at('Steps 1-6 are done.') &&
+    at('Steps 1-6 are done.') < at('Still working on it.') &&
+    at('Still working on it.') < at('The failing one is the third.'),
+  `in time order with what was said around it (${[at('Run the steps'), at('Steps 1-6'), at('Still working'), at('The failing')].join(', ')})`,
+);
+
+/* No block above the transcript any more, with notes or without. */
+record(
+  (await page.locator('[class*="_notesList_"]').count()) === 0,
+  'and no block of notes stands above the transcript',
 );
 
 await finish(browser);

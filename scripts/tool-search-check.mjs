@@ -14,7 +14,7 @@
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
-const { browser, page } = await open({ viewport: { width: 1500, height: 1000 } });
+const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tools`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('input[placeholder="Search tools..."]', { timeout: 20_000 });
@@ -90,12 +90,19 @@ async function sieve(value) {
 const everything = await settled();
 record(everything.length > 0, `the page lists tools to search (${everything.length})`);
 
-const first = everything[0];
-const bitOf = first.slice(0, Math.max(3, Math.floor(first.length / 2)));
+/*
+ * A piece some row on the page does not carry, so leaving it out is visible. The
+ * list is paged, and a suite that has run before leaves ten tools named alike -
+ * half of the first name then matched a whole page, before and after, and a
+ * count could not tell the search had worked.
+ */
+const halfOf = (name) => name.slice(0, Math.max(3, Math.floor(name.length / 2))).toLowerCase();
+const first = everything.find((name) => everything.some((other) => !other.toLowerCase().includes(halfOf(name)))) ?? everything[0];
+const bitOf = halfOf(first);
 const narrowed = await look(bitOf);
 record(
-  narrowed.length > 0 && narrowed.length < everything.length,
-  `a piece of a name narrows the list rather than leaving it whole (${narrowed.length} of ${everything.length} for "${bitOf}")`,
+  narrowed.length > 0 && everything.some((one) => !one.toLowerCase().includes(bitOf)),
+  `a piece of a name narrows the list rather than leaving it whole (${narrowed.length} left of ${everything.length} for "${bitOf}")`,
 );
 record(
   narrowed.every((one) => one.toLowerCase().includes(bitOf.toLowerCase())),
@@ -123,20 +130,29 @@ record(
  * because their descriptions mention a commit's date. A word common enough to
  * type is common enough to appear in prose.
  */
+/*
+ * Against every name the workspace has, not the page's: the list is paged, and a
+ * word missing from the first page can be in a name on the third, where the
+ * search rightly finds it.
+ */
+const everyName = [
+  ...(await graphql(`query($w: ID!) { workspaceTools(workspaceId: $w, page: 0, size: 1000) { content { name } } }`, { w: WORKSPACE }))
+    .workspaceTools.content.map((one) => one.name),
+  ...(await graphql(`{ builtInTools { name } }`)).builtInTools.map((one) => one.name),
+].map((name) => name.toLowerCase());
 const prose = await page.evaluate(() => {
   const rows = [...document.querySelectorAll('section > div')].filter(
     (one) => one.children.length === 5 && one.firstElementChild.textContent.trim() !== 'Name',
   );
-  const names = rows.map((one) => (one.firstElementChild.firstChild?.textContent ?? '').toLowerCase());
   const words = rows.flatMap((one) => one.children[1].textContent.toLowerCase().match(/[a-z]{6,}/g) ?? []);
-  return words.find((word) => names.every((name) => !name.includes(word))) ?? null;
-});
+  return words;
+}).then((words) => words.find((word) => everyName.every((name) => !name.includes(word))) ?? null);
 record(prose !== null, `the descriptions have a word no name carries (${prose})`);
 if (prose !== null) {
   const byProse = await look(prose);
   record(
     byProse.length === 0,
-    `a word only a description carries finds nothing (${byProse.length} for "${prose}")`,
+    `a word only a description carries finds nothing (${byProse.length} for "${prose}": ${byProse.slice(0, 5).join(", ")})`,
   );
 }
 

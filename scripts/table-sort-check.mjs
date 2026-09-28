@@ -252,7 +252,7 @@ const firstCell = async () => {
 for (const list of [
   { path: 'executions', column: 'Workflow' },
   { path: 'tasks', column: 'Task' },
-  { path: 'sessions', column: 'Session' },
+  { path: 'sessions', column: 'Key' }, // a session is named by its key since #419
   { path: 'audit', column: 'Action' },
   { path: 'models', column: 'Provider' },
   { path: 'integrations', column: 'Address' },

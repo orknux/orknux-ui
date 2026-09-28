@@ -110,6 +110,11 @@ const after = await graphql(
    }`,
   { w: WORKSPACE },
 );
+const builtIns = new Set(
+  (await graphql(`{ builtInTools { name governance } }`)).builtInTools
+    .filter((one) => one.governance === 'GRANT')
+    .map((one) => one.name),
+);
 const fresh = after.workspaceAgents.content.filter((one) => !had.has(one.id));
 made.push(...fresh.map((one) => one.id));
 
@@ -124,13 +129,16 @@ if (record(fresh.length === 1, `exactly one agent was made (${fresh.length} appe
   record(
     agent.systemPrompt === null &&
       agent.description === null &&
-      agent.tools.length === 0 &&
-      agent.skillCatalogs.length === 0 &&
+      // The server's own tools are on for every agent since #444 - a built-in is
+      // on unless somebody turned it off - so "nothing" is nothing beyond them.
+      agent.tools.every((name) => builtIns.has(name)) &&
+      // And the skills the server brings, granted by default since e3d262b4.
+      agent.skillCatalogs.every((name) => name === 'orknux_skills') &&
       agent.memoryCatalogs.length === 0 &&
       agent.mcpServers.length === 0 &&
       agent.orknuxAccess === false &&
       agent.shellAccess === false,
-    'and it is granted nothing at all, which is what makes it something to dress rather than a surprise',
+    `and it is granted nothing at all, which is what makes it something to dress rather than a surprise (${JSON.stringify({ ...agent, tools: agent.tools.filter((name) => !builtIns.has(name)) })})`,
   );
   record(landed.endsWith(`/agents/${agent.id}/settings`), 'and the page it landed on is that agent');
 }

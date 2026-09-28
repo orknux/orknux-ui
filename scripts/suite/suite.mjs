@@ -2730,7 +2730,7 @@ export const TESTS = [
 
   {
     name: 'session-notes-check',
-    what: 'a session draws what its agents wrote down for themselves, above the transcript',
+    what: 'a session draws what its agents wrote down for themselves, as lines of its log where they were written',
     needs: ['session'],
     /*
      * Issue #371. What is kept and what is refused is pinned in NoteToSelfTest;

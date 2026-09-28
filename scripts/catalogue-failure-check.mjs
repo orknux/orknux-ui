@@ -106,7 +106,9 @@ const SCREENS = [
         query: 'skillCatalogs(',
         nothing: { data: { skillCatalogs: [] } },
         what: 'skill catalogs',
-        notes: 1,
+        // Two lists read it since #480: the catalogs, and the skills in them with
+        // what happens to each. Each says it failed and offers its own retry.
+        notes: 2,
         /*
          * No empty sentence to look for.
          *
@@ -219,7 +221,7 @@ for (const screen of SCREENS) {
   }
   record(
     (await page.locator('button:has-text("Try again")').count()) === retries(screen),
-    `${screen.name}: every failed line offers a way to ask again`,
+    `${screen.name}: every failed line offers a way to ask again (${await page.locator('button:has-text("Try again")').count()} of ${retries(screen)})`,
   );
   await page.screenshot({ path: shot(`catalogue-failed-${screen.catalogues[0].what.split(' ')[0]}.png`) });
 

@@ -1617,9 +1617,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         <div className={styles.field}>
           <span className={styles.labelWithHint}>
             <label className={styles.label} htmlFor="workspace-compaction-keep">
-              {t('Steps A Compacted Turn Keeps')}
+              {t('Steps Kept When Compacting')}
             </label>
-            <FieldHint label={t('Steps A Compacted Turn Keeps')}>
+            <FieldHint label={t('Steps Kept When Compacting')}>
               {t('When a turn outgrows its model it is summarised and carried on rather than thrown away. This is how many of its most recent steps are kept word for word; the recent end is what the next round is about. Left empty, the installation\u2019s number is used. Between 2 and 100.')}
             </FieldHint>
           </span>
@@ -1665,9 +1665,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         <div className={styles.field}>
           <span className={styles.labelWithHint}>
             <label className={styles.label} htmlFor="workspace-compaction-attempts">
-              {t('Compactions Before A Turn Gives Up')}
+              {t('Compaction Tries Per Turn')}
             </label>
-            <FieldHint label={t('Compactions Before A Turn Gives Up')}>
+            <FieldHint label={t('Compaction Tries Per Turn')}>
               {t('How many times one turn may be summarised before it fails instead. A turn still too large after two summaries is not long, it is looping. Left empty, the installation\u2019s number is used. Between 1 and 10.')}
             </FieldHint>
           </span>

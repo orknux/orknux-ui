@@ -18,6 +18,24 @@ import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mj
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1200 } });
 
+/*
+ * Hiding a built-in is gated since #482/#483: the rows are fixed until the
+ * workspace allows unsafe built-in visibility. This check is about what a switch
+ * stores, so it opens the gate for its run and puts it back as it found it.
+ */
+const unsafeWas = (await graphql(`query ($w: ID!) { workspace(id: $w) { unsafeBuiltInTools } }`, { w: WORKSPACE }))
+  .workspace.unsafeBuiltInTools;
+const allowUnsafe = (allowed) =>
+  graphql(`mutation ($w: ID!, $a: Boolean!) { setWorkspaceUnsafeBuiltInTools(workspaceId: $w, allowed: $a) { id } }`, {
+    w: WORKSPACE,
+    a: allowed,
+  });
+await allowUnsafe(true);
+const done = async () => {
+  await allowUnsafe(unsafeWas).catch(() => undefined);
+  await finish(browser);
+};
+
 /* ----------------------------------------------------------------- fixture */
 
 const PREFIX = 'zzToolBudget';
@@ -51,7 +69,7 @@ console.log(`granting: ${TOOL}`);
 
 const clean = async () => {
   await sweep();
-  await finish(browser);
+  await done();
 };
 
 if (TOOL === null) {
@@ -67,12 +85,14 @@ if (TOOL === null) {
  */
 const { builtInTools } = await graphql(`{ builtInTools { name governance } }`);
 const BY_NAME = builtInTools.filter((one) => one.governance === 'GRANT').map((one) => one.name);
-const WITH_GRANT = builtInTools.filter((one) => one.governance !== 'GRANT');
+// The reaching built-ins - fetching and searching - are switched by name like the
+// rest, only off until asked for, so they are not rows of somebody else's grant.
+const WITH_GRANT = builtInTools.filter((one) => one.governance !== 'GRANT' && one.governance !== 'GRANT_REACHING');
 console.log(`built-ins: ${BY_NAME.length} by name, ${WITH_GRANT.length} with a wider grant`);
 
 await graphql(
   `mutation($id: ID!, $name: String!, $tools: [String!]) {
-     updateAgent(id: $id, input: { name: $name, tools: $tools }) { tools }
+     updateAgent(id: $id, input: { name: $name, tools: $tools, skillCatalogs: [] }) { tools }
    }`,
   { id: AGENT, name: made.createAgent.name, tools: [TOOL, ...BY_NAME] },
 );
@@ -233,7 +253,7 @@ record((await note.getAttribute('data-tool-state')) === 'hide', 'note_to_self ca
  * The list narrows to one status. Only where the list is long enough to draw
  * its filters at all, which is where a filter earns its keep. Issue #413.
  */
-const statusFilter = page.locator('[data-tool-status-filter]');
+const statusFilter = page.locator('[data-grants="tools"] [data-tool-status-filter]'); // the skills list has one too since ed85852
 if ((await statusFilter.count()) > 0) {
   await statusFilter.selectOption('always');
   await page.waitForTimeout(400);

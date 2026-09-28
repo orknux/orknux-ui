@@ -250,7 +250,13 @@ async function transcript(ordering = '') {
      }`,
     { id: read.id },
   );
-  return answered.llmSessionEvents;
+  /*
+   * The lines the page draws as lines. The agent's setup is an event too, but it
+   * is drawn as a block where the agent started answering rather than as a line
+   * of the log (#441), so the transcript is held against the rest.
+   */
+  const content = answered.llmSessionEvents.content.filter((one) => one.kind in KIND_LABEL);
+  return { totalElements: content.length, content };
 }
 
 const whole = await transcript();
@@ -290,7 +296,8 @@ record(
 /** The keys drawn on the sessions list, top to bottom. */
 const listedKeys = () =>
   page.$$eval(`a[href^="/workspace/${WORKSPACE}/sessions/"]`, (rows) =>
-    rows.map((row) => row.querySelector('span')?.textContent?.trim() ?? ''),
+    // The key's own column: a row opens on its status dot since #404.
+    rows.map((row) => row.querySelector('span[class*="_colKey_"]')?.textContent?.trim() ?? ''),
   );
 
 /** Every line the transcript is drawing: its kind, who spoke, and when. */
@@ -627,7 +634,8 @@ if (await drawn(page, 'the session to remove')) {
   /* ----------------------------------------------------------- one press */
 
   await remove.click();
-  const armed = page.getByRole('button', { name: 'Remove it, and everything said in it', exact: true });
+  // The shared confirm dialog since 4cf7d83, rather than the button arming in place.
+  const armed = page.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true });
   const asks = await armed
     .waitFor({ state: 'visible', timeout: 10_000 })
     .then(() => true)

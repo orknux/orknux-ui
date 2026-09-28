@@ -225,6 +225,10 @@ await openEditor(writers.id);
 
 const history = page.getByRole('region', { name: 'History' });
 await history.waitFor({ timeout: 20_000 }).catch(() => undefined);
+// Collapsed until pressed since #414, so a component saved often does not push
+// the page under it off the screen.
+const toggle = history.locator('[data-history-toggle]');
+if ((await toggle.getAttribute('aria-expanded').catch(() => null)) === 'false') await toggle.click();
 const rows = history.locator('li');
 await rows.first().waitFor({ timeout: 20_000 }).catch(() => undefined);
 record((await rows.count()) > 0, `the History panel lists ${await rows.count()} version(s) to restore`);

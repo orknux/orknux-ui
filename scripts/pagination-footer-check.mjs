@@ -189,7 +189,9 @@ const LISTS = [
   { file: 'WorkspaceObjectsPage.tsx', path: '/objects', title: 'Objects', unit: 'objects', column: 'Name' },
   { file: 'WorkspaceToolsPage.tsx', path: '/tools', title: 'Tools', unit: 'tools', column: 'Name' },
   { file: 'WorkspaceTasksPage.tsx', path: '/tasks', title: 'Tasks', unit: 'tasks', column: 'Task' },
-  { file: 'WorkspaceSessionsPage.tsx', path: '/sessions', title: 'Sessions', unit: 'sessions', column: 'Session' },
+  // A session is named by its key since #419, and the dot that says whether an
+  // agent is at work in it leads the row under Status since #404.
+  { file: 'WorkspaceSessionsPage.tsx', path: '/sessions', title: 'Sessions', unit: 'sessions', lead: 'Status', column: 'Key' },
   {
     file: 'WorkspaceAuditPage.tsx',
     path: '/audit',
@@ -373,9 +375,15 @@ try {
       );
     } else if (record(heads !== null, `${list.title} draws a heading row over its rows`)) {
       headed += 1;
+      // A leading status column says something about the row rather than naming
+      // it, so the noun is the first heading after it.
+      if (list.lead !== undefined) {
+        record(heads[0] === list.lead, `${list.title}: its rows are led by ${list.lead} - it says "${heads[0]}"`);
+      }
+      const named = list.lead === undefined ? heads[0] : heads[1];
       record(
-        heads[0] === list.column,
-        `${list.title}: its first column is headed "${list.column}" - it says "${heads[0]}"`,
+        named === list.column,
+        `${list.title}: its first column is headed "${list.column}" - it says "${named}"`,
       );
       /*
        * The word this whole check was written for, at the other end of the

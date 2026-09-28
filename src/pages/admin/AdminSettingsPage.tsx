@@ -234,7 +234,11 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
-  const changed = pending.length > 0;
+  // The marker is text rather than a number, and goes out with the numbers:
+  // it had a Save of its own, which made two on a page promised one.
+  const markerTyped = marker.trim();
+  const markerChanged = settings !== null && markerTyped !== '' && markerTyped !== settings.commandMarker;
+  const changed = pending.length > 0 || markerChanged;
 
   /**
    * Every changed number, one call each, in the order they appear.
@@ -256,7 +260,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
       for (const one of pending) {
         held = await one.write(Number(one.typed));
       }
+      if (markerChanged) held = await setCommandMarker(markerTyped);
       setSettings(held);
+      setMarker(held.commandMarker);
       setRetention(String(held.revisionRetentionDays));
       setRunRetention(String(held.executionRetentionDays));
       setSweep(String(held.taskSweepMinutes));
@@ -1049,13 +1055,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   disabled={busy}
                   aria-label={t('Command marker')}
                 />
-                {saved && <span className={styles.savedMark}>{t('Saved.')}</span>}
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  disabled={busy || marker.trim() === '' || marker.trim() === settings.commandMarker}
-                  onClick={() => void save(() => setCommandMarker(marker.trim()))}
-                >{t('Save')}</button>
               </div>
             </div>
 

@@ -321,7 +321,17 @@ async function measure(root, where) {
    * is a whole row's name, `keep` is a different name that does not contain it
    * and is not granted already.
    */
-  const hit = before.names.find((name) => name !== null && name.length > 3) ?? '';
+  // From the rows not yet granted, and carried by no granted name: the list opens
+  // on the built-ins since #444, every one held, and a word only they carry
+  // matches nothing a press could grant.
+  const hit =
+    before.names.find(
+      (name) =>
+        name !== null &&
+        name.length > 3 &&
+        !before.ticked.includes(name) &&
+        before.ticked.every((held) => !held.toLowerCase().includes(name.toLowerCase())),
+    ) ?? '';
   const keep = before.names.find(
     (name) =>
       name !== null &&

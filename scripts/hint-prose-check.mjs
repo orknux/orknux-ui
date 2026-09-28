@@ -157,6 +157,23 @@ const NOT_A_FIELD_NOTE = [
  * this file, and `why` says which of the reader's questions it answers.
  */
 const IN_THE_OPEN = [
+  // ---- What a workspace copy could not bring --------------------------------
+  //
+  // The result of pressing Duplicate, drawn once under the button that did it:
+  // which variables and which credentials the copy left behind on purpose. A
+  // report of what just happened, with a list after it, not advice on a field.
+  {
+    file: 'src/pages/admin/AdminPage.tsx',
+    says: 'These variables came without their values and need setting:',
+    because: 'status',
+    why: 'what the copy just left behind, introducing the list of what to set',
+  },
+  {
+    file: 'src/pages/admin/AdminPage.tsx',
+    says: 'These came without their credentials and need setting:',
+    because: 'status',
+    why: 'what the copy just left behind, introducing the list of what to set',
+  },
   // ---- Lists with nothing in them, and lists a search emptied ------------
   //
   // Eleven of these arrived together: the plugins screens and the three

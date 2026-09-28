@@ -397,7 +397,9 @@ const outcomeOf = () => box().getAttribute('data-outcome');
  * own for this to find instead. It is only ever asked for on the action surface;
  * the node panel's half of this file measures its own controls.
  */
-const saveButton = () => page.locator('form button[type="submit"]');
+// In the page's header since a5c6f3e, tied back to its form by a `form`
+// attribute rather than drawn inside it.
+const saveButton = () => page.locator('button[type="submit"][form], form button[type="submit"]').first();
 
 /**
  * The list under whichever field is being read, and what is in it.

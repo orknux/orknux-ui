@@ -137,9 +137,13 @@ record(
 );
 await page.getByRole('dialog').getByRole('button', { name: 'Import' }).click();
 await page.waitForTimeout(2500);
+// The server's own tools are on every agent since #444, so what an import carries
+// is read past them.
+const builtIns = new Set((await graphql(`{ builtInTools { name } }`)).builtInTools.map((one) => one.name));
+const own = (agent) => agent.tools.filter((name) => !builtIns.has(name));
 const arrived = (await graphql(`query($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 200, search: "zzChoice") { content { name tools } } }`, { w: INTO })).workspaceAgents.content;
 const bot = arrived.find((one) => one.name === AGENT) ?? null;
-record(bot !== null && bot.tools.length === 0, `the agent arrived without the tool (${JSON.stringify(bot?.tools ?? null)})`);
+record(bot !== null && own(bot).length === 0, `the agent arrived without the tool (${JSON.stringify(bot === null ? null : own(bot))})`);
 await page.keyboard.press('Escape').catch(() => undefined);
 
 /* -------------------------------------------------------------- a rename */
@@ -166,7 +170,7 @@ await page.waitForTimeout(2500);
 const landed = (await graphql(`query($w: ID!) { workspaceTools(workspaceId: $w, page: 0, size: 200, search: "zzChoice") { content { name } } }`, { w: INTO })).workspaceTools.content;
 record(landed.some((one) => one.name === RENAMED) && !landed.some((one) => one.name === TOOL), 'the tool landed under the name chosen');
 const after = (await graphql(`query($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 200, search: "zzChoice") { content { name tools } } }`, { w: INTO })).workspaceAgents.content;
-const copy = after.find((one) => one.name.startsWith(AGENT) && one.tools.length > 0) ?? null;
-record(copy !== null && copy.tools.includes(RENAMED), `and the agent's grant followed it (${JSON.stringify(copy?.tools ?? null)})`);
+const copy = after.find((one) => one.name.startsWith(AGENT) && own(one).length > 0) ?? null;
+record(copy !== null && copy.tools.includes(RENAMED), `and the agent's grant followed it (${JSON.stringify(copy === null ? null : own(copy))})`);
 
 await clean();
