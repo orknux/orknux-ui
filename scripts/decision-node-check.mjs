@@ -319,6 +319,13 @@ await page.waitForTimeout(400);
 const fresh = page.locator('[data-testid="decision-question"]').last();
 const rowsDrawn = await fresh.locator('[data-testid="decision-option"]').count();
 record(rowsDrawn === 2, `a new choice question draws two option rows to fill (${rowsDrawn})`);
+/* An option's meaning sits under its name, not beside it as a second box that reads as another option. */
+const stacked = await fresh.locator('[data-testid="decision-option"]').first().evaluate((row) => {
+  const name = row.querySelector('input[aria-label="Option name"]')?.getBoundingClientRect();
+  const meaning = row.querySelector('[data-testid="decision-option-meaning"]')?.getBoundingClientRect();
+  return name && meaning ? { nameBottom: name.bottom, meaningTop: meaning.top } : null;
+});
+record(stacked !== null && stacked.meaningTop >= stacked.nameBottom - 1, `an option's meaning is drawn under its name (${JSON.stringify(stacked)})`);
 
 const top = async (selector) => (await fresh.locator(selector).first().boundingBox({ timeout: 5_000 }).catch(() => null))?.y ?? null;
 const order = {
@@ -347,6 +354,12 @@ record(
   (await keyBox.inputValue()) === 'rate_question_complexity_please',
   `typed fast, the key follows the whole question (${await keyBox.inputValue()})`,
 );
+/* The key's box has the card's whole width, on a line of its own, and the full key on hover. */
+const fits = await keyBox.evaluate((box) => {
+  const card = box.closest('[data-testid="decision-question"]').getBoundingClientRect();
+  return { box: Math.round(box.getBoundingClientRect().width), card: Math.round(card.width), title: box.title };
+});
+record(fits.box >= fits.card - 40 && fits.title === 'rate_question_complexity_please', `and the key's box spans the card, the whole key on hover (${JSON.stringify(fits)})`);
 await keyBox.fill('my_key');
 await asked.fill('Something else entirely');
 record((await keyBox.inputValue()) === 'my_key', 'a key somebody typed stays as they typed it');
@@ -367,7 +380,10 @@ const shape = await fresh.evaluate((card) => {
     kinds,
     askedLabel: (asked?.closest('label')?.innerText ?? '').split('\n')[0].trim(),
     key: key?.tagName ?? null,
-    keyLabel: (key?.closest('label')?.innerText ?? '').split('\n')[0].trim(),
+    keyLabel: (key?.closest('[data-testid="decision-key"]')?.innerText ?? '').split('\n')[0].trim(),
+    keyHint: key?.closest('[data-testid="decision-key"]')?.querySelector('button[aria-label^="About"]') != null,
+    keyInline: (key?.closest('[data-testid="decision-key"]')?.innerText ?? '').includes('Later nodes read'),
+    bins: [...card.querySelectorAll('[data-testid="decision-option"] button[aria-label="Remove option"]')].length,
     removeIcon: remove !== null && remove.querySelector('svg') !== null && remove.innerText.trim() === '',
   };
 });
@@ -380,6 +396,8 @@ record(
   shape.key === 'INPUT' && shape.keyLabel.toLowerCase() === 'output key',
   `and its key is an input labelled Output key (${JSON.stringify(shape)})`,
 );
+record(shape.keyHint && !shape.keyInline, 'where later nodes read it is in a (?) beside Output key, not a line under it');
+record(shape.bins === 0, `a choice with only its two rows offers no bin that would put an empty row straight back (${shape.bins})`);
 record(shape.removeIcon, 'removing a question is an icon button, not a word');
 
 await fresh.getByRole('radio', { name: 'Yes or no' }).click({ timeout: 5_000 }).catch(() => undefined);

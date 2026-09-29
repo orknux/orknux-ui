@@ -346,35 +346,60 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
                   <div className={styles.options}>
                     {rows.map((option, at) => (
                       <div className={styles.option} key={at} data-testid="decision-option">
-                        <span className={styles.marker} aria-hidden="true">
-                          {question.kind === 'SCORE' ? at : `${at + 1}.`}
-                        </span>
-                        <input
-                          className={`${editor.input} ${styles.box} ${styles.optionName}`}
-                          value={option.name}
-                          maxLength={64}
-                          placeholder={
-                            question.kind === 'SCORE' ? (at === 0 ? t('Lowest level') : t('Level')) : t('Option')
-                          }
-                          aria-label={question.kind === 'SCORE' ? t('Level name') : t('Option name')}
-                          onChange={(event) => putOption(index, at, { ...option, name: event.target.value })}
-                        />
-                        <input
-                          className={`${editor.input} ${styles.box}`}
-                          value={option.description}
-                          placeholder={t('What it means (optional)')}
-                          aria-label={t('What it means')}
-                          onChange={(event) => putOption(index, at, { ...option, description: event.target.value })}
-                        />
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          aria-label={question.kind === 'SCORE' ? t('Remove level') : t('Remove option')}
-                          title={question.kind === 'SCORE' ? t('Remove level') : t('Remove option')}
-                          onClick={() => put(index, { ...question, options: rows.filter((_, n) => n !== at) })}
-                        >
-                          <TrashIcon />
-                        </button>
+                        {/*
+                          The option, and under it, smaller and indented, what it
+                          means. Side by side as two equal boxes they read as two
+                          options - reported.
+                        */}
+                        <div className={styles.optionFields}>
+                          {/*
+                            Each box says what it is, the way the Yes and No rows do:
+                            bare boxes holding "1" and "2" were not readable as one
+                            option and its meaning.
+                          */}
+                          <label className={styles.optionLine}>
+                            <span className={styles.lineTag}>
+                              {question.kind === 'SCORE' ? tf('Level {n}', { n: at }) : tf('Option {n}', { n: at + 1 })}
+                            </span>
+                            <input
+                              className={`${editor.input} ${styles.box} ${styles.optionName}`}
+                              value={option.name}
+                              maxLength={64}
+                              placeholder={
+                                question.kind === 'SCORE' ? (at === 0 ? t('e.g. low') : t('e.g. high')) : t('e.g. billing')
+                              }
+                              aria-label={question.kind === 'SCORE' ? t('Level name') : t('Option name')}
+                              onChange={(event) => putOption(index, at, { ...option, name: event.target.value })}
+                            />
+                          </label>
+                          <label className={styles.optionLine}>
+                            <span className={`${styles.lineTag} ${styles.lineTagQuiet}`}>{t('Means')}</span>
+                            <input
+                              className={`${editor.input} ${styles.box} ${styles.meaningBox}`}
+                              value={option.description}
+                              placeholder={t('What it means (optional)')}
+                              aria-label={t('What it means')}
+                              data-testid="decision-option-meaning"
+                              onChange={(event) => putOption(index, at, { ...option, description: event.target.value })}
+                            />
+                          </label>
+                        </div>
+                        {/*
+                          Only above two: a choice is drawn with two rows at least, so
+                          removing one of two put an empty row straight back and the
+                          bin looked broken - reported. With two, change the text.
+                        */}
+                        {rows.length > 2 && (
+                          <button
+                            type="button"
+                            className={styles.iconButton}
+                            aria-label={question.kind === 'SCORE' ? t('Remove level') : t('Remove option')}
+                            title={question.kind === 'SCORE' ? t('Remove level') : t('Remove option')}
+                            onClick={() => put(index, { ...question, options: rows.filter((_, n) => n !== at) })}
+                          >
+                            <TrashIcon />
+                          </button>
+                        )}
                       </div>
                     ))}
                     <button
@@ -388,11 +413,20 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
                 )}
               </div>
 
-              <label className={styles.keyRow} data-testid="decision-key">
-                <span className={styles.controlLabel}>{t('Output key')}</span>
+              {/* A div, not a label: the (?) beside the name must not be a press on the box. */}
+              <div className={styles.keyRow} data-testid="decision-key">
+                <span className={styles.keyLabel}>
+                  <span className={styles.controlLabel}>{t('Output key')}</span>
+                  <FieldHint label={t('Output key')}>
+                    {tf('Later nodes read this answer as {path}. It is made from the question until you type your own.', {
+                      path: readAs(question),
+                    })}
+                  </FieldHint>
+                </span>
                 <input
                   className={`${editor.input} ${styles.box} ${styles.key}`}
                   value={question.key}
+                  title={question.key}
                   aria-label={t('Output key')}
                   spellCheck={false}
                   onChange={(event) => {
@@ -412,8 +446,7 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
                     ↺
                   </button>
                 )}
-                <span className={styles.keyNote}>{tf('Later nodes read {path}', { path: readAs(question) })}</span>
-              </label>
+              </div>
             </div>
           );
         })}

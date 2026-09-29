@@ -77,14 +77,25 @@
   border-top: 1px dashed var(--color-border);
 }
 
+/* As wide as the row allows: a key made from a question is long, and a box cut at 140px hid its end. */
 .key {
-  flex: 0 1 140px;
+  flex: 1 1 0;
   min-width: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
 
+/* The key's name and its (?), kept together. */
+.keyLabel {
+  /* A line of its own, so the box under it has the card's whole width for a long key. */
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .keyNote {
+  flex-basis: 100%;
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--color-text-muted);
@@ -160,13 +171,65 @@
   gap: var(--space-6);
 }
 
-.optionName {
-  flex: 0 1 40%;
+.option {
+  align-items: flex-start;
+}
+
+/*
+ * One option, outlined as one thing: its name and what it means, each box
+ * labelled the way the Yes and No rows are.
+ */
+.optionFields {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.optionLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.lineTag {
+  flex: 0 0 72px;
+  padding: 2px var(--space-4);
+  border-radius: var(--radius-4);
+  background: var(--color-surface-raised);
   font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.lineTagQuiet {
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.optionName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+
+.meaningBox {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
 }
 
 .addOption {
   align-self: flex-start;
+  /* Room above and to the side, so it reads as a button under the list rather than touching the last option. */
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-6);
 }
 
 /* Puts a chosen key back to following the question's wording. */
