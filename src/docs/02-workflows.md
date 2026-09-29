@@ -141,6 +141,7 @@ Every one of those keystrokes is yours to change, in Preferences.
 | Object | Assembles a named shape, field by field, for later nodes to read. |
 | Session | Names the conversation the agent it leads to keeps, so what is said outlives the run. |
 | Image | Draws a picture from a description, with the workspace's text-to-image model. |
+| Decision model | Asks a decision model typed questions about what reached it, and can branch on the answer. |
 
 Each kind can be **inline** — defined in this workflow only — or made from a
 **definition** in the workspace catalogue, which several workflows can share.
@@ -167,6 +168,29 @@ the node says so rather than failing somewhere further in.
 the prompt](/screens/image-node.png)
 
 ![The run where it drew: the picture in the panel of the node that drew it](/screens/image-run.png)
+
+A decision model node asks a fast classifier rather than a chat model: Jev,
+TypeSafe AI's hosted one, or Laya, which runs on your own hardware and answers
+the same way. Add one under **Models** as a provider of the type *Decision model
+(Jev, Laya)*, with its address and, for Jev, its key, and give it a model of the
+kind *Decision*.
+
+The node sends a **state** — what reached it, or a value or reference you map
+instead — and asks one or more questions about it, each under a key of your
+choosing:
+
+| Question | What comes back |
+| --- | --- |
+| Choice | One of the options you name, with a probability for each. |
+| Score | A level on the scale you give, lowest first. |
+| Yes or no | The probability that the statement holds. |
+
+Each answer is passed on under its key with its **confidence**, and whether it
+was **sure** — whether it cleared the node's threshold. A node that branches on
+a choice question draws one line per option and one more, **Unsure**, which is
+the way out when the answer is under the threshold. Draw a line for every
+option; one left without a line is warned about when you save, because a run
+that picks it stops there.
 
 ## The catalogue
 
