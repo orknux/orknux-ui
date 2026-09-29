@@ -308,7 +308,7 @@ await openEditor();
 await selectNode(page, page.locator('.react-flow__node', { hasText: `${PREFIX} route` }).first(), 'the decision node');
 await page.waitForSelector('[data-testid="decision-question"]', { timeout: 15_000 }).catch(() => undefined);
 const kept = await page
-  .locator('[data-testid="decision-question"] input[aria-label="Option name"]')
+  .locator('[data-testid="decision-question"] [aria-label="Option name"]')
   .evaluateAll((all) => all.map((one) => one.value));
 record(JSON.stringify(kept) === JSON.stringify(['billing', 'shipping']), `the question comes back as it was saved (${JSON.stringify(kept)})`);
 
@@ -321,11 +321,19 @@ const rowsDrawn = await fresh.locator('[data-testid="decision-option"]').count()
 record(rowsDrawn === 2, `a new choice question draws two option rows to fill (${rowsDrawn})`);
 /* An option's meaning sits under its name, not beside it as a second box that reads as another option. */
 const stacked = await fresh.locator('[data-testid="decision-option"]').first().evaluate((row) => {
-  const name = row.querySelector('input[aria-label="Option name"]')?.getBoundingClientRect();
+  const name = row.querySelector('[aria-label="Option name"]')?.getBoundingClientRect();
   const meaning = row.querySelector('[data-testid="decision-option-meaning"]')?.getBoundingClientRect();
   return name && meaning ? { nameBottom: name.bottom, meaningTop: meaning.top } : null;
 });
 record(stacked !== null && stacked.meaningTop >= stacked.nameBottom - 1, `an option's meaning is drawn under its name (${JSON.stringify(stacked)})`);
+/* The question, an option and its meaning are boxes dragged taller from their corner. */
+const stretchy = await fresh.evaluate((card) =>
+  ['[data-testid="decision-asked"]', '[aria-label="Option name"]', '[data-testid="decision-option-meaning"]'].map((one) => {
+    const box = card.querySelector(one);
+    return box === null ? null : `${box.tagName}:${getComputedStyle(box).resize}`;
+  }),
+);
+record(stretchy.every((one) => one === 'TEXTAREA:vertical'), `the question, an option and its meaning drag taller (${JSON.stringify(stretchy)})`);
 
 const top = async (selector) => (await fresh.locator(selector).first().boundingBox({ timeout: 5_000 }).catch(() => null))?.y ?? null;
 const order = {

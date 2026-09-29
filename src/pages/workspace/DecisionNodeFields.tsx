@@ -303,8 +303,9 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
 
               <label className={styles.control}>
                 <span className={styles.controlLabel}>{question.kind === 'NOUL' ? t('Statement') : t('Question')}</span>
-                <input
-                  className={`${editor.input} ${styles.box}`}
+                <textarea
+                  className={`${editor.input} ${styles.box} ${styles.stretch}`}
+                  rows={1}
                   value={question.instructions}
                   placeholder={prompted(question.kind)}
                   data-testid="decision-asked"
@@ -327,8 +328,9 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
                         <span className={styles.sideTag} data-testid="decision-side">
                           {name === 'true' ? t('Yes') : t('No')}
                         </span>
-                        <input
-                          className={`${editor.input} ${styles.box}`}
+                        <textarea
+                          className={`${editor.input} ${styles.box} ${styles.stretch}`}
+                          rows={1}
                           value={side(question, name)}
                           placeholder={name === 'true' ? t('What yes means (optional)') : t('What no means (optional)')}
                           aria-label={name === 'true' ? t('What yes means') : t('What no means')}
@@ -361,21 +363,29 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
                             <span className={styles.lineTag}>
                               {question.kind === 'SCORE' ? tf('Level {n}', { n: at }) : tf('Option {n}', { n: at + 1 })}
                             </span>
-                            <input
-                              className={`${editor.input} ${styles.box} ${styles.optionName}`}
+                            <textarea
+                              className={`${editor.input} ${styles.box} ${styles.optionName} ${styles.stretch}`}
+                              rows={1}
                               value={option.name}
                               maxLength={64}
+                              // A name is one line - it is what a branch is called - so Enter adds none.
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') event.preventDefault();
+                              }}
                               placeholder={
                                 question.kind === 'SCORE' ? (at === 0 ? t('e.g. low') : t('e.g. high')) : t('e.g. billing')
                               }
                               aria-label={question.kind === 'SCORE' ? t('Level name') : t('Option name')}
-                              onChange={(event) => putOption(index, at, { ...option, name: event.target.value })}
+                              onChange={(event) =>
+                                putOption(index, at, { ...option, name: event.target.value.replace(/\n/g, ' ') })
+                              }
                             />
                           </label>
                           <label className={styles.optionLine}>
                             <span className={`${styles.lineTag} ${styles.lineTagQuiet}`}>{t('Means')}</span>
-                            <input
-                              className={`${editor.input} ${styles.box} ${styles.meaningBox}`}
+                            <textarea
+                              className={`${editor.input} ${styles.box} ${styles.meaningBox} ${styles.stretch}`}
+                              rows={1}
                               value={option.description}
                               placeholder={t('What it means (optional)')}
                               aria-label={t('What it means')}
