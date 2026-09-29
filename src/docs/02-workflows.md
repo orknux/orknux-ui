@@ -169,14 +169,16 @@ the prompt](/screens/image-node.png)
 
 ![The run where it drew: the picture in the panel of the node that drew it](/screens/image-run.png)
 
-A decision node runs on either kind of model. A decision model is faster and
-calibrated: Jev, TypeSafe AI's hosted one, or Laya, which runs on your own
-hardware and answers the same way. Add one under **Models** as a provider of the
-type *Decision model (Jev, Laya)*, with its address and, for Jev, its key, and
-give it a model of the kind *Decision*. A chat model works with any provider,
+A decision node runs on either kind of model. A decision model is any server
+that speaks the Jev format (`POST /v1/systemone`), hosted or on your own
+hardware; it is faster and its confidence is calibrated. Add one under
+**Models** as a provider of the type *Decision model (Jev format)*, with its
+address and a key if the server asks for one, and give it a model of the kind
+*Decision* named as the server names it. A chat model works with any provider,
 but the probabilities it gives are its own estimate rather than calibrated ones.
-The answers come back in the same shape whichever answered, so the branches and
-the threshold behave the same.
+The answers come back in the same shape whichever answered, so the branches
+behave the same - though a decision model's calibrated confidence runs lower, so
+it clears the same threshold less often.
 
 The node sends a **state** — what reached it, or a value or reference you map
 instead — and asks one or more questions about it, each under a key of your

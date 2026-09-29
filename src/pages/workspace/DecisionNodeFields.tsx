@@ -210,7 +210,7 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
             {t('Model')}
           </label>
           <FieldHint label={t('Model')}>
-            {t('Either kind works: a decision model (Jev, Laya) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate.')}
+            {t('Either kind works: a decision model (Jev format) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate. A decision model reports a calibrated confidence, lower than a chat model\'s, so it clears a threshold less often.')}
           </FieldHint>
         </span>
         <DefinitionPicker

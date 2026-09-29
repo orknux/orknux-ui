@@ -462,9 +462,9 @@ export function providerTypeLabel(type: ProviderType): string {
       return t('Azure OpenAI');
     case 'OLLAMA':
       return 'Ollama';
-    // Jev and Laya speak the same API, so one type covers both. Issue #577.
+    // One type for any server speaking the Jev format, whoever built it. Issue #577.
     case 'SYSTEM_ONE':
-      return t('Decision model (Jev, Laya)');
+      return t('Decision model (Jev format)');
   }
 }
 

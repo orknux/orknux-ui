@@ -6,7 +6,7 @@
  * loopback: the request is TypeSafe's documented one, a sure choice leaves by
  * its option, an unsure one by the unsure line. What no server test can say is
  * whether a person can set it up and see it - whether the Providers form will
- * save a Laya with no key and check it, and whether the run's page says which
+ * save a keyless Jev-format server and check it, and whether the run's page says which
  * option the run went by and draws the other branch as not taken.
  *
  * **It needs a decision model the server can reach**, which is why it is not in
@@ -49,7 +49,7 @@ const clean = async () => {
 
 /* ---- a provider with no key, made and checked on the form ---- */
 
-const NAME = `${PREFIX} Laya ${STAMP}`;
+const NAME = `${PREFIX} decision server ${STAMP}`;
 await page.goto(`${BASE}/workspace/${WORKSPACE}/models/providers/new`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#provider-type', { timeout: 30_000 });
 await page.locator('#provider-type').selectOption('SYSTEM_ONE', { timeout: 5_000 }).catch(() => undefined);

@@ -1,9 +1,8 @@
 /**
  * A decision model provider, and the decision node that asks one. Issue #577.
  *
- * Jev and a self-hosted Laya speak one API, so the Providers form offers one
- * type for both, and its key is optional - a Laya started without LAYA_API_KEY
- * has none to give. On the canvas a decision node that branches on a choice
+ * Any server speaking the Jev format is one provider type on the Providers
+ * form, and its key is optional, since a self-hosted server may ask for none. On the canvas a decision node that branches on a choice
  * leaves by one door per option and one for an answer too unsure to take, and
  * those doors are what the saved lines carry.
  *

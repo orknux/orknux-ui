@@ -2137,19 +2137,18 @@ export const PL: Record<string, string> = {
     "Blok, który jedna z załadowanych wtyczek deklaruje dla przepływów. Jego wejścia i wyjścia należą do wtyczki i są odczytywane z deklaracji przy każdym uruchomieniu akcji; węzeł wypełnia każde wejście polem o tej samej nazwie, o ile nie podłączono go do czegoś innego.",
   "A disabled node stays on the graph with its lines and is skipped by a run, which hands what reached it straight on. A disabled condition takes its upper way out.":
     "Wyłączony węzeł zostaje na grafie ze swoimi liniami, a uruchomienie go pomija, przekazując dalej to, co do niego dotarło. Wyłączony warunek wychodzi górnym wyjściem.",
-  // The decision model node and its provider (issue #577). Jev and Laya are names.
+  // The decision node and its provider (issue #577). Jev is the name of the format.
   "Decision model": "Model decyzyjny",
-  "Decision model (Jev, Laya)": "Model decyzyjny (Jev, Laya)",
+  "Decision model (Jev format)": "Model decyzyjny (format Jev)",
   "Decision": "Decyzja",
-  "Optional: TypeSafe issues one for Jev; a self-hosted Laya needs one only if LAYA_API_KEY is set.":
-    "Opcjonalny: TypeSafe wydaje go dla Jev; własna Laya potrzebuje go tylko przy ustawionym LAYA_API_KEY.",
+  "Optional: only if the server asks for one.": "Opcjonalny: tylko jeśli serwer go wymaga.",
   "Unsure": "Niepewne",
   "Choice": "Wybór",
   "Score": "Ocena",
   "Yes or no": "Tak czy nie",
   "Chat model": "Model czatu",
-  "Either kind works: a decision model (Jev, Laya) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate.":
-    "Działa każdy z dwóch rodzajów: model decyzyjny (Jev, Laya) jest szybszy i skalibrowany; model czatu działa z każdym dostawcą, ale jego prawdopodobieństwa to jego własna ocena.",
+  "Either kind works: a decision model (Jev format) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate. A decision model reports a calibrated confidence, lower than a chat model's, so it clears a threshold less often.":
+    "Działa każdy z dwóch rodzajów: model decyzyjny (format Jev) jest szybszy i skalibrowany; model czatu działa z każdym dostawcą, ale jego prawdopodobieństwa to jego własna ocena. Model decyzyjny podaje skalibrowaną pewność, niższą niż model czatu, więc rzadziej przekracza próg.",
   "This workspace has no decision or chat model": "Ta przestrzeń nie ma modelu decyzyjnego ani modelu czatu",
   "Choose a model…": "Wybierz model…",
   "Search models…": "Szukaj modeli…",
