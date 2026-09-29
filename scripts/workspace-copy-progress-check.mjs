@@ -12,7 +12,12 @@ import { BASE, open, record, drawn, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1400, height: 1000 } });
 const NAME = `aaa copy progress ${Date.now()}`;
-const SKILLS = 40;
+/*
+ * Enough that the copy outlasts a few of the page's half-second polls. Forty
+ * was, until SQLite stopped starving the poll behind the copy; then the copy
+ * of forty finished before the first poll and the bar had nothing to show.
+ */
+const SKILLS = 300;
 
 const sweep = async () => {
   const { workspaces } = await graphql(`{ workspaces(page: 0, size: 200) { content { id name } } }`);
