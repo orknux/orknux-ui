@@ -202,14 +202,15 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   }, [workspaceId]);
 
   /*
-   * The provider-specific settings follow the provider picked above, so a model
-   * moved from Azure to another type stops offering Azure's reasoning effort.
+   * The sampling and reasoning settings follow the provider picked above, so a
+   * model moved from a llama.cpp server to Azure stops offering top-k and
+   * starts offering a reasoning effort.
    */
-  const providerType = providers?.find((one) => one.id === providerId)?.type ?? null;
   useEffect(() => {
-    if (providerType === null) return;
+    if (providerId === '') return;
     let abandoned = false;
-    fetchChatModelParameters(providerType)
+    setChatParameters(null);
+    fetchChatModelParameters(providerId)
       .then((held) => {
         if (!abandoned) setChatParameters(held);
       })
@@ -217,7 +218,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     return () => {
       abandoned = true;
     };
-  }, [providerType]);
+  }, [providerId]);
 
   /*
    * The metrics are their own request, for two reasons: the settings should
@@ -300,9 +301,19 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
    * delete the model and make it again.
    */
   const reads = model?.kind === 'SPEECH';
-  /** The reasoning effort's choices where this provider's type takes one for a chat model, else null. */
-  const effortChoices =
-    kind === 'CHAT' ? (chatParameters?.find((one) => one.name === 'reasoningEffort')?.choices ?? null) : null;
+  /** Whether the provider reads this setting for a chat model; only those are drawn and sent. */
+  const offered = (name: string): boolean => kind === 'CHAT' && (chatParameters?.some((one) => one.name === name) ?? false);
+  /** The reasoning effort's choices where the provider reads one, else null. */
+  const effortChoices = offered('reasoningEffort')
+    ? (chatParameters?.find((one) => one.name === 'reasoningEffort')?.choices ?? null)
+    : null;
+  /**
+   * What a setting is saved as: as stored while the provider's list is still
+   * on its way, the box where it is drawn, and nothing where the provider does
+   * not read it - the server refuses one there.
+   */
+  const sampled = (name: string, typed: string, stored: number | null): number | null =>
+    chatParameters === null ? stored : offered(name) ? toNumber(typed) : null;
   const EDITABLE_KINDS = model !== null && !MAKEABLE_KINDS.includes(model.kind) ? [...MAKEABLE_KINDS, model.kind] : MAKEABLE_KINDS;
 
   /**
@@ -345,11 +356,11 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         // Not yet known is sent back as stored; known and not taken is nothing, which the server requires.
         reasoningEffort:
           chatParameters === null ? model.reasoningEffort : effortChoices === null || reasoningEffort === '' ? null : reasoningEffort,
-        temperature: toNumber(temperature),
-        topP: toNumber(topP),
-        topK: toNumber(topK),
-        minP: toNumber(minP),
-        repeatPenalty: toNumber(repeatPenalty),
+        temperature: sampled('temperature', temperature, model.temperature),
+        topP: sampled('topP', topP, model.topP),
+        topK: sampled('topK', topK, model.topK),
+        minP: sampled('minP', minP, model.minP),
+        repeatPenalty: sampled('repeatPenalty', repeatPenalty, model.repeatPenalty),
         inputCostPerMillion: model.inputCostPerMillion,
         outputCostPerMillion: model.outputCostPerMillion,
         voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
@@ -654,86 +665,96 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                   </select>
                 </div>
               )}
-              <div className={styles.field}>
-                <span className={styles.labelWithHint}>
-                  <label className={styles.label} htmlFor="temperature">{t('Temperature')}</label>
-                  <FieldHint label={t('Temperature')}>
-                    {t('How freely the model picks its words: 0 always takes the likeliest, higher is looser. Empty sends nothing and the server uses its own default - a local model often runs at the 1.0 stored in its file. Between 0 and 2.')}
-                  </FieldHint>
-                </span>
-                <input
-                  id="temperature"
-                  className={`${styles.input} ${styles.inputMono}`}
-                  value={temperature}
-                  onChange={(event) => setTemperature(event.target.value)}
-                  placeholder={t('Server default')}
-                  inputMode="decimal"
-                />
-              </div>
-              <div className={styles.field}>
-                <span className={styles.labelWithHint}>
-                  <label className={styles.label} htmlFor="top-p">{t('Top P')}</label>
-                  <FieldHint label={t('Top P')}>
-                    {t('Only the likeliest words that together make up this share are considered. Empty sends nothing. Between 0 and 1.')}
-                  </FieldHint>
-                </span>
-                <input
-                  id="top-p"
-                  className={`${styles.input} ${styles.inputMono}`}
-                  value={topP}
-                  onChange={(event) => setTopP(event.target.value)}
-                  placeholder={t('Server default')}
-                  inputMode="decimal"
-                />
-              </div>
-              <div className={styles.field}>
-                <span className={styles.labelWithHint}>
-                  <label className={styles.label} htmlFor="top-k">{t('Top K')}</label>
-                  <FieldHint label={t('Top K')}>
-                    {t('Only this many of the likeliest words are considered. For servers that take it - llama.cpp, Ollama, vLLM; a hosted OpenAI model refuses a request carrying it. Empty sends nothing.')}
-                  </FieldHint>
-                </span>
-                <input
-                  id="top-k"
-                  className={`${styles.input} ${styles.inputMono}`}
-                  value={topK}
-                  onChange={(event) => setTopK(event.target.value)}
-                  placeholder={t('Server default')}
-                  inputMode="decimal"
-                />
-              </div>
-              <div className={styles.field}>
-                <span className={styles.labelWithHint}>
-                  <label className={styles.label} htmlFor="min-p">{t('Min P')}</label>
-                  <FieldHint label={t('Min P')}>
-                    {t('A word is dropped when it is less than this share as likely as the likeliest one. For llama.cpp, Ollama and vLLM; a hosted OpenAI model refuses it. Empty sends nothing. Between 0 and 1.')}
-                  </FieldHint>
-                </span>
-                <input
-                  id="min-p"
-                  className={`${styles.input} ${styles.inputMono}`}
-                  value={minP}
-                  onChange={(event) => setMinP(event.target.value)}
-                  placeholder={t('Server default')}
-                  inputMode="decimal"
-                />
-              </div>
-              <div className={styles.field}>
-                <span className={styles.labelWithHint}>
-                  <label className={styles.label} htmlFor="repeat-penalty">{t('Repeat Penalty')}</label>
-                  <FieldHint label={t('Repeat Penalty')}>
-                    {t('Makes words the model has just written less likely again; 1 is off. A light 1.05 discourages a model from repeating itself without making it avoid words it needs. For llama.cpp, Ollama and vLLM; a hosted OpenAI model refuses it. Empty sends nothing. Between 0 and 2.')}
-                  </FieldHint>
-                </span>
-                <input
-                  id="repeat-penalty"
-                  className={`${styles.input} ${styles.inputMono}`}
-                  value={repeatPenalty}
-                  onChange={(event) => setRepeatPenalty(event.target.value)}
-                  placeholder={t('Server default')}
-                  inputMode="decimal"
-                />
-              </div>
+              {offered('temperature') && (
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="temperature">{t('Temperature')}</label>
+                    <FieldHint label={t('Temperature')}>
+                      {t('How freely the model picks its words: 0 always takes the likeliest, higher is looser. Empty sends nothing and the server uses its own default - a local model often runs at the 1.0 stored in its file. Between 0 and 2.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="temperature"
+                    className={`${styles.input} ${styles.inputMono}`}
+                    value={temperature}
+                    onChange={(event) => setTemperature(event.target.value)}
+                    placeholder={t('Server default')}
+                    inputMode="decimal"
+                  />
+                </div>
+              )}
+              {offered('topP') && (
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="top-p">{t('Top P')}</label>
+                    <FieldHint label={t('Top P')}>
+                      {t('Only the likeliest words that together make up this share are considered. Empty sends nothing. Between 0 and 1.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="top-p"
+                    className={`${styles.input} ${styles.inputMono}`}
+                    value={topP}
+                    onChange={(event) => setTopP(event.target.value)}
+                    placeholder={t('Server default')}
+                    inputMode="decimal"
+                  />
+                </div>
+              )}
+              {offered('topK') && (
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="top-k">{t('Top K')}</label>
+                    <FieldHint label={t('Top K')}>
+                      {t('Only this many of the likeliest words are considered. Empty sends nothing.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="top-k"
+                    className={`${styles.input} ${styles.inputMono}`}
+                    value={topK}
+                    onChange={(event) => setTopK(event.target.value)}
+                    placeholder={t('Server default')}
+                    inputMode="decimal"
+                  />
+                </div>
+              )}
+              {offered('minP') && (
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="min-p">{t('Min P')}</label>
+                    <FieldHint label={t('Min P')}>
+                      {t('A word is dropped when it is less than this share as likely as the likeliest one. Empty sends nothing. Between 0 and 1.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="min-p"
+                    className={`${styles.input} ${styles.inputMono}`}
+                    value={minP}
+                    onChange={(event) => setMinP(event.target.value)}
+                    placeholder={t('Server default')}
+                    inputMode="decimal"
+                  />
+                </div>
+              )}
+              {offered('repeatPenalty') && (
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="repeat-penalty">{t('Repeat Penalty')}</label>
+                    <FieldHint label={t('Repeat Penalty')}>
+                      {t('Makes words the model has just written less likely again; 1 is off, and a light 1.05 discourages repetition. Empty sends nothing. Between 0 and 2.')}
+                    </FieldHint>
+                  </span>
+                  <input
+                    id="repeat-penalty"
+                    className={`${styles.input} ${styles.inputMono}`}
+                    value={repeatPenalty}
+                    onChange={(event) => setRepeatPenalty(event.target.value)}
+                    placeholder={t('Server default')}
+                    inputMode="decimal"
+                  />
+                </div>
+              )}
                 </>
               )}
               {reads && (

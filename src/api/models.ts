@@ -186,18 +186,21 @@ const USAGE_FIELDS =
   'series { day requests tokens }';
 
 /**
- * A chat setting only some provider types take, and the words it may be. The
- * model page draws one control per entry; a type that takes none answers [].
+ * A sampling or reasoning setting a chat model's provider reads, by the model
+ * field it is saved under. The model page draws one control per entry and
+ * nothing else; a provider that reads none answers [].
  */
 export interface ChatParameterSpec {
-  name: string;
+  name: 'temperature' | 'topP' | 'topK' | 'minP' | 'repeatPenalty' | 'reasoningEffort' | string;
+  kind: 'NUMBER' | 'CHOICE';
+  /** What a CHOICE may be; empty for a NUMBER. */
   choices: string[];
 }
 
-export async function fetchChatModelParameters(providerType: ProviderType): Promise<ChatParameterSpec[]> {
+export async function fetchChatModelParameters(providerId: string): Promise<ChatParameterSpec[]> {
   const data = await graphql<{ chatModelParameters: ChatParameterSpec[] }>(
-    'query ChatModelParameters($providerType: ProviderType!) { chatModelParameters(providerType: $providerType) { name choices } }',
-    { providerType },
+    'query ChatModelParameters($providerId: ID!) { chatModelParameters(providerId: $providerId) { name kind choices } }',
+    { providerId },
   );
   return data.chatModelParameters;
 }

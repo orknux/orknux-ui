@@ -2815,9 +2815,9 @@ export const TESTS = [
 
   {
     name: 'model-reasoning-effort-check',
-    what: "an Azure OpenAI model's page offers a reasoning effort and Save stores it; a model on another provider type draws none",
+    what: "a chat model's page draws only the sampling and reasoning settings its provider reads - Azure: temperature, top-p, reasoning effort; Ollama: temperature, top-p; a llama.cpp server: all five - and Save stores them",
     needs: [],
-    /* The refusals - a type that takes none, a word off the list - are ModelReasoningEffortTest's. */
+    /* The refusals - a setting the provider does not read, a word off the list - are ModelChatParametersTest's. */
   },
 
   {
