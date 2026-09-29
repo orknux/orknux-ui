@@ -2,11 +2,11 @@ import { graphql } from './client';
 import { t } from '../i18n';
 
 /** What the endpoint speaks, not who answers there: anything OpenAI-shaped is OPENAI. */
-export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA';
+export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE';
 export type ProviderAuthMethod = 'API_KEY' | 'ENTRA_ID';
 /** CONNECTED only once a check reached the provider: a stored key is not a working one. */
 export type ProviderStatus = 'NOT_CONFIGURED' | 'NOT_CHECKED' | 'CONNECTED' | 'FAILED';
-export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE';
+export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE' | 'DECISION';
 
 /**
  * The kinds that do not answer a prompt.
@@ -16,7 +16,7 @@ export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 
  * makes a conversation that cannot reply. Listed once so a sixth kind does not
  * have to be remembered in five places.
  */
-export const VOICE_KINDS: ModelKind[] = ['TRANSCRIPTION', 'SPEECH', 'IMAGE'];
+export const VOICE_KINDS: ModelKind[] = ['TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION'];
 
 /**
  * Whether this model is one that answers, rather than one that hears, reads or
@@ -438,6 +438,9 @@ export function providerTypeLabel(type: ProviderType): string {
       return t('Azure OpenAI');
     case 'OLLAMA':
       return 'Ollama';
+    // Jev and Laya speak the same API, so one type covers both. Issue #577.
+    case 'SYSTEM_ONE':
+      return t('Decision model (Jev, Laya)');
   }
 }
 
@@ -472,6 +475,8 @@ export function modelKindLabel(kind: ModelKind): string {
       return 'Speech';
     case 'IMAGE':
       return 'Image';
+    case 'DECISION':
+      return t('Decision');
   }
 }
 

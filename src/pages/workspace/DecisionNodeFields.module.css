@@ -1,0 +1,64 @@
+/*
+ * A decision node's questions: one card per question, its options beneath it.
+ * The fields and labels are the editor's own; what is here is only the layout
+ * a list of lists needs.
+ */
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.questionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.key {
+  flex: 1 1 0;
+  font-family: var(--font-mono);
+}
+
+.kind {
+  flex: 0 0 auto;
+  width: auto;
+  padding-right: var(--space-8);
+}
+
+/* A typed box inside the card: the editor's input, with an edge of its own. */
+.box {
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+.box:focus {
+  border-color: var(--color-accent-brand);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.optionName {
+  flex: 0 1 40%;
+  font-family: var(--font-mono);
+}
+
+.addOption {
+  align-self: flex-start;
+}

@@ -499,6 +499,10 @@ a.refresh {
   background: #ec4899;
 }
 
+.decision {
+  background: #14b8a6;
+}
+
 .handle {
   width: 6px;
   height: 6px;

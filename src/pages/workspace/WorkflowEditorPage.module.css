@@ -443,6 +443,11 @@
   background: #ec4899;
 }
 
+/* A decision node: a question a model answers with probabilities. Teal, near the condition it resembles in shape only. */
+.decision {
+  background: #14b8a6;
+}
+
 .nodeContent {
   display: flex;
   flex-direction: column;
@@ -1287,6 +1292,17 @@ select.input {
 
 .handleYes {
   background: var(--color-accent-brand);
+}
+
+/* A decision's doors: one per option, placed by the node, and one for unsure. Issue #577. */
+.branchOption {
+  background: var(--color-accent-brand-soft);
+  color: var(--color-accent-brand);
+}
+
+.branchUnsure {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
 }
 
 .handleNo {

@@ -64,6 +64,7 @@ const KIND_CLASS: Record<NodeKind, string> = {
   // a declaration the agent reads, so no run ever records a step of this kind.
   SESSION: 'session',
   IMAGE: 'image',
+  DECISION: 'decision',
 };
 
 const STEP_STATUS_LABEL: Record<StepStatus, string> = {
@@ -1257,6 +1258,10 @@ function NodeDetailsPanel({
             </>
           ) : step.branch === 'YES' ? (
             'Yes'
+          ) : step.branch === 'OPTION' ? (
+            <code>{step.branchOption ?? ''}</code>
+          ) : step.branch === 'UNSURE' ? (
+            t('Unsure')
           ) : (
             'No'
           )}

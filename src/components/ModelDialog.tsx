@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import {
@@ -33,7 +33,7 @@ export interface ModelDialogProps {
  * checked and counted against a quota it would never spend. They stay in the type and
  * the labels for anything registered while they were on offer.
  */
-const MODEL_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE'];
+const MODEL_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION'];
 
 /**
  * A name worth showing, from an id that may not be one.
@@ -116,6 +116,22 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
    * maximum output or a price per million tokens: it is billed per picture.
    */
   const draws = kind === 'IMAGE';
+
+  /**
+   * The providers a model of this kind can hang off. A decision model is only
+   * ever under a decision provider and nothing else is - the server refuses
+   * the other pairings - so the list offers exactly the ones that would save.
+   */
+  const usable = useMemo(
+    () => providers.filter((provider) => (provider.type === 'SYSTEM_ONE') === (kind === 'DECISION')),
+    [providers, kind],
+  );
+
+  // A provider picked for one kind is not one to keep for a kind it cannot hold.
+  useEffect(() => {
+    if (audio) return;
+    if (!usable.some((provider) => provider.id === providerId)) setProviderId(usable[0]?.id ?? '');
+  }, [audio, usable, providerId]);
 
   // What the provider says it can run. Null until asked, so "none offered" and
   // "not asked yet" do not look the same.
@@ -364,7 +380,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
                   onChange={(event) => setProviderId(event.target.value)}
                   required
                 >
-                  {providers.map((provider) => (
+                  {usable.map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} ({providerTypeLabel(provider.type)})
                     </option>

@@ -792,6 +792,18 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'decision-node-check',
+    what: "a decision node's doors, one per option and one for unsure, the lines they carry, and the provider form's optional key",
+    /*
+     * Issue #577. Makes a decision provider on a `.invalid` host, a model and a
+     * workflow of its own and removes them; nothing is ever called. Alone for
+     * the reason image-parameters-check is: the model is in the workspace's
+     * lists while the walk runs.
+     */
+    needs: ['workspace'],
+    alone: true,
+  },
+  {
     name: 'sieve-memory-check',
     what: 'the origin sieve on Functions and Tools survives a refresh, per list',
     // Reads two lists and sets a select; it creates nothing, so it runs
@@ -1614,6 +1626,19 @@ export const TESTS = [
      * container with nothing beside it. Closing that gap means a service in the
      * browser job's compose file, which is a change to how CI is built rather
      * than to this check.
+     */
+  },
+  {
+    name: 'decision-run-check',
+    what: 'a keyless decision provider checked on its form, and a run taking the option the model picked',
+    needs: ['workspace'],
+    ci: false,
+    /*
+     * Issue #577, the half that asks a model. The server half is
+     * `DecisionNodeTest`, on both engines over a stub on the loopback. Not in CI
+     * for image-model-check's reason: the question is asked by the server, so
+     * it needs something the *server* can reach answering `/v1/systemone` -
+     * `scripts/suite/decision-stub.py`, named in ORKNUX_DECISION_STUB.
      */
   },
 

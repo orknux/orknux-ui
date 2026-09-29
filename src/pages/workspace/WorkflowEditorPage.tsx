@@ -85,6 +85,7 @@ import copyIcon from '../../assets/copy.svg';
 import downloadIcon from '../../assets/download.svg';
 import filterIcon from '../../assets/filter.svg';
 import imageIcon from '../../assets/image.svg';
+import splitIcon from '../../assets/split.svg';
 import messageSquareIcon from '../../assets/message-square.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import playIcon from '../../assets/play.svg';
@@ -104,6 +105,8 @@ import { DefinitionPicker } from '../../components/DefinitionPicker';
 import { FieldHint } from '../../components/FieldHint';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import { RetryPolicyFields } from './RetryPolicyFields';
+import { DecisionNodeFields, UNSURE_HANDLE, decisionWays, optionHandle, optionOf } from './DecisionNodeFields';
+import type { DecisionQuestion } from '../../api/graph';
 import { CreateAgentDialog } from '../../components/CreateAgentDialog';
 import { NameDialog } from '../../components/NameDialog';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
@@ -227,6 +230,14 @@ interface NodeData extends Record<string, unknown> {
   imageSize: string | null;
   imageQuality: string | null;
   imageStyle: string | null;
+  /** The decision model a decision node asks; null until one is picked. Issue #577. */
+  decisionModelId?: string | null;
+  /** What a decision node asks, in order. */
+  decisionQuestions?: DecisionQuestion[];
+  /** The choice question whose option picks the line the run leaves by; null only answers. */
+  decisionBranchQuestion?: string | null;
+  /** How sure an answer has to be to be taken, 0 to 1; null takes every answer. */
+  decisionThreshold?: number | null;
   /**
    * What this node calls what it produces, so a later node can point a
    * reference at it. Only an agent node has one.
@@ -1317,6 +1328,7 @@ const KIND_COLOUR: Record<NodeKind, string> = {
   OBJECT: '#a855f7',
   SESSION: '#8b5cf6',
   IMAGE: '#ec4899',
+  DECISION: '#14b8a6',
 };
 
 /**
@@ -1385,6 +1397,7 @@ const KIND_CLASS: Record<NodeKind, string> = {
   OBJECT: 'objectNode',
   SESSION: 'session',
   IMAGE: 'image',
+  DECISION: 'decision',
 };
 
 /**
@@ -1413,9 +1426,52 @@ function handlesFailure(kind: NodeKind): boolean {
   return kind === 'ACTION' || kind === 'AGENT';
 }
 
-/** Whether this node leaves by two doors rather than one. */
+/** Whether this node leaves by two doors rather than one - or, a decision, by one per option. */
 function branches(node: NodeData): boolean {
-  return node.kind === 'CONDITION' || (handlesFailure(node.kind) && node.fallbackEnabled === true);
+  return (
+    node.kind === 'CONDITION' ||
+    (handlesFailure(node.kind) && node.fallbackEnabled === true) ||
+    (node.kind === 'DECISION' && decisionWays(node).length > 0)
+  );
+}
+
+/**
+ * A decision's ways out: a door per option of its branching choice, and one
+ * for an answer under its threshold, spaced along the output edge. The option
+ * a handle leaves by is its id, which is what the saved edge carries. The
+ * unsure door is muted, because it is the answer that was not taken. Issue #577.
+ */
+function DecisionWaysOut({ facing, ways }: { facing: Position; ways: string[] }) {
+  const doors = [...ways.map((way) => ({ id: optionHandle(way), label: way, unsure: false })), {
+    id: UNSURE_HANDLE,
+    label: t('Unsure'),
+    unsure: true,
+  }];
+  return (
+    <>
+      {doors.map((door, at) => {
+        const along = `${Math.round(((at + 1) / (doors.length + 1)) * 100)}%`;
+        return (
+          <span key={door.id}>
+            <Handle
+              id={door.id}
+              className={`${styles.handle} ${door.unsure ? styles.handleNo : styles.handleYes}`}
+              type="source"
+              position={facing}
+              style={alongEdge(facing, along)}
+              data-testid="decision-handle"
+            />
+            <span
+              className={`${styles.branchLabel} ${door.unsure ? styles.branchUnsure : styles.branchOption}`}
+              style={{ top: `calc(${along} - 8px)` }}
+            >
+              {door.label}
+            </span>
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 /** The words on a node's two ways out, its own or the kind's. */
@@ -1565,6 +1621,8 @@ function GraphNodeView({ data, selected }: NodeProps) {
       */}
       {node.kind === 'CONDITION' ? (
         <WaysOut facing={facing.output} upperId="yes" lowerId="no" labels={waysOut(node)} failure={false} />
+      ) : node.kind === 'DECISION' && decisionWays(node).length > 0 ? (
+        <DecisionWaysOut facing={facing.output} ways={decisionWays(node)} />
       ) : handlesFailure(node.kind) && node.fallbackEnabled === true ? (
         <WaysOut facing={facing.output} lowerId="fail" labels={waysOut(node)} failure />
       ) : (
@@ -1713,7 +1771,7 @@ function withDefinition<T extends { id: string }>(all: T[], one: T): T[] {
  * for - things that belong together are next to each other, and a list is the
  * only place that can be said.
  */
-const ADD_ORDER: NodeKind[] = ['TRIGGER', 'ACTION', 'CONDITION', 'OBJECT', 'IMAGE', 'AGENT', 'SESSION'];
+const ADD_ORDER: NodeKind[] = ['TRIGGER', 'ACTION', 'CONDITION', 'DECISION', 'OBJECT', 'IMAGE', 'AGENT', 'SESSION'];
 
 const ADD_ICON: Record<NodeKind, string> = {
   TRIGGER: bellIcon,
@@ -1723,6 +1781,7 @@ const ADD_ICON: Record<NodeKind, string> = {
   OBJECT: boxIcon,
   SESSION: messageSquareIcon,
   IMAGE: imageIcon,
+  DECISION: splitIcon,
 };
 
 export interface ToolButtonProps {
@@ -2443,6 +2502,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [shapeError, setShapeError] = useState<string | null>(null);
   /** The workspace's image models, for an image node's model picker. */
   const [imageModels, setImageModels] = useState<Model[]>([]);
+  /** The workspace's decision models, for a decision node's model picker. Issue #577. */
+  const [decisionModels, setDecisionModels] = useState<Model[]>([]);
   /**
    * What the chosen image model's endpoint takes beyond a prompt, one entry per
    * parameter; null while no model is chosen or the answer is on its way. The
@@ -2643,6 +2704,10 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               imageSize: node.imageSize ?? null,
               imageQuality: node.imageQuality ?? null,
               imageStyle: node.imageStyle ?? null,
+              decisionModelId: node.decisionModelId ?? null,
+              decisionQuestions: node.decisionQuestions ?? [],
+              decisionBranchQuestion: node.decisionBranchQuestion ?? null,
+              decisionThreshold: node.decisionThreshold ?? null,
               outputName: node.outputName ?? null,
               icon: node.icon ?? null,
               orientation: node.orientation ?? null,
@@ -2661,7 +2726,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
                   ? 'no'
                   : edge.branch === 'FAILURE'
                     ? 'fail'
-                    : null;
+                    : edge.branch === 'OPTION'
+                      ? optionHandle(edge.option ?? '')
+                      : edge.branch === 'UNSURE'
+                        ? UNSURE_HANDLE
+                        : null;
             return {
               /*
                * Named from the handle, not from the branch as it is stored. The
@@ -2738,8 +2807,14 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       .then((page) => setObjects(page.content))
       .catch(() => setObjects([]));
     fetchModels(workspaceId)
-      .then((all) => setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled)))
-      .catch(() => setImageModels([]));
+      .then((all) => {
+        setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled));
+        setDecisionModels(all.filter((model) => model.kind === 'DECISION' && model.enabled));
+      })
+      .catch(() => {
+        setImageModels([]);
+        setDecisionModels([]);
+      });
     fetchImageSizePresets(workspaceId)
       .then(setImagePresets)
       .catch(() => setImagePresets([]));
@@ -3136,6 +3211,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           imageSize: null,
           imageQuality: null,
           imageStyle: null,
+          // A decision asks nothing and branches nowhere until it is told to.
+          decisionModelId: null,
+          decisionQuestions: [],
+          decisionBranchQuestion: null,
+          decisionThreshold: null,
           /*
            * An agent starts with its answer named.
            *
@@ -3147,7 +3227,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
            * the canvas, and only started working once somebody typed a
            * different name. Now the default is real.
            */
-          outputName: kind === 'AGENT' ? 'reply' : kind === 'IMAGE' ? 'image' : null,
+          outputName: kind === 'AGENT' ? 'reply' : kind === 'IMAGE' ? 'image' : kind === 'DECISION' ? 'decision' : null,
           orientation: null,
           /*
            * A new action stops the run when it fails, which is what every node
@@ -3174,7 +3254,12 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           icon: kind === 'SESSION' ? 'message-square' : null,
           // An image node draws from one parameter, its prompt, so it starts
           // with that row rather than empty - there is nothing else to add.
-          mappings: kind === 'IMAGE' ? [{ name: 'prompt', expression: '', mode: 'VALUE' }] : [],
+          mappings:
+            kind === 'IMAGE'
+              ? [{ name: 'prompt', expression: '', mode: 'VALUE' }]
+              : kind === 'DECISION'
+                ? [{ name: 'state', expression: '', mode: 'VALUE' }]
+                : [],
         },
       },
     ]);
@@ -3348,6 +3433,10 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.imageSize === draft.imageSize &&
           data.imageQuality === draft.imageQuality &&
           data.imageStyle === draft.imageStyle &&
+          (data.decisionModelId ?? null) === (draft.decisionModelId ?? null) &&
+          JSON.stringify(data.decisionQuestions ?? []) === JSON.stringify(draft.decisionQuestions ?? []) &&
+          (data.decisionBranchQuestion ?? null) === (draft.decisionBranchQuestion ?? null) &&
+          (data.decisionThreshold ?? null) === (draft.decisionThreshold ?? null) &&
           data.outputName === draft.outputName &&
           data.icon === draft.icon &&
           data.orientation === draft.orientation &&
@@ -3408,7 +3497,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     const moved: string[] = [];
     for (const node of nodes) {
       const data = node.data as NodeData;
-      const shape = `${data.kind}:${data.orientation ?? 'LEFT_TO_RIGHT'}:${branches(data)}`;
+      // A decision's doors are its options, so a renamed or added option moves them.
+      const shape = `${data.kind}:${data.orientation ?? 'LEFT_TO_RIGHT'}:${branches(data)}:${decisionWays(data).join('|')}`;
       now.set(node.id, shape);
       if (shapes.current.get(node.id) !== shape) moved.push(node.id);
     }
@@ -3497,6 +3587,18 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   // The form belongs to the node that opened it, so moving to another node
   // puts it away rather than carrying it across.
   useEffect(() => setCustom(null), [selectedKey]);
+
+  // A decision node holds one parameter, its state, for the reason an image node holds its prompt.
+  useEffect(() => {
+    if (draft === null || draft.kind !== 'DECISION') return;
+    setDraft((held) => {
+      if (held === null || held.kind !== 'DECISION') return held;
+      const seeded = [
+        held.mappings.find((mapping) => mapping.name === 'state') ?? { name: 'state', expression: '', mode: 'VALUE' as MappingMode },
+      ];
+      return sameMappings(held.mappings, seeded) ? held : { ...held, mappings: seeded };
+    });
+  }, [draft?.kind, selectedKey]);
 
   useEffect(() => {
     if (draft === null || draft.kind !== 'IMAGE') return;
@@ -3792,6 +3894,10 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           imageSize: data.imageSize,
           imageQuality: data.imageQuality,
           imageStyle: data.imageStyle,
+          decisionModelId: data.decisionModelId ?? null,
+          decisionQuestions: data.kind === 'DECISION' ? (data.decisionQuestions ?? []) : [],
+          decisionBranchQuestion: data.decisionBranchQuestion ?? null,
+          decisionThreshold: data.decisionThreshold ?? null,
           outputName: data.outputName,
           icon: data.icon,
           orientation: data.orientation ?? null,
@@ -3837,7 +3943,12 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               ? 'NO'
               : edge.sourceHandle === 'fail'
                 ? 'FAILURE'
-                : null,
+                : optionOf(edge.sourceHandle) !== null
+                  ? 'OPTION'
+                  : edge.sourceHandle === UNSURE_HANDLE
+                    ? 'UNSURE'
+                    : null,
+        option: optionOf(edge.sourceHandle),
       })),
     };
   }
@@ -5684,6 +5795,36 @@ Change the keystroke in Preferences.`}
                     />
                   </div>
                 )}
+                {draft.kind === 'DECISION' && (
+                  <DecisionNodeFields
+                    draft={draft}
+                    models={decisionModels}
+                    onChange={(patch) => {
+                      const next = { ...draft, ...patch };
+                      setDraft(next);
+                      /*
+                       * A door that is no longer on the node takes its line
+                       * with it - an option renamed or removed, or the node no
+                       * longer branching - because the save refuses a line
+                       * leaving by a door that is not there, and nobody should
+                       * have to work out which one it was.
+                       */
+                      if (selectedKey !== null) {
+                        const ways = new Set(decisionWays(next).map(optionHandle));
+                        const branching = ways.size > 0;
+                        setEdges((current) => {
+                          const kept = current.filter(
+                            (edge) =>
+                              edge.source !== selectedKey ||
+                              (optionOf(edge.sourceHandle) === null && edge.sourceHandle !== UNSURE_HANDLE) ||
+                              (edge.sourceHandle === UNSURE_HANDLE ? branching : ways.has(edge.sourceHandle ?? '')),
+                          );
+                          return kept.length === current.length ? current : kept;
+                        });
+                      }
+                    }}
+                  />
+                )}
                 {/*
                   What the drawing is asked for beyond the prompt, and only what
                   this model's endpoint takes: one control per entry of the
@@ -5831,6 +5972,7 @@ Change the keystroke in Preferences.`}
                   })}
                 {((draft.kind === 'ACTION' && draft.actionId !== null) ||
                   draft.kind === 'IMAGE' ||
+                  draft.kind === 'DECISION' ||
                   draft.kind === 'AGENT' ||
                   draft.kind === 'SESSION' ||
                   draft.kind === 'OBJECT' ||
@@ -5886,6 +6028,12 @@ Change the keystroke in Preferences.`}
                                 what goes in them is this node&apos;s, so another node asking the same condition
                                 can look at something else. Leave them all empty and the function is handed the
                                 whole of what the run carries, as it was before.
+                              </>
+                            ) : draft.kind === 'DECISION' ? (
+                              <>
+                                <strong>state</strong> is what the questions are about - wording of your own, or a
+                                field the run carries, which may be a whole object. Left empty, the model is asked
+                                about whatever reached this node.
                               </>
                             ) : draft.kind === 'IMAGE' ? (
                               <>
@@ -6433,7 +6581,8 @@ Change the keystroke in Preferences.`}
                 {(draft.kind === 'AGENT' ||
                   draft.kind === 'ACTION' ||
                   draft.kind === 'OBJECT' ||
-                  draft.kind === 'IMAGE') && (
+                  draft.kind === 'IMAGE' ||
+                  draft.kind === 'DECISION') && (
                   <div className={styles.field}>
                     <span className={styles.labelWithHint}>
                       <label className={styles.label} htmlFor="node-output-name">

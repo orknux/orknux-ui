@@ -3,7 +3,25 @@ import type { PropertyKind } from './objects';
 import { t } from '../i18n';
 
 export type WorkflowStatus = 'DRAFT' | 'PUBLISHED';
-export type NodeKind = 'TRIGGER' | 'AGENT' | 'ACTION' | 'CONDITION' | 'OBJECT' | 'SESSION' | 'IMAGE';
+export type NodeKind = 'TRIGGER' | 'AGENT' | 'ACTION' | 'CONDITION' | 'OBJECT' | 'SESSION' | 'IMAGE' | 'DECISION';
+
+/** The kinds of question a decision model answers. Issue #577. */
+export type DecisionQuestionKind = 'CHOICE' | 'SCORE' | 'NOUL';
+
+/** One option of a choice, one level of a score, or one side (`true`/`false`) of a noul. */
+export interface DecisionOption {
+  name: string;
+  /** What the model reads to tell it apart; empty uses the name. */
+  description: string;
+}
+
+/** One question a DECISION node asks; its answer comes back under `key`. */
+export interface DecisionQuestion {
+  key: string;
+  kind: DecisionQuestionKind;
+  instructions: string;
+  options: DecisionOption[];
+}
 
 
 /**
@@ -56,6 +74,14 @@ export interface GraphNode {
   imageSize?: string | null;
   imageQuality?: string | null;
   imageStyle?: string | null;
+  /** The decision model a DECISION node asks; null until one is picked. */
+  decisionModelId?: string | null;
+  /** What a DECISION node asks, in order. */
+  decisionQuestions?: DecisionQuestion[];
+  /** The key of the CHOICE question whose answer picks the edge; null only answers. */
+  decisionBranchQuestion?: string | null;
+  /** How sure an answer has to be to be taken, 0 to 1; null takes every answer. */
+  decisionThreshold?: number | null;
   /**
    * What this node calls what it produces, so a later node can point a
    * reference at it. Null hands the output on unchanged.
@@ -193,7 +219,7 @@ export interface GraphPort {
  * the unmarked edge it has always been, so switching a fallback on adds a line
  * rather than rewriting the one already drawn.
  */
-export type EdgeBranch = 'YES' | 'NO' | 'FAILURE';
+export type EdgeBranch = 'YES' | 'NO' | 'FAILURE' | 'OPTION' | 'UNSURE';
 
 export interface GraphEdge {
   source: string;
@@ -204,6 +230,8 @@ export interface GraphEdge {
    * branches existed.
    */
   branch?: EdgeBranch | null;
+  /** Which option of a decision an OPTION edge leaves by. */
+  option?: string | null;
 }
 
 export interface WorkflowGraph {
@@ -239,13 +267,15 @@ const GRAPH_FIELDS = `
   assignmentId
   nodes {
     key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId imageSize imageQuality imageStyle outputName icon orientation
+    decisionModelId decisionBranchQuestion decisionThreshold
+    decisionQuestions { key kind instructions options { name description } }
     yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds
     retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds enabled x y
     mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId }
     inputs { name type display }
     outputs { name type display }
   }
-  edges { source target branch }
+  edges { source target branch option }
   problems { severity nodeKey message }
 `;
 
@@ -379,5 +409,6 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   // Session name what they run rather than what they make. "Image" on its own
   // read as a picture on the canvas.
   IMAGE: t('Image model'),
+  DECISION: t('Decision model'),
 };
 

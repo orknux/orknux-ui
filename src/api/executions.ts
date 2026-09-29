@@ -78,6 +78,8 @@ export interface ExecutionStep {
    * failure edge rather than stopping there.
    */
   branch: EdgeBranch | null;
+  /** Which option of a decision the run went by, on an OPTION branch. Issue #577. */
+  branchOption?: string | null;
   /**
    * How many attempts the step spent. More than one only where its node was
    * given a retry policy and needed it.
@@ -293,7 +295,7 @@ export function formatRelative(iso: string): string {
 const EXECUTION_DETAIL_FIELDS = `
   id workspaceId workflowId workflowName status trigger startedAt finishedAt durationSeconds error workflowAssigned
   stoppedAtNodeKey stoppedReason startedFrom
-  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch attempts carriedOver x y }
+  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption attempts carriedOver x y }
   edges { source target branch }
   logs { id nodeKey at level message }
   pictures { id nodeKey url prompt filename contentType }

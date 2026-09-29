@@ -44,6 +44,9 @@ const PROVIDER_TYPES: ProviderType[] = [
   'ANTHROPIC',
   'AZURE_OPENAI',
   'OLLAMA',
+  // Not a language model: Jev or a self-hosted Laya, which answer typed
+  // questions with probabilities for a workflow's decision node. Issue #577.
+  'SYSTEM_ONE',
 ];
 
 /** The versions Azure OpenAI is commonly pinned to; the field still accepts any. */
@@ -78,6 +81,10 @@ function endpointHint(type: ProviderType): string {
       // `/v1/models` and `/v1/chat/completions`. The bare port serves Ollama's
       // own API at `/api/...` and 404s on both of those.
       return 'http://localhost:11434/v1';
+    // TypeSafe's hosted Jev; a Laya is wherever `laya-serve` listens. The
+    // `/v1/systemone` after either is added by the server.
+    case 'SYSTEM_ONE':
+      return 'https://api.typesafe.ai';
   }
 }
 
@@ -713,7 +720,7 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
             <SecretField
               id="provider-secret"
               label={secretLabel}
-              required
+              required={type !== 'SYSTEM_ONE'}
               field={key}
               options={offered}
               variablesPath={`/workspace/${workspaceId}/variables`}
@@ -723,7 +730,9 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                   ? t('Register an app in Azure AD → App registrations → Certificates & secrets.')
                   : azure
                     ? t('Found in Azure Portal → Resource → Keys and Endpoint.')
-                    : t('The key the provider issued for this workspace.')
+                    : type === 'SYSTEM_ONE'
+                      ? t('Optional: TypeSafe issues one for Jev; a self-hosted Laya needs one only if LAYA_API_KEY is set.')
+                      : t('The key the provider issued for this workspace.')
               }
               onSource={chooseSource}
               onValue={() => {
