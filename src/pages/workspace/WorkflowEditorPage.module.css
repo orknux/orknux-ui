@@ -1294,15 +1294,10 @@ select.input {
   background: var(--color-accent-brand);
 }
 
-/* A decision's doors: one per option, placed by the node, and one for unsure. Issue #577. */
-.branchOption {
-  background: var(--color-accent-brand-soft);
-  color: var(--color-accent-brand);
-}
-
-.branchUnsure {
-  background: var(--color-surface-raised);
-  color: var(--color-text-muted);
+/* A decision set to branch on a choice that has too few options to branch by. Issue #577. */
+.branchNote {
+  font-size: var(--text-xs);
+  color: var(--color-amber);
 }
 
 .handleNo {

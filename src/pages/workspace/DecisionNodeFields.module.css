@@ -16,20 +16,47 @@
 
 .questionHead {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-8);
 }
 
-/* A small labelled control: the key's box, the kind's select. */
+/* The kind, as three segments: one is always chosen, and all three are visible. */
+.segments {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+.segment {
+  padding: 3px var(--space-8);
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.segment:hover {
+  color: var(--color-text-primary);
+}
+
+.segmentOn {
+  background: var(--color-surface-raised);
+  color: var(--color-accent-brand);
+}
+
+/* A labelled part of the card: the question, its answers. */
 .control {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
   min-width: 0;
-}
-
-.control:first-child {
-  flex: 1 1 0;
 }
 
 .controlLabel {
@@ -40,19 +67,53 @@
   color: var(--color-text-muted);
 }
 
+/* The key, last and small: it names where the answer is read, and is rarely changed. */
+.keyRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px dashed var(--color-border);
+}
+
 .key {
+  flex: 0 1 140px;
+  min-width: 0;
   font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
-.kind {
-  width: auto;
-  padding-right: var(--space-20);
-  background: var(--color-surface);
+.keyNote {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
 }
 
-.removeQuestion {
-  margin-left: auto;
-  align-self: center;
+/* A remove button that is an icon: the bin the product uses on every other row. */
+.iconButton {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-24);
+  height: var(--space-24);
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  color: var(--color-danger);
+  background: var(--color-surface-raised);
+}
+
+.iconButton svg {
+  width: var(--space-24);
+  height: var(--space-24);
 }
 
 /* Where a row sits in its list: 1. 2. for options, 0 1 2 for levels. */

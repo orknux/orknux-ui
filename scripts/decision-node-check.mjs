@@ -23,10 +23,14 @@
  *   the pruning   an option removed in the panel takes its door and its line
  *                 with it, so the graph still saves
  *   it sticks     the questions come back after a reload
- *   the cards     each kind looks like what it is: a new choice draws two
- *                 option rows to fill, a yes-or-no draws its fixed Yes and No,
- *                 and the key and the kind are an input and a select with
- *                 labels of their own rather than words that read as captions
+ *   the cards     each reads top to bottom as a question: the kind as three
+ *                 segments, the Question (or a yes-or-no's Statement), the
+ *                 answers - never fewer than two rows for a choice, fixed Yes
+ *                 and No for a yes-or-no - and the output key last; removing
+ *                 is an icon
+ *   the doors     a decision's Yes and No are drawn exactly as a condition's,
+ *                 a line drags from them the same way, and a choice with too
+ *                 few options says so on the node
  *
  * Nothing here calls a model: the provider points at a `.invalid` host and is
  * never checked. `decision-run-check` is the half that runs one, over a stub.
@@ -135,7 +139,7 @@ await graphql(
               key: 'department',
               kind: 'CHOICE',
               instructions: 'Which team?',
-              options: [{ name: 'billing', description: 'Charges' }, { name: 'returns' }],
+              options: [{ name: 'billing', description: 'Charges' }, { name: 'returns' }, { name: 'shipping' }],
             },
           ],
           mappings: [{ name: 'state', expression: '', mode: 'VALUE' }],
@@ -150,9 +154,25 @@ await graphql(
           outputName: 'judged',
           decisionModelId: model.createModel.id,
           decisionBranchQuestion: 'urgent',
-          decisionQuestions: [{ key: 'urgent', kind: 'NOUL', instructions: 'Is it urgent?', options: [] }],
+          decisionQuestions: [
+            { key: 'urgent', kind: 'NOUL', instructions: 'Is it urgent?', options: [] },
+            { key: 'team', kind: 'CHOICE', instructions: 'Which team?', options: [] },
+          ],
           mappings: [{ name: 'state', expression: '', mode: 'VALUE' }],
         },
+        {
+          key: 'lonely',
+          kind: 'DECISION',
+          name: `${PREFIX} lonely`,
+          x: 100,
+          y: 1100,
+          outputName: 'lonelyAnswer',
+          decisionModelId: model.createModel.id,
+          decisionBranchQuestion: 'team',
+          decisionQuestions: [{ key: 'team', kind: 'CHOICE', instructions: 'Which team?', options: [{ name: 'billing' }] }],
+          mappings: [{ name: 'state', expression: '', mode: 'VALUE' }],
+        },
+        { key: 'ask', kind: 'CONDITION', name: `${PREFIX} ask`, x: 900, y: 700, mappings: [] },
         { key: 'refund', kind: 'OBJECT', name: `${PREFIX} refund`, x: 520, y: 360, mappings: [{ name: 'to', expression: 'returns', mode: 'VALUE' }] },
       ],
       edges: [
@@ -193,16 +213,16 @@ const doors = async () =>
 
 const drawnDoors = await doors();
 record(
-  JSON.stringify(drawnDoors.map((one) => one.id)) === JSON.stringify(['opt:billing', 'opt:returns', 'unsure']),
-  `a node branching on two options draws a door per option and one for unsure (${JSON.stringify(drawnDoors.map((one) => one.id))})`,
+  JSON.stringify(drawnDoors.map((one) => one.id)) === JSON.stringify(['opt:billing', 'opt:returns', 'opt:shipping', 'unsure']),
+  `a node branching on three options draws a door per option and one for unsure (${JSON.stringify(drawnDoors.map((one) => one.id))})`,
 );
 record(
-  drawnDoors.length === 3 && drawnDoors[0].y < drawnDoors[1].y && drawnDoors[1].y < drawnDoors[2].y,
+  drawnDoors.length === 4 && drawnDoors.every((one, at) => at === 0 || drawnDoors[at - 1].y < one.y),
   `spaced down the node's edge in order (${drawnDoors.map((one) => Math.round(one.y)).join(', ')})`,
 );
-const labels = await node.locator('span[class*="branchOption"], span[class*="branchUnsure"]').allTextContents();
+const labels = await node.locator('span[class*="branchLabel"]').allTextContents();
 record(
-  JSON.stringify(labels) === JSON.stringify(['billing', 'returns', 'Unsure']),
+  JSON.stringify(labels) === JSON.stringify(['billing', 'returns', 'shipping', 'Unsure']),
   `each door says which answer it is (${JSON.stringify(labels)})`,
 );
 
@@ -242,7 +262,7 @@ record(
   judged.length === 3 && judged[0].y < judged[1].y && judged[1].y < judged[2].y,
   `in order down its edge (${judged.map((one) => Math.round(one.y)).join(', ')})`,
 );
-const judgedLabels = await judge.locator('span[class*="branchOption"], span[class*="branchUnsure"]').allTextContents();
+const judgedLabels = await judge.locator('span[class*="branchLabel"]').allTextContents();
 record(
   JSON.stringify(judgedLabels) === JSON.stringify(['Yes', 'No', 'Unsure']),
   `labelled Yes, No and Unsure (${JSON.stringify(judgedLabels)})`,
@@ -271,7 +291,7 @@ await page.waitForTimeout(900);
 
 const after = await doors();
 record(
-  JSON.stringify(after.map((one) => one.id)) === JSON.stringify(['opt:billing', 'unsure']),
+  JSON.stringify(after.map((one) => one.id)) === JSON.stringify(['opt:billing', 'opt:shipping', 'unsure']),
   `removing an option takes its door away (${JSON.stringify(after.map((one) => one.id))})`,
 );
 const lines = await page.locator('.react-flow__edge').count();
@@ -290,9 +310,9 @@ await page.waitForSelector('[data-testid="decision-question"]', { timeout: 15_00
 const kept = await page
   .locator('[data-testid="decision-question"] input[aria-label="Option name"]')
   .evaluateAll((all) => all.map((one) => one.value));
-record(JSON.stringify(kept) === JSON.stringify(['billing']), `the question comes back as it was saved (${JSON.stringify(kept)})`);
+record(JSON.stringify(kept) === JSON.stringify(['billing', 'shipping']), `the question comes back as it was saved (${JSON.stringify(kept)})`);
 
-/* ---- the cards: each kind looks like what it is (never saved) ---- */
+/* ---- the cards: each reads top to bottom as a question (never saved) ---- */
 
 await page.getByRole('button', { name: /add question/i }).click({ timeout: 10_000 }).catch(() => undefined);
 await page.waitForTimeout(400);
@@ -300,35 +320,120 @@ const fresh = page.locator('[data-testid="decision-question"]').last();
 const rowsDrawn = await fresh.locator('[data-testid="decision-option"]').count();
 record(rowsDrawn === 2, `a new choice question draws two option rows to fill (${rowsDrawn})`);
 
-const controls = await fresh.evaluate((card) => {
-  const named = (name) => card.querySelector(`[aria-label="${name}"]`);
-  const shown = (el) => (el?.closest('label')?.innerText ?? '').split('\n')[0].trim();
+const top = async (selector) => (await fresh.locator(selector).first().boundingBox({ timeout: 5_000 }).catch(() => null))?.y ?? null;
+const order = {
+  kind: await top('[data-testid="decision-kind"]'),
+  asked: await top('[data-testid="decision-asked"]'),
+  answers: await top('[data-testid="decision-answers"]'),
+  key: await top('[data-testid="decision-key"]'),
+};
+record(
+  order.kind !== null && order.asked !== null && order.answers !== null && order.key !== null &&
+    order.kind < order.asked && order.asked < order.answers && order.answers < order.key,
+  `the card reads kind, then the question, then the answers, then the key at the bottom (${JSON.stringify(order)})`,
+);
+
+const shape = await fresh.evaluate((card) => {
+  const kinds = [...card.querySelectorAll('[data-testid="decision-kind"] [role="radio"]')].map((one) => one.innerText.trim());
+  const asked = card.querySelector('[data-testid="decision-asked"]');
+  const key = card.querySelector('[data-testid="decision-key"] input');
+  const remove = card.querySelector('button[aria-label="Remove question"]');
   return {
-    key: named('Key')?.tagName ?? null,
-    keyLabel: shown(named('Key')),
-    kind: named('Kind')?.tagName ?? null,
-    kindLabel: shown(named('Kind')),
+    kinds,
+    askedLabel: (asked?.closest('label')?.innerText ?? '').split('\n')[0].trim(),
+    key: key?.tagName ?? null,
+    keyLabel: (key?.closest('label')?.innerText ?? '').split('\n')[0].trim(),
+    removeIcon: remove !== null && remove.querySelector('svg') !== null && remove.innerText.trim() === '',
   };
 });
 record(
-  controls.key === 'INPUT' && controls.keyLabel.toLowerCase() === 'key',
-  `its key is an input labelled Key (${JSON.stringify(controls)})`,
+  JSON.stringify(shape.kinds) === JSON.stringify(['Choice', 'Score', 'Yes or no']),
+  `the kind is a segmented control of three (${JSON.stringify(shape.kinds)})`,
 );
+record(shape.askedLabel.toLowerCase() === 'question', `a choice's first field is the Question (${JSON.stringify(shape.askedLabel)})`);
 record(
-  controls.kind === 'SELECT' && controls.kindLabel.toLowerCase() === 'kind',
-  `and its kind a select labelled Kind (${JSON.stringify(controls)})`,
+  shape.key === 'INPUT' && shape.keyLabel.toLowerCase() === 'output key',
+  `and its key is an input labelled Output key (${JSON.stringify(shape)})`,
 );
+record(shape.removeIcon, 'removing a question is an icon button, not a word');
 
-await fresh.locator('select[aria-label="Kind"]').selectOption('NOUL').catch(() => undefined);
+await fresh.getByRole('radio', { name: 'Yes or no' }).click({ timeout: 5_000 }).catch(() => undefined);
 await page.waitForTimeout(300);
 const sides = await fresh.locator('[data-testid="decision-side"]').allTextContents();
 record(
   JSON.stringify(sides) === JSON.stringify(['Yes', 'No']),
   `a yes-or-no question draws its two fixed answers, Yes and No (${JSON.stringify(sides)})`,
 );
-record(
-  (await fresh.locator('[data-testid="decision-option"]').count()) === 0,
-  'and no option list to fill',
+record((await fresh.locator('[data-testid="decision-option"]').count()) === 0, 'and no option list to fill');
+const statement = await fresh.evaluate(
+  (card) => (card.querySelector('[data-testid="decision-asked"]')?.closest('label')?.innerText ?? '').split('\n')[0].trim(),
 );
+record(statement.toLowerCase() === 'statement', `and its first field is the Statement (${JSON.stringify(statement)})`);
+
+/* ---- an existing choice with no options still shows two rows to fill ---- */
+
+await selectNode(page, judge, 'the yes-or-no node');
+await page.waitForTimeout(600);
+const team = page.locator('[data-testid="decision-question"]').filter({ has: page.locator('input[aria-label="Output key"][value="team"]') });
+const teamRows = await team.locator('[data-testid="decision-option"]').count();
+record(teamRows === 2, `a saved choice with no options shows two empty rows to fill (${teamRows})`);
+
+/* ---- a choice with too few options says so on the node ---- */
+
+const lonely = page.locator('.react-flow__node', { hasText: `${PREFIX} lonely` }).first();
+const note = (await lonely.locator('[data-testid="decision-note"]').textContent({ timeout: 3_000 }).catch(() => '')) ?? '';
+const lonelyDoors = await lonely.locator('[data-testid="decision-handle"]').count();
+record(
+  /two options/i.test(note) && lonelyDoors === 0,
+  `a node branching on a one-option choice draws no doors and says why (${JSON.stringify(note)}, ${lonelyDoors} doors)`,
+);
+
+/* ---- the doors are a condition's doors ---- */
+
+const looks = async (handle, label) =>
+  page
+    .evaluate(
+    ([h, l]) => {
+      const pick = (el, names) => Object.fromEntries(names.map((n) => [n, getComputedStyle(el)[n]]));
+      return {
+        handle: pick(h, ['backgroundColor', 'width', 'height', 'borderRadius', 'borderColor']),
+        label: pick(l, ['color', 'backgroundColor', 'fontSize', 'fontFamily']),
+      };
+    },
+    [await handle.elementHandle({ timeout: 5_000 }), await label.elementHandle({ timeout: 5_000 })],
+    )
+    .catch(() => null);
+const ask = page.locator('.react-flow__node', { hasText: `${PREFIX} ask` }).first();
+const conditionYes = await looks(ask.locator('.react-flow__handle[data-handleid="yes"]'), ask.locator('[class*="branchLabel"]').nth(0));
+const conditionNo = await looks(ask.locator('.react-flow__handle[data-handleid="no"]'), ask.locator('[class*="branchLabel"]').nth(1));
+const judgeYes = await looks(judge.locator('.react-flow__handle[data-handleid="opt:yes"]'), judge.locator('[class*="branchLabel"]').nth(0));
+const judgeNo = await looks(judge.locator('.react-flow__handle[data-handleid="opt:no"]'), judge.locator('[class*="branchLabel"]').nth(1));
+record(
+  judgeYes !== null && JSON.stringify(judgeYes) === JSON.stringify(conditionYes),
+  `a decision's Yes looks exactly like a condition's Yes (${JSON.stringify(judgeYes)} / ${JSON.stringify(conditionYes)})`,
+);
+record(
+  judgeNo !== null && JSON.stringify(judgeNo) === JSON.stringify(conditionNo),
+  `and its No like a condition's No (${JSON.stringify(judgeNo)} / ${JSON.stringify(conditionNo)})`,
+);
+
+/* ---- and a line is dragged from one like from a condition ---- */
+
+const centre = async (locator) => {
+  const box = await locator.boundingBox({ timeout: 5_000 }).catch(() => null);
+  return box === null ? null : { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
+const from = await centre(judge.locator('.react-flow__handle[data-handleid="opt:yes"]'));
+const into = await centre(page.locator('.react-flow__node', { hasText: `${PREFIX} bill` }).first().locator('.react-flow__handle.target'));
+if (from !== null && into !== null) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + into.x) / 2, (from.y + into.y) / 2, { steps: 8 });
+  await page.mouse.move(into.x, into.y, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+}
+const drawnFromYes = await page.locator('.react-flow__edge[data-id*="judge-opt:yes->bill"]').count();
+record(drawnFromYes === 1, `a line dragged from its Yes joins the node it is dropped on (${drawnFromYes})`);
 
 await clean();

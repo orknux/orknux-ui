@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -105,7 +105,7 @@ import { DefinitionPicker } from '../../components/DefinitionPicker';
 import { FieldHint } from '../../components/FieldHint';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import { RetryPolicyFields } from './RetryPolicyFields';
-import { DecisionNodeFields, UNSURE_HANDLE, decisionWays, optionHandle, optionOf, wayLabel } from './DecisionNodeFields';
+import { DecisionNodeFields, UNSURE_HANDLE, decisionNote, decisionWays, optionHandle, optionOf, wayLabel } from './DecisionNodeFields';
 import type { DecisionQuestion } from '../../api/graph';
 import { CreateAgentDialog } from '../../components/CreateAgentDialog';
 import { NameDialog } from '../../components/NameDialog';
@@ -1450,38 +1450,42 @@ function branches(node: NodeData): boolean {
 }
 
 /**
- * A decision's ways out: a door per option of its branching choice, and one
- * for an answer under its threshold, spaced along the output edge. The option
- * a handle leaves by is its id, which is what the saved edge carries. The
- * unsure door is muted, because it is the answer that was not taken. Issue #577.
+ * A decision's ways out, drawn the way a condition's Yes and No are: the same
+ * handles, the same words beside them in the same colours, spaced along the
+ * edge the node's orientation puts its output on - so a line is dragged from
+ * one exactly as from a condition. A yes-or-no leaves by Yes and No, a choice
+ * by one door per option in Yes's colours, and either by Unsure, in No's, for
+ * an answer under the threshold. The option a handle leaves by is its id,
+ * which is what the saved edge carries. Issue #577.
  */
 function DecisionWaysOut({ facing, node }: { facing: Position; node: NodeData }) {
-  const doors = [...decisionWays(node).map((way) => ({ id: optionHandle(way), label: wayLabel(way, node), unsure: false })), {
-    id: UNSURE_HANDLE,
-    label: t('Unsure'),
-    unsure: true,
-  }];
+  const yesOrNo = node.decisionQuestions?.find((one) => one.key === node.decisionBranchQuestion)?.kind === 'NOUL';
+  const doors = [
+    // Every option in Yes's colours, except a yes-or-no's No, which is No's.
+    ...decisionWays(node).map((way) => ({ id: optionHandle(way), label: wayLabel(way, node), yes: !(yesOrNo && way === 'no') })),
+    { id: UNSURE_HANDLE, label: t('Unsure'), yes: false },
+  ];
   return (
     <>
       {doors.map((door, at) => {
         const along = `${Math.round(((at + 1) / (doors.length + 1)) * 100)}%`;
         return (
-          <span key={door.id}>
+          <Fragment key={door.id}>
             <Handle
               id={door.id}
-              className={`${styles.handle} ${door.unsure ? styles.handleNo : styles.handleYes}`}
+              className={`${styles.handle} ${door.yes ? styles.handleYes : styles.handleNo}`}
               type="source"
               position={facing}
               style={alongEdge(facing, along)}
               data-testid="decision-handle"
             />
             <span
-              className={`${styles.branchLabel} ${door.unsure ? styles.branchUnsure : styles.branchOption}`}
+              className={`${styles.branchLabel} ${door.yes ? styles.branchYes : styles.branchNo}`}
               style={{ top: `calc(${along} - 8px)` }}
             >
               {door.label}
             </span>
-          </span>
+          </Fragment>
         );
       })}
     </>
@@ -1654,6 +1658,16 @@ function GraphNodeView({ data, selected }: NodeProps) {
           <span className={styles.nodeName}>{node.name}</span>
           <span className={styles.nodeDescription}>{node.description ?? ''}</span>
         </div>
+        {/*
+          Why a decision that is meant to branch has nothing to connect: said
+          on the node, where the missing handles are, rather than left as an
+          ordinary one-way node nobody can explain.
+        */}
+        {node.kind === 'DECISION' && decisionNote(node) !== null && (
+          <span className={styles.branchNote} data-testid="decision-note">
+            {decisionNote(node)}
+          </span>
+        )}
 
         {/*
           What flows through, not just what runs next. The edges say the order;
