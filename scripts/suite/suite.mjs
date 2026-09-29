@@ -1874,6 +1874,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'orknux-tool-switch-check',
+    what: 'an orknux_ tool is switched on its own inside the Orknux access grant, and locked while it is off',
+    needs: ['workspace'],
+    /* Asked for: the grant was all or nothing. */
+  },
+  {
     name: 'grant-card-check',
     what: "a tool or skill on the agent page shows its summary on hover, and its name links to its page",
     needs: ['workspace'],

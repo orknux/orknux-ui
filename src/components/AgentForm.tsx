@@ -409,6 +409,14 @@ interface GrantListProps<Item> {
    * nothing is worse than one that is not there. Issue #444.
    */
   fixedOf?: (item: Item) => string | null;
+  /**
+   * Rows whose on-state is Always, and which cycle Hide and Always only.
+   *
+   * The orknux_* tools: they are carried whenever the grant is on - the server
+   * has no Offer for them - so a third state would be a control that changes
+   * nothing. They are switched one by one inside the grant, as asked.
+   */
+  alwaysWhenOn?: (item: Item) => boolean;
 }
 
 /**
@@ -460,6 +468,7 @@ function GrantList<Item>({
   marked,
   onMark,
   fixedOf,
+  alwaysWhenOn,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /*
@@ -590,16 +599,23 @@ function GrantList<Item>({
    * fixed, which reads the grant it comes with and cannot be pressed.
    */
   type ToolState = 'hide' | 'offer' | 'always';
-  const toolState = (row: { value: string; ticked: boolean; fixed: string | null }): ToolState => {
+  const toolState = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }): ToolState => {
     if (!row.ticked) return 'hide';
+    if (alwaysWhenOn?.(row.item) ?? false) return 'always';
     // A fixed row is carried whenever the grant it comes with is on - there is
     // no mark to read - so its on-state is Always, never Offer. Issue #444.
     if (row.fixed !== null) return 'always';
     return (marked?.includes(row.value) ?? false) ? 'always' : 'offer';
   };
-  const cycleTool = (row: { value: string; ticked: boolean; fixed: string | null }) => {
+  const cycleTool = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }) => {
     if (row.fixed !== null) return;
     const state = toolState(row);
+    if (alwaysWhenOn?.(row.item) ?? false) {
+      // Hide <-> Always, the whole of it for these rows.
+      touch(row.value);
+      onChange(state === 'hide' ? [...granted, row.value] : granted.filter((one) => one !== row.value));
+      return;
+    }
     if (state === 'hide') {
       // Hide -> Offer: the grant.
       touch(row.value);
@@ -1315,7 +1331,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return false;
     }
   };
-  const fixedRows = toolCatalogue.items.filter((tool) => fixedBecause(tool.governance) !== null);
+  /*
+   * The orknux_* rows are the agent's to switch one by one while Orknux access
+   * is on, and are held in `tools` like any other name then. Off, they are
+   * fixed at Hide and say where the grant is.
+   */
+  const orknuxNames = toolCatalogue.items.filter((tool) => tool.governance === 'ORKNUX_ACCESS').map((tool) => tool.name);
+  const orknuxOn = orknuxAccess ? tools.filter((name) => orknuxNames.includes(name)) : [];
+  const fixedRows = toolCatalogue.items.filter(
+    (tool) => fixedBecause(tool.governance) !== null && !(tool.governance === 'ORKNUX_ACCESS' && orknuxAccess),
+  );
   const fixedNames = new Set(fixedRows.map((tool) => tool.name));
   const fixedOn = fixedRows.filter((tool) => comesWithGrant(tool.governance)).map((tool) => tool.name);
   /*
@@ -1323,7 +1348,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * numbers. A built-in that comes with a grant is carried whenever that grant
    * is on, not searched for, so it counts towards both. Issues #413, #444.
    */
-  const alwaysCarried = requiredTools.length + fixedOn.length;
+  const alwaysCarried = requiredTools.length + fixedOn.length + orknuxOn.length;
   const grantedTotal = tools.length + fixedOn.length;
   /*
    * The registered servers, which this form asks for only to know where each
@@ -1928,7 +1953,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
           linkOf={(tool) => tool.link}
           groupOf={(tool) => tool.plugin ?? null}
-          granted={[...tools, ...fixedOn]}
+          // An orknux_ name held while the grant is off is remembered, not granted: the row reads Hide.
+          granted={[...tools.filter((name) => orknuxAccess || !orknuxNames.includes(name)), ...fixedOn]}
           onChange={(names) => {
             // The rows that come with a grant are views of it, not grants of
             // their own, so they are taken out before the rest are stored. #444.
@@ -1954,9 +1980,12 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             that is the more specific thing to know. Issue #482.
           */
           fixedOf={(tool) =>
-            fixedBecause(tool.governance) ??
-            (tool.governance === 'GRANT' && !unsafeBuiltIns ? fixedAsBuiltIn() : null)
+            tool.governance === 'ORKNUX_ACCESS' && orknuxAccess
+              ? null
+              : fixedBecause(tool.governance) ??
+                (tool.governance === 'GRANT' && !unsafeBuiltIns ? fixedAsBuiltIn() : null)
           }
+          alwaysWhenOn={(tool) => tool.governance === 'ORKNUX_ACCESS'}
           titleOf={(tool) => tool.summary}
         />
 
@@ -2093,7 +2122,12 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               <input
                 type="checkbox"
                 checked={orknuxAccess}
-                onChange={(event) => setOrknuxAccess(event.target.checked)}
+                onChange={(event) => {
+                  const on = event.target.checked;
+                  setOrknuxAccess(on);
+                  // Granted afresh, every orknux_ tool starts on; they are switched one by one below.
+                  if (on) setTools((held) => [...held, ...orknuxNames.filter((name) => !held.includes(name))]);
+                }}
               />
               <span>{t('Let this agent ask orknux about orknux')}</span>
             </label>
