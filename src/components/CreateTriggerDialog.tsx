@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { Trigger } from '../api/triggers';
 import { TriggerForm } from './TriggerForm';
 import type { TriggerFormStyles } from './TriggerForm';
+import { DrawerEdge } from './DrawerWidth';
 import { PanelClose, panelEscape } from './PanelClose';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
@@ -100,6 +101,7 @@ export function CreateTriggerDialog({
       onClose={onClose}
       onKeyDown={panelEscape(placement, onClose)}
     >
+      <DrawerEdge placement={placement} />
       <div className={styles.body}>
         <header className={styles.header}>
           <h2 className={styles.title}>{trigger === null ? t('Create Trigger') : t('Trigger Settings')}</h2>

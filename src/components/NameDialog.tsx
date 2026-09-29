@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
+import { DrawerEdge } from './DrawerWidth';
 import { PanelClose, panelEscape } from './PanelClose';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
@@ -83,6 +84,7 @@ export function NameDialog({
 
   return (
     <dialog ref={dialogRef} className={`${styles.dialog} ${placement === 'panel' ? styles.dialogPanel : ''}`} onCancel={onClose} onClose={onClose} onKeyDown={panelEscape(placement, onClose)}>
+      <DrawerEdge placement={placement} />
       <form className={styles.body} onSubmit={handleSubmit}>
         <header className={styles.header}>
           <h2 className={styles.title}>{title}</h2>

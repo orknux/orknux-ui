@@ -1881,7 +1881,7 @@ export const TESTS = [
   },
   {
     name: 'workflow-panel-width-check',
-    what: "the workflow editor's Node Properties panel widens by dragging its edge, and remembers it",
+    what: "the workflow editor's Node Properties panel and settings drawers widen by dragging their edge, and the panel closes",
     needs: ['workspace'],
     /* Asked for: a fixed 280px was too narrow for a node with several questions. */
   },

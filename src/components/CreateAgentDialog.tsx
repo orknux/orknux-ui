@@ -5,6 +5,7 @@ import { createAgent } from '../api/agents';
 import type { Agent } from '../api/agents';
 import { AgentForm } from './AgentForm';
 import type { AgentFormStyles } from './AgentForm';
+import { DrawerEdge } from './DrawerWidth';
 import { PanelClose, panelEscape } from './PanelClose';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
@@ -106,6 +107,7 @@ export function CreateAgentDialog({ open, workspaceId, agent = null, onClose, on
 
   return (
     <dialog ref={dialogRef} className={`${styles.dialog} ${styles.dialogWide} ${placement === 'panel' ? styles.dialogPanel : ''}`} onCancel={onClose} onClose={onClose} onKeyDown={panelEscape(placement, onClose)}>
+      <DrawerEdge placement={placement} />
       {agent !== null ? (
         <div className={styles.body}>
           <header className={styles.header}>

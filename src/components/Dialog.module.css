@@ -805,7 +805,12 @@ select.input {
    * had fixed and had not.
    */
   left: auto;
-  width: min(34vw, 520px);
+  /*
+   * Dragged wider from the left edge. The workflow editor publishes the width
+   * somebody chose as --panel-drawer-width; until then it is the width it
+   * always had.
+   */
+  width: var(--panel-drawer-width, min(34vw, 520px));
   max-width: none;
   max-height: none;
   /*
@@ -869,4 +874,19 @@ select.input {
 .panelClose:hover,
 .panelClose:focus-visible {
   color: var(--color-text-primary);
+}
+
+/*
+ * The handle a drawer is widened by, straddling its left edge.
+ *
+ * Fixed rather than absolute: the drawer scrolls, and a handle positioned inside
+ * it would scroll away with the first field. So it is placed where the drawer's
+ * edge is, from the same two widths the drawer itself is placed from.
+ */
+.dialogPanel .drawerEdge {
+  position: fixed;
+  top: 104px;
+  bottom: 0;
+  right: calc(var(--node-panel-width, 0px) + var(--panel-drawer-width, min(34vw, 520px)) - 12px);
+  z-index: 3;
 }

@@ -693,10 +693,42 @@
   overflow-y: auto;
 }
 
+/* The heading on the left and the × that puts the panel away on the right, where a drawer keeps its own. */
 .panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.panelHeading {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+/*
+ * What brings a put-away panel back: on the canvas's right edge, where the
+ * panel was, and quiet enough not to read as part of the graph.
+ */
+.panelReopen {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+  z-index: 5;
+  padding: var(--space-4) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.panelReopen:hover,
+.panelReopen:focus-visible {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
 }
 
 .panelTitle {

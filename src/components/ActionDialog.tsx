@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { Action } from '../api/actions';
 import { ActionForm } from './ActionForm';
 import type { ActionFormStyles } from './ActionForm';
+import { DrawerEdge } from './DrawerWidth';
 import { PanelClose, panelEscape } from './PanelClose';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
@@ -123,6 +124,7 @@ export function ActionDialog({
       onClose={onClose}
       onKeyDown={panelEscape(placement, onClose)}
     >
+      <DrawerEdge placement={placement} />
       <div className={styles.body}>
         <header className={styles.header}>
           <h2 className={styles.title}>{action === null ? t('Create Action') : t('Action Settings')}</h2>

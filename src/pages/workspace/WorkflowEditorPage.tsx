@@ -133,6 +133,8 @@ import {
 import { shellUser } from '../../session/user';
 import styles from './WorkflowEditorPage.module.css';
 import { ResizeHandle, useDragSize, useRoom } from '../../components/DragSize';
+import { DrawerWidth } from '../../components/DrawerWidth';
+import { PanelClose } from '../../components/PanelClose';
 import { t, tf } from '../../i18n';
 
 export interface WorkflowEditorPageProps {
@@ -327,6 +329,17 @@ const MIN_PANEL = 260;
 const MIN_CANVAS = 360;
 const PANEL_HANDLE = 8;
 const PANEL_NUDGE = 24;
+/*
+ * Whether the panel is shown. It can be put away with its ×, so the graph has
+ * the whole row; selecting a node brings it back. Kept per browser.
+ */
+const PANEL_OPEN_KEY = 'orknux.workflow-editor.panel-open';
+/*
+ * The drawers' width, dragged from their left edge, shared by all of them and
+ * kept per browser. Null in storage is the width they always had.
+ */
+const DRAWER_KEY = 'orknux.workflow-editor.drawer-width';
+const MIN_DRAWER = 320;
 const ACTION_PAGE_SIZE = 100;
 const FUNCTION_PAGE_SIZE = 200;
 
@@ -2173,6 +2186,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   useEffect(() => {
     return () => {
       document.documentElement.style.removeProperty('--node-panel-width');
+      document.documentElement.style.removeProperty('--panel-drawer-width');
     };
   }, []);
   const panelDrag = useDragSize({
@@ -2184,9 +2198,48 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     edge: 'left',
     nudge: PANEL_NUDGE,
   });
+  const [panelOpen, setPanelOpen] = useState(() => {
+    try {
+      return window.localStorage.getItem(PANEL_OPEN_KEY) !== 'closed';
+    } catch {
+      return true;
+    }
+  });
+  const showPanel = useCallback((open: boolean) => {
+    setPanelOpen(open);
+    try {
+      if (open) window.localStorage.removeItem(PANEL_OPEN_KEY);
+      else window.localStorage.setItem(PANEL_OPEN_KEY, 'closed');
+    } catch {
+      // Not remembered, but still put away for as long as the page is open.
+    }
+  }, []);
+  /** What the panel takes of the row: nothing while it is put away, so a drawer goes back to the edge. */
+  const panelTakes = panelOpen ? panelDrag.size + PANEL_HANDLE : 0;
   useEffect(() => {
-    document.documentElement.style.setProperty('--node-panel-width', `${panelDrag.size + PANEL_HANDLE}px`);
-  }, [panelDrag.size]);
+    document.documentElement.style.setProperty('--node-panel-width', `${panelTakes}px`);
+  }, [panelTakes]);
+  /*
+   * The drawers' width. Null until somebody drags one, and the stylesheet's
+   * width stands; the ceiling leaves the canvas MIN_CANVAS beside the drawer
+   * and the panel, the same room the panel's own ceiling leaves it.
+   */
+  const drawerDrawn = Math.round(Math.min(window.innerWidth * 0.34, 520));
+  const drawerMax = Math.max(MIN_DRAWER, editorRoom - panelTakes - MIN_CANVAS);
+  const drawerDrag = useDragSize({
+    storageKey: DRAWER_KEY,
+    initial: null,
+    measured: drawerDrawn,
+    min: MIN_DRAWER,
+    max: editorRoom === 0 ? null : drawerMax,
+    edge: 'left',
+    nudge: PANEL_NUDGE,
+  });
+  useEffect(() => {
+    if (drawerDrag.size === null) document.documentElement.style.removeProperty('--panel-drawer-width');
+    else document.documentElement.style.setProperty('--panel-drawer-width', `${drawerDrag.size}px`);
+  }, [drawerDrag.size]);
+  const drawerWidth = { drag: drawerDrag, drawn: drawerDrawn, min: MIN_DRAWER, max: drawerMax };
   /** What the server said each node needs and gives, from the last save or load. */
   const [ports, setPorts] = useState<Record<string, { inputs?: GraphPort[]; outputs?: GraphPort[] }>>({});
 
@@ -3315,6 +3368,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       },
     ]);
     setSelectedKey(key);
+    // A node just added is one somebody is about to fill in.
+    showPanel(true);
     // The store only learns about the node on the next tick, so select it then.
     requestAnimationFrame(() => updateNode(key, { selected: true }));
     setSaved(false);
@@ -3449,6 +3504,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     // The held name belongs to a field of the node the panel is about to leave.
     setFieldEdit(null);
     setSelectedKey(key);
+    // A node just added is one somebody is about to fill in.
+    showPanel(true);
     // The store only learns about the node on the next tick, so select it then.
     requestAnimationFrame(() => updateNode(key, { selected: true }));
     setSaved(false);
@@ -4922,6 +4979,12 @@ Change the keystroke in Preferences.`}
               onConnect={onConnect}
               onReconnect={onReconnect}
               /*
+               * A node clicked is a node somebody wants the properties of - also the one
+               * already selected, which changes no selection. Said here rather than in an
+               * effect on the selection, which Fast Refresh and a restored step re-run.
+               */
+              onNodeClick={() => showPanel(true)}
+              /*
                * Room to take hold of a line's end. The grab circle sits just
                * beyond the handle, so a wider one is easier to aim at without
                * covering the handle itself - which is where a new line is
@@ -4946,8 +5009,21 @@ Change the keystroke in Preferences.`}
             </ReactFlow>
             </TurnNode.Provider>
           )}
+          {!panelOpen && (
+            <button
+              type="button"
+              className={styles.panelReopen}
+              onClick={() => showPanel(true)}
+              aria-controls="workflow-node-properties"
+              title={t('Show the node properties')}
+            >
+              {t('Properties')}
+            </button>
+          )}
         </div>
 
+        {panelOpen && (
+        <>
         <ResizeHandle
           orientation="vertical"
           className={styles.panelHandle}
@@ -4962,8 +5038,11 @@ Change the keystroke in Preferences.`}
         />
         <aside className={styles.panel} id="workflow-node-properties" style={{ width: panelDrag.size }}>
           <div className={styles.panelHeader}>
-            <h2 className={styles.panelTitle}>Node Properties</h2>
-            <p className={styles.panelSubtitle}>Configure selected graph object</p>
+            <div className={styles.panelHeading}>
+              <h2 className={styles.panelTitle}>Node Properties</h2>
+              <p className={styles.panelSubtitle}>Configure selected graph object</p>
+            </div>
+            <PanelClose onClose={() => showPanel(false)} />
           </div>
           <hr className={styles.panelDivider} />
 
@@ -6747,6 +6826,8 @@ Change the keystroke in Preferences.`}
             </>
           )}
         </aside>
+        </>
+        )}
       </div>
 
       {/*
@@ -6874,6 +6955,7 @@ Change the keystroke in Preferences.`}
         }}
       />
 
+      <DrawerWidth.Provider value={drawerWidth}>
       {/*
         Making a definition, and changing one, without leaving the graph.
 
@@ -7011,6 +7093,7 @@ Change the keystroke in Preferences.`}
           setBuilding(null);
         }}
       />
+      </DrawerWidth.Provider>
     </AppShell>
   );
 }

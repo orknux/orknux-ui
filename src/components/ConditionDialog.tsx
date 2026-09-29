@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { Condition } from '../api/conditions';
 import { ConditionForm } from './ConditionForm';
 import type { ConditionFormStyles } from './ConditionForm';
+import { DrawerEdge } from './DrawerWidth';
 import { PanelClose, panelEscape } from './PanelClose';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
@@ -120,6 +121,7 @@ export function ConditionDialog({
       onClose={onClose}
       onKeyDown={panelEscape(placement, onClose)}
     >
+      <DrawerEdge placement={placement} />
       <div className={styles.body}>
         <header className={styles.header}>
           <h2 className={styles.title}>{condition === null ? t('Create Condition') : t('Condition Settings')}</h2>
