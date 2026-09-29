@@ -32,6 +32,9 @@ filed as an attachment on the chat and appears in the thread as it is drawn, so
 it is still there when you come back to it. A workspace with no image model
 chosen offers no such tool, and the agent is never told it could have drawn.
 
+![A picture asked for in the conversation, drawn into the
+thread](/screens/chat-picture.png)
+
 Switching workspace from the corner leaves you in the chat rather than taking
 you to the new workspace's workflows: the conversations listed on the left are
 the ones held in whichever workspace the corner names.

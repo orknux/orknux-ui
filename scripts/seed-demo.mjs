@@ -86,6 +86,23 @@ export const WORKSPACE_NAME = copy(process.env.ORKNUX_DEMO_WORKSPACE ?? 'Northwi
 const OLLAMA_ENDPOINT = process.env.ORKNUX_DEMO_ENDPOINT ?? 'http://localhost:11434';
 const OLLAMA_MODEL_ID = process.env.ORKNUX_DEMO_MODEL ?? 'gemma-4-31B-it-Q5_K_M';
 
+/*
+ * Where the demo draws, if anywhere.
+ *
+ * Something answering OpenAI's image API, as the server reaches it. The manual
+ * describes drawing in three places - a chat, a task, an image node - and a
+ * workspace with no image model can photograph none of them, so where this is
+ * set the seed adds one and has each of the three draw something through it,
+ * down the product's own paths. screenshots.ps1 sets it to the stand-in its
+ * installation runs, orknux-server's `scripts/screens-draw.mjs`. Issue #576.
+ *
+ * Unset, nothing about drawing is seeded, and that is deliberate rather than a
+ * fallback: the browser suite builds its fixture with this script too, and its
+ * checks assume a workspace with one chat model and nothing else -
+ * `image-model-check` builds its own image model and would find ours in the way.
+ */
+const IMAGE_ENDPOINT = process.env.ORKNUX_DEMO_IMAGE_ENDPOINT ?? '';
+
 /**
  * The role that opens the demonstration workspace, and the colleague who holds
  * it. Both exist so that something can happen to somebody: see the comment
@@ -322,6 +339,85 @@ try {
   console.warn(`  provider check: ${failure.message.split('\n')[0]}`);
 }
 log(`model ${chatModel.name} via ${provider.name} (${providerStatus})`);
+
+/*
+ * And one that draws, where there is something to draw with.
+ *
+ * A provider of its own, because Ollama has no image endpoint and the product
+ * refuses to draw through one. OPENAI is the shape the stand-in answers in. The
+ * id is not one OpenAI serves, so on a host that is not OpenAI's the product
+ * treats it as a self-hosted model taking any size - which is what it is.
+ *
+ * Chosen as the workspace's Text-to-image model, which is the switch every
+ * drawing door reads: the chat and task tools are offered only where a model is
+ * chosen, and the image node below names this one itself.
+ */
+let imageModel = null;
+let writerModel = null;
+if (IMAGE_ENDPOINT !== '') {
+  const { createModelProvider: drawing } = await gql(
+    'mutation($input: CreateModelProviderInput!) { createModelProvider(input: $input) { id name status } }',
+    {
+      input: {
+        workspaceId: ws,
+        name: 'Studio server (on the LAN)',
+        endpoint: IMAGE_ENDPOINT,
+        type: 'OPENAI',
+        // The stand-in reads no key; the provider will not be called without one.
+        secret: 'seed-fixture-drawing-credential',
+      },
+    },
+  );
+  const { createModel } = await gql('mutation($input: CreateModelInput!) { createModel(input: $input) { id name } }', {
+    input: {
+      providerId: drawing.id,
+      name: 'Illustrator',
+      modelId: 'illustrator',
+      kind: 'IMAGE',
+      imageCostPerImage: 0.02,
+    },
+  });
+  imageModel = createModel;
+  /*
+   * And the model the newsletter agent below answers with, on the same server.
+   * Scripted: see "the writer" in screens-draw.mjs for why the agent that asks
+   * for pictures cannot be the local model - offered the drawing tool, it said
+   * it could not draw. What the tool then does is the product's own.
+   */
+  const { createModel: writer } = await gql(
+    'mutation($input: CreateModelInput!) { createModel(input: $input) { id name } }',
+    {
+      input: {
+        providerId: drawing.id,
+        name: 'Writer',
+        modelId: 'writer',
+        kind: 'CHAT',
+        contextWindow: 32768,
+        maxOutput: 2048,
+        requestsPerMinute: 60,
+        tokenLimit: 2000000,
+        resetInterval: 'MONTHLY',
+        inputCostPerMillion: 0,
+        outputCostPerMillion: 0,
+      },
+    },
+  );
+  writerModel = writer;
+  await gql('mutation($ws: ID!, $id: ID) { setWorkspaceImageModel(workspaceId: $ws, modelId: $id) { id } }', {
+    ws,
+    id: imageModel.id,
+  });
+  let drawingStatus = drawing.status;
+  try {
+    const { testModelProvider } = await gql('mutation($id: ID!) { testModelProvider(id: $id) { status } }', {
+      id: drawing.id,
+    });
+    drawingStatus = testModelProvider.status;
+  } catch (failure) {
+    console.warn(`  drawing provider check: ${failure.message.split('\n')[0]}`);
+  }
+  log(`image model ${imageModel.name} via ${drawing.name} (${drawingStatus}), chosen for the workspace`);
+}
 
 /* -------------------------------------------------------- the connections */
 
@@ -966,7 +1062,55 @@ await gql('mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, 
     icon: 'book',
   },
 });
-log('2 agents');
+
+/*
+ * The one that draws, where the workspace can.
+ *
+ * Its own agent rather than the responder asked for a picture, because a
+ * support responder drawing a harbour is a picture of an agent doing somebody
+ * else's job. The newsletter is a job the desk plausibly has, and one that
+ * wants pictures. It needs no grant: the drawing tools are built-ins, on for
+ * every agent, and offered wherever the workspace has chosen a model to draw
+ * with.
+ *
+ * It answers with the scripted Writer rather than the workspace's chat model,
+ * for the reason given where that model is made. The prompt is written for a
+ * real model all the same, because it is what the agent's page shows.
+ */
+const NEWSLETTER_PROMPT = [
+  'You write the monthly customer newsletter for the Northwind support desk.',
+  '',
+  'When a picture is asked for, draw it with your drawing tool rather than',
+  'describing it in words. Describe the scene to the tool - the place, the time',
+  'of day, the colours - since that description is all the drawing model sees.',
+].join('\n');
+
+let newsletter = null;
+if (imageModel) {
+  const { createAgent } = await gql('mutation($input: CreateAgentInput!) { createAgent(input: $input) { id name } }', {
+    input: {
+      workspaceId: ws,
+      name: 'Newsletter writer',
+      type: 'LLM',
+      description: 'Writes the monthly customer newsletter, and draws its pictures.',
+      systemPrompt: NEWSLETTER_PROMPT,
+      icon: 'file-text',
+    },
+  });
+  newsletter = createAgent;
+  await gql('mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }', {
+    id: newsletter.id,
+    input: {
+      name: 'Newsletter writer',
+      description: 'Writes the monthly customer newsletter, and draws its pictures.',
+      systemPrompt: NEWSLETTER_PROMPT,
+      type: 'LLM',
+      modelId: writerModel.id,
+      icon: 'file-text',
+    },
+  });
+}
+log(`${newsletter ? 3 : 2} agents`);
 
 /* ---------------------------------------------------------------- triggers */
 
@@ -1301,6 +1445,76 @@ await gql('mutation($ws: ID!, $id: ID!) { publishWorkflow(workspaceId: $ws, work
 });
 log(`workflow ${sweep.id}: ${sweep.name} (published)`);
 
+/*
+ * A workflow that draws, which is what the manual's paragraph about image nodes
+ * is a paragraph about.
+ *
+ * Two nodes and no more. The morning trigger the sweep already uses, and an
+ * image node after it drawing the banner the morning's first message goes out
+ * under; everything the node does is on the node, so the picture of it selected
+ * in the editor is the whole of the feature. The prompt is a plain value rather
+ * than a reference, because the point is what a node draws, not where its words
+ * came from.
+ *
+ * A size is set because the node has a control for one and a picture of the
+ * panel with it left on the default says nothing about it.
+ */
+let banner = null;
+const BANNER_TRIGGER = 'trigger-morning';
+const BANNER_DRAW = 'image-banner';
+if (imageModel) {
+  banner = await createWorkflow(
+    copy('Draw the morning banner'),
+    'Draws the picture the morning message goes out under, before the desk opens.',
+  );
+  await gql(
+    `mutation($ws: ID!, $id: ID!, $input: WorkflowGraphInput!) {
+       saveWorkflowGraph(workspaceId: $ws, workflowId: $id, input: $input) { workflowId problems { message } }
+     }`,
+    {
+      ws,
+      id: banner.id,
+      input: {
+        nodes: [
+          {
+            key: BANNER_TRIGGER,
+            kind: 'TRIGGER',
+            name: 'Every morning at 06:30',
+            triggerId: nightly.id,
+            icon: 'calendar',
+            x: 60,
+            y: 200,
+          },
+          {
+            key: BANNER_DRAW,
+            kind: 'IMAGE',
+            name: 'Draw the morning banner',
+            imageModelId: imageModel.id,
+            imageSize: '1024x576',
+            outputName: 'banner',
+            mappings: [
+              {
+                name: 'prompt',
+                expression:
+                  'A quiet harbour at dawn: sailing boats on still water, soft hills behind, a flat illustration in warm pastel colours.',
+                mode: 'VALUE',
+              },
+            ],
+            x: 460,
+            y: 200,
+          },
+        ],
+        edges: [{ source: BANNER_TRIGGER, target: BANNER_DRAW }],
+      },
+    },
+  );
+  await gql('mutation($ws: ID!, $id: ID!) { publishWorkflow(workspaceId: $ws, workflowId: $id) { status } }', {
+    ws,
+    id: banner.id,
+  });
+  log(`workflow ${banner.id}: ${banner.name} (published)`);
+}
+
 /* ---------------------------------------------------------------- the runs */
 
 let runs = 0;
@@ -1313,6 +1527,25 @@ for (const input of ['SUP-4471', 'SUP-4468', 'SUP-4470', 'SUP-4455', 'SUP-4462']
     runs += 1;
   } catch (failure) {
     console.warn(`  run for ${input}: ${failure.message.split('\n')[0]}`);
+  }
+}
+/*
+ * The banner drawn once, so the run page has a picture under the node and the
+ * Artifacts page has something on it. Started before the flagship's runs on
+ * purpose: the capture photographs the newest run as the run page, and that
+ * picture is of the workflow with the model in it.
+ */
+let bannerRun = null;
+if (banner) {
+  try {
+    const { startExecution } = await gql(
+      'mutation($ws: ID!, $id: ID!) { startExecution(workspaceId: $ws, workflowId: $id) { id status } }',
+      { ws, id: banner.id },
+    );
+    bannerRun = startExecution.id;
+    runs += 1;
+  } catch (failure) {
+    console.warn(`  banner run: ${failure.message.split('\n')[0]}`);
   }
 }
 /*
@@ -1458,7 +1691,67 @@ for (const chat of CHATS) {
     console.warn(`  chat "${chat.title}": ${failure.message.split('\n')[0]}`);
   }
 }
+/*
+ * And one where a picture is asked for, handed to the agent that draws.
+ *
+ * Asked for in words, because that is the only way there is: the agent is
+ * offered `chat_draw_picture` and calls it, and what it draws is filed on the
+ * chat and written into the thread. Checked rather than assumed, because a chat
+ * about a picture with no picture in it is exactly the thing the manual's
+ * chapter must not show.
+ */
+if (newsletter) {
+  try {
+    const { startChat } = await gql('mutation($input: StartChatInput!) { startChat(input: $input) { id title } }', {
+      input: { workspaceId: ws, title: 'A picture for the October newsletter', agentId: newsletter.id },
+    });
+    await gql('mutation($id: ID!, $text: String!) { sendChatMessage(id: $id, text: $text) { __typename } }', {
+      id: startChat.id,
+      text:
+        'Draw the header picture for the October newsletter: a quiet harbour at dawn, sailing boats on still ' +
+        'water, soft warm colours.',
+    });
+    chats += 1;
+    const { chatAttachments } = await gql('query($id: ID!) { chatAttachments(chatId: $id) { contentType } }', {
+      id: startChat.id,
+    });
+    const drawn = chatAttachments.filter((one) => one.contentType.startsWith('image/')).length;
+    if (drawn === 0) console.warn('  the newsletter chat drew nothing - its picture will be missing from the manual');
+    else log(`  the newsletter chat drew ${drawn} picture${drawn === 1 ? '' : 's'}`);
+  } catch (failure) {
+    console.warn(`  newsletter chat: ${failure.message.split('\n')[0]}`);
+  }
+}
 log(`${chats} chats`);
+
+/*
+ * A task that draws, started here and waited for before the handover task at
+ * the end is started - so that one stays the newest, which is the one the
+ * capture photographs working. This one is photographed finished, with what it
+ * drew under its outcome.
+ */
+let drawingTask = null;
+if (newsletter) {
+  try {
+    const { startTask } = await gql('mutation($input: StartTaskInput!) { startTask(input: $input) { id title } }', {
+      input: {
+        workspaceId: ws,
+        title: 'Pictures for the October newsletter',
+        agentId: newsletter.id,
+        prompt: [
+          'Draw two pictures for the October customer newsletter, then say in one line which goes where.',
+          '',
+          'One for the section about what we fixed: a harbour at dawn, boats on still water.',
+          'One for the section about what is still open: rolling hills at dusk under a warm sky.',
+        ].join('\n'),
+      },
+    });
+    drawingTask = startTask;
+    log(`task: ${drawingTask.title} (started)`);
+  } catch (failure) {
+    console.warn(`  drawing task: ${failure.message.split('\n')[0]}`);
+  }
+}
 
 /* ------------------------------------------------------------- the tracker */
 
@@ -1800,6 +2093,9 @@ if (colleague) {
 for (const id of flagshipRuns) {
   log(`  run ${id} with the model in it: ${await ranToTheEnd(id)}`);
 }
+if (bannerRun) {
+  log(`  run ${bannerRun} drawing the banner: ${await ranToTheEnd(bannerRun)}`);
+}
 
 /*
  * And then somebody asks about the same ticket again.
@@ -1975,6 +2271,34 @@ log(`shells: ${MACHINES.filter((machine) => !machines.has(machine.name)).length}
  * briefing with no tool the model has to guess at, so a local model reaches
  * something worth photographing in seconds rather than going round its turns.
  */
+/*
+ * The drawing task, finished first. It has been working since the chats; what
+ * the capture wants of it is the outcome with its pictures under it, and the
+ * handover task below has to be started after it to be the newest.
+ *
+ * Waiting counts as ended: a task that stopped to ask something is not going
+ * to draw by itself, and the seed says so rather than sitting out the wait.
+ */
+if (drawingTask) {
+  const until = Date.now() + 300_000;
+  let held = null;
+  while (Date.now() < until) {
+    await new Promise((wake) => setTimeout(wake, 3000));
+    try {
+      ({ task: held } = await gql('query($id: ID!) { task(id: $id) { status outcome } }', { id: drawingTask.id }));
+    } catch {
+      // Asked again on the next turn, as the runs above are.
+    }
+    if (held && !['QUEUED', 'RUNNING'].includes(held.status)) break;
+  }
+  const pictures = (held?.outcome ?? '').match(/\/api\/task-pictures\//g)?.length ?? 0;
+  if (pictures === 0) {
+    console.warn(`  ${drawingTask.title} ended ${held?.status ?? 'unknown'} having drawn nothing`);
+  } else {
+    log(`  ${drawingTask.title}: ${held.status}, ${pictures} picture${pictures === 1 ? '' : 's'} under its outcome`);
+  }
+}
+
 const TASK_PROMPT = [
   'Write the handover note for tonight.',
   '',

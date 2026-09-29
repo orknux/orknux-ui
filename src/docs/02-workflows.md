@@ -163,6 +163,11 @@ shown under that node in the run log, and is on the workspace's Artifacts page
 afterwards. A workspace with no text-to-image model chosen cannot run one, and
 the node says so rather than failing somewhere further in.
 
+![An image node selected in the editor: the model it draws with, the size, and
+the prompt](/screens/image-node.png)
+
+![The run where it drew: the picture in the panel of the node that drew it](/screens/image-run.png)
+
 ## The catalogue
 
 A definition made once and used by several workflows lives in the workspace's

@@ -92,6 +92,12 @@ const COLLEAGUE = process.env.ORKNUX_DEMO_COLLEAGUE ?? 'dana';
  */
 const SHOWN_ENDPOINT = process.env.ORKNUX_DEMO_ENDPOINT_SHOWN ?? 'http://ollama.northwind.internal:11434';
 /**
+ * And the drawing model's, for the same reason. The seed points it at the
+ * stand-in screenshots.ps1 runs, whose address is a port on the machine taking
+ * the pictures - true, and meaningless to anybody reading the manual.
+ */
+const SHOWN_DRAW_ENDPOINT = process.env.ORKNUX_DEMO_IMAGE_ENDPOINT_SHOWN ?? 'http://images.northwind.internal:7860';
+/**
  * What the other workspaces on this installation are called instead.
  *
  * Up here rather than inside the admin list's redaction, because the same names
@@ -163,7 +169,7 @@ const ws = workspace.id;
 
 const found = await gql(`{
   workflows: workspaceWorkflows(workspaceId: "${ws}") { content { id name } }
-  executions: workspaceExecutions(workspaceId: "${ws}") { content { id } }
+  executions: workspaceExecutions(workspaceId: "${ws}") { content { id workflowName } }
   agents: workspaceAgents(workspaceId: "${ws}") { content { id name } }
   functions: workspaceFunctions(workspaceId: "${ws}") { content { id name } }
   tools: workspaceTools(workspaceId: "${ws}") { content { id name } }
@@ -176,6 +182,7 @@ const found = await gql(`{
     content { number title attachments { id } comments { id } }
   }
   tasks: workspaceTasks(workspaceId: "${ws}", size: 20) { content { id title status } }
+  chats: chatSessions(workspaceId: "${ws}") { id title }
   users { id username type email }
 }`);
 
@@ -188,6 +195,17 @@ const skill = byName(found.skills.content, 'When to escalate');
 const condition = byName(found.conditions.content, 'Mentions an outage');
 const run = found.executions.content[0];
 /*
+ * What the seed drew, where it had something to draw with - issue #576. Each is
+ * found by the name the seed gives it and is absent, not guessed at, where the
+ * seed drew nothing: a fallback to "the first chat" would photograph a chat
+ * about login failures under a caption about a picture.
+ */
+const find = (list, name, key = 'name') => list.find((item) => item[key] === name) ?? null;
+const banner = find(found.workflows.content, 'Draw the morning banner');
+const bannerRun = find(found.executions.content, 'Draw the morning banner', 'workflowName');
+const drawnChat = find(found.chats ?? [], 'A picture for the October newsletter', 'title');
+const drawnTask = find(found.tasks?.content ?? [], 'Pictures for the October newsletter', 'title');
+/*
  * The task the manual points at: the newest one the seed started.
  *
  * By recency and not by name, because what makes this picture worth taking is
@@ -195,7 +213,13 @@ const run = found.executions.content[0];
  * seed starts one immediately before the capture runs, so the newest is it.
  */
 const task = found.tasks?.content?.[0];
-const provider = found.providers[0];
+/*
+ * The chat model's provider, by name: there are two where the seed also made
+ * one to draw with, and the provider page and the endpoint redaction below are
+ * both about the one that answers.
+ */
+const provider = found.providers.find((one) => one.name.startsWith('Ollama')) ?? found.providers[0];
+const drawingProvider = find(found.providers, 'Studio server (on the LAN)');
 /*
  * The conversation the transcript is photographed from, chosen by how many
  * times somebody put something to it rather than by name.
@@ -281,6 +305,7 @@ if (!internal) {
  * nobody seeded rather than a workspace with nothing to hide.
  */
 const REAL_ENDPOINT = provider?.endpoint ?? '';
+const REAL_DRAW_ENDPOINT = drawingProvider?.endpoint ?? '';
 
 /*
  * And the address of whoever is taking the pictures.
@@ -324,6 +349,37 @@ const SHOTS = [
   { name: 'editor', path: `/workspace/${ws}/workflows/${flagship.id}/editor`, waitFor: '.react-flow__node', editor: true },
   { name: 'executions', path: `/workspace/${ws}/executions` },
   run && { name: 'execution-detail', path: `/workspace/${ws}/executions/${run.id}` },
+  /*
+   * The image node, selected in the editor, and the run where it drew: the
+   * picture is shown in the node's panel on the run page, so the node is
+   * clicked and the shutter waits for the picture's bytes rather than its tag -
+   * a picture still arriving is a grey box with a caption under it.
+   */
+  banner && {
+    name: 'image-node',
+    path: `/workspace/${ws}/workflows/${banner.id}/editor`,
+    waitFor: '.react-flow__node',
+    editor: true,
+    select: 'Draw the morning banner',
+  },
+  bannerRun && {
+    name: 'image-run',
+    path: `/workspace/${ws}/executions/${bannerRun.id}`,
+    waitFor: '.react-flow__node',
+    prepare: async (page) => {
+      const fit = page.locator('.react-flow__controls-fitview');
+      if (await fit.count()) await fit.first().click();
+      await page.locator('.react-flow__node', { hasText: 'Draw the morning banner' }).first().click();
+      await waitForPicture(page, 'img[src*="/api/execution-pictures/"]');
+      // The panel lists the step's input and output first, so the picture is
+      // below its fold until it is scrolled to.
+      await page
+        .locator('img[src*="/api/execution-pictures/"]')
+        .first()
+        .evaluate((image) => image.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(300);
+    },
+  },
   /*
    * The builder, open beside the graph rather than over it, which is the whole
    * point of it. Nothing is created and nothing is saved: the form is opened,
@@ -571,6 +627,44 @@ const SHOTS = [
       await page.waitForTimeout(4_000);
     },
   },
+  /*
+   * The task that drew, finished, with its pictures under what it said. The
+   * outcome card sits below the prompt, so it is scrolled to - its top, not
+   * "into view": the card is taller than the frame, and the browser's idea of
+   * in view was its bottom, which photographed two pictures and no task.
+   */
+  drawnTask && {
+    name: 'task-picture',
+    path: `/workspace/${ws}/tasks/${drawnTask.id}`,
+    waitFor: '[data-testid="task-outcome"]',
+    prepare: async (page) => {
+      await waitForPicture(page, '[data-testid="task-outcome"] img[src*="/api/task-pictures/"]');
+      await page
+        .locator('[data-testid="task-outcome"]')
+        .evaluate((card) => {
+          card.scrollIntoView({ block: 'start' });
+          // And back a little, so the task's name and state are in the frame
+          // above what it made.
+          let scroller = card.parentElement;
+          while (scroller && !(scroller.scrollHeight > scroller.clientHeight && /auto|scroll/.test(getComputedStyle(scroller).overflowY))) {
+            scroller = scroller.parentElement;
+          }
+          (scroller ?? window).scrollBy(0, -220);
+        });
+      await page.waitForTimeout(300);
+    },
+  },
+  /*
+   * Everything the workspace has made. Only where the seed drew, because
+   * without the banner's picture this page is an empty list.
+   */
+  bannerRun && {
+    name: 'artifacts',
+    path: `/workspace/${ws}/artifacts`,
+    prepare: async (page) => {
+      await waitForPicture(page, 'img[src*="-pictures/"]');
+    },
+  },
   { name: 'actions', path: `/workspace/${ws}/actions` },
   { name: 'conditions', path: `/workspace/${ws}/conditions` },
   /*
@@ -658,6 +752,27 @@ const SHOTS = [
   // The composer, by its label rather than its placeholder: `text=` matches
   // content, and a placeholder is an attribute, so it never matched at all.
   { name: 'chat', path: '/chat', waitFor: 'textarea[aria-label="Message"]' },
+  /*
+   * A picture asked for in a chat, in the thread where it was drawn, scrolled
+   * to so that it is the middle of the frame rather than below its fold.
+   */
+  drawnChat && {
+    name: 'chat-picture',
+    path: `/chat/${drawnChat.id}`,
+    // A drawn picture is filed as one of the chat's attachments, and the thread
+    // shows it from there - the same address the Files strip uses.
+    waitFor: 'img[src*="/api/attachments/"]',
+    prepare: async (page) => {
+      await waitForPicture(page, 'img[src*="/api/attachments/"]');
+      // The widest of them is the one in the thread; the strip's are thumbnails.
+      await page.evaluate(() => {
+        const images = [...document.querySelectorAll('img[src*="/api/attachments/"]')];
+        const widest = images.sort((x, y) => y.getBoundingClientRect().width - x.getBoundingClientRect().width)[0];
+        widest?.scrollIntoView({ block: 'center' });
+      });
+      await page.waitForTimeout(300);
+    },
+  },
   {
     name: 'quick-chat',
     /*
@@ -1006,6 +1121,20 @@ const SHOTS = [
  * the provider's own page draws it in an input, where a text-node walk finds
  * nothing at all - which is exactly the sort of half-done job this replaces.
  */
+/**
+ * Waits for a drawn picture to have arrived: decoded, with pixels in it. A tag
+ * is not enough - a picture still loading is an empty box, and a broken one is
+ * an `<img>` too.
+ */
+async function waitForPicture(page, selector) {
+  await page.waitForFunction(
+    (wanted) => [...document.querySelectorAll(wanted)].some((image) => image.complete && image.naturalWidth > 0),
+    selector,
+    { timeout: 20_000 },
+  );
+  await page.waitForTimeout(300);
+}
+
 function hideEverywhere({ real, shown }) {
   if (real === '' || real === shown) return;
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -1133,7 +1262,7 @@ for (const shot of CHOSEN) {
       const fit = page.locator('.react-flow__controls-fitview');
       if (await fit.count()) await fit.first().click();
       await page.waitForTimeout(400);
-      const agentNode = page.locator('.react-flow__node', { hasText: 'Support responder' });
+      const agentNode = page.locator('.react-flow__node', { hasText: shot.select ?? 'Support responder' });
       const target = (await agentNode.count()) ? agentNode.first() : page.locator('.react-flow__node').first();
       await target.click();
     }
@@ -1143,6 +1272,7 @@ for (const shot of CHOSEN) {
     if (shot.prepare) await shot.prepare(page);
     if (shot.redact) await page.evaluate(shot.redact, shot.redactWith);
     await page.evaluate(hideEverywhere, { real: REAL_ENDPOINT, shown: SHOWN_ENDPOINT });
+    await page.evaluate(hideEverywhere, { real: REAL_DRAW_ENDPOINT, shown: SHOWN_DRAW_ENDPOINT });
     await page.evaluate(hideEverywhere, { real: REAL_EMAIL, shown: SHOWN_EMAIL });
     await page.evaluate(hideOtherWorkspaces, { keep: WORKSPACE_NAME, invented: INVENTED_WORKSPACES });
     await page.screenshot({ path: `${OUT}${shot.name}.png` });

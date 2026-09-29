@@ -396,6 +396,9 @@ everything else it could be granted, and can be switched off there. A chat agent
 draws into the conversation; an agent in a run files the picture against the
 step that drew it, where the run log shows it under that node.
 
+![A picture asked for in a chat, drawn into the thread by the agent's drawing
+tool](/screens/chat-picture.png)
+
 **Every tool Orknux brings itself is in that list**, under **Built in**: the
 note an agent writes to itself, its to-do list, the clock, its scratchpads,
 saving a file, finding a connection, asking another agent, finishing a turn,
@@ -489,6 +492,9 @@ the grants. Hide it for the agent whose next node needs a real answer.
 Everything a workspace has made, on one page: the pictures its runs drew, and
 whatever an agent saved with the **save_artifact** tool.
 
+![The Artifacts page: what the workspace's runs and tasks have
+drawn](/screens/artifacts.png)
+
 A picture opens in the viewer. A document an agent wrote — a page, a report, a
 PDF — opens to be read rather than downloading, drawn inside a frame that is
 allowed no script, no cookies and no network of its own. That last part is what
@@ -566,6 +572,9 @@ That holds whichever way the task ended: one that drew and then ran out of turns
 still shows what it drew, because it was still paid for. Where no such model has
 been chosen, the tool is not offered at all and the agent is never told it could
 have drawn.
+
+![A task that drew: what the agent said, and the pictures under its
+outcome](/screens/task-picture.png)
 
 A task ends in one of four ways. It says it is **done**, and its summary is the
 last thing it writes. It **stops to ask** — a question, or permission for a
