@@ -58,6 +58,26 @@ function nextKey(questions: DecisionQuestion[]): string {
   }
 }
 
+/** What a new choice or score starts with: two rows, since fewer is nothing to choose between. */
+function twoRows(): DecisionOption[] {
+  return [
+    { name: '', description: '' },
+    { name: '', description: '' },
+  ];
+}
+
+/** What the question box asks for, in the words of the kind. */
+function prompted(kind: DecisionQuestionKind): string {
+  switch (kind) {
+    case 'CHOICE':
+      return t('What to choose between');
+    case 'SCORE':
+      return t('What to rate');
+    case 'NOUL':
+      return t('The statement to judge');
+  }
+}
+
 /** A noul's two sides, keyed as its criteria are; what the model reads for each. */
 function side(question: DecisionQuestion, name: 'true' | 'false'): string {
   return question.options.find((option) => option.name === name)?.description ?? '';
@@ -142,7 +162,8 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
               onChange({
                 decisionQuestions: [
                   ...questions,
-                  { key: nextKey(questions), kind: 'CHOICE', instructions: '', options: [] },
+                  // Two empty options to fill, so a choice looks like one from the start.
+                  { key: nextKey(questions), kind: 'CHOICE', instructions: '', options: twoRows() },
                 ],
               })
             }
@@ -155,34 +176,47 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
 
         {questions.map((question, index) => (
           <div className={styles.question} key={index} data-testid="decision-question">
+            {/*
+              The key and the kind are controls, and look it: each with its own
+              small label, the key a box and the kind a select. Drawn as bare
+              words they read as a caption nobody could change.
+            */}
             <div className={styles.questionHead}>
-              <input
-                className={`${editor.input} ${styles.key}`}
-                value={question.key}
-                aria-label={t('Question key')}
-                spellCheck={false}
-                onChange={(event) => put(index, { ...question, key: keyable(event.target.value) })}
-              />
-              <select
-                className={`${editor.input} ${editor.select} ${styles.kind}`}
-                value={question.kind}
-                aria-label={t('Question type')}
-                onChange={(event) => {
-                  const kind = event.target.value as DecisionQuestionKind;
-                  // A noul keeps only its two sides; a choice and a score keep
-                  // what they had, since options and levels are both a list.
-                  put(index, { ...question, kind, options: kind === 'NOUL' ? [] : question.kind === 'NOUL' ? [] : question.options });
-                }}
-              >
-                {KINDS.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {kindLabel(kind)}
-                  </option>
-                ))}
-              </select>
+              <label className={styles.control}>
+                <span className={styles.controlLabel}>{t('Key')}</span>
+                <input
+                  className={`${editor.input} ${styles.box} ${styles.key}`}
+                  value={question.key}
+                  aria-label={t('Key')}
+                  spellCheck={false}
+                  onChange={(event) => put(index, { ...question, key: keyable(event.target.value) })}
+                />
+              </label>
+              <label className={styles.control}>
+                <span className={styles.controlLabel}>{t('Kind')}</span>
+                <select
+                  className={`${editor.input} ${editor.select} ${styles.box} ${styles.kind}`}
+                  value={question.kind}
+                  aria-label={t('Kind')}
+                  onChange={(event) => {
+                    const kind = event.target.value as DecisionQuestionKind;
+                    // A noul has its two fixed sides and nothing else; a choice
+                    // and a score keep a list they had, and start with two
+                    // empty rows where there was none to keep.
+                    const kept = kind === 'NOUL' || question.kind === 'NOUL' ? [] : question.options;
+                    put(index, { ...question, kind, options: kind === 'NOUL' ? [] : kept.length > 0 ? kept : twoRows() });
+                  }}
+                >
+                  {KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {kindLabel(kind)}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="button"
-                className={editor.parameterSync}
+                className={`${editor.parameterSync} ${styles.removeQuestion}`}
                 aria-label={t('Remove question')}
                 onClick={() => remove(index)}
               >
@@ -192,37 +226,50 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
             <input
               className={`${editor.input} ${styles.box}`}
               value={question.instructions}
-              placeholder={t('What is being asked')}
+              placeholder={prompted(question.kind)}
               aria-label={t('Question')}
               onChange={(event) => put(index, { ...question, instructions: event.target.value })}
             />
 
             {question.kind === 'NOUL' ? (
+              /*
+                Two fixed answers, each tagged with its word, so it reads as a
+                table of Yes and No and not as a list somebody fills in.
+              */
               <div className={styles.options}>
-                <input
-                  className={`${editor.input} ${styles.box}`}
-                  value={side(question, 'true')}
-                  placeholder={t('What yes means (optional)')}
-                  aria-label={t('What yes means')}
-                  onChange={(event) => putSide(index, 'true', event.target.value)}
-                />
-                <input
-                  className={`${editor.input} ${styles.box}`}
-                  value={side(question, 'false')}
-                  placeholder={t('What no means (optional)')}
-                  aria-label={t('What no means')}
-                  onChange={(event) => putSide(index, 'false', event.target.value)}
-                />
+                {(['true', 'false'] as const).map((name) => (
+                  <div className={styles.option} key={name}>
+                    <span className={styles.sideTag} data-testid="decision-side">
+                      {name === 'true' ? t('Yes') : t('No')}
+                    </span>
+                    <input
+                      className={`${editor.input} ${styles.box}`}
+                      value={side(question, name)}
+                      placeholder={name === 'true' ? t('What yes means (optional)') : t('What no means (optional)')}
+                      aria-label={name === 'true' ? t('What yes means') : t('What no means')}
+                      onChange={(event) => putSide(index, name, event.target.value)}
+                    />
+                  </div>
+                ))}
               </div>
             ) : (
+              /*
+                A numbered list: a choice's options, or a score's levels lowest
+                first - where the number is the level the answer comes back as.
+              */
               <div className={styles.options}>
                 {question.options.map((option, at) => (
-                  <div className={styles.option} key={at}>
+                  <div className={styles.option} key={at} data-testid="decision-option">
+                    <span className={styles.marker} aria-hidden="true">
+                      {question.kind === 'SCORE' ? at : `${at + 1}.`}
+                    </span>
                     <input
                       className={`${editor.input} ${styles.box} ${styles.optionName}`}
                       value={option.name}
                       maxLength={64}
-                      placeholder={question.kind === 'SCORE' ? t('Level') : t('Option')}
+                      placeholder={
+                        question.kind === 'SCORE' ? (at === 0 ? t('Lowest level') : t('Level')) : t('Option')
+                      }
                       aria-label={question.kind === 'SCORE' ? t('Level name') : t('Option name')}
                       onChange={(event) => putOption(index, at, { ...option, name: event.target.value })}
                     />

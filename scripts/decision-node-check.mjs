@@ -22,6 +22,10 @@
  *   the pruning   an option removed in the panel takes its door and its line
  *                 with it, so the graph still saves
  *   it sticks     the questions come back after a reload
+ *   the cards     each kind looks like what it is: a new choice draws two
+ *                 option rows to fill, a yes-or-no draws its fixed Yes and No,
+ *                 and the key and the kind are an input and a select with
+ *                 labels of their own rather than words that read as captions
  *
  * Nothing here calls a model: the provider points at a `.invalid` host and is
  * never checked. `decision-run-check` is the half that runs one, over a stub.
@@ -251,5 +255,44 @@ const kept = await page
   .locator('[data-testid="decision-question"] input[aria-label="Option name"]')
   .evaluateAll((all) => all.map((one) => one.value));
 record(JSON.stringify(kept) === JSON.stringify(['billing']), `the question comes back as it was saved (${JSON.stringify(kept)})`);
+
+/* ---- the cards: each kind looks like what it is (never saved) ---- */
+
+await page.getByRole('button', { name: /add question/i }).click({ timeout: 10_000 }).catch(() => undefined);
+await page.waitForTimeout(400);
+const fresh = page.locator('[data-testid="decision-question"]').last();
+const rowsDrawn = await fresh.locator('[data-testid="decision-option"]').count();
+record(rowsDrawn === 2, `a new choice question draws two option rows to fill (${rowsDrawn})`);
+
+const controls = await fresh.evaluate((card) => {
+  const named = (name) => card.querySelector(`[aria-label="${name}"]`);
+  const shown = (el) => (el?.closest('label')?.innerText ?? '').split('\n')[0].trim();
+  return {
+    key: named('Key')?.tagName ?? null,
+    keyLabel: shown(named('Key')),
+    kind: named('Kind')?.tagName ?? null,
+    kindLabel: shown(named('Kind')),
+  };
+});
+record(
+  controls.key === 'INPUT' && controls.keyLabel.toLowerCase() === 'key',
+  `its key is an input labelled Key (${JSON.stringify(controls)})`,
+);
+record(
+  controls.kind === 'SELECT' && controls.kindLabel.toLowerCase() === 'kind',
+  `and its kind a select labelled Kind (${JSON.stringify(controls)})`,
+);
+
+await fresh.locator('select[aria-label="Kind"]').selectOption('NOUL').catch(() => undefined);
+await page.waitForTimeout(300);
+const sides = await fresh.locator('[data-testid="decision-side"]').allTextContents();
+record(
+  JSON.stringify(sides) === JSON.stringify(['Yes', 'No']),
+  `a yes-or-no question draws its two fixed answers, Yes and No (${JSON.stringify(sides)})`,
+);
+record(
+  (await fresh.locator('[data-testid="decision-option"]').count()) === 0,
+  'and no option list to fill',
+);
 
 await clean();
