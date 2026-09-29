@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { DecisionOption, DecisionQuestion, DecisionQuestionKind } from '../../api/graph';
 import type { Model } from '../../api/models';
 import { DefinitionPicker } from '../../components/DefinitionPicker';
@@ -100,6 +101,18 @@ function slugged(instructions: string, taken: string[]): string {
   return key;
 }
 
+/*
+ * Whether a key is still one the wording made rather than one somebody chose:
+ * the `question` a card starts with, the slug of its wording, or a slug the
+ * wording has since grown past - a key frozen partway through typing, which is
+ * what the old check left behind and a reload then kept for good.
+ */
+function madeByWording(key: string, instructions: string, taken: string[]): boolean {
+  if (/^question\d*$/.test(key)) return true;
+  const slug = slugged(instructions, taken);
+  return slug !== '' && (key === slug || slug.startsWith(key) || key.startsWith(slug));
+}
+
 /** Where a later node finds the answer: under the key, in the field its kind answers with. */
 function readAs(question: DecisionQuestion): string {
   const field = question.kind === 'CHOICE' ? 'choice' : question.kind === 'SCORE' ? 'score' : 'noul';
@@ -117,6 +130,24 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
   // What the node can branch on: a choice, by its options, or a yes-or-no, by Yes and No.
   const choices = questions.filter((question) => branchable(question.kind));
 
+  /*
+   * Which cards' keys somebody typed. Decided once per card, from the key it had
+   * when first seen, then kept here rather than worked out again on every
+   * keystroke: the check it replaced compared the key with the wording, and
+   * typing fast the wording it read lagged a letter behind, the two stopped
+   * matching, and the key froze - "rate_questi". Remounted per node.
+   */
+  const chosen = useRef<Map<number, boolean>>(new Map());
+  const keyChosen = (index: number): boolean => {
+    const known = chosen.current.get(index);
+    if (known !== undefined) return known;
+    const question = questions[index];
+    const others = questions.filter((_, at) => at !== index).map((held) => held.key);
+    const decided = !madeByWording(question.key, question.instructions, others);
+    chosen.current.set(index, decided);
+    return decided;
+  };
+
   function put(index: number, changed: DecisionQuestion) {
     const was = questions[index];
     const next = questions.map((held, at) => (at === index ? changed : held));
@@ -129,6 +160,10 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
 
   function remove(index: number) {
     const gone = questions[index];
+    // The cards after it move up one, and what is known of their keys with them.
+    chosen.current = new Map(
+      [...chosen.current].filter(([at]) => at !== index).map(([at, was]) => [at > index ? at - 1 : at, was]),
+    );
     onChange({
       decisionQuestions: questions.filter((_, at) => at !== index),
       decisionBranchQuestion: gone.key === branch ? null : branch,
@@ -149,9 +184,16 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
   function ask(index: number, instructions: string) {
     const question = questions[index];
     const others = questions.filter((_, at) => at !== index).map((held) => held.key);
-    const untouched = /^question\d*$/.test(question.key) || question.key === slugged(question.instructions, others);
-    const key = untouched ? slugged(instructions, others) || question.key : question.key;
+    const key = keyChosen(index) ? question.key : slugged(instructions, others) || question.key;
     put(index, { ...question, instructions, key });
+  }
+
+  /** The key made from the wording again, and following it from here on. */
+  function followWording(index: number) {
+    const question = questions[index];
+    const others = questions.filter((_, at) => at !== index).map((held) => held.key);
+    chosen.current.set(index, false);
+    put(index, { ...question, key: slugged(question.instructions, others) || nextKey(questions) });
   }
 
   function putSide(index: number, name: 'true' | 'false', description: string) {
@@ -353,8 +395,23 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
                   value={question.key}
                   aria-label={t('Output key')}
                   spellCheck={false}
-                  onChange={(event) => put(index, { ...question, key: keyable(event.target.value) })}
+                  onChange={(event) => {
+                    chosen.current.set(index, true);
+                    put(index, { ...question, key: keyable(event.target.value) });
+                  }}
                 />
+                {keyChosen(index) && question.instructions.trim() !== '' && (
+                  <button
+                    type="button"
+                    className={styles.keyReset}
+                    onClick={() => followWording(index)}
+                    title={t('Make the key from the question again')}
+                    aria-label={t('Make the key from the question again')}
+                    data-key-reset=""
+                  >
+                    ↺
+                  </button>
+                )}
                 <span className={styles.keyNote}>{tf('Later nodes read {path}', { path: readAs(question) })}</span>
               </label>
             </div>

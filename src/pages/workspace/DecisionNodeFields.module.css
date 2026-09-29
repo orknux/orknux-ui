@@ -168,3 +168,18 @@
 .addOption {
   align-self: flex-start;
 }
+
+/* Puts a chosen key back to following the question's wording. */
+.keyReset {
+  flex: none;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.keyReset:hover {
+  color: var(--color-text-primary);
+}

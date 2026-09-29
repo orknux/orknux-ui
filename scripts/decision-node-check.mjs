@@ -333,6 +333,31 @@ record(
   `the card reads kind, then the question, then the answers, then the key at the bottom (${JSON.stringify(order)})`,
 );
 
+/*
+ * The key keeps up with fast typing. Reported: typed quickly, the key froze
+ * partway ("rate_questi") and stayed frozen after a reload, because it was
+ * decided by comparing the key with a wording that lagged a letter behind.
+ */
+const asked = fresh.locator('[data-testid="decision-asked"]');
+const keyBox = fresh.locator('[data-testid="decision-key"] input');
+await asked.click();
+await page.keyboard.type('Rate question complexity please', { delay: 0 });
+await page.waitForTimeout(300);
+record(
+  (await keyBox.inputValue()) === 'rate_question_complexity_please',
+  `typed fast, the key follows the whole question (${await keyBox.inputValue()})`,
+);
+await keyBox.fill('my_key');
+await asked.fill('Something else entirely');
+record((await keyBox.inputValue()) === 'my_key', 'a key somebody typed stays as they typed it');
+const reset = fresh.locator('[data-key-reset]');
+record((await reset.count()) === 1, 'and offers to follow the question again');
+await reset.click().catch(() => undefined);
+record(
+  (await keyBox.inputValue()) === 'something_else_entirely',
+  `which makes it from the question once more (${await keyBox.inputValue()})`,
+);
+
 const shape = await fresh.evaluate((card) => {
   const kinds = [...card.querySelectorAll('[data-testid="decision-kind"] [role="radio"]')].map((one) => one.innerText.trim());
   const asked = card.querySelector('[data-testid="decision-asked"]');

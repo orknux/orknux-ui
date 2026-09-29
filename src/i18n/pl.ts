@@ -2164,6 +2164,7 @@ export const PL: Record<string, string> = {
   "Levels, lowest first": "Poziomy, od najniższego",
   "Options": "Opcje",
   "Output key": "Klucz wyniku",
+  "Make the key from the question again": "Utwórz klucz ponownie z pytania",
   "Later nodes read {path}": "Dalsze węzły czytają {path}",
   "Branches once its choice has two options": "Rozgałęzi się, gdy wybór będzie miał dwie opcje",
   "Lowest level": "Najniższy poziom",

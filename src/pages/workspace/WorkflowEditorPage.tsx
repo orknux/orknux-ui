@@ -5848,6 +5848,7 @@ Change the keystroke in Preferences.`}
                 )}
                 {draft.kind === 'DECISION' && (
                   <DecisionNodeFields
+                    key={`decision-${draft.key}`}
                     draft={draft}
                     models={decisionModels}
                     onChange={(patch) => {
