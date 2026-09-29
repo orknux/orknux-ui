@@ -1515,6 +1515,87 @@ if (imageModel) {
   log(`workflow ${banner.id}: ${banner.name} (published)`);
 }
 
+/*
+ * And an agent that draws in a run, which is the other half of the drawing
+ * paragraph: an agent node offered `draw_picture` files what it draws against
+ * its step, and `picture_link` gives it the markdown to put the picture in its
+ * answer. The newsletter agent, so it is the scripted writer that asks.
+ *
+ * With a session node, and not for the transcript: a drawn picture's key is a
+ * key into the session's store, so an agent step with no session is handed no
+ * key and has nothing to ask `picture_link` about.
+ */
+let drawsInRun = null;
+const ILLUSTRATE_TRIGGER = 'trigger-weekly';
+const ILLUSTRATE_AGENT = 'agent-illustrate';
+const ILLUSTRATE_SESSION = 'session-weekly';
+if (imageModel && newsletter) {
+  drawsInRun = await createWorkflow(
+    copy('Illustrate the weekly update'),
+    'The newsletter agent draws the picture the weekly update goes out with, and places it in what it writes.',
+  );
+  await gql(
+    `mutation($ws: ID!, $id: ID!, $input: WorkflowGraphInput!) {
+       saveWorkflowGraph(workspaceId: $ws, workflowId: $id, input: $input) { workflowId problems { message } }
+     }`,
+    {
+      ws,
+      id: drawsInRun.id,
+      input: {
+        nodes: [
+          {
+            key: ILLUSTRATE_TRIGGER,
+            kind: 'TRIGGER',
+            name: 'Every morning at 06:30',
+            triggerId: nightly.id,
+            icon: 'calendar',
+            x: 60,
+            y: 200,
+          },
+          {
+            key: ILLUSTRATE_AGENT,
+            kind: 'AGENT',
+            name: 'Illustrate the update',
+            agentId: newsletter.id,
+            outputName: 'update',
+            icon: 'file-text',
+            mappings: [
+              {
+                name: 'prompt',
+                expression: 'Draw the picture for this week\'s update: a quiet mountain lake at noon under a clear sky.',
+                mode: 'VALUE',
+              },
+            ],
+            x: 460,
+            y: 200,
+          },
+          {
+            key: ILLUSTRATE_SESSION,
+            kind: 'SESSION',
+            name: 'The weekly update',
+            icon: 'message-square',
+            mappings: [
+              { name: 'sessionKeyPrefix', expression: 'update', mode: 'VALUE' },
+              { name: 'sessionKey', expression: 'weekly', mode: 'VALUE' },
+            ],
+            x: 460,
+            y: 460,
+          },
+        ],
+        edges: [
+          { source: ILLUSTRATE_TRIGGER, target: ILLUSTRATE_AGENT },
+          { source: ILLUSTRATE_SESSION, target: ILLUSTRATE_AGENT },
+        ],
+      },
+    },
+  );
+  await gql('mutation($ws: ID!, $id: ID!) { publishWorkflow(workspaceId: $ws, workflowId: $id) { status } }', {
+    ws,
+    id: drawsInRun.id,
+  });
+  log(`workflow ${drawsInRun.id}: ${drawsInRun.name} (published)`);
+}
+
 /* ---------------------------------------------------------------- the runs */
 
 let runs = 0;
@@ -1546,6 +1627,19 @@ if (banner) {
     runs += 1;
   } catch (failure) {
     console.warn(`  banner run: ${failure.message.split('\n')[0]}`);
+  }
+}
+let illustratedRun = null;
+if (drawsInRun) {
+  try {
+    const { startExecution } = await gql(
+      'mutation($ws: ID!, $id: ID!) { startExecution(workspaceId: $ws, workflowId: $id) { id status } }',
+      { ws, id: drawsInRun.id },
+    );
+    illustratedRun = startExecution.id;
+    runs += 1;
+  } catch (failure) {
+    console.warn(`  illustrated run: ${failure.message.split('\n')[0]}`);
   }
 }
 /*
@@ -1722,6 +1816,37 @@ if (newsletter) {
     console.warn(`  newsletter chat: ${failure.message.split('\n')[0]}`);
   }
 }
+/*
+ * A chat that drew twice, so the thread holds more than one picture: the Files
+ * strip fills with both, and the viewer the manual describes steps between
+ * them. Two turns rather than one message naming two pictures, because asking
+ * again in the same conversation is what a person does.
+ */
+if (newsletter) {
+  try {
+    const { startChat } = await gql('mutation($input: StartChatInput!) { startChat(input: $input) { id title } }', {
+      input: { workspaceId: ws, title: 'Pictures for the winter mailing', agentId: newsletter.id },
+    });
+    for (const text of [
+      'Draw the cover for the winter mailing: a pine forest in the snow at noon.',
+      'And one for the back page: a small harbour town at dusk, lights coming on in the windows.',
+    ]) {
+      await gql('mutation($id: ID!, $text: String!) { sendChatMessage(id: $id, text: $text) { __typename } }', {
+        id: startChat.id,
+        text,
+      });
+    }
+    chats += 1;
+    const { chatAttachments } = await gql('query($id: ID!) { chatAttachments(chatId: $id) { contentType } }', {
+      id: startChat.id,
+    });
+    const drawn = chatAttachments.filter((one) => one.contentType.startsWith('image/')).length;
+    if (drawn < 2) console.warn(`  the winter mailing chat drew ${drawn} of 2 pictures`);
+    else log(`  the winter mailing chat drew ${drawn} pictures`);
+  } catch (failure) {
+    console.warn(`  winter mailing chat: ${failure.message.split('\n')[0]}`);
+  }
+}
 log(`${chats} chats`);
 
 /*
@@ -1750,6 +1875,35 @@ if (newsletter) {
     log(`task: ${drawingTask.title} (started)`);
   } catch (failure) {
     console.warn(`  drawing task: ${failure.message.split('\n')[0]}`);
+  }
+}
+
+/*
+ * And one whose pictures go into a document: drawn, laid out as a PDF by their
+ * keys with `pdf_fromHtml`, saved with `save_artifact`, and linked in what the
+ * task says - which is what draws the PDF's first page under its outcome, and
+ * puts a document on the Artifacts page beside the pictures.
+ */
+let documentTask = null;
+if (newsletter) {
+  try {
+    const { startTask } = await gql('mutation($input: StartTaskInput!) { startTask(input: $input) { id title } }', {
+      input: {
+        workspaceId: ws,
+        title: 'The October newsletter as a PDF',
+        agentId: newsletter.id,
+        prompt: [
+          'Lay the October newsletter out as a PDF with two pictures, and save it where people can find it.',
+          '',
+          'Fixed this month: a mountain lake at sunrise with pine trees.',
+          'Still open: a city skyline at night over the river.',
+        ].join('\n'),
+      },
+    });
+    documentTask = startTask;
+    log(`task: ${documentTask.title} (started)`);
+  } catch (failure) {
+    console.warn(`  document task: ${failure.message.split('\n')[0]}`);
   }
 }
 
@@ -2096,6 +2250,9 @@ for (const id of flagshipRuns) {
 if (bannerRun) {
   log(`  run ${bannerRun} drawing the banner: ${await ranToTheEnd(bannerRun)}`);
 }
+if (illustratedRun) {
+  log(`  run ${illustratedRun} with an agent that draws: ${await ranToTheEnd(illustratedRun)}`);
+}
 
 /*
  * And then somebody asks about the same ticket again.
@@ -2272,30 +2429,37 @@ log(`shells: ${MACHINES.filter((machine) => !machines.has(machine.name)).length}
  * something worth photographing in seconds rather than going round its turns.
  */
 /*
- * The drawing task, finished first. It has been working since the chats; what
- * the capture wants of it is the outcome with its pictures under it, and the
- * handover task below has to be started after it to be the newest.
+ * The drawing tasks, finished first. They have been working since the chats;
+ * what the capture wants of them is the outcome with its pictures - and, for
+ * the second, its PDF - under it, and the handover task below has to be
+ * started after them to be the newest.
  *
  * Waiting counts as ended: a task that stopped to ask something is not going
  * to draw by itself, and the seed says so rather than sitting out the wait.
  */
-if (drawingTask) {
+for (const drawing of [drawingTask, documentTask].filter(Boolean)) {
   const until = Date.now() + 300_000;
   let held = null;
   while (Date.now() < until) {
     await new Promise((wake) => setTimeout(wake, 3000));
     try {
-      ({ task: held } = await gql('query($id: ID!) { task(id: $id) { status outcome } }', { id: drawingTask.id }));
+      ({ task: held } = await gql('query($id: ID!) { task(id: $id) { status outcome } }', { id: drawing.id }));
     } catch {
       // Asked again on the next turn, as the runs above are.
     }
     if (held && !['QUEUED', 'RUNNING'].includes(held.status)) break;
   }
-  const pictures = (held?.outcome ?? '').match(/\/api\/task-pictures\//g)?.length ?? 0;
+  const outcome = held?.outcome ?? '';
+  const pictures = outcome.match(/\/api\/task-pictures\//g)?.length ?? 0;
+  const documents = outcome.match(/\/api\/artifacts\//g)?.length ?? 0;
   if (pictures === 0) {
-    console.warn(`  ${drawingTask.title} ended ${held?.status ?? 'unknown'} having drawn nothing`);
+    console.warn(`  ${drawing.title} ended ${held?.status ?? 'unknown'} having drawn nothing`);
   } else {
-    log(`  ${drawingTask.title}: ${held.status}, ${pictures} picture${pictures === 1 ? '' : 's'} under its outcome`);
+    log(
+      `  ${drawing.title}: ${held.status}, ${pictures} picture${pictures === 1 ? '' : 's'}` +
+        (documents > 0 ? ` and ${documents} saved document${documents === 1 ? '' : 's'}` : '') +
+        ' under its outcome',
+    );
   }
 }
 

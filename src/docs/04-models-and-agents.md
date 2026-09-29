@@ -423,6 +423,9 @@ until somebody hides it — the switch is for an agent whose answers are read
 somewhere this installation is not, where an address here resolves to nothing
 for the reader.
 
+![An agent that drew in a run: a mountain lake at noon, placed in its answer and
+shown in the panel of the step that drew it](/screens/agent-run-picture.png)
+
 ## What an agent makes, and where it goes
 
 An agent does more than answer in words. The server brings the tools for the
@@ -447,6 +450,10 @@ sends, uploads or packs a file takes.
   unpacks one somebody sent into pads, so it can be read and changed.
 - **Looking.** `picture_view` shows the model the picture behind a key: an
   attachment it read, a chart it drew.
+
+![A task that drew a mountain lake and a city at night, laid them out as a PDF and
+saved it: under its outcome the pictures, and the saved PDF drawn small by its
+first page](/screens/task-pdf.png)
 
 The server also brings **skills** that say how to use all of this -
 *Diagrams and charts*, *Complex HTML*, *Making a PDF* and *Delegating* - and
@@ -492,13 +499,16 @@ the grants. Hide it for the agent whose next node needs a real answer.
 Everything a workspace has made, on one page: the pictures its runs drew, and
 whatever an agent saved with the **save_artifact** tool.
 
-![The Artifacts page: what the workspace's runs and tasks have
-drawn](/screens/artifacts.png)
+![The Artifacts page: harbours, hills, lakes and a city at night that the
+workspace's runs and tasks drew, and the PDF one of them saved](/screens/artifacts.png)
 
 A picture opens in the viewer. A document an agent wrote — a page, a report, a
 PDF — opens to be read rather than downloading, drawn inside a frame that is
 allowed no script, no cookies and no network of its own. That last part is what
 makes it safe to open something a model wrote. Anything else downloads.
+
+![A picture a task drew, open in the viewer over the Artifacts
+page](/screens/artifact-picture.png)
 
 What is open is in the address bar, so an artifact can be linked to: send
 somebody the address and they see the thing, not the list.

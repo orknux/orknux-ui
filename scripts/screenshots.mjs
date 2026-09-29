@@ -183,6 +183,7 @@ const found = await gql(`{
   }
   tasks: workspaceTasks(workspaceId: "${ws}", size: 20) { content { id title status } }
   chats: chatSessions(workspaceId: "${ws}") { id title }
+  artifacts: workspaceArtifacts(workspaceId: "${ws}", size: 50) { content { id kind filename contentType } }
   users { id username type email }
 }`);
 
@@ -205,6 +206,11 @@ const banner = find(found.workflows.content, 'Draw the morning banner');
 const bannerRun = find(found.executions.content, 'Draw the morning banner', 'workflowName');
 const drawnChat = find(found.chats ?? [], 'A picture for the October newsletter', 'title');
 const drawnTask = find(found.tasks?.content ?? [], 'Pictures for the October newsletter', 'title');
+const illustratedRun = find(found.executions.content, 'Illustrate the weekly update', 'workflowName');
+const twiceDrawn = find(found.chats ?? [], 'Pictures for the winter mailing', 'title');
+const documentTask = find(found.tasks?.content ?? [], 'The October newsletter as a PDF', 'title');
+// A picture a task drew, to open in the Artifacts page's viewer.
+const drawnArtifact = (found.artifacts?.content ?? []).find((one) => one.kind === 'TASK') ?? null;
 /*
  * The task the manual points at: the newest one the seed started.
  *
@@ -628,6 +634,53 @@ const SHOTS = [
     },
   },
   /*
+   * An agent that drew in a run: the picture under its step, in the panel of
+   * the node that drew it, beside the answer it placed the picture in.
+   */
+  illustratedRun && {
+    name: 'agent-run-picture',
+    path: `/workspace/${ws}/executions/${illustratedRun.id}`,
+    waitFor: '.react-flow__node',
+    // The link picture_link answers is absolute, and its host is the port this
+    // installation happened to be served on.
+    redact: hideEverywhere,
+    redactWith: { real: BASE, shown: 'https://orknux.northwind.example' },
+    prepare: async (page) => {
+      const fit = page.locator('.react-flow__controls-fitview');
+      if (await fit.count()) await fit.first().click();
+      await page.locator('.react-flow__node', { hasText: 'Illustrate the update' }).first().click();
+      await waitForPicture(page, 'img[src*="/api/execution-pictures/"]');
+      await page
+        .locator('img[src*="/api/execution-pictures/"]')
+        .first()
+        .evaluate((image) => image.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(300);
+    },
+  },
+  /*
+   * A task whose pictures went into a PDF it saved: the link in its outcome is
+   * drawn as the document's first page, and the pictures follow.
+   */
+  documentTask && {
+    name: 'task-pdf',
+    path: `/workspace/${ws}/tasks/${documentTask.id}`,
+    waitFor: '[data-testid="task-outcome"]',
+    prepare: async (page) => {
+      await waitForPicture(page, '[data-testid="task-outcome"] img[src*="/api/task-pictures/"]');
+      // The miniature is a canvas pdf.js draws into once the bytes arrive.
+      await page
+        .waitForFunction(() => document.querySelector('[data-testid="task-outcome"] canvas') !== null, undefined, {
+          timeout: 15_000,
+        })
+        .catch(() => console.warn('  task-pdf: the PDF miniature never drew'));
+      // The miniature is drawn after the pictures, so it is what is scrolled to.
+      await page.evaluate(() =>
+        document.querySelector('[data-testid="task-outcome"] canvas')?.scrollIntoView({ block: 'center' }),
+      );
+      await page.waitForTimeout(1500);
+    },
+  },
+  /*
    * The task that drew, finished, with its pictures under what it said. The
    * outcome card sits below the prompt, so it is scrolled to - its top, not
    * "into view": the card is taller than the frame, and the browser's idea of
@@ -663,6 +716,19 @@ const SHOTS = [
     path: `/workspace/${ws}/artifacts`,
     prepare: async (page) => {
       await waitForPicture(page, 'img[src*="-pictures/"]');
+    },
+  },
+  /*
+   * One of them open in the viewer, at its own address - the picture over the
+   * page rather than a download.
+   */
+  drawnArtifact && {
+    name: 'artifact-picture',
+    path: `/workspace/${ws}/artifacts/${drawnArtifact.id}`,
+    prepare: async (page) => {
+      await page.waitForSelector('dialog[open]', { timeout: 15_000 });
+      await waitForPicture(page, 'dialog[open] img');
+      await page.waitForTimeout(500);
     },
   },
   { name: 'actions', path: `/workspace/${ws}/actions` },
@@ -771,6 +837,39 @@ const SHOTS = [
         widest?.scrollIntoView({ block: 'center' });
       });
       await page.waitForTimeout(300);
+    },
+  },
+  /*
+   * A chat that drew twice: both pictures in the thread and both in the Files
+   * strip. Scrolled to the end, where the second one is.
+   */
+  twiceDrawn && {
+    name: 'chat-pictures',
+    path: `/chat/${twiceDrawn.id}`,
+    waitFor: 'img[src*="/api/attachments/"]',
+    prepare: async (page) => {
+      await waitForPicture(page, 'img[src*="/api/attachments/"]');
+      await page.evaluate(() => {
+        const images = [...document.querySelectorAll('img[src*="/api/attachments/"]')];
+        images.at(-1)?.scrollIntoView({ block: 'end' });
+      });
+      await page.waitForTimeout(500);
+    },
+  },
+  /*
+   * And one of them opened over the conversation, which is what clicking a
+   * picture in a chat does; the arrows step to the other.
+   */
+  twiceDrawn && {
+    name: 'picture-viewer',
+    path: `/chat/${twiceDrawn.id}`,
+    waitFor: 'img[src*="/api/attachments/"]',
+    prepare: async (page) => {
+      await waitForPicture(page, 'img[src*="/api/attachments/"]');
+      await page.locator('button[aria-label^="Open larger"]').first().click();
+      await page.waitForSelector('dialog[open]', { timeout: 10_000 });
+      await waitForPicture(page, 'dialog[open] img');
+      await page.waitForTimeout(500);
     },
   },
   {

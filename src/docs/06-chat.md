@@ -181,10 +181,16 @@ A picture the agent drew is a picture like any other: it is in the **Files**
 strip above the composer as soon as it is drawn, and clicking it in the thread
 opens it over the conversation.
 
+![A chat that drew twice - a snowy pine forest, then a harbour town at dusk - with
+both in the thread and in the Files strip](/screens/chat-pictures.png)
+
 Clicking a picture in a chat opens it over the conversation rather than in a new
 tab, with the arrow keys stepping between the pictures in the same group.
 Anything that is not a picture downloads instead — the server sends those as
 attachments, so there is nothing a viewer could show.
+
+![The snowy pine forest from that chat, opened over the
+conversation](/screens/picture-viewer.png)
 
 ## The AI button
 
