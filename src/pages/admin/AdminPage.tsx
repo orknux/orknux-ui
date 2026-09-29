@@ -229,7 +229,8 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                         .then((step) => { if (step !== null) setProgress(step); })
                         .catch(() => undefined);
                     }, 500);
-                    duplicateWorkspace(workspace.id, `${workspace.name} copy`, key)
+                    // Named by the server: the first free of "<name> copy", "<name> copy 2"... A name chosen here was refused once taken.
+                    duplicateWorkspace(workspace.id, null, key)
                       .then((made) => {
                         setCopied(made);
                         setReloadToken((was) => was + 1);

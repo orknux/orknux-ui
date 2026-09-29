@@ -34,7 +34,7 @@ for (let at = 0; at < SKILLS; at += 1) {
 await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the workspaces'), 'the workspaces are on screen');
 
-const duplicate = page.getByRole('button', { name: `Duplicate ${NAME}` });
+const duplicate = page.getByRole('button', { name: `Duplicate ${NAME}`, exact: true });
 await duplicate.waitFor({ timeout: 20_000 });
 await duplicate.click();
 
@@ -69,6 +69,13 @@ record((await block.count()) === 0, 'the progress block is gone once it is');
 const answer = page.locator('[role="status"]', { hasText: 'Copied to' });
 await page.locator('[data-copy-dismiss]').click();
 record((await answer.count()) === 0, 'the answer is dismissed with its close button');
+
+/* A second copy is not refused for a name the first one took: it takes "copy 2". */
+await duplicate.click();
+record(
+  await page.locator('[role="status"]', { hasText: `${NAME} copy 2` }).waitFor({ timeout: 60_000 }).then(() => true).catch(() => false),
+  'a second copy takes the next free name',
+);
 
 await sweep();
 await finish(browser);

@@ -681,9 +681,9 @@ export async function fetchWorkspaceCopyProgress(key: string): Promise<Workspace
  * `progressKey` is made up by the caller, which reads how far the copy has got
  * under it with [fetchWorkspaceCopyProgress] while this is still waiting. #572.
  */
-export async function duplicateWorkspace(id: string, name: string, progressKey?: string): Promise<WorkspaceCopy> {
+export async function duplicateWorkspace(id: string, name: string | null, progressKey?: string): Promise<WorkspaceCopy> {
   const data = await graphql<{ duplicateWorkspace: WorkspaceCopy }>(
-    `mutation DuplicateWorkspace($id: ID!, $name: String!, $progressKey: String) {
+    `mutation DuplicateWorkspace($id: ID!, $name: String, $progressKey: String) {
        duplicateWorkspace(id: $id, name: $name, progressKey: $progressKey) {
          workspace { id name description }
          carried { kind count }
