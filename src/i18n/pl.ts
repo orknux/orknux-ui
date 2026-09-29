@@ -455,6 +455,8 @@ export const PL: Record<string, string> = {
   "Could not open that scratchpad.": "Nie udało się otworzyć tego brudnopisu.",
   "That scratchpad is no longer here.": "Tego brudnopisu już tu nie ma.",
   "That scratchpad could not be created.": "Nie udało się utworzyć tego brudnopisu.",
+  "Edit in session": "Edytuj w sesji",
+  "It has not written any.": "Nie zapisało jeszcze żadnego.",
   "Type": "Rodzaj",
   "Subtype": "Podrodzaj",
   "Shape": "Kształt",

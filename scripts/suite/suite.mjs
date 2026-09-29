@@ -3278,6 +3278,21 @@ export const TESTS = [
      */
   },
   {
+    name: 'task-scratchpad-check',
+    what: 'the task page lists the scratchpads its session holds, opens one read-only, and follows the task as it writes more',
+    needs: ['workspace'],
+    /*
+     * Issue #575. Task 85 wrote poem.html into a scratchpad before turning it
+     * into a PDF, and its page showed none of it. A real task on a model at
+     * `.invalid`, which fails at once and leaves its session behind; the pads
+     * are written into that session with createSessionScratchpad. Asking the
+     * finished task to carry on sets it working again, and a pad written before
+     * that has to appear with the new lines, not on a reload - and the pad
+     * already open has to stay open, which it did not while the stream's frames
+     * carried the session id as a number and GraphQL as text.
+     */
+  },
+  {
     name: 'task-refresh-check',
     what: 'the task page offers an interval to refresh at, and choosing one does not reopen its stream',
     needs: ['workspace'],

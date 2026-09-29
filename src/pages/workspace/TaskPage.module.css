@@ -422,3 +422,87 @@
 .sortDirection:hover {
   border-color: var(--color-text-muted);
 }
+
+/* ---- Scratchpads (#575) ---- */
+
+.padEdit {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.padEdit:hover {
+  color: var(--color-text-primary);
+}
+
+.padList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--space-6) var(--space-8);
+  list-style: none;
+}
+
+/* One line a file: its name, what it is for where it says, and its size. */
+.padRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.padRow:hover,
+.padRowOpen {
+  background: var(--color-surface-hover);
+}
+
+.padName {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.padDescription {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.padBytes {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* The file itself, read-only: a block that scrolls rather than a page that grows. */
+.padContent {
+  max-height: 480px;
+  margin: var(--space-4) var(--space-8) var(--space-8);
+  padding: var(--space-12);
+  overflow: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

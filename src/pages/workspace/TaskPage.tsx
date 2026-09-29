@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { fetchLlmSessionEvents } from '../../api/llmSessions';
-import type { LlmSessionEvent } from '../../api/llmSessions';
+import { fetchLlmSessionEvents, fetchSessionScratchpad, fetchSessionScratchpads } from '../../api/llmSessions';
+import type { LlmSessionEvent, SessionScratchpad, SessionScratchpadContent } from '../../api/llmSessions';
 import type { SessionUser } from '../../api/session';
 import {
   answerTaskRequest,
@@ -125,6 +125,8 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [watching, setWatching] = useState<TaskWatchState>('live');
+  /** How many times the timer has asked, which the scratchpads follow as well. */
+  const [refreshes, setRefreshes] = useState(0);
 
   /**
    * The newest line drawn, which is where following starts.
@@ -203,6 +205,7 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
    */
   const refresh = useCallback(() => {
     void pull(false);
+    setRefreshes((count) => count + 1);
   }, [pull]);
 
   useEffect(() => {
@@ -723,6 +726,22 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
             </section>
           )}
 
+          {/*
+            What it wrote on the way, under what it said at the end. A task that
+            made poem.html and turned it into a PDF showed the PDF and none of
+            the page it came from. Issue #575.
+          */}
+          {task.sessionId !== null && (
+            <TaskScratchpads
+              workspaceId={workspaceId}
+              // A string whichever road the task came by: the stream's frames carry
+              // the id as a number and GraphQL as text, and a key that flips
+              // between the two would close an open pad on every frame.
+              sessionId={String(task.sessionId)}
+              tick={`${refreshes}:${log.length}:${log.filter((line) => line.result !== null).length}`}
+            />
+          )}
+
           {task.grants.length > 0 && (
             <section className={styles.card}>
               <div className={styles.cardHead}>
@@ -740,6 +759,124 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
         </>
       )}
     </AppShell>
+  );
+}
+
+/** A byte count in the words a person reads, the way the session page says it. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+/**
+ * The task's scratchpads, read-only. Issue #575.
+ *
+ * The working files its agent kept in the session - the same list the session
+ * page draws beside its transcript. Pressing one shows it here; changing it is
+ * the session page's, which is where the editor, Save and Delete already are,
+ * so this is a window onto the files rather than a second place to edit them.
+ *
+ * Asked again whenever `tick` moves: the page folds a step into it each time
+ * one arrives or a tool answers, so a file the task has just written is listed
+ * without a reload, and the pad that is open is read again with it.
+ */
+function TaskScratchpads({ workspaceId, sessionId, tick }: { workspaceId: string; sessionId: string; tick: string }) {
+  const [pads, setPads] = useState<SessionScratchpad[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const [content, setContent] = useState<SessionScratchpadContent | null>(null);
+  const [padError, setPadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOpen(null);
+    setContent(null);
+    setPads(null);
+  }, [sessionId]);
+
+  useEffect(() => {
+    let current = true;
+    // A burst of steps is one question, not one per step.
+    const wait = window.setTimeout(() => {
+      fetchSessionScratchpads(sessionId)
+        .then((found) => {
+          if (!current) return;
+          setPads(found);
+          setFailed(false);
+        })
+        .catch(() => {
+          if (current) setFailed(true);
+        });
+    }, 300);
+    return () => {
+      current = false;
+      window.clearTimeout(wait);
+    };
+  }, [sessionId, tick]);
+
+  useEffect(() => {
+    if (open === null) return;
+    let current = true;
+    fetchSessionScratchpad(sessionId, open)
+      .then((found) => {
+        if (!current) return;
+        setContent(found);
+        setPadError(found === null ? t('That scratchpad is no longer here.') : null);
+      })
+      .catch((cause: unknown) => {
+        if (current) setPadError(cause instanceof Error ? cause.message : t('Could not open that scratchpad.'));
+      });
+    return () => {
+      current = false;
+    };
+  }, [sessionId, open, tick]);
+
+  return (
+    <section className={styles.card} data-testid="task-scratchpads">
+      <div className={styles.cardHead}>
+        <span className={styles.label}>{t('Scratchpads')}</span>
+        <Link className={styles.padEdit} to={`/workspace/${workspaceId}/sessions/${sessionId}`} data-task-scratchpad-edit="">
+          {t('Edit in session')}
+        </Link>
+      </div>
+      {failed && pads === null ? (
+        <p className={styles.notice}>{t('Could not load the scratchpads.')}</p>
+      ) : pads === null ? null : pads.length === 0 ? (
+        <p className={styles.notice}>{t('It has not written any.')}</p>
+      ) : (
+        <ul className={styles.padList}>
+          {pads.map((pad) => (
+            <li key={pad.name}>
+              <button
+                type="button"
+                className={pad.name === open ? `${styles.padRow} ${styles.padRowOpen}` : styles.padRow}
+                aria-expanded={pad.name === open}
+                data-task-scratchpad={pad.name}
+                onClick={() => {
+                  setContent(null);
+                  setPadError(null);
+                  setOpen((was) => (was === pad.name ? null : pad.name));
+                }}
+              >
+                <span className={styles.padName}>{pad.name}</span>
+                {pad.description !== null && pad.description !== '' && (
+                  <span className={styles.padDescription}>{pad.description}</span>
+                )}
+                <span className={styles.padBytes}>{formatBytes(pad.bytes)}</span>
+              </button>
+              {pad.name === open && (
+                padError !== null ? (
+                  <p className={`${styles.notice} ${styles.noticeError}`} role="alert">{padError}</p>
+                ) : content !== null && content.name === pad.name ? (
+                  <pre className={styles.padContent} data-task-scratchpad-content={pad.name}>{content.content}</pre>
+                ) : (
+                  <p className={styles.notice}><Loader /></p>
+                )
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

@@ -181,6 +181,18 @@ const IN_THE_OPEN = [
   // the list is in - empty, or emptied by what was typed - which is the first
   // thing in this file's vocabulary and not teaching at all.
   {
+    file: 'src/pages/workspace/TaskPage.tsx',
+    says: 'It has not written any.',
+    because: 'status',
+    why: "the state of the task's scratchpads - none yet - on the list that would have shown them (#575)",
+  },
+  {
+    file: 'src/pages/workspace/TaskPage.tsx',
+    says: 'Could not load the scratchpads.',
+    because: 'status',
+    why: "what the task's scratchpad list is showing when its one query did not answer (#575)",
+  },
+  {
     file: 'src/pages/admin/AdminPluginsPage.tsx',
     says: 'No plugins loaded yet. The Catalog tab is where they come from.',
     because: 'status',
