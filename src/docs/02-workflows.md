@@ -191,9 +191,11 @@ choosing:
 Each answer is passed on under its key with its **confidence**, and whether it
 was **sure** — whether it cleared the node's threshold. A node that branches on
 a choice question draws one line per option and one more, **Unsure**, which is
-the way out when the answer is under the threshold. Draw a line for every
-option; one left without a line is warned about when you save, because a run
-that picks it stops there.
+the way out when the answer is under the threshold. A node can branch on a yes
+or no question instead, and then draws **Yes**, **No** and **Unsure**: Yes or No
+when the answer clears the threshold, Unsure when it does not. Draw a line for
+every way out; one left without a line is warned about when you save, because a
+run that takes it stops there.
 
 ## The catalogue
 

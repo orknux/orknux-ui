@@ -19,6 +19,7 @@
  *                 handles, spaced down its edge in order, labelled with the
  *                 options and Unsure - and a line drawn from an option's door
  *                 leaves from that door, not from the node's middle
+ *   yes or no     a node branching on a yes-or-no draws Yes, No and Unsure
  *   the pruning   an option removed in the panel takes its door and its line
  *                 with it, so the graph still saves
  *   it sticks     the questions come back after a reload
@@ -140,6 +141,18 @@ await graphql(
           mappings: [{ name: 'state', expression: '', mode: 'VALUE' }],
         },
         { key: 'bill', kind: 'OBJECT', name: `${PREFIX} bill`, x: 520, y: 60, mappings: [{ name: 'to', expression: 'billing', mode: 'VALUE' }] },
+        {
+          key: 'judge',
+          kind: 'DECISION',
+          name: `${PREFIX} judge`,
+          x: 100,
+          y: 700,
+          outputName: 'judged',
+          decisionModelId: model.createModel.id,
+          decisionBranchQuestion: 'urgent',
+          decisionQuestions: [{ key: 'urgent', kind: 'NOUL', instructions: 'Is it urgent?', options: [] }],
+          mappings: [{ name: 'state', expression: '', mode: 'VALUE' }],
+        },
         { key: 'refund', kind: 'OBJECT', name: `${PREFIX} refund`, x: 520, y: 360, mappings: [{ name: 'to', expression: 'returns', mode: 'VALUE' }] },
       ],
       edges: [
@@ -210,6 +223,29 @@ const returnsDoor = drawnDoors.find((one) => one.id === 'opt:returns');
 record(
   start !== null && returnsDoor !== undefined && Math.abs(start.y - returnsDoor.y) < 6,
   `the line for returns leaves from its own door (line ${start ? Math.round(start.y) : 'missing'}, door ${returnsDoor ? Math.round(returnsDoor.y) : 'missing'})`,
+);
+
+/* ---- a yes-or-no branches by Yes, No and Unsure ---- */
+
+const judge = page.locator('.react-flow__node', { hasText: `${PREFIX} judge` }).first();
+const judged = await judge.locator('[data-testid="decision-handle"]').evaluateAll((all) =>
+  all.map((one) => {
+    const box = one.getBoundingClientRect();
+    return { id: one.getAttribute('data-handleid'), y: box.top + box.height / 2 };
+  }),
+);
+record(
+  JSON.stringify(judged.map((one) => one.id)) === JSON.stringify(['opt:yes', 'opt:no', 'unsure']),
+  `a node branching on a yes-or-no draws three doors (${JSON.stringify(judged.map((one) => one.id))})`,
+);
+record(
+  judged.length === 3 && judged[0].y < judged[1].y && judged[1].y < judged[2].y,
+  `in order down its edge (${judged.map((one) => Math.round(one.y)).join(', ')})`,
+);
+const judgedLabels = await judge.locator('span[class*="branchOption"], span[class*="branchUnsure"]').allTextContents();
+record(
+  JSON.stringify(judgedLabels) === JSON.stringify(['Yes', 'No', 'Unsure']),
+  `labelled Yes, No and Unsure (${JSON.stringify(judgedLabels)})`,
 );
 
 /* ---- the pruning ---- */

@@ -86,7 +86,8 @@ function side(question: DecisionQuestion, name: 'true' | 'false'): string {
 export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFieldsProps) {
   const questions = draft.decisionQuestions ?? [];
   const branch = draft.decisionBranchQuestion ?? null;
-  const choices = questions.filter((question) => question.kind === 'CHOICE');
+  // What the node can branch on: a choice, by its options, or a yes-or-no, by Yes and No.
+  const choices = questions.filter((question) => branchable(question.kind));
 
   function put(index: number, changed: DecisionQuestion) {
     const was = questions[index];
@@ -94,7 +95,7 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
     // The branch follows its question through a rename, and lets go of one
     // that stopped being a choice - only a choice has options to leave by.
     let branching = branch;
-    if (was.key === branch) branching = changed.kind === 'CHOICE' ? changed.key : null;
+    if (was.key === branch) branching = branchable(changed.kind) ? changed.key : null;
     onChange({ decisionQuestions: next, decisionBranchQuestion: branching });
   }
 
@@ -309,7 +310,7 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
             {t('Branch on')}
           </label>
           <FieldHint label={t('Branch on')}>
-            {t('A choice question whose option picks the line the run leaves by: one handle per option, and one for an answer too unsure to take. None, and the run carries straight on with the answers.')}
+            {t('A choice leaves by one line per option, a yes-or-no by Yes or No, and either by Unsure when the answer is under the threshold. None, and the run carries straight on with the answers.')}
           </FieldHint>
         </span>
         <div className={editor.inputWrapper}>
@@ -363,18 +364,36 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
 }
 
 /**
- * The ways out a decision node offers on the canvas: one per option of its
- * branching choice, named and deduplicated as the server keeps them. Empty for
- * a node that does not branch.
+ * The ways out a decision node offers on the canvas, beside Unsure: one per
+ * option of its branching choice, named and deduplicated as the server keeps
+ * them, or `yes` and `no` for a yes-or-no. Empty for a node that does not
+ * branch.
  */
 export function decisionWays(draft: DecisionDraft): string[] {
   const branching = (draft.decisionQuestions ?? []).find(
-    (question) => question.kind === 'CHOICE' && question.key === draft.decisionBranchQuestion,
+    (question) => branchable(question.kind) && question.key === draft.decisionBranchQuestion,
   );
   if (branching === undefined) return [];
+  if (branching.kind === 'NOUL') return [YES, NO];
   const names = branching.options.map((option) => option.name.trim()).filter((name) => name !== '');
   return [...new Set(names)];
 }
+
+/** What a way out is called on its handle: an option by its name, a yes-or-no's two in words. */
+export function wayLabel(way: string, draft: DecisionDraft): string {
+  const branching = (draft.decisionQuestions ?? []).find((question) => question.key === draft.decisionBranchQuestion);
+  if (branching?.kind !== 'NOUL') return way;
+  return way === YES ? t('Yes') : t('No');
+}
+
+/** Whether a question of this kind can pick the line a run leaves by; a score cannot. */
+function branchable(kind: DecisionQuestionKind): boolean {
+  return kind === 'CHOICE' || kind === 'NOUL';
+}
+
+/** The options a yes-or-no leaves by, as its lines carry them; the server uses the same two words. */
+const YES = 'yes';
+const NO = 'no';
 
 /** The handle an option leaves by, and back. `unsure` is its own. */
 export const UNSURE_HANDLE = 'unsure';

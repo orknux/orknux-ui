@@ -105,7 +105,7 @@ import { DefinitionPicker } from '../../components/DefinitionPicker';
 import { FieldHint } from '../../components/FieldHint';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import { RetryPolicyFields } from './RetryPolicyFields';
-import { DecisionNodeFields, UNSURE_HANDLE, decisionWays, optionHandle, optionOf } from './DecisionNodeFields';
+import { DecisionNodeFields, UNSURE_HANDLE, decisionWays, optionHandle, optionOf, wayLabel } from './DecisionNodeFields';
 import type { DecisionQuestion } from '../../api/graph';
 import { CreateAgentDialog } from '../../components/CreateAgentDialog';
 import { NameDialog } from '../../components/NameDialog';
@@ -1455,8 +1455,8 @@ function branches(node: NodeData): boolean {
  * a handle leaves by is its id, which is what the saved edge carries. The
  * unsure door is muted, because it is the answer that was not taken. Issue #577.
  */
-function DecisionWaysOut({ facing, ways }: { facing: Position; ways: string[] }) {
-  const doors = [...ways.map((way) => ({ id: optionHandle(way), label: way, unsure: false })), {
+function DecisionWaysOut({ facing, node }: { facing: Position; node: NodeData }) {
+  const doors = [...decisionWays(node).map((way) => ({ id: optionHandle(way), label: wayLabel(way, node), unsure: false })), {
     id: UNSURE_HANDLE,
     label: t('Unsure'),
     unsure: true,
@@ -1636,7 +1636,7 @@ function GraphNodeView({ data, selected }: NodeProps) {
       {node.kind === 'CONDITION' ? (
         <WaysOut facing={facing.output} upperId="yes" lowerId="no" labels={waysOut(node)} failure={false} />
       ) : node.kind === 'DECISION' && decisionWays(node).length > 0 ? (
-        <DecisionWaysOut facing={facing.output} ways={decisionWays(node)} />
+        <DecisionWaysOut facing={facing.output} node={node} />
       ) : handlesFailure(node.kind) && node.fallbackEnabled === true ? (
         <WaysOut facing={facing.output} lowerId="fail" labels={waysOut(node)} failure />
       ) : (

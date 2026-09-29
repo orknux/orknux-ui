@@ -2178,8 +2178,8 @@ export const PL: Record<string, string> = {
   "+ Add level": "+ Dodaj poziom",
   "+ Add option": "+ Dodaj opcję",
   "Branch on": "Rozgałęziaj według",
-  "A choice question whose option picks the line the run leaves by: one handle per option, and one for an answer too unsure to take. None, and the run carries straight on with the answers.":
-    "Pytanie z wyborem, którego opcja wskazuje linię, którą idzie uruchomienie: jedno wyjście na opcję i jedno dla odpowiedzi zbyt niepewnej, by ją przyjąć. Bez niego uruchomienie idzie dalej z odpowiedziami.",
+  "A choice leaves by one line per option, a yes-or-no by Yes or No, and either by Unsure when the answer is under the threshold. None, and the run carries straight on with the answers.":
+    "Wybór wychodzi jedną linią na opcję, tak czy nie linią Tak albo Nie, a każde z nich linią Niepewne, gdy odpowiedź jest poniżej progu. Bez niego uruchomienie idzie dalej z odpowiedziami.",
   "No branching": "Bez rozgałęzienia",
   "Threshold": "Próg",
   "How sure an answer has to be, from 0 to 1, to be taken. Under it the answer is marked unsure, and a branching node leaves by its unsure line. Empty takes every answer.":
