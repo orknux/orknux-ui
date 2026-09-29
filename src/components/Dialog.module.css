@@ -788,7 +788,13 @@ select.input {
    * on the far side of the graph from it, and the parameters somebody had come
    * to fill in were as far from the node as the window allows.
    */
-  right: 0;
+  /*
+   * Beside the node's panel rather than over it. The workflow editor sets
+   * --node-panel-width to the Node Properties panel's drawn width, which can
+   * be dragged wide - and a drawer pinned to the window's edge then covered
+   * the very properties it was opened from. Elsewhere it is unset: the edge.
+   */
+  right: var(--node-panel-width, 0px);
   /*
    * Explicitly, because the browser's own `left: 0` is still on it.
    *

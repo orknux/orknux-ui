@@ -2166,6 +2166,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [problems, setProblems] = useState<GraphProblem[]>([]);
   const [watchEditor, editorRoom] = useRoom('width');
+  /*
+   * The panel's width, where the drawers an agent, action, condition or trigger
+   * opens in can read it and stand beside the panel instead of over it.
+   */
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.removeProperty('--node-panel-width');
+    };
+  }, []);
   const panelDrag = useDragSize({
     storageKey: PANEL_KEY,
     initial: DEFAULT_PANEL,
@@ -2175,6 +2184,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     edge: 'left',
     nudge: PANEL_NUDGE,
   });
+  useEffect(() => {
+    document.documentElement.style.setProperty('--node-panel-width', `${panelDrag.size + PANEL_HANDLE}px`);
+  }, [panelDrag.size]);
   /** What the server said each node needs and gives, from the last save or load. */
   const [ports, setPorts] = useState<Record<string, { inputs?: GraphPort[]; outputs?: GraphPort[] }>>({});
 
