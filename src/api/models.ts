@@ -98,6 +98,8 @@ export interface Model {
   maxOutput: number | null;
   /** Null lets the provider decide; false is one tool call per reply. Issue #530. */
   parallelToolCalls: boolean | null;
+  /** How hard a reasoning model thinks; null sends nothing. Only where `fetchChatModelParameters` lists it. */
+  reasoningEffort: string | null;
   /** How the model picks its words; null sends nothing. Issue #533. */
   temperature: number | null;
   topP: number | null;
@@ -174,7 +176,7 @@ const PROVIDER_FIELDS =
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
-  'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls temperature topP topK minP repeatPenalty enabled ' +
+  'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion voice skipEmptyLines ' +
   'imageCostPerImage';
@@ -182,6 +184,23 @@ const USAGE_FIELDS =
   'modelId days from to empty requests inputTokens outputTokens totalTokens averageLatencyMillis ' +
   'costEstimate requestsChange tokensChange latencyChange periodStart periodTokens ' +
   'series { day requests tokens }';
+
+/**
+ * A chat setting only some provider types take, and the words it may be. The
+ * model page draws one control per entry; a type that takes none answers [].
+ */
+export interface ChatParameterSpec {
+  name: string;
+  choices: string[];
+}
+
+export async function fetchChatModelParameters(providerType: ProviderType): Promise<ChatParameterSpec[]> {
+  const data = await graphql<{ chatModelParameters: ChatParameterSpec[] }>(
+    'query ChatModelParameters($providerType: ProviderType!) { chatModelParameters(providerType: $providerType) { name choices } }',
+    { providerType },
+  );
+  return data.chatModelParameters;
+}
 
 export async function fetchProviders(workspaceId: string): Promise<ModelProvider[]> {
   const data = await graphql<{ modelProviders: ModelProvider[] }>(
@@ -337,6 +356,8 @@ export interface ModelDetailsInput {
   contextWindow?: number | null;
   maxOutput?: number | null;
   parallelToolCalls?: boolean | null;
+  /** Refused by the server where the provider's type does not declare it. */
+  reasoningEffort?: string | null;
   temperature?: number | null;
   topP?: number | null;
   topK?: number | null;

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
+  fetchChatModelParameters,
   fetchModel,
   fetchModelUsage,
   fetchProviders,
@@ -18,7 +19,7 @@ import {
   updateModelQuotas,
   updateModelThrottle,
 } from '../../api/models';
-import type { Model, ModelKind, ModelProvider, ModelUsage, ResetInterval } from '../../api/models';
+import type { ChatParameterSpec, Model, ModelKind, ModelProvider, ModelUsage, ResetInterval } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -39,6 +40,22 @@ const MAKEABLE_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE']
 export interface ModelSettingsPageProps {
   session: SessionUser;
   onSignOut?: () => void;
+}
+
+/** The reasoning effort's words as a person reads them; a word the server adds later shows as it is spelled. */
+function effortLabel(effort: string): string {
+  switch (effort) {
+    case 'minimal':
+      return t('Minimal');
+    case 'low':
+      return t('Low');
+    case 'medium':
+      return t('Medium');
+    case 'high':
+      return t('High');
+    default:
+      return effort;
+  }
 }
 
 const RESET_INTERVALS: ResetInterval[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'NEVER'];
@@ -80,6 +97,14 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   const [maxOutput, setMaxOutput] = useState('');
   /** '' sends nothing and lets the provider decide; 'one' and 'several' say so. Issue #530. */
   const [parallel, setParallel] = useState<'' | 'one' | 'several'>('');
+  /** '' sends nothing and the deployment decides; only drawn where the provider's type declares it. */
+  const [reasoningEffort, setReasoningEffort] = useState('');
+  /**
+   * What a chat model on the selected provider's type takes beyond the shared
+   * settings, as the server declares it; null until known, and while it is
+   * the stored value is sent back untouched rather than cleared.
+   */
+  const [chatParameters, setChatParameters] = useState<ChatParameterSpec[] | null>(null);
   // How the model picks its words; '' sends nothing. Issue #533.
   const [temperature, setTemperature] = useState('');
   const [topP, setTopP] = useState('');
@@ -177,6 +202,24 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
   }, [workspaceId]);
 
   /*
+   * The provider-specific settings follow the provider picked above, so a model
+   * moved from Azure to another type stops offering Azure's reasoning effort.
+   */
+  const providerType = providers?.find((one) => one.id === providerId)?.type ?? null;
+  useEffect(() => {
+    if (providerType === null) return;
+    let abandoned = false;
+    fetchChatModelParameters(providerType)
+      .then((held) => {
+        if (!abandoned) setChatParameters(held);
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, [providerType]);
+
+  /*
    * The metrics are their own request, for two reasons: the settings should
    * still show if the usage query is the thing that failed, and the window can
    * change without the model having changed.
@@ -213,6 +256,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
     setContextWindow(found.contextWindow === null ? '' : String(found.contextWindow));
     setMaxOutput(found.maxOutput === null ? '' : String(found.maxOutput));
     setParallel(found.parallelToolCalls === null ? '' : found.parallelToolCalls ? 'several' : 'one');
+    setReasoningEffort(found.reasoningEffort ?? '');
     setTemperature(found.temperature === null ? '' : String(found.temperature));
     setTopP(found.topP === null ? '' : String(found.topP));
     setTopK(found.topK === null ? '' : String(found.topK));
@@ -256,6 +300,9 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
    * delete the model and make it again.
    */
   const reads = model?.kind === 'SPEECH';
+  /** The reasoning effort's choices where this provider's type takes one for a chat model, else null. */
+  const effortChoices =
+    kind === 'CHAT' ? (chatParameters?.find((one) => one.name === 'reasoningEffort')?.choices ?? null) : null;
   const EDITABLE_KINDS = model !== null && !MAKEABLE_KINDS.includes(model.kind) ? [...MAKEABLE_KINDS, model.kind] : MAKEABLE_KINDS;
 
   /**
@@ -295,6 +342,9 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         contextWindow: toNumber(contextWindow),
         maxOutput: toNumber(maxOutput),
         parallelToolCalls: parallel === '' ? null : parallel === 'several',
+        // Not yet known is sent back as stored; known and not taken is nothing, which the server requires.
+        reasoningEffort:
+          chatParameters === null ? model.reasoningEffort : effortChoices === null || reasoningEffort === '' ? null : reasoningEffort,
         temperature: toNumber(temperature),
         topP: toNumber(topP),
         topK: toNumber(topK),
@@ -583,6 +633,27 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                   <option value="several">{t('Several allowed')}</option>
                 </select>
               </div>
+              {effortChoices !== null && (
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="reasoning-effort">{t('Reasoning effort')}</label>
+                    <FieldHint label={t('Reasoning effort')}>
+                      {t('How long a reasoning model thinks before answering; default sends nothing.')}
+                    </FieldHint>
+                  </span>
+                  <select
+                    id="reasoning-effort"
+                    className={styles.input}
+                    value={reasoningEffort}
+                    onChange={(event) => setReasoningEffort(event.target.value)}
+                  >
+                    <option value="">{t('Default')}</option>
+                    {effortChoices.map((one) => (
+                      <option key={one} value={one}>{effortLabel(one)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className={styles.field}>
                 <span className={styles.labelWithHint}>
                   <label className={styles.label} htmlFor="temperature">{t('Temperature')}</label>

@@ -203,6 +203,8 @@ const PL: Record<string, string> = {
   McpServerAddressInvalid: 'Adres serwera MCP jest wymagany',
   MemoryContentInvalid: 'Wspomnienie potrzebuje czegoś do zapamiętania',
   ModelIdInvalid: 'Identyfikator modelu jest wymagany',
+  ModelParameterNotTaken: 'Dostawca tego typu nie przyjmuje tego ustawienia modelu; zostaw je nieustawione',
+  ModelParameterValueInvalid: 'Tej wartości nie ma wśród tych, które przyjmuje to ustawienie modelu; wybierz jedną z listy albo zostaw domyślną',
   ModelProviderEndpointInvalid: 'Punkt końcowy API dostawcy jest wymagany',
   ModelProviderInAnotherWorkspace: 'Model można przenieść tylko do dostawcy w jego własnej przestrzeni roboczej',
   IssueCommentEmpty: 'Komentarz musi coś zawierać',

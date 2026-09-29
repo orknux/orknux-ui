@@ -2814,6 +2814,13 @@ export const TESTS = [
   },
 
   {
+    name: 'model-reasoning-effort-check',
+    what: "an Azure OpenAI model's page offers a reasoning effort and Save stores it; a model on another provider type draws none",
+    needs: [],
+    /* The refusals - a type that takes none, a word off the list - are ModelReasoningEffortTest's. */
+  },
+
+  {
     name: 'speech-node-check',
     what: "the editor's Text to speech adds a node of that name on a Speak action, making the action where there is none",
     needs: [],

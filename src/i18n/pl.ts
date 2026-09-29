@@ -2192,4 +2192,12 @@ export const PL: Record<string, string> = {
   "How sure an answer has to be, from 0 to 1, to be taken. Under it the answer is marked unsure, and a branching node leaves by its unsure line. Empty takes every answer.":
     "Jak pewna musi być odpowiedź, od 0 do 1, żeby ją przyjąć. Poniżej progu jest oznaczana jako niepewna, a rozgałęziający węzeł wychodzi linią dla niepewnych. Puste przyjmuje każdą odpowiedź.",
   "Every answer is taken": "Każda odpowiedź jest przyjmowana",
+  "Reasoning effort": "Wysiłek rozumowania",
+  "How long a reasoning model thinks before answering; default sends nothing.":
+    "Jak długo model rozumujący myśli przed odpowiedzią; domyślnie nic nie jest wysyłane.",
+  "Default": "Domyślnie",
+  "Minimal": "Minimalny",
+  "Low": "Niski",
+  "Medium": "Średni",
+  "High": "Wysoki",
 };
