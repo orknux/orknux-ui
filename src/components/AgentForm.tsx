@@ -941,8 +941,9 @@ function GrantList<Item>({
                     <span className={own.grantCardText}>
                       {titleOf?.(row.item) ?? t('No description.')}
                     </span>
-                    {row.fixed !== null && !row.ticked && (
-                      <span className={own.grantCardReason}>{row.fixed}</span>
+                    {/* On or off, a locked row says why and where it is switched: the question somebody hovering one is asking. */}
+                    {row.fixed !== null && (
+                      <span className={own.grantCardReason} data-grant-card-reason="">{row.fixed}</span>
                     )}
                   </div>,
                   document.body,

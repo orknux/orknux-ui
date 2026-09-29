@@ -42,6 +42,18 @@ record(builtInLinks === 0, `a built-in's name is not a link, having no page of i
 await page.mouse.move(0, 0);
 record(!(await card.isVisible().catch(() => false)), 'and leaving the row puts it away');
 
+/* A locked row that is on says why it cannot be changed, and where it is switched. */
+const locked = page.locator('[data-grant-name^="orknux_"][data-grant-name$="sessions"]').first();
+const lockedThere = await locked.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
+if (lockedThere) {
+  await locked.hover();
+  const reason = await page.locator('[data-grant-card] [data-grant-card-reason]').first().innerText().catch(() => '');
+  record(/Orknux access/.test(reason), `a locked row that is on says where it is switched (${JSON.stringify(reason)})`);
+  await page.mouse.move(0, 0);
+} else {
+  record(false, 'the orknux_sessions row is on the list');
+}
+
 /* A press on the name cycles the row, as the state button does. */
 const pressRow = page.locator(`[data-grant-name="aaa_card_tool_${stamp}"]`).first();
 await pressRow.waitFor({ timeout: 10_000 }).catch(() => undefined);
