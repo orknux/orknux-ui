@@ -409,6 +409,7 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   // Session name what they run rather than what they make. "Image" on its own
   // read as a picture on the canvas.
   IMAGE: t('Image model'),
-  DECISION: t('Decision model'),
+  // "Decision" rather than "Decision model": it runs on a chat model too.
+  DECISION: t('Decision'),
 };
 

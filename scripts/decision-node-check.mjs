@@ -11,7 +11,10 @@
  *
  *   the form      the type is offered, and its key field carries no required
  *                 mark once it is picked
- *   the menu      Add node offers the decision model
+ *   the menu      Add node offers the node, called Decision - it is not only
+ *                 a decision model's any more
+ *   the picker    its model picker offers a chat model beside the decision
+ *                 model, each said to be which
  *   the doors     a node branching on a two-option choice draws three source
  *                 handles, spaced down its edge in order, labelled with the
  *                 options and Unsure - and a line drawn from an option's door
@@ -82,6 +85,23 @@ const provider = await graphql(
 const model = await graphql(`mutation($input: CreateModelInput!) { createModel(input: $input) { id } }`, {
   input: { providerId: provider.createModelProvider.id, name: `${PREFIX} model ${STAMP}`, modelId: 'jev-latest', kind: 'DECISION' },
 });
+/* A chat model too, which a decision node may run on; never called either. */
+const chatProvider = await graphql(
+  `mutation($input: CreateModelProviderInput!) { createModelProvider(input: $input) { id } }`,
+  {
+    input: {
+      workspaceId: WORKSPACE,
+      name: `${PREFIX} chat ${STAMP}`,
+      type: 'OPENAI',
+      endpoint: 'https://chat.invalid/v1',
+      secret: 'sk-never-used',
+    },
+  },
+);
+const CHAT = `${PREFIX} chatty ${STAMP}`;
+await graphql(`mutation($input: CreateModelInput!) { createModel(input: $input) { id } }`, {
+  input: { providerId: chatProvider.createModelProvider.id, name: CHAT, modelId: 'gpt-stub', kind: 'CHAT' },
+});
 const made = await graphql(`mutation($input: CreateWorkflowInput!) { createWorkflow(input: $input) { workflowId } }`, {
   input: { workspaceId: WORKSPACE, name: `${PREFIX} ${STAMP}`, description: 'Made by decision-node-check.' },
 });
@@ -138,8 +158,8 @@ if (!(await drawn(page, 'the editor', { within: 30_000, still: 0 }))) await clea
 
 await page.getByRole('button', { name: /add node/i }).click();
 await page.waitForTimeout(300);
-const offered = await page.getByRole('menuitem', { name: /^decision model$/i }).count();
-record(offered === 1, `Add node offers the decision model (${offered})`);
+const offered = await page.getByRole('menuitem', { name: /^decision$/i }).count();
+record(offered === 1, `Add node offers the decision node, called Decision (${offered})`);
 await page.keyboard.press('Escape');
 await page.waitForTimeout(200);
 
@@ -192,6 +212,20 @@ record(
 
 await selectNode(page, node, 'the decision node');
 await page.waitForSelector('[data-testid="decision-question"]', { timeout: 15_000 }).catch(() => undefined);
+
+/* ---- the picker: a chat model beside the decision model, each named for what it is ---- */
+
+await page.locator('#node-decision-model').click({ timeout: 10_000 }).catch(() => undefined);
+await page.waitForTimeout(400);
+const rows = await page.locator('[role="listbox"] [role="option"]').allInnerTexts();
+const row = (name) => rows.find((one) => one.includes(name)) ?? '';
+record(
+  row(`${PREFIX} model ${STAMP}`).includes('Decision model') && row(CHAT).includes('Chat model'),
+  `the model picker offers the chat model beside the decision model, saying which is which (${JSON.stringify(rows.filter((one) => one.includes(PREFIX)))})`,
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+
 await page.getByRole('button', { name: 'Remove option' }).nth(1).click({ timeout: 10_000 }).catch(() => undefined);
 await page.waitForTimeout(900);
 

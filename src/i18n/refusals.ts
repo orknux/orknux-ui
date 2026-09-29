@@ -106,7 +106,8 @@ const PL: Record<string, string> = {
   ActionNotInCatalogue: 'Akcji {id} nie ma w katalogu tej przestrzeni roboczej',
   ConditionNotInCatalogue: 'Warunku {id} nie ma w katalogu tej przestrzeni roboczej',
   // A decision node's model, question keys and options (issue #577).
-  DecisionModelNotInWorkspace: 'Model decyzyjny {id} nie należy do modeli decyzyjnych tej przestrzeni roboczej',
+  DecisionModelNotInWorkspace:
+    'Model {id} nie jest ani modelem decyzyjnym, ani modelem czatu tej przestrzeni roboczej, więc węzeł decyzji nie może go zapytać',
   DecisionQuestionKeyInvalid:
     '„{key}” nie może być kluczem pytania. Klucz to litery, cyfry i podkreślenia, zaczyna się od litery - pod nim odczytuje się odpowiedź',
   DecisionQuestionKeyTaken: 'Dwa pytania nazywają się „{key}”; każda odpowiedź wraca pod własnym kluczem',

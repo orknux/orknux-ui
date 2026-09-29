@@ -2144,12 +2144,12 @@ export const PL: Record<string, string> = {
   "Choice": "Wybór",
   "Score": "Ocena",
   "Yes or no": "Tak czy nie",
-  "Decision Model": "Model decyzyjny",
-  "Which of this workspace’s decision models answers: Jev, or a Laya of your own. Add one under Models with a Decision model provider.":
-    "Który z modeli decyzyjnych tej przestrzeni odpowiada: Jev albo własna Laya. Dodaj go w Modelach, z dostawcą typu Model decyzyjny.",
-  "This workspace has no decision model": "Ta przestrzeń nie ma modelu decyzyjnego",
-  "Choose a decision model…": "Wybierz model decyzyjny…",
-  "Search decision models…": "Szukaj modeli decyzyjnych…",
+  "Chat model": "Model czatu",
+  "Either kind works: a decision model (Jev, Laya) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate.":
+    "Działa każdy z dwóch rodzajów: model decyzyjny (Jev, Laya) jest szybszy i skalibrowany; model czatu działa z każdym dostawcą, ale jego prawdopodobieństwa to jego własna ocena.",
+  "This workspace has no decision or chat model": "Ta przestrzeń nie ma modelu decyzyjnego ani modelu czatu",
+  "Choose a model…": "Wybierz model…",
+  "Search models…": "Szukaj modeli…",
   "Questions": "Pytania",
   "Each answer comes back under its key with its probabilities, for later nodes to read. A choice picks one option, a score places the state on levels lowest first, and yes or no gives the probability a statement holds.":
     "Każda odpowiedź wraca pod swoim kluczem, z prawdopodobieństwami, do odczytania przez dalsze węzły. Wybór wskazuje jedną opcję, ocena umieszcza stan na poziomach od najniższego, a tak czy nie podaje prawdopodobieństwo, że stwierdzenie jest prawdziwe.",

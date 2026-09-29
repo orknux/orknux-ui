@@ -141,7 +141,7 @@ Every one of those keystrokes is yours to change, in Preferences.
 | Object | Assembles a named shape, field by field, for later nodes to read. |
 | Session | Names the conversation the agent it leads to keeps, so what is said outlives the run. |
 | Image | Draws a picture from a description, with the workspace's text-to-image model. |
-| Decision model | Asks a decision model typed questions about what reached it, and can branch on the answer. |
+| Decision | Asks a decision model or a chat model typed questions about what reached it, and can branch on the answer. |
 
 Each kind can be **inline** — defined in this workflow only — or made from a
 **definition** in the workspace catalogue, which several workflows can share.
@@ -169,11 +169,14 @@ the prompt](/screens/image-node.png)
 
 ![The run where it drew: the picture in the panel of the node that drew it](/screens/image-run.png)
 
-A decision model node asks a fast classifier rather than a chat model: Jev,
-TypeSafe AI's hosted one, or Laya, which runs on your own hardware and answers
-the same way. Add one under **Models** as a provider of the type *Decision model
-(Jev, Laya)*, with its address and, for Jev, its key, and give it a model of the
-kind *Decision*.
+A decision node runs on either kind of model. A decision model is faster and
+calibrated: Jev, TypeSafe AI's hosted one, or Laya, which runs on your own
+hardware and answers the same way. Add one under **Models** as a provider of the
+type *Decision model (Jev, Laya)*, with its address and, for Jev, its key, and
+give it a model of the kind *Decision*. A chat model works with any provider,
+but the probabilities it gives are its own estimate rather than calibrated ones.
+The answers come back in the same shape whichever answered, so the branches and
+the threshold behave the same.
 
 The node sends a **state** — what reached it, or a value or reference you map
 instead — and asks one or more questions about it, each under a key of your

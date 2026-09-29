@@ -2809,7 +2809,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     fetchModels(workspaceId)
       .then((all) => {
         setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled));
-        setDecisionModels(all.filter((model) => model.kind === 'DECISION' && model.enabled));
+        // Either kind answers a decision node: a decision model natively, a chat model in the same shape.
+        setDecisionModels(all.filter((model) => (model.kind === 'DECISION' || model.kind === 'CHAT') && model.enabled));
       })
       .catch(() => {
         setImageModels([]);

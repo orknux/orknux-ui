@@ -26,7 +26,7 @@ export type DecisionPatch = Partial<DecisionDraft>;
 
 interface DecisionNodeFieldsProps {
   draft: DecisionDraft;
-  /** The workspace's decision models, enabled ones only. */
+  /** The workspace's decision and chat models, enabled ones only; either kind answers. */
   models: Model[];
   onChange: (patch: DecisionPatch) => void;
 }
@@ -102,19 +102,26 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
       <div className={editor.field}>
         <span className={editor.labelWithHint}>
           <label className={editor.label} htmlFor="node-decision-model">
-            {t('Decision Model')}
+            {t('Model')}
           </label>
-          <FieldHint label={t('Decision Model')}>
-            {t('Which of this workspace’s decision models answers: Jev, or a Laya of your own. Add one under Models with a Decision model provider.')}
+          <FieldHint label={t('Model')}>
+            {t('Either kind works: a decision model (Jev, Laya) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate.')}
           </FieldHint>
         </span>
         <DefinitionPicker
           id="node-decision-model"
           value={draft.decisionModelId ?? ''}
-          options={models.map((model) => ({ value: model.id, label: model.name }))}
+          options={[...models]
+            // Decision models first: they are what the node was made for.
+            .sort((left, right) => Number(right.kind === 'DECISION') - Number(left.kind === 'DECISION'))
+            .map((model) => ({
+              value: model.id,
+              label: model.name,
+              hint: model.kind === 'DECISION' ? t('Decision model') : t('Chat model'),
+            }))}
           onChoose={(chosen) => onChange({ decisionModelId: chosen || null })}
-          placeholder={models.length === 0 ? t('This workspace has no decision model') : t('Choose a decision model…')}
-          searchPlaceholder={t('Search decision models…')}
+          placeholder={models.length === 0 ? t('This workspace has no decision or chat model') : t('Choose a model…')}
+          searchPlaceholder={t('Search models…')}
         />
       </div>
 
