@@ -1763,3 +1763,9 @@ select.input {
   flex: none;
   color: var(--color-text-muted);
 }
+
+/* The panel's left edge, taken hold of to widen it. */
+.panelHandle {
+  flex: none;
+  align-self: stretch;
+}

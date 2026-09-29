@@ -132,6 +132,7 @@ import {
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import styles from './WorkflowEditorPage.module.css';
+import { ResizeHandle, useDragSize, useRoom } from '../../components/DragSize';
 import { t, tf } from '../../i18n';
 
 export interface WorkflowEditorPageProps {
@@ -313,6 +314,19 @@ function fits(preset: ImageSizePreset, spec: ImageParameterSpec): boolean {
 
 /** The whole of a workspace's catalogue fits in the picker. */
 const TRIGGER_PAGE_SIZE = 100;
+
+/*
+ * The Node Properties panel's width, dragged from its left edge. Asked for:
+ * a node with several questions or long mappings did not fit 280px. Kept per
+ * browser, like the function editor's split; the canvas keeps at least
+ * MIN_CANVAS so the graph never disappears behind the panel.
+ */
+const PANEL_KEY = 'orknux.workflow-editor.panel-width';
+const DEFAULT_PANEL = 280;
+const MIN_PANEL = 260;
+const MIN_CANVAS = 360;
+const PANEL_HANDLE = 8;
+const PANEL_NUDGE = 24;
 const ACTION_PAGE_SIZE = 100;
 const FUNCTION_PAGE_SIZE = 200;
 
@@ -2137,6 +2151,16 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
 
   const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [problems, setProblems] = useState<GraphProblem[]>([]);
+  const [watchEditor, editorRoom] = useRoom('width');
+  const panelDrag = useDragSize({
+    storageKey: PANEL_KEY,
+    initial: DEFAULT_PANEL,
+    min: MIN_PANEL,
+    // Null until the row is measured: a ceiling from a width of zero would throw a stored width away.
+    max: editorRoom === 0 ? null : Math.max(MIN_PANEL, editorRoom - PANEL_HANDLE - MIN_CANVAS),
+    edge: 'left',
+    nudge: PANEL_NUDGE,
+  });
   /** What the server said each node needs and gives, from the last save or load. */
   const [ports, setPorts] = useState<Record<string, { inputs?: GraphPort[]; outputs?: GraphPort[] }>>({});
 
@@ -4846,7 +4870,7 @@ Change the keystroke in Preferences.`}
         </div>
       </div>
 
-      <div className={styles.editor}>
+      <div className={styles.editor} ref={watchEditor}>
         <div className={styles.canvas}>
           {!graphArrived && loadError === null && (
             <div className={styles.canvasWaiting}>
@@ -4898,7 +4922,19 @@ Change the keystroke in Preferences.`}
           )}
         </div>
 
-        <aside className={styles.panel}>
+        <ResizeHandle
+          orientation="vertical"
+          className={styles.panelHandle}
+          label={t('Width of the node properties')}
+          controls="workflow-node-properties"
+          valueNow={panelDrag.size}
+          valueMin={MIN_PANEL}
+          valueMax={Math.max(MIN_PANEL, editorRoom - PANEL_HANDLE - MIN_CANVAS)}
+          title={t('Drag to change the width; double-click to put it back')}
+          dragging={panelDrag.dragging}
+          handlers={panelDrag.handlers}
+        />
+        <aside className={styles.panel} id="workflow-node-properties" style={{ width: panelDrag.size }}>
           <div className={styles.panelHeader}>
             <h2 className={styles.panelTitle}>Node Properties</h2>
             <p className={styles.panelSubtitle}>Configure selected graph object</p>

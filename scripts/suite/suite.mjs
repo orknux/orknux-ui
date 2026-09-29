@@ -1880,6 +1880,12 @@ export const TESTS = [
     /* Asked for: the grant was all or nothing. */
   },
   {
+    name: 'workflow-panel-width-check',
+    what: "the workflow editor's Node Properties panel widens by dragging its edge, and remembers it",
+    needs: ['workspace'],
+    /* Asked for: a fixed 280px was too narrow for a node with several questions. */
+  },
+  {
     name: 'grant-card-check',
     what: "a tool or skill on the agent page shows its summary on hover, and its name links to its page",
     needs: ['workspace'],
