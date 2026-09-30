@@ -12,7 +12,7 @@ import {
   testProvider,
   updateProvider,
 } from '../../api/models';
-import type { ModelProvider, ProviderAuthMethod, ProviderType } from '../../api/models';
+import type { ChatApi, ModelProvider, ProviderAuthMethod, ProviderType } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -124,6 +124,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
   const [throttleTokens, setThrottleTokens] = useState('');
   const [throttleRequests, setThrottleRequests] = useState('');
   const [acceptRetryAfter, setAcceptRetryAfter] = useState(true);
+  /** Azure OpenAI only; a new provider starts on Responses, as the server would put it. */
+  const [chatApi, setChatApi] = useState<ChatApi>('RESPONSES');
   /**
    * The one secret this provider has, whatever it is called this minute.
    *
@@ -236,6 +238,7 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
     setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
     setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
     setAcceptRetryAfter(found.acceptRetryAfter);
+    setChatApi(found.chatApi ?? 'RESPONSES');
     key.reset({ stored: found.secretSet, variable: found.secretVariableId });
   }
 
@@ -338,6 +341,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
       throttleTokensPerSecond: toNumber(throttleTokens),
       throttleRequestsPerSecond: toNumber(throttleRequests),
       acceptRetryAfter,
+      // Only Azure OpenAI chooses; the server refuses a choice on any other type.
+      ...(azure ? { chatApi } : {}),
     };
   }
 
@@ -592,6 +597,31 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                     onChange={(event) => setRegion(event.target.value)}
                     placeholder={t("East US")}
                   />
+                </div>
+              </div>
+            )}
+
+            {azure && (
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="chat-api">{t('API')}</label>
+                    <FieldHint label={t('API')}>
+                      {t('Responses takes a reasoning model with its tools; chat completions is the old road, kept to go back to.')}
+                    </FieldHint>
+                  </span>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      id="chat-api"
+                      className={`${styles.input} ${styles.select}`}
+                      value={chatApi}
+                      onChange={(event) => setChatApi(event.target.value as ChatApi)}
+                    >
+                      <option value="RESPONSES">{t('Responses')}</option>
+                      <option value="CHAT_COMPLETIONS">{t('Chat completions (legacy)')}</option>
+                    </select>
+                    <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+                  </div>
                 </div>
               </div>
             )}

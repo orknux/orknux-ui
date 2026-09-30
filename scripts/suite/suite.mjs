@@ -3086,6 +3086,23 @@ export const TESTS = [
      */
   },
   {
+    name: 'provider-chat-api-check',
+    what: "an Azure OpenAI provider's chats go through Responses or chat completions, chosen on its page",
+    needs: ['workspace'],
+    /*
+     * Azure's chat completions refuse a reasoning model its tools, so an Azure
+     * provider speaks Responses by default and keeps chat completions on a
+     * select to go back to. `ProviderChatApiTest` proves what is stored and
+     * refused; this proves somebody can reach it: the select drawn for Azure
+     * and for no other type, opening on what the provider holds, and a choice
+     * saved and read back off the server and after a reload. It also saves an
+     * OpenAI provider, since a form that always sent the choice could not.
+     *
+     * Its own providers, under scratch names at hosts that cannot resolve, with
+     * the sweep off, removed at both ends.
+     */
+  },
+  {
     name: 'provider-credential-check',
     what: "a provider's key is its own or a workspace secret it reads, and the two do not spill into each other",
     needs: ['workspace'],

@@ -514,6 +514,11 @@ export const PL: Record<string, string> = {
   "Active Credentials": "Aktywne poświadczenia",
   "API Key": "Klucz API",
   "API Endpoint": "Punkt końcowy API",
+  "API": "API",
+  "Responses": "Responses",
+  "Chat completions (legacy)": "Chat completions (starsze)",
+  "Responses takes a reasoning model with its tools; chat completions is the old road, kept to go back to.":
+    "Responses przyjmuje model rozumujący razem z jego narzędziami; chat completions to dawna droga, zostawiona, by można było do niej wrócić.",
   "Automatic checks": "Automatyczne sprawdzanie",
   "Off for an endpoint that is only sometimes running; Test Connection still works, and so do the chats and tasks that use it.":
     "Wyłącz dla punktu końcowego, który działa tylko czasami; przycisk sprawdzania nadal działa, tak samo jak czaty i zadania, które go używają.",

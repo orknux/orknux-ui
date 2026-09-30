@@ -4,6 +4,12 @@ import { t } from '../i18n';
 /** What the endpoint speaks, not who answers there: anything OpenAI-shaped is OPENAI. */
 export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE';
 export type ProviderAuthMethod = 'API_KEY' | 'ENTRA_ID';
+/**
+ * Which OpenAI API an Azure OpenAI provider's chats go through. Responses is
+ * the default, because chat completions refuse a reasoning model its tools;
+ * chat completions is the old road, kept so an installation can go back.
+ */
+export type ChatApi = 'RESPONSES' | 'CHAT_COMPLETIONS';
 /** CONNECTED only once a check reached the provider: a stored key is not a working one. */
 export type ProviderStatus = 'NOT_CONFIGURED' | 'NOT_CHECKED' | 'CONNECTED' | 'FAILED';
 export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE' | 'DECISION';
@@ -59,6 +65,8 @@ export interface ModelProvider {
   throttleRequestsPerSecond: number | null;
   /** Whether a 429's Retry-After is obeyed by default, ahead of a node's retry. Issue #426. */
   acceptRetryAfter: boolean;
+  /** Which API an Azure OpenAI provider's chats go through; null on every other type. */
+  chatApi: ChatApi | null;
   status: ProviderStatus;
   lastCheckMessage: string | null;
   lastCheckedAt: string | null;
@@ -172,7 +180,7 @@ export interface ModelUsage {
 
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
-  'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
+  'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
@@ -302,6 +310,8 @@ export interface ProviderInput {
   throttleRequestsPerSecond?: number | null;
   /** Whether a 429's Retry-After is obeyed by default. Issue #426. */
   acceptRetryAfter?: boolean;
+  /** Azure OpenAI only - the server refuses it on any other type. Undefined leaves it as it is. */
+  chatApi?: ChatApi;
 }
 
 export async function createProvider(
