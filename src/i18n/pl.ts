@@ -2201,7 +2201,7 @@ export const PL: Record<string, string> = {
   "Reasoning effort": "Wysiłek rozumowania",
   "How long a reasoning model thinks before answering; default sends nothing.":
     "Jak długo model rozumujący myśli przed odpowiedzią; domyślnie nic nie jest wysyłane.",
-  "Default": "Domyślnie",
+  "Unset": "Nieustawione",
   "Minimal": "Minimalny",
   "Low": "Niski",
   "Medium": "Średni",

@@ -639,7 +639,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                   value={parallel}
                   onChange={(event) => setParallel(event.target.value as '' | 'one' | 'several')}
                 >
-                  <option value="">{t('Provider default')}</option>
+                  <option value="">{t('Unset')}</option>
                   <option value="one">{t('One per reply')}</option>
                   <option value="several">{t('Several allowed')}</option>
                 </select>
@@ -658,7 +658,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
                     value={reasoningEffort}
                     onChange={(event) => setReasoningEffort(event.target.value)}
                   >
-                    <option value="">{t('Default')}</option>
+                    <option value="">{t('Unset')}</option>
                     {effortChoices.map((one) => (
                       <option key={one} value={one}>{effortLabel(one)}</option>
                     ))}

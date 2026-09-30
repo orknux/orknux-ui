@@ -62,6 +62,11 @@ try {
       `it offers default and the four efforts (${offered.join(',')})`,
     );
     record((await select.inputValue()) === '', 'it opens on the default');
+    // Every optional choice on the page names its empty state the same way: Unset.
+    const empties = await page.locator('select').evaluateAll((all) =>
+      all.map((one) => one.querySelector('option[value=""]')?.textContent?.trim()).filter((text) => text !== undefined),
+    );
+    record(empties.length >= 2 && empties.every((text) => text === 'Unset'), `each optional choice offers Unset (${JSON.stringify(empties)})`);
     await select.selectOption('high');
     await page.locator('#temperature').fill('0.4');
     await page.getByRole('button', { name: /^Save/ }).first().click();
