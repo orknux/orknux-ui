@@ -6,6 +6,7 @@ import {
   setAgentSleepTimes,
   setAgentMaxSubagents,
   setAgentMaxSubagentsAtOnce,
+  setWorkflowStepsAtOnce,
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
@@ -90,6 +91,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   /** How many other agents one agent may ask in one conversation. Issue #380. */
   const [asks, setAsks] = useState('');
   const [atOnce, setAtOnce] = useState('');
+  /** How many steps of one workflow run may be running at once. Issue #285. */
+  const [stepsAtOnce, setStepsAtOnce] = useState('');
   /* The loop guard, three numbers. Issue #516. */
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
@@ -140,6 +143,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
+        setStepsAtOnce(String(held.workflowStepsAtOnce));
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
@@ -187,6 +191,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
         { typed: atOnce, held: settings.agentMaxSubagentsAtOnce, write: setAgentMaxSubagentsAtOnce },
+        { typed: stepsAtOnce, held: settings.workflowStepsAtOnce, write: setWorkflowStepsAtOnce },
         { typed: repeats, held: settings.maxRepeatedToolCalls, write: setMaxRepeatedToolCalls },
         {
           typed: repeatWindow,
@@ -1230,6 +1235,39 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 {settings.revisionRetentionDays} here, and the stored answer is the one in force.
               </p>
             )}
+
+            {/*
+              How wide one run may go. Issue #285: a node with lines to several
+              others sends the run down all of them at once, and each may be an
+              agent with model calls of its own.
+            */}
+            <h2 id="workflow-runs" className={styles.sectionHeading}>{t('Workflow runs')}</h2>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Steps running at once')}</p>
+                  <FieldHint label={t('Steps running at once')}>
+                    {t('A node with lines to several others sends the run down all of them at the same time, and where the lines meet again the node waits for every one of them. This bounds how many steps of one run are working at once; a step past it waits for another to finish. One walks the lines one after the other. Between 1 and 32.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workflow-steps-at-once"
+                  name="workflowStepsAtOnce"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={32}
+                  value={stepsAtOnce}
+                  onChange={(event) => setStepsAtOnce(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Steps running at once')}
+                />
+                <span className={styles.retentionUnit}>{t('at once')}</span>
+              </div>
+            </div>
 
             <h2 id="run-history" className={styles.sectionHeading}>{t('Run history')}</h2>
 

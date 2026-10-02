@@ -463,6 +463,22 @@ export const TESTS = [
      */
   },
   {
+    name: 'workflow-parallel-check',
+    what: 'a node with lines to two others: both paths run and meet once, the run page marks all three, and the Admin ceiling on steps at once is kept',
+    needs: ['workspace'],
+    /*
+     * Issue #285. Makes a workflow of four Object nodes - one fanning out to
+     * two that meet again - runs it once and removes it. That the two paths
+     * overlap on the clock is the server's suite to prove, with steps that
+     * take a second; an Object node takes none.
+     *
+     * `alone`, because it sets the installation's steps-at-once number on the
+     * Admin page and puts it back, and a run started beside it would be
+     * planned with whichever number it caught.
+     */
+    alone: true,
+  },
+  {
     name: 'node-disable-check',
     what: 'a node switched off: drawn at half, kept by a save, skipped by a run, and shown skipped on the run page',
     needs: ['workspace'],

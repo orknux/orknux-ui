@@ -577,6 +577,7 @@ export const PAGES = [
       { label: t('Commands'), at: '#commands', also: 'marker skill' },
       { label: t('Metrics'), at: '#metrics', also: 'anonymous telemetry' },
       { label: t('Component history'), at: '#component-history', also: 'revisions retention' },
+      { label: t('Workflow runs'), at: '#workflow-runs', also: 'parallel concurrent branches steps at once' },
       { label: t('Run history'), at: '#run-history', also: 'executions retention sweep' },
       { label: t('Queued tasks'), at: '#queued-tasks', also: 'sweep temporal interval' },
       { label: t('Plugins'), at: '#plugins', also: 'source size timeout' },
