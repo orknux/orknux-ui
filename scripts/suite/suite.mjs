@@ -3218,6 +3218,20 @@ export const TESTS = [
      */
   },
   {
+    name: 'slack-reconnect-check',
+    what: "a Slack connection's socket state on one line, with a Reconnect button that redraws it from the server's answer",
+    needs: ['workspace'],
+    /*
+     * Issue #592. A socket that died without the client noticing stayed "open"
+     * until a restart and the page said nothing - the connection's check is
+     * about the token, which was fine. Tokens nobody issued, so whatever the
+     * server under test does with Slack (FAILED, CONNECTING, or DISABLED where
+     * it listens to none), the line has words for it and they are compared
+     * with what the server reports. Its own two connections, swept at both
+     * ends.
+     */
+  },
+  {
     name: 'connection-credential-check',
     what: "each of a connection's credentials choosing its own source, without either touching the other",
     needs: ['workspace'],

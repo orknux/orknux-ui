@@ -461,6 +461,50 @@ export async function revealWorkspaceConnectionUserToken(id: string): Promise<st
   return data.revealWorkspaceConnectionUserToken;
 }
 
+/** Where a Slack connection's Socket Mode socket stands, on the server that answered. #592. */
+export type SlackSocketStatus = 'CONNECTED' | 'CONNECTING' | 'FAILED' | 'NOT_LISTENING' | 'DISABLED';
+
+/**
+ * A Slack connection's socket, as one server holds it.
+ *
+ * Times are ISO-8601. `sharedWithOthers` is Slack's `hello` counting more
+ * connections for this Slack app than this server holds - somebody else is
+ * listening with the app, and Slack hands them a share of its events.
+ */
+export interface SlackSocketState {
+  status: SlackSocketStatus;
+  connectedSince: string | null;
+  lastEventAt: string | null;
+  lastFailure: string | null;
+  lastFailureAt: string | null;
+  appConnections: number | null;
+  sharedWithOthers: boolean;
+}
+
+const SLACK_SOCKET_FIELDS =
+  'status connectedSince lastEventAt lastFailure lastFailureAt appConnections sharedWithOthers';
+
+/**
+ * Asked on its own rather than with the connection, so that the list of
+ * connections - which selects the same fields - asks nothing about sockets.
+ */
+export async function fetchSlackSocket(id: string): Promise<SlackSocketState | null> {
+  const data = await graphql<{ workspaceConnection: { slackSocket: SlackSocketState | null } | null }>(
+    `query SlackSocket($id: ID!) { workspaceConnection(id: $id) { slackSocket { ${SLACK_SOCKET_FIELDS} } } }`,
+    { id },
+  );
+  return data.workspaceConnection?.slackSocket ?? null;
+}
+
+/** Closes the socket and opens it again, on every server; answers how it stands on this one. */
+export async function reconnectSlackConnection(id: string): Promise<SlackSocketState> {
+  const data = await graphql<{ reconnectSlackConnection: SlackSocketState }>(
+    `mutation ReconnectSlackConnection($id: ID!) { reconnectSlackConnection(id: $id) { ${SLACK_SOCKET_FIELDS} } }`,
+    { id },
+  );
+  return data.reconnectSlackConnection;
+}
+
 /**
  * What asking a Slack connection about a typed user or channel came back with.
  *
