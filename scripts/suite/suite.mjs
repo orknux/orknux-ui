@@ -1927,6 +1927,12 @@ export const TESTS = [
     /* Asked for: the native title was a slow grey line, and built-ins and plugin tools had none. */
   },
   {
+    name: 'auto-refresh-default-check',
+    what: 'a run and a session start refreshing every second, a list starts at Off, and a choice made is kept',
+    needs: ['workspace'],
+    /* Asked for: following a run meant switching auto-refresh on every time. */
+  },
+  {
     name: 'saved-colour-check',
     what: '"Saved." is the success green on Workspace Settings, as on every other page',
     needs: ['workspace'],

@@ -887,7 +887,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     decided how often they want to be interrupted has decided
                     it everywhere.
                   */}
-                  <AutoRefresh onRefresh={refresh} busy={loading} />
+                  <AutoRefresh onRefresh={refresh} busy={loading} defaultSeconds={1} />
                   {/* The label does not change: a word that flips every few
                       seconds under auto-refresh is movement, not information. */}
                   <button

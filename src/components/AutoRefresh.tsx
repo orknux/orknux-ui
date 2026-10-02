@@ -9,6 +9,11 @@ export interface AutoRefreshProps {
   onRefresh: () => void;
   /** Paused while something else is already loading. */
   busy?: boolean;
+  /**
+   * The interval this screen starts at where nobody has chosen one. A run or a
+   * session being followed wants every second; a list is left at Off.
+   */
+  defaultSeconds?: number;
 }
 
 /** Off, and the intervals worth offering. Seconds. */
@@ -43,8 +48,8 @@ const CHOICES: { value: number; label: string }[] = [
  * who has decided how often they want to be interrupted has decided it for all
  * of them.
  */
-export function AutoRefresh({ onRefresh, busy = false }: AutoRefreshProps) {
-  const seconds = useRefreshSeconds();
+export function AutoRefresh({ onRefresh, busy = false, defaultSeconds = 0 }: AutoRefreshProps) {
+  const seconds = useRefreshSeconds(defaultSeconds);
 
   useEffect(() => {
     if (seconds === 0) return;

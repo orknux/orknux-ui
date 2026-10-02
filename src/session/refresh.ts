@@ -13,16 +13,23 @@ const ALLOWED = [0, 1, 5, 15, 30, 60];
  * per page. A store rather than context for the same reason the sidebar uses
  * one — the pages reading it are not all below one provider.
  */
-function read(): number {
+function read(): number | null {
   try {
-    const stored = Number(window.localStorage.getItem(KEY));
-    return ALLOWED.includes(stored) ? stored : 0;
+    const raw = window.localStorage.getItem(KEY);
+    if (raw === null) return null;
+    const stored = Number(raw);
+    return ALLOWED.includes(stored) ? stored : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
-let seconds = read();
+/**
+ * Null until somebody chooses: a page then uses its own default - a run or a
+ * session being followed wants every second, a list does not want polling at
+ * all. Once chosen, the choice is everybody's, Off included.
+ */
+let seconds: number | null = read();
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void): () => void {
@@ -30,7 +37,7 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-export function refreshSeconds(): number {
+export function refreshSeconds(): number | null {
   return seconds;
 }
 
@@ -46,6 +53,7 @@ export function setRefreshSeconds(next: number): void {
   listeners.forEach((listener) => listener());
 }
 
-export function useRefreshSeconds(): number {
-  return useSyncExternalStore(subscribe, refreshSeconds, refreshSeconds);
+/** The chosen interval, or [fallback] where nobody has chosen one yet. */
+export function useRefreshSeconds(fallback = 0): number {
+  return useSyncExternalStore(subscribe, refreshSeconds, refreshSeconds) ?? fallback;
 }

@@ -820,7 +820,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                 <img src={refreshIcon} alt="" width={14} height={14} />
                 {refreshing ? t('Refreshing…') : 'Refresh'}
               </button>
-              <AutoRefresh onRefresh={load} busy={refreshing} />
+              <AutoRefresh onRefresh={load} busy={refreshing} defaultSeconds={1} />
               {/* Only while it is running: a stopped run is terminal, so once
                   it has ended there is nothing to stop. Issue #395. */}
               {run?.status === 'RUNNING' && (
