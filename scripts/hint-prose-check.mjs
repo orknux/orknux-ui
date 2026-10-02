@@ -174,6 +174,48 @@ const IN_THE_OPEN = [
     because: 'status',
     why: 'what the copy just left behind, introducing the list of what to set',
   },
+  // ---- Admin -> Updates: what runs, and what can be chosen --------------
+  //
+  // Each line is the state of this installation's releases - whether updating
+  // is switched on, how it was started, whether anything newer or anything
+  // kept exists - or the result of the press that chose one. Nothing here
+  // explains a control.
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'Chosen. This server was not started by the image, so restart it to run the release.',
+    because: 'status',
+    why: 'the result of choosing a release on a server that cannot restart itself into it',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'Updates are turned off on this installation (ORKNUX_SELF_UPDATE).',
+    because: 'status',
+    why: 'the state of the installation, and the only thing the page shows when updating is off',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'This server was not started by the image; after an update, restart it yourself.',
+    because: 'status',
+    why: 'how this server was started, which decides whether an update takes effect by itself',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'orknux.ai offers no server releases yet.',
+    because: 'status',
+    why: 'an empty list of releases on offer',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'This is the newest release.',
+    because: 'status',
+    why: 'an empty list of releases newer than the running one',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'No release is kept yet.',
+    because: 'status',
+    why: 'an empty list of releases kept in the database',
+  },
   // ---- Lists with nothing in them, and lists a search emptied ------------
   //
   // Eleven of these arrived together: the plugins screens and the three
