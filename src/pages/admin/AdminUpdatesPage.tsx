@@ -129,7 +129,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
         ? pending.version
         : pending.kind === 'stored'
           ? pending.release.version
-          : tf("the image's own {version}", { version: pending.version });
+          : tf('the image\'s own {version}', { version: pending.version });
 
   return (
     <AppShell
@@ -145,7 +145,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
           {updates !== null && (
             <p className={styles.subtitle} data-testid="running-version">
               {updates.runningRelease === null
-                ? tf("Running {version}, the image's own jar.", { version: updates.runningVersion })
+                ? tf('Running {version}, the image\'s own jar.', { version: updates.runningVersion })
                 : tf('Running {version}, from a stored release.', { version: updates.runningVersion })}
             </p>
           )}
@@ -282,7 +282,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                 <li className={styles.stored} data-testid="image-release">
                   <div className={styles.row}>
                     <span className={styles.version}>{updates.imageVersion}</span>
-                    <span className={styles.meta}>{t("the image's own jar")}</span>
+                    <span className={styles.meta}>{t('the image\'s own jar')}</span>
                     <button
                       type="button"
                       className={styles.secondary}
