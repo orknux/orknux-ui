@@ -200,6 +200,7 @@ const PL: Record<string, string> = {
   ChatPictureUnstorable:
     'Narysowany obraz jest przechowywany jako załącznik, a załączniki są wyłączone w tej instalacji.',
   ConnectionUrlInvalid: 'Adres połączenia jest wymagany',
+  ConnectionNotSlack: 'Połączenie {name} nie jest połączeniem Slack i nie ma gniazda do ponownego połączenia',
   McpServerAddressInvalid: 'Adres serwera MCP jest wymagany',
   MemoryContentInvalid: 'Wspomnienie potrzebuje czegoś do zapamiętania',
   ModelIdInvalid: 'Identyfikator modelu jest wymagany',

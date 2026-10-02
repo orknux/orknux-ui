@@ -8,8 +8,10 @@ import {
   connectionTypeLabel,
   disconnectWorkspaceConnection,
   fetchPluginConnectionTypes,
+  fetchSlackSocket,
   fetchWorkspaceConnection,
   pluginKindOptionLabel,
+  reconnectSlackConnection,
   revealWorkspaceConnectionAppToken,
   revealWorkspaceConnectionUserToken,
   revealWorkspaceConnectionSecret,
@@ -23,6 +25,8 @@ import type {
   ConnectionType,
   MailSecurity,
   PluginConnectionType,
+  SlackSocketState,
+  SlackSocketStatus,
   WorkspaceConnection,
 } from '../../api/integrations';
 import type { SessionUser } from '../../api/session';
@@ -280,6 +284,46 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
       current = false;
     };
   }, [slack, workspaceId, connectionId]);
+
+  /**
+   * The Socket Mode socket this server holds for a Slack connection. #592.
+   *
+   * A socket that died without the client noticing used to stay "open" and
+   * hear nothing until a restart, and nothing on this page said so. The line
+   * says when it opened and when an event last arrived - "connected since
+   * nine, last event three days ago" is the shape of a dead socket - and
+   * Reconnect closes it and opens it again, on every server.
+   */
+  const [socket, setSocket] = useState<SlackSocketState | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
+
+  useEffect(() => {
+    if (!slack || connectionId === '') return;
+    let current = true;
+    fetchSlackSocket(connectionId)
+      .then((state) => {
+        if (current) setSocket(state);
+      })
+      .catch(() => {
+        if (current) setSocket(null);
+      });
+    return () => {
+      current = false;
+    };
+  }, [slack, connectionId]);
+
+  async function handleReconnect() {
+    if (reconnecting) return;
+    setReconnecting(true);
+    setSaveError(null);
+    try {
+      setSocket(await reconnectSlackConnection(connectionId));
+    } catch (cause) {
+      setSaveError(cause instanceof Error ? cause.message : t('Could not reconnect to Slack.'));
+    } finally {
+      setReconnecting(false);
+    }
+  }
 
   /** Changing how the session is secured moves the port with it, until it is typed over. */
   function changeSecurity(next: MailSecurity) {
@@ -907,6 +951,43 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
               </p>
             )}
 
+            {/*
+              The socket, on its own line under the token's: the check above
+              says the token is real, and this says whether anything is
+              listening with it. Reconnect sits on the line it acts on.
+            */}
+            {slack && socket !== null && (
+              <div className={styles.statusRow} id="connection-socket">
+                <span className={socketDotClass(socket.status)} aria-hidden="true" />
+                <span className={styles.statusDetail} id="connection-socket-state">
+                  {socketLine(socket)}
+                </span>
+                {socket.status !== 'NOT_LISTENING' && (
+                  <button
+                    type="button"
+                    className={styles.testButton}
+                    id="connection-reconnect"
+                    onClick={handleReconnect}
+                    disabled={reconnecting}
+                  >
+                    {reconnecting ? t('Reconnecting…') : t('Reconnect')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/*
+              Slack hands each of an app's connections a share of its events,
+              whichever server opened them - so another installation listening
+              with the same app takes some of the mentions this one is waiting
+              for, and a trigger reads as working only sometimes.
+            */}
+            {slack && socket?.sharedWithOthers === true && (
+              <p className={styles.cannotReceive} id="connection-socket-shared">
+                {sharedLine(socket.appConnections ?? 0)}
+              </p>
+            )}
+
             {/* Checking and saving are the two things to do here, so they sit together. */}
             <div className={styles.actionRow}>
               {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
@@ -951,6 +1032,68 @@ function statusClass(status: ConnectionStatus | undefined): string {
     default:
       return `${styles.statusDot} ${styles.statusIdle}`;
   }
+}
+
+/** Green while the socket is open, red when it would not open, grey otherwise. */
+function socketDotClass(status: SlackSocketStatus): string {
+  switch (status) {
+    case 'CONNECTED':
+      return `${styles.statusDot} ${styles.statusConnected}`;
+    case 'FAILED':
+      return `${styles.statusDot} ${styles.statusFailed}`;
+    default:
+      return `${styles.statusDot} ${styles.statusIdle}`;
+  }
+}
+
+/** One line: when it opened and what it last heard, or why it is not open. */
+function socketLine(socket: SlackSocketState): string {
+  switch (socket.status) {
+    case 'CONNECTED': {
+      const since = clock(socket.connectedSince);
+      return socket.lastEventAt === null
+        ? tf('Connected since {time}, no event yet', { time: since })
+        : tf('Connected since {time}, last event {ago}', { time: since, ago: ago(socket.lastEventAt) });
+    }
+    case 'CONNECTING':
+      return t('Not connected yet; the socket opens within a minute');
+    case 'FAILED':
+      return tf('Could not connect: {reason}', { reason: socket.lastFailure ?? t('no reason given') });
+    case 'NOT_LISTENING':
+      return t('Not listening: there is no app-level token');
+    case 'DISABLED':
+      return t('This server does not listen to Slack');
+  }
+}
+
+/** Somebody else listening with the same Slack app, and taking a share of its events. */
+function sharedLine(count: number): string {
+  return tf('Slack splits this app’s events between {count} connections; another server is listening with this app', {
+    count,
+  });
+}
+
+/** The time of day, with the date only when it is not today. */
+function clock(iso: string | null): string {
+  if (iso === null) return '—';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  return at.toDateString() === new Date().toDateString()
+    ? at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : at.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+}
+
+/** "2 min ago", in whichever language is being read. */
+function ago(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (seconds < 60) return t('just now');
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return tf('{count} min ago', { count: minutes });
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return tf('{count} h ago', { count: hours });
+  return tf('{count} d ago', { count: Math.round(hours / 24) });
 }
 
 /** A field the admin owns: shown, but not the workspace's to change. */
