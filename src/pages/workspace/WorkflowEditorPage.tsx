@@ -5961,8 +5961,15 @@ Change the keystroke in Preferences.`}
                         way an agent node opens its agent; a modified click still
                         opens the model's own page in a tab of its own.
                       */}
-                      {draft.imageModelId !== null && (
-                        <span className={styles.labelLinks}>
+                      <span className={styles.labelLinks}>
+                        <button
+                          type="button"
+                          className={styles.definitionLink}
+                          onClick={() => setBuilding({ kind: 'IMAGE', id: null })}
+                        >
+                          {t('New')}
+                        </button>
+                        {draft.imageModelId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/models/${draft.imageModelId}`}
                             className={styles.definitionJump}
@@ -5976,8 +5983,8 @@ Change the keystroke in Preferences.`}
                           >
                             <OpenDefinitionIcon />
                           </Link>
-                        </span>
-                      )}
+                        )}
+                      </span>
                     </span>
                     <DefinitionPicker
                       id="node-image-model"
@@ -6000,8 +6007,15 @@ Change the keystroke in Preferences.`}
                     models={decisionModels}
                     modelLink={
                       // The chosen model in the drawer, as an image node's is; a modified click opens its page.
-                      draft.decisionModelId != null && (
-                        <span className={styles.labelLinks}>
+                      <span className={styles.labelLinks}>
+                        <button
+                          type="button"
+                          className={styles.definitionLink}
+                          onClick={() => setBuilding({ kind: 'DECISION', id: null })}
+                        >
+                          {t('New')}
+                        </button>
+                        {draft.decisionModelId != null && (
                           <Link
                             to={`/workspace/${workspaceId}/models/${draft.decisionModelId}`}
                             className={styles.definitionJump}
@@ -6015,8 +6029,8 @@ Change the keystroke in Preferences.`}
                           >
                             <OpenDefinitionIcon />
                           </Link>
-                        </span>
-                      )
+                        )}
+                      </span>
                     }
                     onChange={(patch) => {
                       const next = { ...draft, ...patch };
@@ -7198,6 +7212,31 @@ Change the keystroke in Preferences.`}
         open={building?.kind === 'IMAGE' || building?.kind === 'DECISION'}
         workspaceId={workspaceId}
         modelId={building?.kind === 'IMAGE' || building?.kind === 'DECISION' ? building.id : null}
+        // New beside the picker: what the node can draw or decide with, so an image node makes an image model.
+        creating={building?.kind === 'IMAGE' ? ['IMAGE'] : building?.kind === 'DECISION' ? ['DECISION', 'CHAT'] : null}
+        onCreated={(model) => {
+          setImageModels((all) =>
+            withDefinition(all, model).filter((one) => one.kind === 'IMAGE' && one.enabled),
+          );
+          setDecisionModels((all) =>
+            withDefinition(all, model).filter((one) => (one.kind === 'DECISION' || one.kind === 'CHAT') && one.enabled),
+          );
+          /*
+           * Made here, the node points at it straight away, and the drawer
+           * stays open on it - the fields the making did not ask for are the
+           * ones somebody is most likely to want next.
+           */
+          setDraft((current) =>
+            current === null
+              ? current
+              : current.kind === 'IMAGE'
+                ? { ...current, imageModelId: model.id }
+                : current.kind === 'DECISION'
+                  ? { ...current, decisionModelId: model.id }
+                  : current,
+          );
+          setBuilding((current) => (current === null ? current : { kind: current.kind, id: model.id }));
+        }}
         onClose={() => setBuilding(null)}
         onSaved={(model) => {
           setImageModels((all) =>

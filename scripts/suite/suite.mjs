@@ -1467,6 +1467,18 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'image-model-new-check',
+    what: "an image node's New beside Image Model making an image model in the drawer, the node pointing at it and the drawer holding it",
+    needs: ['workspace'],
+    /*
+     * Makes a provider on a `.invalid` address and a workflow with one image
+     * node and no model; the check makes the model through the drawer, and all
+     * three are taken away. Alone for the same reason as image-model-drawer-check:
+     * the model it makes is in every image picker in the workspace while it runs.
+     */
+    alone: true,
+  },
+  {
     name: 'node-default-icons-check',
     what: "every kind of node card drawing a picture where nobody chose one, a chosen one replacing it, and the run page's cards drawing the same",
     needs: ['workspace'],
