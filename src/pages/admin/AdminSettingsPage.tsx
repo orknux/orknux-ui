@@ -33,6 +33,7 @@ import {
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
   setReleaseBootAttempts,
+  setReleaseDownloadSeconds,
   setReleaseFollowSeconds,
   setReleaseMaxMb,
   setReleaseRestartDelaySeconds,
@@ -130,6 +131,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [followSeconds, setFollowSeconds] = useState('');
   const [releaseMb, setReleaseMb] = useState('');
   const [restartDelay, setRestartDelay] = useState('');
+  const [downloadSeconds, setDownloadSeconds] = useState('');
 
   useEffect(() => {
     /*
@@ -181,6 +183,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setFollowSeconds(String(held.releaseFollowSeconds));
         setReleaseMb(String(held.releaseMaxMb));
         setRestartDelay(String(held.releaseRestartDelaySeconds));
+        setDownloadSeconds(String(held.releaseDownloadSeconds));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -263,6 +266,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: followSeconds, held: settings.releaseFollowSeconds, write: setReleaseFollowSeconds },
         { typed: releaseMb, held: settings.releaseMaxMb, write: setReleaseMaxMb },
         { typed: restartDelay, held: settings.releaseRestartDelaySeconds, write: setReleaseRestartDelaySeconds },
+        { typed: downloadSeconds, held: settings.releaseDownloadSeconds, write: setReleaseDownloadSeconds },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -1499,9 +1503,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <NumberSetting
               id="release-max-mb"
               label={t('Largest server jar taken')}
-              hint={t('Applies to uploads and to downloads from orknux.ai alike.')}
+              hint={t('Applies to every source: the official server, an upload and a URL.')}
               min={64}
-              max={1000}
+              max={4096}
               unit="MB"
               value={releaseMb}
               onChange={setReleaseMb}
@@ -1516,6 +1520,17 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               unit={t('seconds')}
               value={restartDelay}
               onChange={setRestartDelay}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-download-seconds"
+              label={t('Longest a jar from a URL may take')}
+              hint={t('Connecting, answering and the whole download, together.')}
+              min={10}
+              max={3600}
+              unit={t('seconds')}
+              value={downloadSeconds}
+              onChange={setDownloadSeconds}
               disabled={busy}
             />
 

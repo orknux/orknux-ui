@@ -5,10 +5,12 @@ import {
   activateServerRelease,
   fetchServerUpdates,
   installServerRelease,
+  installServerReleaseFromUrl,
   serverAnswers,
+  serverReleasesAtUrl,
   uploadServerRelease,
 } from '../../api/serverUpdates';
-import type { ServerUpdates, StoredServerRelease } from '../../api/serverUpdates';
+import type { ListedServerRelease, ServerUpdates, StoredServerRelease } from '../../api/serverUpdates';
 import type { SessionUser } from '../../api/session';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
@@ -34,10 +36,11 @@ type Pending =
  * Server updates, issue #584.
  *
  * Nothing here happens by itself: an administrator presses Update on a release
- * orknux.ai offers, uploads a jar, or goes back to one the database keeps. Each
- * one is checked against the release key the image carries, and every server
- * restarts on it - so after pressing, this page waits for the server to go and
- * come back, and reloads.
+ * the official server offers, uploads a jar, fetches one from a URL (#589), or
+ * goes back to one the database keeps. Each one is checked against the release
+ * key the image carries, and every server restarts on it - so after pressing,
+ * this page waits for the server to go and come back, and reloads. Each source
+ * can be switched off by the installation, and then says so in one line.
  */
 export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) {
   const [updates, setUpdates] = useState<ServerUpdates | null>(null);
@@ -48,7 +51,15 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<string | null>(null);
+  const [chosenName, setChosenName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  /** From a URL, #589. The credential lives in this field only and is cleared once used. */
+  const [url, setUrl] = useState<string | null>(null);
+  const [credential, setCredential] = useState('');
+  const [fetching, setFetching] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [fetched, setFetched] = useState<string | null>(null);
+  const [listed, setListed] = useState<ListedServerRelease[] | null>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -58,6 +69,11 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
   }, []);
 
   useEffect(load, [load]);
+
+  // The configured source fills the field once, and whatever is typed after that stays.
+  useEffect(() => {
+    if (updates !== null && url === null) setUrl(updates.sourceUrl ?? '');
+  }, [updates, url]);
 
   /*
    * Waiting out a restart: first for the server to go, then for it to answer
@@ -108,17 +124,55 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
   async function upload() {
     const file = fileRef.current?.files?.[0];
     if (file === undefined || uploading) return;
-    setUploading(true);
     setUploadError(null);
     setUploaded(null);
+    // Refused here rather than after sending a third of a gigabyte to be told the same.
+    if (updates !== null && file.size > updates.maxMb * 1024 * 1024) {
+      setUploadError(tf('That jar is larger than the {mb} MB this installation takes.', { mb: updates.maxMb }));
+      return;
+    }
+    setUploading(true);
     try {
       setUploaded(await uploadServerRelease(file));
       if (fileRef.current !== null) fileRef.current.value = '';
+      setChosenName(null);
       load();
     } catch (cause: unknown) {
       setUploadError(cause instanceof Error ? cause.message : t('The jar could not be uploaded.'));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function fetchFromUrl(from: string) {
+    if (fetching || from.trim() === '') return;
+    setFetching(true);
+    setUrlError(null);
+    setFetched(null);
+    try {
+      setFetched(await installServerReleaseFromUrl(from.trim(), credential));
+      setCredential('');
+      setListed(null);
+      load();
+    } catch (cause: unknown) {
+      setUrlError(cause instanceof Error ? cause.message : t('Nothing could be fetched from that URL.'));
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  async function check() {
+    if (fetching || url === null || url.trim() === '') return;
+    setFetching(true);
+    setUrlError(null);
+    setFetched(null);
+    try {
+      setListed(await serverReleasesAtUrl(url.trim(), credential));
+    } catch (cause: unknown) {
+      setListed(null);
+      setUrlError(cause instanceof Error ? cause.message : t('Nothing could be fetched from that URL.'));
+    } finally {
+      setFetching(false);
     }
   }
 
@@ -187,11 +241,15 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
               </p>
             )}
 
-            <h2 className={styles.sectionHeading}>{t('From orknux.ai')}</h2>
-            {updates.offeredError !== null ? (
+            <h2 className={styles.sectionHeading}>{t('From official server')}</h2>
+            {!updates.officialEnabled ? (
+              <p className={styles.notice} data-testid="official-off">
+                {t('Turned off for this installation.')}
+              </p>
+            ) : updates.offeredError !== null ? (
               <p className={styles.error}>{updates.offeredError}</p>
             ) : !updates.offered ? (
-              <p className={styles.notice}>{t('orknux.ai offers no server releases yet.')}</p>
+              <p className={styles.notice}>{t('The official server offers no releases yet.')}</p>
             ) : updates.available.length === 0 ? (
               <p className={styles.notice}>{t('This is the newest release.')}</p>
             ) : (
@@ -220,19 +278,54 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
             )}
 
             <h2 className={styles.sectionHeading}>{t('Upload a jar')}</h2>
-            <div className={styles.row}>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".jar"
-                className={styles.file}
-                data-testid="release-file"
-                disabled={uploading}
-              />
-              <button type="button" className={styles.secondary} onClick={() => void upload()} disabled={uploading}>
-                {uploading ? t('Uploading…') : t('Upload')}
-              </button>
-            </div>
+            {!updates.uploadEnabled ? (
+              <p className={styles.notice} data-testid="upload-off">
+                {t('Turned off for this installation.')}
+              </p>
+            ) : (
+              <div className={styles.row}>
+                {/*
+                 * The real input is hidden and driven by the button beside it, as on
+                 * Libraries and Plugins: a native file input draws in the browser's
+                 * own grey whatever the theme says.
+                 */}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".jar"
+                  className={styles.picker}
+                  data-testid="release-file"
+                  disabled={uploading}
+                  onChange={(event) => {
+                    setChosenName(event.target.files?.[0]?.name ?? null);
+                    setUploadError(null);
+                    setUploaded(null);
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  data-testid="release-choose"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {t('Choose a jar')}
+                </button>
+                {chosenName !== null && (
+                  <span className={styles.chosen} data-testid="release-chosen">
+                    {chosenName}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.primary}
+                  onClick={() => void upload()}
+                  disabled={uploading || chosenName === null}
+                >
+                  {uploading ? t('Uploading…') : t('Upload')}
+                </button>
+              </div>
+            )}
             {uploadError !== null && (
               <p className={styles.error} role="alert" data-testid="upload-error">
                 {uploadError}
@@ -244,6 +337,91 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
               </p>
             )}
 
+            <h2 className={styles.sectionHeading}>{t('From a URL')}</h2>
+            {!updates.urlEnabled ? (
+              <p className={styles.notice} data-testid="url-off">
+                {t('Turned off for this installation.')}
+              </p>
+            ) : (
+              <form
+                className={styles.row}
+                data-testid="release-url-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void fetchFromUrl(url ?? '');
+                }}
+              >
+                <input
+                  type="url"
+                  className={styles.field}
+                  data-testid="release-url"
+                  aria-label={t('URL of a server jar, or of a directory holding releases.json')}
+                  placeholder="https://artifactory.example.com/orknux/orknux-server.jar"
+                  value={url ?? ''}
+                  onChange={(event) => {
+                    setUrl(event.target.value);
+                    setListed(null);
+                  }}
+                  disabled={fetching}
+                />
+                <input
+                  type="password"
+                  className={styles.credential}
+                  data-testid="release-credential"
+                  aria-label={t('Credential for that URL: a token, or user:password')}
+                  placeholder={t('Token or user:password')}
+                  autoComplete="new-password"
+                  value={credential}
+                  onChange={(event) => setCredential(event.target.value)}
+                  disabled={fetching}
+                />
+                {(url ?? '').trim().endsWith('/') ? (
+                  <button type="button" className={styles.primary} disabled={fetching} onClick={() => void check()}>
+                    {fetching ? t('Checking…') : t('Check')}
+                  </button>
+                ) : (
+                  <button type="submit" className={styles.primary} disabled={fetching || (url ?? '').trim() === ''}>
+                    {fetching ? t('Fetching…') : t('Fetch')}
+                  </button>
+                )}
+              </form>
+            )}
+            {urlError !== null && (
+              <p className={styles.error} role="alert" data-testid="url-error">
+                {urlError}
+              </p>
+            )}
+            {fetched !== null && (
+              <p className={styles.notice} role="status" data-testid="url-fetched">
+                {tf('Stored {version}; start it below.', { version: fetched })}
+              </p>
+            )}
+            {listed !== null &&
+              (listed.length === 0 ? (
+                <p className={styles.notice} role="status">
+                  {t('It lists nothing newer than what runs.')}
+                </p>
+              ) : (
+                <ul className={styles.list} data-testid="listed-releases">
+                  {listed.map((one) => (
+                    <li key={one.jarUrl} className={styles.offered}>
+                      <div className={styles.row}>
+                        <span className={styles.version}>{one.version}</span>
+                        <span className={styles.meta}>{one.stored ? t('already kept') : ''}</span>
+                        <button
+                          type="button"
+                          className={styles.secondary}
+                          disabled={fetching || one.stored}
+                          onClick={() => void fetchFromUrl(one.jarUrl)}
+                        >
+                          {t('Fetch')}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ))}
+
             <h2 className={styles.sectionHeading}>
               {tf('Kept in the database (the last {count})', { count: updates.kept })}
             </h2>
@@ -253,7 +431,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                   <div className={styles.row}>
                     <span className={styles.version}>{release.version}</span>
                     <span className={styles.meta}>
-                      {release.source === 'ORKNUX_AI' ? 'orknux.ai' : t('uploaded')} · {release.storedBy} ·{' '}
+                      {sourceLabel(release)} · {release.storedBy} ·{' '}
                       {release.storedAt.slice(0, 10)}
                     </span>
                     <span className={styles[`state${release.state}` as keyof typeof styles]}>{stateLabel(release)}</span>
@@ -309,6 +487,22 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
       />
     </AppShell>
   );
+}
+
+/** Where a kept release came from, in a word or a host. */
+function sourceLabel(release: StoredServerRelease): string {
+  switch (release.source) {
+    case 'ORKNUX_AI':
+      return t('official server');
+    case 'URL':
+      try {
+        return release.sourceUrl === null ? t('from a URL') : new URL(release.sourceUrl).host;
+      } catch {
+        return t('from a URL');
+      }
+    default:
+      return t('uploaded');
+  }
 }
 
 function stateLabel(release: StoredServerRelease): string {

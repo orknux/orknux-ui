@@ -230,6 +230,9 @@ const PL: Record<string, string> = {
   ServerUpdatesDisabled: 'Aktualizacje serwera są wyłączone w tej instalacji (ORKNUX_SELF_UPDATE ma wartość false).',
   ServerReleaseAlreadyStored: 'Ten plik jar jest już przechowywany jako wydanie {version}.',
   ServerReleaseTooLarge: 'Ten plik jar jest większy niż {mb} MB, które przyjmuje ta instalacja.',
+  // From a URL and the per-source switches, #589. ServerReleaseUrlRefused carries an English reason in {why}.
+  ServerReleaseSourceDisabled: 'Ta instalacja nie przyjmuje wydań serwera z tego źródła ({variable} ma wartość false).',
+  ReleaseDownloadOutOfRange: '{seconds} to nie jest liczba sekund, przez jaką może trwać pobieranie pliku jar serwera.',
   ServerReleaseNotOffered: 'orknux.ai nie oferuje wydania serwera {version}.',
   ServerReleaseDownloadMismatch:
     'Pobrane wydanie {version} nie zgadza się z tym, co orknux.ai dla niego podaje; niczego nie zapisano.',

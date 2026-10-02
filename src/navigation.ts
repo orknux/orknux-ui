@@ -562,7 +562,7 @@ export const PAGES = [
       label: t('Updates'),
       where: 'Admin',
       icon: cloudDownloadIcon,
-      also: 'upgrade version release rollback roll back jar orknux.ai',
+      also: 'upgrade version release rollback roll back jar orknux.ai official artifactory url',
     },
   },
   {

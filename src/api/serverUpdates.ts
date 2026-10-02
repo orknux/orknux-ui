@@ -2,11 +2,13 @@ import { ApiError, graphql, refusalOf } from './client';
 import { t } from '../i18n';
 
 /**
- * Server updates, issue #584: what this server runs, what orknux.ai offers newer
- * than it, and the jars the database keeps to roll back to. Administrators only.
+ * Server updates, issue #584: what this server runs, what the official server
+ * offers newer than it, and the jars the database keeps to roll back to. A jar
+ * can also come from a URL, such as a company's Artifactory (#589).
+ * Administrators only.
  */
 
-export type ServerReleaseSource = 'ORKNUX_AI' | 'UPLOAD';
+export type ServerReleaseSource = 'ORKNUX_AI' | 'UPLOAD' | 'URL';
 export type ServerReleaseState = 'STORED' | 'ACTIVATING' | 'ACTIVE' | 'FAILED';
 
 export interface OfferedServerRelease {
@@ -23,6 +25,8 @@ export interface StoredServerRelease {
   id: string;
   version: string;
   source: ServerReleaseSource;
+  /** Where a URL release came from, without its credential or query. */
+  sourceUrl: string | null;
   size: number;
   schemaVersion: number;
   storedAt: string;
@@ -50,9 +54,25 @@ export interface ServerUpdates {
   imageVersion: string;
   imageActivatable: boolean;
   imageRefusal: string | null;
+  /** ORKNUX_RELEASE_SOURCE_URL, to fill the URL field with. */
+  sourceUrl: string | null;
+  /** One switch per source, under ORKNUX_SELF_UPDATE (#589). */
+  officialEnabled: boolean;
+  uploadEnabled: boolean;
+  urlEnabled: boolean;
+  /** The largest jar taken, in MB, so a bigger one is refused before it is sent. */
+  maxMb: number;
 }
 
-const STORED_FIELDS = 'id version source size schemaVersion storedAt storedBy state failure running activatable refusal';
+/** A release a repository's releases.json lists, its jarUrl already absolute. */
+export interface ListedServerRelease {
+  version: string;
+  jarUrl: string;
+  stored: boolean;
+}
+
+const STORED_FIELDS =
+  'id version source sourceUrl size schemaVersion storedAt storedBy state failure running activatable refusal';
 
 export async function fetchServerUpdates(): Promise<ServerUpdates> {
   const data = await graphql<{ serverUpdates: ServerUpdates }>(
@@ -60,6 +80,7 @@ export async function fetchServerUpdates(): Promise<ServerUpdates> {
       serverUpdates {
         enabled runningVersion restartable offered offeredError kept
         imageVersion imageActivatable imageRefusal
+        sourceUrl officialEnabled uploadEnabled urlEnabled maxMb
         runningRelease { ${STORED_FIELDS} }
         available { version publishedAt changelog size stored }
         stored { ${STORED_FIELDS} }
@@ -116,6 +137,28 @@ export async function uploadServerRelease(file: File): Promise<string> {
     throw new ApiError(refusalOf(message, body.code, body.arguments), answer.status, body.code, body.arguments);
   }
   return body.version ?? '';
+}
+
+/**
+ * A jar at a URL, fetched by the server through its proxy rules, verified like
+ * an upload and stored without being started. The credential is sent to that
+ * host and never comes back. Answers the version stored.
+ */
+export async function installServerReleaseFromUrl(url: string, credential: string): Promise<string> {
+  const data = await graphql<{ installServerReleaseFromUrl: { version: string } }>(
+    'mutation FromUrl($url: String!, $credential: String) { installServerReleaseFromUrl(url: $url, credential: $credential) { version } }',
+    { url, credential: credential.trim() === '' ? null : credential },
+  );
+  return data.installServerReleaseFromUrl.version;
+}
+
+/** What releases.json in the directory at [url] lists newer than what runs. */
+export async function serverReleasesAtUrl(url: string, credential: string): Promise<ListedServerRelease[]> {
+  const data = await graphql<{ serverReleasesAtUrl: ListedServerRelease[] }>(
+    'query AtUrl($url: String!, $credential: String) { serverReleasesAtUrl(url: $url, credential: $credential) { version jarUrl stored } }',
+    { url, credential: credential.trim() === '' ? null : credential },
+  );
+  return data.serverReleasesAtUrl;
 }
 
 /** Whether the server answers again, for the page waiting out a restart. */

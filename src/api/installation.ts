@@ -216,6 +216,8 @@ export interface InstallationSettings {
   releaseMaxMb: number;
   /** How long a server waits after an update before restarting, in seconds. */
   releaseRestartDelaySeconds: number;
+  /** How long a server jar fetched from a URL may take, in seconds (#589). */
+  releaseDownloadSeconds: number;
 }
 
 const FIELDS =
@@ -232,7 +234,7 @@ const FIELDS =
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
   'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured ' +
-  'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds';
+  'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -590,6 +592,14 @@ export async function setReleaseRestartDelaySeconds(seconds: number): Promise<In
     { seconds },
   );
   return data.setReleaseRestartDelaySeconds;
+}
+
+export async function setReleaseDownloadSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseDownloadSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setReleaseDownloadSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setReleaseDownloadSeconds;
 }
 
 export async function setToolSummariesFullUpTo(count: number): Promise<InstallationSettings> {
