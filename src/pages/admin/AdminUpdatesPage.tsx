@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   activateImageRelease,
   activateServerRelease,
+  removeServerRelease,
   fetchServerUpdates,
   installServerRelease,
   installServerReleaseFromUrl,
@@ -30,7 +31,8 @@ export interface AdminUpdatesPageProps {
 type Pending =
   | { kind: 'install'; version: string }
   | { kind: 'stored'; release: StoredServerRelease }
-  | { kind: 'image'; version: string };
+  | { kind: 'image'; version: string }
+  | { kind: 'remove'; release: StoredServerRelease };
 
 /**
  * Server updates, issue #584.
@@ -106,6 +108,15 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
 
   async function confirm() {
     if (pending === null) return;
+    if (pending.kind === 'remove') {
+      try {
+        await removeServerRelease(pending.release.id);
+      } finally {
+        setPending(null);
+        load();
+      }
+      return;
+    }
     const restarts =
       pending.kind === 'install'
         ? await installServerRelease(pending.version)
@@ -181,7 +192,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
       ? null
       : pending.kind === 'install'
         ? pending.version
-        : pending.kind === 'stored'
+        : pending.kind === 'stored' || pending.kind === 'remove'
           ? pending.release.version
           : tf('the image\'s own {version}', { version: pending.version });
 
@@ -448,6 +459,21 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                           : olderThan(updates.runningVersion, release.version) ? t('Update') : t('Re-apply')}
                       </button>
                     )}
+                    {/*
+                      Not for the one running or chosen: removing it would leave
+                      a start loop choosing a jar that is gone. The server
+                      refuses the fallback too, and says so if pressed.
+                    */}
+                    {!release.running && release.state !== 'ACTIVE' && release.state !== 'ACTIVATING' && (
+                      <button
+                        type="button"
+                        className={styles.secondary}
+                        onClick={() => setPending({ kind: 'remove', release })}
+                        aria-label={tf('Remove {version}', { version: release.version })}
+                      >
+                        {t('Remove')}
+                      </button>
+                    )}
                   </div>
                   {release.state === 'FAILED' && release.failure !== null && (
                     <p className={styles.error}>{release.failure}</p>
@@ -483,7 +509,11 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
 
       <ConfirmDialog
         subject={subject}
-        kind={pending?.kind === 'install' ? 'updateServer' : 'switchServerRelease'}
+        kind={
+          pending?.kind === 'install'
+            ? 'updateServer'
+            : pending?.kind === 'remove' ? 'removeServerRelease' : 'switchServerRelease'
+        }
         onClose={() => setPending(null)}
         onConfirm={confirm}
       />

@@ -21,7 +21,8 @@ export type ConfirmKind =
   | 'removeImageSizePreset'
   | 'resetLogLevels'
   | 'updateServer'
-  | 'switchServerRelease';
+  | 'switchServerRelease'
+  | 'removeServerRelease';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -40,6 +41,7 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeScratchpad',
   'removeIssueStatus',
   'removeImageSizePreset',
+  'removeServerRelease',
 ]);
 
 export interface ConfirmDialogProps {
@@ -238,6 +240,11 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Restart on another release'),
       message: <>{t('Every server restarts on this release, and the page reloads once it answers:')} {name}</>,
       button: submitting ? t('Restarting…') : t('Restart'),
+    },
+    removeServerRelease: {
+      title: t('Remove release'),
+      message: <>{t('The release and its jar leave the database, and it can no longer be gone back to:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

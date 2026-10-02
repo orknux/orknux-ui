@@ -28,7 +28,7 @@ import { BASE, open, record, drawn, shot, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open();
 
 const answer = await graphql(
-  'query { serverUpdates { enabled runningVersion officialEnabled uploadEnabled urlEnabled sourceUrl stored { id version } } }',
+  'query { serverUpdates { enabled runningVersion officialEnabled uploadEnabled urlEnabled sourceUrl stored { id version state running } } }',
 );
 const updates = answer.serverUpdates;
 record(typeof updates.runningVersion === 'string' && updates.runningVersion !== '', `the server runs ${updates.runningVersion}`);
@@ -57,6 +57,13 @@ if (await drawn(page, 'the updates page')) {
     for (const release of updates.stored) {
       const drawnRow = await page.getByTestId('stored-release').filter({ hasText: release.version }).count();
       record(drawnRow > 0, `kept release ${release.version} has a row`);
+      // Removable unless it runs or is chosen: those would leave a start loop choosing a jar that is gone.
+      const inUse = release.running || release.state === 'ACTIVE' || release.state === 'ACTIVATING';
+      const remove = page.getByRole('button', { name: `Remove ${release.version}`, exact: true });
+      record(
+        (await remove.count()) === (inUse ? 0 : 1),
+        `kept release ${release.version} ${inUse ? 'offers no Remove, being in use' : 'offers Remove'}`,
+      );
     }
 
     record(

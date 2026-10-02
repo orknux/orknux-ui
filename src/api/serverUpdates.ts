@@ -107,6 +107,11 @@ export async function activateServerRelease(id: string): Promise<boolean> {
   return data.activateServerRelease.restarting;
 }
 
+/** Takes a kept release out of the history; the server refuses the one running or chosen. */
+export async function removeServerRelease(id: string): Promise<void> {
+  await graphql<{ removeServerRelease: boolean }>('mutation Remove($id: ID!) { removeServerRelease(id: $id) }', { id });
+}
+
 export async function activateImageRelease(): Promise<boolean> {
   const data = await graphql<{ activateImageRelease: { restarting: boolean } }>(
     'mutation Image { activateImageRelease { restarting } }',
