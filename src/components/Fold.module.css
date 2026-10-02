@@ -1,0 +1,56 @@
+/*
+ * The heading's own text as a button: it takes the heading's font, size and
+ * colour rather than a button's, so a section reads as it did before it could
+ * be folded.
+ */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.toggle:hover .chevron {
+  color: var(--color-text-primary);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--color-accent-brand);
+  outline-offset: var(--space-2);
+}
+
+.chevron {
+  display: block;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-secondary);
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+/* Pointing at the heading's text, the way a closed disclosure does. */
+.chevronShut {
+  transform: rotate(-90deg);
+}
+
+.body {
+  display: contents;
+}
+
+.body[hidden] {
+  display: none;
+}

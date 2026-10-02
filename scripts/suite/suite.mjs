@@ -2536,6 +2536,20 @@ export const TESTS = [
      */
   },
   {
+    name: 'run-sections-collapse-check',
+    what: "the run page's summary, graph and log fold to their headings, stay folded, and the graph comes back drawn",
+    needs: ['fixture'],
+    /*
+     * Each section folds by a chevron button at its heading and is remembered
+     * for every run. The graph is the one with something to go wrong: folded,
+     * its canvas is unmounted, and a React Flow canvas that mounts without its
+     * measurements draws hidden boxes and no lines - so the boxes and lines are
+     * measured after unfolding, not just counted. Also folds a step's input and
+     * output in the rail. Needs one run whose steps are joined by a line, which
+     * it finds rather than starts; changes nothing but this browser's storage.
+     */
+  },
+  {
     name: 'graph-lines-check',
     what: 'the lines between the boxes stay drawn, on the run page and in the editor',
     needs: ['fixture', 'workflow'],

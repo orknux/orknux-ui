@@ -43,6 +43,7 @@ import { AppShell } from '../../components/AppShell';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { BackLink } from '../../components/BackLink';
 import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from '../../components/DragSize';
+import { FoldBody, FoldToggle, useFold } from '../../components/Fold';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
@@ -482,6 +483,15 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   useEffect(load, [load]);
 
   const runEnded = run !== null && run.status !== 'RUNNING';
+
+  /*
+   * Which of the three cards are folded to their headings. Remembered per card
+   * and for every run, in `Fold`; see there for why.
+   */
+  const [summaryOpen, toggleSummary] = useFold('run.summary');
+  const [graphOpen, toggleGraph] = useFold('run.graph');
+  const [logsOpen, toggleLogs] = useFold('run.logs');
+
   /**
    * React Flow fits the view when it mounts, which is before the card has been
    * laid out — so it fitted an empty box and the graph landed off-screen. It is
@@ -868,7 +878,12 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
           ) : (
             <>
               <section className={styles.card}>
-                <h2 className={styles.cardTitle}>{t('Summary')}</h2>
+                <h2 className={styles.cardTitle}>
+                  <FoldToggle open={summaryOpen} onToggle={toggleSummary} controls="run-summary">
+                    {t('Summary')}
+                  </FoldToggle>
+                </h2>
+                <FoldBody id="run-summary" open={summaryOpen}>
                 <dl className={styles.summary}>
                   <SummaryRow label={t('Run ID')}>#{executionId}</SummaryRow>
                   {/* Where this run came from, for a run that came of re-running
@@ -938,11 +953,16 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                       );
                     })()}
                 </dl>
+                </FoldBody>
               </section>
 
               <section className={styles.card}>
                 <div className={styles.graphHeader}>
-                  <h2 className={styles.cardTitle}>{t('Workflow Graph')}</h2>
+                  <h2 className={styles.cardTitle}>
+                    <FoldToggle open={graphOpen} onToggle={toggleGraph} controls="run-graph-section">
+                      {t('Workflow Graph')}
+                    </FoldToggle>
+                  </h2>
                   {run !== null && (
                     <span className={`${styles.graphStatus} ${styles[run.status.toLowerCase()]}`}>
                       <span className={styles.statusDot} aria-hidden="true" />
@@ -951,6 +971,18 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   )}
                 </div>
 
+                {/*
+                  Folded, the canvas is not hidden but gone: React Flow is
+                  unmounted and mounts afresh on the way back, the same as on
+                  arriving at the page. A canvas kept under `display: none`
+                  measures as nothing, and the framing and the handles it keeps
+                  would then be worked out from a box of zero - so unfolding
+                  starts from the path that is known to draw. The nodes carry
+                  their size and `measured` (see NODE_WIDTH), `onInit` hands
+                  over the new instance, and `FitWhenReady` frames it or puts
+                  back the viewport this tab kept for the run.
+                */}
+                <FoldBody id="run-graph-section" open={graphOpen}>
                 {run !== null && run.steps.length === 0 ? (
                   <p className={styles.notice}>{t('No step detail was recorded for this run.')}</p>
                 ) : (
@@ -1018,15 +1050,21 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                     handlers={graph.handlers}
                   />
                 )}
+                </FoldBody>
               </section>
 
               <section className={styles.card}>
                 <div className={styles.logsHeader}>
                   <h2 className={styles.logsTitle}>
-                    <img src={terminalIcon} alt="" width={16} height={16} />
-                    Logs{selected === null ? '' : ` — ${selected.name}`}
+                    <FoldToggle open={logsOpen} onToggle={toggleLogs} controls="run-logs-section">
+                      <img src={terminalIcon} alt="" width={16} height={16} />
+                      Logs{selected === null ? '' : ` — ${selected.name}`}
+                    </FoldToggle>
                   </h2>
                   <div className={styles.logControls}>
+                    {/* The filter goes with the lines it filters; the download
+                        does not need them on the screen, so it stays. */}
+                    {logsOpen && (
                     <span className={styles.logSearch}>
                       <img src={searchIcon} alt="" width={12} height={12} />
                       <input
@@ -1038,6 +1076,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                         aria-label={t('Filter logs')}
                       />
                     </span>
+                    )}
                     <button
                       type="button"
                       className={styles.download}
@@ -1050,6 +1089,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   </div>
                 </div>
 
+                <FoldBody id="run-logs-section" open={logsOpen}>
                 <div className={styles.terminal} id="run-logs" style={{ height: logs.size }}>
                   {visibleLogs.length === 0 ? (
                     <p className={styles.terminalEmpty}>
@@ -1082,6 +1122,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   dragging={logs.dragging}
                   handlers={logs.handlers}
                 />
+                </FoldBody>
               </section>
             </>
           )}
@@ -1162,6 +1203,14 @@ function NodeDetailsPanel({
   onRerunFromHere: (nodeKey: string) => Promise<void>;
   onClose: () => void;
 }) {
+  /*
+   * A step's input and output are JSON of any length, in a rail beside a graph.
+   * Folded for every step and every run at once, like the cards beside it: the
+   * point is not to scroll past an input of a thousand lines on every node.
+   */
+  const [inputOpen, toggleInput] = useFold('run.step-input');
+  const [outputOpen, toggleOutput] = useFold('run.step-output');
+
   /** Which of this step's pictures is open over the page, or null while none is. */
   const [zoomed, setZoomed] = useState<Picture | null>(null);
 
@@ -1303,11 +1352,23 @@ function NodeDetailsPanel({
         </>
       )}
 
-      <h3 className={styles.panelHeading}>{t('Input')}</h3>
-      <pre className={styles.payload}>{prettyJson(step.input)}</pre>
+      <h3 className={styles.panelHeading}>
+        <FoldToggle open={inputOpen} onToggle={toggleInput} controls="run-step-input">
+          {t('Input')}
+        </FoldToggle>
+      </h3>
+      <FoldBody id="run-step-input" open={inputOpen}>
+        <pre className={styles.payload}>{prettyJson(step.input)}</pre>
+      </FoldBody>
 
-      <h3 className={styles.panelHeading}>{t('Output')}</h3>
-      <pre className={styles.payload}>{prettyJson(step.output)}</pre>
+      <h3 className={styles.panelHeading}>
+        <FoldToggle open={outputOpen} onToggle={toggleOutput} controls="run-step-output">
+          {t('Output')}
+        </FoldToggle>
+      </h3>
+      <FoldBody id="run-step-output" open={outputOpen}>
+        <pre className={styles.payload}>{prettyJson(step.output)}</pre>
+      </FoldBody>
 
       {pictures.length > 0 && (
         <>
