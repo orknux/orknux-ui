@@ -2917,6 +2917,12 @@ export const TESTS = [
     needs: [],
     /* Issue #572. The server half - a step after each component - is WorkspaceDuplicateTest's. */
   },
+  {
+    name: 'workspace-export-check',
+    what: 'a workspace exported from its row and imported from the header comes back as a new workspace, with the result drawn',
+    needs: [],
+    /* Issue #590. Makes and deletes its own workspaces; the round trip field by field is WorkspaceExportTest's. */
+  },
 
   {
     name: 'built-in-skills-reach-check',

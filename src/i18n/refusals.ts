@@ -156,6 +156,9 @@ const PL: Record<string, string> = {
     '„{name}” nie może być nazwą zmiennej. Nazwa to litery, cyfry i podkreślenia, zaczynające ' +
     'się od litery — funkcja dostaje ją jako argument, a argument musi dać się nazwać.',
   ImportCycle: 'Ten import utworzyłby pętlę: {path}',
+  WorkspaceFileVersionUnknown:
+    'Ten eksport przestrzeni roboczej ma format w wersji {found}, a ta instalacja czyta do wersji {reads}. ' +
+    'Zaktualizuj tę instalację albo wyeksportuj go ponownie z instalacji tej wersji.',
   ConditionCycle: '{name} zawierałby sam siebie',
   ConditionFunctionRequired: 'Warunek funkcyjny potrzebuje funkcji do wywołania',
   ConditionMembersRequired: 'Warunek złożony potrzebuje co najmniej dwóch warunków do połączenia',

@@ -1,6 +1,8 @@
 import { graphql } from './client';
 import type { PageOf } from './client';
 import type { SpeechChunking } from '../components/readAloud';
+import { saveJson } from './transfer';
+import { t } from '../i18n';
 
 export interface Workspace {
   id: string;
@@ -695,6 +697,47 @@ export async function duplicateWorkspace(id: string, name: string | null, progre
     { id, name, progressKey: progressKey ?? null },
   );
   return data.duplicateWorkspace;
+}
+
+/**
+ * Downloads a whole workspace as one file. Issue #590.
+ *
+ * Fetched rather than linked, so a refusal is said on the page instead of
+ * being saved as a file of its own; the name is the one the server gave it.
+ */
+export async function downloadWorkspaceExport(id: string): Promise<void> {
+  const answer = await fetch(`/api/workspaces/${id}/export`, { credentials: 'include' });
+  if (!answer.ok) {
+    const said = (await answer.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(said?.error ?? t('That workspace could not be exported.'));
+  }
+  const disposition = answer.headers.get('Content-Disposition') ?? '';
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  const plain = /filename="([^"]+)"/i.exec(disposition)?.[1];
+  const fileName = encoded !== undefined ? decodeURIComponent(encoded) : plain ?? `workspace-${id}.orkx-workspace.json`;
+  saveJson(fileName, await answer.text());
+}
+
+/**
+ * Brings a workspace file in as a new workspace. Issue #590.
+ *
+ * Answers what a duplicate answers, and reports its progress under
+ * `progressKey` the same way.
+ */
+export async function importWorkspace(content: string, name: string | null, progressKey?: string): Promise<WorkspaceCopy> {
+  const data = await graphql<{ importWorkspace: WorkspaceCopy }>(
+    `mutation ImportWorkspace($content: String!, $name: String, $progressKey: String) {
+       importWorkspace(content: $content, name: $name, progressKey: $progressKey) {
+         workspace { id name description }
+         carried { kind count }
+         variablesToSet
+         credentialsToSet
+         problems
+       }
+     }`,
+    { content, name, progressKey: progressKey ?? null },
+  );
+  return data.importWorkspace;
 }
 
 export async function createWorkspace(input: NewWorkspace): Promise<Workspace> {

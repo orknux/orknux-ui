@@ -1,18 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { WorkspaceOrder } from '../../api/workspaces';
 import { Link } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
 import {
+  downloadWorkspaceExport,
   duplicateWorkspace,
   fetchWorkspaceCopyProgress,
   fetchWorkspaces,
+  importWorkspace,
   type WorkspaceCopy,
   type WorkspaceCopyProgress,
 } from '../../api/workspaces';
 import checkCircleIcon from '../../assets/check-circle.svg';
 import copyIcon from '../../assets/copy.svg';
+import downloadIcon from '../../assets/download.svg';
+import uploadIcon from '../../assets/cloud-upload.svg';
 import closeIcon from '../../assets/x.svg';
 import layersIcon from '../../assets/layers.svg';
 import monitorIcon from '../../assets/monitor.svg';
@@ -47,6 +51,11 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
   /** How far the copy under way has got, read while it runs. Issue #572. */
   const [progress, setProgress] = useState<WorkspaceCopyProgress | null>(null);
   const [copyFailed, setCopyFailed] = useState<string | null>(null);
+  /** Whether the result above came from a duplicate or an import. Issue #590. */
+  const [copiedHow, setCopiedHow] = useState<'copy' | 'import'>('copy');
+  /** The workspace being downloaded, so its Export waits for the file. Issue #590. */
+  const [exporting, setExporting] = useState<string | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
   /**
    * Whether the last attempt to read the progress failed. Issue #581: failures
    * were swallowed, so a page that could not read a step looked exactly like a
@@ -71,6 +80,71 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
     setReloadToken((token) => token + 1);
   }
 
+  /**
+   * A copy or an import, with its progress read while it runs. One routine for
+   * both, issue #590: they report the same steps and answer the same shape.
+   */
+  function runCopy(what: string, how: 'copy' | 'import', start: (key: string) => Promise<WorkspaceCopy>, failed: string) {
+    setCopying(what);
+    setCopied(null);
+    setCopyFailed(null);
+    setProgress(null);
+    setProgressUnread(false);
+    // A key of our own, to ask how far the copy has got while it runs. #572.
+    const key = crypto.randomUUID();
+    /*
+     * One question at a time, the next asked half a second after
+     * the last was answered. Issue #581: on an interval, polls
+     * that were slow to answer piled up behind each other, and
+     * one landing after the copy ended drew a step over nothing.
+     * A failure is said rather than swallowed, and asking goes on.
+     */
+    let over = false;
+    let polling = 0;
+    const ask = () => {
+      fetchWorkspaceCopyProgress(key)
+        .then((step) => {
+          if (over) return;
+          setProgressUnread(false);
+          if (step !== null) setProgress(step);
+        })
+        .catch(() => { if (!over) setProgressUnread(true); })
+        .finally(() => { if (!over) polling = window.setTimeout(ask, 500); });
+    };
+    polling = window.setTimeout(ask, 250);
+    start(key)
+      .then((made) => {
+        setCopiedHow(how);
+        setCopied(made);
+        setReloadToken((was) => was + 1);
+      })
+      .catch((cause: unknown) => {
+        setCopyFailed(cause instanceof Error ? cause.message : failed);
+      })
+      .finally(() => {
+        over = true;
+        window.clearTimeout(polling);
+        setProgress(null);
+        setProgressUnread(false);
+        setCopying(null);
+      });
+  }
+
+  /** The file chosen under Import workspace, read as text and handed over whole. Issue #590. */
+  async function importChosen(file: File | undefined) {
+    if (importRef.current !== null) importRef.current.value = '';
+    if (file === undefined) return;
+    let content: string;
+    try {
+      content = await file.text();
+    } catch {
+      setCopyFailed(t('That file could not be read.'));
+      return;
+    }
+    // Named by the server: the file's workspace name, or the first free one after it.
+    runCopy('import', 'import', (key) => importWorkspace(content, null, key), t('That workspace was not imported.'));
+  }
+
   return (
     <AppShell
       user={shellUser(session)}
@@ -86,14 +160,39 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
               {t('Manage workspace membership, access, and ownership.')}
             </p>
           </div>
-          <button type="button" className={styles.createWorkspace} onClick={() => setCreating(true)}>
-            <span
-              className={styles.createWorkspaceIcon}
-              style={{ maskImage: `url("${plusIcon}")`, WebkitMaskImage: `url("${plusIcon}")` }}
-              aria-hidden="true"
+          <div className={styles.headerActions}>
+            {/* A file an Export wrote, here or on another installation, as a new workspace. Issue #590. */}
+            <input
+              ref={importRef}
+              className={styles.fileInput}
+              type="file"
+              accept="application/json,.json"
+              data-workspace-import-file=""
+              onChange={(event) => void importChosen(event.target.files?.[0])}
             />
-            {t('Create Workspace')}
-          </button>
+            <button
+              type="button"
+              className={styles.importWorkspace}
+              disabled={copying !== null}
+              onClick={() => importRef.current?.click()}
+              data-workspace-import=""
+            >
+              <span
+                className={styles.createWorkspaceIcon}
+                style={{ maskImage: `url("${uploadIcon}")`, WebkitMaskImage: `url("${uploadIcon}")` }}
+                aria-hidden="true"
+              />
+              {t('Import workspace')}
+            </button>
+            <button type="button" className={styles.createWorkspace} onClick={() => setCreating(true)}>
+              <span
+                className={styles.createWorkspaceIcon}
+                style={{ maskImage: `url("${plusIcon}")`, WebkitMaskImage: `url("${plusIcon}")` }}
+                aria-hidden="true"
+              />
+              {t('Create Workspace')}
+            </button>
+          </div>
         </header>
 
         <div className={styles.table}>
@@ -136,8 +235,9 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
               >
                 <img src={closeIcon} alt="" width={14} height={14} />
               </button>
-              <p className={styles.copyLine}>
-                {t('Copied to {name}: ').replace('{name}', copied.workspace.name)}
+              <p className={styles.copyLine} data-copy-result={copiedHow}>
+                {(copiedHow === 'import' ? t('Imported as {name}: ') : t('Copied to {name}: '))
+                  .replace('{name}', copied.workspace.name)}
                 {copied.carried.map((one) => `${one.count} ${one.kind}`).join(', ') || t('nothing to carry')}
               </p>
               {copied.variablesToSet.length > 0 && (
@@ -229,52 +329,39 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                   aria-label={`Duplicate ${workspace.name}`}
                   title={`Duplicate ${workspace.name}`}
                   onClick={() => {
-                    setCopying(workspace.id);
-                    setCopied(null);
-                    setCopyFailed(null);
-                    setProgress(null);
-                    setProgressUnread(false);
-                    // A key of our own, to ask how far the copy has got while it runs. #572.
-                    const key = crypto.randomUUID();
-                    /*
-                     * One question at a time, the next asked half a second after
-                     * the last was answered. Issue #581: on an interval, polls
-                     * that were slow to answer piled up behind each other, and
-                     * one landing after the copy ended drew a step over nothing.
-                     * A failure is said rather than swallowed, and asking goes on.
-                     */
-                    let over = false;
-                    let polling = 0;
-                    const ask = () => {
-                      fetchWorkspaceCopyProgress(key)
-                        .then((step) => {
-                          if (over) return;
-                          setProgressUnread(false);
-                          if (step !== null) setProgress(step);
-                        })
-                        .catch(() => { if (!over) setProgressUnread(true); })
-                        .finally(() => { if (!over) polling = window.setTimeout(ask, 500); });
-                    };
-                    polling = window.setTimeout(ask, 250);
                     // Named by the server: the first free of "<name> copy", "<name> copy 2"... A name chosen here was refused once taken.
-                    duplicateWorkspace(workspace.id, null, key)
-                      .then((made) => {
-                        setCopied(made);
-                        setReloadToken((was) => was + 1);
-                      })
-                      .catch((cause: unknown) => {
-                        setCopyFailed(cause instanceof Error ? cause.message : t('That workspace was not copied.'));
-                      })
-                      .finally(() => {
-                        over = true;
-                        window.clearTimeout(polling);
-                        setProgress(null);
-                        setProgressUnread(false);
-                        setCopying(null);
-                      });
+                    runCopy(
+                      workspace.id,
+                      'copy',
+                      (key) => duplicateWorkspace(workspace.id, null, key),
+                      t('That workspace was not copied.'),
+                    );
                   }}
                 >
                   <img src={copyIcon} alt="" width={16} height={16} />
+                </button>
+                {/*
+                  The same workspace as one file, to import here or on another
+                  installation. Issue #590.
+                */}
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  disabled={exporting !== null}
+                  aria-label={`Export ${workspace.name}`}
+                  title={`Export ${workspace.name}`}
+                  data-workspace-export={workspace.name}
+                  onClick={() => {
+                    setExporting(workspace.id);
+                    setCopyFailed(null);
+                    downloadWorkspaceExport(workspace.id)
+                      .catch((cause: unknown) => {
+                        setCopyFailed(cause instanceof Error ? cause.message : t('That workspace could not be exported.'));
+                      })
+                      .finally(() => setExporting(null));
+                  }}
+                >
+                  <img src={downloadIcon} alt="" width={16} height={16} />
                 </button>
                 <Link
                   className={styles.rowAction}
