@@ -65,6 +65,43 @@
   cursor: pointer;
 }
 
+/* Import beside Create. Issue #590. */
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* A button that opens a hidden file input: the browser's own file
+   control is a grey box that matches nothing else on the page. */
+.importWorkspace {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-14);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.importWorkspace:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.importWorkspace:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.fileInput {
+  display: none;
+}
+
 /* The plus is masked, not drawn: the icon file hardcodes a grey stroke, which
    on a filled button reads as a smudge. */
 .createWorkspaceIcon {
