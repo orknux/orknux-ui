@@ -10,6 +10,7 @@ import { AdminMonitoringPage } from './pages/admin/AdminMonitoringPage';
 import { AdminCertificatePage } from './pages/admin/AdminCertificatePage';
 import { AdminNetworkingPage } from './pages/admin/AdminNetworkingPage';
 import { AdminShellPage } from './pages/admin/AdminShellPage';
+import { AdminUpdatesPage } from './pages/admin/AdminUpdatesPage';
 import { AdminTemplatePage } from './pages/admin/AdminTemplatePage';
 import { AdminTemplatesPage } from './pages/admin/AdminTemplatesPage';
 import { AdminShellSettingsPage } from './pages/admin/AdminShellSettingsPage';
@@ -179,6 +180,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/admin/users/:userId': (session, onSignOut) => <AdminUserPage session={session} onSignOut={onSignOut} />,
   '/admin/monitoring': (session, onSignOut) => <AdminMonitoringPage session={session} onSignOut={onSignOut} />,
   '/admin/doctor': (session, onSignOut) => <AdminDoctorPage session={session} onSignOut={onSignOut} />,
+  '/admin/updates': (session, onSignOut) => <AdminUpdatesPage session={session} onSignOut={onSignOut} />,
   '/admin/settings': (session, onSignOut) => <AdminSettingsPage session={session} onSignOut={onSignOut} />,
   '/admin/workspaces/:workspaceId/settings': (session, onSignOut) => <AdminWorkspaceSettingsPage session={session} onSignOut={onSignOut} />,
   '/preferences': (session, onSignOut) => <PreferencesPage session={session} onSignOut={onSignOut} />,

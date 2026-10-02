@@ -526,6 +526,15 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'server-updates-check',
+    what: 'Admin -> Updates draws what runs and what is kept, and a jar that is not one is refused on screen',
+    needs: [],
+    /*
+     * Installation-wide and read-only: the upload it makes is refused before
+     * anything is stored, so it needs no workspace and puts nothing back.
+     */
+  },
+  {
     name: 'hint-settings-check',
     what: 'the workspace settings pages moved their prose, and kept what should stay printed',
     needs: ['workspace'],

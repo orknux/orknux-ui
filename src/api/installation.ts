@@ -206,6 +206,16 @@ export interface InstallationSettings {
    * administrator's decision on Temporal is how long it waits.
    */
   taskSweepConfigurable: boolean;
+  /** Server updates, #584: how many jars are kept for rolling back to. */
+  releasesKept: number;
+  /** How many starts a newly activated release gets before it is given up on. */
+  releaseBootAttempts: number;
+  /** How often every server checks it runs the chosen release, in seconds. */
+  releaseFollowSeconds: number;
+  /** The largest server jar taken, in MB. */
+  releaseMaxMb: number;
+  /** How long a server waits after an update before restarting, in seconds. */
+  releaseRestartDelaySeconds: number;
 }
 
 const FIELDS =
@@ -221,7 +231,8 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured';
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured ' +
+  'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -538,6 +549,47 @@ export async function setScratchpadKeepDays(days: number): Promise<InstallationS
     { days },
   );
   return data.setScratchpadKeepDays;
+}
+
+/** Server updates, #584. */
+export async function setReleasesKept(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleasesKept: InstallationSettings }>(
+    `mutation ($count: Int!) { setReleasesKept(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setReleasesKept;
+}
+
+export async function setReleaseBootAttempts(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseBootAttempts: InstallationSettings }>(
+    `mutation ($count: Int!) { setReleaseBootAttempts(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setReleaseBootAttempts;
+}
+
+export async function setReleaseFollowSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseFollowSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setReleaseFollowSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setReleaseFollowSeconds;
+}
+
+export async function setReleaseMaxMb(mb: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseMaxMb: InstallationSettings }>(
+    `mutation ($mb: Int!) { setReleaseMaxMb(mb: $mb) { ${FIELDS} } }`,
+    { mb },
+  );
+  return data.setReleaseMaxMb;
+}
+
+export async function setReleaseRestartDelaySeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseRestartDelaySeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setReleaseRestartDelaySeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setReleaseRestartDelaySeconds;
 }
 
 export async function setToolSummariesFullUpTo(count: number): Promise<InstallationSettings> {

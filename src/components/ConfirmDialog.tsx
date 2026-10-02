@@ -18,7 +18,9 @@ export type ConfirmKind =
   | 'removeSession'
   | 'removeScratchpad'
   | 'removeIssueStatus'
-  | 'removeImageSizePreset';
+  | 'removeImageSizePreset'
+  | 'updateServer'
+  | 'switchServerRelease';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -215,6 +217,20 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    /*
+     * Server updates, #584. Not destructive - a stored release can be gone back
+     * from - but every server restarts, and everybody signed in sees it.
+     */
+    updateServer: {
+      title: t('Update the server'),
+      message: <>{t('Every server restarts on this release, and the page reloads once it answers:')} {name}</>,
+      button: submitting ? t('Updating…') : t('Update'),
+    },
+    switchServerRelease: {
+      title: t('Restart on another release'),
+      message: <>{t('Every server restarts on this release, and the page reloads once it answers:')} {name}</>,
+      button: submitting ? t('Restarting…') : t('Restart'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

@@ -1,0 +1,178 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  padding: var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.sectionHeading {
+  margin: var(--space-8) 0 0;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.notice {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+}
+
+/* Why a button is greyed out, under the row that has it. */
+.reason {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.restarting {
+  margin: 0;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-6);
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offered,
+.stored {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-8);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.offered:last-child,
+.stored:last-child {
+  border-bottom: 0;
+}
+
+/* Version, what it is, its state, and the one thing to do with it - left to right. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.version {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.changelog {
+  padding-left: var(--space-12);
+  border-left: 2px solid var(--color-border);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.stateSTORED,
+.stateACTIVATING,
+.stateACTIVE,
+.stateFAILED {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.stateSTORED {
+  color: var(--color-text-muted);
+}
+
+.stateACTIVATING {
+  color: var(--color-amber);
+}
+
+.stateACTIVE {
+  color: var(--color-success);
+}
+
+.stateFAILED {
+  color: var(--color-danger);
+}
+
+.file {
+  min-width: 0;
+  font-family: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.primary,
+.secondary {
+  padding: var(--space-6) var(--space-14);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--color-accent-brand);
+  border: 0;
+  color: var(--color-text-primary);
+}
+
+.secondary {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

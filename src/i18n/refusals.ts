@@ -226,6 +226,18 @@ const PL: Record<string, string> = {
     'Klucz sesji ma najwyżej tyle znaków, ile pozwala limit — wliczając prefiks — a ten ma {length}',
   RetentionOutOfRange: '{days} to nie jest liczba dni, przez jaką da się przechowywać historię.',
   StepsAtOnceOutOfRange: '{count} to nie jest liczba kroków przepływu, które mogą działać naraz. Wybierz od 1 do 32.',
+  // Server updates, #584. ReleaseJarRefused carries a whole English reason, so it is left to `message`.
+  ServerUpdatesDisabled: 'Aktualizacje serwera są wyłączone w tej instalacji (ORKNUX_SELF_UPDATE ma wartość false).',
+  ServerReleaseAlreadyStored: 'Ten plik jar jest już przechowywany jako wydanie {version}.',
+  ServerReleaseTooLarge: 'Ten plik jar jest większy niż {mb} MB, które przyjmuje ta instalacja.',
+  ServerReleaseNotOffered: 'orknux.ai nie oferuje wydania serwera {version}.',
+  ServerReleaseDownloadMismatch:
+    'Pobrane wydanie {version} nie zgadza się z tym, co orknux.ai dla niego podaje; niczego nie zapisano.',
+  ReleasesKeptOutOfRange: '{count} to nie jest liczba wydań serwera do przechowywania.',
+  ReleaseBootAttemptsOutOfRange: '{count} to nie jest liczba prób uruchomienia wydania.',
+  ReleaseFollowOutOfRange: '{seconds} to nie jest liczba sekund między sprawdzeniami wydania.',
+  ReleaseMaxOutOfRange: '{mb} MB to nie jest rozmiar, do którego da się ograniczyć plik jar serwera.',
+  ReleaseRestartDelayOutOfRange: '{seconds} to nie jest liczba sekund oczekiwania przed restartem.',
   RevisionNotRestorable: '„{name}” nie jest tu edytowalne, więc nie da się przywrócić jego wersji',
   TaskSweepIntervalOutOfRange:
     '{minutes} to nie jest liczba minut, przez jaką zadanie może czekać w kolejce.',

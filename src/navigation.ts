@@ -9,6 +9,7 @@ import imageIcon from './assets/image.svg';
 import chartLineIcon from './assets/chart-line.svg';
 import chartNetworkIcon from './assets/chart-network.svg';
 import clipboardListIcon from './assets/clipboard-list.svg';
+import cloudDownloadIcon from './assets/cloud-download.svg';
 import codeIcon from './assets/code.svg';
 import commandIcon from './assets/command.svg';
 import databaseIcon from './assets/database.svg';
@@ -555,6 +556,16 @@ export const PAGES = [
     },
   },
   {
+    path: '/admin/updates',
+    access: 'admin',
+    goTo: {
+      label: t('Updates'),
+      where: 'Admin',
+      icon: cloudDownloadIcon,
+      also: 'upgrade version release rollback roll back jar orknux.ai',
+    },
+  },
+  {
     path: '/admin/settings',
     /*
      * Administrators, like every other page under /admin.
@@ -582,6 +593,7 @@ export const PAGES = [
       { label: t('Queued tasks'), at: '#queued-tasks', also: 'sweep temporal interval' },
       { label: t('Plugins'), at: '#plugins', also: 'source size timeout' },
       { label: t('Workspace copies'), at: '#workspace-copies', also: 'duplicate lock wait' },
+      { label: t('Server updates'), at: '#server-updates', also: 'releases kept rollback restart' },
       { label: t('Attachments'), at: '#attachments', also: 'files uploads storage' },
     ],
   },

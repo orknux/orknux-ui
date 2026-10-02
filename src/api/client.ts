@@ -102,6 +102,15 @@ export async function graphql<T>(query: string, variables: Record<string, unknow
  * `cause.message` in about ninety places, and a translation that had to be
  * asked for at each of them would be missing from the ninety-first.
  */
+/**
+ * The same translation for a refusal that arrived over REST - an upload's body
+ * carries `message`, `code` and `arguments` exactly as a GraphQL error's
+ * extensions do.
+ */
+export function refusalOf(message: string, code?: string, args?: Record<string, unknown>): string {
+  return refusal({ message, extensions: { code, arguments: args } });
+}
+
 function refusal(failed: GraphQlError): string {
   const code = failed.extensions?.code;
   if (code === undefined) return failed.message;

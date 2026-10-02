@@ -1,5 +1,6 @@
 import commandIcon from '../assets/command.svg';
 import chartLineIcon from '../assets/chart-line.svg';
+import cloudDownloadIcon from '../assets/cloud-download.svg';
 import fileTextIcon from '../assets/file-text.svg';
 import globeIcon from '../assets/globe.svg';
 import layersIcon from '../assets/layers.svg';
@@ -28,6 +29,7 @@ export type AdminSection =
   | 'shell'
   | 'monitoring'
   | 'doctor'
+  | 'updates'
   | 'settings';
 
 /** The admin sidebar, shared by the workspaces, audit and settings screens. */
@@ -112,6 +114,14 @@ export function AdminSidebar({ active }: { active: AdminSection }) {
         icon={stethoscopeIcon}
         active={active === 'doctor'}
         to="/admin/doctor"
+      />
+
+      {/* Beside Doctor: what this server is, and what it could be instead. #584. */}
+      <SidebarNavItem
+        label={t('Updates')}
+        icon={cloudDownloadIcon}
+        active={active === 'updates'}
+        to="/admin/updates"
       />
 
       <SidebarNavItem

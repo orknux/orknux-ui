@@ -32,6 +32,11 @@ import {
   setChatMaxRounds,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
+  setReleaseBootAttempts,
+  setReleaseFollowSeconds,
+  setReleaseMaxMb,
+  setReleaseRestartDelaySeconds,
+  setReleasesKept,
   setRevisionRetentionDays,
   setTaskSweepMinutes,
   setWorkspaceCopyLockWaitSeconds,
@@ -119,6 +124,12 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [marker, setMarker] = useState('');
   /** How long a step of a workspace copy may wait for a lock. Issue #581. */
   const [copyWait, setCopyWait] = useState('');
+  /** Server updates, #584. */
+  const [releasesKept, setKept] = useState('');
+  const [bootAttempts, setBootAttempts] = useState('');
+  const [followSeconds, setFollowSeconds] = useState('');
+  const [releaseMb, setReleaseMb] = useState('');
+  const [restartDelay, setRestartDelay] = useState('');
 
   useEffect(() => {
     /*
@@ -165,6 +176,11 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSummaryTrim(String(held.toolSummaryTrimPercent));
         setMarker(held.commandMarker);
         setCopyWait(String(held.workspaceCopyLockWaitSeconds));
+        setKept(String(held.releasesKept));
+        setBootAttempts(String(held.releaseBootAttempts));
+        setFollowSeconds(String(held.releaseFollowSeconds));
+        setReleaseMb(String(held.releaseMaxMb));
+        setRestartDelay(String(held.releaseRestartDelaySeconds));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -242,6 +258,11 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: summaryTrim, held: settings.toolSummaryTrimPercent, write: setToolSummaryTrimPercent },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
         { typed: copyWait, held: settings.workspaceCopyLockWaitSeconds, write: setWorkspaceCopyLockWaitSeconds },
+        { typed: releasesKept, held: settings.releasesKept, write: setReleasesKept },
+        { typed: bootAttempts, held: settings.releaseBootAttempts, write: setReleaseBootAttempts },
+        { typed: followSeconds, held: settings.releaseFollowSeconds, write: setReleaseFollowSeconds },
+        { typed: releaseMb, held: settings.releaseMaxMb, write: setReleaseMaxMb },
+        { typed: restartDelay, held: settings.releaseRestartDelaySeconds, write: setReleaseRestartDelaySeconds },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -1440,10 +1461,115 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
+            {/* What Admin -> Updates keeps and how a start is judged. Issue #584. */}
+            <h2 id="server-updates" className={styles.sectionHeading}>{t('Server updates')}</h2>
+            <NumberSetting
+              id="releases-kept"
+              label={t('How many server releases are kept')}
+              hint={t('The oldest that is not running is removed once a new one is stored.')}
+              min={1}
+              max={20}
+              unit={t('releases')}
+              value={releasesKept}
+              onChange={setKept}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-boot-attempts"
+              label={t('Starts a new release gets')}
+              hint={t('After this many failed starts the previous release runs again.')}
+              min={1}
+              max={20}
+              unit={t('starts')}
+              value={bootAttempts}
+              onChange={setBootAttempts}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-follow-seconds"
+              label={t('How often servers check for a new release')}
+              hint={t('How quickly the other replicas follow an update.')}
+              min={5}
+              max={3600}
+              unit={t('seconds')}
+              value={followSeconds}
+              onChange={setFollowSeconds}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-max-mb"
+              label={t('Largest server jar taken')}
+              hint={t('Applies to uploads and to downloads from orknux.ai alike.')}
+              min={64}
+              max={1000}
+              unit="MB"
+              value={releaseMb}
+              onChange={setReleaseMb}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-restart-delay"
+              label={t('Wait before restarting after an update')}
+              hint={t('Long enough for the answer to reach the browser that asked.')}
+              min={0}
+              max={60}
+              unit={t('seconds')}
+              value={restartDelay}
+              onChange={setRestartDelay}
+              disabled={busy}
+            />
 
           </>
         )}
       </section>
     </AppShell>
+  );
+}
+
+/** One number on this page, drawn the way the others are. Written once for the five of #584. */
+function NumberSetting({
+  id,
+  label,
+  hint,
+  min,
+  max,
+  unit,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  min: number;
+  max: number;
+  unit: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className={styles.setting}>
+      <div className={styles.settingText}>
+        <span className={styles.labelWithHint}>
+          <p className={styles.settingLabel}>{label}</p>
+          <FieldHint label={label}>{hint}</FieldHint>
+        </span>
+      </div>
+      <div className={styles.retention}>
+        <input
+          id={id}
+          className={styles.input}
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          aria-label={label}
+        />
+        <span className={styles.retentionUnit}>{unit}</span>
+      </div>
+    </div>
   );
 }
