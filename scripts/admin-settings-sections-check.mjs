@@ -28,6 +28,8 @@ const SECTIONS = [
   ['commands', 'command-marker'],
   ['attachments', null],
   ['metrics', null],
+  // The server's log levels, without a restart. Issue #591.
+  ['logging', 'log-level-root'],
   // How long a copy waits for a lock, drawn last. Issue #581.
   ['workspace-copies', 'workspace-copy-lock-wait-seconds'],
 ];

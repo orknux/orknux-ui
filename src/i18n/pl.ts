@@ -809,6 +809,32 @@ export const PL: Record<string, string> = {
     "Ile minut zadanie może czekać, zanim zostanie podjęte",
   "A task is written down and then handed to a worker, and that hand-over can be lost — a restart at the wrong moment, or a pool with nothing free to take it. Something looks on this interval and hands over anything that has been waiting longer, so a task cannot sit unstarted for ever. A task a worker already has is never handed over twice, whatever this says. Five minutes unless ORKNUX_TASK_SWEEP_MINUTES says otherwise; the next pass reads it, so no restart is needed.":
     "Zadanie jest zapisywane, a potem przekazywane pracownikowi, i to przekazanie można zgubić — restart w złym momencie albo pula, w której nic nie jest wolne. Coś zagląda w tym odstępie i przekazuje wszystko, co czeka dłużej, więc zadanie nie zostanie nierozpoczęte na zawsze. Zadanie, które pracownik już ma, nigdy nie jest przekazywane dwa razy, cokolwiek tu ustawiono. Pięć minut, chyba że ORKNUX_TASK_SWEEP_MINUTES mówi inaczej; kolejny przebieg to odczyta, więc restart nie jest potrzebny.",
+  // --- the server's log levels, without a restart, #591 --------------------
+  "Logging": "Logowanie",
+  "A level applies at once on every server and is kept across restarts. Choosing the configured level hands a logger back to the configuration file, where ORKNUX_LOG_LEVEL_ROOT and ORKNUX_LOG_LEVEL set the defaults.":
+    "Poziom działa od razu na każdym serwerze i przetrwa restart. Wybranie poziomu z konfiguracji oddaje logger plikowi konfiguracyjnemu, w którym ORKNUX_LOG_LEVEL_ROOT i ORKNUX_LOG_LEVEL ustawiają wartości domyślne.",
+  "Could not read the log levels.": "Nie udało się odczytać poziomów logowania.",
+  "Root level": "Poziom główny",
+  "Below INFO, the root goes back to its configured level on its own once the time limit below has passed, so a forgotten DEBUG does not fill a disk.":
+    "Poniżej INFO poziom główny sam wraca do skonfigurowanego, gdy minie limit czasu ustawiony niżej, więc zapomniany DEBUG nie zapełni dysku.",
+  "Goes back to {level} at {time}.": "Wróci do {level} o {time}.",
+  "Level of {name}": "Poziom {name}",
+  "As configured ({level})": "Jak w konfiguracji ({level})",
+  "Remove the logger {name}": "Usuń logger {name}",
+  "Logger name": "Nazwa loggera",
+  "Level for the new logger": "Poziom nowego loggera",
+  "Add logger": "Dodaj logger",
+  "How long the root may stay below INFO": "Jak długo poziom główny może być poniżej INFO",
+  "After this many minutes a root set to DEBUG or TRACE goes back to its configured level.":
+    "Po tylu minutach poziom główny ustawiony na DEBUG lub TRACE wraca do skonfigurowanego.",
+  "How often servers re-read the levels": "Jak często serwery odczytują poziomy na nowo",
+  "How quickly the other replicas follow a level chosen here.": "Jak szybko pozostałe repliki podążają za wybranym tu poziomem.",
+  "Every level back to the configuration": "Wszystkie poziomy z powrotem do konfiguracji",
+  "Reset to defaults": "Przywróć domyślne",
+  "Reset log levels": "Przywróć poziomy logowania",
+  "Every logger goes back to the level the configuration file gives it, on every server.":
+    "Każdy logger wraca do poziomu z pliku konfiguracyjnego, na każdym serwerze.",
+  "Resetting…": "Przywracanie…",
   "Seconds between condition checks": "Sekundy między sprawdzeniami warunku",
   "Consult this rule earlier": "Sprawdzaj tę regułę wcześniej",
   "Consult this rule later": "Sprawdzaj tę regułę później",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   fetchInstallationSettings,
@@ -52,6 +52,8 @@ import { Loader } from '../../components/Loader';
 import { forgetInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import styles from './AdminSettingsPage.module.css';
+import { LogLevelsSection } from './LogLevelsSection';
+import type { PendingWrite } from './LogLevelsSection';
 import { t } from '../../i18n';
 
 export interface AdminSettingsPageProps {
@@ -130,6 +132,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [followSeconds, setFollowSeconds] = useState('');
   const [releaseMb, setReleaseMb] = useState('');
   const [restartDelay, setRestartDelay] = useState('');
+  /** What the Logging section holds that differs from the server, sent with the rest. Issue #591. */
+  const [logPending, setLogPending] = useState<PendingWrite[]>([]);
+  const takeLogPending = useCallback((writes: PendingWrite[]) => setLogPending(writes), []);
 
   useEffect(() => {
     /*
@@ -269,7 +274,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   // it had a Save of its own, which made two on a page promised one.
   const markerTyped = marker.trim();
   const markerChanged = settings !== null && markerTyped !== '' && markerTyped !== settings.commandMarker;
-  const changed = pending.length > 0 || markerChanged;
+  const changed = pending.length > 0 || markerChanged || logPending.length > 0;
 
   /**
    * Every changed number, one call each, in the order they appear.
@@ -292,6 +297,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         held = await one.write(Number(one.typed));
       }
       if (markerChanged) held = await setCommandMarker(markerTyped);
+      for (const write of logPending) await write();
       setSettings(held);
       setMarker(held.commandMarker);
       setRetention(String(held.revisionRetentionDays));
@@ -1369,6 +1375,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 </div>
               </>
             )}
+
+            {/* The server's log levels, without a restart. Issue #591. */}
+            <LogLevelsSection onPending={takeLogPending} />
 
             <h2 id="plugins" className={styles.sectionHeading}>{t('Plugins')}</h2>
 
