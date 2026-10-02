@@ -225,6 +225,7 @@ const PL: Record<string, string> = {
   LlmSessionKeyTooLong:
     'Klucz sesji ma najwyżej tyle znaków, ile pozwala limit — wliczając prefiks — a ten ma {length}',
   RetentionOutOfRange: '{days} to nie jest liczba dni, przez jaką da się przechowywać historię.',
+  StepsAtOnceOutOfRange: '{count} to nie jest liczba kroków przepływu, które mogą działać naraz. Wybierz od 1 do 32.',
   RevisionNotRestorable: '„{name}” nie jest tu edytowalne, więc nie da się przywrócić jego wersji',
   TaskSweepIntervalOutOfRange:
     '{minutes} to nie jest liczba minut, przez jaką zadanie może czekać w kolejce.',

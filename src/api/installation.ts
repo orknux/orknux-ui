@@ -117,6 +117,14 @@ export interface InstallationSettings {
   agentMaxSubagentsAtOnce: number;
   agentMaxSubagentsAtOnceConfigured: number;
   /**
+   * How many steps of one workflow run may be running at once. Issue #285.
+   *
+   * A node with lines to several others sends the run down all of them side
+   * by side; a step past this waits for another to finish.
+   */
+  workflowStepsAtOnce: number;
+  workflowStepsAtOnceConfigured: number;
+  /**
    * The loop guard. Issue #516.
    *
    * Repetition on its own is not the fault - an agent watching something calls
@@ -206,7 +214,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable';
@@ -400,6 +408,17 @@ export async function setAgentMaxSubagentsAtOnce(count: number): Promise<Install
     { count },
   );
   return data.setAgentMaxSubagentsAtOnce;
+}
+
+/** How many steps of one workflow run may be running at once. Issue #285. */
+export async function setWorkflowStepsAtOnce(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkflowStepsAtOnce: InstallationSettings }>(
+    `mutation SetWorkflowStepsAtOnce($count: Int!) {
+       setWorkflowStepsAtOnce(count: $count) { ${FIELDS} }
+     }`,
+    { count },
+  );
+  return data.setWorkflowStepsAtOnce;
 }
 
 /**
