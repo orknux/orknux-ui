@@ -449,7 +449,10 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                     {!release.running && (
                       <button
                         type="button"
-                        className={styles.secondary}
+                        // Going forward is the action this row is for; rolling back and re-applying stay quiet.
+                        className={
+                          olderThan(updates.runningVersion, release.version) ? styles.primary : styles.secondary
+                        }
                         disabled={!release.activatable}
                         title={release.refusal ?? undefined}
                         onClick={() => setPending({ kind: 'stored', release })}
