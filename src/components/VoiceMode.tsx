@@ -646,6 +646,8 @@ export function VoiceMode({
      * somebody interrupting keeps going.
      */
     let overAnswerSince: number | null = null;
+    /** The last frame of that run that was a voice, which is what a gap is measured from. */
+    let overAnswerLast = 0;
 
     const watch = () => {
       if (!live.current || recorder.current !== held) return;
@@ -685,20 +687,34 @@ export function VoiceMode({
        * not that" and be listened to. They had to reach for the panel and
        * press, in the one mode whose whole point is not touching anything.
        *
-       * The run has to be unbroken. A cough clears the bar for a frame or two
-       * and then stops, so counting frames since the *first* one would let any
-       * noise reach the threshold given a quiet moment afterwards; this resets
-       * the moment the room goes quiet again.
+       * A run of talking, not a run of frames. This used to reset on the first
+       * frame under the bar, and a frame is twenty milliseconds: speech dips
+       * under any level between syllables several times a second, and further
+       * still while the echo cancellation is ducking a voice that overlaps the
+       * one it is cancelling. So the run never lasted half a second, nobody
+       * could talk an answer down however long they kept at it, and the check
+       * that shipped it never had a voice to find that out with.
+       *
+       * What ends a run now is a gap longer than half the hold. That bridges
+       * the space between syllables and words, and still keeps out the short
+       * noise this is for: a cough or a door is one burst followed by quiet,
+       * and the quiet after it is longer than the bridge, so it starts over.
+       * Half rather than a number of its own because it is the same judgement
+       * the hold is - a workspace that asks for a longer, more deliberate
+       * interruption gets a correspondingly patient one - and a second knob
+       * for it would be a second answer to one question. The run is measured
+       * between voiced frames, so it can only be completed by a voice.
        *
        * Zero is the workspace saying to leave the answer alone, which is what a
        * room with poor echo cancellation needs - there the panel hears itself
        * and would stop on its own voice, every time.
        */
-      if (!speakingNow.current || !aVoice) {
+      if (!speakingNow.current || bargeMs <= 0) {
         overAnswerSince = null;
-      } else {
-        overAnswerSince ??= now;
-        if (bargeMs > 0 && now - overAnswerSince >= bargeMs) {
+      } else if (aVoice) {
+        if (overAnswerSince === null || now - overAnswerLast > bargeMs / 2) overAnswerSince = now;
+        overAnswerLast = now;
+        if (now - overAnswerSince >= bargeMs) {
           overAnswerSince = null;
           /*
            * Stopped and listening, which is what the circle does when it is

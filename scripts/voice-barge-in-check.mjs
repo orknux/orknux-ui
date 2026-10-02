@@ -8,11 +8,9 @@
  * They had to reach for the panel and press, in the one mode whose whole point
  * is not touching anything.
  *
- * What is measured here is the setting rather than the microphone. The panel
- * needs a voice talking over a speaker to exercise, and this runs in a headless
- * browser with neither - so the loop itself is the one part of this that a check
- * cannot honestly drive, and saying so is better than a check that pretends.
- * What it can measure is the whole of the decision around it: that a workspace
+ * What is measured here is the setting rather than the microphone; the loop
+ * itself, with a voice the browser is told to believe, is voice-talk-over-check.
+ * This one measures the decision around it: that a workspace
  * can set how long somebody has to keep talking, that the bounds hold, and that
  * zero is a thing somebody can choose - which is the setting that matters most,
  * because a room with poor echo cancellation hears the panel's own voice and

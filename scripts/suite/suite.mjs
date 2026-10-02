@@ -1992,14 +1992,31 @@ export const TESTS = [
      * stopping, which is the one thing a person cannot do in a conversation:
      * say "no, not that" and be listened to.
      *
-     * The loop itself is the part a check cannot honestly drive: it wants a
-     * voice talking over a speaker, and this runs headless with neither. What is
-     * measured is the decision around it - the bounds, and that zero can be
-     * chosen, which is the setting that matters most because a room with poor
-     * echo cancellation hears the panel's own voice and would stop on every
-     * answer.
+     * What is measured here is the decision around the loop - the bounds, and
+     * that zero can be chosen, which is the setting that matters most because a
+     * room with poor echo cancellation hears the panel's own voice and would
+     * stop on every answer. The loop itself is voice-talk-over-check's.
      *
      * Leaves the workspace on the setting it found.
+     */
+  },
+  {
+    name: 'voice-talk-over-check',
+    what: 'a voice over an answer stops it, and a cough over one does not',
+    needs: ['workspace'],
+    /*
+     * Issue #342, reopened. The first build was only ever checked for its
+     * setting, and the detector it shipped never fired for anybody: it wanted
+     * half a second with no twenty-millisecond frame under the bar, and speech
+     * dips under any bar between syllables. Without the fix this fails on the
+     * answer never stopping.
+     *
+     * The microphone is a file Chromium is told to believe, written by the
+     * check: a quarter-second cough, then four seconds of syllables with gaps
+     * between them, both over an answer being read. What it cannot have is a
+     * speaker - the answer is a silent clip - so a real room's echo is still
+     * unmeasured. Stubs the ears, the mouth and the model like voice-queue-check,
+     * removes what it made, and leaves the turn-taking setting as it found it.
      */
   },
   {
