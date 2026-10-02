@@ -114,12 +114,16 @@ export interface ImportPlan {
  * One component the import is to leave out.
  *
  * Named as the file names it — the name the plan gave back, not whatever it
- * would be renamed to here — and only ever a carried one. The server refuses a
- * name it does not carry rather than ignoring it, so this cannot quietly ask for
- * something that does not happen.
+ * would be renamed to here — and only ever a carried one, or a tool or MCP server
+ * an agent points at. The server refuses a name it does not carry rather than
+ * ignoring it, so this cannot quietly ask for something that does not happen.
+ *
+ * `kind` for a component or a tool, `external` for an MCP server, the same way a
+ * plan entry tells the two apart. Issue #580.
  */
 export interface ComponentExclusion {
-  kind: ComponentKind;
+  kind?: ComponentKind;
+  external?: ExternalKind;
   name: string;
 }
 

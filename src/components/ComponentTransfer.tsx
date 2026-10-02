@@ -456,11 +456,18 @@ function ImportDialog({
   async function answer(entry: ImportEntry, targetId: string) {
     if (entry.external === null) return;
     const external = entry.external;
+    // Leaving an MCP server out is an answer to the same question, so choosing
+    // it and choosing a server afterwards each undo the other. Issue #580.
+    const leaving = targetId === LEAVE_OUT;
     const next = bindings
       .filter((binding) => !(binding.kind === external && binding.name === entry.name))
-      .concat(targetId === '' ? [] : [{ kind: external, name: entry.name, targetId }]);
+      .concat(targetId === '' || leaving ? [] : [{ kind: external, name: entry.name, targetId }]);
+    const without = exclude
+      .filter((one) => !excludes(one, entry))
+      .concat(leaving ? [{ external, name: entry.name }] : []);
     setBindings(next);
-    await replan(next, exclude, renames);
+    setExclude(without);
+    await replan(next, without, renames);
   }
 
   /**
@@ -472,11 +479,14 @@ function ImportDialog({
    * the optimistic one, showing an import the mutation then refuses.
    */
   async function leaveOut(entry: ImportEntry, out: boolean) {
-    if (entry.kind === null) return;
-    const kind = entry.kind;
-    const next = exclude
-      .filter((one) => !(one.kind === kind && one.name === entry.name))
-      .concat(out ? [{ kind, name: entry.name }] : []);
+    const one: ComponentExclusion | null =
+      entry.kind !== null
+        ? { kind: entry.kind, name: entry.name }
+        : entry.external !== null
+          ? { external: entry.external, name: entry.name }
+          : null;
+    if (one === null) return;
+    const next = exclude.filter((asked) => !excludes(asked, entry)).concat(out ? [one] : []);
     setExclude(next);
     await replan(bindings, next, renames);
   }
@@ -533,8 +543,7 @@ function ImportDialog({
    */
   const alsoLeftOut = (plan?.entries ?? []).filter(
     (entry) =>
-      entry.disposition === 'EXCLUDE' &&
-      !exclude.some((one) => one.kind === entry.kind && one.name === entry.name),
+      entry.disposition === 'EXCLUDE' && !exclude.some((one) => excludes(one, entry)),
   ).length;
 
   /** Whether any row on this plan is a reference that this workspace has to satisfy. */
@@ -554,12 +563,12 @@ function ImportDialog({
   /*
    * Everything the file points outward at that this workspace did not match on
    * its own — the ones still unanswered, and the ones answered here, which stay
-   * so an answer can be changed or taken back.
+   * so an answer can be changed or taken back. Leaving one out is an answer too.
    */
   const questions = (plan?.entries ?? []).filter(
     (entry) =>
       entry.external !== null &&
-      (entry.disposition === 'MISSING' || chosenFor(bindings, entry) !== ''),
+      (entry.disposition === 'MISSING' || entry.disposition === 'EXCLUDE' || chosenFor(bindings, entry) !== ''),
   );
 
   return (
@@ -595,7 +604,8 @@ function ImportDialog({
               <p className={styles.leaveOutLead}>
                 Leave out anything the file <em>{t('carries')}</em> and it will not be created — what is kept then
                 points at this workspace's own of that name, where there is one — or give it a name of your
-                own here. A tool an agent points at can be left out too, and the agent arrives without it.
+                own here.{' '}
+                {t('A tool or an MCP server an agent points at can be left out too, and the agent arrives without it.')}{' '}
                 The rest of the list is what the file points at and does not carry, so there is nothing there
                 to take away: those have to be here already, or be said to mean one of this workspace's own.
               </p>
@@ -672,11 +682,11 @@ function ImportDialog({
                         </button>
                       )}
                       {/*
-                        Offered where the file holds the thing, and on the one
-                        kind of reference an agent can do without - a tool it
-                        points at. Everything else on this list is a name the
-                        file points at, and a control that offered to remove
-                        one of those would be lying about what it does.
+                        Offered where the file holds the thing, and on the
+                        references an agent can do without - a tool or an MCP
+                        server it points at. Everything else on this list is a
+                        name the file points at, and a control that offered to
+                        remove one of those would be lying about what it does.
                       */}
                       {(entry.carried || entry.droppable) && (
                         <button
@@ -804,7 +814,7 @@ function BindingQuestions({ workspaceId, questions, bindings, busy, onAnswer }: 
               <div className={`${dialogStyles.inputWrapper} ${styles.picker}`}>
                 <select
                   className={`${dialogStyles.input} ${dialogStyles.select}`}
-                  value={chosenFor(bindings, entry)}
+                  value={entry.disposition === 'EXCLUDE' ? LEAVE_OUT : chosenFor(bindings, entry)}
                   aria-label={`Which ${EXTERNAL_LABEL[kind].toLowerCase()} ${entry.name} means here`}
                   disabled={busy || offered === undefined}
                   onChange={(event) => onAnswer(entry, event.target.value)}
@@ -821,6 +831,12 @@ function BindingQuestions({ workspaceId, questions, bindings, busy, onAnswer }: 
                       {choice.note === null ? choice.label : `${choice.label} — ${choice.note}`}
                     </option>
                   ))}
+                  {/*
+                    The way past a server that exists nowhere here, short of
+                    making one: an agent's MCP server is a grant like a tool,
+                    and the agent arrives without it. Issue #580.
+                  */}
+                  {entry.droppable && <option value={LEAVE_OUT}>{t('Leave it out — the agent arrives without it')}</option>}
                 </select>
                 <img src={chevronDownIcon} alt="" width={12} height={12} />
               </div>
@@ -830,6 +846,14 @@ function BindingQuestions({ workspaceId, questions, bindings, busy, onAnswer }: 
       </ul>
     </section>
   );
+}
+
+/** The choice in a binding question that leaves the reference out; never a row id. */
+const LEAVE_OUT = 'leave-out';
+
+/** Whether one exclusion asked for is the one this plan entry answers. */
+function excludes(one: ComponentExclusion, entry: ImportEntry): boolean {
+  return one.name === entry.name && (one.kind ?? null) === entry.kind && (one.external ?? null) === entry.external;
 }
 
 /** Which row was chosen for one question, or "" while none has been. */

@@ -3264,6 +3264,20 @@ export const TESTS = [
      */
   },
   {
+    name: 'import-leave-out-mcp-check',
+    what: 'an MCP server an agent points at can be left out of an import from its binding question',
+    needs: ['workspace', 'fixture'],
+    /*
+     * Issue #580. An agent pointing at a server the workspace has nowhere could
+     * not be imported at all: the question offered only servers that were here.
+     * Its select now offers leaving it out; the plan row says Left out and the
+     * agent arrives holding only the server that was matched by name.
+     *
+     * Makes two servers and an agent in the fixture's workspace and one server
+     * in the empty one, imports the agent across, and removes all of it.
+     */
+  },
+  {
     name: 'import-leave-out-check',
     what: 'Leave out is offered on what a file carries, and takes dependants with it',
     needs: ['workflow', 'fixture'],
