@@ -100,74 +100,6 @@
   line-height: 20px;
 }
 
-/* ---- Provider details ---- */
-
-.detailGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-20) var(--space-40);
-  width: 100%;
-}
-
-.detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.detailLabel {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.55px;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.detailValue {
-  font-size: var(--text-base);
-  color: var(--color-text-primary);
-}
-
-.detailMono {
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: var(--text-md);
-  color: var(--color-text-primary);
-  text-overflow: ellipsis;
-}
-
-.detailLink {
-  font-weight: 600;
-  font-size: var(--text-base);
-  color: var(--color-accent-brand);
-  text-decoration: none;
-}
-
-.detailLink:hover {
-  text-decoration: underline;
-}
-
-.statusRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.statusActive {
-  font-size: var(--text-base);
-  color: var(--color-success-solid);
-}
-
-.statusInactive {
-  font-size: var(--text-base);
-  color: var(--color-text-muted);
-}
-
-.toggle {
-  composes: iconButton from '../../styles/iconButton.module.css';
-}
-
 /* ---- Usage metrics ---- */
 
 .statsRow {
@@ -361,102 +293,23 @@
   color: var(--color-accent-brand);
 }
 
-/* ---- Quotas form ---- */
-
-.fieldRow {
-  display: flex;
-  gap: var(--space-24);
-  width: 100%;
-}
-
-.field {
-  display: flex;
-  flex: 1 0 0;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
-}
+/*
+ * ---- Quotas form ----
+ *
+ * The fields themselves are `ModelForm`'s and are styled there; what is left
+ * here is what the page draws around them.
+ */
 
 .label {
   font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
 
-/*
- * A field that is a box rather than a box to type in.
- *
- * The label is the sentence beside the tick, so there is no separate `.label`
- * above it - and the (?) stands outside that label rather than inside it,
- * because it is a button and a button inside a <label> ticks the box on its way
- * to opening. Written here rather than shared: these are the same few lines the
- * dialogs and the admin screens each keep, and a component for one checkbox is
- * a component nobody would find.
- */
-.checkboxWithHint {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-6);
-  /* Aligned with the boxes beside it, which have a label line above them. */
-  margin-top: var(--space-24);
-}
-
-.checkboxField {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-8);
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.checkboxField input {
-  margin-top: 2px;
-  accent-color: var(--color-accent-brand);
-}
-
-/* A label and the (?) that explains it. */
+/* A heading and the (?) that explains it. */
 .labelWithHint {
   display: inline-flex;
   align-items: center;
   gap: var(--space-6);
-}
-
-.input {
-  width: 100%;
-  padding: var(--space-10) var(--space-12);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-8);
-  font-family: inherit;
-  font-size: var(--text-base);
-  color: var(--color-text-primary);
-}
-
-.inputMono {
-  font-family: var(--font-mono);
-}
-
-.input:focus {
-  border-color: var(--color-accent-brand);
-  outline: none;
-}
-
-.selectWrapper {
-  position: relative;
-  width: 100%;
-}
-
-.select {
-  appearance: none;
-  padding-right: var(--space-32);
-}
-
-.selectChevron {
-  position: absolute;
-  top: 50%;
-  right: var(--space-12);
-  transform: translateY(-50%);
-  pointer-events: none;
 }
 
 .usageBlock {

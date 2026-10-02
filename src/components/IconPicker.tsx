@@ -75,8 +75,17 @@ export interface IconPickerProps {
   onClose: () => void;
 }
 
+export interface IconProps {
+  name: string;
+  className: string;
+  /** What a browser check finds it by; the drawn name is on it as `data-icon` too. */
+  testId?: string;
+  /** Whether somebody chose this icon or it is the kind's default; said as `data-icon-origin` where given. */
+  origin?: 'chosen' | 'default';
+}
+
 /** One icon, drawn from a mask so it takes the colour around it. */
-export function Icon({ name, className }: { name: string; className: string }) {
+export function Icon({ name, className, testId, origin }: IconProps) {
   const url = NODE_ICONS[name];
   if (url === undefined) return null;
 
@@ -85,6 +94,9 @@ export function Icon({ name, className }: { name: string; className: string }) {
       className={className}
       style={{ maskImage: `url("${url}")`, WebkitMaskImage: `url("${url}")` }}
       aria-hidden="true"
+      data-testid={testId}
+      data-icon={name}
+      data-icon-origin={origin}
     />
   );
 }

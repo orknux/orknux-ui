@@ -77,16 +77,9 @@ import type { Trigger } from '../../api/triggers';
 import { removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
 import activityIcon from '../../assets/activity.svg';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
-import bellIcon from '../../assets/bell.svg';
-import botIcon from '../../assets/bot.svg';
-import boxIcon from '../../assets/box.svg';
 import cloudUploadIcon from '../../assets/cloud-upload.svg';
 import copyIcon from '../../assets/copy.svg';
 import downloadIcon from '../../assets/download.svg';
-import filterIcon from '../../assets/filter.svg';
-import imageIcon from '../../assets/image.svg';
-import splitIcon from '../../assets/split.svg';
-import messageSquareIcon from '../../assets/message-square.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import playIcon from '../../assets/play.svg';
 import plusIcon from '../../assets/plus.svg';
@@ -94,7 +87,6 @@ import redoIcon from '../../assets/redo.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
-import volumeIcon from '../../assets/volume-2.svg';
 import { ActionDialog } from '../../components/ActionDialog';
 import { ActionForm } from '../../components/ActionForm';
 import { AppShell } from '../../components/AppShell';
@@ -114,6 +106,8 @@ import { TriggerForm } from '../../components/TriggerForm';
 import { FieldPicker } from '../../components/FieldPicker';
 import type { FieldOption } from '../../components/FieldPicker';
 import { Icon, IconPickerDialog } from '../../components/IconPicker';
+import { DEFAULT_NODE_ICON, SPEECH_NODE_ICON, defaultNodeIcon, nodeIconOf, nodeIconUrl } from '../../components/nodeIcons';
+import { ModelSettingsDrawer } from '../../components/ModelSettingsDrawer';
 import { Loader } from '../../components/Loader';
 import { SlackTargetField } from '../../components/SlackTargetField';
 import { TrashIcon } from '../../components/TrashIcon';
@@ -877,6 +871,15 @@ function turned(from: NodeOrientation | null): NodeOrientation {
 const TurnNode = createContext<(() => void) | null>(null);
 
 /**
+ * Which actions speak, by id, so a node pointed at one is drawn as a speaker.
+ *
+ * A context for the reason `TurnNode` is one: a node's data is compared against
+ * the draft, and whether its action speaks is a fact about the action, not an
+ * edit to the node.
+ */
+const SpeakingActions = createContext<ReadonlySet<string>>(new Set());
+
+/**
  * Two handles on one edge, spaced along it.
  *
  * A condition leaves by two doors, and which way they are spread depends on
@@ -1574,6 +1577,9 @@ function GraphNodeView({ data, selected }: NodeProps) {
   const facing = FACING[node.orientation ?? 'LEFT_TO_RIGHT'];
   const facingName = FACING_LABEL[node.orientation ?? 'LEFT_TO_RIGHT'];
   const turn = useContext(TurnNode);
+  const speaking = useContext(SpeakingActions);
+  // A chosen icon wins; without one the kind's own, so no card has a gap where the picture goes.
+  const icon = nodeIconOf(node.icon, node.kind, node.actionId !== null && speaking.has(node.actionId));
   /*
    * A node switched off is drawn faded, with the word on it. Faded because the
    * node is still there - its lines still join it and a run still passes
@@ -1662,7 +1668,7 @@ function GraphNodeView({ data, selected }: NodeProps) {
 
       <div className={styles.nodeContent}>
         <div className={styles.metaRow}>
-          {node.icon !== null && <Icon name={node.icon} className={styles.nodeIcon} />}
+          <Icon name={icon} className={styles.nodeIcon} testId="node-icon" origin={icon === node.icon ? 'chosen' : 'default'} />
           <span className={styles.kindLabel}>{NODE_KIND_LABEL[node.kind]}</span>
           {disabled && <span className={styles.disabledTag}>{t('Disabled')}</span>}
           {node.kind === 'AGENT' && <span className={styles.activeDot} aria-hidden="true" />}
@@ -1814,16 +1820,9 @@ function withDefinition<T extends { id: string }>(all: T[], one: T): T[] {
  */
 const ADD_ORDER: NodeKind[] = ['TRIGGER', 'ACTION', 'CONDITION', 'DECISION', 'OBJECT', 'IMAGE', 'AGENT', 'SESSION'];
 
-const ADD_ICON: Record<NodeKind, string> = {
-  TRIGGER: bellIcon,
-  AGENT: botIcon,
-  ACTION: activityIcon,
-  CONDITION: filterIcon,
-  OBJECT: boxIcon,
-  SESSION: messageSquareIcon,
-  IMAGE: imageIcon,
-  DECISION: splitIcon,
-};
+const ADD_ICON = Object.fromEntries(
+  ADD_ORDER.map((kind) => [kind, nodeIconUrl(DEFAULT_NODE_ICON[kind])]),
+) as Record<NodeKind, string>;
 
 export interface ToolButtonProps {
   /** What the control is called: shown on hover, and read aloud as its name. */
@@ -2546,6 +2545,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     );
   }, [ports, setNodes]);
   const [actions, setActions] = useState<Action[]>([]);
+  /** The actions that speak, so their nodes are drawn as a speaker where nobody chose an icon. */
+  const speakingActions = useMemo(
+    () => new Set(actions.filter((one) => one.subtype === 'SPEAK').map((one) => one.id)),
+    [actions],
+  );
   /*
    * The workspace's connections, held only to answer one question: whether the
    * connection an action sends through is a Slack one.
@@ -4542,8 +4546,36 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     if (kind === 'ACTION') return actions;
     if (kind === 'CONDITION') return conditions;
     if (kind === 'AGENT') return agents;
+    // An image or decision node points at a model, and the drawer holds the model page's form.
+    if (kind === 'IMAGE') return imageModels;
+    if (kind === 'DECISION') return decisionModels;
     return [];
   }
+
+  /*
+   * The model drawer follows the node's model picker.
+   *
+   * An agent's drawer is opened on the agent and stays on it; a model drawer is
+   * opened from a picker somebody is likely to change while looking at it, and a
+   * drawer still showing the model the node no longer uses would be editing the
+   * wrong one. Choosing none puts it away.
+   */
+  const drawnModelId =
+    draft === null
+      ? null
+      : draft.kind === 'IMAGE'
+        ? draft.imageModelId
+        : draft.kind === 'DECISION'
+          ? (draft.decisionModelId ?? null)
+          : null;
+  useEffect(() => {
+    if (building === null || (building.kind !== 'IMAGE' && building.kind !== 'DECISION')) return;
+    if (draft === null || draft.kind !== building.kind || drawnModelId === null) {
+      setBuilding(null);
+      return;
+    }
+    if (drawnModelId !== building.id) setBuilding({ kind: building.kind, id: drawnModelId });
+  }, [drawnModelId, draft?.kind]);
 
   /**
    * The definition the panel was opened on, or null while it is making one.
@@ -4784,7 +4816,7 @@ Change the keystroke in Preferences.`}
                     void addSpeechNode();
                   }}
                 >
-                  <img src={volumeIcon} alt="" width={14} height={14} />
+                  <img src={nodeIconUrl(SPEECH_NODE_ICON)} alt="" width={14} height={14} />
                   {t('Text to speech')}
                 </button>
               </div>
@@ -4966,6 +4998,7 @@ Change the keystroke in Preferences.`}
             </p>
           ) : (
             <TurnNode.Provider value={turnSelected}>
+            <SpeakingActions.Provider value={speakingActions}>
             <ReactFlow
               nodes={nodes}
               edges={drawnEdges}
@@ -5007,6 +5040,7 @@ Change the keystroke in Preferences.`}
               />
               <Controls className={styles.controls} showInteractive={false} />
             </ReactFlow>
+            </SpeakingActions.Provider>
             </TurnNode.Provider>
           )}
           {!panelOpen && (
@@ -5922,6 +5956,28 @@ Change the keystroke in Preferences.`}
                           {t('Which of this workspace’s image models draws the picture. Picked on the node, so two image nodes can draw with two models.')}
                         </FieldHint>
                       </span>
+                      {/*
+                        The model's settings in the drawer beside the graph, the
+                        way an agent node opens its agent; a modified click still
+                        opens the model's own page in a tab of its own.
+                      */}
+                      {draft.imageModelId !== null && (
+                        <span className={styles.labelLinks}>
+                          <Link
+                            to={`/workspace/${workspaceId}/models/${draft.imageModelId}`}
+                            className={styles.definitionJump}
+                            onClick={openingIn(
+                              'IMAGE',
+                              draft.imageModelId,
+                              `/workspace/${workspaceId}/models/${draft.imageModelId}`,
+                            )}
+                            title={t('Opens the model this node uses')}
+                            aria-label={t('Open the model\'s definition')}
+                          >
+                            <OpenDefinitionIcon />
+                          </Link>
+                        </span>
+                      )}
                     </span>
                     <DefinitionPicker
                       id="node-image-model"
@@ -5942,6 +5998,26 @@ Change the keystroke in Preferences.`}
                     key={`decision-${draft.key}`}
                     draft={draft}
                     models={decisionModels}
+                    modelLink={
+                      // The chosen model in the drawer, as an image node's is; a modified click opens its page.
+                      draft.decisionModelId != null && (
+                        <span className={styles.labelLinks}>
+                          <Link
+                            to={`/workspace/${workspaceId}/models/${draft.decisionModelId}`}
+                            className={styles.definitionJump}
+                            onClick={openingIn(
+                              'DECISION',
+                              draft.decisionModelId,
+                              `/workspace/${workspaceId}/models/${draft.decisionModelId}`,
+                            )}
+                            title={t('Opens the model this node uses')}
+                            aria-label={t('Open the model\'s definition')}
+                          >
+                            <OpenDefinitionIcon />
+                          </Link>
+                        </span>
+                      )
+                    }
                     onChange={(patch) => {
                       const next = { ...draft, ...patch };
                       setDraft(next);
@@ -6638,10 +6714,27 @@ Change the keystroke in Preferences.`}
                       >{t('Clear')}</button>
                     )}
                   </span>
-                  <div className={styles.inputWrapper}>
-                    {draft.icon !== null && <Icon name={draft.icon} className={styles.iconPreview} />}
+                  {/*
+                    Nothing chosen is not nothing drawn: the card shows the
+                    kind's own picture, so the field shows that one too, greyed
+                    and called Default, rather than None over a card with an
+                    icon on it.
+                  */}
+                  <div className={styles.inputWrapper} data-testid="node-icon-field">
+                    {draft.icon !== null ? (
+                      <Icon name={draft.icon} className={styles.iconPreview} origin="chosen" />
+                    ) : (
+                      <Icon
+                        name={defaultNodeIcon(
+                          draft.kind,
+                          draft.actionId !== null && speakingActions.has(draft.actionId),
+                        )}
+                        className={`${styles.iconPreview} ${styles.iconPreviewDefault}`}
+                        origin="default"
+                      />
+                    )}
                     <span className={draft.icon === null ? styles.iconNone : styles.iconName}>
-                      {draft.icon ?? 'None'}
+                      {draft.icon ?? t('Default')}
                     </span>
                     <button type="button" className={styles.parameterSync} onClick={() => setBrowsingIcons(true)}>{t('Browse…')}</button>
                   </div>
@@ -7089,6 +7182,29 @@ Change the keystroke in Preferences.`}
            */
           setDraft((current) =>
             current === null || current.agentId === agent.id ? current : { ...current, agentId: agent.id },
+          );
+          setBuilding(null);
+        }}
+      />
+
+      {/*
+        The model an image or decision node uses, in the form its own page
+        edits - the same drawer an agent node opens its agent in. Saved, the
+        pickers are told the new name and the drawer is put away, as the
+        agent's is.
+      */}
+      <ModelSettingsDrawer
+        placement="panel"
+        open={building?.kind === 'IMAGE' || building?.kind === 'DECISION'}
+        workspaceId={workspaceId}
+        modelId={building?.kind === 'IMAGE' || building?.kind === 'DECISION' ? building.id : null}
+        onClose={() => setBuilding(null)}
+        onSaved={(model) => {
+          setImageModels((all) =>
+            withDefinition(all, model).filter((one) => one.kind === 'IMAGE' && one.enabled),
+          );
+          setDecisionModels((all) =>
+            withDefinition(all, model).filter((one) => (one.kind === 'DECISION' || one.kind === 'CHAT') && one.enabled),
           );
           setBuilding(null);
         }}
