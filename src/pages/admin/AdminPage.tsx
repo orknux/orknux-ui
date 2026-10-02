@@ -182,7 +182,7 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                 style={{ maskImage: `url("${uploadIcon}")`, WebkitMaskImage: `url("${uploadIcon}")` }}
                 aria-hidden="true"
               />
-              {t('Import workspace')}
+              {t('Import')}
             </button>
             <button type="button" className={styles.createWorkspace} onClick={() => setCreating(true)}>
               <span

@@ -173,7 +173,6 @@ export const PL: Record<string, string> = {
   "How many seconds a workspace copy may wait for a lock": "Ile sekund kopia przestrzeni roboczej może czekać na blokadę",
   "Starting the copy…": "Rozpoczynanie kopiowania…",
   "Progress cannot be read just now; the copy goes on.": "Nie da się teraz odczytać postępu; kopiowanie trwa.",
-  "Import workspace": "Importuj przestrzeń roboczą",
   "Imported as {name}: ": "Zaimportowano jako {name}: ",
   "That workspace was not imported.": "Ta przestrzeń robocza nie została zaimportowana.",
   "That workspace could not be exported.": "Nie udało się wyeksportować tej przestrzeni roboczej.",
