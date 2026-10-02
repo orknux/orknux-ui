@@ -158,6 +158,17 @@
   color: var(--color-accent-brand);
 }
 
+/*
+ * The row Enter takes. Drawn whether the arrows or the pointer put it there,
+ * and outlined rather than only shaded, so it still reads on the row that is
+ * already chosen.
+ */
+.optionActive {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  outline: 1px solid var(--color-accent-brand);
+}
+
 .optionField {
   font-family: var(--font-mono);
   font-size: var(--text-xs);

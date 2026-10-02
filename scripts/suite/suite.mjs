@@ -102,6 +102,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'field-picker-keys-check',
+    what: 'the field picker from the keyboard: arrows, Home and End, Enter to pick, Escape to close (#582)',
+    needs: ['workflow'],
+    /*
+     * The picker is one component behind three screens, and the editor is the
+     * one the fixture always has. It picks its own few letters off the open
+     * list, and changes the side panel without saving it.
+     */
+  },
+  {
     name: 'bend-check',
     what: "a line's points moving it exactly as far as they were dragged, bare and labelled",
     needs: ['workspace'],
