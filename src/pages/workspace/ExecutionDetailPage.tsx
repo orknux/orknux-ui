@@ -31,7 +31,8 @@ import type {
   ExecutionStep,
   StepStatus,
 } from '../../api/executions';
-import { NODE_KIND_LABEL } from '../../api/graph';
+import { NODE_KIND_LABEL, fetchWorkflowGraph } from '../../api/graph';
+import { fetchAction } from '../../api/actions';
 import type { NodeKind } from '../../api/graph';
 import type { SessionUser } from '../../api/session';
 import clockIcon from '../../assets/clock.svg';
@@ -44,7 +45,9 @@ import { AutoRefresh } from '../../components/AutoRefresh';
 import { BackLink } from '../../components/BackLink';
 import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from '../../components/DragSize';
 import { FoldBody, FoldToggle, useFold } from '../../components/Fold';
+import { Icon } from '../../components/IconPicker';
 import { Loader } from '../../components/Loader';
+import { nodeIconOf } from '../../components/nodeIcons';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './ExecutionDetailPage.module.css';
@@ -82,6 +85,10 @@ interface StepNodeData extends Record<string, unknown> {
   kind: NodeKind;
   name: string;
   description: string | null;
+  /** The picture on the card: the node's own where the workflow gave it one, else its kind's. */
+  icon: string;
+  /** Whether that picture is the node's own rather than the kind's default. */
+  iconChosen: boolean;
   status: StepStatus;
   duration: string;
   /** What actually happened to this step, once the run has ended. */
@@ -169,7 +176,15 @@ function StepNodeView({ data, selected }: NodeProps) {
 
       <div className={styles.nodeContent}>
         <div className={styles.metaRow}>
-          <span className={styles.kindLabel}>{NODE_KIND_LABEL[step.kind]}</span>
+          <span className={styles.kindGroup}>
+            <Icon
+              name={step.icon}
+              className={styles.nodeIcon}
+              testId="node-icon"
+              origin={step.iconChosen ? 'chosen' : 'default'}
+            />
+            <span className={styles.kindLabel}>{NODE_KIND_LABEL[step.kind]}</span>
+          </span>
           <OutcomeMark outcome={step.outcome} />
         </div>
         <span className={styles.nodeName}>{step.name}</span>
@@ -485,6 +500,62 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   const runEnded = run !== null && run.status !== 'RUNNING';
 
   /*
+   * What each step's card is drawn with: the icon its node was given, where the
+   * workflow still has the node, and otherwise its kind's own - the same
+   * picture the editor draws, so a node looks like itself on both pages.
+   *
+   * The run records no icon - it is a picture, not part of what ran - so the
+   * chosen ones are read off the workflow's graph by node key, and which
+   * actions speak off the actions the steps ran. Both are asked once per run
+   * rather than on every refresh, and a failure of either leaves the defaults,
+   * which is what a run of a removed workflow shows anyway.
+   */
+  const [chosenIcons, setChosenIcons] = useState<ReadonlyMap<string, string>>(new Map());
+  const [speakingActions, setSpeakingActions] = useState<ReadonlySet<string>>(new Set());
+  const workflowOfRun = run !== null && run.workflowAssigned ? run.workflowId : null;
+  const ranActions = useMemo(
+    () =>
+      [...new Set((run?.steps ?? []).filter((step) => step.kind === 'ACTION' && step.actionId !== null).map((step) => step.actionId as string))]
+        .sort()
+        .join('|'),
+    [run],
+  );
+  useEffect(() => {
+    if (workflowOfRun === null || workspaceId === '') return;
+    let abandoned = false;
+    fetchWorkflowGraph(workspaceId, workflowOfRun)
+      .then((graph) => {
+        if (abandoned) return;
+        setChosenIcons(
+          new Map(
+            graph.nodes
+              .filter((node) => node.icon !== null && node.icon !== undefined && node.icon !== '')
+              .map((node) => [node.key, node.icon as string]),
+          ),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, [workspaceId, workflowOfRun]);
+  useEffect(() => {
+    if (ranActions === '') return;
+    let abandoned = false;
+    Promise.all(ranActions.split('|').map((id) => fetchAction(id).catch(() => null)))
+      .then((found) => {
+        if (abandoned) return;
+        setSpeakingActions(
+          new Set(found.flatMap((action) => (action !== null && action.subtype === 'SPEAK' ? [action.id] : []))),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, [ranActions]);
+
+  /*
    * Which of the three cards are folded to their headings. Remembered per card
    * and for every run, in `Fold`; see there for why.
    */
@@ -515,12 +586,18 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
           kind: step.kind,
           name: step.name,
           description: step.description,
+          icon: nodeIconOf(
+            chosenIcons.get(step.key),
+            step.kind,
+            step.actionId !== null && speakingActions.has(step.actionId),
+          ),
+          iconChosen: chosenIcons.has(step.key),
           status: step.status,
           duration: formatDuration(step.durationSeconds),
           outcome: outcomeOf(step, runEnded, run?.stoppedAtNodeKey ?? null),
         } satisfies StepNodeData,
       })),
-    [run, selectedKey, runEnded],
+    [run, selectedKey, runEnded, chosenIcons, speakingActions],
   );
 
   /** Which steps the graph is showing, so a refit follows the run and not the cursor. */

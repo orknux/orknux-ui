@@ -1,0 +1,189 @@
+/*
+ * A model's settings, wherever the form is drawn: on the model's own page, in
+ * its cards, and in the workflow editor's drawer, which wraps the sections in
+ * `.narrow` because a third of a screen has no room for three columns.
+ */
+
+/* ---- Provider details ---- */
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-20) var(--space-40);
+  width: 100%;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.detailLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.detailMono {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.statusActive {
+  font-size: var(--text-base);
+  color: var(--color-success-solid);
+}
+
+.statusInactive {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+}
+
+.toggle {
+  composes: iconButton from '../styles/iconButton.module.css';
+}
+
+/* ---- Fields ---- */
+
+.fieldRow {
+  display: flex;
+  gap: var(--space-24);
+  width: 100%;
+}
+
+.field {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+/*
+ * A field that is a box rather than a box to type in.
+ *
+ * The label is the sentence beside the tick, so there is no separate `.label`
+ * above it - and the (?) stands outside that label rather than inside it,
+ * because it is a button and a button inside a <label> ticks the box on its way
+ * to opening.
+ */
+.checkboxWithHint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  /* Aligned with the boxes beside it, which have a label line above them. */
+  margin-top: var(--space-24);
+}
+
+.checkboxField {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.checkboxField input {
+  margin-top: 2px;
+  accent-color: var(--color-accent-brand);
+}
+
+/* A label and the (?) that explains it. */
+.labelWithHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  font-family: inherit;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.inputMono {
+  font-family: var(--font-mono);
+}
+
+.input:focus {
+  border-color: var(--color-accent-brand);
+  outline: none;
+}
+
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select {
+  appearance: none;
+  padding-right: var(--space-32);
+}
+
+.selectChevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-12);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* ---- The drawer ---- */
+
+/* One column: every box gets the drawer's whole width, in the page's order. */
+.narrow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.narrow .detailGrid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+}
+
+.narrow .fieldRow {
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* The spacer a row keeps for a second column is nothing in one. */
+.narrow .field:empty {
+  display: none;
+}
+
+.narrow .checkboxWithHint {
+  margin-top: 0;
+}
+
+/* Where one card of the page begins, inside the drawer. */
+.heading {
+  margin: var(--space-8) 0 0;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}

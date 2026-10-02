@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import type { ReactNode } from 'react';
 import type { DecisionOption, DecisionQuestion, DecisionQuestionKind } from '../../api/graph';
 import type { Model } from '../../api/models';
 import { DefinitionPicker } from '../../components/DefinitionPicker';
@@ -31,6 +32,8 @@ interface DecisionNodeFieldsProps {
   /** The workspace's decision and chat models, enabled ones only; either kind answers. */
   models: Model[];
   onChange: (patch: DecisionPatch) => void;
+  /** The way out to the chosen model, drawn beside its label; the editor decides where it goes. */
+  modelLink?: ReactNode;
 }
 
 const KINDS: DecisionQuestionKind[] = ['CHOICE', 'SCORE', 'NOUL'];
@@ -124,7 +127,7 @@ function side(question: DecisionQuestion, name: 'true' | 'false'): string {
   return question.options.find((option) => option.name === name)?.description ?? '';
 }
 
-export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFieldsProps) {
+export function DecisionNodeFields({ draft, models, onChange, modelLink }: DecisionNodeFieldsProps) {
   const questions = draft.decisionQuestions ?? [];
   const branch = draft.decisionBranchQuestion ?? null;
   // What the node can branch on: a choice, by its options, or a yes-or-no, by Yes and No.
@@ -205,13 +208,16 @@ export function DecisionNodeFields({ draft, models, onChange }: DecisionNodeFiel
   return (
     <>
       <div className={editor.field}>
-        <span className={editor.labelWithHint}>
-          <label className={editor.label} htmlFor="node-decision-model">
-            {t('Model')}
-          </label>
-          <FieldHint label={t('Model')}>
-            {t('Either kind works: a decision model (Jev format) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate. A decision model reports a calibrated confidence, lower than a chat model\'s, so it clears a threshold less often.')}
-          </FieldHint>
+        <span className={editor.labelRow}>
+          <span className={editor.labelWithHint}>
+            <label className={editor.label} htmlFor="node-decision-model">
+              {t('Model')}
+            </label>
+            <FieldHint label={t('Model')}>
+              {t('Either kind works: a decision model (Jev format) is faster and calibrated; a chat model works with any provider, but its probabilities are its own estimate. A decision model reports a calibrated confidence, lower than a chat model\'s, so it clears a threshold less often.')}
+            </FieldHint>
+          </span>
+          {modelLink}
         </span>
         <DefinitionPicker
           id="node-decision-model"

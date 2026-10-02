@@ -1448,6 +1448,29 @@ export const TESTS = [
      */
   },
   {
+    name: 'image-model-drawer-check',
+    what: "an image node's model opening in the drawer beside the graph, saved there, and following the node's picker",
+    needs: ['workspace'],
+    /*
+     * Makes a provider on a `.invalid` address, two image models on it and a
+     * workflow with one image node, and takes them all away; nothing is drawn,
+     * so it needs no image endpoint. Alone, because its two models are in every
+     * image picker in the workspace while it runs, which is what
+     * image-parameters-check counts.
+     */
+    alone: true,
+  },
+  {
+    name: 'node-default-icons-check',
+    what: "every kind of node card drawing a picture where nobody chose one, a chosen one replacing it, and the run page's cards drawing the same",
+    needs: ['workspace'],
+    /*
+     * Makes two workflows, a Speak action and one run of its own, and takes the
+     * workflows and the action away. The run is two Object nodes, which need
+     * no model and finish at once.
+     */
+  },
+  {
     name: 'agent-memory-check',
     what: "an agent's session memory: the slider, the server's figures, and a refusal that stops Save",
     needs: ['workspace'],

@@ -525,6 +525,28 @@ a.refresh {
   margin-bottom: var(--space-4);
 }
 
+/* The node's picture and its kind, kept together on the left of the meta row. */
+.kindGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* The editor card's icon, smaller: a step's box is a fixed 200 by 90. */
+.nodeIcon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--color-text-primary);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
 .kindLabel {
   font-family: var(--font-mono);
   font-weight: 700;

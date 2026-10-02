@@ -550,6 +550,11 @@
   -webkit-mask-size: contain;
 }
 
+/* The kind's own picture, shown while nothing is chosen: greyed, like the word beside it. */
+.iconPreviewDefault {
+  background-color: var(--color-text-muted);
+}
+
 .iconName {
   flex: 1 0 0;
   font-family: var(--font-mono);
