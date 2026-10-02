@@ -333,7 +333,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
             )}
             {uploaded !== null && (
               <p className={styles.notice} role="status">
-                {tf('Stored {version}; start it below.', { version: uploaded })}
+                {tf('Stored {version}; press Update beside it below to run it.', { version: uploaded })}
               </p>
             )}
 
@@ -393,7 +393,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
             )}
             {fetched !== null && (
               <p className={styles.notice} role="status" data-testid="url-fetched">
-                {tf('Stored {version}; start it below.', { version: fetched })}
+                {tf('Stored {version}; press Update beside it below to run it.', { version: fetched })}
               </p>
             )}
             {listed !== null &&
@@ -443,7 +443,9 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                         title={release.refusal ?? undefined}
                         onClick={() => setPending({ kind: 'stored', release })}
                       >
-                        {olderThan(release.version, updates.runningVersion) ? t('Roll back') : t('Re-apply')}
+                        {olderThan(release.version, updates.runningVersion)
+                          ? t('Roll back')
+                          : olderThan(updates.runningVersion, release.version) ? t('Update') : t('Re-apply')}
                       </button>
                     )}
                   </div>

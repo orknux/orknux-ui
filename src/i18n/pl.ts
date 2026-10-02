@@ -2094,7 +2094,7 @@ export const PL: Record<string, string> = {
   "Upload": "Prześlij",
   "Choose a jar": "Wybierz plik jar",
   "That jar is larger than the {mb} MB this installation takes.": "Ten plik jar jest większy niż {mb} MB, które przyjmuje ta instalacja.",
-  "Stored {version}; start it below.": "Zapisano {version}; uruchom je poniżej.",
+  "Stored {version}; press Update beside it below to run it.": "Zapisano {version}; aby je uruchomić, naciśnij Aktualizuj obok niego poniżej.",
   "From a URL": "Z adresu URL",
   "URL of a server jar, or of a directory holding releases.json": "Adres URL pliku jar serwera albo katalogu z plikiem releases.json",
   "Credential for that URL: a token, or user:password": "Dane logowania do tego adresu: token albo użytkownik:hasło",
