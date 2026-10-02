@@ -33,6 +33,7 @@ import {
   setPluginTimeoutSeconds,
   setRevisionRetentionDays,
   setTaskSweepMinutes,
+  setWorkspaceCopyLockWaitSeconds,
 } from '../../api/installation';
 import type { InstallationSettings } from '../../api/installation';
 import type { SessionUser } from '../../api/session';
@@ -113,6 +114,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [summaryTrim, setSummaryTrim] = useState('');
   /** What marks a command in a message, installation-wide. Issue #402. */
   const [marker, setMarker] = useState('');
+  /** How long a step of a workspace copy may wait for a lock. Issue #581. */
+  const [copyWait, setCopyWait] = useState('');
 
   useEffect(() => {
     /*
@@ -157,6 +160,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSummariesFull(String(held.toolSummariesFullUpTo));
         setSummaryTrim(String(held.toolSummaryTrimPercent));
         setMarker(held.commandMarker);
+        setCopyWait(String(held.workspaceCopyLockWaitSeconds));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -232,6 +236,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: summariesFull, held: settings.toolSummariesFullUpTo, write: setToolSummariesFullUpTo },
         { typed: summaryTrim, held: settings.toolSummaryTrimPercent, write: setToolSummaryTrimPercent },
         { typed: pluginSource, held: settings.pluginMaxSourceKb, write: setPluginMaxSourceKb },
+        { typed: copyWait, held: settings.workspaceCopyLockWaitSeconds, write: setWorkspaceCopyLockWaitSeconds },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -1362,6 +1367,39 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('How many KB one plugin source file may be')}
                 />
                 <span className={styles.retentionUnit}>KB</span>
+              </div>
+            </div>
+
+            <h2 id="workspace-copies" className={styles.sectionHeading}>{t('Workspace copies')}</h2>
+
+            {/*
+              Issue #581: a copy on Postgres waited for a lock for ever, with a
+              page that never moved and nothing in the log. This is how long it
+              waits before it stops and says where.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How long a copy may wait for a lock')}</p>
+                  <FieldHint label={t('How long a copy may wait for a lock')}>
+                    {t('Each step of a workspace copy runs in a transaction of its own, and a step that needs a row another transaction is holding waits for it. Past this many seconds the copy stops, logs the step it stopped at, and says so on the page; the workspace it was making keeps what was copied before. 60 seconds unless somebody says otherwise; every copy reads it fresh, so no restart is needed.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workspace-copy-lock-wait-seconds"
+                  name="workspaceCopyLockWaitSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={3600}
+                  value={copyWait}
+                  onChange={(event) => setCopyWait(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many seconds a workspace copy may wait for a lock')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
 

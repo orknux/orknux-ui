@@ -28,6 +28,8 @@ const SECTIONS = [
   ['commands', 'command-marker'],
   ['attachments', null],
   ['metrics', null],
+  // How long a copy waits for a lock, drawn last. Issue #581.
+  ['workspace-copies', 'workspace-copy-lock-wait-seconds'],
 ];
 
 /** Where a heading and a field sit, top to bottom, so "under" means drawn below it. */

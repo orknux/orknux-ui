@@ -236,6 +236,13 @@
   color: var(--color-text-muted);
 }
 
+/* Said when the progress could not be read, so it is not mistaken for a copy that stopped. #581. */
+.copyUnread {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
 .copyFailed {
   margin: 0 0 var(--space-12);
   font-size: var(--text-sm);

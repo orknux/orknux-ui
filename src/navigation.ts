@@ -580,6 +580,7 @@ export const PAGES = [
       { label: t('Run history'), at: '#run-history', also: 'executions retention sweep' },
       { label: t('Queued tasks'), at: '#queued-tasks', also: 'sweep temporal interval' },
       { label: t('Plugins'), at: '#plugins', also: 'source size timeout' },
+      { label: t('Workspace copies'), at: '#workspace-copies', also: 'duplicate lock wait' },
       { label: t('Attachments'), at: '#attachments', also: 'files uploads storage' },
     ],
   },
