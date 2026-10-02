@@ -13,15 +13,20 @@ const { browser, page } = await open({ viewport: { width: 1500, height: 1000 } }
 const auto = () => page.locator('select[aria-label="Refresh automatically"]').first();
 const forget = () => page.evaluate(() => window.localStorage.removeItem('orknux.refreshSeconds'));
 
-async function firstLink(listPath, prefix) {
-  await page.goto(`${BASE}${listPath}`, { waitUntil: 'domcontentloaded' });
-  await page.locator(`a[href^="${prefix}"]`).first().waitFor({ timeout: 20_000 }).catch(() => undefined);
-  return page.$$eval(`a[href^="${prefix}"]`, (links, start) =>
-    links.map((a) => a.getAttribute('href')).find((href) => /\/\d+$/.test(href ?? '') && href.startsWith(start)) ?? null, prefix);
+// Asked of the API with the page's own session: a list's links depend on its filters and paging.
+async function firstOf(query, pick) {
+  await page.goto(`${BASE}/workspace/${WORKSPACE}`, { waitUntil: 'domcontentloaded' });
+  const data = await page.evaluate(async (q) => {
+    const response = await fetch('/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+    return response.json();
+  }, query);
+  return pick(data?.data);
 }
 
-const run = await firstLink(`/workspace/${WORKSPACE}/executions`, `/workspace/${WORKSPACE}/executions/`);
-const session = await firstLink(`/workspace/${WORKSPACE}/sessions`, `/workspace/${WORKSPACE}/sessions/`);
+const runId = await firstOf(`{ workspaceExecutions(workspaceId: ${WORKSPACE}, size: 1) { content { id } } }`, (d) => d?.workspaceExecutions?.content?.[0]?.id);
+const sessionId = await firstOf(`{ llmSessions(workspaceId: ${WORKSPACE}, size: 1) { content { id } } }`, (d) => d?.llmSessions?.content?.[0]?.id);
+const run = runId ? `/workspace/${WORKSPACE}/executions/${runId}` : null;
+const session = sessionId ? `/workspace/${WORKSPACE}/sessions/${sessionId}` : null;
 record(run !== null, `there is a run to open (${run})`);
 record(session !== null, `there is a session to open (${session})`);
 

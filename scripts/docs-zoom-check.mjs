@@ -112,6 +112,24 @@ const sameFile = (await zoomed.count()) > 0 ? ((await zoomed.getAttribute('src')
 const wanted = (await inline.getAttribute('src')) ?? 'x';
 record(sameFile === wanted, 'it is the picture that was clicked');
 
+/*
+ * The way out sits on the picture's own corner. Reported: it sat in the
+ * window's corner, which on a wide screen was a long way from the picture.
+ */
+// Measured on a wide screen, where a window corner is far from a picture fitted to the height.
+const narrow = page.viewportSize();
+await page.setViewportSize({ width: 2400, height: 900 });
+await page.waitForTimeout(300);
+const wide = (await zoomed.count()) > 0 ? await zoomed.boundingBox() : null;
+const closeBox = openDialog
+  ? await page.locator('dialog[open] button[aria-label="Close"]').first().boundingBox()
+  : null;
+const fromCorner = wide !== null && closeBox !== null
+  ? Math.hypot(wide.x + wide.width - (closeBox.x + closeBox.width), closeBox.y - wide.y)
+  : Infinity;
+if (narrow !== null) await page.setViewportSize(narrow);
+record(fromCorner <= 24, `the close button is on the picture's top right corner (${Math.round(fromCorner)}px away)`);
+
 const caption = openDialog
   ? (await page.locator('dialog[open]').first().innerText()).replace(/\s+/g, ' ')
   : '';

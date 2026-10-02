@@ -47,11 +47,11 @@
 }
 
 .bar {
-  /* In the corner, over the ground: the caption is under the plate now, and
-     what is left is one button that must not decide where the picture sits. */
+  /* On the picture's top right corner, over it: out of the flow, so it never
+     decides where the picture sits, and beside what is being looked at. */
   position: absolute;
-  top: var(--space-12);
-  right: var(--space-16);
+  top: var(--space-8);
+  right: var(--space-8);
   display: flex;
   align-items: center;
   gap: var(--space-12);
@@ -113,6 +113,8 @@
 }
 
 .stage {
+  /* The close control is placed against the picture, which this shrinks to. */
+  position: relative;
   display: flex;
   /* Shrinks to the picture, so the caption follows it rather than the window. */
   flex: 0 1 auto;

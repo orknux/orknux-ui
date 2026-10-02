@@ -65,12 +65,6 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
     >
       {picture !== null && (
         <div className={styles.frame}>
-          <header className={styles.bar}>
-            <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')} title={t('Close')}>
-              ×
-            </button>
-          </header>
-
           <div className={styles.stage}>
             {/*
               `data-keeps-colour` because this is a screenshot, not an icon: the
@@ -84,6 +78,16 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
               alt={picture.alt}
               data-keeps-colour=""
             />
+            {/*
+              On the picture's own corner rather than the window's: on a wide
+              screen the window's corner was a long way from the picture,
+              where nobody looking at it would look for the way out.
+            */}
+            <header className={styles.bar}>
+              <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')} title={t('Close')}>
+                ×
+              </button>
+            </header>
           </div>
 
           {/*
