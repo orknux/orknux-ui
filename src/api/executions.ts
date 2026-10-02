@@ -295,12 +295,15 @@ const SOURCE_LABEL: Record<string, string> = {
 
 /** "Slack mention" for a run a mention started, and the stored trigger's label for everything else. */
 export function triggerLabel(run: Pick<Execution, 'trigger' | 'source'>): string {
-  const source = run.source;
+  // Absent as well as null: a server older than the field, or a run stood in
+  // for by a check, answers without it, and one missing field must not take
+  // the whole run page down with it.
+  const source = run.source ?? null;
   if (source !== null) {
     const said = SOURCE_LABEL[`${source.connectionType}:${source.action}`];
     if (said !== undefined) return said;
   }
-  return TRIGGER_LABEL[run.trigger];
+  return TRIGGER_LABEL[run.trigger] ?? run.trigger;
 }
 
 /** 83 -> "1m 23s", 45 -> "45s"; null while the run is going. */

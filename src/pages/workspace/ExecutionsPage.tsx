@@ -363,7 +363,7 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
             <span className={`${styles.colDuration} ${styles.muted}`}>{formatDuration(run.durationSeconds)}</span>
             <span className={`${styles.colTrigger} ${styles.muted}`}>
               {/* A connection event is stored as WEBHOOK; its source is what says it was not one. */}
-              <img src={run.source === null ? TRIGGER_ICON[run.trigger] : plugIcon} alt="" width={14} height={14} />
+              <img src={(run.source ?? null) === null ? TRIGGER_ICON[run.trigger] : plugIcon} alt="" width={14} height={14} />
               {triggerLabel(run)}
             </span>
           </div>
