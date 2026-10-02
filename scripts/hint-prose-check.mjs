@@ -200,9 +200,21 @@ const IN_THE_OPEN = [
   },
   {
     file: 'src/pages/admin/AdminUpdatesPage.tsx',
-    says: 'orknux.ai offers no server releases yet.',
+    says: 'The official server offers no releases yet.',
     because: 'status',
     why: 'an empty list of releases on offer',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'Turned off for this installation.',
+    because: 'status',
+    why: 'the state of one source - official server, upload or URL - that the installation switched off (#589); drawn in place of its controls',
+  },
+  {
+    file: 'src/pages/admin/AdminUpdatesPage.tsx',
+    says: 'It lists nothing newer than what runs.',
+    because: 'status',
+    why: "what Check just found in the repository's releases.json (#589), in the place the rows would have been",
   },
   {
     file: 'src/pages/admin/AdminUpdatesPage.tsx',
