@@ -1,5 +1,11 @@
 # orknux-ui
 
+> **Not needed since 0.9.9.8.** [`orknux/orknux-server`](https://hub.docker.com/r/orknux/orknux-server)
+> now serves this interface itself, on its own port 8080. Point your published
+> port, reverse proxy or Ingress at `orknux-server:8080` and remove this
+> container. Until you do, this image keeps working in front of the server. It
+> is still published for that, and will stop being published in a later release.
+
 The interface for [`orknux/orknux-server`](https://hub.docker.com/r/orknux/orknux-server):
 the workflow editor, the run history, the workspace's agents, models, tools and
 skills, its issue tracker, chat, and the administration screens. The manual is
