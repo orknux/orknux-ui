@@ -503,6 +503,12 @@ export const TESTS = [
     needs: ['workflow'],
   },
   {
+    name: 'log-level-check',
+    what: 'a logger set to DEBUG on Admin -> Settings is still DEBUG after a reload, and Reset to defaults clears it',
+    needs: [],
+    /* Installation-wide, on a logger of its own, and put back however the run ends. */
+  },
+  {
     name: 'hint-placement-check',
     what: 'the note lands under its own control on a page inside the shell',
     needs: ['workflow'],

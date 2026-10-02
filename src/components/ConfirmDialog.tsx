@@ -19,6 +19,7 @@ export type ConfirmKind =
   | 'removeScratchpad'
   | 'removeIssueStatus'
   | 'removeImageSizePreset'
+  | 'resetLogLevels'
   | 'updateServer'
   | 'switchServerRelease';
 
@@ -217,6 +218,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
         </>
       ),
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    /* Admin -> Settings -> Logging, #591. Nothing is lost that a level cannot be chosen again for. */
+    resetLogLevels: {
+      title: t('Reset log levels'),
+      message: <>{t('Every logger goes back to the level the configuration file gives it, on every server.')}</>,
+      button: submitting ? t('Resetting…') : t('Reset'),
     },
     /*
      * Server updates, #584. Not destructive - a stored release can be gone back

@@ -238,6 +238,14 @@ const PL: Record<string, string> = {
   ReleaseFollowOutOfRange: '{seconds} to nie jest liczba sekund między sprawdzeniami wydania.',
   ReleaseMaxOutOfRange: '{mb} MB to nie jest rozmiar, do którego da się ograniczyć plik jar serwera.',
   ReleaseRestartDelayOutOfRange: '{seconds} to nie jest liczba sekund oczekiwania przed restartem.',
+  // Log levels from Admin -> Settings, #591.
+  LogLevelUnknown: '„{level}” nie jest poziomem logowania. Wybierz TRACE, DEBUG, INFO, WARN, ERROR, OFF lub INHERIT.',
+  LoggerNameInvalid:
+    '„{name}” nie jest nazwą loggera. Użyj liter, cyfr, kropek, $ i _, najwyżej {max} znaków.',
+  RootLogLevelInherit:
+    'Główny logger nie ma po kim dziedziczyć. Wybierz poziom albo wyczyść go, by wrócić do konfiguracji.',
+  LogRootRevertOutOfRange: '{minutes} to nie jest liczba minut, przez jaką poziom główny może być poniżej INFO.',
+  LogFollowOutOfRange: '{seconds} to nie jest liczba sekund między odczytami poziomów logowania.',
   RevisionNotRestorable: '„{name}” nie jest tu edytowalne, więc nie da się przywrócić jego wersji',
   TaskSweepIntervalOutOfRange:
     '{minutes} to nie jest liczba minut, przez jaką zadanie może czekać w kolejce.',

@@ -1,0 +1,106 @@
+/*
+ * Admin -> Settings -> Logging. Issue #591. The rows borrow the page's own
+ * `.setting` card; what is here is the select, the logger name, and the add row.
+ */
+
+.loggerName {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.controls {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.select,
+.nameInput {
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  font-family: inherit;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.select {
+  min-width: 11rem;
+}
+
+.nameInput {
+  flex: 1 0 0;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+
+.select:focus,
+.nameInput:focus {
+  border-color: var(--color-accent-brand);
+  outline: none;
+}
+
+.select:disabled,
+.nameInput:disabled {
+  opacity: 0.6;
+}
+
+/* What the logger actually logs at, beside what was chosen for it. */
+.effective {
+  min-width: 4rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* A root below INFO is a state somebody chose and the clock will undo: amber, like the page's other such line. */
+.reverts {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-amber);
+}
+
+.remove {
+  composes: iconButton from '../../styles/iconButton.module.css';
+}
+
+/* Where a row with nothing to remove keeps the bin's place, so every select lines up. */
+.removeSpace {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+}
+
+.secondaryButton {
+  padding: var(--space-10) var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger-solid);
+}
