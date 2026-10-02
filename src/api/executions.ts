@@ -1,9 +1,23 @@
 import { graphql } from './client';
 import type { PageOf } from './client';
 import type { EdgeBranch, NodeKind } from './graph';
+import type { ConnectionType } from './integrations';
+import type { TriggerAction } from './triggers';
+import { t } from '../i18n';
 
 export type ExecutionStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
+/**
+ * What started a run, as stored. An event arriving on a connection - a Slack
+ * mention, say - is stored as `WEBHOOK`, so that a server rolled back to an
+ * older release can still read the row; `source` is what tells the two apart.
+ */
 export type ExecutionTrigger = 'WEBHOOK' | 'MANUAL' | 'SCHEDULE' | 'API';
+
+/** For a run an event on a connection started, which kind of connection and which event. */
+export interface ExecutionSource {
+  connectionType: ConnectionType;
+  action: TriggerAction;
+}
 
 export interface Execution {
   id: string;
@@ -11,6 +25,8 @@ export interface Execution {
   workflowName: string;
   status: ExecutionStatus;
   trigger: ExecutionTrigger;
+  /** Null except on a run a connection event started, whose trigger is still there to ask. */
+  source: ExecutionSource | null;
   startedAt: string;
   finishedAt: string | null;
   /** Null while the run is still going. */
@@ -207,7 +223,7 @@ const WORKSPACE_EXECUTIONS_QUERY = `
       order: $order
       ascending: $ascending
     ) {
-      content { id workflowId workflowName status trigger startedAt finishedAt durationSeconds workflowAssigned }
+      content { id workflowId workflowName status trigger source { connectionType action } startedAt finishedAt durationSeconds workflowAssigned }
       page
       size
       totalElements
@@ -260,11 +276,32 @@ export const STATUS_LABEL: Record<ExecutionStatus, string> = {
 };
 
 export const TRIGGER_LABEL: Record<ExecutionTrigger, string> = {
-  WEBHOOK: 'Webhook',
-  MANUAL: 'Manual',
-  SCHEDULE: 'Schedule',
+  WEBHOOK: t('Webhook'),
+  MANUAL: t('Manual'),
+  SCHEDULE: t('Schedule'),
   API: 'API',
 };
+
+/**
+ * The event a connection run was started by, where the run knows it. Spelled
+ * out whole rather than put together from the connection and the event, so the
+ * Polish can say each one the way it is said rather than as two words in a row.
+ */
+const SOURCE_LABEL: Record<string, string> = {
+  'SLACK:MENTION': t('Slack mention'),
+  'SLACK:MESSAGE': t('Slack message'),
+  'SLACK:REPLY': t('Slack reply'),
+};
+
+/** "Slack mention" for a run a mention started, and the stored trigger's label for everything else. */
+export function triggerLabel(run: Pick<Execution, 'trigger' | 'source'>): string {
+  const source = run.source;
+  if (source !== null) {
+    const said = SOURCE_LABEL[`${source.connectionType}:${source.action}`];
+    if (said !== undefined) return said;
+  }
+  return TRIGGER_LABEL[run.trigger];
+}
 
 /** 83 -> "1m 23s", 45 -> "45s"; null while the run is going. */
 export function formatDuration(seconds: number | null): string {
@@ -293,7 +330,7 @@ export function formatRelative(iso: string): string {
 }
 
 const EXECUTION_DETAIL_FIELDS = `
-  id workspaceId workflowId workflowName status trigger startedAt finishedAt durationSeconds error workflowAssigned
+  id workspaceId workflowId workflowName status trigger source { connectionType action } startedAt finishedAt durationSeconds error workflowAssigned
   stoppedAtNodeKey stoppedReason startedFrom
   steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption attempts carriedOver x y }
   edges { source target branch }

@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { PageOf } from '../../api/client';
 import {
   STATUS_LABEL,
-  TRIGGER_LABEL,
+  triggerLabel,
   fetchExecutionWorkflows,
   fetchWorkspaceExecutions,
   formatDuration,
@@ -15,6 +15,7 @@ import type { SessionUser } from '../../api/session';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import clockIcon from '../../assets/clock.svg';
+import plugIcon from '../../assets/plug.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import terminalIcon from '../../assets/terminal.svg';
 import userIcon from '../../assets/user.svg';
@@ -361,8 +362,9 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
             <span className={`${styles.colStarted} ${styles.muted}`}>{formatRelative(run.startedAt)}</span>
             <span className={`${styles.colDuration} ${styles.muted}`}>{formatDuration(run.durationSeconds)}</span>
             <span className={`${styles.colTrigger} ${styles.muted}`}>
-              <img src={TRIGGER_ICON[run.trigger]} alt="" width={14} height={14} />
-              {TRIGGER_LABEL[run.trigger]}
+              {/* A connection event is stored as WEBHOOK; its source is what says it was not one. */}
+              <img src={run.source === null ? TRIGGER_ICON[run.trigger] : plugIcon} alt="" width={14} height={14} />
+              {triggerLabel(run)}
             </span>
           </div>
         ))}

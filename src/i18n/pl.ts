@@ -121,6 +121,11 @@ export const PL: Record<string, string> = {
   "Trigger Name": "Nazwa wyzwalacza",
   "Trigger Settings": "Ustawienia wyzwalacza",
   "Triggered by": "Wyzwolone przez",
+  // What a run was triggered by, as the executions list and the run page say it.
+  "Manual": "Ręcznie",
+  "Slack mention": "Wzmianka na Slacku",
+  "Slack message": "Wiadomość na Slacku",
+  "Slack reply": "Odpowiedź na Slacku",
   "Function": "Funkcja",
   "Functions": "Funkcje",
   "Function source": "Źródło funkcji",

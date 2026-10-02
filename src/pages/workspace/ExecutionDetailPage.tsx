@@ -14,7 +14,7 @@ import '@xyflow/react/dist/style.css';
 
 import {
   STATUS_LABEL,
-  TRIGGER_LABEL,
+  triggerLabel,
   fetchExecution,
   fetchWorkspaceExecutions,
   formatDuration,
@@ -995,7 +995,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                     )}
                   </SummaryRow>
                   <SummaryRow label={t('Triggered by')}>
-                    {run === null ? '—' : TRIGGER_LABEL[run.trigger]}
+                    {run === null ? '—' : triggerLabel(run)}
                   </SummaryRow>
                   <SummaryRow label={t('Started')} mono>
                     {formatStamp(run?.startedAt)}
