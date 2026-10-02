@@ -47,6 +47,12 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
   /** How far the copy under way has got, read while it runs. Issue #572. */
   const [progress, setProgress] = useState<WorkspaceCopyProgress | null>(null);
   const [copyFailed, setCopyFailed] = useState<string | null>(null);
+  /**
+   * Whether the last attempt to read the progress failed. Issue #581: failures
+   * were swallowed, so a page that could not read a step looked exactly like a
+   * copy that had not moved. Cleared by the next answer.
+   */
+  const [progressUnread, setProgressUnread] = useState(false);
   // Bumped after a write so both tables refetch, audit log included.
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -177,7 +183,7 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
             <div className={styles.copyResult} role="status" data-copy-progress="">
               <p className={styles.copyLine}>
                 {progress === null
-                  ? t('Copying the connections and models…')
+                  ? t('Starting the copy…')
                   : t('Copying {kind}: {done} of {total}')
                       .replace('{kind}', progress.kind)
                       .replace('{done}', String(progress.done))
@@ -189,6 +195,11 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                 value={progress?.overallDone ?? 0}
                 aria-label={t('How much of the workspace has been copied')}
               />
+              {progressUnread && (
+                <p className={styles.copyUnread} data-copy-progress-unread="">
+                  {t('Progress cannot be read just now; the copy goes on.')}
+                </p>
+              )}
             </div>
           )}
 
@@ -222,13 +233,29 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                     setCopied(null);
                     setCopyFailed(null);
                     setProgress(null);
+                    setProgressUnread(false);
                     // A key of our own, to ask how far the copy has got while it runs. #572.
                     const key = crypto.randomUUID();
-                    const polling = window.setInterval(() => {
+                    /*
+                     * One question at a time, the next asked half a second after
+                     * the last was answered. Issue #581: on an interval, polls
+                     * that were slow to answer piled up behind each other, and
+                     * one landing after the copy ended drew a step over nothing.
+                     * A failure is said rather than swallowed, and asking goes on.
+                     */
+                    let over = false;
+                    let polling = 0;
+                    const ask = () => {
                       fetchWorkspaceCopyProgress(key)
-                        .then((step) => { if (step !== null) setProgress(step); })
-                        .catch(() => undefined);
-                    }, 500);
+                        .then((step) => {
+                          if (over) return;
+                          setProgressUnread(false);
+                          if (step !== null) setProgress(step);
+                        })
+                        .catch(() => { if (!over) setProgressUnread(true); })
+                        .finally(() => { if (!over) polling = window.setTimeout(ask, 500); });
+                    };
+                    polling = window.setTimeout(ask, 250);
                     // Named by the server: the first free of "<name> copy", "<name> copy 2"... A name chosen here was refused once taken.
                     duplicateWorkspace(workspace.id, null, key)
                       .then((made) => {
@@ -239,8 +266,10 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                         setCopyFailed(cause instanceof Error ? cause.message : t('That workspace was not copied.'));
                       })
                       .finally(() => {
-                        window.clearInterval(polling);
+                        over = true;
+                        window.clearTimeout(polling);
                         setProgress(null);
+                        setProgressUnread(false);
                         setCopying(null);
                       });
                   }}

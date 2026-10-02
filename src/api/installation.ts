@@ -195,6 +195,9 @@ export interface InstallationSettings {
    * worked.
    */
   sessionsRemovable: boolean;
+  /** How long a step of a workspace copy may wait for a lock, in seconds. Issue #581. */
+  workspaceCopyLockWaitSeconds: number;
+  workspaceCopyLockWaitSecondsConfigured: number;
   /**
    * False where the installation runs Temporal, and the field is not offered.
    *
@@ -217,7 +220,8 @@ const FIELDS =
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
-  'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable';
+  'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -550,6 +554,15 @@ export async function setToolSummaryTrimPercent(percent: number): Promise<Instal
     { percent },
   );
   return data.setToolSummaryTrimPercent;
+}
+
+/** How long a step of a workspace copy may wait for a lock before it stops. Issue #581. */
+export async function setWorkspaceCopyLockWaitSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkspaceCopyLockWaitSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setWorkspaceCopyLockWaitSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setWorkspaceCopyLockWaitSeconds;
 }
 
 export async function setToolsNamedInSearch(count: number): Promise<InstallationSettings> {

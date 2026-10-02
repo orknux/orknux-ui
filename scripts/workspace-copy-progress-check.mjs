@@ -82,5 +82,29 @@ record(
   'a second copy takes the next free name',
 );
 
+/*
+ * Progress that cannot be read is said, not swallowed. Issue #581: every
+ * failed poll was dropped, so a page that could not read a step looked like a
+ * copy that had stopped. Every progress question is failed here; the page has
+ * to say so while the copy runs, and the copy still has to answer.
+ */
+await page.route('**/graphql', async (route) => {
+  const body = route.request().postData() ?? '';
+  if (!body.includes('workspaceCopyProgress')) return route.continue();
+  await route.fulfill({ status: 500, contentType: 'text/plain', body: 'unavailable' });
+});
+await page.locator('[data-copy-dismiss]').click().catch(() => undefined);
+await duplicate.click();
+record(
+  await page.locator('[data-copy-progress-unread]').waitFor({ timeout: 10_000 }).then(() => true).catch(() => false),
+  'a progress that cannot be read is said under the bar',
+);
+record(
+  await page.locator('[role="status"]', { hasText: `${NAME} copy 3` }).waitFor({ timeout: 60_000 }).then(() => true).catch(() => false),
+  'and the copy still answers when it is done',
+);
+record((await page.locator('[data-copy-progress-unread]').count()) === 0, 'the notice goes with the progress block');
+await page.unroute('**/graphql');
+
 await sweep();
 await finish(browser);
