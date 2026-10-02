@@ -50,7 +50,6 @@ const TRIGGER_ICON: Record<string, string> = {
   API: terminalIcon,
   MANUAL: userIcon,
   SCHEDULE: clockIcon,
-  CONNECTION: plugIcon,
 };
 
 export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
@@ -363,7 +362,8 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
             <span className={`${styles.colStarted} ${styles.muted}`}>{formatRelative(run.startedAt)}</span>
             <span className={`${styles.colDuration} ${styles.muted}`}>{formatDuration(run.durationSeconds)}</span>
             <span className={`${styles.colTrigger} ${styles.muted}`}>
-              <img src={TRIGGER_ICON[run.trigger]} alt="" width={14} height={14} />
+              {/* A connection event is stored as WEBHOOK; its source is what says it was not one. */}
+              <img src={run.source === null ? TRIGGER_ICON[run.trigger] : plugIcon} alt="" width={14} height={14} />
               {triggerLabel(run)}
             </span>
           </div>

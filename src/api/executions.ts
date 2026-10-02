@@ -7,13 +7,13 @@ import { t } from '../i18n';
 
 export type ExecutionStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
 /**
- * What started a run. `CONNECTION` is an event arriving on one of the
- * workspace's connections - a Slack mention, say - and was recorded as
- * `WEBHOOK` before it had a value of its own, so older runs still read that.
+ * What started a run, as stored. An event arriving on a connection - a Slack
+ * mention, say - is stored as `WEBHOOK`, so that a server rolled back to an
+ * older release can still read the row; `source` is what tells the two apart.
  */
-export type ExecutionTrigger = 'WEBHOOK' | 'MANUAL' | 'SCHEDULE' | 'API' | 'CONNECTION';
+export type ExecutionTrigger = 'WEBHOOK' | 'MANUAL' | 'SCHEDULE' | 'API';
 
-/** For a `CONNECTION` run, which kind of connection and which event started it. */
+/** For a run an event on a connection started, which kind of connection and which event. */
 export interface ExecutionSource {
   connectionType: ConnectionType;
   action: TriggerAction;
@@ -25,7 +25,7 @@ export interface Execution {
   workflowName: string;
   status: ExecutionStatus;
   trigger: ExecutionTrigger;
-  /** Null except on a `CONNECTION` run whose trigger is still there to ask. */
+  /** Null except on a run a connection event started, whose trigger is still there to ask. */
   source: ExecutionSource | null;
   startedAt: string;
   finishedAt: string | null;
@@ -280,7 +280,6 @@ export const TRIGGER_LABEL: Record<ExecutionTrigger, string> = {
   MANUAL: t('Manual'),
   SCHEDULE: t('Schedule'),
   API: 'API',
-  CONNECTION: t('Connection'),
 };
 
 /**
@@ -294,10 +293,10 @@ const SOURCE_LABEL: Record<string, string> = {
   'SLACK:REPLY': t('Slack reply'),
 };
 
-/** "Slack mention" for a run a mention started, and the plain trigger label for everything else. */
+/** "Slack mention" for a run a mention started, and the stored trigger's label for everything else. */
 export function triggerLabel(run: Pick<Execution, 'trigger' | 'source'>): string {
   const source = run.source;
-  if (run.trigger === 'CONNECTION' && source !== null) {
+  if (source !== null) {
     const said = SOURCE_LABEL[`${source.connectionType}:${source.action}`];
     if (said !== undefined) return said;
   }
