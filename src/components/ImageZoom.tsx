@@ -66,6 +66,17 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
       {picture !== null && (
         <div className={styles.frame}>
           <div className={styles.stage}>
+            <div className={styles.plate}>
+            {/*
+              Above the picture's own corner rather than in the window's: on a
+              wide screen the window's corner was a long way from the picture.
+              Outside it, so it covers nothing of what is being looked at.
+            */}
+            <header className={styles.bar}>
+              <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')} title={t('Close')}>
+                ×
+              </button>
+            </header>
             {/*
               `data-keeps-colour` because this is a screenshot, not an icon: the
               light theme darkens every `<img>` to keep the stroked icon files
@@ -78,16 +89,7 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
               alt={picture.alt}
               data-keeps-colour=""
             />
-            {/*
-              On the picture's own corner rather than the window's: on a wide
-              screen the window's corner was a long way from the picture,
-              where nobody looking at it would look for the way out.
-            */}
-            <header className={styles.bar}>
-              <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')} title={t('Close')}>
-                ×
-              </button>
-            </header>
+            </div>
           </div>
 
           {/*

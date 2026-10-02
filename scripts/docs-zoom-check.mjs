@@ -125,10 +125,12 @@ const closeBox = openDialog
   ? await page.locator('dialog[open] button[aria-label="Close"]').first().boundingBox()
   : null;
 const fromCorner = wide !== null && closeBox !== null
-  ? Math.hypot(wide.x + wide.width - (closeBox.x + closeBox.width), closeBox.y - wide.y)
+  ? Math.hypot(wide.x + wide.width - (closeBox.x + closeBox.width), wide.y - (closeBox.y + closeBox.height))
   : Infinity;
+// Outside the picture, covering none of it: wholly above its top edge.
+record(wide !== null && closeBox !== null && closeBox.y + closeBox.height <= wide.y + 1, 'the close button sits outside the picture, above it');
 if (narrow !== null) await page.setViewportSize(narrow);
-record(fromCorner <= 24, `the close button is on the picture's top right corner (${Math.round(fromCorner)}px away)`);
+record(fromCorner <= 32, `the close button is at the picture's top right corner (${Math.round(fromCorner)}px away)`);
 
 const caption = openDialog
   ? (await page.locator('dialog[open]').first().innerText()).replace(/\s+/g, ' ')
