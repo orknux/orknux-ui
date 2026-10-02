@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { PageOf } from '../../api/client';
 import {
   STATUS_LABEL,
-  TRIGGER_LABEL,
+  triggerLabel,
   fetchExecutionWorkflows,
   fetchWorkspaceExecutions,
   formatDuration,
@@ -15,6 +15,7 @@ import type { SessionUser } from '../../api/session';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import clockIcon from '../../assets/clock.svg';
+import plugIcon from '../../assets/plug.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import terminalIcon from '../../assets/terminal.svg';
 import userIcon from '../../assets/user.svg';
@@ -49,6 +50,7 @@ const TRIGGER_ICON: Record<string, string> = {
   API: terminalIcon,
   MANUAL: userIcon,
   SCHEDULE: clockIcon,
+  CONNECTION: plugIcon,
 };
 
 export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
@@ -362,7 +364,7 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
             <span className={`${styles.colDuration} ${styles.muted}`}>{formatDuration(run.durationSeconds)}</span>
             <span className={`${styles.colTrigger} ${styles.muted}`}>
               <img src={TRIGGER_ICON[run.trigger]} alt="" width={14} height={14} />
-              {TRIGGER_LABEL[run.trigger]}
+              {triggerLabel(run)}
             </span>
           </div>
         ))}
