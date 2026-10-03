@@ -166,6 +166,8 @@ interface GrantableTool {
   governance: BuiltInToolGovernance | null;
   /** The phrase it is listed by in a briefing, shown on hover. Issue #481. */
   summary: string | null;
+  /** Why the installation withholds it from every agent now, or null. Issue #602. */
+  unavailable: string | null;
 }
 
 /**
@@ -233,6 +235,9 @@ const SEARCH_FROM = 8;
  */
 const BUILT_IN = 'Built in';
 
+/** The tools Admin Settings -> HTTP tools switches, which bring `http_allowList` with them. Issue #602. */
+const HTTP_TOOLS = ['http_get', 'http_request', 'http_download'];
+
 /**
  * Why a built-in that comes with a wider grant cannot be switched on its row.
  *
@@ -269,6 +274,8 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by Orknux access — switch it there.');
     case 'SHELL_ACCESS':
       return t('Granted by shell access — switch it there.');
+    case 'HTTP_TOOLS':
+      return t('Comes with the HTTP tools — offered while one of them is granted.');
     default:
       return null;
   }
@@ -417,6 +424,15 @@ interface GrantListProps<Item> {
    * nothing. They are switched one by one inside the grant, as asked.
    */
   alwaysWhenOn?: (item: Item) => boolean;
+  /**
+   * Why the installation withholds this row from every agent now, or null.
+   *
+   * The HTTP tools switched off in Admin Settings: the row keeps reading the
+   * agent's own grant - Offer or Always, exactly as stored - and cannot be
+   * pressed, because a grant changed while it does nothing is a grant somebody
+   * gets back different from how they left it. Issue #602.
+   */
+  unavailableOf?: (item: Item) => string | null;
 }
 
 /**
@@ -469,6 +485,7 @@ function GrantList<Item>({
   onMark,
   fixedOf,
   alwaysWhenOn,
+  unavailableOf,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /*
@@ -558,6 +575,8 @@ function GrantList<Item>({
       matches: needle === '' || name.toLowerCase().includes(needle),
       /** Why the row is read-only, or null where its control works. Issue #444. */
       fixed: fixedOf?.(item) ?? null,
+      /** Why no agent is offered it at the moment, whatever is granted. Issue #602. */
+      unavailable: unavailableOf?.(item) ?? null,
     };
   });
 
@@ -607,8 +626,8 @@ function GrantList<Item>({
     if (row.fixed !== null) return 'always';
     return (marked?.includes(row.value) ?? false) ? 'always' : 'offer';
   };
-  const cycleTool = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }) => {
-    if (row.fixed !== null) return;
+  const cycleTool = (row: { item: Item; value: string; ticked: boolean; fixed: string | null; unavailable: string | null }) => {
+    if (row.fixed !== null || row.unavailable !== null) return;
     const state = toolState(row);
     if (alwaysWhenOn?.(row.item) ?? false) {
       // Hide <-> Always, the whole of it for these rows.
@@ -654,7 +673,7 @@ function GrantList<Item>({
    */
   // A fixed row is not the press's to grant or clear: it is switched with the
   // grant it comes with, and a press that reached it would do nothing. #444.
-  const picked = rows.filter((row) => row.inGroup && row.matches && row.fixed === null);
+  const picked = rows.filter((row) => row.inGroup && row.matches && row.fixed === null && row.unavailable === null);
   const matching = picked.length;
   /*
    * Ticked rows that the search does not name, and which are on screen anyway.
@@ -839,14 +858,17 @@ function GrantList<Item>({
                   // Out of reach: fixed and not held, so pressing it could never
                   // do anything. Drawn as disabled, with the reason on hover.
                   row.fixed !== null && !row.ticked ? own.checkRowOut : '',
+                  // Withheld by the installation: drawn out of reach whatever it holds. #602.
+                  row.unavailable !== null ? own.checkRowOut : '',
                 ].filter(Boolean).join(' ')}
                 data-grant-name={row.name}
                 data-grant-out={row.fixed !== null && !row.ticked ? '' : undefined}
+                data-grant-unavailable={row.unavailable !== null ? '' : undefined}
                 /* A tool's summary, a skill's description: what the row has no
                    room for and a person reading it wants. #480, #481. Out of
                    reach, the reason instead - that is what somebody hovering
                    a control that does nothing is asking. */
-                title={titleOf === undefined ? ((row.fixed !== null && !row.ticked ? row.fixed : null) ?? undefined) : undefined}
+                title={titleOf === undefined ? ((row.unavailable ?? (row.fixed !== null && !row.ticked ? row.fixed : null)) ?? undefined) : undefined}
                 onMouseEnter={titleOf === undefined ? undefined : (event) => {
                   const box = event.currentTarget.getBoundingClientRect();
                   setPeek({ key: keyOf(row.item), top: box.bottom + 4, left: box.left + 24 });
@@ -881,10 +903,10 @@ function GrantList<Item>({
                       className={`${own.stateToggle} ${STATE_CLASS[toolState(row)]}${row.fixed === null ? '' : ` ${own.stateFixed}`}`}
                       data-tool-state={toolState(row)}
                       data-tool-fixed={row.fixed === null ? undefined : ''}
-                      disabled={row.fixed !== null}
+                      disabled={row.fixed !== null || row.unavailable !== null}
                       onClick={() => cycleTool(row)}
-                      title={row.fixed ?? STATE_TITLE[toolState(row)]}
-                      aria-label={`${row.name}: ${STATE_LABEL[toolState(row)]}${row.fixed === null ? '' : `. ${row.fixed}`}`}
+                      title={row.unavailable ?? row.fixed ?? STATE_TITLE[toolState(row)]}
+                      aria-label={`${row.name}: ${STATE_LABEL[toolState(row)]}${row.unavailable !== null ? `. ${row.unavailable}` : row.fixed === null ? '' : `. ${row.fixed}`}`}
                     >
                       {STATE_LABEL[toolState(row)]}
                     </button>
@@ -894,7 +916,7 @@ function GrantList<Item>({
                       row, so it cycles the state as the button beside it does.
                     */}
                     <span
-                      className={row.fixed === null ? `${own.grantName} ${own.grantNamePress}` : own.grantName}
+                      className={row.fixed === null && row.unavailable === null ? `${own.grantName} ${own.grantNamePress}` : own.grantName}
                       onClick={() => cycleTool(row)}
                       data-grant-press=""
                     >
@@ -906,6 +928,12 @@ function GrantList<Item>({
                         ) : (
                           <span key={index}>{part.text}</span>
                         ),
+                      )}
+                      {row.unavailable !== null && (
+                        <span className={own.grantUnavailable} data-grant-unavailable-label="">
+                          {' '}
+                          {t('unavailable')}
+                        </span>
                       )}
                     </span>
                   </div>
@@ -958,8 +986,8 @@ function GrantList<Item>({
                       {titleOf?.(row.item) ?? t('No description.')}
                     </span>
                     {/* On or off, a locked row says why and where it is switched: the question somebody hovering one is asking. */}
-                    {row.fixed !== null && (
-                      <span className={own.grantCardReason} data-grant-card-reason="">{row.fixed}</span>
+                    {(row.unavailable ?? row.fixed) !== null && (
+                      <span className={own.grantCardReason} data-grant-card-reason="">{row.unavailable ?? row.fixed}</span>
                     )}
                   </div>,
                   document.body,
@@ -1270,6 +1298,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         governance: tool.governance,
         // A built-in's own line is the first sentence of what the model is told, which the server writes.
         summary: tool.summary,
+        unavailable: tool.unavailable,
       }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -1279,6 +1308,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         link: `/workspace/${workspaceId}/tools/${tool.id}`,
         governance: null,
         summary: tool.summary,
+        unavailable: null,
       })));
       const taken = new Set(rows.map((row) => row.name));
       for (const offer of offered) {
@@ -1299,6 +1329,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               : `/workspace/${workspaceId}/functions/${offer.functionId}`,
           governance: null,
           summary: offer.description,
+          unavailable: null,
         });
       }
       return rows;
@@ -1327,6 +1358,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return orknuxAccess;
       case 'SHELL_ACCESS':
         return shellAccess;
+      case 'HTTP_TOOLS':
+        return tools.some((name) => HTTP_TOOLS.includes(name));
       default:
         return false;
     }
@@ -1986,6 +2019,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                 (tool.governance === 'GRANT' && !unsafeBuiltIns ? fixedAsBuiltIn() : null)
           }
           alwaysWhenOn={(tool) => tool.governance === 'ORKNUX_ACCESS'}
+          unavailableOf={(tool) => tool.unavailable}
           titleOf={(tool) => tool.summary}
         />
 

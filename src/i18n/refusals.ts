@@ -248,6 +248,12 @@ const PL: Record<string, string> = {
   ReleaseMaxOutOfRange: '{mb} MB to nie jest rozmiar, do którego da się ograniczyć plik jar serwera.',
   ReleaseRestartDelayOutOfRange: '{seconds} to nie jest liczba sekund oczekiwania przed restartem.',
   // Log levels from Admin -> Settings, #591.
+  HttpToolRulePatternMissing:
+    'Reguła {position} nie ma wzorca URL. Wpisz wyrażenie regularne dla całego adresu albo usuń regułę.',
+  HttpToolRulePatternTooLong: 'Wzorzec URL reguły {position} jest dłuższy niż {max} znaków.',
+  HttpToolRulePatternInvalid: 'Wzorzec URL reguły {position} nie jest wyrażeniem regularnym: {reason}.',
+  HttpToolRuleMethodsMissing: 'Reguła {position} nie pozwala na żadną metodę. Wybierz co najmniej jedną.',
+  HttpToolRuleMethodUnknown: 'Reguła {position} wymienia {method}, a narzędzia HTTP tej metody nie wysyłają.',
   LogLevelUnknown: '„{level}” nie jest poziomem logowania. Wybierz TRACE, DEBUG, INFO, WARN, ERROR, OFF lub INHERIT.',
   LoggerNameInvalid:
     '„{name}” nie jest nazwą loggera. Użyj liter, cyfr, kropek, $ i _, najwyżej {max} znaków.',

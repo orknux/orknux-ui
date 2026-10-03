@@ -582,6 +582,7 @@ export const PAGES = [
       { label: t('Agents'), at: '#agents', also: 'sleep subagents asks at once' },
       { label: t('Tool calls'), at: '#tool-calls', also: 'per reply repeated loop warnings' },
       { label: t('Tool list'), at: '#tool-list', also: 'tool_find summaries named' },
+      { label: t('HTTP tools'), at: '#http-tools', also: 'http_get http_request allow list url regex' },
       { label: t('Sessions'), at: '#sessions', also: 'compaction summary transcript stored value' },
       { label: t('Scratchpads'), at: '#scratchpads', also: 'budget files keep days' },
       { label: t('Drawing'), at: '#drawing', also: 'diagram chart scale' },

@@ -519,6 +519,12 @@
   cursor: not-allowed;
 }
 
+/* Beside a tool the installation has switched off, whatever the agent holds. Issue #602. */
+.grantUnavailable {
+  font-size: var(--text-xs);
+  color: var(--color-amber);
+}
+
 
 /*
  * What a tool or skill is, on hover. Fixed, so the scrolling box the rows are

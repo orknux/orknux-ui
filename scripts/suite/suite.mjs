@@ -509,6 +509,16 @@ export const TESTS = [
     /* Installation-wide, on a logger of its own, and put back however the run ends. */
   },
   {
+    name: 'http-tools-check',
+    what: 'Admin -> Settings -> HTTP tools: two rules added, the tester answering allowed and refused on screen, an invalid pattern refused, the switch off and on',
+    needs: [],
+    /*
+     * `alone`: it switches the agents' HTTP tools off for the whole
+     * installation for a moment, and puts the policy back however it ends.
+     */
+    alone: true,
+  },
+  {
     name: 'hint-placement-check',
     what: 'the note lands under its own control on a page inside the shell',
     needs: ['workflow'],

@@ -152,7 +152,14 @@ const AGENT_FIELDS =
  * memory catalogs, orknux access, shell access - and are drawn as rows so the
  * list is complete, but switched where that grant is switched.
  */
-export type BuiltInToolGovernance = 'GRANT' | 'SKILL_CATALOGS' | 'MEMORY_CATALOGS' | 'ORKNUX_ACCESS' | 'SHELL_ACCESS';
+export type BuiltInToolGovernance =
+  | 'GRANT'
+  | 'GRANT_REACHING'
+  | 'SKILL_CATALOGS'
+  | 'MEMORY_CATALOGS'
+  | 'ORKNUX_ACCESS'
+  | 'SHELL_ACCESS'
+  | 'HTTP_TOOLS';
 
 /** One of the tools the server brings itself, and what switches it. */
 export interface BuiltInTool {
@@ -161,6 +168,11 @@ export interface BuiltInTool {
   governance: BuiltInToolGovernance;
   /** The first sentence of what the model is told about it, for the hover card; null where none was found. */
   summary: string | null;
+  /**
+   * Why no agent is offered it now, whatever it was granted - the HTTP tools
+   * switched off in Admin Settings. Null where nothing withholds it. Issue #602.
+   */
+  unavailable: string | null;
 }
 
 /**
@@ -170,7 +182,7 @@ export interface BuiltInTool {
  * row, is the fault #444 was filed about.
  */
 export async function fetchBuiltInTools(): Promise<BuiltInTool[]> {
-  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary } }`);
+  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary unavailable } }`);
   return data.builtInTools;
 }
 
