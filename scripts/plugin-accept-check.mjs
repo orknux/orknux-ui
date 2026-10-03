@@ -58,6 +58,8 @@ await page.goto(`${BASE}/admin/plugins`, { waitUntil: 'domcontentloaded' });
  * somebody sends a colleague a link to the shelf.
  */
 await page.getByRole('tab', { name: 'Catalog' }).click();
+// The catalog opens on the marketplace; a file of your own is the Local shelf.
+await page.getByRole('button', { name: 'Local', exact: true }).click();
 await page.waitForSelector('input[type="file"]', { state: 'attached', timeout: 20_000 });
 
 /*
