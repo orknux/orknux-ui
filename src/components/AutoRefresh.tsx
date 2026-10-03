@@ -14,6 +14,11 @@ export interface AutoRefreshProps {
    * session being followed wants every second; a list is left at Off.
    */
   defaultSeconds?: number;
+  /**
+   * Nothing more will change - a run that has ended. The timer stops, and the
+   * interval is left as chosen for the next screen that has something to follow.
+   */
+  settled?: boolean;
 }
 
 /** Off, and the intervals worth offering. Seconds. */
@@ -48,18 +53,28 @@ const CHOICES: { value: number; label: string }[] = [
  * who has decided how often they want to be interrupted has decided it for all
  * of them.
  */
-export function AutoRefresh({ onRefresh, busy = false, defaultSeconds = 0 }: AutoRefreshProps) {
+export function AutoRefresh({ onRefresh, busy = false, defaultSeconds = 0, settled = false }: AutoRefreshProps) {
   const seconds = useRefreshSeconds(defaultSeconds);
 
   useEffect(() => {
-    if (seconds === 0) return;
+    if (seconds === 0 || settled) return;
     const timer = window.setInterval(() => {
       // Skipped rather than queued: a slow load should not stack up ticks
-      // behind it and then fire them all at once.
-      if (!busy) onRefresh();
+      // behind it and then fire them all at once. And skipped in a tab nobody
+      // is looking at: tabs are left open, and a server on one core was
+      // answering a second's refresh for every one of them (#587).
+      if (!busy && !document.hidden) onRefresh();
     }, seconds * 1000);
-    return () => window.clearInterval(timer);
-  }, [seconds, busy, onRefresh]);
+    // Caught up at once on coming back, rather than up to an interval later.
+    const shown = () => {
+      if (!document.hidden && !busy) onRefresh();
+    };
+    document.addEventListener('visibilitychange', shown);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', shown);
+    };
+  }, [seconds, busy, onRefresh, settled]);
 
   return (
     <SelectField

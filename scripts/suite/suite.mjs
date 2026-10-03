@@ -541,6 +541,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'refresh-settled-check',
+    what: "a run's page stops refreshing once the run has ended, and no page refreshes in a hidden tab",
+    needs: ['workspace'],
+    /*
+     * Makes one workflow per workspace, once, and finds it again after; each
+     * run of the check leaves one finished run of it behind, a few seconds long.
+     */
+  },
+  {
     name: 'hint-settings-check',
     what: 'the workspace settings pages moved their prose, and kept what should stay printed',
     needs: ['workspace'],

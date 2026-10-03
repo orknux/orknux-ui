@@ -897,7 +897,14 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                 <img src={refreshIcon} alt="" width={14} height={14} />
                 {refreshing ? t('Refreshing…') : 'Refresh'}
               </button>
-              <AutoRefresh onRefresh={load} busy={refreshing} defaultSeconds={1} />
+              {/* A run that has ended changes no more, so it is not asked
+                  again every second for as long as its tab stays open. #587. */}
+              <AutoRefresh
+                onRefresh={load}
+                busy={refreshing}
+                defaultSeconds={1}
+                settled={run !== null && run.status !== 'RUNNING'}
+              />
               {/* Only while it is running: a stopped run is terminal, so once
                   it has ended there is nothing to stop. Issue #395. */}
               {run?.status === 'RUNNING' && (
