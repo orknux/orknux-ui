@@ -258,7 +258,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
    */
   const [addressed, setAddressed] = useSearchParams();
   const tab: Tab = addressed.get('tab') === 'catalog' ? 'catalog' : 'installed';
-  const source: Source = addressed.get('source') === 'marketplace' ? 'marketplace' : 'local';
+  const source: Source = addressed.get('source') === 'local' ? 'local' : 'marketplace';
 
   /** One of the two, written into the address without disturbing the other. */
   function show(what: { tab?: Tab; source?: Source }) {
@@ -1289,21 +1289,21 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
           */}
           <nav className={styles.rail} aria-label={t('Catalog')}>
             {/*
-              Local first, and it opens here: loading a file of your own is
-              the shelf that always works, and the one this installation owns.
-              The marketplace is somebody else's service and is asked for only
-              when somebody goes looking for it.
+              Marketplace first, and it opens here: it is where most plugins
+              come from, so it is what somebody opening the catalog is looking
+              for. Local is the file of your own, one click away, and still
+              works when the marketplace does not.
             */}
-            <button
-              type="button"
-              className={source === 'local' ? `${styles.railItem} ${styles.railItemOn}` : styles.railItem}
-              onClick={() => show({ source: 'local' })}
-            >{t('Local')}</button>
             <button
               type="button"
               className={source === 'marketplace' ? `${styles.railItem} ${styles.railItemOn}` : styles.railItem}
               onClick={() => show({ source: 'marketplace' })}
             >{t('Marketplace')}</button>
+            <button
+              type="button"
+              className={source === 'local' ? `${styles.railItem} ${styles.railItemOn}` : styles.railItem}
+              onClick={() => show({ source: 'local' })}
+            >{t('Local')}</button>
           </nav>
 
           {/*

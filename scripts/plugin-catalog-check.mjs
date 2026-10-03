@@ -1,6 +1,6 @@
 /**
- * The plugins screen: two tabs, two shelves, and the one state an outage can
- * put it in.
+ * The plugins screen: two tabs, two shelves - Marketplace first, and opened
+ * on - and the one state an outage can put it in.
  *
  * The outage half is the interesting half and the reason this exists. A
  * marketplace that cannot be reached used to leave an empty box beside a pane
@@ -92,7 +92,6 @@ record(new URL(page.url()).search === '', 'the address is bare until something i
 
 await page.getByRole('tab', { name: 'Catalog' }).click();
 await page.waitForSelector('text=Marketplace', { timeout: 10_000 });
-await page.waitForTimeout(600);
 
 /*
  * Where somebody is, kept in the address: a link lands where it was sent
@@ -102,18 +101,16 @@ await page.waitForTimeout(600);
 record(new URL(page.url()).search === '?tab=catalog', `the tab is in the address (${new URL(page.url()).search})`);
 
 /*
- * Catalog opens on Local - the shelf that always works - so the marketplace
- * is still unasked at this point, which is the point.
+ * Marketplace first, Local second - read off where they are drawn, not off
+ * the order of the markup - and the catalog opens on the marketplace.
  */
-const opened = await page.locator('main, body').first().innerText();
-record(opened.includes('Load Plugin'), 'Catalog opens on Local, which always works');
-record(asks.length === 0, `and the marketplace is still unasked (${asks.length} calls)`);
-
-await page.getByRole('button', { name: 'Marketplace', exact: true }).click();
-record(
-  new URL(page.url()).search === '?tab=catalog&source=marketplace',
-  `and so is the shelf (${new URL(page.url()).search})`,
+const shelves = await page.evaluate(() =>
+  [...document.querySelectorAll('nav[aria-label="Catalog"] button')]
+    .map((one) => ({ name: one.textContent.trim(), top: one.getBoundingClientRect().top, left: one.getBoundingClientRect().left }))
+    .sort((x, y) => x.top - y.top || x.left - y.left)
+    .map((one) => one.name),
 );
+record(shelves.join('|') === 'Marketplace|Local', `Marketplace is the first shelf, then Local (${shelves.join(', ')})`);
 
 /*
  * Mid-flight: nothing is laid out yet. Drawing the list and the details pane
@@ -122,6 +119,7 @@ record(
  */
 await page.waitForTimeout(300);
 const waiting = await page.locator('main, body').first().innerText();
+record(!waiting.includes('Load Plugin'), 'the catalog opens on the marketplace, not on Local');
 record(!waiting.includes('From the marketplace'), 'nothing is drawn before the answer arrives');
 record(
   !waiting.includes('Choose a plugin to read what it does'),
@@ -190,6 +188,7 @@ record(asks.length === 2, `Try again asks once more (${asks.length} calls)`);
  * it, so there is nothing beside it to drift out of step.
  */
 await page.goto(`${BASE}/admin/plugins?tab=catalog&source=local`, { waitUntil: 'domcontentloaded' });
+// The default is the marketplace, so naming Local is what this proves.
 await page.waitForTimeout(1200);
 const linked = await page.locator('main, body').first().innerText();
 record(linked.includes('Load Plugin'), 'a link opens on the shelf it names');
