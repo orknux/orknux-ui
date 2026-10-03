@@ -62,6 +62,10 @@ export interface ServerUpdates {
   urlEnabled: boolean;
   /** The largest jar taken, in MB, so a bigger one is refused before it is sent. */
   maxMb: number;
+  /** ORKNUX_RELEASE_PIN (#593): the version every start runs, whatever is chosen here. */
+  pin: string | null;
+  /** Why the pin could not be honoured, so the image's own jar runs instead. */
+  pinRefusal: string | null;
 }
 
 /** A release a repository's releases.json lists, its jarUrl already absolute. */
@@ -80,7 +84,7 @@ export async function fetchServerUpdates(): Promise<ServerUpdates> {
       serverUpdates {
         enabled runningVersion restartable offered offeredError kept
         imageVersion imageActivatable imageRefusal
-        sourceUrl officialEnabled uploadEnabled urlEnabled maxMb
+        sourceUrl officialEnabled uploadEnabled urlEnabled maxMb pin pinRefusal
         runningRelease { ${STORED_FIELDS} }
         available { version publishedAt changelog size stored }
         stored { ${STORED_FIELDS} }

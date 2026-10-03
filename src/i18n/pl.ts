@@ -2091,6 +2091,8 @@ export const PL: Record<string, string> = {
   "Chosen. This server was not started by the image, so restart it to run the release.": "Wybrano. Ten serwer nie został uruchomiony przez obraz, więc uruchom go ponownie, by działało to wydanie.",
   "Updates are turned off on this installation (ORKNUX_SELF_UPDATE).": "Aktualizacje są wyłączone w tej instalacji (ORKNUX_SELF_UPDATE).",
   "This server was not started by the image; after an update, restart it yourself.": "Ten serwer nie został uruchomiony przez obraz; po aktualizacji uruchom go ponownie samodzielnie.",
+  "Pinned to {version} by ORKNUX_RELEASE_PIN; unset it to choose a release here.": "Przypięto {version} przez ORKNUX_RELEASE_PIN; usuń tę zmienną, by wybierać wydanie tutaj.",
+  "Pinned to {version} by ORKNUX_RELEASE_PIN, which cannot run: {why}. The image's own jar runs.": "Przypięto {version} przez ORKNUX_RELEASE_PIN, ale nie może działać: {why}. Działa jar z obrazu.",
   "From official server": "Z oficjalnego serwera",
   "The official server offers no releases yet.": "Oficjalny serwer nie oferuje jeszcze wydań.",
   "Turned off for this installation.": "Wyłączone w tej instalacji.",

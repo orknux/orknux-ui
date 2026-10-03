@@ -19,6 +19,10 @@
  * Each source can be switched off by the installation (#589); a source that is
  * off is asserted to say so in one line instead of drawing its controls.
  *
+ * ORKNUX_RELEASE_PIN (#593) decides what runs over anything chosen here, so a
+ * pinned server says so in one line, with the reason where the pin could not
+ * be honoured; an unpinned one draws no such line.
+ *
  * The restart itself is not here - it needs a container the server can leave
  * and come back to, which is what scripts/self-update/lib.sh in the server
  * repository drives.
@@ -28,7 +32,7 @@ import { BASE, open, record, drawn, shot, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open();
 
 const answer = await graphql(
-  'query { serverUpdates { enabled runningVersion officialEnabled uploadEnabled urlEnabled sourceUrl stored { id version state running } } }',
+  'query { serverUpdates { enabled runningVersion officialEnabled uploadEnabled urlEnabled sourceUrl pin pinRefusal stored { id version state running } } }',
 );
 const updates = answer.serverUpdates;
 record(typeof updates.runningVersion === 'string' && updates.runningVersion !== '', `the server runs ${updates.runningVersion}`);
@@ -64,6 +68,19 @@ if (await drawn(page, 'the updates page')) {
         (await remove.count()) === (inUse ? 0 : 1),
         `kept release ${release.version} ${inUse ? 'offers no Remove, being in use' : 'offers Remove'}`,
       );
+    }
+
+    // ORKNUX_RELEASE_PIN (#593): one line saying what the environment chose, and why it could not run where it could not.
+    const pin = page.getByTestId('release-pin');
+    if (updates.pin === null) {
+      record((await pin.count()) === 0, 'nothing is pinned, and the page draws no pin line');
+    } else if (record((await pin.count()) === 1 && (await seen(pin)), `pinned to ${updates.pin}, and the page says so`)) {
+      const text = (await pin.textContent()) ?? '';
+      record(text.includes(updates.pin), `the pin line names the version: "${text}"`);
+      if (updates.pinRefusal !== null) record(text.includes(updates.pinRefusal), 'and says why it cannot run');
+      const box = await pin.boundingBox();
+      const lineHeight = await pin.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight) || 20);
+      record(box !== null && box.height < lineHeight * 2.5, `and it is a line or so (${box?.height}px)`);
     }
 
     record(

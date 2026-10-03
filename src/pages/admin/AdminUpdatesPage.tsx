@@ -251,6 +251,21 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                 {t('This server was not started by the image; after an update, restart it yourself.')}
               </p>
             )}
+            {updates.pin !== null && (
+              <p
+                className={updates.pinRefusal === null ? styles.notice : styles.error}
+                data-testid="release-pin"
+              >
+                {updates.pinRefusal === null
+                  ? tf('Pinned to {version} by ORKNUX_RELEASE_PIN; unset it to choose a release here.', {
+                      version: updates.pin,
+                    })
+                  : tf("Pinned to {version} by ORKNUX_RELEASE_PIN, which cannot run: {why}. The image's own jar runs.", {
+                      version: updates.pin,
+                      why: updates.pinRefusal,
+                    })}
+              </p>
+            )}
 
             <h2 className={styles.sectionHeading}>{t('From official server')}</h2>
             {!updates.officialEnabled ? (
