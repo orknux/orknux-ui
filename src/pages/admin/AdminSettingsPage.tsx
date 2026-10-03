@@ -7,6 +7,8 @@ import {
   setAgentMaxSubagents,
   setAgentMaxSubagentsAtOnce,
   setWorkflowStepsAtOnce,
+  setWorkflowStepHeartbeatSeconds,
+  setWorkflowRestartAttempts,
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
@@ -103,6 +105,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [atOnce, setAtOnce] = useState('');
   /** How many steps of one workflow run may be running at once. Issue #285. */
   const [stepsAtOnce, setStepsAtOnce] = useState('');
+  /** How a step a dead server was in the middle of is recovered. Issue #601. */
+  const [stepHeartbeat, setStepHeartbeat] = useState('');
+  const [restartAttempts, setRestartAttempts] = useState('');
   /* The loop guard, three numbers. Issue #516. */
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
@@ -169,6 +174,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setAsks(String(held.agentMaxSubagents));
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
         setStepsAtOnce(String(held.workflowStepsAtOnce));
+        setStepHeartbeat(String(held.workflowStepHeartbeatSeconds));
+        setRestartAttempts(String(held.workflowRestartAttempts));
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
@@ -224,6 +231,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
         { typed: atOnce, held: settings.agentMaxSubagentsAtOnce, write: setAgentMaxSubagentsAtOnce },
         { typed: stepsAtOnce, held: settings.workflowStepsAtOnce, write: setWorkflowStepsAtOnce },
+        { typed: stepHeartbeat, held: settings.workflowStepHeartbeatSeconds, write: setWorkflowStepHeartbeatSeconds },
+        { typed: restartAttempts, held: settings.workflowRestartAttempts, write: setWorkflowRestartAttempts },
         { typed: repeats, held: settings.maxRepeatedToolCalls, write: setMaxRepeatedToolCalls },
         {
           typed: repeatWindow,
@@ -1310,6 +1319,63 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Steps running at once')}
                 />
                 <span className={styles.retentionUnit}>{t('at once')}</span>
+              </div>
+            </div>
+
+            {/*
+              How a step a dead server was in the middle of is recovered.
+              Issue #601: a killed server says nothing, so on Temporal a step
+              heartbeats, and on the inline engine an agent step is asked again.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Step heartbeat')}</p>
+                  <FieldHint label={t('Step heartbeat')}>
+                    {t('Temporal only. A step says it is still being worked on while it works, and one that falls silent for this long is handed to a server that is alive - which is how a step whose server was killed carries on. A run already going takes a change up from its next step. 0 turns the heartbeat off, and a dead server is then noticed only when the whole step timeout runs out. Between 0 and 600 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workflow-step-heartbeat-seconds"
+                  name="workflowStepHeartbeatSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={600}
+                  value={stepHeartbeat}
+                  onChange={(event) => setStepHeartbeat(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Step heartbeat')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Agent step goes after a restart')}</p>
+                  <FieldHint label={t('Agent step goes after a restart')}>
+                    {t('Inline engine only. A step a restart cut short is failed, because nothing can say how far it got - except an agent answering a message, which is asked again so the message is answered. This is how many goes it gets in all, the ones that died included, since the step itself may be what kills the server. Between 1 and 10.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workflow-restart-attempts"
+                  name="workflowRestartAttempts"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={restartAttempts}
+                  onChange={(event) => setRestartAttempts(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Agent step goes after a restart')}
+                />
+                <span className={styles.retentionUnit}>{t('goes')}</span>
               </div>
             </div>
 

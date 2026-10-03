@@ -479,6 +479,17 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'step-recovery-settings-check',
+    what: "the step heartbeat and an agent step's goes after a restart are on the Admin page under Workflow runs, and a save is kept",
+    needs: [],
+    /*
+     * Issue #601. Installation-wide: it sets both numbers and puts them back,
+     * so `alone`, for the reason workflow-parallel-check is - a run started
+     * beside it would read whichever number it caught.
+     */
+    alone: true,
+  },
+  {
     name: 'node-disable-check',
     what: 'a node switched off: drawn at half, kept by a save, skipped by a run, and shown skipped on the run page',
     needs: ['workspace'],
