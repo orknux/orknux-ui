@@ -553,6 +553,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'model-provider-link-check',
+    what: "a model's page links to its provider, on the Provider label's line",
+    needs: ['workspace'],
+    // Read-only: it opens a model and follows the link.
+  },
+  {
     name: 'server-updates-check',
     what: 'Admin -> Updates draws what runs and what is kept, and a jar that is not one is refused on screen',
     needs: [],

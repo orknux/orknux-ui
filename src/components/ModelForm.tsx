@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 import {
@@ -342,6 +343,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   }
 
   return {
+    workspaceId,
     model,
     loadError,
     saveError,
@@ -393,12 +395,28 @@ interface SectionProps {
 
 /** The provider, the name, the type, the model ID and the switch. */
 export function ModelDetailsFields({ form }: SectionProps) {
-  const { model, providers, editableKinds, fields } = form;
+  const { workspaceId, model, providers, editableKinds, fields } = form;
   if (model === null) return null;
   return (
     <div className={styles.detailGrid}>
       <div className={styles.detail}>
-        <label className={styles.detailLabel} htmlFor="model-provider">{t('Provider')}</label>
+        {/*
+          The provider is where its endpoint, key and limits live, and a model
+          page that named it with no way there left somebody chasing a rate
+          limit to go back to the list and find it.
+        */}
+        <div className={styles.labelRow}>
+          <label className={styles.detailLabel} htmlFor="model-provider">{t('Provider')}</label>
+          {fields.providerId !== '' && (
+            <Link
+              className={styles.labelLink}
+              to={`/workspace/${workspaceId}/models/providers/${fields.providerId}`}
+              data-testid="model-provider-link"
+            >
+              {t('Open provider')}
+            </Link>
+          )}
+        </div>
         {/*
           A select rather than the name: a model can move to another of the
           workspace's providers, saved with the rest. Until the list arrives the

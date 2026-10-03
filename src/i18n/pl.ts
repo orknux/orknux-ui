@@ -723,6 +723,7 @@ export const PL: Record<string, string> = {
   "Width of the settings drawer": "Szerokość panelu ustawień",
   "Show the node properties": "Pokaż właściwości węzła",
   "Show the changes": "Pokaż zmiany",
+  "Open provider": "Otwórz dostawcę",
   "Hide the changes": "Ukryj zmiany",
   "Describe this workflow...": "Opisz ten przepływ pracy...",
   "Type a message...": "Napisz wiadomość...",
