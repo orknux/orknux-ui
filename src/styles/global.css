@@ -30,6 +30,17 @@ input {
 }
 
 /*
+ * What somebody types is drawn character for character. JetBrains Mono, the
+ * monospace face, joins `://` and `//` into ligatures, so a URL typed into a
+ * field read "http: /google.pl" - the value was right and looked wrong, which is
+ * worse than either.
+ */
+input,
+textarea {
+  font-variant-ligatures: none;
+}
+
+/*
  * The clear button on a search field, in all eight places the app has one.
  *
  * It is the browser's own control, and it inherits the text cursor from the

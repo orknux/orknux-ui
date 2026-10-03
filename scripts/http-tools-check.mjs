@@ -87,6 +87,12 @@ try {
         'the first rule reads GET and POST, and nothing else',
       );
 
+      // A typed URL is drawn as typed: the monospace face would join "://" into one glyph.
+      const ligatures = await page
+        .locator('#http-tools-test-url')
+        .evaluate((element) => getComputedStyle(element).fontVariantLigatures);
+      record(ligatures === 'none', `the address field draws "://" as three characters (ligatures: ${ligatures})`);
+
       // The tester, on the rules as they are on screen - not saved yet.
       const allowed = await ask('POST', 'https://api.example.com/v1/tickets');
       record(allowed.outcome === 'ALLOWED' && allowed.drawn, `an address rule 1 allows is drawn as allowed: ${allowed.text}`);
