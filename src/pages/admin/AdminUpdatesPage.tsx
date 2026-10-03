@@ -62,6 +62,8 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
   const [urlError, setUrlError] = useState<string | null>(null);
   const [fetched, setFetched] = useState<string | null>(null);
   const [listed, setListed] = useState<ListedServerRelease[] | null>(null);
+  // Which offered releases have their changes open, by version; the newest is open until somebody says otherwise.
+  const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>(readNotesOpen);
 
   const load = useCallback(() => {
     setError(null);
@@ -280,10 +282,33 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
               <p className={styles.notice}>{t('This is the newest release.')}</p>
             ) : (
               <ul className={styles.list}>
-                {updates.available.map((offered) => (
+                {updates.available.map((offered, index) => {
+                  const hasNotes = offered.changelog.trim() !== '';
+                  const open = hasNotes && (notesOpen[offered.version] ?? index === 0);
+                  const notesId = `release-notes-${offered.version}`;
+                  return (
                   <li key={offered.version} className={styles.offered} data-testid="offered-release">
                     <div className={styles.row}>
-                      <span className={styles.version}>{offered.version}</span>
+                      {hasNotes ? (
+                        <button
+                          type="button"
+                          className={styles.toggle}
+                          aria-expanded={open}
+                          aria-controls={notesId}
+                          title={open ? t('Hide the changes') : t('Show the changes')}
+                          data-testid="offered-release-toggle"
+                          onClick={() => {
+                            const next = { ...notesOpen, [offered.version]: !open };
+                            setNotesOpen(next);
+                            writeNotesOpen(next);
+                          }}
+                        >
+                          <span className={styles.chevron} aria-hidden="true">{open ? '▾' : '▸'}</span>
+                          <span className={styles.version}>{offered.version}</span>
+                        </button>
+                      ) : (
+                        <span className={styles.version}>{offered.version}</span>
+                      )}
                       <span className={styles.meta}>{offered.publishedAt.slice(0, 10)}</span>
                       <button
                         type="button"
@@ -293,13 +318,14 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                         {t('Update')}
                       </button>
                     </div>
-                    {offered.changelog.trim() !== '' && (
-                      <div className={styles.changelog}>
+                    {open && (
+                      <div className={styles.changelog} id={notesId} data-testid="offered-release-notes">
                         <Markdown>{offered.changelog}</Markdown>
                       </div>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
 
@@ -579,4 +605,28 @@ function olderThan(version: string, than: string): boolean {
     if (difference !== 0) return difference < 0;
   }
   return false;
+}
+
+/*
+ * Which releases somebody opened or closed, kept in this browser only: it is a
+ * way of reading the page, not a setting, and losing it costs one click.
+ */
+const NOTES_KEY = 'orknux.updates.notesOpen';
+
+function readNotesOpen(): Record<string, boolean> {
+  try {
+    const kept = window.localStorage.getItem(NOTES_KEY);
+    const parsed: unknown = kept === null ? null : JSON.parse(kept);
+    return parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeNotesOpen(open: Record<string, boolean>) {
+  try {
+    window.localStorage.setItem(NOTES_KEY, JSON.stringify(open));
+  } catch {
+    // Storage refused (a private window): the choice lasts until the page is left.
+  }
 }

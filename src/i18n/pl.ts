@@ -722,6 +722,8 @@ export const PL: Record<string, string> = {
   "Width of the node properties": "Szerokość właściwości węzła",
   "Width of the settings drawer": "Szerokość panelu ustawień",
   "Show the node properties": "Pokaż właściwości węzła",
+  "Show the changes": "Pokaż zmiany",
+  "Hide the changes": "Ukryj zmiany",
   "Describe this workflow...": "Opisz ten przepływ pracy...",
   "Type a message...": "Napisz wiadomość...",
   "Say something… paste a screenshot to attach it.": "Powiedz coś… wklej zrzut ekranu, aby go załączyć.",
