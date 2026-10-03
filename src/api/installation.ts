@@ -125,6 +125,15 @@ export interface InstallationSettings {
   workflowStepsAtOnce: number;
   workflowStepsAtOnceConfigured: number;
   /**
+   * Temporal: how long a step may go without its worker saying it is alive
+   * before it is handed to another, in seconds; 0 is no heartbeat. Issue #601.
+   */
+  workflowStepHeartbeatSeconds: number;
+  workflowStepHeartbeatSecondsConfigured: number;
+  /** Inline engine: how many goes an agent step cut short by restarts gets. Issue #601. */
+  workflowRestartAttempts: number;
+  workflowRestartAttemptsConfigured: number;
+  /**
    * The loop guard. Issue #516.
    *
    * Repetition on its own is not the fault - an agent watching something calls
@@ -229,7 +238,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
@@ -436,6 +445,28 @@ export async function setWorkflowStepsAtOnce(count: number): Promise<Installatio
     { count },
   );
   return data.setWorkflowStepsAtOnce;
+}
+
+/** How long a step may go without a heartbeat before Temporal hands it on. Issue #601. */
+export async function setWorkflowStepHeartbeatSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkflowStepHeartbeatSeconds: InstallationSettings }>(
+    `mutation SetWorkflowStepHeartbeatSeconds($seconds: Int!) {
+       setWorkflowStepHeartbeatSeconds(seconds: $seconds) { ${FIELDS} }
+     }`,
+    { seconds },
+  );
+  return data.setWorkflowStepHeartbeatSeconds;
+}
+
+/** How many goes an agent step cut short by restarts gets. Issue #601. */
+export async function setWorkflowRestartAttempts(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkflowRestartAttempts: InstallationSettings }>(
+    `mutation SetWorkflowRestartAttempts($count: Int!) {
+       setWorkflowRestartAttempts(count: $count) { ${FIELDS} }
+     }`,
+    { count },
+  );
+  return data.setWorkflowRestartAttempts;
 }
 
 /**
