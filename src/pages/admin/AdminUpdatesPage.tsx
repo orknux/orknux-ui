@@ -260,7 +260,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                   ? tf('Pinned to {version} by ORKNUX_RELEASE_PIN; unset it to choose a release here.', {
                       version: updates.pin,
                     })
-                  : tf("Pinned to {version} by ORKNUX_RELEASE_PIN, which cannot run: {why}. The image's own jar runs.", {
+                  : tf('Pinned to {version} by ORKNUX_RELEASE_PIN, which cannot run: {why}. The jar in the image runs instead.', {
                       version: updates.pin,
                       why: updates.pinRefusal,
                     })}
