@@ -480,6 +480,13 @@ export async function fetchIssues(
      */
     typeId?: IssueTypeFilter;
     search?: string;
+    /**
+     * Labels every issue must carry, matched exactly and in any case. Kept
+     * apart from the search, which also reads the title and the description:
+     * a label clicked used to be searched for, and an issue that only
+     * mentioned it came back under it. Issue #610.
+     */
+    labels?: string[];
     page?: number;
     size?: number;
     order?: IssueOrder;
@@ -487,10 +494,10 @@ export async function fetchIssues(
   } = {},
 ): Promise<IssuePage> {
   const data = await graphql<{ workspaceIssues: IssuePage }>(
-    `query ($workspaceId: ID!, $status: String, $typeId: ID, $search: String, $page: Int, $size: Int,
-            $order: IssueOrder, $ascending: Boolean) {
+    `query ($workspaceId: ID!, $status: String, $typeId: ID, $search: String, $labels: [String!], $page: Int,
+            $size: Int, $order: IssueOrder, $ascending: Boolean) {
        workspaceIssues(workspaceId: $workspaceId, status: $status, typeId: $typeId, search: $search,
-                       page: $page, size: $size, order: $order, ascending: $ascending) {
+                       labels: $labels, page: $page, size: $size, order: $order, ascending: $ascending) {
          totalElements
          content { ${ROW_FIELDS} }
        }
@@ -502,6 +509,7 @@ export async function fetchIssues(
       order: options.order ?? null,
       ascending: options.ascending ?? null,
       search: options.search || null,
+      labels: options.labels && options.labels.length > 0 ? options.labels : null,
       page: options.page ?? 0,
       size: options.size ?? 20,
     },
