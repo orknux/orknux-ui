@@ -490,6 +490,16 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'cluster-lease-setting-check',
+    what: 'the cluster lease is on the Admin page under Workflow runs, and a save is kept',
+    needs: [],
+    /*
+     * Issue #597. Installation-wide: it sets the lease and puts it back, so
+     * `alone`, for the reason step-recovery-settings-check is.
+     */
+    alone: true,
+  },
+  {
     name: 'node-disable-check',
     what: 'a node switched off: drawn at half, kept by a save, skipped by a run, and shown skipped on the run page',
     needs: ['workspace'],

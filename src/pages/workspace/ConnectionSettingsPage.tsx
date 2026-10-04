@@ -1063,6 +1063,10 @@ function socketLine(socket: SlackSocketState): string {
       return t('Not listening: there is no app-level token');
     case 'DISABLED':
       return t('This server does not listen to Slack');
+    case 'ELSEWHERE':
+      // Several servers on one database: only the one holding the cluster
+      // lease opens sockets, and its socket is not this server's to describe.
+      return t('Listened to by another server of this installation');
   }
 }
 
