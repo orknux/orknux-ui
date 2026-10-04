@@ -3142,6 +3142,17 @@ export const TESTS = [
      */
   },
   {
+    name: 'own-tokens-check',
+    what: 'access tokens made, copied and revoked on Preferences and on the admin user page',
+    needs: [],
+    /*
+     * Issue #2. Every token it makes it revokes. Where the account it signs in
+     * as is a directory one, which may hold no tokens, Preferences is asserted
+     * to draw no section, and the admin page half uses an internal user named
+     * own-tokens-check, made the first time and found after.
+     */
+  },
+  {
     name: 'chat-copy-check',
     what: "the copy control under the message it copies, on the bubble's edge and not the column's",
     needs: ['workspace'],

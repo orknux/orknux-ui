@@ -1,0 +1,106 @@
+.tokens {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* The issued tokens, grouped so the list reads apart from the create row below. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.token {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+.name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.when {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.textButton {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--color-accent-brand);
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.row > input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+/*
+ * The one time the secret is on screen.
+ *
+ * Loud on purpose: what is in this box cannot be recovered, and a quiet
+ * treatment would let somebody close the page still meaning to copy it.
+ */
+.secret {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-12);
+  background: var(--color-accent-brand-soft);
+  border: 1px solid var(--color-accent-brand);
+  border-radius: var(--radius-6);
+}
+
+.secretHead {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+/* The secret and its copy button on one line, the button at the end where the eye finishes reading. */
+.secretRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.secretValue {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}

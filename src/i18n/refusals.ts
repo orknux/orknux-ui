@@ -93,6 +93,8 @@ const PL: Record<string, string> = {
   SkillCatalogNotFound: 'Nie ma katalogu umiejętności o identyfikatorze {id}',
   SkillNotFound: 'Nie ma umiejętności o identyfikatorze {id}',
   TokenNotFound: 'Nie ma tokena o identyfikatorze {id}',
+  TokenNotIssuable:
+    '„{username}” loguje się przez dostawcę tożsamości, więc nie można tu utworzyć dla niego tokena dostępu',
   ToolNotFound: 'Nie ma narzędzia o identyfikatorze {id}',
   TriggerNotFound: 'Nie ma wyzwalacza o identyfikatorze {id}',
   UserNotFound: 'Nie ma użytkownika o identyfikatorze {id}',

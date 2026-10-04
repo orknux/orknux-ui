@@ -4,6 +4,7 @@ import type { SessionUser } from '../../api/session';
 import { setChatCostShown, setMyLanguage, setUserEmail, setUserEmailNotifications } from '../../api/users';
 import moonIcon from '../../assets/moon.svg';
 import sunIcon from '../../assets/sun.svg';
+import { AccessTokens } from '../../components/AccessTokens';
 import { AppShell } from '../../components/AppShell';
 import { FieldHint } from '../../components/FieldHint';
 import { currentLanguage, LANGUAGE_NAMES, LANGUAGES, setLanguage } from '../../session/language';
@@ -342,6 +343,27 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
               )}
             </div>
           </section>
+
+          {/*
+            Their own access tokens, made here rather than by asking an
+            administrator. Only an internal user may hold one - a directory
+            user's would outlive whatever the directory decides about them - so
+            for anybody else the section is not drawn at all. Issue #2.
+          */}
+          {session.tokensAllowed === true && (
+            <section className={styles.card} data-testid="preferences-tokens">
+              <h2 className={styles.sectionTitle}>{t('Access Tokens')}</h2>
+              <div className={styles.setting}>
+                <span className={styles.labelWithHint}>
+                  <span className={styles.settingLabel}>{t('Your tokens')}</span>
+                  <FieldHint label={t('Access Tokens')}>
+                    {t('A token is you by another door: it carries your roles and nothing more. Sent as an Authorization: Bearer header.')}
+                  </FieldHint>
+                </span>
+                <AccessTokens inputClassName={styles.input} buttonClassName={styles.save} />
+              </div>
+            </section>
+          )}
 
           <section className={styles.card}>
             <h2 className={styles.sectionTitle}>{t('Notifications')}</h2>

@@ -6,18 +6,14 @@ import type { Role } from '../../api/roles';
 import type { SessionUser } from '../../api/session';
 import {
   createUser,
-  createUserToken,
-  deleteUserToken,
   fetchUser,
-  fetchUserTokens,
   initialsOf,
   setUserEmail,
   setUserPassword,
   updateUser,
 } from '../../api/users';
-import type { UserToken } from '../../api/users';
-import { timeAgo } from '../../api/tools';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { AccessTokens } from '../../components/AccessTokens';
 import { AppShell } from '../../components/AppShell';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
@@ -81,10 +77,6 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
   const [hasPassword, setHasPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordSaid, setPasswordSaid] = useState<string | null>(null);
-  const [tokens, setTokens] = useState<UserToken[]>([]);
-  const [tokenName, setTokenName] = useState('');
-  /** Shown once, and then never again by anybody. */
-  const [minted, setMinted] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRoles()
@@ -108,12 +100,6 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
           setExternal(!found.editable);
           setHasPassword(found.hasPassword);
           setChosen(new Set(found.roles.map((role) => role.id)));
-          // An external user has none, and asking would only be a refused call.
-          if (found.editable) {
-            fetchUserTokens(userId)
-              .then(setTokens)
-              .catch(() => setTokens([]));
-          }
         }
       })
       .catch((cause: unknown) => {
@@ -187,22 +173,6 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the address.'));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function mintToken() {
-    if (saving || tokenName.trim() === '') return;
-    setSaving(true);
-    setError(null);
-    try {
-      const made = await createUserToken(tokenName.trim(), userId);
-      setTokens([...tokens, made.token]);
-      setMinted(made.secret);
-      setTokenName('');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('Could not make the token.'));
     } finally {
       setSaving(false);
     }
@@ -440,57 +410,8 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
                     </FieldHint>
                   </span>
 
-                  {tokens.length === 0 ? (
-                    <p className={styles.fieldNote}>{t('No tokens yet.')}</p>
-                  ) : (
-                    <div className={styles.tokenList}>
-                      {tokens.map((token) => (
-                        <div key={token.id} className={styles.token}>
-                          <span className={styles.tokenName}>{token.name}</span>
-                          <span className={styles.tokenWhen}>
-                            {token.lastUsedAt === null ? 'never used' : 'used ' + timeAgo(token.lastUsedAt)}
-                          </span>
-                          <button
-                            type="button"
-                            className={styles.textButton}
-                            onClick={() => {
-                              void deleteUserToken(token.id).then(() =>
-                                setTokens(tokens.filter((held) => held.id !== token.id)),
-                              );
-                            }}
-                          >{t('Revoke')}</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className={styles.row}>
-                    <input
-                      className={styles.input}
-                      type="text"
-                      value={tokenName}
-                      placeholder={t('What is it for?')}
-                      aria-label={t('Token name')}
-                      onChange={(event) => setTokenName(event.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className={styles.save}
-                      onClick={() => void mintToken()}
-                      disabled={saving || tokenName.trim() === ''}
-                    >{t('Generate Token')}</button>
-                  </div>
-
-                  {/* The one time it is ever on screen. */}
-                  {minted !== null && (
-                    <div className={styles.secret}>
-                      <p className={styles.secretHead}>
-                        {t('Copy it now - it is not shown again.')}
-                      </p>
-                      <code className={styles.secretValue}>{minted}</code>
-                      <button type="button" className={styles.textButton} onClick={() => setMinted(null)}>{t('Done')}</button>
-                    </div>
-                  )}
+                  {/* An external user has none: the section is not drawn for one. */}
+                  <AccessTokens userId={userId} inputClassName={styles.input} buttonClassName={styles.save} />
                 </div>
               </>
             )}

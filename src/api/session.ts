@@ -25,6 +25,8 @@ export interface SessionUser {
    * until somebody turns it on, on the Preferences page.
    */
   chatCostShown?: boolean;
+  /** Whether Preferences offers them access tokens of their own - internal users only. Issue #2. */
+  tokensAllowed?: boolean;
 }
 
 export interface Credentials {
