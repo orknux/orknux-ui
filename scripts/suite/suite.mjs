@@ -530,6 +530,17 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'watchers-check',
+    what: 'AI -> Watchers opens on the running ones with Active / Finished at the top left, Stop removes one, Finished draws the ended; Admin Settings draws the three limits',
+    needs: ['workspace'],
+    /*
+     * Issue #606. The rows are stubbed - a watcher exists because a model
+     * called watcher_set, and no mutation makes one - and the contract is
+     * asked of the running server, as session-notes-check does. Makes
+     * nothing and removes nothing.
+     */
+  },
+  {
     name: 'hint-placement-check',
     what: 'the note lands under its own control on a page inside the shell',
     needs: ['workflow'],
