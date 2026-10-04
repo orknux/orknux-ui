@@ -176,6 +176,7 @@ export function catalogueFailure(what: string, cause: unknown): string {
 /** Whether nothing answered at all: `fetch` rejects rather than resolving. */
 function unreachable(cause: unknown): boolean {
   if (cause instanceof TypeError) return true;
+  if (cause instanceof ApiError && cause.status === 0) return true;
   return cause instanceof Error && /failed to fetch|network ?error|load failed/i.test(cause.message);
 }
 

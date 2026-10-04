@@ -233,7 +233,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
      */
     updateServer: {
       title: t('Update the server'),
-      message: <>{t('Every server restarts on this release, and the page reloads once it answers:')} {name}</>,
+      message: (
+        <>
+          {t('The server downloads this release in the background, checks it and restarts on it, and this page shows how far it has got:')}{' '}
+          {name}
+        </>
+      ),
       button: submitting ? t('Updating…') : t('Update'),
     },
     switchServerRelease: {

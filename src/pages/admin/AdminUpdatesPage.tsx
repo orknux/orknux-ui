@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   activateImageRelease,
   activateServerRelease,
+  dismissServerReleaseDownload,
   removeServerRelease,
+  fetchServerReleaseDownload,
   fetchServerUpdates,
   installServerRelease,
   installServerReleaseFromUrl,
@@ -11,7 +13,13 @@ import {
   serverReleasesAtUrl,
   uploadServerRelease,
 } from '../../api/serverUpdates';
-import type { ListedServerRelease, ServerUpdates, StoredServerRelease } from '../../api/serverUpdates';
+import type {
+  ListedServerRelease,
+  ServerReleaseDownload,
+  ServerReleaseDownloadState,
+  ServerUpdates,
+  StoredServerRelease,
+} from '../../api/serverUpdates';
 import type { SessionUser } from '../../api/session';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
@@ -43,6 +51,11 @@ type Pending =
  * key the image carries, and every server restarts on it - so after pressing,
  * this page waits for the server to go and come back, and reloads. Each source
  * can be switched off by the installation, and then says so in one line.
+ *
+ * Update and Fetch download in the background (#602): the server answers at
+ * once and writes where the download stands, and this page polls that - a bar
+ * while bytes arrive, then the steps after it, then the reason if one failed.
+ * Leaving the page and coming back finds the same download where it got to.
  */
 export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) {
   const [updates, setUpdates] = useState<ServerUpdates | null>(null);
@@ -60,8 +73,9 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
   const [credential, setCredential] = useState('');
   const [fetching, setFetching] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
-  const [fetched, setFetched] = useState<string | null>(null);
   const [listed, setListed] = useState<ListedServerRelease[] | null>(null);
+  /** The newest download nobody put away: under way, or how it ended. #602. */
+  const [download, setDownload] = useState<ServerReleaseDownload | null>(null);
   // Which offered releases have their changes open, by version; the newest is open until somebody says otherwise.
   const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>(readNotesOpen);
 
@@ -70,9 +84,43 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
     fetchServerUpdates()
       .then(setUpdates)
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not read the updates.')));
+    fetchServerReleaseDownload()
+      .then(setDownload)
+      .catch(() => undefined);
   }, []);
 
   useEffect(load, [load]);
+
+  const downloading = download !== null && WORKING.includes(download.state);
+
+  /*
+   * While a download is under way, where it stands is asked for every second;
+   * once it has ended the page is read again, so a release just stored appears
+   * in the list below. A poll that fails - the server restarting, a proxy
+   * hiccup - is simply asked again next time.
+   */
+  useEffect(() => {
+    if (!downloading) return;
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      void fetchServerReleaseDownload()
+        .then((next) => {
+          if (cancelled) return;
+          setDownload(next);
+          if (next === null || !WORKING.includes(next.state)) load();
+        })
+        .catch(() => undefined);
+    }, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [downloading, load]);
+
+  // An update that stored its release restarts the server, and the page waits that out as for any other.
+  useEffect(() => {
+    if (download?.state === 'RESTARTING') setRestarting(true);
+  }, [download?.state]);
 
   // The configured source fills the field once, and whatever is typed after that stays.
   useEffect(() => {
@@ -119,12 +167,13 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
       }
       return;
     }
+    if (pending.kind === 'install') {
+      setDownload(await installServerRelease(pending.version));
+      setPending(null);
+      return;
+    }
     const restarts =
-      pending.kind === 'install'
-        ? await installServerRelease(pending.version)
-        : pending.kind === 'stored'
-          ? await activateServerRelease(pending.release.id)
-          : await activateImageRelease();
+      pending.kind === 'stored' ? await activateServerRelease(pending.release.id) : await activateImageRelease();
     setPending(null);
     if (restarts) {
       setRestarting(true);
@@ -161,12 +210,10 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
     if (fetching || from.trim() === '') return;
     setFetching(true);
     setUrlError(null);
-    setFetched(null);
     try {
-      setFetched(await installServerReleaseFromUrl(from.trim(), credential));
+      setDownload(await installServerReleaseFromUrl(from.trim(), credential));
       setCredential('');
       setListed(null);
-      load();
     } catch (cause: unknown) {
       setUrlError(cause instanceof Error ? cause.message : t('Nothing could be fetched from that URL.'));
     } finally {
@@ -178,7 +225,6 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
     if (fetching || url === null || url.trim() === '') return;
     setFetching(true);
     setUrlError(null);
-    setFetched(null);
     try {
       setListed(await serverReleasesAtUrl(url.trim(), credential));
     } catch (cause: unknown) {
@@ -227,6 +273,18 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
           <p className={styles.notice}>
             <Loader />
           </p>
+        )}
+
+        {download !== null && updates !== null && (
+          <DownloadPanel
+            download={download}
+            runningVersion={updates.runningVersion}
+            onDismiss={() => {
+              void dismissServerReleaseDownload(download.id)
+                .then(() => setDownload(null))
+                .catch(() => undefined);
+            }}
+          />
         )}
 
         {restarting && (
@@ -313,6 +371,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                       <button
                         type="button"
                         className={styles.primary}
+                        disabled={downloading}
                         onClick={() => setPending({ kind: 'install', version: offered.version })}
                       >
                         {t('Update')}
@@ -432,7 +491,11 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                     {fetching ? t('Checking…') : t('Check')}
                   </button>
                 ) : (
-                  <button type="submit" className={styles.primary} disabled={fetching || (url ?? '').trim() === ''}>
+                  <button
+                    type="submit"
+                    className={styles.primary}
+                    disabled={fetching || downloading || (url ?? '').trim() === ''}
+                  >
                     {fetching ? t('Fetching…') : t('Fetch')}
                   </button>
                 )}
@@ -441,11 +504,6 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
             {urlError !== null && (
               <p className={styles.error} role="alert" data-testid="url-error">
                 {urlError}
-              </p>
-            )}
-            {fetched !== null && (
-              <p className={styles.notice} role="status" data-testid="url-fetched">
-                {tf('Stored {version}; press Update beside it below to run it.', { version: fetched })}
               </p>
             )}
             {listed !== null &&
@@ -463,7 +521,7 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                         <button
                           type="button"
                           className={styles.secondary}
-                          disabled={fetching || one.stored}
+                          disabled={fetching || downloading || one.stored}
                           onClick={() => void fetchFromUrl(one.jarUrl)}
                         >
                           {t('Fetch')}
@@ -563,6 +621,172 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
       />
     </AppShell>
   );
+}
+
+/** The states a download is still being worked on in, which the page polls through. */
+const WORKING: ServerReleaseDownloadState[] = ['DOWNLOADING', 'WAITING', 'VERIFYING', 'STORING'];
+
+/** The steps of an update, or of a fetch, in the order they happen. */
+type Step = 'download' | 'verify' | 'store' | 'restart' | 'end';
+
+function stepOf(state: ServerReleaseDownloadState): Step {
+  switch (state) {
+    case 'DOWNLOADING':
+    case 'WAITING':
+      return 'download';
+    case 'VERIFYING':
+      return 'verify';
+    case 'STORING':
+      return 'store';
+    case 'RESTARTING':
+      return 'restart';
+    default:
+      return 'end';
+  }
+}
+
+/**
+ * A release on its way in, #602: the steps it goes through, a bar of bytes of
+ * total and the speed while it downloads, and how it ended - back on the
+ * version it went for, stored, or the reason it was given up on.
+ */
+function DownloadPanel({
+  download,
+  runningVersion,
+  onDismiss,
+}: {
+  download: ServerReleaseDownload;
+  runningVersion: string;
+  onDismiss: () => void;
+}) {
+  const version = download.version ?? t('a jar');
+  const failed = download.state === 'FAILED';
+  const ended = download.state === 'DONE' || failed;
+  const back = download.activate && download.state === 'DONE' && download.version === runningVersion;
+
+  /*
+   * Where it failed is the step it had reached; the row does not say, so it is
+   * read off what was done: nothing stored and bytes short of the total is the
+   * download, a whole jar is a check or the store.
+   */
+  const reached: Step = failed
+    ? download.releaseId !== null
+      ? 'restart'
+      : download.total !== null && download.received >= download.total
+        ? 'verify'
+        : 'download'
+    : stepOf(download.state);
+
+  const order: Step[] = download.activate
+    ? ['download', 'verify', 'store', 'restart', 'end']
+    : ['download', 'verify', 'store', 'end'];
+  const labels: Record<Step, string> = {
+    download: t('Downloading'),
+    verify: t('Verifying'),
+    store: t('Storing'),
+    restart: t('Restarting'),
+    end: download.activate
+      ? tf('Back on {version}', { version })
+      : t('Stored'),
+  };
+  const at = order.indexOf(reached);
+
+  const fraction =
+    download.total !== null && download.total > 0 ? Math.min(1, download.received / download.total) : null;
+
+  return (
+    <div className={styles.download} data-testid="release-download" data-state={download.state}>
+      <p className={styles.downloadTitle}>
+        {download.activate
+          ? tf('Updating to {version} from {host}', { version, host: download.host })
+          : tf('Fetching {version} from {host}', { version, host: download.host })}
+      </p>
+      <ol className={styles.steps} data-testid="download-steps">
+        {order.map((step, index) => {
+          const state =
+            failed && index === at
+              ? 'failed'
+              : index < at || (step === 'end' && download.state === 'DONE' && (back || !download.activate))
+                ? 'done'
+                : index === at && !ended
+                  ? 'current'
+                  : 'pending';
+          return (
+            <li key={step} className={styles.step} data-step={step} data-state={state}>
+              {labels[step]}
+            </li>
+          );
+        })}
+      </ol>
+
+      {(download.state === 'DOWNLOADING' || download.state === 'WAITING') && (
+        <>
+          <div
+            className={styles.bar}
+            data-testid="download-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={download.total ?? undefined}
+            aria-valuenow={download.received}
+          >
+            <div
+              className={styles.fill}
+              data-testid="download-fill"
+              style={{ width: `${((fraction ?? 0) * 100).toFixed(2)}%` }}
+            />
+          </div>
+          <p className={styles.progress} data-testid="download-progress">
+            {download.total !== null
+              ? tf('{received} of {total}', { received: bytes(download.received), total: bytes(download.total) })
+              : tf('{received} so far', { received: bytes(download.received) })}
+            {download.state === 'DOWNLOADING' && ` · ${bytes(download.bytesPerSecond)}/s`}
+          </p>
+          {download.state === 'WAITING' && (
+            <p className={styles.reason} data-testid="download-waiting">
+              {tf('The connection broke ({why}); it goes on from {received} shortly.', {
+                why: download.lastError ?? t('no reason given'),
+                received: bytes(download.received),
+              })}
+            </p>
+          )}
+        </>
+      )}
+
+      {failed && (
+        <p className={styles.error} role="alert" data-testid="download-failure">
+          {download.failure ?? t('It was given up on, and no reason was recorded.')}
+        </p>
+      )}
+      {download.state === 'DONE' && (
+        <p className={styles.notice} role="status" data-testid="download-done">
+          {back
+            ? tf('Back on {version}.', { version })
+            : download.activate
+              ? t('Chosen. This server was not started by the image, so restart it to run the release.')
+              : tf('Stored {version}; press Update beside it below to run it.', { version })}
+        </p>
+      )}
+      {ended && (
+        <div className={styles.row}>
+          <button type="button" className={styles.secondary} onClick={onDismiss} data-testid="download-dismiss">
+            {t('Dismiss')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Bytes as a person reads them: 348.2 MB, not 365112832. */
+function bytes(count: number): string {
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = count;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${unit === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
 }
 
 /** Where a kept release came from, in a word or a host. */
