@@ -364,6 +364,11 @@ export interface ChatStreamHandlers {
   onCompacted?: (held: { replaced: number; kept: number; tokens: number; summary: string }) => void;
   onDone: (spend: ChatSpend) => void;
   onError: (reason: string) => void;
+  /**
+   * Following a chat found an answer being written, and what follows is it,
+   * from its first frame. Only `followChat` hears this.
+   */
+  onFollowing?: () => void;
 }
 
 /**
@@ -431,6 +436,34 @@ export async function interruptChat(id: string): Promise<void> {
 }
 
 /**
+ * Picks up the answer being written on a chat, for a page that has come back
+ * to it.
+ *
+ * Issue #201. A text turn goes on being answered when its page is left (#335),
+ * but a page opened while the answer was still being written read the history
+ * once, found only the question, and never heard of the answer at all. This
+ * asks the server for the answer in flight: where there is one it says
+ * `following` and then sends every frame from the first, in the vocabulary a
+ * send uses, so the same handlers draw it; where there is none it says `idle`
+ * and ends. Resolves to whether there was one.
+ *
+ * Aborting it only stops reading. Leaving a followed answer never stops it -
+ * that is Stop, through `interruptChat`.
+ */
+export async function followChat(id: string, handlers: ChatStreamHandlers, signal?: AbortSignal): Promise<boolean> {
+  const response = await fetch(`/api/chats/${id}/follow`, { credentials: 'same-origin', signal });
+  let following = false;
+  await read(response, {
+    ...handlers,
+    onFollowing: () => {
+      following = true;
+      handlers.onFollowing?.();
+    },
+  });
+  return following;
+}
+
+/**
  * Asks for the last answer again, and reads the new one as it is written.
  *
  * No body: nothing is being said. The server takes the answer off the thread,
@@ -493,7 +526,8 @@ async function read(response: Response, handlers: ChatStreamHandlers): Promise<v
     }>(frame);
     if (payload === null) return;
 
-    if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
+    if (frame.event === 'following') handlers.onFollowing?.();
+    else if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
     else if (frame.event === 'thinking' && payload.text !== undefined) handlers.onThinking(payload.text);
     else if (frame.event === 'drew' && payload.markdown !== undefined) handlers.onDrew(payload.markdown);
     else if (frame.event === 'compacting') handlers.onCompacting?.();
