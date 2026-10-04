@@ -462,7 +462,7 @@ export async function revealWorkspaceConnectionUserToken(id: string): Promise<st
 }
 
 /** Where a Slack connection's Socket Mode socket stands, on the server that answered. #592. */
-export type SlackSocketStatus = 'CONNECTED' | 'CONNECTING' | 'FAILED' | 'NOT_LISTENING' | 'DISABLED';
+export type SlackSocketStatus = 'CONNECTED' | 'CONNECTING' | 'FAILED' | 'NOT_LISTENING' | 'DISABLED' | 'ELSEWHERE';
 
 /**
  * A Slack connection's socket, as one server holds it.

@@ -1453,6 +1453,9 @@ export const PL: Record<string, string> = {
   "no reason given": "bez podanej przyczyny",
   "Not listening: there is no app-level token": "Nie nasłuchuje: brak tokena poziomu aplikacji",
   "This server does not listen to Slack": "Ten serwer nie nasłuchuje Slacka",
+  "Listened to by another server of this installation": "Nasłuchuje go inny serwer tej instalacji",
+  "Cluster lease": "Dzierżawa klastra",
+  "Where several servers share this database, one of them holds a lease and runs the sweeps, the checks and the Slack sockets. When it dies another takes over within this long. Keep it well above the longest pause a server takes. Between 5 and 600 seconds.": "Gdy kilka serwerów korzysta z tej bazy, jeden z nich trzyma dzierżawę i wykonuje porządki, sprawdzenia i gniazda Slacka. Gdy przestanie działać, w tym czasie przejmuje je inny. Ustaw wyraźnie więcej niż najdłuższa przerwa, jaką może zrobić serwer. Od 5 do 600 sekund.",
   "Slack splits this app’s events between {count} connections; another server is listening with this app":
     "Slack dzieli zdarzenia tej aplikacji między {count} połączenia; inny serwer nasłuchuje z tą aplikacją",
   "just now": "przed chwilą",

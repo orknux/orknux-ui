@@ -10,6 +10,7 @@ import {
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
+  setClusterLeaseSeconds,
   setMaxRepeatedToolCalls,
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
@@ -115,6 +116,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   /** How a step a dead server was in the middle of is recovered. Issue #601. */
   const [stepHeartbeat, setStepHeartbeat] = useState('');
   const [restartAttempts, setRestartAttempts] = useState('');
+  /** How long the lease lasts that decides which server runs the timers. Issue #597. */
+  const [clusterLease, setClusterLease] = useState('');
   /* The loop guard, three numbers. Issue #516. */
   const [repeats, setRepeats] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
@@ -191,6 +194,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setStepsAtOnce(String(held.workflowStepsAtOnce));
         setStepHeartbeat(String(held.workflowStepHeartbeatSeconds));
         setRestartAttempts(String(held.workflowRestartAttempts));
+        setClusterLease(String(held.clusterLeaseSeconds));
         setRepeats(String(held.maxRepeatedToolCalls));
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
@@ -252,6 +256,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: stepsAtOnce, held: settings.workflowStepsAtOnce, write: setWorkflowStepsAtOnce },
         { typed: stepHeartbeat, held: settings.workflowStepHeartbeatSeconds, write: setWorkflowStepHeartbeatSeconds },
         { typed: restartAttempts, held: settings.workflowRestartAttempts, write: setWorkflowRestartAttempts },
+        { typed: clusterLease, held: settings.clusterLeaseSeconds, write: setClusterLeaseSeconds },
         { typed: repeats, held: settings.maxRepeatedToolCalls, write: setMaxRepeatedToolCalls },
         {
           typed: repeatWindow,
@@ -1437,6 +1442,36 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Agent step goes after a restart')}
                 />
                 <span className={styles.retentionUnit}>{t('goes')}</span>
+              </div>
+            </div>
+
+            {/*
+              Several servers on one database: one holds a lease and runs the
+              sweeps, the checks and the Slack sockets. Issue #597.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Cluster lease')}</p>
+                  <FieldHint label={t('Cluster lease')}>
+                    {t('Where several servers share this database, one of them holds a lease and runs the sweeps, the checks and the Slack sockets. When it dies another takes over within this long. Keep it well above the longest pause a server takes. Between 5 and 600 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="cluster-lease-seconds"
+                  name="clusterLeaseSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={5}
+                  max={600}
+                  value={clusterLease}
+                  onChange={(event) => setClusterLease(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Cluster lease')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
 
