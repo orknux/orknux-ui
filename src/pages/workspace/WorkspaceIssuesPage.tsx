@@ -100,8 +100,10 @@ const ORDERS: { label: string; order: IssueOrder }[] = [
  * fixing something.
  *
  * One search over the title, the description and the labels together: somebody
- * typing "slack" means any of the three. Clicking a label searches for it, so
- * the labels are a filter without being a second control.
+ * typing "slack" means any of the three. Clicking a label filters by it, and
+ * only by it - issue #610: it used to be typed into the search, so an issue
+ * whose description merely mentioned `0.9.9.12` came back under that label.
+ * The two combine, and several labels mean every one of them.
  */
 export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageProps) {
   const { workspaceId = '' } = useParams();
@@ -150,6 +152,9 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
   const typeParam = params.get('type');
   const typeFilter: IssueTypeFilter = typeParam === null ? null : typeParam === 'untyped' ? '' : typeParam;
   const search = params.get('q') ?? '';
+  /** The labels the list is narrowed to, each carried by every row shown. Issue #610. */
+  const labelsWanted = params.getAll('label');
+  const labelsKey = labelsWanted.length === 0 ? '' : JSON.stringify(labelsWanted);
   const page = Number(params.get('page') ?? '1') || 1;
   const order = (params.get('order') as IssueOrder | null) ?? 'NUMBER';
   const ascending = params.get('dir') === 'asc';
@@ -178,10 +183,15 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
      * succession - a state and then a sort - would otherwise each build on the
      * same stale copy, and the first change would vanish when the second
      * landed.
+     *
+     * Read off `window.location` rather than the updater's argument: React
+     * Router hands that the params of the render the function was created in,
+     * so the search box's timer - set up by a render that came before a label
+     * chip's change had been drawn - put the label straight back. Issue #610.
      */
     setParams(
-      (held) => {
-        const next = new URLSearchParams(held);
+      () => {
+        const next = new URLSearchParams(window.location.search);
         for (const [key, value] of Object.entries(changes)) {
           if (value === null) next.delete(key);
           else next.set(key, value);
@@ -192,6 +202,26 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
       { replace: true },
     );
   }
+  /**
+   * Puts a label on the filter or takes it off, leaving the others and the
+   * search as they are. Read from the address at the moment it is written,
+   * for the reason [filterBy] is.
+   */
+  function toggleLabel(label: string) {
+    setParams(
+      () => {
+        const next = new URLSearchParams(window.location.search);
+        const kept = next.getAll('label');
+        next.delete('label');
+        const after = kept.includes(label) ? kept.filter((one) => one !== label) : [...kept, label];
+        for (const one of after) next.append('label', one);
+        next.delete('page');
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
   /*
    * How many rows at a time, remembered for whoever is reading. Ten fits a
    * laptop without scrolling; a tracker being read rather than worked through
@@ -253,6 +283,7 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
         status: status ?? undefined,
         typeId: typeFilter,
         search: search.trim() || undefined,
+        labels: labelsKey === '' ? undefined : (JSON.parse(labelsKey) as string[]),
         page: page - 1,
         size: pageSize,
         order,
@@ -275,7 +306,7 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
       current = false;
       window.clearTimeout(timer);
     };
-  }, [workspaceId, status, typeFilter, search, page, pageSize, order, ascending, asked]);
+  }, [workspaceId, status, typeFilter, search, labelsKey, page, pageSize, order, ascending, asked]);
 
   /*
    * Coming back to the window catches the list up, quietly and not always.
@@ -439,16 +470,13 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
         {labels.length > 0 && (
           <div className={styles.labelRow}>
             {labels.map((label) => (
-              /* A label is a search somebody has already typed. */
+              /* A label is a filter on the labels, never a search of the text. Issue #610. */
               <button
                 key={label}
                 type="button"
-                className={search.trim() === label ? styles.labelChipActive : styles.labelChip}
-                onClick={() => {
-                  const wanted = search.trim() === label ? '' : label;
-                  setTyped(wanted);
-                  filterBy({ q: wanted === '' ? null : wanted });
-                }}
+                aria-pressed={labelsWanted.includes(label)}
+                className={labelsWanted.includes(label) ? styles.labelChipActive : styles.labelChip}
+                onClick={() => toggleLabel(label)}
               >
                 {label}
               </button>
@@ -470,7 +498,7 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
           )}
           {!loading && issues?.content.length === 0 && (
             <p className={styles.notice}>
-              {search.trim() === '' && status === opening
+              {search.trim() === '' && labelsKey === '' && status === opening
                 ? t('Nothing open. That is either good news or an empty tracker.')
                 : t('Nothing matches that.')}
             </p>

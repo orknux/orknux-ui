@@ -2714,6 +2714,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'issue-label-filter-check',
+    what: 'a label chip narrows the issues to the ones carrying it, not the ones mentioning it',
+    needs: ['workspace'],
+    /*
+     * Issue #610. The chip typed itself into the search, which reads the
+     * title and the description too, so an issue that only named the label in
+     * its text came back under it. Files its own two issues and deletes them.
+     */
+  },
+  {
     name: 'issue-filters-back-check',
     what: 'the way out of an issue returns to the list somebody was on, filters and all',
     needs: ['workspace'],

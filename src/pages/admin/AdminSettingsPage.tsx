@@ -6,6 +6,7 @@ import {
   setAgentSleepTimes,
   setAgentMaxSubagents,
   setAgentMaxSubagentsAtOnce,
+  setRateLimitBackoffSeconds,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -103,6 +104,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   /** How many other agents one agent may ask in one conversation. Issue #380. */
   const [asks, setAsks] = useState('');
   const [atOnce, setAtOnce] = useState('');
+  /** The first wait for a rate limit that named none. Issue #608. */
+  const [backoff, setBackoff] = useState('');
   /** How many steps of one workflow run may be running at once. Issue #285. */
   const [stepsAtOnce, setStepsAtOnce] = useState('');
   /** How a step a dead server was in the middle of is recovered. Issue #601. */
@@ -173,6 +176,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
+        setBackoff(String(held.rateLimitBackoffSeconds));
         setStepsAtOnce(String(held.workflowStepsAtOnce));
         setStepHeartbeat(String(held.workflowStepHeartbeatSeconds));
         setRestartAttempts(String(held.workflowRestartAttempts));
@@ -230,6 +234,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
         { typed: atOnce, held: settings.agentMaxSubagentsAtOnce, write: setAgentMaxSubagentsAtOnce },
+        { typed: backoff, held: settings.rateLimitBackoffSeconds, write: setRateLimitBackoffSeconds },
         { typed: stepsAtOnce, held: settings.workflowStepsAtOnce, write: setWorkflowStepsAtOnce },
         { typed: stepHeartbeat, held: settings.workflowStepHeartbeatSeconds, write: setWorkflowStepHeartbeatSeconds },
         { typed: restartAttempts, held: settings.workflowRestartAttempts, write: setWorkflowRestartAttempts },
@@ -595,6 +600,37 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
             </div>
 
+
+            {/*
+              Issue #608: a rate limit inside a streaming answer often names no
+              time, and the client waits this long before asking again - twice
+              as long the next time.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('How long to wait out a rate limit that names no time')}</p>
+                  <FieldHint label={t('How long to wait out a rate limit that names no time')}>
+                    {t('A provider can refuse a streaming answer for a rate limit part way through without saying when to come back. The call waits this long and asks again, twice as long the next time, before it hands the refusal to the step retry policy. 5 seconds unless somebody says otherwise; every call reads it fresh, so no restart is needed. Between 1 and 60 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="rate-limit-backoff-seconds"
+                  name="rateLimitBackoffSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={backoff}
+                  onChange={(event) => setBackoff(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('How many seconds to wait first on a rate limit that names no time')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
 
             <h2 id="tool-calls" className={styles.sectionHeading}>{t('Tool calls')}</h2>
 

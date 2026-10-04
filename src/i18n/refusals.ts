@@ -234,6 +234,8 @@ const PL: Record<string, string> = {
   StepsAtOnceOutOfRange: '{count} to nie jest liczba kroków przepływu, które mogą działać naraz. Wybierz od 1 do 32.',
   // How a step a dead server was in the middle of is recovered, #601.
   StepHeartbeatOutOfRange: '{seconds} to nie jest sygnał życia kroku. Wybierz od 0 do 600 sekund; 0 go wyłącza.',
+  // The first wait on a rate limit inside a stream that named none, #608.
+  RateLimitBackoffOutOfRange: '{seconds} to nie jest liczba sekund pierwszego oczekiwania po limicie zapytań bez podanego czasu. Wybierz od 1 do 60.',
   RestartAttemptsOutOfRange: '{count} to nie jest liczba podejść kroku agenta po restarcie. Wybierz od 1 do 10.',
   // Server updates, #584. ReleaseJarRefused carries a whole English reason, so it is left to `message`.
   ServerUpdatesDisabled: 'Aktualizacje serwera są wyłączone w tej instalacji (ORKNUX_SELF_UPDATE ma wartość false).',

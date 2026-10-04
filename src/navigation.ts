@@ -579,7 +579,7 @@ export const PAGES = [
     goTo: { label: t('Settings'), where: 'Admin', icon: settingsIcon, also: 'attachments chat installation' },
     sections: [
       { label: t('Chat'), at: '#chat', also: 'rounds' },
-      { label: t('Agents'), at: '#agents', also: 'sleep subagents asks at once' },
+      { label: t('Agents'), at: '#agents', also: 'sleep subagents asks at once rate limit backoff' },
       { label: t('Tool calls'), at: '#tool-calls', also: 'per reply repeated loop warnings' },
       { label: t('Tool list'), at: '#tool-list', also: 'tool_find summaries named' },
       { label: t('HTTP tools'), at: '#http-tools', also: 'http_get http_request allow list url regex' },

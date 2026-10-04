@@ -19,6 +19,8 @@ await page.waitForLoadState('networkidle');
 const SECTIONS = [
   ['chat', 'chat-max-rounds'],
   ['agents', 'agent-max-subagents'],
+  // The first wait on a rate limit that named none. Issue #608.
+  ['agents', 'rate-limit-backoff-seconds'],
   ['tool-calls', 'max-tool-calls-at-once'],
   ['tool-list', 'tools-named-in-search'],
   ['sessions', 'session-compact-after'],
