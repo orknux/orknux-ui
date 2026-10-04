@@ -2385,6 +2385,6 @@ export const PL: Record<string, string> = {
   "Allowed by rule {position}.": "Dozwolone przez regułę {position}.",
   "Refused: no rule matches this URL.": "Odmowa: żadna reguła nie pasuje do tego adresu URL.",
   "Refused: the URL matches rule {positions}, but not for {method}.": "Odmowa: adres URL pasuje do reguły {positions}, ale nie dla metody {method}.",
-  "Comes with the HTTP tools — offered while one of them is granted.": "Przychodzi z narzędziami HTTP — oferowane, gdy któreś z nich jest przyznane.",
+  "Granted by the HTTP tools — switch it there.": "Przyznane przez narzędzia HTTP — przełącz tam.",
   "unavailable": "niedostępne",
 };

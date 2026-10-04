@@ -275,7 +275,7 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
     case 'SHELL_ACCESS':
       return t('Granted by shell access — switch it there.');
     case 'HTTP_TOOLS':
-      return t('Comes with the HTTP tools — offered while one of them is granted.');
+      return t('Granted by the HTTP tools — switch it there.');
     default:
       return null;
   }
@@ -433,6 +433,13 @@ interface GrantListProps<Item> {
    * gets back different from how they left it. Issue #602.
    */
   unavailableOf?: (item: Item) => string | null;
+  /**
+   * Whether a row counts towards "n of m granted", on both sides. Every row
+   * does unless this says otherwise. Issue #609: `http_allowList` is a view of
+   * the HTTP tools on this same list, so counting it as well made one press
+   * move the count by two - one grant, said twice.
+   */
+  countedOf?: (item: Item) => boolean;
 }
 
 /**
@@ -486,6 +493,7 @@ function GrantList<Item>({
   fixedOf,
   alwaysWhenOn,
   unavailableOf,
+  countedOf,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /*
@@ -690,7 +698,9 @@ function GrantList<Item>({
 
   /** Grants the origin filter is holding back, which the list has to own up to. */
   const elsewhere = rows.filter((row) => row.ticked && !row.inGroup).length;
-  const here = rows.filter((row) => row.ticked).length + orphans.length;
+  const counted = (item: Item) => countedOf?.(item) ?? true;
+  const here = rows.filter((row) => row.ticked && counted(row.item)).length + orphans.length;
+  const countable = items.filter(counted).length;
 
   return (
     <div className={styles.field} data-grants={what}>
@@ -707,7 +717,7 @@ function GrantList<Item>({
         */}
         {items.length > 0 && (
           <span className={own.grantCount} data-grant-count="">
-            {here} of {items.length} granted
+            {here} of {countable} granted
             {needle !== '' && ` · ${matching} matching`}
             {needle !== '' && kept > 0 && ` · ${kept} kept: already granted`}
           </span>
@@ -1382,7 +1392,14 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * is on, not searched for, so it counts towards both. Issues #413, #444.
    */
   const alwaysCarried = requiredTools.length + fixedOn.length + orknuxOn.length;
-  const grantedTotal = tools.length + fixedOn.length;
+  /*
+   * Granted counts each grant once. `http_allowList` is carried with the HTTP
+   * tools, so it is in what always travels, but it is not a grant beside the
+   * one that brought it: that one is already a name in `tools`. Issue #609.
+   */
+  const grantedTotal = tools.length + fixedRows.filter(
+    (tool) => tool.governance !== 'HTTP_TOOLS' && comesWithGrant(tool.governance),
+  ).length;
   /*
    * The registered servers, which this form asks for only to know where each
    * chip's own page is - issue #251.
@@ -2020,6 +2037,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           }
           alwaysWhenOn={(tool) => tool.governance === 'ORKNUX_ACCESS'}
           unavailableOf={(tool) => tool.unavailable}
+          // A view of the HTTP tool rows above it, so not a grant of its own to count. Issue #609.
+          countedOf={(tool) => tool.governance !== 'HTTP_TOOLS'}
           titleOf={(tool) => tool.summary}
         />
 
