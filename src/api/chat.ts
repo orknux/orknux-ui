@@ -450,8 +450,17 @@ export async function interruptChat(id: string): Promise<void> {
  * Aborting it only stops reading. Leaving a followed answer never stops it -
  * that is Stop, through `interruptChat`.
  */
-export async function followChat(id: string, handlers: ChatStreamHandlers, signal?: AbortSignal): Promise<boolean> {
-  const response = await fetch(`/api/chats/${id}/follow`, { credentials: 'same-origin', signal });
+export async function followChat(
+  id: string,
+  handlers: ChatStreamHandlers,
+  signal?: AbortSignal,
+  /**
+   * Wait for the server to start a turn on this chat by itself - a watcher
+   * firing, a reminder coming due - rather than answering idle at once.
+   */
+  wait = false,
+): Promise<boolean> {
+  const response = await fetch(`/api/chats/${id}/follow${wait ? '?wait=true' : ''}`, { credentials: 'same-origin', signal });
   let following = false;
   await read(response, {
     ...handlers,

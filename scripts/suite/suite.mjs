@@ -1678,6 +1678,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-woken-live-check',
+    what: 'a turn the server starts on a chat by itself (a watcher firing) is drawn live on the page open on it',
+    needs: ['workspace'],
+    /*
+     * The answer of a woken turn reached the history and not the screen of the
+     * person watching the chat, until they reloaded. Fails without the fix:
+     * nothing on the page asked to wait, so the woken frames had no reader.
+     */
+  },
+  {
     name: 'chat-leave-return-check',
     what: 'a chat left while the agent is thinking: the answer arrives live on return, is kept, and Stop still stops it',
     needs: ['workspace'],

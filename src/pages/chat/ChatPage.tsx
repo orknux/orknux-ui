@@ -708,10 +708,27 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       })
       .catch(() => undefined);
     fetchChatMessages(currentId)
-      .then((held) => {
+      .then(async (held) => {
         if (!live) return;
         setMessages(held);
-        followAnswer(currentId, following, () => live);
+        await followAnswer(currentId, following, () => live);
+        /*
+         * Then wait for a turn nobody on this page asked for: a watcher firing
+         * or a reminder coming due wakes the agent on the server, and its answer
+         * used to reach the history and not the page until a reload. One
+         * controller per turn, so Stop on a woken answer ends that answer and
+         * not the waiting.
+         */
+        while (live) {
+          const one = new AbortController();
+          const leave = () => one.abort();
+          following.signal.addEventListener('abort', leave);
+          const began = Date.now();
+          const picked = await followAnswer(currentId, one, () => live, true);
+          following.signal.removeEventListener('abort', leave);
+          // A wait that ended at once is a server that is not there; do not ask it again in a loop.
+          if (!picked && Date.now() - began < 1_000) await new Promise((done) => setTimeout(done, 5_000));
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -1840,7 +1857,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
    * stopped or failed - because the server keeps nothing of an answer that did
    * not, and the half drawn here is not what the chat says.
    */
-  async function followAnswer(id: string, followed: AbortController, open: () => boolean) {
+  async function followAnswer(id: string, followed: AbortController, open: () => boolean, wait = false): Promise<boolean> {
     let picked = false;
     let finished = false;
     let failure: string | null = null;
@@ -1877,11 +1894,12 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
           },
         },
         followed.signal,
+        wait,
       );
     } catch (cause) {
       if (!givenUp(cause)) failure = cause instanceof Error ? cause.message : t('The model did not answer.');
     }
-    if (!picked || !open()) return;
+    if (!picked || !open()) return picked;
     if (asking.current === followed) {
       asking.current = null;
       setSending(false);
@@ -1889,6 +1907,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     if (failure !== null) setError(failure);
     if (!finished) fetchChatMessages(id).then((held) => open() && setMessages(held)).catch(() => undefined);
     else await loadSessions(id).catch(() => undefined);
+    return true;
   }
 
   function handleStop() {
