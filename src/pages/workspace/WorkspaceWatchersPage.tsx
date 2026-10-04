@@ -211,6 +211,7 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
             <span className={styles.colCondition}>
               <span className={styles.kind}>{one.conditionKind === 'JSONPATH' ? 'JSONPath' : 'regex'}</span>
               <span className={styles.code}>{one.condition}</span>
+              <span className={styles.muted} data-testid="watcher-result-path">{tf('at {path}', { path: one.toolResultPath })}</span>
             </span>
             <span className={`${styles.colNumber} ${styles.muted}`}>{duration(one.intervalSeconds)}</span>
             <span className={`${styles.colNumber} ${styles.muted}`}>{duration(one.timeoutSeconds)}</span>

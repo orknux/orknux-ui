@@ -29,7 +29,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 
 /* -------------------------------------------------- the server's contract - */
 
-const DRAWN = ['id', 'sessionId', 'sessionTitle', 'agentName', 'tool', 'arguments', 'conditionKind', 'condition',
+const DRAWN = ['id', 'sessionId', 'sessionTitle', 'agentName', 'tool', 'arguments', 'conditionKind', 'condition', 'toolResultPath',
   'intervalSeconds', 'timeoutSeconds', 'status', 'outcome', 'createdAt', 'finishedAt'];
 const served = await graphql(`query { __type(name: "Watcher") { fields { name } } }`).catch(() => null);
 const fields = (served?.__type?.fields ?? []).map((one) => one.name);
@@ -55,6 +55,7 @@ const row = (id, tool, extra = {}) => ({
   arguments: '{"id":"42"}',
   conditionKind: 'JSONPATH',
   condition: "$[?(@.status == 'done')]",
+  toolResultPath: '$',
   intervalSeconds: 60,
   timeoutSeconds: 3600,
   note: 'tell the team',
@@ -70,7 +71,7 @@ const row = (id, tool, extra = {}) => ({
   ...extra,
 });
 
-let active = [row('1', 'buildStatus'), row('2', 'deployStatus', { conditionKind: 'REGEX', condition: '(?i)deployed' })];
+let active = [row('1', 'buildStatus'), row('2', 'deployStatus', { conditionKind: 'REGEX', condition: '(?i)deployed', toolResultPath: '$.body' })];
 const ended = [
   row('3', 'ticketStatus', {
     status: 'FIRED',
@@ -136,6 +137,9 @@ console.log(`first row: ${text}`);
 record(text.includes('Release 1'), 'a row names its session');
 record((await first.locator(`a[href$="/sessions/91"]`).count()) === 1, 'and links to it');
 record(text.includes('buildStatus({"id":"42"})'), 'a row shows the tool call');
+// The part of the result its condition is held against, on every row, the whole result included.
+const paths = await rows.locator('[data-testid="watcher-result-path"]').allInnerTexts();
+record(paths.length === 2 && paths[0].includes('$') && paths[1].includes('$.body'), `each row says which part of the result it watches (${paths.join(' | ')})`);
 record(text.includes("$[?(@.status == 'done')]"), 'and the condition');
 record(text.includes('60 s') && text.includes('60 min'), 'and the interval and the timeout');
 record(/minutes? ago|just now/.test(text), 'and when it was set');

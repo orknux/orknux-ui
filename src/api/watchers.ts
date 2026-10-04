@@ -22,6 +22,8 @@ export interface Watcher {
   arguments: string;
   conditionKind: WatcherConditionKind;
   condition: string;
+  /** The part of the tool's result the condition is held against; `$` is all of it. */
+  toolResultPath: string;
   intervalSeconds: number;
   timeoutSeconds: number;
   note: string | null;
@@ -54,7 +56,7 @@ export interface WatcherSettings {
   maxPerAgentConfigured: number;
 }
 
-const FIELDS = `id sessionId sessionTitle agentName tool arguments conditionKind condition intervalSeconds
+const FIELDS = `id sessionId sessionTitle agentName tool arguments conditionKind condition toolResultPath intervalSeconds
   timeoutSeconds note status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt finishedAt`;
 
 const SETTINGS = `maxSeconds maxSecondsConfigured minIntervalSeconds minIntervalSecondsConfigured
