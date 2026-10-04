@@ -235,3 +235,74 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/*
+ * A release on its way in (#602): which step it is on, and while it downloads
+ * a bar of how much of how much has arrived.
+ */
+.download {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+}
+
+.downloadTitle {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6) var(--space-16);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.step {
+  color: var(--color-text-muted);
+}
+
+.step[data-state='done'] {
+  color: var(--color-success);
+}
+
+.step[data-state='current'] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.step[data-state='failed'] {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.bar {
+  position: relative;
+  height: var(--space-8);
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-brand);
+  transition: width 0.4s ease;
+}
+
+.progress {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

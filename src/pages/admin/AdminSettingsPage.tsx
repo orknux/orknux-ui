@@ -36,6 +36,9 @@ import {
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
   setReleaseBootAttempts,
+  setReleaseDownloadAttempts,
+  setReleaseDownloadBackoffMaxSeconds,
+  setReleaseDownloadBackoffSeconds,
   setReleaseDownloadSeconds,
   setReleaseFollowSeconds,
   setReleaseMaxMb,
@@ -153,6 +156,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [watcherPending, setWatcherPending] = useState<PendingWrite[]>([]);
   const takeWatcherPending = useCallback((writes: PendingWrite[]) => setWatcherPending(writes), []);
   const [downloadSeconds, setDownloadSeconds] = useState('');
+  /** How a broken server jar download is retried. Issue #602. */
+  const [downloadAttempts, setDownloadAttempts] = useState('');
+  const [backoffSeconds, setBackoffSeconds] = useState('');
+  const [backoffMaxSeconds, setBackoffMaxSeconds] = useState('');
 
   useEffect(() => {
     /*
@@ -208,6 +215,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setReleaseMb(String(held.releaseMaxMb));
         setRestartDelay(String(held.releaseRestartDelaySeconds));
         setDownloadSeconds(String(held.releaseDownloadSeconds));
+        setDownloadAttempts(String(held.releaseDownloadAttempts));
+        setBackoffSeconds(String(held.releaseDownloadBackoffSeconds));
+        setBackoffMaxSeconds(String(held.releaseDownloadBackoffMaxSeconds));
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -294,6 +304,13 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: releaseMb, held: settings.releaseMaxMb, write: setReleaseMaxMb },
         { typed: restartDelay, held: settings.releaseRestartDelaySeconds, write: setReleaseRestartDelaySeconds },
         { typed: downloadSeconds, held: settings.releaseDownloadSeconds, write: setReleaseDownloadSeconds },
+        { typed: downloadAttempts, held: settings.releaseDownloadAttempts, write: setReleaseDownloadAttempts },
+        { typed: backoffSeconds, held: settings.releaseDownloadBackoffSeconds, write: setReleaseDownloadBackoffSeconds },
+        {
+          typed: backoffMaxSeconds,
+          held: settings.releaseDownloadBackoffMaxSeconds,
+          write: setReleaseDownloadBackoffMaxSeconds,
+        },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -1651,13 +1668,46 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             />
             <NumberSetting
               id="release-download-seconds"
-              label={t('Longest a jar from a URL may take')}
-              hint={t('Connecting, answering and the whole download, together.')}
+              label={t('Longest a jar download may go silent')}
+              hint={t('Past it the connection counts as broken and the download resumes.')}
               min={10}
               max={3600}
               unit={t('seconds')}
               value={downloadSeconds}
               onChange={setDownloadSeconds}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-download-attempts"
+              label={t('Broken attempts before a download is given up')}
+              hint={t('Counted in a row, and only attempts that brought nothing.')}
+              min={1}
+              max={100}
+              unit={t('attempts')}
+              value={downloadAttempts}
+              onChange={setDownloadAttempts}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-download-backoff"
+              label={t('First wait before resuming a download')}
+              hint={t('It doubles after each attempt that brings nothing.')}
+              min={1}
+              max={3600}
+              unit={t('seconds')}
+              value={backoffSeconds}
+              onChange={setBackoffSeconds}
+              disabled={busy}
+            />
+            <NumberSetting
+              id="release-download-backoff-max"
+              label={t('Longest wait before resuming a download')}
+              hint={t('The doubling stops here.')}
+              min={1}
+              max={3600}
+              unit={t('seconds')}
+              value={backoffMaxSeconds}
+              onChange={setBackoffMaxSeconds}
               disabled={busy}
             />
 

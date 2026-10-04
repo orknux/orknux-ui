@@ -59,11 +59,26 @@ interface GraphQlResponse<T> {
   errors?: Array<GraphQlError>;
 }
 
+/**
+ * What a page shows when nothing answered at all.
+ *
+ * `fetch` rejects with the browser's own words - "Failed to fetch", "Load
+ * failed", "NetworkError when attempting to fetch resource" - for a connection
+ * that was refused, reset or cut by a proxy before an answer came back. True,
+ * and no use to the person reading it, who cannot tell from it whether the
+ * server is down or something between them gave up waiting (#602). Status 0
+ * says the same to code that wants to tell.
+ */
 export async function graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const response = await request('/graphql', {
-    method: 'POST',
-    body: JSON.stringify({ query, variables }),
-  });
+  let response: Response;
+  try {
+    response = await request('/graphql', {
+      method: 'POST',
+      body: JSON.stringify({ query, variables }),
+    });
+  } catch {
+    throw new ApiError(t('The server could not be reached, or the connection to it broke before it answered.'), 0);
+  }
 
   if (!response.ok) {
     throw new ApiError(`Request failed with status ${response.status}`, response.status);

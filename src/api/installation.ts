@@ -228,8 +228,14 @@ export interface InstallationSettings {
   releaseMaxMb: number;
   /** How long a server waits after an update before restarting, in seconds. */
   releaseRestartDelaySeconds: number;
-  /** How long a server jar fetched from a URL may take, in seconds (#589). */
+  /** How long one connection for a server jar may go without a byte, in seconds (#589, #602). */
   releaseDownloadSeconds: number;
+  /** Broken attempts in a row that brought nothing, before a download is given up on (#602). */
+  releaseDownloadAttempts: number;
+  /** The first wait before a broken download resumes, in seconds; it doubles (#602). */
+  releaseDownloadBackoffSeconds: number;
+  /** The longest that wait grows to, in seconds (#602). */
+  releaseDownloadBackoffMaxSeconds: number;
 }
 
 const FIELDS =
@@ -246,7 +252,8 @@ const FIELDS =
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
   'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured ' +
-  'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds';
+  'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
+  'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
   const data = await graphql<{ installationSettings: InstallationSettings }>(
@@ -634,6 +641,30 @@ export async function setReleaseDownloadSeconds(seconds: number): Promise<Instal
     { seconds },
   );
   return data.setReleaseDownloadSeconds;
+}
+
+export async function setReleaseDownloadAttempts(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseDownloadAttempts: InstallationSettings }>(
+    `mutation ($count: Int!) { setReleaseDownloadAttempts(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setReleaseDownloadAttempts;
+}
+
+export async function setReleaseDownloadBackoffSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseDownloadBackoffSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setReleaseDownloadBackoffSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setReleaseDownloadBackoffSeconds;
+}
+
+export async function setReleaseDownloadBackoffMaxSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReleaseDownloadBackoffMaxSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setReleaseDownloadBackoffMaxSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setReleaseDownloadBackoffMaxSeconds;
 }
 
 export async function setToolSummariesFullUpTo(count: number): Promise<InstallationSettings> {

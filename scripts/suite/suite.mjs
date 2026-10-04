@@ -579,6 +579,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'server-update-progress-check',
+    what: 'an update downloads in the background: a bar of bytes of total, the steps after it, the reason if it fails, and back on the version once restarted',
+    needs: [],
+    /*
+     * Read-only: the offered release, the download and the restart probe are
+     * the page's own answers, so nothing is downloaded, stored or restarted.
+     */
+  },
+  {
     name: 'release-notes-collapse-check',
     what: "an offered release's changes open and close, every one closed on arrival, and the choice is kept",
     needs: [],

@@ -245,7 +245,12 @@ const PL: Record<string, string> = {
   ServerReleasePinned: 'Ta instalacja ma przypięte wydanie {pin} przez {variable}; usuń tę zmienną, by wybierać wydanie tutaj.',
   // From a URL and the per-source switches, #589. ServerReleaseUrlRefused carries an English reason in {why}.
   ServerReleaseSourceDisabled: 'Ta instalacja nie przyjmuje wydań serwera z tego źródła ({variable} ma wartość false).',
-  ReleaseDownloadOutOfRange: '{seconds} to nie jest liczba sekund, przez jaką może trwać pobieranie pliku jar serwera.',
+  ReleaseDownloadOutOfRange: '{seconds} to nie jest liczba sekund ciszy dozwolona podczas pobierania pliku jar serwera.',
+  ReleaseDownloadAttemptsOutOfRange: '{count} to nie jest liczba prób pobierania pliku jar serwera.',
+  ReleaseDownloadBackoffOutOfRange: '{seconds} to nie jest liczba sekund oczekiwania przed wznowieniem pobierania pliku jar serwera.',
+  ReleaseDownloadBackoffMaxOutOfRange: '{seconds} to nie jest liczba sekund, do której może urosnąć oczekiwanie przed wznowieniem pobierania.',
+  ServerReleaseDownloadRunning: 'Pobieranie wydania serwera ({what}) już trwa; poczekaj, aż się skończy.',
+  ServerReleaseDownloadNotFound: 'Nie ma pobierania wydania serwera {id}.',
   ServerReleaseNotOffered: 'orknux.ai nie oferuje wydania serwera {version}.',
   ServerReleaseDownloadMismatch:
     'Pobrane wydanie {version} nie zgadza się z tym, co orknux.ai dla niego podaje; niczego nie zapisano.',
