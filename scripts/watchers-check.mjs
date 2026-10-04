@@ -30,7 +30,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 /* -------------------------------------------------- the server's contract - */
 
 const DRAWN = ['id', 'sessionId', 'sessionTitle', 'agentName', 'tool', 'arguments', 'conditionKind', 'condition', 'toolResultPath',
-  'intervalSeconds', 'timeoutSeconds', 'status', 'outcome', 'createdAt', 'finishedAt'];
+  'intervalSeconds', 'timeoutSeconds', 'status', 'outcome', 'createdAt', 'nextCheckAt', 'lastCheckedAt', 'lastResult', 'finishedAt'];
 const served = await graphql(`query { __type(name: "Watcher") { fields { name } } }`).catch(() => null);
 const fields = (served?.__type?.fields ?? []).map((one) => one.name);
 record(DRAWN.every((one) => fields.includes(one)), 'the server serves a watcher every field the page draws');
@@ -66,7 +66,8 @@ const row = (id, tool, extra = {}) => ({
   createdAt: new Date(Date.now() - 600_000).toISOString(),
   expiresAt: new Date(Date.now() + 3_000_000).toISOString(),
   nextCheckAt: new Date(Date.now() + 30_000).toISOString(),
-  lastCheckedAt: null,
+  lastCheckedAt: new Date(Date.now() - 20_000).toISOString(),
+  lastResult: '{"status":"running"}',
   finishedAt: null,
   ...extra,
 });
@@ -139,6 +140,11 @@ record((await first.locator(`a[href$="/sessions/91"]`).count()) === 1, 'and link
 record(text.includes('buildStatus({"id":"42"})'), 'a row shows the tool call');
 // The part of the result its condition is held against, on every row, the whole result included.
 const paths = await rows.locator('[data-testid="watcher-result-path"]').allInnerTexts();
+const last = await rows.first().locator('[data-testid="watcher-last-check"]').innerText();
+record(/^(2\d|3\d) s ago · #2$/.test(last.trim()), `a running row says when it was last checked and how often (${last})`);
+record((await rows.first().locator('[data-testid="watcher-last-check"]').getAttribute('title')) === '{"status":"running"}', 'and what the tool returned then, on hover');
+const next = await rows.first().locator('[data-testid="watcher-next-check"]').innerText();
+record(/^in (1\d|2\d|30) s$/.test(next.trim()), `and when it looks next (${next})`);
 record(paths.length === 2 && paths[0].includes('$') && paths[1].includes('$.body'), `each row says which part of the result it watches (${paths.join(' | ')})`);
 record(text.includes("$[?(@.status == 'done')]"), 'and the condition');
 record(text.includes('60 s') && text.includes('60 min'), 'and the interval and the timeout');
@@ -166,6 +172,7 @@ console.log(`ended row: ${endedText}`);
 record((await page.locator('[data-watcher-stop]').count()) === 0, 'an ended watcher offers no Stop');
 record(/minutes? ago/.test(endedText.split('ticketStatus')[1] ?? ''), 'and says when it finished');
 record((await page.locator('[data-watcher-status="FIRED"]').count()) === 1, 'and how it ended');
+record((await page.locator('[data-testid="watcher-next-check"]').count()) === 0, 'an ended watcher has no next check');
 
 /* Done with the stubbed rows; the settings below are the server's own. */
 await page.unroute('**/graphql');

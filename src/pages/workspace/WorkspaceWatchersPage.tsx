@@ -33,6 +33,11 @@ export function duration(seconds: number): string {
   return `${Math.round(seconds / 86400)} d`;
 }
 
+/** Seconds between now and a moment, either way; watchers run in seconds, so "just now" says too little. */
+function secondsFrom(iso: string): number {
+  return Math.max(0, Math.round(Math.abs(Date.now() - new Date(iso).getTime()) / 1000));
+}
+
 function statusLabel(status: WatcherStatus): string {
   switch (status) {
     case 'ACTIVE':
@@ -163,6 +168,8 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
           <span className={styles.colNumber}>{t('Interval')}</span>
           <span className={styles.colNumber}>{t('Timeout')}</span>
           <span className={styles.colWhen}>{t('Set')}</span>
+          <span className={styles.colWhen}>{t('Last check')}</span>
+          {!finished && <span className={styles.colWhen}>{t('Next check')}</span>}
           {finished ? (
             <>
               <span className={styles.colWhen}>{t('Finished')}</span>
@@ -218,6 +225,24 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
             <span className={`${styles.colWhen} ${styles.muted}`} title={one.createdAt}>
               {timeAgo(one.createdAt)}
             </span>
+            <span
+              className={`${styles.colWhen} ${styles.muted}`}
+              title={one.lastResult ?? one.lastCheckedAt ?? undefined}
+              data-testid="watcher-last-check"
+            >
+              {one.lastCheckedAt === null ? (
+                <span className={styles.nothing}>—</span>
+              ) : (
+                `${tf('{time} ago', { time: duration(secondsFrom(one.lastCheckedAt)) })} · #${one.checks}`
+              )}
+            </span>
+            {!finished && (
+              <span className={`${styles.colWhen} ${styles.muted}`} title={one.nextCheckAt} data-testid="watcher-next-check">
+                {new Date(one.nextCheckAt).getTime() <= Date.now()
+                  ? t('due now')
+                  : tf('in {time}', { time: duration(secondsFrom(one.nextCheckAt)) })}
+              </span>
+            )}
             {finished ? (
               <>
                 <span className={`${styles.colWhen} ${styles.muted}`} title={one.finishedAt ?? undefined}>

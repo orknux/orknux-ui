@@ -36,6 +36,8 @@ export interface Watcher {
   expiresAt: string;
   nextCheckAt: string;
   lastCheckedAt: string | null;
+  /** What the tool returned on the last check. */
+  lastResult: string | null;
   finishedAt: string | null;
 }
 
@@ -57,7 +59,7 @@ export interface WatcherSettings {
 }
 
 const FIELDS = `id sessionId sessionTitle agentName tool arguments conditionKind condition toolResultPath intervalSeconds
-  timeoutSeconds note status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt finishedAt`;
+  timeoutSeconds note status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt lastResult finishedAt`;
 
 const SETTINGS = `maxSeconds maxSecondsConfigured minIntervalSeconds minIntervalSecondsConfigured
   maxPerAgent maxPerAgentConfigured`;
