@@ -188,7 +188,7 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
           <div className={styles.empty}>
             <p className={styles.emptyTitle}>
               <span className={styles.labelWithHint}>
-                {finished ? t('No watcher has finished yet.') : t('No watchers are running.')}
+                {finished ? t('No watcher has finished yet.') : t('No watchers are running yet.')}
                 <FieldHint label={t('Watchers')}>
                   {t('An agent sets a watcher with watcher_set: one of its own tools, called on an interval until what it returns matches a JSONPath or a regular expression, when the agent is woken in the conversation it set it in. Admin Settings says how long one may run, how often it may look and how many one agent may have.')}
                 </FieldHint>

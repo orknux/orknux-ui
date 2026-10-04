@@ -2417,7 +2417,7 @@ export const PL: Record<string, string> = {
   "Could not load the watchers.": "Nie udało się wczytać obserwatorów.",
   "Could not stop that watcher.": "Nie udało się zatrzymać tego obserwatora.",
   "No watcher has finished yet.": "Żaden obserwator jeszcze się nie zakończył.",
-  "No watchers are running.": "Żaden obserwator nie działa.",
+  "No watchers are running yet.": "Żaden obserwator jeszcze nie działa.",
   "An agent sets a watcher with watcher_set: one of its own tools, called on an interval until what it returns matches a JSONPath or a regular expression, when the agent is woken in the conversation it set it in. Admin Settings says how long one may run, how often it may look and how many one agent may have.": "Agent ustawia obserwatora narzędziem watcher_set: jedno z jego własnych narzędzi, wywoływane co określony czas, aż to, co zwróci, pasuje do wyrażenia JSONPath lub wyrażenia regularnego - wtedy agent jest budzony w rozmowie, w której go ustawił. Ustawienia administratora mówią, jak długo może działać, jak często może sprawdzać i ile może ich mieć jeden agent.",
   "Could not read the watcher settings.": "Nie udało się odczytać ustawień obserwatorów.",
   "The longest a watcher may run": "Najdłuższy czas działania obserwatora",

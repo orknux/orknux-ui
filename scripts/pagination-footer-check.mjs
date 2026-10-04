@@ -189,6 +189,7 @@ const LISTS = [
   { file: 'WorkspaceObjectsPage.tsx', path: '/objects', title: 'Objects', unit: 'objects', column: 'Name' },
   { file: 'WorkspaceToolsPage.tsx', path: '/tools', title: 'Tools', unit: 'tools', column: 'Name' },
   { file: 'WorkspaceTasksPage.tsx', path: '/tasks', title: 'Tasks', unit: 'tasks', column: 'Task' },
+  { file: 'WorkspaceWatchersPage.tsx', path: '/watchers', title: 'Watchers', unit: 'watchers', column: 'Session' },
   // A session is named by its key since #419, and the dot that says whether an
   // agent is at work in it leads the row under Status since #404.
   { file: 'WorkspaceSessionsPage.tsx', path: '/sessions', title: 'Sessions', unit: 'sessions', lead: 'Status', column: 'Key' },
