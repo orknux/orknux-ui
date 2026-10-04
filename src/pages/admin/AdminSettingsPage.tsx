@@ -56,6 +56,7 @@ import { forgetInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import styles from './AdminSettingsPage.module.css';
 import { HttpToolsSection } from './HttpToolsSection';
+import { WatchersSection } from './WatchersSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
 import { t } from '../../i18n';
@@ -145,6 +146,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   /** The HTTP tools policy as edited, which goes out with the same Save. Issue #602. */
   const [httpPending, setHttpPending] = useState<PendingWrite[]>([]);
   const takeHttpPending = useCallback((writes: PendingWrite[]) => setHttpPending(writes), []);
+  // Admin -> Settings -> Watchers, its three numbers sent with the page's Save. Issue #606.
+  const [watcherPending, setWatcherPending] = useState<PendingWrite[]>([]);
+  const takeWatcherPending = useCallback((writes: PendingWrite[]) => setWatcherPending(writes), []);
   const [downloadSeconds, setDownloadSeconds] = useState('');
 
   useEffect(() => {
@@ -291,7 +295,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   // it had a Save of its own, which made two on a page promised one.
   const markerTyped = marker.trim();
   const markerChanged = settings !== null && markerTyped !== '' && markerTyped !== settings.commandMarker;
-  const changed = pending.length > 0 || markerChanged || logPending.length > 0 || httpPending.length > 0;
+  const changed =
+    pending.length > 0 || markerChanged || logPending.length > 0 || httpPending.length > 0 || watcherPending.length > 0;
 
   /**
    * Every changed number, one call each, in the order they appear.
@@ -316,6 +321,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
       if (markerChanged) held = await setCommandMarker(markerTyped);
       for (const write of logPending) await write();
       for (const write of httpPending) await write();
+      for (const write of watcherPending) await write();
       setSettings(held);
       setMarker(held.commandMarker);
       setRetention(String(held.revisionRetentionDays));
@@ -801,6 +807,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
 
             {/* Whether the agents' HTTP tools are offered, and where they may go. Issue #602. */}
             <HttpToolsSection onPending={takeHttpPending} />
+
+            <WatchersSection onPending={takeWatcherPending} busy={busy} />
 
             <h2 id="sessions" className={styles.sectionHeading}>{t('Sessions')}</h2>
 

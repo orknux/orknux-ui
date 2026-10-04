@@ -257,6 +257,12 @@ const PL: Record<string, string> = {
   HttpToolRulePatternInvalid: 'Wzorzec URL reguły {position} nie jest wyrażeniem regularnym: {reason}.',
   HttpToolRuleMethodsMissing: 'Reguła {position} nie pozwala na żadną metodę. Wybierz co najmniej jedną.',
   HttpToolRuleMethodUnknown: 'Reguła {position} wymienia {method}, a narzędzia HTTP tej metody nie wysyłają.',
+  // Watchers, issue #606.
+  WatcherNotFound: 'Nie ma obserwatora #{id}.',
+  WatcherNotActive: 'Obserwator #{id} już się zakończył.',
+  WatcherMaxSecondsOutOfRange: '{seconds} to nie jest czas, przez jaki obserwator może działać. Wybierz od 60 do 31536000.',
+  WatcherMinIntervalOutOfRange: '{seconds} to nie jest interwał, którego można wymagać od obserwatora. Wybierz od 1 do 86400.',
+  WatcherMaxPerAgentOutOfRange: '{count} to nie jest liczba obserwatorów, na jaką można pozwolić agentowi. Wybierz od 0 do 1000.',
   LogLevelUnknown: '„{level}” nie jest poziomem logowania. Wybierz TRACE, DEBUG, INFO, WARN, ERROR, OFF lub INHERIT.',
   LoggerNameInvalid:
     '„{name}” nie jest nazwą loggera. Użyj liter, cyfr, kropek, $ i _, najwyżej {max} znaków.',

@@ -21,6 +21,8 @@ const SECTIONS = [
   ['agents', 'agent-max-subagents'],
   ['tool-calls', 'max-tool-calls-at-once'],
   ['tool-list', 'tools-named-in-search'],
+  // A watcher's three limits, under HTTP tools. Issue #606.
+  ['watchers', 'watcher-max-per-agent'],
   ['sessions', 'session-compact-after'],
   ['sessions', 'sessions-removable'],
   ['scratchpads', 'scratchpad-budget'],

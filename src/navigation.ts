@@ -25,6 +25,7 @@ import messageSquareIcon from './assets/message-square.svg';
 import packageIcon from './assets/package.svg';
 import plugIcon from './assets/plug.svg';
 import puzzleIcon from './assets/puzzle.svg';
+import radarIcon from './assets/radar.svg';
 import templateIcon from './assets/layers.svg';
 import settingsIcon from './assets/settings.svg';
 import slidersIcon from './assets/sliders-horizontal.svg';
@@ -277,6 +278,17 @@ export const PAGES = [
       where: 'AI',
       icon: messageSquareIcon,
       also: 'llm transcript conversation history what the agent said',
+    },
+  },
+  {
+    // What the agents are waiting for: a tool called on an interval until it matches. Issue #606.
+    path: '/workspace/:workspaceId/watchers',
+    access: 'signed-in',
+    goTo: {
+      label: t('Watchers'),
+      where: 'AI',
+      icon: radarIcon,
+      also: 'watcher poll wait until condition jsonpath regex stop',
     },
   },
 
@@ -583,6 +595,7 @@ export const PAGES = [
       { label: t('Tool calls'), at: '#tool-calls', also: 'per reply repeated loop warnings' },
       { label: t('Tool list'), at: '#tool-list', also: 'tool_find summaries named' },
       { label: t('HTTP tools'), at: '#http-tools', also: 'http_get http_request allow list url regex' },
+      { label: t('Watchers'), at: '#watchers', also: 'watcher interval timeout per agent limit' },
       { label: t('Sessions'), at: '#sessions', also: 'compaction summary transcript stored value' },
       { label: t('Scratchpads'), at: '#scratchpads', also: 'budget files keep days' },
       { label: t('Drawing'), at: '#drawing', also: 'diagram chart scale' },
