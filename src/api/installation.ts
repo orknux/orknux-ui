@@ -207,6 +207,9 @@ export interface InstallationSettings {
   /** How long a step of a workspace copy may wait for a lock, in seconds. Issue #581. */
   workspaceCopyLockWaitSeconds: number;
   workspaceCopyLockWaitSecondsConfigured: number;
+  /** The first wait for a rate limit inside a stream that named none, in seconds. Issue #608. */
+  rateLimitBackoffSeconds: number;
+  rateLimitBackoffSecondsConfigured: number;
   /**
    * False where the installation runs Temporal, and the field is not offered.
    *
@@ -242,7 +245,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds';
 
 export async function fetchInstallationSettings(): Promise<InstallationSettings> {
@@ -647,6 +650,15 @@ export async function setToolSummaryTrimPercent(percent: number): Promise<Instal
     { percent },
   );
   return data.setToolSummaryTrimPercent;
+}
+
+/** The first wait for a rate limit inside a streaming answer that named no time. Issue #608. */
+export async function setRateLimitBackoffSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setRateLimitBackoffSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setRateLimitBackoffSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setRateLimitBackoffSeconds;
 }
 
 /** How long a step of a workspace copy may wait for a lock before it stops. Issue #581. */
