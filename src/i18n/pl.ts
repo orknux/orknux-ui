@@ -868,6 +868,8 @@ export const PL: Record<string, string> = {
   "This one only": "Tylko ten",
   "Danger Zone": "Strefa nieodwracalna",
   "Copy it now - it is not shown again.": "Skopiuj go teraz — nie zostanie pokazany ponownie.",
+  "Copied": "Skopiowano",
+  "Could not copy - select it and copy by hand": "Nie udało się skopiować — zaznacz i skopiuj ręcznie",
   "Could not save that.": "Nie udało się tego zapisać.",
   "Your request has been approved": "Twoja prośba została zatwierdzona",
   "Your request has been approved.": "Twoja prośba została zatwierdzona.",

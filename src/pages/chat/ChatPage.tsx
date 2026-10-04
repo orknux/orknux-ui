@@ -82,6 +82,7 @@ import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import { rememberWorkspace, useLastWorkspaceId } from '../../session/lastWorkspace';
 import { FieldHint } from '../../components/FieldHint';
+import { copyText } from '../../components/clipboard';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import styles from './ChatPage.module.css';
 import { t, tf } from '../../i18n';
@@ -331,7 +332,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const thinkingSoFar = useRef('');
   const [thoughtOpen, setThoughtOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<number | null>(null);
+  /** The message whose copy button was just pressed, and whether the text reached the clipboard. Issue #589. */
+  const [copied, setCopied] = useState<{ index: number; ok: boolean } | null>(null);
   /**
    * Which take of an answer is being read, for the answers that have more than
    * one, by their place in the log.
@@ -2006,11 +2008,26 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     setTakeAt((held) => ({ ...held, [index]: next }));
   };
 
-  function copy(text: string, index: number) {
-    void navigator.clipboard?.writeText(text);
-    setCopied(index);
-    window.setTimeout(() => setCopied((present) => (present === index ? null : present)), 1200);
+  /*
+   * Through `copyText`, which falls back to a selection where the browser
+   * withholds `navigator.clipboard` - every plain-http address on a LAN. Says
+   * what happened either way: "Copied" over an empty clipboard is a lie.
+   */
+  async function copy(text: string, index: number) {
+    const ok = await copyText(text);
+    setCopied({ index, ok });
+    window.setTimeout(
+      () => setCopied((present) => (present?.index === index ? null : present)),
+      ok ? 1200 : 4000,
+    );
   }
+
+  const copySaid = (index: number) =>
+    copied?.index !== index ? null : copied.ok ? (
+      <span className={styles.copied} role="status">{t('Copied')}</span>
+    ) : (
+      <span className={styles.copyFailed} role="status">{t('Could not copy - select it and copy by hand')}</span>
+    );
 
   /*
    * What the send button says while a turn is in flight.
@@ -2666,10 +2683,12 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       and not look like it belonged to anything.
                     */}
                     <div className={styles.rowActions}>
+                      {/* Before the button, so saying it does not move the button off the bubble's edge. */}
+                      {copySaid(index)}
                       <button
                         type="button"
                         className={styles.rowAction}
-                        onClick={() => copy(message.content, index)}
+                        onClick={() => void copy(message.content, index)}
                         title={t('Copy')}
                         aria-label={t('Copy this message')}
                       >
@@ -2886,7 +2905,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       <button
                         type="button"
                         className={styles.rowAction}
-                        onClick={() => copy(shownTake(index, message), index)}
+                        onClick={() => void copy(shownTake(index, message), index)}
                         title={t('Copy')}
                         aria-label={t('Copy this answer')}
                       >
@@ -2941,7 +2960,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                         </button>
                       )}
                       {fetchingSpeech === index && <span className={styles.copied}>Reading…</span>}
-                      {copied === index && <span className={styles.copied}>Copied</span>}
+                      {copySaid(index)}
                     </div>
                   </div>
                 </div>

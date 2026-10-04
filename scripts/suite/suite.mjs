@@ -3131,6 +3131,17 @@ export const TESTS = [
   },
 
   {
+    name: 'copy-fallback-check',
+    what: 'a copy button puts the text on the clipboard from a plain-http origin, and says Copied',
+    needs: ['workspace'],
+    /*
+     * Issue #589. Reads the chat the seed builds and copies its first sent
+     * message. The page is made a plain-http origin before it loads where the
+     * suite runs against localhost, so the fallback is measured in CI too; the
+     * clipboard is read back from a page at localhost, which may read it.
+     */
+  },
+  {
     name: 'chat-copy-check',
     what: "the copy control under the message it copies, on the bubble's edge and not the column's",
     needs: ['workspace'],

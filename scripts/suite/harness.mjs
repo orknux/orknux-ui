@@ -306,3 +306,54 @@ export async function finish(browser, ...extras) {
   console.log(passed ? `ALL PASS (${asserted} checks)` : `SOME FAILED (${failed} of ${asserted})`);
   process.exit(passed ? 0 : 1);
 }
+
+/**
+ * What is on the browser's clipboard. Issue #589.
+ *
+ * Read from a page of its own at http://localhost, which Chromium counts as a
+ * secure origin and so lets read the clipboard once the permission is granted -
+ * the page under test may well be the plain-http origin that cannot. The page
+ * is answered by a route rather than a server, so this needs nothing listening.
+ */
+export async function clipboardText(context) {
+  return onClipboardPage(context, (reader) => reader.evaluate(() => navigator.clipboard.readText()));
+}
+
+/** Puts something on the clipboard first, so a copy that did nothing cannot pass on what was left there. */
+export async function setClipboardText(context, text) {
+  return onClipboardPage(context, (reader) => reader.evaluate((value) => navigator.clipboard.writeText(value), text));
+}
+
+async function onClipboardPage(context, act) {
+  const origin = 'http://localhost';
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
+  const reader = await context.newPage();
+  try {
+    await reader.route(`${origin}/clipboard-reader`, (route) =>
+      route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>clipboard</title><body></body>' }),
+    );
+    await reader.goto(`${origin}/clipboard-reader`);
+    await reader.bringToFront();
+    return await act(reader);
+  } catch (cause) {
+    return `(the clipboard could not be reached: ${cause instanceof Error ? cause.message : String(cause)})`;
+  } finally {
+    await reader.close();
+  }
+}
+
+/**
+ * Makes one page behave as a plain-http origin does to the clipboard: no
+ * `navigator.clipboard`, and `isSecureContext` false. Issue #589.
+ *
+ * Where the suite already runs against such an origin - `host.docker.internal`
+ * - this changes nothing; where it runs against localhost, as CI does, it is
+ * what lets a check prove the fallback rather than the API every secure origin
+ * has. Before the page's own scripts, so the interface never sees the API.
+ */
+export async function asPlainHttp(page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'clipboard', { get: () => undefined, configurable: true });
+    Object.defineProperty(window, 'isSecureContext', { get: () => false, configurable: true });
+  });
+}
