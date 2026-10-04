@@ -569,7 +569,7 @@ export const TESTS = [
   },
   {
     name: 'release-notes-collapse-check',
-    what: "an offered release's changes open and close, only the newest open on arrival, and the choice is kept",
+    what: "an offered release's changes open and close, every one closed on arrival, and the choice is kept",
     needs: [],
     /*
      * Read-only: the offered releases are put into the page's own answer, and

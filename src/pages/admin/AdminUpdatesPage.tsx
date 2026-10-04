@@ -62,7 +62,12 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
   const [urlError, setUrlError] = useState<string | null>(null);
   const [fetched, setFetched] = useState<string | null>(null);
   const [listed, setListed] = useState<ListedServerRelease[] | null>(null);
-  // Which offered releases have their changes open, by version; the newest is open until somebody says otherwise.
+  /*
+   * Which offered releases have their changes open, by version. Every one starts
+   * closed, the newest included - a page that opens on a whole changelog pushes
+   * Upload and the kept releases off the screen - and a version is opened by
+   * clicking it. What somebody chose is remembered. Issue #1.
+   */
   const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>(readNotesOpen);
 
   const load = useCallback(() => {
@@ -282,9 +287,9 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
               <p className={styles.notice}>{t('This is the newest release.')}</p>
             ) : (
               <ul className={styles.list}>
-                {updates.available.map((offered, index) => {
+                {updates.available.map((offered) => {
                   const hasNotes = offered.changelog.trim() !== '';
-                  const open = hasNotes && (notesOpen[offered.version] ?? index === 0);
+                  const open = hasNotes && (notesOpen[offered.version] ?? false);
                   const notesId = `release-notes-${offered.version}`;
                   return (
                   <li key={offered.version} className={styles.offered} data-testid="offered-release">

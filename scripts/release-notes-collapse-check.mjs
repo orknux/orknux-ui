@@ -1,12 +1,16 @@
 /**
  * Admin -> Updates: a release the official server offers opens and closes its
- * changes. Issue #598.
+ * changes. Issues #598 and #1.
  *
- * Reported: every offered release drew its whole changelog, so one release
- * filled the screen and Upload, From a URL and the kept releases were pushed
- * a long way down. What is measured is what that cost - where the Upload
- * heading sits - with the notes open and with them closed, and that only the
- * newest is open on arrival.
+ * Reported first (#598): every offered release drew its whole changelog, so one
+ * release filled the screen and Upload, From a URL and the kept releases were
+ * pushed a long way down. That made them open and close with only the newest
+ * open on arrival - and the newest alone was still a screenful (#1). So every
+ * release now arrives closed, the newest included; a version opens when it is
+ * clicked, and what somebody chose is remembered across a reload.
+ *
+ * What is measured is what that cost - where the Upload heading sits - with the
+ * notes closed and with them open.
  *
  * The releases are the server's own answer with two offered ones put into it,
  * because no installation a check runs against has an official server that
@@ -50,23 +54,24 @@ const notes = page.getByTestId('offered-release-notes');
 const upload = page.getByRole('heading', { name: 'Upload a jar' });
 
 record((await toggles.count()) === 2, `each offered release has a toggle (${await toggles.count()})`);
-record((await notes.count()) === 1, `only one release's changes are open on arrival (${await notes.count()})`);
+record((await notes.count()) === 0, `no release's changes are open on arrival, the newest included (${await notes.count()})`);
 record(
-  (await toggles.nth(0).getAttribute('aria-expanded')) === 'true' &&
+  (await toggles.nth(0).getAttribute('aria-expanded')) === 'false' &&
     (await toggles.nth(1).getAttribute('aria-expanded')) === 'false',
-  'and it is the newest, as the toggles say',
+  'and the toggles say so',
 );
 const cursor = await toggles.first().evaluate((element) => getComputedStyle(element).cursor);
 record(cursor === 'pointer', `the toggle says it can be pressed (${cursor})`);
 
-const openTop = (await upload.boundingBox())?.y ?? 0;
+const closedTop = (await upload.boundingBox())?.y ?? 0;
 await toggles.nth(0).click();
 await page.waitForTimeout(200);
-const closedTop = (await upload.boundingBox())?.y ?? 0;
-record((await notes.count()) === 0, 'closing the newest leaves no changes drawn');
+const openTop = (await upload.boundingBox())?.y ?? 0;
+record((await notes.count()) === 1, 'clicking the newest opens its changes');
+record(((await notes.first().textContent()) ?? '').includes('9.9.9.2'), 'and what opens is its own changes');
 record(
-  closedTop < openTop - 150,
-  `and Upload a jar moves up by what they took (${Math.round(openTop)}px -> ${Math.round(closedTop)}px)`,
+  openTop > closedTop + 150,
+  `and Upload a jar moves down by what they take (${Math.round(closedTop)}px -> ${Math.round(openTop)}px)`,
 );
 
 // From the keyboard too: Enter on a focused toggle opens it.
@@ -74,15 +79,17 @@ await toggles.nth(1).focus();
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
 record((await toggles.nth(1).getAttribute('aria-expanded')) === 'true', 'Enter on the older one opens it');
-record(((await notes.first().textContent()) ?? '').includes('9.9.9.1'), 'and what opens is its own changes');
+record((await notes.count()) === 2, 'and both are open now');
 
-// What somebody chose is kept across a reload.
+// What somebody chose is kept across a reload - open as well as closed.
+await toggles.nth(0).click();
+await page.waitForTimeout(200);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('offered-release').first().waitFor({ timeout: 20_000 });
 record(
   (await toggles.nth(0).getAttribute('aria-expanded')) === 'false' &&
     (await toggles.nth(1).getAttribute('aria-expanded')) === 'true',
-  'and the choice survives a reload',
+  'and the choice survives a reload: the newest closed again, the older still open',
 );
 
 await page.evaluate(() => window.localStorage.removeItem('orknux.updates.notesOpen'));
