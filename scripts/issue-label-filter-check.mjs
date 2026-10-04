@@ -72,14 +72,24 @@ record(
   `the label shows only the issue carrying it (${shown.length} rows: ${JSON.stringify(shown)})`,
 );
 
-const box = await page.inputValue('input[type="search"]').catch(() => null);
+const box = await page.inputValue('input[aria-label="Search issues"]').catch(() => null);
 record(box === '', `and the search box is left as it was (${JSON.stringify(box)})`);
 
 /* The text search still finds the one that mentions it. */
 await chip.click();
-await page.fill('input[type="search"]', LABEL);
+// Typed at once, before the chip's change has been drawn: the search box's
+// timer once put the label back, building on the address as it was.
+await page.fill('input[aria-label="Search issues"]', LABEL);
 await page.waitForSelector(`text=${MARK} only mentions it`, { timeout: 20_000 }).catch(() => undefined);
-await page.waitForTimeout(1_500);
+// Two rows once the search has been sent and answered; tolerated, so a list
+// that never reaches two is reported below rather than thrown.
+await page
+  .waitForFunction(
+    (mark) => [...document.querySelectorAll('a[href*="/issues/"]')].filter((one) => (one.textContent ?? '').includes(mark)).length >= 2,
+    MARK,
+    { timeout: 15_000 },
+  )
+  .catch(() => undefined);
 const searched = await page.$$eval(
   'a[href*="/issues/"]',
   (found, mark) => found.filter((one) => (one.textContent ?? '').includes(mark)).length,

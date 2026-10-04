@@ -183,10 +183,15 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
      * succession - a state and then a sort - would otherwise each build on the
      * same stale copy, and the first change would vanish when the second
      * landed.
+     *
+     * Read off `window.location` rather than the updater's argument: React
+     * Router hands that the params of the render the function was created in,
+     * so the search box's timer - set up by a render that came before a label
+     * chip's change had been drawn - put the label straight back. Issue #610.
      */
     setParams(
-      (held) => {
-        const next = new URLSearchParams(held);
+      () => {
+        const next = new URLSearchParams(window.location.search);
         for (const [key, value] of Object.entries(changes)) {
           if (value === null) next.delete(key);
           else next.set(key, value);
@@ -204,8 +209,8 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
    */
   function toggleLabel(label: string) {
     setParams(
-      (held) => {
-        const next = new URLSearchParams(held);
+      () => {
+        const next = new URLSearchParams(window.location.search);
         const kept = next.getAll('label');
         next.delete('label');
         const after = kept.includes(label) ? kept.filter((one) => one !== label) : [...kept, label];
