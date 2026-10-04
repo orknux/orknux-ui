@@ -11,6 +11,7 @@ import {
   fetchChatSessions,
   fetchChatsMentioning,
   interruptChat,
+  followChat,
   regenerateChatAnswer,
   renameChat,
   streamChatMessage,
@@ -280,6 +281,16 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * ever has one answer being written.
    */
   const asking = useRef<AbortController | null>(null);
+  /**
+   * Which chat is on screen, for a turn that ends after the page has moved on.
+   *
+   * A send's stream is let go of when the chat changes - the answer goes on
+   * being written on the server and is picked up again by following (#201) -
+   * and the send then ends in its `catch`, where it used to read the history
+   * back. Read back for the chat it was sent to, onto whichever chat is open
+   * now, it put one conversation's messages under another's name.
+   */
+  const openChat = useRef<string | null>(null);
   /**
    * What the last answer took and cost; the log shows it under the model's name.
    *
@@ -679,9 +690,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     setWorking(NOTHING_YET);
     thinkingSoFar.current = '';
     setTakeAt({});
+    openChat.current = currentId;
     if (currentId === null) return;
 
     let live = true;
+    /*
+     * The answer being written on this chat, if one is, picked up once the
+     * history is on screen - after it, because the answer is drawn onto the end
+     * of what the history holds. Issue #201: a page that came back while the
+     * agent was still thinking used to show the question and nothing else, for
+     * good.
+     */
+    const following = new AbortController();
     fetchChatAttachments(currentId)
       .then((held) => {
         if (live) setChatFiles(held);
@@ -689,12 +709,29 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       .catch(() => undefined);
     fetchChatMessages(currentId)
       .then((held) => {
-        if (live) setMessages(held);
+        if (!live) return;
+        setMessages(held);
+        followAnswer(currentId, following, () => live);
       })
       .catch(() => undefined);
     return () => {
       live = false;
+      following.abort();
+      /*
+       * And whatever this page was reading for the chat being left. Only the
+       * reading stops: a text turn goes on being written on the server, and the
+       * chat picks it up again by following when it is opened. Stop is the one
+       * thing that ends a turn, and it says so to the server itself.
+       */
+      if (asking.current !== null) {
+        asking.current.abort();
+        asking.current = null;
+        setSending(false);
+      }
     };
+    // `followAnswer` is a plain function of this render; what it reads is
+    // refs and setters, so the one made by the render that opened the chat is
+    // as good as any later one.
   }, [currentId]);
 
   /*
@@ -1553,6 +1590,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     setMessages((present) => [...present, { role: 'assistant', content: '', actor: null, takes: [], thinking: null, thinkingMillis: null, at: null }]);
     const asked = new AbortController();
     asking.current = asked;
+    const sentTo = currentId;
     try {
       let failure: string | null = null;
       await streamChatMessage(
@@ -1592,12 +1630,15 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
       // answer it was told to abandon - so the half sentence on screen is not
       // what this chat says, and leaving it there would be the screen inventing
       // a turn.
+      if (openChat.current !== sentTo) return;
       if (!givenUp(cause)) setError(cause instanceof Error ? cause.message : t('The model did not answer.'));
       // What the server kept is the truth about what was said.
-      fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
+      fetchChatMessages(sentTo).then(setMessages).catch(() => undefined);
     } finally {
       if (asking.current === asked) asking.current = null;
-      setSending(false);
+      // A chat left part way has already let this go, and the one open now
+      // may be following a turn of its own.
+      if (openChat.current === sentTo) setSending(false);
     }
   }
 
@@ -1640,6 +1681,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
 
     const asked = new AbortController();
     asking.current = asked;
+    const sentTo = currentId;
     try {
       let failure: string | null = null;
       await regenerateChatAnswer(currentId, {
@@ -1659,13 +1701,14 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
       if (failure !== null) throw new Error(failure);
       await loadSessions(currentId);
     } catch (cause) {
+      if (openChat.current !== sentTo) return;
       if (!givenUp(cause)) setError(cause instanceof Error ? cause.message : t('The model did not answer.'));
       // The server puts the answer back when it could not give another, so what
       // it holds is the truth about what this chat says.
-      fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
+      fetchChatMessages(sentTo).then(setMessages).catch(() => undefined);
     } finally {
       if (asking.current === asked) asking.current = null;
-      setSending(false);
+      if (openChat.current === sentTo) setSending(false);
     }
   }
 
@@ -1785,6 +1828,69 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
    * the interrupt is what ends the model call. Pressing Stop is the one place
    * the two are meant together.
    */
+  /**
+   * Reads the answer being written on a chat the page has just opened, where
+   * there is one. Issue #201.
+   *
+   * Drawn exactly as a send draws its answer - an empty turn on the end of the
+   * log, grown piece by piece, the thinking and the lookups beside it - because
+   * it is the same answer, read from its first frame. The composer says a turn
+   * is in flight and offers Stop, which ends it on the server as it would for a
+   * send. Once it is over the history is read back where it did not finish -
+   * stopped or failed - because the server keeps nothing of an answer that did
+   * not, and the half drawn here is not what the chat says.
+   */
+  async function followAnswer(id: string, followed: AbortController, open: () => boolean) {
+    let picked = false;
+    let finished = false;
+    let failure: string | null = null;
+    try {
+      await followChat(
+        id,
+        {
+          onFollowing: () => {
+            if (!open()) return;
+            picked = true;
+            asking.current = followed;
+            setSending(true);
+            setWorking(NOTHING_YET);
+            thinkingSoFar.current = '';
+            setMessages((present) => [
+              ...present,
+              { role: 'assistant', content: '', actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
+            ]);
+          },
+          onChunk: (piece) =>
+            setMessages((present) => {
+              const grown = [...present];
+              const last = grown.length - 1;
+              grown[last] = { ...grown[last], content: grown[last].content + piece };
+              return grown;
+            }),
+          ...watchWorking(),
+          onDone: (spend) => {
+            finished = true;
+            keepThinkingOnAnswer(spend);
+          },
+          onError: (reason) => {
+            failure = reason;
+          },
+        },
+        followed.signal,
+      );
+    } catch (cause) {
+      if (!givenUp(cause)) failure = cause instanceof Error ? cause.message : t('The model did not answer.');
+    }
+    if (!picked || !open()) return;
+    if (asking.current === followed) {
+      asking.current = null;
+      setSending(false);
+    }
+    if (failure !== null) setError(failure);
+    if (!finished) fetchChatMessages(id).then((held) => open() && setMessages(held)).catch(() => undefined);
+    else await loadSessions(id).catch(() => undefined);
+  }
+
   function handleStop() {
     if (currentId !== null) interruptChat(currentId).catch(() => undefined);
     asking.current?.abort();

@@ -1648,6 +1648,34 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-leave-return-check',
+    what: 'a chat left while the agent is thinking: the answer arrives live on return, is kept, and Stop still stops it',
+    needs: ['workspace'],
+    ci: false,
+    /*
+     * Issue #201. The server finished a text turn whose reader left (#335), but
+     * a page that came back while the answer was still being written read the
+     * history once, found only the question and never heard of the answer -
+     * so from where the person sat the reply was lost. The assertion that
+     * fails without the fix is the first: back mid-thinking, the answer has to
+     * arrive on the page that came back, without a reload. The other two are
+     * the edges of the same change - a tab closed mid-thinking finds the
+     * answer kept, and a turn picked up on return can still be stopped, with
+     * nothing kept of it.
+     *
+     * `ci: false` for the reason `task-live-check` gives: there has to be a
+     * "while it is thinking" to leave in, and that is a model the server calls
+     * taking its time. `scripts/suite/slow-chat-stub.py` thinks for twenty
+     * seconds before it answers. Run it by hand:
+     *
+     *   python scripts/suite/slow-chat-stub.py 8197
+     *   node scripts/suite/run.mjs --only chat-leave-return-check
+     *
+     * Where the stub is, as the server reaches it, goes in
+     * ORKNUX_SLOW_CHAT_STUB.
+     */
+  },
+  {
     name: 'voice-queue-check',
     what: 'what is said or typed while voice mode is busy: held, shown, and sent when the turn comes round',
     needs: ['workspace'],
