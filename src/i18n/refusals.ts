@@ -236,6 +236,7 @@ const PL: Record<string, string> = {
   StepHeartbeatOutOfRange: '{seconds} to nie jest sygnał życia kroku. Wybierz od 0 do 600 sekund; 0 go wyłącza.',
   // The first wait on a rate limit inside a stream that named none, #608.
   RateLimitBackoffOutOfRange: '{seconds} to nie jest liczba sekund pierwszego oczekiwania po limicie zapytań bez podanego czasu. Wybierz od 1 do 60.',
+  BulkheadValueOutOfRange: '{value} to nie jest tu dopuszczalna wartość. Wybierz od {min} do {max}.',
   ClusterLeaseOutOfRange: '{seconds} to nie jest długość dzierżawy klastra. Wybierz od 5 do 600 sekund.',
   RestartAttemptsOutOfRange: '{count} to nie jest liczba podejść kroku agenta po restarcie. Wybierz od 1 do 10.',
   // Server updates, #584. ReleaseJarRefused carries a whole English reason, so it is left to `message`.

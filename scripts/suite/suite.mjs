@@ -490,6 +490,17 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'bulkheads-setting-check',
+    what: 'the bulkheads are on the Admin page under Watchers, a number saved and a switch flipped are kept',
+    needs: [],
+    /*
+     * Issue #616. Installation-wide: it changes the walls every agent turn
+     * runs inside and puts them back, so `alone`, for the reason
+     * cluster-lease-setting-check is.
+     */
+    alone: true,
+  },
+  {
     name: 'cluster-lease-setting-check',
     what: 'the cluster lease is on the Admin page under Workflow runs, and a save is kept',
     needs: [],

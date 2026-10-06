@@ -61,6 +61,7 @@ import { forgetInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import styles from './AdminSettingsPage.module.css';
 import { HttpToolsSection } from './HttpToolsSection';
+import { BulkheadsSection } from './BulkheadsSection';
 import { WatchersSection } from './WatchersSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
@@ -158,6 +159,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   // Admin -> Settings -> Watchers, its three numbers sent with the page's Save. Issue #606.
   const [watcherPending, setWatcherPending] = useState<PendingWrite[]>([]);
   const takeWatcherPending = useCallback((writes: PendingWrite[]) => setWatcherPending(writes), []);
+  // Admin -> Settings -> Bulkheads, its numbers sent with the page's Save. Issue #616.
+  const [bulkheadPending, setBulkheadPending] = useState<PendingWrite[]>([]);
+  const takeBulkheadPending = useCallback((writes: PendingWrite[]) => setBulkheadPending(writes), []);
   const [downloadSeconds, setDownloadSeconds] = useState('');
   /** How a broken server jar download is retried. Issue #602. */
   const [downloadAttempts, setDownloadAttempts] = useState('');
@@ -323,7 +327,12 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const markerTyped = marker.trim();
   const markerChanged = settings !== null && markerTyped !== '' && markerTyped !== settings.commandMarker;
   const changed =
-    pending.length > 0 || markerChanged || logPending.length > 0 || httpPending.length > 0 || watcherPending.length > 0;
+    pending.length > 0 ||
+    markerChanged ||
+    logPending.length > 0 ||
+    httpPending.length > 0 ||
+    watcherPending.length > 0 ||
+    bulkheadPending.length > 0;
 
   /**
    * Every changed number, one call each, in the order they appear.
@@ -349,6 +358,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
       for (const write of logPending) await write();
       for (const write of httpPending) await write();
       for (const write of watcherPending) await write();
+      for (const write of bulkheadPending) await write();
       setSettings(held);
       setMarker(held.commandMarker);
       setRetention(String(held.revisionRetentionDays));
@@ -867,6 +877,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <HttpToolsSection onPending={takeHttpPending} />
 
             <WatchersSection onPending={takeWatcherPending} busy={busy} />
+
+            <BulkheadsSection onPending={takeBulkheadPending} busy={busy} />
 
             <h2 id="sessions" className={styles.sectionHeading}>{t('Sessions')}</h2>
 
