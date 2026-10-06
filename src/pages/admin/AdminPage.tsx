@@ -91,7 +91,10 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
     setProgress(null);
     setProgressUnread(false);
     // A key of our own, to ask how far the copy has got while it runs. #572.
-    const key = crypto.randomUUID();
+    // Not crypto.randomUUID: a browser offers it only on HTTPS or localhost, so
+    // over plain http it threw here, after the button was disabled and before
+    // the copy was sent - a copy stuck for ever with nothing in the log. #616.
+    const key = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
     /*
      * One question at a time, the next asked half a second after
      * the last was answered. Issue #581: on an interval, polls
