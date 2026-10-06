@@ -427,7 +427,9 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
      * saying so was wiped by the next attempt before anybody could read it.
      * Asking again is a button.
      */
-    if (tab === 'catalog' && source === 'marketplace' && !asked.current) {
+    // The Local shelf asks too: a plugin the marketplace no longer lists is
+    // found by its listing being gone, and is unloaded from there. #616.
+    if (tab === 'catalog' && !asked.current) {
       asked.current = true;
       browse();
     }
@@ -1094,7 +1096,15 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   );
 
   const hand = ordered(
-    plugins?.filter((one) => one.marketplaceKey === null) ?? [],
+    /*
+     * Your own files, and anything installed from the marketplace that it no
+     * longer lists. Those used to be unloadable nowhere: the bin for a
+     * marketplace plugin is on its listing, and a plugin moved into the server
+     * - PlantUML, its 4 MB bundle read on every page - has no listing left.
+     */
+    plugins?.filter(
+      (one) => one.marketplaceKey === null || (listings !== null && !listings.some((listing) => listing.key === one.marketplaceKey)),
+    ) ?? [],
     (one) => {
       if (localOrder === 'API') return one.apiVersion;
       if (localOrder === 'SIZE') return one.sizeBytes;
