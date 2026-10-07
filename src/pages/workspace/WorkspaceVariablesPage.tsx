@@ -158,8 +158,21 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
 
   const [order, ascending, sortBy] = useTableSort<VariableOrder>('variables', 'NAME');
 
-  const [catalogs, setCatalogs] = useState<VariableCatalog[] | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  /*
+   * The catalogs, and the one open, each held with the workspace it came from.
+   * Switching workspace keeps this page mounted, so a plain id outlived the
+   * workspace it belonged to: the new one was asked for the old one's catalog
+   * and answered "No catalog with id". Read through the workspace now, what
+   * belongs to another is simply not there, and the list is read afresh.
+   */
+  const [heldCatalogs, setHeldCatalogs] = useState<{ workspace: string; list: VariableCatalog[] } | null>(null);
+  const catalogs = heldCatalogs?.workspace === workspaceId ? heldCatalogs.list : null;
+  const [selection, setSelection] = useState<{ workspace: string; id: string } | null>(null);
+  const selected = selection?.workspace === workspaceId ? selection.id : null;
+  const setSelected = useCallback(
+    (id: string | null) => setSelection(id === null ? null : { workspace: workspaceId, id }),
+    [workspaceId],
+  );
   const [variables, setVariables] = useState<PageOf<Variable> | null>(null);
   const [search, setSearch] = useState('');
   /**
@@ -220,8 +233,14 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
     async (keep?: string) => {
       if (workspaceId === '') return;
       const held = await fetchVariableCatalogs(workspaceId);
-      setCatalogs(held);
-      setSelected((current) => keep ?? current ?? held[0]?.id ?? null);
+      setHeldCatalogs({ workspace: workspaceId, list: held });
+      setSelection((current) => {
+        // Only one of these catalogs: one deleted elsewhere, or another
+        // workspace's, falls back to the first rather than being asked for.
+        const wanted = keep ?? (current?.workspace === workspaceId ? current.id : null);
+        const id = wanted !== null && held.some((one) => one.id === wanted) ? wanted : (held[0]?.id ?? null);
+        return id === null ? null : { workspace: workspaceId, id };
+      });
     },
     [workspaceId],
   );

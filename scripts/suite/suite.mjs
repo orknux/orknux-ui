@@ -3000,6 +3000,18 @@ export const TESTS = [
      */
   },
   {
+    name: 'variable-workspace-switch-check',
+    what: "switching workspace on the variables page opens the other workspace's catalogs, refusing nothing",
+    needs: ['workspace'],
+    /*
+     * The open catalog was a bare id that outlived the workspace it came from,
+     * so a switch asked the new workspace for the old one's catalog and the
+     * page said "No catalog with id". Asserts the other catalog is open too,
+     * which a page that showed nothing would not pass.
+     */
+  },
+
+  {
     name: 'variable-types-check',
     what: "a variable of a plugin's type gets the plugin's picker and its refusal, and a list is edited as one",
     needs: ['workspace'],
