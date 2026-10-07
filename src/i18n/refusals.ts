@@ -273,6 +273,7 @@ const PL: Record<string, string> = {
   WatcherNotActive: 'Obserwator #{id} już się zakończył.',
   WatcherMaxSecondsOutOfRange: '{seconds} to nie jest czas, przez jaki obserwator może działać. Wybierz od 60 do 31536000.',
   WatcherMinIntervalOutOfRange: '{seconds} to nie jest interwał, którego można wymagać od obserwatora. Wybierz od 1 do 86400.',
+  WatcherMinAgentCheckOutOfRange: '{seconds} to nie jest odstęp, którego można wymagać od spojrzeń agenta na wynik obserwatora. Wybierz od 1 do 31536000.',
   WatcherMaxPerAgentOutOfRange: '{count} to nie jest liczba obserwatorów, na jaką można pozwolić agentowi. Wybierz od 0 do 1000.',
   LogLevelUnknown: '„{level}” nie jest poziomem logowania. Wybierz TRACE, DEBUG, INFO, WARN, ERROR, OFF lub INHERIT.',
   LoggerNameInvalid:

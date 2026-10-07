@@ -25,6 +25,8 @@ export interface Watcher {
   /** The part of the tool's result the condition is held against; `$` is all of it. */
   toolResultPath: string;
   intervalSeconds: number;
+  /** How often its agent is woken to look at the result itself; null for never. */
+  agentCheckIntervalSeconds: number | null;
   timeoutSeconds: number;
   note: string | null;
   status: WatcherStatus;
@@ -56,13 +58,15 @@ export interface WatcherSettings {
   minIntervalSecondsConfigured: number;
   maxPerAgent: number;
   maxPerAgentConfigured: number;
+  minAgentCheckSeconds: number;
+  minAgentCheckSecondsConfigured: number;
 }
 
 const FIELDS = `id sessionId sessionTitle agentName tool arguments conditionKind condition toolResultPath intervalSeconds
-  timeoutSeconds note status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt lastResult finishedAt`;
+  agentCheckIntervalSeconds timeoutSeconds note status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt lastResult finishedAt`;
 
 const SETTINGS = `maxSeconds maxSecondsConfigured minIntervalSeconds minIntervalSecondsConfigured
-  maxPerAgent maxPerAgentConfigured`;
+  maxPerAgent maxPerAgentConfigured minAgentCheckSeconds minAgentCheckSecondsConfigured`;
 
 /** The running ones, newest first; or, `finished`, every one that has ended, most recently ended first. */
 export async function fetchWatchers(
@@ -110,6 +114,14 @@ export async function setWatcherMinIntervalSeconds(seconds: number): Promise<Wat
     { seconds },
   );
   return data.setWatcherMinIntervalSeconds;
+}
+
+export async function setWatcherMinAgentCheckSeconds(seconds: number): Promise<WatcherSettings> {
+  const data = await graphql<{ setWatcherMinAgentCheckSeconds: WatcherSettings }>(
+    `mutation ($seconds: Int!) { setWatcherMinAgentCheckSeconds(seconds: $seconds) { ${SETTINGS} } }`,
+    { seconds },
+  );
+  return data.setWatcherMinAgentCheckSeconds;
 }
 
 export async function setWatcherMaxPerAgent(count: number): Promise<WatcherSettings> {

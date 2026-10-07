@@ -30,7 +30,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 /* -------------------------------------------------- the server's contract - */
 
 const DRAWN = ['id', 'sessionId', 'sessionTitle', 'agentName', 'tool', 'arguments', 'conditionKind', 'condition', 'toolResultPath',
-  'intervalSeconds', 'timeoutSeconds', 'status', 'outcome', 'createdAt', 'nextCheckAt', 'lastCheckedAt', 'lastResult', 'finishedAt'];
+  'intervalSeconds', 'agentCheckIntervalSeconds', 'timeoutSeconds', 'status', 'outcome', 'createdAt', 'nextCheckAt', 'lastCheckedAt', 'lastResult', 'finishedAt'];
 const served = await graphql(`query { __type(name: "Watcher") { fields { name } } }`).catch(() => null);
 const fields = (served?.__type?.fields ?? []).map((one) => one.name);
 record(DRAWN.every((one) => fields.includes(one)), 'the server serves a watcher every field the page draws');
@@ -41,8 +41,8 @@ const listed = await graphql(
 ).catch(() => null);
 record(listed?.watchers !== undefined, 'and answers the page query for this workspace');
 
-const limits = await graphql(`query { watcherSettings { maxSeconds minIntervalSeconds maxPerAgent } }`).catch(() => null);
-record(limits?.watcherSettings !== undefined, 'and the three limits');
+const limits = await graphql(`query { watcherSettings { maxSeconds minIntervalSeconds maxPerAgent minAgentCheckSeconds } }`).catch(() => null);
+record(limits?.watcherSettings !== undefined, 'and the four limits');
 
 /* ------------------------------------------------------------ the drawing - */
 
@@ -57,6 +57,7 @@ const row = (id, tool, extra = {}) => ({
   condition: "$[?(@.status == 'done')]",
   toolResultPath: '$',
   intervalSeconds: 60,
+  agentCheckIntervalSeconds: null,
   timeoutSeconds: 3600,
   note: 'tell the team',
   status: 'ACTIVE',
@@ -72,7 +73,7 @@ const row = (id, tool, extra = {}) => ({
   ...extra,
 });
 
-let active = [row('1', 'buildStatus'), row('2', 'deployStatus', { conditionKind: 'REGEX', condition: '(?i)deployed', toolResultPath: '$.body' })];
+let active = [row('1', 'buildStatus'), row('2', 'deployStatus', { conditionKind: 'REGEX', condition: '(?i)deployed', toolResultPath: '$.body', agentCheckIntervalSeconds: 600 })];
 const ended = [
   row('3', 'ticketStatus', {
     status: 'FIRED',
@@ -148,6 +149,9 @@ record(/^in (1\d|2\d|30) s$/.test(next.trim()), `and when it looks next (${next}
 record(paths.length === 2 && paths[0].includes('$') && paths[1].includes('$.body'), `each row says which part of the result it watches (${paths.join(' | ')})`);
 record(text.includes("$[?(@.status == 'done')]"), 'and the condition');
 record(text.includes('60 s') && text.includes('60 min'), 'and the interval and the timeout');
+// How often the agent looks for itself, only on the row that asked for it. #618.
+const looks = await rows.locator('[data-testid="watcher-agent-check"]').allInnerTexts();
+record(looks.length === 1 && /agent 10 min/.test(looks[0]), `a watcher whose agent looks for itself says how often (${looks.join(' | ')})`);
 record(/minutes? ago|just now/.test(text), 'and when it was set');
 
 /* Stop: the mutation goes, and the row leaves. */
@@ -188,5 +192,6 @@ const held = limits?.watcherSettings ?? {};
 record((await value('watcher-max-seconds')) === String(held.maxSeconds), 'it draws the longest a watcher may run');
 record((await value('watcher-min-interval')) === String(held.minIntervalSeconds), 'the shortest interval');
 record((await value('watcher-max-per-agent')) === String(held.maxPerAgent), 'and how many one agent may have');
+record((await value('watcher-min-agent-check')) === String(held.minAgentCheckSeconds), 'and how often the agent may be woken to look');
 
 await finish(browser);

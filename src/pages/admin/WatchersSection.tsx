@@ -4,6 +4,7 @@ import {
   fetchWatcherSettings,
   setWatcherMaxPerAgent,
   setWatcherMaxSeconds,
+  setWatcherMinAgentCheckSeconds,
   setWatcherMinIntervalSeconds,
 } from '../../api/watchers';
 import type { WatcherSettings } from '../../api/watchers';
@@ -13,7 +14,7 @@ import page from './AdminSettingsPage.module.css';
 import type { PendingWrite } from './LogLevelsSection';
 
 export interface WatchersSectionProps {
-  /** Told which of the three numbers differ from the server's, so the page's Save can send them. */
+  /** Told which of the four numbers differ from the server's, so the page's Save can send them. */
   onPending: (writes: PendingWrite[]) => void;
   /** While the page is saving, so the boxes are not typed into mid-save. */
   busy?: boolean;
@@ -22,15 +23,17 @@ export interface WatchersSectionProps {
 /**
  * Admin -> Settings -> Watchers. Issue #606.
  *
- * Three numbers bounding what an agent may ask a watcher to do: how long one
- * may run, how often it may call its tool, and how many one agent may have
- * running. They go out with the page's one Save, like its other numbers.
+ * Four numbers bounding what an agent may ask a watcher to do: how long one
+ * may run, how often it may call its tool, how often it may wake the agent to
+ * look at the result itself (#618), and how many one agent may have running.
+ * They go out with the page's one Save, like its other numbers.
  */
 export function WatchersSection({ onPending, busy = false }: WatchersSectionProps) {
   const [held, setHeld] = useState<WatcherSettings | null>(null);
   const [maxSeconds, setMaxSeconds] = useState('');
   const [minInterval, setMinInterval] = useState('');
   const [perAgent, setPerAgent] = useState('');
+  const [agentCheck, setAgentCheck] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function hold(settings: WatcherSettings) {
@@ -38,6 +41,7 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
     setMaxSeconds(String(settings.maxSeconds));
     setMinInterval(String(settings.minIntervalSeconds));
     setPerAgent(String(settings.maxPerAgent));
+    setAgentCheck(String(settings.minAgentCheckSeconds));
   }
 
   useEffect(() => {
@@ -76,8 +80,9 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
     changed(maxSeconds, held.maxSeconds, setWatcherMaxSeconds);
     changed(minInterval, held.minIntervalSeconds, setWatcherMinIntervalSeconds);
     changed(perAgent, held.maxPerAgent, setWatcherMaxPerAgent);
+    changed(agentCheck, held.minAgentCheckSeconds, setWatcherMinAgentCheckSeconds);
     onPending(writes);
-  }, [held, maxSeconds, minInterval, perAgent, onPending]);
+  }, [held, maxSeconds, minInterval, perAgent, agentCheck, onPending]);
 
   return (
     <>
@@ -138,6 +143,32 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
             onChange={(event) => setMinInterval(event.target.value)}
             disabled={busy || held === null}
             aria-label={t('The shortest interval between two checks')}
+          />
+          <span className={page.retentionUnit}>{t('seconds')}</span>
+        </div>
+      </div>
+
+      <div className={page.setting}>
+        <div className={page.settingText}>
+          <span className={page.labelWithHint}>
+            <p className={page.settingLabel}>{t('The shortest interval between two looks by the agent')}</p>
+            <FieldHint label={t('The shortest interval between two looks by the agent')}>
+              {t('Each look wakes the agent for a turn of its own, to judge the latest result itself and change or end the watcher - so this bounds what one watcher may spend on a model. An agent can also ask for no shorter than its own interval between checks. Between 1 second and a year.')}
+            </FieldHint>
+          </span>
+        </div>
+        <div className={page.retention}>
+          <input
+            id="watcher-min-agent-check"
+            name="watcherMinAgentCheckSeconds"
+            className={page.input}
+            type="number"
+            min={1}
+            max={31536000}
+            value={agentCheck}
+            onChange={(event) => setAgentCheck(event.target.value)}
+            disabled={busy || held === null}
+            aria-label={t('The shortest interval between two looks by the agent')}
           />
           <span className={page.retentionUnit}>{t('seconds')}</span>
         </div>
