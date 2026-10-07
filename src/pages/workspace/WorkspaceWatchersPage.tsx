@@ -212,8 +212,15 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
               </Link>
               <span className={styles.muted}>{one.agentName}</span>
             </span>
-            <span className={`${styles.colCall} ${styles.code}`} title={one.note ?? undefined}>
-              {one.tool}({one.arguments === '{}' ? '' : one.arguments})
+            <span className={styles.colCall}>
+              {one.description !== null && (
+                <span className={styles.description} data-testid="watcher-description">
+                  {one.description}
+                </span>
+              )}
+              <span className={styles.code} title={one.note ?? undefined}>
+                {one.tool}({one.arguments === '{}' ? '' : one.arguments})
+              </span>
             </span>
             <span className={styles.colCondition}>
               <span className={styles.kind}>{one.conditionKind === 'JSONPATH' ? 'JSONPath' : 'regex'}</span>

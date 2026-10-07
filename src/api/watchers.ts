@@ -29,6 +29,8 @@ export interface Watcher {
   agentCheckIntervalSeconds: number | null;
   timeoutSeconds: number;
   note: string | null;
+  /** What it is for, in one line for a person; null where the agent gave none. */
+  description: string | null;
   status: WatcherStatus;
   checks: number;
   matched: string | null;
@@ -63,7 +65,7 @@ export interface WatcherSettings {
 }
 
 const FIELDS = `id sessionId sessionTitle agentName tool arguments conditionKind condition toolResultPath intervalSeconds
-  agentCheckIntervalSeconds timeoutSeconds note status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt lastResult finishedAt`;
+  agentCheckIntervalSeconds timeoutSeconds note description status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt lastResult finishedAt`;
 
 const SETTINGS = `maxSeconds maxSecondsConfigured minIntervalSeconds minIntervalSecondsConfigured
   maxPerAgent maxPerAgentConfigured minAgentCheckSeconds minAgentCheckSecondsConfigured`;

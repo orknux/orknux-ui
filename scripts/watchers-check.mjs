@@ -30,7 +30,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 /* -------------------------------------------------- the server's contract - */
 
 const DRAWN = ['id', 'sessionId', 'sessionTitle', 'agentName', 'tool', 'arguments', 'conditionKind', 'condition', 'toolResultPath',
-  'intervalSeconds', 'agentCheckIntervalSeconds', 'timeoutSeconds', 'status', 'outcome', 'createdAt', 'nextCheckAt', 'lastCheckedAt', 'lastResult', 'finishedAt'];
+  'intervalSeconds', 'agentCheckIntervalSeconds', 'timeoutSeconds', 'description', 'status', 'outcome', 'createdAt', 'nextCheckAt', 'lastCheckedAt', 'lastResult', 'finishedAt'];
 const served = await graphql(`query { __type(name: "Watcher") { fields { name } } }`).catch(() => null);
 const fields = (served?.__type?.fields ?? []).map((one) => one.name);
 record(DRAWN.every((one) => fields.includes(one)), 'the server serves a watcher every field the page draws');
@@ -60,6 +60,7 @@ const row = (id, tool, extra = {}) => ({
   agentCheckIntervalSeconds: null,
   timeoutSeconds: 3600,
   note: 'tell the team',
+  description: null,
   status: 'ACTIVE',
   checks: 2,
   matched: null,
@@ -73,7 +74,7 @@ const row = (id, tool, extra = {}) => ({
   ...extra,
 });
 
-let active = [row('1', 'buildStatus'), row('2', 'deployStatus', { conditionKind: 'REGEX', condition: '(?i)deployed', toolResultPath: '$.body', agentCheckIntervalSeconds: 600 })];
+let active = [row('1', 'buildStatus', { description: 'nightly build of main' }), row('2', 'deployStatus', { conditionKind: 'REGEX', condition: '(?i)deployed', toolResultPath: '$.body', agentCheckIntervalSeconds: 600 })];
 const ended = [
   row('3', 'ticketStatus', {
     status: 'FIRED',
@@ -153,6 +154,12 @@ record(text.includes('60 s') && text.includes('60 min'), 'and the interval and t
 const looks = await rows.locator('[data-testid="watcher-agent-check"]').allInnerTexts();
 record(looks.length === 1 && /agent 10 min/.test(looks[0]), `a watcher whose agent looks for itself says how often (${looks.join(' | ')})`);
 record(/minutes? ago|just now/.test(text), 'and when it was set');
+// The label the agent gave it, on its own line over the call, and only where it gave one. #621.
+const labels = await rows.locator('[data-testid="watcher-description"]').allInnerTexts();
+record(labels.length === 1 && labels[0] === 'nightly build of main', `a watcher's description is drawn where it has one (${labels.join(' | ')})`);
+const label = await rows.first().locator('[data-testid="watcher-description"]').boundingBox().catch(() => null);
+const call = await rows.first().locator('[data-testid="watcher-description"] + span').boundingBox().catch(() => null);
+record(label !== null && call !== null && label.y + label.height <= call.y + 1, 'above the tool call it labels');
 
 /* Stop: the mutation goes, and the row leaves. */
 await page.locator('[data-watcher-stop="1"]').click({ timeout: 5_000 }).catch(() => {});
