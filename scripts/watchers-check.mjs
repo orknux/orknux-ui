@@ -154,12 +154,14 @@ record(text.includes('60 s') && text.includes('60 min'), 'and the interval and t
 const looks = await rows.locator('[data-testid="watcher-agent-check"]').allInnerTexts();
 record(looks.length === 1 && /agent 10 min/.test(looks[0]), `a watcher whose agent looks for itself says how often (${looks.join(' | ')})`);
 record(/minutes? ago|just now/.test(text), 'and when it was set');
-// The label the agent gave it, on its own line over the call, and only where it gave one. #621.
+// The label the agent gave it, in a column of its own beside the call, and a dash where it gave none. #621.
 const labels = await rows.locator('[data-testid="watcher-description"]').allInnerTexts();
-record(labels.length === 1 && labels[0] === 'nightly build of main', `a watcher's description is drawn where it has one (${labels.join(' | ')})`);
+record(labels.length === 2 && labels[0] === 'nightly build of main' && labels[1] === '—', `a watcher's description has a column of its own (${labels.join(' | ')})`);
+const column = await page.locator('[class*="tableHeader"] span', { hasText: /^Description$/ }).boundingBox().catch(() => null);
 const label = await rows.first().locator('[data-testid="watcher-description"]').boundingBox().catch(() => null);
-const call = await rows.first().locator('[data-testid="watcher-description"] + span').boundingBox().catch(() => null);
-record(label !== null && call !== null && label.y + label.height <= call.y + 1, 'above the tool call it labels');
+const call = await rows.first().locator('[data-testid="watcher-call"]').boundingBox().catch(() => null);
+record(column !== null && label !== null && Math.abs(column.x - label.x) < 2, 'under a Description heading');
+record(label !== null && call !== null && label.x + label.width <= call.x + 1 && Math.abs(label.y - call.y) < 4, 'on the same line as the call, before it');
 
 /* Stop: the mutation goes, and the row leaves. */
 await page.locator('[data-watcher-stop="1"]').click({ timeout: 5_000 }).catch(() => {});
