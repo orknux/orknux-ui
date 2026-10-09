@@ -167,6 +167,7 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
           <span className={styles.colCall}>{t('Tool call')}</span>
           <span className={styles.colCondition}>{t('Condition')}</span>
           <span className={styles.colNumber}>{t('Interval')}</span>
+          <span className={styles.colNumber} title={t('How often the agent looks at the result itself')}>{t('Agent check')}</span>
           <span className={styles.colNumber}>{t('Timeout')}</span>
           <span className={styles.colWhen}>{t('Set')}</span>
           <span className={styles.colWhen}>{t('Last check')}</span>
@@ -226,12 +227,10 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
             </span>
             <span className={`${styles.colNumber} ${styles.muted}`}>
               {duration(one.intervalSeconds)}
-              {one.agentCheckIntervalSeconds != null && (
-                <span className={styles.muted} data-testid="watcher-agent-check" title={t('How often the agent looks at the result itself')}>
-                  {' · '}
-                  {tf('agent {every}', { every: duration(one.agentCheckIntervalSeconds) })}
-                </span>
-              )}
+            </span>
+            {/* How often the agent looks at the result itself, in a column of its own; a dash where it never does. */}
+            <span className={`${styles.colNumber} ${styles.muted}`} data-testid="watcher-agent-check">
+              {one.agentCheckIntervalSeconds != null ? duration(one.agentCheckIntervalSeconds) : <span className={styles.nothing}>—</span>}
             </span>
             <span className={`${styles.colNumber} ${styles.muted}`}>{duration(one.timeoutSeconds)}</span>
             <span className={`${styles.colWhen} ${styles.muted}`} title={one.createdAt}>

@@ -152,7 +152,10 @@ record(text.includes("$[?(@.status == 'done')]"), 'and the condition');
 record(text.includes('60 s') && text.includes('60 min'), 'and the interval and the timeout');
 // How often the agent looks for itself, only on the row that asked for it. #618.
 const looks = await rows.locator('[data-testid="watcher-agent-check"]').allInnerTexts();
-record(looks.length === 1 && /agent 10 min/.test(looks[0]), `a watcher whose agent looks for itself says how often (${looks.join(' | ')})`);
+record(looks.length === 2 && looks[0] === '—' && looks[1] === '10 min', `how often the agent looks for itself has a column, a dash where it never does (${looks.join(' | ')})`);
+const checkHeading = await page.locator('[class*="tableHeader"] span', { hasText: /^Agent check$/ }).boundingBox().catch(() => null);
+const checkCell = await rows.nth(1).locator('[data-testid="watcher-agent-check"]').boundingBox().catch(() => null);
+record(checkHeading !== null && checkCell !== null && Math.abs(checkHeading.x - checkCell.x) < 2, 'under an Agent check heading');
 record(/minutes? ago|just now/.test(text), 'and when it was set');
 // The label the agent gave it, in a column of its own beside the call, and a dash where it gave none. #621.
 const labels = await rows.locator('[data-testid="watcher-description"]').allInnerTexts();

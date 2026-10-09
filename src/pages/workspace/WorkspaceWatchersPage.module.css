@@ -170,7 +170,7 @@
 
 /* The agent's label for it, in a column of its own: what a person scans the list by. */
 .colDescription {
-  flex: 0 0 220px;
+  flex: 0 0 180px;
   overflow: hidden;
   font-size: var(--text-md);
   color: var(--color-text-primary);
@@ -183,7 +183,7 @@
 }
 
 .colWhen {
-  flex: 0 0 120px;
+  flex: 0 0 100px;
 }
 
 .colOutcome {
