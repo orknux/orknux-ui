@@ -7,6 +7,7 @@ import {
   setAgentMaxSubagents,
   setAgentMaxSubagentsAtOnce,
   setRateLimitBackoffSeconds,
+  setNoteMaxCharacters,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -103,6 +104,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [pluginWait, setPluginWait] = useState('');
   /** The installation's ceiling on tool rounds; an agent may carry its own. */
   const [rounds, setRounds] = useState('');
+  /** How long one note to self may be, as typed. */
+  const [noteLength, setNoteLength] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
   const [sleep, setSleep] = useState('');
   /** And how many of those it may take in a row on one step. */
@@ -190,6 +193,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setPluginSource(String(held.pluginMaxSourceKb));
         setPluginWait(String(held.pluginTimeoutSeconds));
         setRounds(String(held.chatMaxRounds));
+        setNoteLength(String(held.noteMaxCharacters));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
@@ -252,6 +256,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sweep, held: settings.taskSweepMinutes, write: setTaskSweepMinutes },
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
+        { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
@@ -501,7 +506,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('Tool Rounds')}</p>
                   <FieldHint label={t('Tool Rounds')}>
-                    {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. Between 2 and 100.')}
+                    {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. Between 2 and 10000.')}
                   </FieldHint>
                 </span>
               </div>
@@ -512,13 +517,44 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   className={styles.input}
                   type="number"
                   min={2}
-                  max={100}
+                  max={10000}
                   value={rounds}
                   onChange={(event) => setRounds(event.target.value)}
                   disabled={busy}
                   aria-label={t('Tool Rounds')}
                 />
                 <span className={styles.retentionUnit}>{t('rounds')}</span>
+              </div>
+            </div>
+
+            {/*
+              How long one note to self may be. It was five hundred, fixed, and an
+              agent keeping track of a long review was refused twice running and
+              spent its rounds shortening its own memory.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Note Length')}</p>
+                  <FieldHint label={t('Note Length')}>
+                    {t('How long one note an agent writes to itself may be. Every note is read back on every later turn, so a longer limit is paid for on every turn. Between 100 and 10000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="note-max-characters"
+                  name="noteMaxCharacters"
+                  className={styles.input}
+                  type="number"
+                  min={100}
+                  max={10000}
+                  value={noteLength}
+                  onChange={(event) => setNoteLength(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Note Length')}
+                />
+                <span className={styles.retentionUnit}>{t('characters')}</span>
               </div>
             </div>
 

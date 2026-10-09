@@ -1873,7 +1873,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('Tool Rounds')}
             </label>
             <FieldHint label={t('Tool Rounds')}>
-              {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. Empty follows Tool rounds under Admin → Settings → Chat; set one here for an agent whose work is longer than the rest. Between 2 and 100.')}
+              {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. Empty follows Tool rounds under Admin → Settings → Chat; set one here for an agent whose work is longer than the rest. Between 2 and 10000.')}
             </FieldHint>
           </span>
           <input
@@ -1881,7 +1881,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             className={styles.input}
             type="number"
             min={2}
-            max={100}
+            max={10000}
             value={rounds}
             placeholder={t('Follows the installation')}
             onChange={(event) => setRounds(event.target.value)}

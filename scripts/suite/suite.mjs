@@ -2104,6 +2104,15 @@ export const TESTS = [
     /* Reported: it was drawn in the grey of "Not saved yet." there alone. */
   },
   {
+    name: 'note-length-check',
+    what: 'how long a note an agent writes to itself may be, set from Admin',
+    needs: [],
+    /*
+     * It was five hundred characters, fixed, and an agent keeping track of a
+     * long review was refused twice running for seven hundred.
+     */
+  },
+  {
     name: 'tool-rounds-check',
     what: 'how many rounds of tool calls an agent gets, set from Admin and per agent',
     needs: ['workspace'],

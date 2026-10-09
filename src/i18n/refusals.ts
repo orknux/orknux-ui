@@ -235,6 +235,7 @@ const PL: Record<string, string> = {
   // How a step a dead server was in the middle of is recovered, #601.
   StepHeartbeatOutOfRange: '{seconds} to nie jest sygnał życia kroku. Wybierz od 0 do 600 sekund; 0 go wyłącza.',
   // The first wait on a rate limit inside a stream that named none, #608.
+  NoteLengthOutOfRange: '{characters} to nie jest długość, do której można ograniczyć notatkę dla siebie. Wybierz od 100 do 10000.',
   RateLimitBackoffOutOfRange: '{seconds} to nie jest liczba sekund pierwszego oczekiwania po limicie zapytań bez podanego czasu. Wybierz od 1 do 60.',
   BulkheadValueOutOfRange: '{value} to nie jest tu dopuszczalna wartość. Wybierz od {min} do {max}.',
   ClusterLeaseOutOfRange: '{seconds} to nie jest długość dzierżawy klastra. Wybierz od 5 do 600 sekund.',

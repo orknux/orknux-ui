@@ -213,6 +213,9 @@ export interface InstallationSettings {
   /** The first wait for a rate limit inside a stream that named none, in seconds. Issue #608. */
   rateLimitBackoffSeconds: number;
   rateLimitBackoffSecondsConfigured: number;
+  /** How long one note_to_self may be, in characters. */
+  noteMaxCharacters: number;
+  noteMaxCharactersConfigured: number;
   /**
    * False where the installation runs Temporal, and the field is not offered.
    *
@@ -254,7 +257,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -698,6 +701,14 @@ export async function setToolSummaryTrimPercent(percent: number): Promise<Instal
 }
 
 /** The first wait for a rate limit inside a streaming answer that named no time. Issue #608. */
+export async function setNoteMaxCharacters(characters: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setNoteMaxCharacters: InstallationSettings }>(
+    `mutation ($characters: Int!) { setNoteMaxCharacters(characters: $characters) { ${FIELDS} } }`,
+    { characters },
+  );
+  return data.setNoteMaxCharacters;
+}
+
 export async function setRateLimitBackoffSeconds(seconds: number): Promise<InstallationSettings> {
   const data = await graphql<{ setRateLimitBackoffSeconds: InstallationSettings }>(
     `mutation ($seconds: Int!) { setRateLimitBackoffSeconds(seconds: $seconds) { ${FIELDS} } }`,
