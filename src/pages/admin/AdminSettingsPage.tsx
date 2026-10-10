@@ -8,6 +8,7 @@ import {
   setAgentMaxSubagentsAtOnce,
   setRateLimitBackoffSeconds,
   setNoteMaxCharacters,
+  setNoteMaxCount,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -106,6 +107,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [rounds, setRounds] = useState('');
   /** How long one note to self may be, as typed. */
   const [noteLength, setNoteLength] = useState('');
+  /** How many notes to self one conversation keeps, as typed. */
+  const [noteCount, setNoteCount] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
   const [sleep, setSleep] = useState('');
   /** And how many of those it may take in a row on one step. */
@@ -194,6 +197,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setPluginWait(String(held.pluginTimeoutSeconds));
         setRounds(String(held.chatMaxRounds));
         setNoteLength(String(held.noteMaxCharacters));
+        setNoteCount(String(held.noteMaxCount));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
@@ -257,6 +261,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
+        { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
@@ -555,6 +560,33 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Note Length')}
                 />
                 <span className={styles.retentionUnit}>{t('characters')}</span>
+              </div>
+            </div>
+
+            {/* How many of those notes one conversation keeps. It was twenty, fixed. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Notes Per Conversation')}</p>
+                  <FieldHint label={t('Notes Per Conversation')}>
+                    {t('How many notes an agent may write to itself in one conversation; past that it is told it is full. Every note is read back on every later turn. Between 1 and 1000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="note-max-count"
+                  name="noteMaxCount"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={noteCount}
+                  onChange={(event) => setNoteCount(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Notes Per Conversation')}
+                />
+                <span className={styles.retentionUnit}>{t('notes')}</span>
               </div>
             </div>
 

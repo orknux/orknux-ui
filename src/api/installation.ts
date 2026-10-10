@@ -216,6 +216,9 @@ export interface InstallationSettings {
   /** How long one note_to_self may be, in characters. */
   noteMaxCharacters: number;
   noteMaxCharactersConfigured: number;
+  /** How many notes to self one conversation keeps. */
+  noteMaxCount: number;
+  noteMaxCountConfigured: number;
   /**
    * False where the installation runs Temporal, and the field is not offered.
    *
@@ -257,7 +260,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -701,6 +704,14 @@ export async function setToolSummaryTrimPercent(percent: number): Promise<Instal
 }
 
 /** The first wait for a rate limit inside a streaming answer that named no time. Issue #608. */
+export async function setNoteMaxCount(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setNoteMaxCount: InstallationSettings }>(
+    `mutation ($count: Int!) { setNoteMaxCount(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setNoteMaxCount;
+}
+
 export async function setNoteMaxCharacters(characters: number): Promise<InstallationSettings> {
   const data = await graphql<{ setNoteMaxCharacters: InstallationSettings }>(
     `mutation ($characters: Int!) { setNoteMaxCharacters(characters: $characters) { ${FIELDS} } }`,
