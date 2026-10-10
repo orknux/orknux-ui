@@ -9,6 +9,8 @@ import {
   setRateLimitBackoffSeconds,
   setNoteMaxCharacters,
   setNoteMaxCount,
+  setSessionStoreMaxKeys,
+  setSessionValueMaxMb,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -122,6 +124,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [noteLength, setNoteLength] = useState('');
   /** How many notes to self one conversation keeps, as typed. */
   const [noteCount, setNoteCount] = useState('');
+  /** How big one value in a session's store may be, in MB, as typed. */
+  const [valueSize, setValueSize] = useState('');
+  /** How many keys one session's store may hold, as typed. */
+  const [storeKeys, setStoreKeys] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
   const [sleep, setSleep] = useState('');
   /** And how many of those it may take in a row on one step. */
@@ -246,6 +252,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setRounds(String(held.chatMaxRounds));
         setNoteLength(String(held.noteMaxCharacters));
         setNoteCount(String(held.noteMaxCount));
+        setValueSize(String(held.sessionValueMaxMb));
+        setStoreKeys(String(held.sessionStoreMaxKeys));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
         setAsks(String(held.agentMaxSubagents));
@@ -311,6 +319,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
+        { typed: valueSize, held: settings.sessionValueMaxMb, write: setSessionValueMaxMb },
+        { typed: storeKeys, held: settings.sessionStoreMaxKeys, write: setSessionStoreMaxKeys },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
         { typed: asks, held: settings.agentMaxSubagents, write: setAgentMaxSubagents },
@@ -671,6 +681,59 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Notes Per Conversation')}
                 />
                 <span className={styles.retentionUnit}>{t('notes')}</span>
+              </div>
+            </div>
+
+            {/* How big one kept value may be - an exported archive, a drawn picture. It was 8 MB, fixed. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Session Value Size')}</p>
+                  <FieldHint label={t('Session Value Size')}>
+                    {t('The most one value an agent keeps in its session may be - an exported archive, a drawn picture, a file a plugin wrote. Between 1 and 256 MB.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="session-value-max-mb"
+                  name="sessionValueMaxMb"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={256}
+                  value={valueSize}
+                  onChange={(event) => setValueSize(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Session Value Size')}
+                />
+                <span className={styles.retentionUnit}>MB</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Session Store Keys')}</p>
+                  <FieldHint label={t('Session Store Keys')}>
+                    {t('How many values one session may keep at once. Between 10 and 10000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="session-store-max-keys"
+                  name="sessionStoreMaxKeys"
+                  className={styles.input}
+                  type="number"
+                  min={10}
+                  max={10000}
+                  value={storeKeys}
+                  onChange={(event) => setStoreKeys(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Session Store Keys')}
+                />
+                <span className={styles.retentionUnit}>{t('keys')}</span>
               </div>
             </div>
 

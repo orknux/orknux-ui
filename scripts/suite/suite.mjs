@@ -3382,6 +3382,20 @@ export const TESTS = [
      */
   },
   {
+    name: 'provider-reasoning-switch-check',
+    what: "a provider can be told to have the model's earlier thinking sent back, off by default",
+    needs: ['workspace'],
+    /*
+     * Echoing a model's thinking back is what some providers need and others
+     * drop - Gemma's template on llama.cpp - so it is the provider's switch,
+     * off unless turned on. `ProviderSendsReasoningTest` and
+     * `AgentToolCallTest` prove what is stored and what reaches the wire; this
+     * proves somebody can reach it: drawn and off on a new provider's form, off
+     * on one made without an opinion, and a press saved and read back off the
+     * server and after a reload. Its own scratch provider, removed at both ends.
+     */
+  },
+  {
     name: 'provider-chat-api-check',
     what: "an Azure OpenAI provider's chats go through Responses or chat completions, chosen on its page",
     needs: ['workspace'],

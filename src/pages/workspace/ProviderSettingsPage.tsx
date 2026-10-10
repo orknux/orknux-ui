@@ -118,6 +118,11 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
    */
   const [checkEnabled, setCheckEnabled] = useState(true);
   /*
+   * Off for a new provider, as the server would put it: echoing a model's old
+   * thinking is what some providers need and others drop, so it is asked for.
+   */
+  const [sendsReasoning, setSendsReasoning] = useState(false);
+  /*
    * The throttle defaults this provider hands its models. Empty is no default:
    * a model may still set its own rate. Retry-After defaults to obeyed. #426.
    */
@@ -235,6 +240,7 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
     setClientId(found.clientId ?? '');
     setScope(found.scope ?? DEFAULT_SCOPE);
     setCheckEnabled(found.checkEnabled);
+    setSendsReasoning(found.sendsReasoning);
     setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
     setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
     setAcceptRetryAfter(found.acceptRetryAfter);
@@ -338,6 +344,7 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
       clientId: entra ? clientId.trim() || null : null,
       scope: entra ? scope.trim() || null : null,
       checkEnabled,
+      sendsReasoning,
       throttleTokensPerSecond: toNumber(throttleTokens),
       throttleRequestsPerSecond: toNumber(throttleRequests),
       acceptRetryAfter,
@@ -662,6 +669,47 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                   </button>
                   <span className={checkEnabled ? styles.checkOn : styles.checkOff}>
                     {checkEnabled ? t('Checked every few minutes') : t('Checked only when asked')}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {/*
+              Whether a model's earlier thinking goes back to it. A provider's
+              setting and not a model's, because it is the provider's chat
+              template that keeps or drops it.
+            */}
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <span className={styles.label} id="provider-reasoning-label">{t('Send thinking back')}</span>
+                  <FieldHint label={t('Send thinking back')}>
+                    {t('Whether the model is shown its own earlier thinking. Off suits models whose chat template drops old thinking, like Gemma on llama.cpp; turn it on for providers that need it, such as reasoning models that lose their plan without it.')}
+                  </FieldHint>
+                </span>
+                <span className={styles.statusRow}>
+                  <button
+                    type="button"
+                    className={styles.toggle}
+                    onClick={() => {
+                      setSendsReasoning(!sendsReasoning);
+                      setSaved(false);
+                    }}
+                    role="switch"
+                    aria-checked={sendsReasoning}
+                    aria-labelledby="provider-reasoning-label"
+                    data-testid="provider-reasoning-toggle"
+                  >
+                    <img
+                      src={sendsReasoning ? toggleOnIcon : toggleOffIcon}
+                      alt=""
+                      width={36}
+                      height={20}
+                      data-keeps-colour
+                    />
+                  </button>
+                  <span className={sendsReasoning ? styles.checkOn : styles.checkOff}>
+                    {sendsReasoning ? t('Earlier thinking is sent back') : t('Earlier thinking is left out')}
                   </span>
                 </span>
               </div>

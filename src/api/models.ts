@@ -67,6 +67,11 @@ export interface ModelProvider {
   acceptRetryAfter: boolean;
   /** Which API an Azure OpenAI provider's chats go through; null on every other type. */
   chatApi: ChatApi | null;
+  /**
+   * Whether the model's own earlier thinking is sent back in later requests.
+   * False by default; the thinking is captured and shown either way.
+   */
+  sendsReasoning: boolean;
   status: ProviderStatus;
   lastCheckMessage: string | null;
   lastCheckedAt: string | null;
@@ -180,7 +185,7 @@ export interface ModelUsage {
 
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
-  'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi ' +
+  'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi sendsReasoning ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
@@ -312,6 +317,8 @@ export interface ProviderInput {
   acceptRetryAfter?: boolean;
   /** Azure OpenAI only - the server refuses it on any other type. Undefined leaves it as it is. */
   chatApi?: ChatApi;
+  /** Whether the model's earlier thinking is sent back. Undefined is off on create and unchanged on update. */
+  sendsReasoning?: boolean;
 }
 
 export async function createProvider(

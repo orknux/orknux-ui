@@ -219,6 +219,12 @@ export interface InstallationSettings {
   /** How many notes to self one conversation keeps. */
   noteMaxCount: number;
   noteMaxCountConfigured: number;
+  /** How big one value in a session's store may be, in MB. */
+  sessionValueMaxMb: number;
+  sessionValueMaxMbConfigured: number;
+  /** How many keys one session's store may hold. */
+  sessionStoreMaxKeys: number;
+  sessionStoreMaxKeysConfigured: number;
   /**
    * False where the installation runs Temporal, and the field is not offered.
    *
@@ -293,7 +299,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -743,6 +749,22 @@ export async function setToolSummaryTrimPercent(percent: number): Promise<Instal
 }
 
 /** The first wait for a rate limit inside a streaming answer that named no time. Issue #608. */
+export async function setSessionValueMaxMb(megabytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setSessionValueMaxMb: InstallationSettings }>(
+    `mutation ($megabytes: Int!) { setSessionValueMaxMb(megabytes: $megabytes) { ${FIELDS} } }`,
+    { megabytes },
+  );
+  return data.setSessionValueMaxMb;
+}
+
+export async function setSessionStoreMaxKeys(keys: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setSessionStoreMaxKeys: InstallationSettings }>(
+    `mutation ($keys: Int!) { setSessionStoreMaxKeys(keys: $keys) { ${FIELDS} } }`,
+    { keys },
+  );
+  return data.setSessionStoreMaxKeys;
+}
+
 export async function setNoteMaxCount(count: number): Promise<InstallationSettings> {
   const data = await graphql<{ setNoteMaxCount: InstallationSettings }>(
     `mutation ($count: Int!) { setNoteMaxCount(count: $count) { ${FIELDS} } }`,

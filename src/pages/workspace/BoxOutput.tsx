@@ -180,8 +180,11 @@ export function BoxOutput({ sessionId, sessionBoxId, executionId }: Props) {
   const toEnd = useCallback(() => {
     const box = scroller.current;
     if (box === null) return;
+    const end = box.scrollHeight - box.clientHeight;
+    /* Marked only when it moves: a scroll that changes nothing fires no event to clear the mark, and the reader's next one would be taken for ours. */
+    if (Math.abs(box.scrollTop - end) < 1) return;
     selfScrolled.current = true;
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = end;
   }, []);
 
   /* While following, read on to what has been printed so far, and keep to the end of it. */
@@ -205,7 +208,7 @@ export function BoxOutput({ sessionId, sessionBoxId, executionId }: Props) {
 
   const toTop = useCallback(() => {
     setFollow(false);
-    if (scroller.current !== null) {
+    if (scroller.current !== null && scroller.current.scrollTop > 0) {
       selfScrolled.current = true;
       scroller.current.scrollTop = 0;
     }
@@ -274,8 +277,9 @@ export function BoxOutput({ sessionId, sessionBoxId, executionId }: Props) {
     if (box === null || shownCurrent < 0) return;
     const mark = box.querySelector<HTMLElement>('[data-box-output-match-current]');
     if (mark === null) return;
-    selfScrolled.current = true;
-    box.scrollTop = Math.max(0, mark.offsetTop - box.clientHeight / 2);
+    const to = Math.max(0, mark.offsetTop - box.clientHeight / 2);
+    if (Math.abs(box.scrollTop - to) >= 1) selfScrolled.current = true;
+    box.scrollTop = to;
   }, [shownCurrent, query]);
 
   const step = useCallback(
