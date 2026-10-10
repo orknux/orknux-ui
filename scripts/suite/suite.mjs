@@ -3877,6 +3877,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'compaction-link-check',
+    what: "a summarised turn's session line links to the workspace's compaction settings, which open on that section",
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-picker-keys-check',
     what: "the chat's agent picker walked with the arrow keys, skipping an inactive agent, and Enter choosing",
     needs: ['workspace'],

@@ -243,8 +243,10 @@ function formatBytes(bytes: number): string {
 }
 
 /** One line of the transcript: what happened, and for a tool, what came back. */
-function EventLine({ event }: { event: LlmSessionEvent }) {
+function EventLine({ event, workspaceId }: { event: LlmSessionEvent; workspaceId: string }) {
   const text = readable(event.kind, event.content);
+  /* A turn summarised to fit its window: the settings that decide how are a press away. */
+  const compacted = event.kind === 'SYSTEM' && (event.content ?? '').startsWith("The turn outgrew the model's window");
 
   /*
    * What the tool answered, where it answered anything.
@@ -298,6 +300,11 @@ function EventLine({ event }: { event: LlmSessionEvent }) {
             missing half rather than as all there was.
           */}
           {answered.trim() !== '' && <Block text={answered} code label={t('Answered')} />}
+          {compacted && (
+            <Link className={styles.lineLink} to={`/workspace/${workspaceId}/settings#compaction`} data-compaction-settings="">
+              {t('Change how turns are summarised')}
+            </Link>
+          )}
 
           {/*
             A call still running has arguments and no answer, and saying so is
@@ -1424,7 +1431,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   {event.kind === 'AGENT_DETAILS' && event.agentDetails !== null ? (
                     <AgentDetailsBlock details={event.agentDetails} at={event.at} workspaceId={workspaceId} />
                   ) : (
-                    <EventLine event={event} />
+                    <EventLine event={event} workspaceId={workspaceId} />
                   )}
                 </div>
               );

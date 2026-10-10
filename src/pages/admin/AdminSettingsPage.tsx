@@ -11,6 +11,8 @@ import {
   setNoteMaxCount,
   setSessionStoreMaxKeys,
   setSessionValueMaxMb,
+  setEmptyAnswerRetries,
+  setUnusableReplyRetries,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -126,6 +128,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [noteCount, setNoteCount] = useState('');
   /** How big one value in a session's store may be, in MB, as typed. */
   const [valueSize, setValueSize] = useState('');
+  /** How many times an empty answer is asked again, as typed. */
+  const [emptyRetries, setEmptyRetries] = useState('');
+  /** How many times an unusable reply is put back, as typed. */
+  const [unusableRetries, setUnusableRetries] = useState('');
   /** How many keys one session's store may hold, as typed. */
   const [storeKeys, setStoreKeys] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
@@ -253,6 +259,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setNoteLength(String(held.noteMaxCharacters));
         setNoteCount(String(held.noteMaxCount));
         setValueSize(String(held.sessionValueMaxMb));
+        setEmptyRetries(String(held.emptyAnswerRetries));
+        setUnusableRetries(String(held.unusableReplyRetries));
         setStoreKeys(String(held.sessionStoreMaxKeys));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
@@ -320,6 +328,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
         { typed: valueSize, held: settings.sessionValueMaxMb, write: setSessionValueMaxMb },
+        { typed: emptyRetries, held: settings.emptyAnswerRetries, write: setEmptyAnswerRetries },
+        { typed: unusableRetries, held: settings.unusableReplyRetries, write: setUnusableReplyRetries },
         { typed: storeKeys, held: settings.sessionStoreMaxKeys, write: setSessionStoreMaxKeys },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
@@ -681,6 +691,59 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Notes Per Conversation')}
                 />
                 <span className={styles.retentionUnit}>{t('notes')}</span>
+              </div>
+            </div>
+
+            {/* How often a round is asked again after nothing came back. It was two, fixed. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Empty Answer Retries')}</p>
+                  <FieldHint label={t('Empty Answer Retries')}>
+                    {t('How many times a round is asked again when the model sends nothing back - a dropped stream, a busy server. Between 0 and 20.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="empty-answer-retries"
+                  name="emptyAnswerRetries"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={emptyRetries}
+                  onChange={(event) => setEmptyRetries(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Empty Answer Retries')}
+                />
+                <span className={styles.retentionUnit}>{t('times')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Unusable Reply Retries')}</p>
+                  <FieldHint label={t('Unusable Reply Retries')}>
+                    {t('How many times a reply the server could not use - a broken tool call, arguments that are not JSON - is put back to the model to fix. Between 0 and 10.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="unusable-reply-retries"
+                  name="unusableReplyRetries"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={unusableRetries}
+                  onChange={(event) => setUnusableRetries(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Unusable Reply Retries')}
+                />
+                <span className={styles.retentionUnit}>{t('times')}</span>
               </div>
             </div>
 

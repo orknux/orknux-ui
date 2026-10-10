@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 
 import { fetchMemoryBudget } from '../../api/agents';
 import type { SessionMemoryBudget } from '../../api/agents';
@@ -236,6 +236,12 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const hasChat = installation?.chatEnabled === true;
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const { hash } = useLocation();
+  /* A link to one section - "Change how turns are summarised" from a session - lands on it once the form is drawn. */
+  useEffect(() => {
+    if (workspace === null || hash === '') return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' });
+  }, [workspace, hash]);
   const [error, setError] = useState<string | null>(null);
   /*
    * Which card the message above belongs to.
@@ -1592,7 +1598,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           </div>
         </div>
 
-        <div className={styles.field}>
+        <div className={styles.field} id="compaction">
           <span className={styles.labelWithHint}>
             <label className={styles.label} htmlFor="workspace-compact-after">
               {t('Compact A Session Past')}

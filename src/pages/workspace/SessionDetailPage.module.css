@@ -1333,3 +1333,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* A link under a line to where its behaviour is set. */
+.lineLink {
+  display: inline-block;
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-accent-brand);
+  text-decoration: none;
+}
+
+.lineLink:hover {
+  text-decoration: underline;
+}

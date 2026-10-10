@@ -219,6 +219,12 @@ export interface InstallationSettings {
   /** How many notes to self one conversation keeps. */
   noteMaxCount: number;
   noteMaxCountConfigured: number;
+  /** How many times a round is asked again after an empty answer. */
+  emptyAnswerRetries: number;
+  emptyAnswerRetriesConfigured: number;
+  /** How many times an unusable reply is put back to the model. */
+  unusableReplyRetries: number;
+  unusableReplyRetriesConfigured: number;
   /** How big one value in a session's store may be, in MB. */
   sessionValueMaxMb: number;
   sessionValueMaxMbConfigured: number;
@@ -299,7 +305,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -749,6 +755,22 @@ export async function setToolSummaryTrimPercent(percent: number): Promise<Instal
 }
 
 /** The first wait for a rate limit inside a streaming answer that named no time. Issue #608. */
+export async function setEmptyAnswerRetries(retries: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setEmptyAnswerRetries: InstallationSettings }>(
+    `mutation ($retries: Int!) { setEmptyAnswerRetries(retries: $retries) { ${FIELDS} } }`,
+    { retries },
+  );
+  return data.setEmptyAnswerRetries;
+}
+
+export async function setUnusableReplyRetries(retries: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setUnusableReplyRetries: InstallationSettings }>(
+    `mutation ($retries: Int!) { setUnusableReplyRetries(retries: $retries) { ${FIELDS} } }`,
+    { retries },
+  );
+  return data.setUnusableReplyRetries;
+}
+
 export async function setSessionValueMaxMb(megabytes: number): Promise<InstallationSettings> {
   const data = await graphql<{ setSessionValueMaxMb: InstallationSettings }>(
     `mutation ($megabytes: Int!) { setSessionValueMaxMb(megabytes: $megabytes) { ${FIELDS} } }`,
