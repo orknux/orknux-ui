@@ -125,6 +125,23 @@ record(going?.still === 'still thinking', `an unsettled line says the model has 
 record(going?.thought === '', 'and claims no duration it does not have');
 
 /*
+ * A thought and the answer after it are told apart by more than the badge: a
+ * different rule down the left and a different fill. In the agent's own colour
+ * they were twins.
+ */
+const looks = await page.$$eval('article[class*="_event_"]', (all) =>
+  all.map((one) => ({
+    kind: one.querySelector('[class*="_kindBadge_"]')?.textContent?.trim() ?? '',
+    rule: getComputedStyle(one).borderLeftColor,
+    fill: getComputedStyle(one).backgroundColor,
+  })),
+);
+const thought = looks.find((one) => one.kind === 'Thinking');
+const answer = looks.find((one) => one.kind === 'Agent');
+record(thought && answer && thought.rule !== answer.rule, `a thought's rule is not the answer's (${thought?.rule} / ${answer?.rule})`);
+record(thought && answer && thought.fill !== answer.fill, `nor its fill (${thought?.fill} / ${answer?.fill})`);
+
+/*
  * Narrowing to Thinking leaves the thinking and nothing else - the kind is a
  * filter like the others rather than a badge that happens to be drawn.
  */

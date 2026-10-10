@@ -144,10 +144,9 @@ const KIND_CLASS: Record<LlmSessionEventKind, string> = {
   TOOL: 'kindTool',
   USER: 'kindUser',
   SYSTEM: 'kindSystem',
-  // Thinking reads as the agent's, because it is the agent's — what separates
-  // it is the badge, not a colour of its own. A fifth rule down the left of a
-  // transcript is a fifth thing to learn for a line that is already labelled.
-  THINKING: 'kindAgent',
+  // The agent's, so a green - but a darker one with a tint behind it: in the
+  // agent's own colour a thought and the answer after it looked the same.
+  THINKING: 'kindThinking',
   // A note the agent kept for itself — its own rule, so a reader scanning the
   // log picks out the few lines that were meant to survive it. Issue #409.
   NOTE: 'kindNote',

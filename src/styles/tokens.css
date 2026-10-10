@@ -78,6 +78,10 @@
    */
   --color-accent-brand: #5f8467;
   --color-accent-brand-soft: rgba(95, 132, 103, 0.15);
+  /* A model's thinking: a deeper green than the agent's sage, so the two read apart. */
+  --color-thinking: #2f8550;
+  --color-thinking-soft: rgba(47, 133, 80, 0.16);
+  --color-thinking-surface: rgba(47, 133, 80, 0.06);
 
   /* Status */
   --color-success: #10b981;
@@ -223,6 +227,9 @@
      white it can be the full-strength iron-moss. */
   --color-accent-brand: #4a6b52;
   --color-accent-brand-soft: rgba(74, 107, 82, 0.12);
+  --color-thinking: #1d6438;
+  --color-thinking-soft: rgba(29, 100, 56, 0.12);
+  --color-thinking-surface: rgba(29, 100, 56, 0.05);
 
   /* Status, darkened so they carry on white rather than glowing on it. */
   --color-success: #059669;

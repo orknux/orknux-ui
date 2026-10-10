@@ -412,6 +412,17 @@
   --kind-soft: var(--color-accent-brand-soft);
 }
 
+/*
+ * A model's thinking: dark green with a tint behind it. It is the agent's, so it
+ * stays green, but drawn in the agent's own sage it was a twin of the answer
+ * beside it and the badge was the only difference.
+ */
+.kindThinking {
+  --kind-colour: var(--color-thinking);
+  --kind-soft: var(--color-thinking-soft);
+  background: var(--color-thinking-surface);
+}
+
 .kindTool {
   --kind-colour: var(--color-cyan);
   --kind-soft: var(--color-cyan-soft);
