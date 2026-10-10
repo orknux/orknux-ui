@@ -95,12 +95,16 @@ await page.locator('#task-prompt').fill(PROMPT);
  * list and an option is an agent.
  */
 await page.locator('#task-worker').selectOption(String(agent.id));
-await page.locator('button:text("Start")').click();
+await page.getByRole('button', { name: 'Start', exact: true }).click();
 await page.waitForURL(/\/tasks\/\d+$/, { timeout: 20_000 });
 const taskId = page.url().split('/').pop();
 
+/*
+ * Five minutes, not one: this check runs against a real model, and a large one
+ * thinking before it acts spends more than a minute on its first turn alone.
+ */
 let parked = null;
-for (let look = 0; look < 60 && parked === null; look += 1) {
+for (let look = 0; look < 300 && parked === null; look += 1) {
   const found = await gql(
     `query($id: ID!) { task(id: $id) { status requests { id kind capability subject asks decision } } }`,
     { id: taskId },
