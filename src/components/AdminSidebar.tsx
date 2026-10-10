@@ -26,7 +26,7 @@ export type AdminSection =
   | 'libraries'
   | 'templates'
   | 'networking'
-  | 'tins'
+  | 'boxes'
   | 'monitoring'
   | 'doctor'
   | 'updates'
@@ -95,10 +95,10 @@ export function AdminSidebar({ active }: { active: AdminSection }) {
         proxy, the other a sandbox an agent works in.
       */}
       <SidebarNavItem
-        label={t('Tins')}
+        label={t('Boxes')}
         icon={containerIcon}
-        active={active === 'tins'}
-        to="/admin/tins"
+        active={active === 'boxes'}
+        to="/admin/boxes"
       />
       <SidebarNavItem
         label={t('Monitoring')}

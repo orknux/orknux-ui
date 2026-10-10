@@ -50,19 +50,19 @@ import {
   setRevisionRetentionDays,
   setTaskSweepMinutes,
   setWorkspaceCopyLockWaitSeconds,
-  setLocalTinEnabled,
-  setLocalTinLocation,
-  setLocalTinRuntime,
-  setLocalTinMaxSessions,
-  setLocalTinDefaultTtlSeconds,
-  setLocalTinMaxTtlSeconds,
-  setLocalTinIdleTimeoutSeconds,
-  setTinCommandWaitSeconds,
-  setTinCommandTimeoutSeconds,
-  setTinOutputBytes,
-  setLocalTinOutputKeptBytes,
-  setTinOutputShownBytes,
-  setTinRequestTimeoutSeconds,
+  setLocalBoxEnabled,
+  setLocalBoxLocation,
+  setLocalBoxRuntime,
+  setLocalBoxMaxSessions,
+  setLocalBoxDefaultTtlSeconds,
+  setLocalBoxMaxTtlSeconds,
+  setLocalBoxIdleTimeoutSeconds,
+  setBoxCommandWaitSeconds,
+  setBoxCommandTimeoutSeconds,
+  setBoxOutputBytes,
+  setLocalBoxOutputKeptBytes,
+  setBoxOutputShownBytes,
+  setBoxRequestTimeoutSeconds,
 } from '../../api/installation';
 import type { InstallationSettings } from '../../api/installation';
 import type { SessionUser } from '../../api/session';
@@ -187,39 +187,39 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [backoffSeconds, setBackoffSeconds] = useState('');
   const [backoffMaxSeconds, setBackoffMaxSeconds] = useState('');
   /*
-   * Tins: the local tin's own limits and where its sessions live, and the
-   * numbers every tin's tools work to. Text like the others, for their reason.
+   * Boxes: the local box's own limits and where its sessions live, and the
+   * numbers every box's tools work to. Text like the others, for their reason.
    */
-  const [tinLocation, setTinLocation] = useState('');
-  const [tinRuntime, setTinRuntime] = useState('local');
-  const [tinMaxSessions, setTinMaxSessions] = useState('');
-  const [tinDefaultTtl, setTinDefaultTtl] = useState('');
-  const [tinMaxTtl, setTinMaxTtl] = useState('');
-  const [tinIdle, setTinIdle] = useState('');
-  const [tinWait, setTinWait] = useState('');
-  const [tinTimeout, setTinTimeout] = useState('');
+  const [boxLocation, setBoxLocation] = useState('');
+  const [boxRuntime, setBoxRuntime] = useState('local');
+  const [boxMaxSessions, setBoxMaxSessions] = useState('');
+  const [boxDefaultTtl, setBoxDefaultTtl] = useState('');
+  const [boxMaxTtl, setBoxMaxTtl] = useState('');
+  const [boxIdle, setBoxIdle] = useState('');
+  const [boxWait, setBoxWait] = useState('');
+  const [boxTimeout, setBoxTimeout] = useState('');
   // Held and typed in KB; the server keeps bytes, as the scratchpad budget does.
-  const [tinOutput, setTinOutput] = useState('');
+  const [boxOutput, setBoxOutput] = useState('');
   // KB as well: what is kept of each command's output for reading on the session page.
-  const [tinOutputKept, setTinOutputKept] = useState('');
+  const [boxOutputKept, setBoxOutputKept] = useState('');
   // KB too: how much of one output the session page reads and holds.
-  const [tinOutputShown, setTinOutputShown] = useState('');
-  const [tinRequest, setTinRequest] = useState('');
+  const [boxOutputShown, setBoxOutputShown] = useState('');
+  const [boxRequest, setBoxRequest] = useState('');
 
-  /** The Tins section's boxes, from what the server holds. */
-  const fillTins = useCallback((held: InstallationSettings) => {
-    setTinLocation(held.localTinLocation ?? '');
-    setTinRuntime(held.localTinRuntime);
-    setTinMaxSessions(String(held.localTinMaxSessions));
-    setTinDefaultTtl(String(held.localTinDefaultTtlSeconds));
-    setTinMaxTtl(String(held.localTinMaxTtlSeconds));
-    setTinIdle(String(held.localTinIdleTimeoutSeconds));
-    setTinWait(String(held.tinCommandWaitSeconds));
-    setTinTimeout(String(held.tinCommandTimeoutSeconds));
-    setTinOutput(String(Math.round(held.tinOutputBytes / 1024)));
-    setTinOutputKept(String(Math.round(held.localTinOutputKeptBytes / 1024)));
-    setTinOutputShown(String(Math.round(held.tinOutputShownBytes / 1024)));
-    setTinRequest(String(held.tinRequestTimeoutSeconds));
+  /** The Boxes section's boxes, from what the server holds. */
+  const fillBoxes = useCallback((held: InstallationSettings) => {
+    setBoxLocation(held.localBoxLocation ?? '');
+    setBoxRuntime(held.localBoxRuntime);
+    setBoxMaxSessions(String(held.localBoxMaxSessions));
+    setBoxDefaultTtl(String(held.localBoxDefaultTtlSeconds));
+    setBoxMaxTtl(String(held.localBoxMaxTtlSeconds));
+    setBoxIdle(String(held.localBoxIdleTimeoutSeconds));
+    setBoxWait(String(held.boxCommandWaitSeconds));
+    setBoxTimeout(String(held.boxCommandTimeoutSeconds));
+    setBoxOutput(String(Math.round(held.boxOutputBytes / 1024)));
+    setBoxOutputKept(String(Math.round(held.localBoxOutputKeptBytes / 1024)));
+    setBoxOutputShown(String(Math.round(held.boxOutputShownBytes / 1024)));
+    setBoxRequest(String(held.boxRequestTimeoutSeconds));
   }, []);
 
   useEffect(() => {
@@ -282,7 +282,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setDownloadAttempts(String(held.releaseDownloadAttempts));
         setBackoffSeconds(String(held.releaseDownloadBackoffSeconds));
         setBackoffMaxSeconds(String(held.releaseDownloadBackoffMaxSeconds));
-        fillTins(held);
+        fillBoxes(held);
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -291,7 +291,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     return () => {
       abandoned = true;
     };
-  }, [fillTins]);
+  }, [fillBoxes]);
 
   /** Every switch on this page saves the same way; only the mutation differs. */
   /**
@@ -379,28 +379,28 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           held: settings.releaseDownloadBackoffMaxSeconds,
           write: setReleaseDownloadBackoffMaxSeconds,
         },
-        { typed: tinMaxSessions, held: settings.localTinMaxSessions, write: setLocalTinMaxSessions },
-        { typed: tinDefaultTtl, held: settings.localTinDefaultTtlSeconds, write: setLocalTinDefaultTtlSeconds },
-        { typed: tinMaxTtl, held: settings.localTinMaxTtlSeconds, write: setLocalTinMaxTtlSeconds },
-        { typed: tinIdle, held: settings.localTinIdleTimeoutSeconds, write: setLocalTinIdleTimeoutSeconds },
+        { typed: boxMaxSessions, held: settings.localBoxMaxSessions, write: setLocalBoxMaxSessions },
+        { typed: boxDefaultTtl, held: settings.localBoxDefaultTtlSeconds, write: setLocalBoxDefaultTtlSeconds },
+        { typed: boxMaxTtl, held: settings.localBoxMaxTtlSeconds, write: setLocalBoxMaxTtlSeconds },
+        { typed: boxIdle, held: settings.localBoxIdleTimeoutSeconds, write: setLocalBoxIdleTimeoutSeconds },
         {
-          typed: tinOutputKept,
-          held: Math.round(settings.localTinOutputKeptBytes / 1024),
-          write: (kb: number) => setLocalTinOutputKeptBytes(kb * 1024),
+          typed: boxOutputKept,
+          held: Math.round(settings.localBoxOutputKeptBytes / 1024),
+          write: (kb: number) => setLocalBoxOutputKeptBytes(kb * 1024),
         },
-        { typed: tinWait, held: settings.tinCommandWaitSeconds, write: setTinCommandWaitSeconds },
-        { typed: tinTimeout, held: settings.tinCommandTimeoutSeconds, write: setTinCommandTimeoutSeconds },
+        { typed: boxWait, held: settings.boxCommandWaitSeconds, write: setBoxCommandWaitSeconds },
+        { typed: boxTimeout, held: settings.boxCommandTimeoutSeconds, write: setBoxCommandTimeoutSeconds },
         {
-          typed: tinOutput,
-          held: Math.round(settings.tinOutputBytes / 1024),
-          write: (kb: number) => setTinOutputBytes(kb * 1024),
+          typed: boxOutput,
+          held: Math.round(settings.boxOutputBytes / 1024),
+          write: (kb: number) => setBoxOutputBytes(kb * 1024),
         },
         {
-          typed: tinOutputShown,
-          held: Math.round(settings.tinOutputShownBytes / 1024),
-          write: (kb: number) => setTinOutputShownBytes(kb * 1024),
+          typed: boxOutputShown,
+          held: Math.round(settings.boxOutputShownBytes / 1024),
+          write: (kb: number) => setBoxOutputShownBytes(kb * 1024),
         },
-        { typed: tinRequest, held: settings.tinRequestTimeoutSeconds, write: setTinRequestTimeoutSeconds },
+        { typed: boxRequest, held: settings.boxRequestTimeoutSeconds, write: setBoxRequestTimeoutSeconds },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -408,18 +408,18 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const markerTyped = marker.trim();
   const markerChanged = settings !== null && markerTyped !== '' && markerTyped !== settings.commandMarker;
   /*
-   * The local tin's location and runtime are text, and go out with the
+   * The local box's location and runtime are text, and go out with the
    * numbers for the marker's reason. An emptied location is a change - it puts
    * the built-in default back - so it is compared as typed rather than skipped.
    */
-  const tinLocationTyped = tinLocation.trim();
-  const tinLocationChanged = settings !== null && tinLocationTyped !== (settings.localTinLocation ?? '');
-  const tinRuntimeChanged = settings !== null && tinRuntime !== settings.localTinRuntime;
+  const boxLocationTyped = boxLocation.trim();
+  const boxLocationChanged = settings !== null && boxLocationTyped !== (settings.localBoxLocation ?? '');
+  const boxRuntimeChanged = settings !== null && boxRuntime !== settings.localBoxRuntime;
   const changed =
     pending.length > 0 ||
     markerChanged ||
-    tinLocationChanged ||
-    tinRuntimeChanged ||
+    boxLocationChanged ||
+    boxRuntimeChanged ||
     logPending.length > 0 ||
     httpPending.length > 0 ||
     watcherPending.length > 0 ||
@@ -446,8 +446,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         held = await one.write(Number(one.typed));
       }
       if (markerChanged) held = await setCommandMarker(markerTyped);
-      if (tinLocationChanged) held = await setLocalTinLocation(tinLocationTyped === '' ? null : tinLocationTyped);
-      if (tinRuntimeChanged) held = await setLocalTinRuntime(tinRuntime);
+      if (boxLocationChanged) held = await setLocalBoxLocation(boxLocationTyped === '' ? null : boxLocationTyped);
+      if (boxRuntimeChanged) held = await setLocalBoxRuntime(boxRuntime);
       for (const write of logPending) await write();
       for (const write of httpPending) await write();
       for (const write of watcherPending) await write();
@@ -459,7 +459,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
       setSweep(String(held.taskSweepMinutes));
       setPluginSource(String(held.pluginMaxSourceKb));
       setPluginWait(String(held.pluginTimeoutSeconds));
-      fillTins(held);
+      fillBoxes(held);
       forgetInstallation();
       setSaved(true);
     } catch (cause: unknown) {
@@ -1289,40 +1289,40 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             </div>
 
 
-            <h2 id="tins" className={styles.sectionHeading}>
+            <h2 id="boxes" className={styles.sectionHeading}>
               <span className={styles.headingWithHint}>
-                {t('Tins')}
-                <FieldHint label={t('Tins')}>
-                  {t('The local tin is the sandbox inside this server; remote tins are listed under Admin → Tins. The tin tool limits apply to every tin.')}
+                {t('Boxes')}
+                <FieldHint label={t('Boxes')}>
+                  {t('The local box is the sandbox inside this server; remote boxes are listed under Admin → Boxes. The box tool limits apply to every box.')}
                 </FieldHint>
               </span>
             </h2>
 
             {/*
-              The local tin is on by default and offered to every agent holding
+              The local box is on by default and offered to every agent holding
               its label. A switch, saved as it is flipped like the others.
             */}
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Local tin')}</p>
-                  <FieldHint label={t('Local tin')}>
-                    {t('A tin inside this server, so agents can run commands without a remote orktin. Off, it is not listed under Admin → Tins and no new session opens in it.')}
+                  <p className={styles.settingLabel}>{t('Local box')}</p>
+                  <FieldHint label={t('Local box')}>
+                    {t('A box inside this server, so agents can run commands without a remote Orkbox. Off, it is not listed under Admin → Boxes and no new session opens in it.')}
                   </FieldHint>
                 </span>
               </div>
               <button
                 type="button"
-                id="local-tin-enabled"
+                id="local-box-enabled"
                 className={styles.toggle}
-                onClick={() => void save(() => setLocalTinEnabled(!settings.localTinEnabled))}
+                onClick={() => void save(() => setLocalBoxEnabled(!settings.localBoxEnabled))}
                 disabled={busy}
                 role="switch"
-                aria-checked={settings.localTinEnabled}
-                aria-label={settings.localTinEnabled ? t('Turn the local tin off') : t('Turn the local tin on')}
+                aria-checked={settings.localBoxEnabled}
+                aria-label={settings.localBoxEnabled ? t('Turn the local box off') : t('Turn the local box on')}
               >
                 <img
-                  src={settings.localTinEnabled ? toggleOnIcon : toggleOffIcon}
+                  src={settings.localBoxEnabled ? toggleOnIcon : toggleOffIcon}
                   alt=""
                   width={36}
                   height={20}
@@ -1334,24 +1334,24 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Local tin location')}</p>
-                  <FieldHint label={t('Local tin location')}>
+                  <p className={styles.settingLabel}>{t('Local box location')}</p>
+                  <FieldHint label={t('Local box location')}>
                     {t('The directory local sessions keep their workspaces under. Leave it empty for the default shown in the box.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="local-tin-location"
-                  name="localTinLocation"
+                  id="local-box-location"
+                  name="localBoxLocation"
                   className={`${styles.input} ${styles.wideInput}`}
                   type="text"
                   spellCheck={false}
-                  placeholder={settings.localTinLocationConfigured}
-                  value={tinLocation}
-                  onChange={(event) => setTinLocation(event.target.value)}
+                  placeholder={settings.localBoxLocationConfigured}
+                  value={boxLocation}
+                  onChange={(event) => setBoxLocation(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Local tin location')}
+                  aria-label={t('Local box location')}
                 />
               </div>
             </div>
@@ -1359,21 +1359,21 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Local tin runtime')}</p>
-                  <FieldHint label={t('Local tin runtime')}>
+                  <p className={styles.settingLabel}>{t('Local box runtime')}</p>
+                  <FieldHint label={t('Local box runtime')}>
                     {t('What a local session runs in. Local runs commands as processes of this server, under its account; Docker runs each session in a container of its own.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <select
-                  id="local-tin-runtime"
-                  name="localTinRuntime"
+                  id="local-box-runtime"
+                  name="localBoxRuntime"
                   className={styles.input}
-                  value={tinRuntime}
-                  onChange={(event) => setTinRuntime(event.target.value)}
+                  value={boxRuntime}
+                  onChange={(event) => setBoxRuntime(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Local tin runtime')}
+                  aria-label={t('Local box runtime')}
                 >
                   <option value="local">{t('Local')}</option>
                   <option value="docker">Docker</option>
@@ -1384,24 +1384,24 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Local tin sessions at most')}</p>
-                  <FieldHint label={t('Local tin sessions at most')}>
-                    {t('How many sessions the local tin holds at once; one asked for past this is refused. Between 1 and 1000.')}
+                  <p className={styles.settingLabel}>{t('Local box sessions at most')}</p>
+                  <FieldHint label={t('Local box sessions at most')}>
+                    {t('How many sessions the local box holds at once; one asked for past this is refused. Between 1 and 1000.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="local-tin-max-sessions"
-                  name="localTinMaxSessions"
+                  id="local-box-max-sessions"
+                  name="localBoxMaxSessions"
                   className={styles.input}
                   type="number"
                   min={1}
                   max={1000}
-                  value={tinMaxSessions}
-                  onChange={(event) => setTinMaxSessions(event.target.value)}
+                  value={boxMaxSessions}
+                  onChange={(event) => setBoxMaxSessions(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Local tin sessions at most')}
+                  aria-label={t('Local box sessions at most')}
                 />
                 <span className={styles.retentionUnit}>{t('sessions')}</span>
               </div>
@@ -1418,14 +1418,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
               <div className={styles.retention}>
                 <input
-                  id="local-tin-default-ttl-seconds"
-                  name="localTinDefaultTtlSeconds"
+                  id="local-box-default-ttl-seconds"
+                  name="localBoxDefaultTtlSeconds"
                   className={styles.input}
                   type="number"
                   min={60}
                   max={604800}
-                  value={tinDefaultTtl}
-                  onChange={(event) => setTinDefaultTtl(event.target.value)}
+                  value={boxDefaultTtl}
+                  onChange={(event) => setBoxDefaultTtl(event.target.value)}
                   disabled={busy}
                   aria-label={t('Local session lifetime')}
                 />
@@ -1444,14 +1444,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
               <div className={styles.retention}>
                 <input
-                  id="local-tin-max-ttl-seconds"
-                  name="localTinMaxTtlSeconds"
+                  id="local-box-max-ttl-seconds"
+                  name="localBoxMaxTtlSeconds"
                   className={styles.input}
                   type="number"
                   min={60}
                   max={604800}
-                  value={tinMaxTtl}
-                  onChange={(event) => setTinMaxTtl(event.target.value)}
+                  value={boxMaxTtl}
+                  onChange={(event) => setBoxMaxTtl(event.target.value)}
                   disabled={busy}
                   aria-label={t('Longest local session lifetime')}
                 />
@@ -1470,14 +1470,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
               <div className={styles.retention}>
                 <input
-                  id="local-tin-idle-timeout-seconds"
-                  name="localTinIdleTimeoutSeconds"
+                  id="local-box-idle-timeout-seconds"
+                  name="localBoxIdleTimeoutSeconds"
                   className={styles.input}
                   type="number"
                   min={60}
                   max={86400}
-                  value={tinIdle}
-                  onChange={(event) => setTinIdle(event.target.value)}
+                  value={boxIdle}
+                  onChange={(event) => setBoxIdle(event.target.value)}
                   disabled={busy}
                   aria-label={t('Local session idle timeout')}
                 />
@@ -1488,24 +1488,24 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Local tin output kept')}</p>
-                  <FieldHint label={t('Local tin output kept')}>
-                    {t('How much of each local command\'s output is kept for reading in a session\'s Tin tab. Between 0 and 16384 KB; 0 keeps none.')}
+                  <p className={styles.settingLabel}>{t('Local box output kept')}</p>
+                  <FieldHint label={t('Local box output kept')}>
+                    {t('How much of each local command\'s output is kept for reading in a session\'s Box tab. Between 0 and 16384 KB; 0 keeps none.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="local-tin-output-kept-kb"
-                  name="localTinOutputKeptKb"
+                  id="local-box-output-kept-kb"
+                  name="localBoxOutputKeptKb"
                   className={styles.input}
                   type="number"
                   min={0}
                   max={16384}
-                  value={tinOutputKept}
-                  onChange={(event) => setTinOutputKept(event.target.value)}
+                  value={boxOutputKept}
+                  onChange={(event) => setBoxOutputKept(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Local tin output kept')}
+                  aria-label={t('Local box output kept')}
                 />
                 <span className={styles.retentionUnit}>{t('KB')}</span>
               </div>
@@ -1516,20 +1516,20 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('Command wait')}</p>
                   <FieldHint label={t('Command wait')}>
-                    {t('How long a tin tool waits for a command to finish before handing the agent its output so far, with the command still running. Between 1 and 3600.')}
+                    {t('How long a box tool waits for a command to finish before handing the agent its output so far, with the command still running. Between 1 and 3600.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="tin-command-wait-seconds"
-                  name="tinCommandWaitSeconds"
+                  id="box-command-wait-seconds"
+                  name="boxCommandWaitSeconds"
                   className={styles.input}
                   type="number"
                   min={1}
                   max={3600}
-                  value={tinWait}
-                  onChange={(event) => setTinWait(event.target.value)}
+                  value={boxWait}
+                  onChange={(event) => setBoxWait(event.target.value)}
                   disabled={busy}
                   aria-label={t('Command wait')}
                 />
@@ -1548,14 +1548,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
               <div className={styles.retention}>
                 <input
-                  id="tin-command-timeout-seconds"
-                  name="tinCommandTimeoutSeconds"
+                  id="box-command-timeout-seconds"
+                  name="boxCommandTimeoutSeconds"
                   className={styles.input}
                   type="number"
                   min={1}
                   max={86400}
-                  value={tinTimeout}
-                  onChange={(event) => setTinTimeout(event.target.value)}
+                  value={boxTimeout}
+                  onChange={(event) => setBoxTimeout(event.target.value)}
                   disabled={busy}
                   aria-label={t('Command timeout')}
                 />
@@ -1574,14 +1574,14 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
               </div>
               <div className={styles.retention}>
                 <input
-                  id="tin-output-kb"
-                  name="tinOutputKb"
+                  id="box-output-kb"
+                  name="boxOutputKb"
                   className={styles.input}
                   type="number"
                   min={1}
                   max={4096}
-                  value={tinOutput}
-                  onChange={(event) => setTinOutput(event.target.value)}
+                  value={boxOutput}
+                  onChange={(event) => setBoxOutput(event.target.value)}
                   disabled={busy}
                   aria-label={t('Command output kept')}
                 />
@@ -1592,24 +1592,24 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Tin output shown')}</p>
-                  <FieldHint label={t('Tin output shown')}>
-                    {t('How much of one command\'s output a session\'s Tin tab reads and holds before it stops and says so. Between 64 and 65536 KB.')}
+                  <p className={styles.settingLabel}>{t('Box output shown')}</p>
+                  <FieldHint label={t('Box output shown')}>
+                    {t('How much of one command\'s output a session\'s Box tab reads and holds before it stops and says so. Between 64 and 65536 KB.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="tin-output-shown-kb"
-                  name="tinOutputShownKb"
+                  id="box-output-shown-kb"
+                  name="boxOutputShownKb"
                   className={styles.input}
                   type="number"
                   min={64}
                   max={65536}
-                  value={tinOutputShown}
-                  onChange={(event) => setTinOutputShown(event.target.value)}
+                  value={boxOutputShown}
+                  onChange={(event) => setBoxOutputShown(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Tin output shown')}
+                  aria-label={t('Box output shown')}
                 />
                 <span className={styles.retentionUnit}>{t('KB')}</span>
               </div>
@@ -1618,24 +1618,24 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Tin request timeout')}</p>
-                  <FieldHint label={t('Tin request timeout')}>
-                    {t('How long this server waits for a tin to answer one request before giving up on it. Between 1 and 600.')}
+                  <p className={styles.settingLabel}>{t('Box request timeout')}</p>
+                  <FieldHint label={t('Box request timeout')}>
+                    {t('How long this server waits for a box to answer one request before giving up on it. Between 1 and 600.')}
                   </FieldHint>
                 </span>
               </div>
               <div className={styles.retention}>
                 <input
-                  id="tin-request-timeout-seconds"
-                  name="tinRequestTimeoutSeconds"
+                  id="box-request-timeout-seconds"
+                  name="boxRequestTimeoutSeconds"
                   className={styles.input}
                   type="number"
                   min={1}
                   max={600}
-                  value={tinRequest}
-                  onChange={(event) => setTinRequest(event.target.value)}
+                  value={boxRequest}
+                  onChange={(event) => setBoxRequest(event.target.value)}
                   disabled={busy}
-                  aria-label={t('Tin request timeout')}
+                  aria-label={t('Box request timeout')}
                 />
                 <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>

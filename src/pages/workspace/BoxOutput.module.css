@@ -1,4 +1,4 @@
-/* What one command printed, under its line in the Tin tab. */
+/* What one command printed, under its line in the Box tab. */
 
 .output {
   display: flex;
@@ -9,7 +9,7 @@
   border-top: 1px solid var(--color-border);
 }
 
-/* A word from the tin about text it handed over anyway: above it, and quiet. */
+/* A word from the box about text it handed over anyway: above it, and quiet. */
 .quiet {
   margin: 0;
   font-size: var(--text-xs);
@@ -92,6 +92,19 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
+}
+
+/* A word rather than a glyph, so it takes its own width. */
+.toolWide {
+  width: auto;
+  padding: 0 var(--space-8);
+  font-size: var(--text-xs);
+}
+
+/* Follow, while it is on. */
+.toolOn {
+  border-color: var(--color-accent-brand);
+  color: var(--color-text-primary);
 }
 
 .tool:hover:not(:disabled) {

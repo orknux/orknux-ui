@@ -1,5 +1,5 @@
 /**
- * What one command in a tin printed, under its line in the session's Tin tab.
+ * What one command in a box printed, under its line in the session's Box tab.
  *
  * The output can be far bigger than anybody wants drawn at once, so it arrives
  * a stretch at a time: the first one when the line is opened, the next when the
@@ -9,7 +9,7 @@
  *
  * What is held is capped, because "jump to the bottom" of a command that printed
  * a gigabyte would otherwise try to hold a gigabyte in a tab. The cap is the
- * administrator's Tin output shown setting, handed back on every read as
+ * administrator's Box output shown setting, handed back on every read as
  * `shownLimit`; past it the panel stops reading and says how much it shows.
  *
  * The panel is a fixed height to begin with and can be dragged taller by the
@@ -20,12 +20,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 
-import { fetchSessionTinOutput } from '../../api/tins';
+import { fetchSessionBoxOutput } from '../../api/boxes';
 import { ResizeHandle, useWindowHeight } from '../../components/DragSize';
 import type { DragHandlers } from '../../components/DragSize';
 import { Loader } from '../../components/Loader';
 import { t, tf } from '../../i18n';
-import styles from './TinOutput.module.css';
+import styles from './BoxOutput.module.css';
 
 /** "64 KB", "4 MB", "1.5 MB" - the cap as somebody would say it. */
 function sizeOf(bytes: number): string {
@@ -52,7 +52,7 @@ const MAX_MARKS = 2000;
 
 interface Props {
   sessionId: string;
-  sessionTinId: string;
+  sessionBoxId: string;
   executionId: string;
 }
 
@@ -64,11 +64,11 @@ interface Held {
   caughtUp: boolean;
   available: boolean;
   message: string | null;
-  /** The most of this output the tab will hold, as the server's Tin output shown setting says. */
+  /** The most of this output the tab will hold, as the server's Box output shown setting says. */
   shownLimit: number;
 }
 
-export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
+export function BoxOutput({ sessionId, sessionBoxId, executionId }: Props) {
   const [held, setHeld] = useState<Held | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
@@ -100,7 +100,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
       busy.current = true;
       setReading(true);
       try {
-        const got = await fetchSessionTinOutput(sessionId, sessionTinId, executionId, was.nextOffset, ask);
+        const got = await fetchSessionBoxOutput(sessionId, sessionBoxId, executionId, was.nextOffset, ask);
         if (!alive.current) return null;
         const next: Held = {
           text: got.offset === was.nextOffset ? was.text + got.text : was.text,
@@ -123,7 +123,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
         if (alive.current) setReading(false);
       }
     },
-    [sessionId, sessionTinId, executionId],
+    [sessionId, sessionBoxId, executionId],
   );
 
   /* The first stretch, when the line is opened. */
@@ -131,9 +131,11 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
     let wanted = true;
     setHeld(null);
     setError(null);
-    fetchSessionTinOutput(sessionId, sessionTinId, executionId, 0, CHUNK_BYTES)
+    fetchSessionBoxOutput(sessionId, sessionBoxId, executionId, 0, CHUNK_BYTES)
       .then((got) => {
         if (!wanted) return;
+        /* A command still running is followed from the start; a finished one opens at its top. */
+        setFollow(!got.done && got.available);
         setHeld({
           text: got.text,
           nextOffset: got.nextOffset,
@@ -150,7 +152,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
     return () => {
       wanted = false;
     };
-  }, [sessionId, sessionTinId, executionId]);
+  }, [sessionId, sessionBoxId, executionId]);
 
   /*
    * Followed while it runs: once everything printed so far has been read, the
@@ -166,14 +168,47 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
     return () => window.clearInterval(timer);
   }, [following, readOn]);
 
+  /*
+   * Follow mode: the panel keeps to the newest line, the way a terminal does.
+   * On from the start for a command still running; scrolling up, Jump to top or searching turns it off,
+   * and scrolling back to the bottom or Jump to bottom turns it on again. A
+   * scroll the panel makes itself is marked, so it is not read as the
+   * reader's.
+   */
+  const [follow, setFollow] = useState(true);
+  const selfScrolled = useRef(false);
+  const toEnd = useCallback(() => {
+    const box = scroller.current;
+    if (box === null) return;
+    selfScrolled.current = true;
+    box.scrollTop = box.scrollHeight;
+  }, []);
+
+  /* While following, read on to what has been printed so far, and keep to the end of it. */
+  useEffect(() => {
+    if (!follow || held === null) return;
+    window.requestAnimationFrame(toEnd);
+    if (held.available && !held.done && !held.caughtUp && held.nextOffset < held.shownLimit) void readOn(JUMP_BYTES);
+  }, [follow, held, readOn, toEnd]);
+
   const onScroll = useCallback(() => {
     const box = scroller.current;
     if (box === null) return;
-    if (box.scrollTop + box.clientHeight >= box.scrollHeight - NEAR_BOTTOM_PX) void readOn(CHUNK_BYTES);
+    const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - NEAR_BOTTOM_PX;
+    if (selfScrolled.current) {
+      selfScrolled.current = false;
+    } else {
+      setFollow(atBottom);
+    }
+    if (atBottom) void readOn(CHUNK_BYTES);
   }, [readOn]);
 
   const toTop = useCallback(() => {
-    if (scroller.current !== null) scroller.current.scrollTop = 0;
+    setFollow(false);
+    if (scroller.current !== null) {
+      selfScrolled.current = true;
+      scroller.current.scrollTop = 0;
+    }
   }, []);
 
   /** Reads the rest first - up to the cap, or to what has been printed so far - then goes there. */
@@ -184,10 +219,9 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
       got = await readOn(JUMP_BYTES);
       if (got === null || got.nextOffset === before) break;
     }
-    window.requestAnimationFrame(() => {
-      if (scroller.current !== null) scroller.current.scrollTop = scroller.current.scrollHeight;
-    });
-  }, [readOn]);
+    setFollow(true);
+    window.requestAnimationFrame(toEnd);
+  }, [readOn, toEnd]);
 
   /* ---------------------------------------------------------------- search */
 
@@ -225,8 +259,8 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
         <mark
           key={key}
           className={part.index === shownCurrent ? `${styles.match} ${styles.matchCurrent}` : styles.match}
-          data-tin-output-match={part.index}
-          data-tin-output-match-current={part.index === shownCurrent ? '' : undefined}
+          data-box-output-match={part.index}
+          data-box-output-match-current={part.index === shownCurrent ? '' : undefined}
         >
           {text.slice(part.at, part.at + query.length)}
         </mark>
@@ -238,8 +272,9 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
   useEffect(() => {
     const box = scroller.current;
     if (box === null || shownCurrent < 0) return;
-    const mark = box.querySelector<HTMLElement>('[data-tin-output-match-current]');
+    const mark = box.querySelector<HTMLElement>('[data-box-output-match-current]');
     if (mark === null) return;
+    selfScrolled.current = true;
     box.scrollTop = Math.max(0, mark.offsetTop - box.clientHeight / 2);
   }, [shownCurrent, query]);
 
@@ -320,7 +355,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
 
   if (error !== null && held === null) {
     return (
-      <p className={styles.note} role="alert" data-tin-output-error="">
+      <p className={styles.note} role="alert" data-box-output-error="">
         {error}
       </p>
     );
@@ -334,7 +369,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
   }
   if (!held.available) {
     return (
-      <p className={styles.note} data-tin-output-unavailable="">
+      <p className={styles.note} data-box-output-unavailable="">
         {held.message ?? t('The output of this command cannot be had.')}
       </p>
     );
@@ -351,14 +386,14 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
           : t('Scroll down for more.');
 
   return (
-    <div className={styles.output} data-tin-output={executionId}>
+    <div className={styles.output} data-box-output={executionId}>
       {held.message !== null && (
-        <p className={styles.quiet} data-tin-output-note="">
+        <p className={styles.quiet} data-box-output-note="">
           {held.message}
         </p>
       )}
-      <div className={styles.frame} style={{ height: shownHeight }} data-tin-output-frame="">
-        <div className={styles.toolbar} data-tin-output-toolbar="">
+      <div className={styles.frame} style={{ height: shownHeight }} data-box-output-frame="">
+        <div className={styles.toolbar} data-box-output-toolbar="">
           <input
             type="search"
             className={styles.search}
@@ -367,13 +402,15 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
             aria-label={t('Search output')}
             onChange={(event) => {
               setQuery(event.target.value);
+              /* Reading for something is not following the end. */
+              if (event.target.value !== '') setFollow(false);
               setCurrent(0);
             }}
             onKeyDown={onSearchKey}
-            data-tin-output-search=""
+            data-box-output-search=""
           />
           {query !== '' && (
-            <span className={styles.count} data-tin-output-count={matches.length}>
+            <span className={styles.count} data-box-output-count={matches.length}>
               {matches.length === 0 ? '0' : `${shownCurrent + 1}/${matches.length}`}
             </span>
           )}
@@ -386,7 +423,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
                 disabled={reachable === 0}
                 title={t('Previous match (Shift+Enter)')}
                 aria-label={t('Previous match (Shift+Enter)')}
-                data-tin-output-previous=""
+                data-box-output-previous=""
               >
                 ‹
               </button>
@@ -397,7 +434,7 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
                 disabled={reachable === 0}
                 title={t('Next match (Enter)')}
                 aria-label={t('Next match (Enter)')}
-                data-tin-output-next=""
+                data-box-output-next=""
               >
                 ›
               </button>
@@ -405,11 +442,21 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
           )}
           <button
             type="button"
+            className={follow ? `${styles.tool} ${styles.toolWide} ${styles.toolOn}` : `${styles.tool} ${styles.toolWide}`}
+            onClick={() => setFollow((was) => !was)}
+            aria-pressed={follow}
+            title={follow ? t('Following the newest output. Press to stop.') : t('Follow the newest output')}
+            data-box-output-follow={follow ? 'on' : 'off'}
+          >
+            {t('Follow')}
+          </button>
+          <button
+            type="button"
             className={styles.tool}
             onClick={toTop}
             title={t('Jump to top')}
             aria-label={t('Jump to top')}
-            data-tin-output-top=""
+            data-box-output-top=""
           >
             ⤒
           </button>
@@ -419,21 +466,21 @@ export function TinOutput({ sessionId, sessionTinId, executionId }: Props) {
             onClick={() => void toBottom()}
             title={t('Jump to bottom')}
             aria-label={t('Jump to bottom')}
-            data-tin-output-bottom=""
+            data-box-output-bottom=""
           >
             ⤓
           </button>
         </div>
-        <div ref={scroller} className={styles.scroller} onScroll={onScroll} data-tin-output-scroller="">
+        <div ref={scroller} className={styles.scroller} onScroll={onScroll} data-box-output-scroller="">
           {text === '' && held.done ? (
             <p className={styles.empty}>{t('This command printed nothing.')}</p>
           ) : (
-            <pre className={styles.text} data-tin-output-text="">
+            <pre className={styles.text} data-box-output-text="">
               {drawnText}
             </pre>
           )}
           {status !== null && (
-            <p className={styles.status} data-tin-output-status="">
+            <p className={styles.status} data-box-output-status="">
               {status}
             </p>
           )}

@@ -219,7 +219,7 @@
   width: 6rem;
 }
 
-/* A path rather than a number: the local tin's location. */
+/* A path rather than a number: the local box's location. */
 .retention .wideInput {
   width: 18rem;
 }

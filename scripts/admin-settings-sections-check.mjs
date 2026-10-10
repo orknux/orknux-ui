@@ -28,8 +28,8 @@ const SECTIONS = [
   ['sessions', 'session-compact-after'],
   ['sessions', 'sessions-removable'],
   ['scratchpads', 'scratchpad-budget'],
-  // The local tin and the tin tools' limits.
-  ['tins', 'local-tin-max-sessions'],
+  // The local box and the box tools' limits.
+  ['boxes', 'local-box-max-sessions'],
   ['drawing', 'drawing-scale'],
   ['commands', 'command-marker'],
   ['attachments', null],

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { fetchTins, tinKindLabel } from '../../api/tins';
-import type { Tin } from '../../api/tins';
+import { fetchBoxes, boxKindLabel } from '../../api/boxes';
+import type { Box } from '../../api/boxes';
 import type { SessionUser } from '../../api/session';
 import plusIcon from '../../assets/plus.svg';
 import settingsIcon from '../../assets/settings.svg';
@@ -13,37 +13,37 @@ import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { ordered, useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
-import styles from './AdminTinsPage.module.css';
+import styles from './AdminBoxesPage.module.css';
 import { t, tf } from '../../i18n';
 
-export interface AdminTinsPageProps {
+export interface AdminBoxesPageProps {
   session: SessionUser;
   onSignOut?: () => void;
 }
 
-type TinOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'LABEL';
+type BoxOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'LABEL';
 
 /**
- * The tins this installation can give an agent a session in.
+ * The boxes this installation can give an agent a session in.
  *
- * The local tin is a row only while it is switched on - the server lists it
+ * The local box is a row only while it is switched on - the server lists it
  * then and not otherwise - so the list is what an agent could be given today.
- * Health is a remote tin's alone: the local one is inside this server, and a
+ * Health is a remote box's alone: the local one is inside this server, and a
  * dot saying the server can reach itself would be a dot that is always green.
  */
-export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
-  const [tins, setTins] = useState<Tin[] | null>(null);
+export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
+  const [boxes, setBoxes] = useState<Box[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [order, ascending, sortBy] = useTableSort<TinOrder>('admin-tins', 'NAME', true, ['SESSIONS']);
+  const [order, ascending, sortBy] = useTableSort<BoxOrder>('admin-boxes', 'NAME', true, ['SESSIONS']);
 
   useEffect(() => {
     let current = true;
-    fetchTins()
+    fetchBoxes()
       .then((found) => {
-        if (current) setTins(found);
+        if (current) setBoxes(found);
       })
       .catch((cause: unknown) => {
-        if (current) setError(cause instanceof Error ? cause.message : t('Could not load the tins.'));
+        if (current) setError(cause instanceof Error ? cause.message : t('Could not load the boxes.'));
       });
     return () => {
       current = false;
@@ -51,42 +51,42 @@ export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
   }, []);
 
   const rows = ordered(
-    tins ?? [],
-    (tin) => {
+    boxes ?? [],
+    (box) => {
       switch (order) {
         case 'KIND':
-          return tin.kind;
+          return box.kind;
         case 'HEALTH':
-          return tin.health?.status ?? null;
+          return box.health?.status ?? null;
         case 'SESSIONS':
-          return tin.activeSessions;
+          return box.activeSessions;
         case 'LABEL':
-          return tin.label;
+          return box.label;
         default:
-          return tin.name;
+          return box.name;
       }
     },
     ascending,
-    (tin) => tin.name,
+    (box) => box.name,
   );
 
   return (
-    <AppShell user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="tins" />}>
+    <AppShell user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="boxes" />}>
       <header className={styles.titleBar}>
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>
             <span className={styles.titleWithHint}>
-              {t('Tins')}
-              <FieldHint label={t('Tins')}>
-                {t('A tin is a sandbox an agent opens a session in, with a filesystem and commands. The local tin runs inside this server and is switched in Admin Settings; a remote tin is another orktin reached by its address and API token. An agent is granted tins by label on its page.')}
+              {t('Boxes')}
+              <FieldHint label={t('Boxes')}>
+                {t('A box is a sandbox an agent opens a session in, with a filesystem and commands. The local box runs inside this server and is switched in Admin Settings; a remote box is another Orkbox reached by its address and API token. An agent is granted boxes by label on its page.')}
               </FieldHint>
             </span>
           </h1>
           <p className={styles.subtitle}>{t('Sandboxes agents can run commands in.')}</p>
         </div>
-        <Link className={styles.addTin} to="/admin/tins/new">
+        <Link className={styles.addBox} to="/admin/boxes/new">
           <img src={plusIcon} alt="" width={14} height={14} />
-          {t('Add tin')}
+          {t('Add box')}
         </Link>
       </header>
 
@@ -107,7 +107,7 @@ export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
           <div className={styles.colActions} />
         </div>
 
-        {tins === null && error === null && (
+        {boxes === null && error === null && (
           <p className={styles.notice}>
             <Loader />
           </p>
@@ -117,48 +117,48 @@ export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
             {error}
           </p>
         )}
-        {tins !== null && tins.length === 0 && <p className={styles.notice}>{t('No tins yet.')}</p>}
+        {boxes !== null && boxes.length === 0 && <p className={styles.notice}>{t('No boxes yet.')}</p>}
 
-        {rows.map((tin) => (
-          <div className={styles.row} key={tin.id} data-tin-row={tin.id} data-tin-kind={tin.kind}>
+        {rows.map((box) => (
+          <div className={styles.row} key={box.id} data-box-row={box.id} data-box-kind={box.kind}>
             <div className={styles.colName}>
-              <Link className={styles.name} to={`/admin/tins/${encodeURIComponent(tin.id)}`}>
-                {tin.name}
+              <Link className={styles.name} to={`/admin/boxes/${encodeURIComponent(box.id)}`}>
+                {box.name}
               </Link>
-              {tin.address !== null && <span className={styles.address}>{tin.address}</span>}
+              {box.address !== null && <span className={styles.address}>{box.address}</span>}
             </div>
-            <div className={styles.colKind} data-tin-cell="kind">
-              {tinKindLabel(tin.kind)}
+            <div className={styles.colKind} data-box-cell="kind">
+              {boxKindLabel(box.kind)}
             </div>
-            <div className={styles.colHealth} data-tin-cell="health" title={healthTitle(tin)}>
-              {tin.health === null ? (
+            <div className={styles.colHealth} data-box-cell="health" title={healthTitle(box)}>
+              {box.health === null ? (
                 <span className={styles.none}>—</span>
               ) : (
                 <>
                   <span
-                    className={tin.health.status === 'UP' ? styles.dotUp : styles.dotDown}
-                    data-tin-health={tin.health.status}
+                    className={box.health.status === 'UP' ? styles.dotUp : styles.dotDown}
+                    data-box-health={box.health.status}
                     aria-hidden="true"
                   />
-                  <span className={styles.healthLabel}>{tin.health.status === 'UP' ? t('Up') : t('Down')}</span>
+                  <span className={styles.healthLabel}>{box.health.status === 'UP' ? t('Up') : t('Down')}</span>
                 </>
               )}
             </div>
-            <div className={styles.colSessions} data-tin-cell="sessions">
-              {tin.activeSessions === null ? <span className={styles.none}>—</span> : tin.activeSessions}
+            <div className={styles.colSessions} data-box-cell="sessions">
+              {box.activeSessions === null ? <span className={styles.none}>—</span> : box.activeSessions}
             </div>
-            <div className={styles.colLabel} data-tin-cell="label">
-              {tin.label === null || tin.label === '' ? (
+            <div className={styles.colLabel} data-box-cell="label">
+              {box.label === null || box.label === '' ? (
                 <span className={styles.none}>—</span>
               ) : (
-                <span className={styles.labelTag}>{tin.label}</span>
+                <span className={styles.labelTag}>{box.label}</span>
               )}
             </div>
             <div className={styles.colActions}>
               <Link
                 className={styles.rowAction}
-                to={`/admin/tins/${encodeURIComponent(tin.id)}`}
-                aria-label={`${t('Edit')} ${tin.name}`}
+                to={`/admin/boxes/${encodeURIComponent(box.id)}`}
+                aria-label={`${t('Edit')} ${box.name}`}
                 title={t('Edit')}
               >
                 <img src={settingsIcon} alt="" width={14} height={14} />
@@ -172,10 +172,10 @@ export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
 }
 
 /** What the health dot means, said short on hover. */
-function healthTitle(tin: Tin): string | undefined {
-  if (tin.health === null) return undefined;
-  if (tin.health.status === 'UP') return t('Healthy: ready to take sessions');
-  return tin.health.detail === null
+function healthTitle(box: Box): string | undefined {
+  if (box.health === null) return undefined;
+  if (box.health.status === 'UP') return t('Healthy: ready to take sessions');
+  return box.health.detail === null
     ? t('Unhealthy: cannot take sessions right now')
-    : tf('Unhealthy: {reason}', { reason: tin.health.detail });
+    : tf('Unhealthy: {reason}', { reason: box.health.detail });
 }

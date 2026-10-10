@@ -9,8 +9,8 @@ import { AdminLibrariesPage } from './pages/admin/AdminLibrariesPage';
 import { AdminMonitoringPage } from './pages/admin/AdminMonitoringPage';
 import { AdminCertificatePage } from './pages/admin/AdminCertificatePage';
 import { AdminNetworkingPage } from './pages/admin/AdminNetworkingPage';
-import { AdminTinPage } from './pages/admin/AdminTinPage';
-import { AdminTinsPage } from './pages/admin/AdminTinsPage';
+import { AdminBoxPage } from './pages/admin/AdminBoxPage';
+import { AdminBoxesPage } from './pages/admin/AdminBoxesPage';
 import { AdminUpdatesPage } from './pages/admin/AdminUpdatesPage';
 import { AdminTemplatePage } from './pages/admin/AdminTemplatePage';
 import { AdminTemplatesPage } from './pages/admin/AdminTemplatesPage';
@@ -170,10 +170,10 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/admin/networking': (session, onSignOut) => (
     <AdminNetworkingPage session={session} onSignOut={onSignOut} />
   ),
-  '/admin/tins': (session, onSignOut) => <AdminTinsPage session={session} onSignOut={onSignOut} />,
-  /* Before the one with an id in it: `new` is a page, not a tin called new. */
-  '/admin/tins/new': (session, onSignOut) => <AdminTinPage session={session} onSignOut={onSignOut} />,
-  '/admin/tins/:tinId': (session, onSignOut) => <AdminTinPage session={session} onSignOut={onSignOut} />,
+  '/admin/boxes': (session, onSignOut) => <AdminBoxesPage session={session} onSignOut={onSignOut} />,
+  /* Before the one with an id in it: `new` is a page, not a box called new. */
+  '/admin/boxes/new': (session, onSignOut) => <AdminBoxPage session={session} onSignOut={onSignOut} />,
+  '/admin/boxes/:boxId': (session, onSignOut) => <AdminBoxPage session={session} onSignOut={onSignOut} />,
   '/admin/roles': (session, onSignOut) => <AdminRolesPage session={session} onSignOut={onSignOut} />,
   '/admin/users': (session, onSignOut) => <AdminUsersPage session={session} onSignOut={onSignOut} />,
   /* Before the one with an id in it: `new` is a page, not a user called new. */

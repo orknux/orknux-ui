@@ -3965,31 +3965,31 @@ export const TESTS = [
      * panel sends, so that is what is asserted; the wording is a NOTE.
      */
   },
-  // --- tins ----------------------------------------------------------------
+  // --- boxes ----------------------------------------------------------------
   {
-    name: 'tins-admin-check',
-    what: 'Admin -> Tins lists a row per tin with Name, Type, Health, Active sessions, Label; a remote tin is added, tested and deleted through the page; the local tin offers only its label; Admin Settings draws every tin knob on what the server holds',
+    name: 'boxes-admin-check',
+    what: 'Admin -> Boxes lists a row per box with Name, Type, Health, Active sessions, Label; a remote box is added, tested and deleted through the page; the local box offers only its label; Admin Settings draws every box knob on what the server holds',
     needs: [],
     /*
-     * Its tins are at addresses under `.invalid`, so no test reaches a
+     * Its boxes are at addresses under `.invalid`, so no test reaches a
      * network and none is ever up. Removes what it makes and puts back the
      * one setting it changes. Not `alone`: the settings it reads are not
      * ones another check writes.
      */
   },
   {
-    name: 'tins-agent-grant-check',
-    what: "an agent's Tins grant: starts empty, offers the labels tins carry as you type, chips added and removed, saved as tinLabels; a tin_ tool reads Hide without a label and Always with one",
+    name: 'boxes-agent-grant-check',
+    what: "an agent's Boxes grant: starts empty, offers the labels boxes carry as you type, chips added and removed, saved as boxLabels; an orkbox_ tool reads Hide without a label and Always with one",
     needs: ['workspace'],
-    /* Makes a scratch agent and a scratch tin, only so there is a label to offer, and removes both. */
+    /* Makes a scratch agent and a scratch box, only so there is a label to offer, and removes both. */
   },
   {
-    name: 'session-tins-check',
-    what: "a session's Tins panel below its scratchpads with green and orange dots, the Tin tab right of Scratchpad, and a tin session's log followed from nextSeq in place of the transcript",
+    name: 'session-boxes-check',
+    what: "a session's Boxes panel below its scratchpads with green and orange dots, the Box tab right of Scratchpad, and a box session's log followed from nextSeq in place of the transcript",
     needs: ['workspace'],
     /*
-     * The tin sessions are stubbed, as session-family-check stubs its
-     * members: one exists because a model called a tin tool. The contract is
+     * The box sessions are stubbed, as session-family-check stubs its
+     * members: one exists because a model called a box tool. The contract is
      * asked of the running server. Makes nothing and removes nothing.
      */
   },

@@ -20,7 +20,7 @@ import {
   fetchSkillOffers,
   inSkillScope,
 } from '../api/skills';
-import { fetchTinLabels } from '../api/tins';
+import { fetchBoxLabels } from '../api/boxes';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
@@ -276,8 +276,8 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by Orknux access — switch it there.');
     case 'HTTP_TOOLS':
       return t('Granted by the HTTP tools — switch it there.');
-    case 'TIN_ACCESS':
-      return t('Granted by the tin labels — switch it there.');
+    case 'BOX_ACCESS':
+      return t('Granted by the box labels — switch it there.');
     default:
       return null;
   }
@@ -1084,22 +1084,22 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [mcpServers, setMcpServers] = useState<string[]>(agent.mcpServers);
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
-  /** Which tins it may open a session on, by label. Every agent starts with none. */
-  const [tinLabels, setTinLabels] = useState<string[]>(agent.tinLabels ?? []);
+  /** Which boxes it may open a session on, by label. Every agent starts with none. */
+  const [boxLabels, setBoxLabels] = useState<string[]>(agent.boxLabels ?? []);
   /**
-   * The labels tins carry now, offered as one is typed. Nothing on the form
-   * waits for it: a label is a name, and one typed before any tin carries it
+   * The labels boxes carry now, offered as one is typed. Nothing on the form
+   * waits for it: a label is a name, and one typed before any box carries it
    * is a grant that starts working the day one does.
    */
-  const [knownTinLabels, setKnownTinLabels] = useState<string[]>([]);
+  const [knownBoxLabels, setKnownBoxLabels] = useState<string[]>([]);
   useEffect(() => {
     let current = true;
-    fetchTinLabels()
+    fetchBoxLabels()
       .then((labels) => {
-        if (current) setKnownTinLabels(labels);
+        if (current) setKnownBoxLabels(labels);
       })
       .catch(() => {
-        if (current) setKnownTinLabels([]);
+        if (current) setKnownBoxLabels([]);
       });
     return () => {
       current = false;
@@ -1390,8 +1390,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return orknuxAccess;
       case 'HTTP_TOOLS':
         return tools.some((name) => HTTP_TOOLS.includes(name));
-      case 'TIN_ACCESS':
-        return tinLabels.length > 0;
+      case 'BOX_ACCESS':
+        return boxLabels.length > 0;
       default:
         return false;
     }
@@ -1581,7 +1581,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         modelId: modelId === '' ? null : modelId,
         mcpServers,
         orknuxAccess,
-        tinLabels,
+        boxLabels,
         memoryCatalogs,
         skillCatalogs,
         hiddenSkills,
@@ -1600,7 +1600,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       });
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
-      setTinLabels(updated.tinLabels ?? []);
+      setBoxLabels(updated.boxLabels ?? []);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setHiddenSkills(updated.hiddenSkills);
@@ -2213,26 +2213,26 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         </div>
 
         {/*
-          Tins, by label rather than by name: an agent asks for a tin and is
-          given one whose label it holds, so a tin an administrator adds later
+          Boxes, by label rather than by name: an agent asks for a box and is
+          given one whose label it holds, so a box an administrator adds later
           under a label already here is one this agent can use without being
           edited. Beside Orknux because it is the same kind of grant - something
-          the agent is not otherwise offered - and the tin_ tools are rows in
+          the agent is not otherwise offered - and the orkbox_ tools are rows in
           the list above that read it.
         */}
-        <div className={styles.field} data-tin-grant="">
+        <div className={styles.field} data-box-grant="">
           <span className={own.labelWithHint}>
-            <label className={styles.label} htmlFor={`${formId}-tin-labels`}>{t('Tins')}</label>
-            <FieldHint label={t('Tins')}>
-              {t('The tins this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that tin allows. Tins and their labels are set up under Admin → Tins.')}
+            <label className={styles.label} htmlFor={`${formId}-box-labels`}>{t('Boxes')}</label>
+            <FieldHint label={t('Boxes')}>
+              {t('The boxes this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that box allows. Boxes and their labels are set up under Admin → Boxes.')}
             </FieldHint>
           </span>
           <LabelPicker
-            id={`${formId}-tin-labels`}
-            labels={tinLabels}
-            known={knownTinLabels}
-            onChange={setTinLabels}
-            placeholder={t('Add a tin label…')}
+            id={`${formId}-box-labels`}
+            labels={boxLabels}
+            known={knownBoxLabels}
+            onChange={setBoxLabels}
+            placeholder={t('Add a box label…')}
           />
         </div>
 

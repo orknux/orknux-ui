@@ -1197,9 +1197,9 @@
   color: var(--color-text-primary);
 }
 
-/* ---- One tin session's log, in place of the transcript ---- */
+/* ---- One box session's log, in place of the transcript ---- */
 
-.tinLog {
+.boxLog {
   display: flex;
   flex-direction: column;
   margin: 0;
@@ -1211,16 +1211,16 @@
   overflow: hidden;
 }
 
-.tinEvent {
+.boxEvent {
   border-bottom: 1px solid var(--color-border);
 }
 
-.tinEvent:last-child {
+.boxEvent:last-child {
   border-bottom: 0;
 }
 
 /* One line per event: when, what kind, and what it was about. */
-.tinEventLine {
+.boxEventLine {
   display: flex;
   align-items: baseline;
   gap: var(--space-12);
@@ -1233,18 +1233,18 @@
   cursor: pointer;
 }
 
-.tinEventLine:hover {
+.boxEventLine:hover {
   background: var(--color-surface-raised);
 }
 
-.tinEventTime {
+.boxEventTime {
   flex: none;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
-.tinEventType {
+.boxEventType {
   flex: none;
   padding: var(--space-2) var(--space-6);
   background: var(--color-surface-raised);
@@ -1255,7 +1255,7 @@
   color: var(--color-text-secondary);
 }
 
-.tinEventSummary {
+.boxEventSummary {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -1266,7 +1266,7 @@
   white-space: nowrap;
 }
 
-.tinEventJson {
+.boxEventJson {
   margin: 0;
   padding: var(--space-12);
   background: var(--color-bg);
@@ -1279,14 +1279,14 @@
 }
 
 /* An execution's raw JSON, a small press away under its output rather than the main thing. */
-.tinJsonBar {
+.boxJsonBar {
   display: flex;
   justify-content: flex-end;
   padding: 0 var(--space-12) var(--space-8);
   background: var(--color-bg);
 }
 
-.tinJsonToggle {
+.boxJsonToggle {
   padding: var(--space-2) var(--space-6);
   background: none;
   border: 1px solid var(--color-border);
@@ -1297,25 +1297,17 @@
   cursor: pointer;
 }
 
-.tinJsonToggle:hover,
-.tinJsonToggle[aria-expanded='true'] {
+.boxJsonToggle:hover,
+.boxJsonToggle[aria-expanded='true'] {
   color: var(--color-text-primary);
   border-color: var(--color-text-muted);
 }
 
 /*
- * A row in the Tins panel: the tin's name, its label, and the tin session's id.
+ * A row in the Boxes panel: the box's name, its label, and the box session's id.
  * The id is what gives way when the rail is narrow - cut, and whole on hover.
  */
-.tinRowName {
-  flex: 0 0 auto;
-  max-width: 45%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tinRowLabel {
+.boxRowLabel {
   flex: 0 0 auto;
   max-width: 30%;
   overflow: hidden;
@@ -1329,8 +1321,8 @@
   white-space: nowrap;
 }
 
-.tinRowId {
-  /* Takes what the name and label leave, and nothing towards how wide the rail is: a nowrap id would otherwise push the rail wider. */
+.boxRowId {
+  /* Takes what the label leaves, and nothing towards how wide the rail is: a nowrap id would otherwise push the rail wider. */
   flex: 1 1 0;
   width: 0;
   min-width: 0;

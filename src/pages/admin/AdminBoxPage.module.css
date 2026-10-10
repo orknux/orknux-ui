@@ -1,7 +1,7 @@
 /*
- * One tin: the provider page's proportions, like the other admin forms - a
+ * One box: the provider page's proportions, like the other admin forms - a
  * thing with an address, a credential that is written but never read back,
- * and a danger zone - with what the tin says about itself underneath.
+ * and a danger zone - with what the box says about itself underneath.
  */
 
 .headerBlock {
@@ -22,7 +22,7 @@
   display: inline-flex;
 }
 
-.saveWrap[data-tin-save-blocked] {
+.saveWrap[data-box-save-blocked] {
   cursor: not-allowed;
 }
 
@@ -351,7 +351,7 @@
   cursor: default;
 }
 
-/* ---- The way to the local tin's own settings ---- */
+/* ---- The way to the local box's own settings ---- */
 
 .settingsLink {
   align-self: flex-start;
@@ -364,7 +364,7 @@
   text-decoration: underline;
 }
 
-/* ---- What the tin says about itself ---- */
+/* ---- What the box says about itself ---- */
 
 .cardHead {
   display: flex;

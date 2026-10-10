@@ -266,9 +266,9 @@ const IN_THE_OPEN = [
   },
   {
     file: 'src/pages/workspace/SessionDetailPage.tsx',
-    says: 'Could not load the tins.',
+    says: 'Could not load the boxes.',
     because: 'status',
-    why: "what the session's tins panel is showing when its one query did not answer",
+    why: "what the session's boxes panel is showing when its one query did not answer",
   },
   {
     file: 'src/pages/admin/AdminPluginsPage.tsx',

@@ -38,7 +38,7 @@
   color: var(--color-text-secondary);
 }
 
-.addTin {
+.addBox {
   display: flex;
   flex-shrink: 0;
   align-items: center;

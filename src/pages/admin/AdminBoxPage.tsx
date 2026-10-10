@@ -3,19 +3,19 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
-  LOCAL_TIN_ID,
-  createTin,
-  deleteTin,
-  fetchTin,
-  fetchTinInfo,
-  fetchTinLabels,
-  fetchTinSessions,
-  revealTinToken,
-  testTinConnection,
-  tinKindLabel,
-  updateTin,
-} from '../../api/tins';
-import type { Tin, TinConnectionTest, TinInfo, TinInput, TinRemoteSession, TinRuntime } from '../../api/tins';
+  LOCAL_BOX_ID,
+  createBox,
+  deleteBox,
+  fetchBox,
+  fetchBoxInfo,
+  fetchBoxLabels,
+  fetchBoxSessions,
+  revealBoxToken,
+  testBoxConnection,
+  boxKindLabel,
+  updateBox,
+} from '../../api/boxes';
+import type { Box, BoxConnectionTest, BoxInfo, BoxInput, BoxRemoteSession, BoxRuntime } from '../../api/boxes';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { AdminSidebar } from '../../components/AdminSidebar';
@@ -26,15 +26,15 @@ import { RevealToggle } from '../../components/RevealToggle';
 import { Loader } from '../../components/Loader';
 import { duration } from '../workspace/WorkspaceWatchersPage';
 import { shellUser } from '../../session/user';
-import styles from './AdminTinPage.module.css';
+import styles from './AdminBoxPage.module.css';
 import { t, tf } from '../../i18n';
 
-export interface AdminTinPageProps {
+export interface AdminBoxPageProps {
   session: SessionUser;
   onSignOut?: () => void;
 }
 
-/** A value a tin may not have said, drawn as a dash rather than as "null". */
+/** A value a box may not have said, drawn as a dash rather than as "null". */
 function said(value: string | number | null | undefined): string {
   return value === null || value === undefined || value === '' ? '—' : String(value);
 }
@@ -48,26 +48,26 @@ function yesNo(value: boolean | null): string {
 }
 
 /**
- * One tin: registered here for the first time, or looked at and edited
+ * One box: registered here for the first time, or looked at and edited
  * afterwards.
  *
  * A page rather than a dialog for the reason the other admin forms are pages:
- * a tin holds a token somebody pastes out of another window, and has an address
- * worth coming back to. Below the form is everything the tin says about itself
+ * a box holds a token somebody pastes out of another window, and has an address
+ * worth coming back to. Below the form is everything the box says about itself
  * - its version, its limits, each runtime it offers - and the sessions it holds
- * now, because "what is this tin doing" is the next question after "does it
+ * now, because "what is this box doing" is the next question after "does it
  * answer".
  *
- * The local tin is the same page with less to edit: it is inside this server,
+ * The local box is the same page with less to edit: it is inside this server,
  * so it has no address or token, and its limits are installation settings
  * rather than fields here. Only its label is its own.
  */
-export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
-  const { tinId } = useParams();
+export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
+  const { boxId } = useParams();
   const navigate = useNavigate();
-  const adding = tinId === undefined;
+  const adding = boxId === undefined;
 
-  const [tin, setTin] = useState<Tin | null>(null);
+  const [box, setBox] = useState<Box | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [name, setName] = useState('');
@@ -86,18 +86,18 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [testing, setTesting] = useState(false);
-  const [tested, setTested] = useState<TinConnectionTest | null>(null);
+  const [tested, setTested] = useState<BoxConnectionTest | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
 
-  const [info, setInfo] = useState<TinInfo | null>(null);
+  const [info, setInfo] = useState<BoxInfo | null>(null);
   const [infoError, setInfoError] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<TinRemoteSession[] | null>(null);
+  const [sessions, setSessions] = useState<BoxRemoteSession[] | null>(null);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
 
-  const local = tin?.kind === 'LOCAL' || tinId === LOCAL_TIN_ID;
+  const local = box?.kind === 'LOCAL' || boxId === LOCAL_BOX_ID;
 
-  const fill = useCallback((found: Tin) => {
-    setTin(found);
+  const fill = useCallback((found: Box) => {
+    setBox(found);
     setName(found.name);
     setAddress(found.address ?? '');
     setLabel(found.label ?? '');
@@ -107,7 +107,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
 
   useEffect(() => {
     let current = true;
-    fetchTinLabels()
+    fetchBoxLabels()
       .then((labels) => {
         if (current) setKnownLabels(labels);
       })
@@ -118,52 +118,52 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
   }, []);
 
   useEffect(() => {
-    if (tinId === undefined) return;
+    if (boxId === undefined) return;
     let current = true;
-    fetchTin(tinId)
+    fetchBox(boxId)
       .then((found) => {
         if (!current) return;
         if (found === null) {
-          setLoadError(t('That tin no longer exists.'));
+          setLoadError(t('That box no longer exists.'));
           return;
         }
         fill(found);
       })
       .catch((cause: unknown) => {
-        if (current) setLoadError(cause instanceof Error ? cause.message : t('Could not load the tin.'));
+        if (current) setLoadError(cause instanceof Error ? cause.message : t('Could not load the box.'));
       });
     return () => {
       current = false;
     };
-  }, [tinId, fill]);
+  }, [boxId, fill]);
 
   /*
-   * What the tin says about itself and what it holds, asked separately from
-   * the tin's own row: a tin that cannot be reached is still a row that can be
+   * What the box says about itself and what it holds, asked separately from
+   * the box's own row: a box that cannot be reached is still a row that can be
    * edited - which is how an address gets mended - so a refusal here is drawn
    * where the details would be and nowhere else.
    */
   const loadDetails = useCallback(() => {
-    if (tinId === undefined) return;
+    if (boxId === undefined) return;
     setInfoError(null);
     setSessionsError(null);
-    fetchTinInfo(tinId)
+    fetchBoxInfo(boxId)
       .then((answer) => setInfo(answer))
       .catch((cause: unknown) => {
         setInfo(null);
-        setInfoError(cause instanceof Error ? cause.message : t('Could not ask the tin.'));
+        setInfoError(cause instanceof Error ? cause.message : t('Could not ask the box.'));
       });
-    fetchTinSessions(tinId)
+    fetchBoxSessions(boxId)
       .then((answer) => setSessions(answer))
       .catch((cause: unknown) => {
         setSessions(null);
-        setSessionsError(cause instanceof Error ? cause.message : t('Could not ask the tin.'));
+        setSessionsError(cause instanceof Error ? cause.message : t('Could not ask the box.'));
       });
-  }, [tinId]);
+  }, [boxId]);
 
   useEffect(loadDetails, [loadDetails]);
 
-  /* A tin with no label is no agent's, so a label is asked for up front. */
+  /* A box with no label is no agent's, so a label is asked for up front. */
   const complete = !local && name.trim() !== '' && address.trim() !== '' && label.trim() !== '';
   /** What is still missing, said on hover over a Save that will not press. */
   const missing = [
@@ -181,9 +181,9 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
       setShown(false);
       return;
     }
-    if (token === '' && !clearToken && tin?.hasToken === true && tinId !== undefined) {
+    if (token === '' && !clearToken && box?.hasToken === true && boxId !== undefined) {
       try {
-        const held = await revealTinToken(tinId);
+        const held = await revealBoxToken(boxId);
         if (held !== null) setToken(held);
       } catch (cause) {
         setTestError(cause instanceof Error ? cause.message : t('Could not show the token.'));
@@ -206,8 +206,8 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
     setError(null);
     setSaved(false);
 
-    const input: TinInput = local
-      ? { name: tin?.name ?? name, label: label.trim() === '' ? null : label.trim() }
+    const input: BoxInput = local
+      ? { name: box?.name ?? name, label: label.trim() === '' ? null : label.trim() }
       : {
           name: name.trim(),
           label: label.trim() === '' ? null : label.trim(),
@@ -216,16 +216,16 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
         };
 
     try {
-      if (tinId === undefined) {
-        const created = await createTin(input);
-        navigate(`/admin/tins/${encodeURIComponent(created.id)}`);
+      if (boxId === undefined) {
+        const created = await createBox(input);
+        navigate(`/admin/boxes/${encodeURIComponent(created.id)}`);
         return;
       }
-      fill(await updateTin(tinId, input));
+      fill(await updateBox(boxId, input));
       setSaved(true);
       loadDetails();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('Could not save the tin.'));
+      setError(cause instanceof Error ? cause.message : t('Could not save the box.'));
     } finally {
       setSaving(false);
     }
@@ -238,13 +238,13 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
     setTestError(null);
     try {
       /*
-       * What is in the boxes, saved or not. An empty token box on a tin that
+       * What is in the boxes, saved or not. An empty token box on a box that
        * holds one asks the server to use the stored token, so changing only the
        * address can be tried before it is saved.
        */
       const typed = clearToken ? null : token === '' ? null : token;
-      const storedFor = !adding && typed === null && !clearToken ? (tinId ?? null) : null;
-      setTested(await testTinConnection(address.trim(), typed, storedFor));
+      const storedFor = !adding && typed === null && !clearToken ? (boxId ?? null) : null;
+      setTested(await testBoxConnection(address.trim(), typed, storedFor));
     } catch (cause) {
       setTestError(cause instanceof Error ? cause.message : t('Could not test the connection.'));
     } finally {
@@ -253,32 +253,32 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
   }
 
   async function handleDelete() {
-    if (tinId === undefined || saving) return;
+    if (boxId === undefined || saving) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteTin(tinId);
-      navigate('/admin/tins');
+      await deleteBox(boxId);
+      navigate('/admin/boxes');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('Could not delete the tin.'));
+      setError(cause instanceof Error ? cause.message : t('Could not delete the box.'));
       setSaving(false);
     }
   }
 
-  const called = adding ? t('Add tin') : (tin?.name ?? '…');
+  const called = adding ? t('Add box') : (box?.name ?? '…');
 
   return (
     <AppShell
-      title={adding ? t('New tin') : tin?.name}
+      title={adding ? t('New box') : box?.name}
       user={shellUser(session)}
       onSignOut={onSignOut}
-      sidebar={<AdminSidebar active="tins" />}
+      sidebar={<AdminSidebar active="boxes" />}
     >
       <header className={styles.headerBlock}>
         <p className={styles.breadcrumbs}>
-          <BackLink to="/admin/tins" label={t('Tins')} />
-          <Link className={styles.crumbLink} to="/admin/tins">
-            {t('Tins')}
+          <BackLink to="/admin/boxes" label={t('Boxes')} />
+          <Link className={styles.crumbLink} to="/admin/boxes">
+            {t('Boxes')}
           </Link>
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{called}</span>
@@ -286,8 +286,8 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{called}</h1>
           {/* Save beside the title, as on the other settings pages: the form is long and the details follow it. */}
-          {/* The local tin has nothing of its own to save: its label is fixed and its settings are Admin Settings. */}
-          {loadError === null && !local && (adding || tin !== null) && (
+          {/* The local box has nothing of its own to save: its label is fixed and its settings are Admin Settings. */}
+          {loadError === null && !local && (adding || box !== null) && (
             <div className={styles.headerActions}>
               {/*
                 The title is on a wrapper, and the disabled button lets the
@@ -297,18 +297,18 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
               <span
                 className={styles.saveWrap}
                 title={missing.length > 0 ? tf('Fill in: {fields}', { fields: missing.join(', ') }) : undefined}
-                data-tin-save-blocked={missing.length > 0 ? 'true' : undefined}
+                data-box-save-blocked={missing.length > 0 ? 'true' : undefined}
               >
-                <button type="submit" form="tin-form" className={styles.primaryButton} disabled={!complete || saving} data-tin-save="">
-                  {saving ? t('Saving…') : adding ? t('Add tin') : t('Save')}
+                <button type="submit" form="box-form" className={styles.primaryButton} disabled={!complete || saving} data-box-save="">
+                  {saving ? t('Saving…') : adding ? t('Add box') : t('Save')}
                 </button>
               </span>
             </div>
           )}
         </div>
-        {tin !== null && (
-          <p className={styles.subtitle} data-tin-kind={tin.kind}>
-            {tinKindLabel(tin.kind)}
+        {box !== null && (
+          <p className={styles.subtitle} data-box-kind={box.kind}>
+            {boxKindLabel(box.kind)}
           </p>
         )}
       </header>
@@ -318,27 +318,27 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
           <p className={styles.loadError} role="alert">
             {loadError}
           </p>
-          <Link className={styles.crumbLink} to="/admin/tins">
-            {t('Back to Tins')}
+          <Link className={styles.crumbLink} to="/admin/boxes">
+            {t('Back to Boxes')}
           </Link>
         </section>
-      ) : !adding && tin === null ? (
+      ) : !adding && box === null ? (
         <section className={styles.card}>
           <Loader />
         </section>
       ) : (
-        <form id="tin-form" className={styles.form} onSubmit={handleSubmit}>
+        <form id="box-form" className={styles.form} onSubmit={handleSubmit}>
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>{t('Tin')}</h2>
+            <h2 className={styles.cardTitle}>{t('Box')}</h2>
             <div className={styles.divider} />
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="tin-name">
+              <label className={styles.label} htmlFor="box-name">
                 {t('Name')} {!local && <span className={styles.required}>*</span>}
               </label>
               <input
-                id="tin-name"
-                name="tinName"
+                id="box-name"
+                name="boxName"
                 className={styles.input}
                 type="text"
                 placeholder={t('e.g. build sandbox')}
@@ -352,29 +352,29 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
 
             <div className={styles.field}>
               <span className={styles.labelWithHint}>
-                <label className={styles.label} htmlFor="tin-address">
+                <label className={styles.label} htmlFor="box-address">
                   {t('Address')} {!local && <span className={styles.required}>*</span>}
                 </label>
                 <FieldHint label={t('Address')}>
                   {local
-                    ? t('The local tin runs inside this server, so there is nothing to reach and no token to hold.')
-                    : t('Where the orktin answers, with its scheme - http://sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.')}
+                    ? t('The local box runs inside this server, so there is nothing to reach and no token to hold.')
+                    : t('Where the Orkbox answers, with its scheme - http://sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.')}
                 </FieldHint>
               </span>
               {local ? (
                 <input
-                  id="tin-address"
+                  id="box-address"
                   className={`${styles.input} ${styles.inputMono}`}
                   type="text"
                   value={t('In-process')}
-                  data-tin-address="in-process"
+                  data-box-address="in-process"
                   readOnly
                   disabled
                 />
               ) : (
                 <input
-                  id="tin-address"
-                  name="tinAddress"
+                  id="box-address"
+                  name="boxAddress"
                   className={`${styles.input} ${styles.inputMono}`}
                   type="url"
                   placeholder="http://sandbox.internal:8090"
@@ -391,23 +391,23 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
             {!local && (
               <div className={styles.field}>
                 <span className={styles.labelWithHint}>
-                  <label className={styles.label} htmlFor="tin-token">
+                  <label className={styles.label} htmlFor="box-token">
                     {t('API token')}
                   </label>
                   <FieldHint label={t('API token')}>
-                    {t('Stored encrypted; the eye shows it. Leaving the box empty keeps whatever is already stored.')}
+                    {t('Stored encrypted; the eye shows it. Leaving the field empty keeps whatever is already stored.')}
                   </FieldHint>
                 </span>
                 <div className={styles.secretRow}>
                 <input
-                  id="tin-token"
-                  name="tinToken"
+                  id="box-token"
+                  name="boxToken"
                   className={`${styles.input} ${styles.inputMono}`}
                   type={shown ? 'text' : 'password'}
                   autoComplete="new-password"
-                  placeholder={tin?.hasToken === true ? t('Stored; type to replace') : t('Optional')}
+                  placeholder={box?.hasToken === true ? t('Stored; type to replace') : t('Optional')}
                   value={token}
-                  data-tin-token-held={tin?.hasToken === true ? 'true' : 'false'}
+                  data-box-token-held={box?.hasToken === true ? 'true' : 'false'}
                   onChange={(event) => {
                     setToken(event.target.value);
                     setClearToken(false);
@@ -417,7 +417,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                 />
                 <RevealToggle shown={shown} onToggle={() => void toggleReveal()} label={t('API token')} />
                 </div>
-                {tin?.hasToken === true && (
+                {box?.hasToken === true && (
                   <label className={styles.checkboxField}>
                     <input
                       type="checkbox"
@@ -435,19 +435,19 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
 
             <div className={styles.field}>
               <span className={styles.labelWithHint}>
-                <label className={styles.label} htmlFor="tin-label">
+                <label className={styles.label} htmlFor="box-label">
                   {t('Label')} {!local && <span className={styles.required}>*</span>}
                 </label>
                 <FieldHint label={t('Label')}>
-                  {t('What an agent is granted this tin by. Several tins may share a label, and an agent holding it may be given any of them.')}
+                  {t('What an agent is granted this box by. Several boxes may share a label, and an agent holding it may be given any of them.')}
                 </FieldHint>
               </span>
               <input
-                id="tin-label"
-                name="tinLabel"
+                id="box-label"
+                name="boxLabel"
                 className={`${styles.input} ${styles.inputMono}`}
                 type="text"
-                list="tin-label-suggestions"
+                list="box-label-suggestions"
                 spellCheck={false}
                 placeholder={t('e.g. build')}
                 value={label}
@@ -455,7 +455,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                 readOnly={local}
                 onChange={(event) => setLabel(event.target.value)}
               />
-              <datalist id="tin-label-suggestions">
+              <datalist id="box-label-suggestions">
                 {knownLabels.map((one) => (
                   <option key={one} value={one} />
                 ))}
@@ -463,14 +463,14 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
             </div>
 
             {local && (
-              <Link className={styles.settingsLink} to="/admin/settings#tins" data-tin-settings-link="">
-                {t('Local tin settings')}
+              <Link className={styles.settingsLink} to="/admin/settings#boxes" data-box-settings-link="">
+                {t('Local box settings')}
               </Link>
             )}
           </section>
 
           <div className={styles.footer}>
-            <div className={styles.status} data-tin-test-result={tested === null ? undefined : tested.ok ? 'ok' : 'failed'}>
+            <div className={styles.status} data-box-test-result={tested === null ? undefined : tested.ok ? 'ok' : 'failed'}>
               {error !== null ? (
                 <span className={styles.statusFailed} role="alert">
                   {error}
@@ -499,7 +499,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                   className={styles.secondaryButton}
                   onClick={() => void handleTest()}
                   disabled={testing || address.trim() === ''}
-                  data-tin-test=""
+                  data-box-test=""
                 >
                   {testing ? t('Testing…') : t('Test connection')}
                 </button>
@@ -509,9 +509,9 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
         </form>
       )}
 
-      {!adding && tin !== null && (
+      {!adding && box !== null && (
         <>
-          <section className={styles.card} data-tin-details="">
+          <section className={styles.card} data-box-details="">
             <div className={styles.cardHead}>
               <h2 className={styles.cardTitle}>{t('Details')}</h2>
               <button type="button" className={styles.secondaryButton} onClick={loadDetails}>
@@ -520,7 +520,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
             </div>
             <div className={styles.divider} />
             {infoError !== null ? (
-              <p className={styles.loadError} role="alert" data-tin-info-error="">
+              <p className={styles.loadError} role="alert" data-box-info-error="">
                 {infoError}
               </p>
             ) : info === null ? (
@@ -543,7 +543,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
             )}
           </section>
 
-          <section className={styles.card} data-tin-sessions="">
+          <section className={styles.card} data-box-sessions="">
             <h2 className={styles.cardTitle}>{t('Sessions')}</h2>
             <div className={styles.divider} />
             {sessionsError !== null ? (
@@ -565,11 +565,11 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                   <span className={styles.colRuns}>{t('Commands')}</span>
                 </div>
                 {sessions.map((one) => (
-                  <div key={one.id} className={styles.tableRow} data-tin-session={one.id}>
+                  <div key={one.id} className={styles.tableRow} data-box-session={one.id}>
                     <span className={`${styles.colId} ${styles.mono}`} title={one.labels === '{}' ? undefined : one.labels}>
-                      {/* A session an agent here opened links to its conversation, with the tin's log open. */}
+                      {/* A session an agent here opened links to its conversation, with the box's log open. */}
                       {one.orknuxSessionUrl !== null ? (
-                        <Link to={one.orknuxSessionUrl} className={styles.sessionLink} data-tin-session-link="">
+                        <Link to={one.orknuxSessionUrl} className={styles.sessionLink} data-box-session-link="">
                           {one.id}
                         </Link>
                       ) : (
@@ -600,18 +600,18 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
         </>
       )}
 
-      {/* The local tin is switched off in Admin Settings rather than removed. */}
-      {!adding && loadError === null && tin !== null && !local && (
+      {/* The local box is switched off in Admin Settings rather than removed. */}
+      {!adding && loadError === null && box !== null && !local && (
         <section className={styles.dangerCard}>
           <h2 className={styles.dangerHeading}>{t('Danger Zone')}</h2>
           <div className={styles.divider} />
           <div className={styles.dangerRow}>
             <div className={styles.dangerText}>
-              <span className={styles.dangerTitle}>{t('Delete tin')}</span>
+              <span className={styles.dangerTitle}>{t('Delete box')}</span>
               <span className={styles.dangerNote}>
                 {confirmingDelete
-                  ? tf('Delete {name}? Agents holding its label lose it.', { name: tin.name })
-                  : t('Remove this tin from the installation')}
+                  ? tf('Delete {name}? Agents holding its label lose it.', { name: box.name })
+                  : t('Remove this box from the installation')}
               </span>
             </div>
             {confirmingDelete ? (
@@ -629,9 +629,9 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                   className={styles.dangerButton}
                   onClick={() => void handleDelete()}
                   disabled={saving}
-                  data-tin-delete-confirm=""
+                  data-box-delete-confirm=""
                 >
-                  {saving ? t('Deleting…') : t('Delete tin')}
+                  {saving ? t('Deleting…') : t('Delete box')}
                 </button>
               </div>
             ) : (
@@ -640,9 +640,9 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                 className={styles.dangerButton}
                 onClick={() => setConfirmingDelete(true)}
                 disabled={saving}
-                data-tin-delete=""
+                data-box-delete=""
               >
-                {t('Delete tin')}
+                {t('Delete box')}
               </button>
             )}
           </div>
@@ -664,13 +664,13 @@ function Fact({ name, value }: { name: string; value: string }) {
 }
 
 /**
- * One runtime the tin offers, as more rows of the same sheet: a Runtime row
+ * One runtime the box offers, as more rows of the same sheet: a Runtime row
  * saying which and whether it can run anything, then every limit it has.
  */
-function RuntimeFacts({ runtime }: { runtime: TinRuntime }) {
+function RuntimeFacts({ runtime }: { runtime: BoxRuntime }) {
   return (
     <>
-      <div className={styles.fact} data-tin-runtime={runtime.name}>
+      <div className={styles.fact} data-box-runtime={runtime.name}>
         <dt className={styles.factName}>{t('Runtime')}</dt>
         <dd className={styles.factValue}>
           <span className={styles.runtimeValue} title={runtime.unavailableReason ?? undefined}>

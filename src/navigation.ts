@@ -534,18 +534,18 @@ export const PAGES = [
     },
   },
   {
-    path: '/admin/tins',
+    path: '/admin/boxes',
     access: 'admin',
     goTo: {
-      label: t('Tins'),
+      label: t('Boxes'),
       where: 'Admin',
       icon: containerIcon,
-      also: 'orktin sandbox sessions commands filesystem remote local runtime docker',
+      also: 'orkbox sandbox sessions commands filesystem remote local runtime docker',
     },
   },
-  /* Before the one with an id in it: `new` is a page, not a tin called new. */
-  { path: '/admin/tins/new', access: 'admin', goTo: false },
-  { path: '/admin/tins/:tinId', access: 'admin', goTo: false },
+  /* Before the one with an id in it: `new` is a page, not a box called new. */
+  { path: '/admin/boxes/new', access: 'admin', goTo: false },
+  { path: '/admin/boxes/:boxId', access: 'admin', goTo: false },
   {
     path: '/admin/roles',
     access: 'admin',
@@ -597,7 +597,7 @@ export const PAGES = [
       { label: t('Watchers'), at: '#watchers', also: 'watcher interval timeout per agent limit' },
       { label: t('Sessions'), at: '#sessions', also: 'compaction summary transcript stored value' },
       { label: t('Scratchpads'), at: '#scratchpads', also: 'budget files keep days' },
-      { label: t('Tins'), at: '#tins', also: 'local tin orktin sandbox runtime docker sessions ttl idle command wait timeout output' },
+      { label: t('Boxes'), at: '#boxes', also: 'local box orkbox sandbox runtime docker sessions ttl idle command wait timeout output' },
       { label: t('Drawing'), at: '#drawing', also: 'diagram chart scale' },
       { label: t('Commands'), at: '#commands', also: 'marker skill' },
       { label: t('Metrics'), at: '#metrics', also: 'anonymous telemetry' },

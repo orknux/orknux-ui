@@ -398,7 +398,7 @@ for (const list of [
   { path: 'admin/templates', column: 'Format' },
   { path: 'admin/plugins', column: 'Plugin' },
   { path: 'admin/networking', column: 'Subject' },
-  { path: 'admin/tins', column: 'Type' },
+  { path: 'admin/boxes', column: 'Type' },
   { path: 'admin/integrations', column: 'Type' },
   { path: 'admin/audit', column: 'Action' },
 ]) {

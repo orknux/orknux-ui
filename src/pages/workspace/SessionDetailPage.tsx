@@ -30,8 +30,8 @@ import type {
   SessionScratchpadContent,
 } from '../../api/llmSessions';
 import { STATUS_LABEL } from '../../api/executions';
-import { fetchSessionTinLog, fetchSessionTins } from '../../api/tins';
-import type { SessionTin, TinEvent } from '../../api/tins';
+import { fetchSessionBoxLog, fetchSessionBoxes } from '../../api/boxes';
+import type { SessionBox, BoxEvent } from '../../api/boxes';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
@@ -48,7 +48,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './SessionDetailPage.module.css';
-import { TinOutput } from './TinOutput';
+import { BoxOutput } from './BoxOutput';
 import { t } from '../../i18n';
 
 export interface SessionDetailPageProps {
@@ -59,10 +59,10 @@ export interface SessionDetailPageProps {
 const PAGE_SIZE = 20;
 const PAGE_SIZES = [20, 50, 100];
 const SEARCH_PAUSE_MS = 300;
-/** How often an active tin session's log is asked for what is new. */
-const TIN_POLL_MS = 2000;
+/** How often an active box session's log is asked for what is new. */
+const BOX_POLL_MS = 2000;
 
-/** "14:03:27" - a tin log is read within one sitting, so the day is on hover. */
+/** "14:03:27" - a box log is read within one sitting, so the day is on hover. */
 function clockOf(iso: string): string {
   const at = new Date(iso);
   return Number.isNaN(at.getTime()) ? iso : at.toLocaleTimeString();
@@ -83,14 +83,14 @@ function prettyJson(data: string): string {
 }
 
 /** Keys that say what an event was about, read first and in this order. */
-const TIN_SUMMARY_KEYS = ['command', 'cmd', 'path', 'exitCode', 'exit_code', 'status', 'message', 'error', 'output', 'stdout', 'stderr'];
+const BOX_SUMMARY_KEYS = ['command', 'cmd', 'path', 'exitCode', 'exit_code', 'status', 'message', 'error', 'output', 'stdout', 'stderr'];
 
 /**
  * One line out of an event's JSON: the keys that say what happened first, then
  * any other plain values, cut to what fits a row. Nothing here knows every
- * event a tin writes, so it reads what is there rather than a list of types.
+ * event a box writes, so it reads what is there rather than a list of types.
  */
-function tinSummary(data: string): string {
+function boxSummary(data: string): string {
   const value = parsed(data);
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return oneLine(typeof value === 'string' ? value : JSON.stringify(value));
@@ -98,9 +98,9 @@ function tinSummary(data: string): string {
   const held = value as Record<string, unknown>;
   const plain = (one: unknown) => typeof one === 'string' || typeof one === 'number' || typeof one === 'boolean';
   const keys = [
-    ...TIN_SUMMARY_KEYS.filter((key) => key in held),
+    ...BOX_SUMMARY_KEYS.filter((key) => key in held),
     // The execution id is what the output is read by, not something a reader of the line needs.
-    ...Object.keys(held).filter((key) => !TIN_SUMMARY_KEYS.includes(key) && key !== 'executionId'),
+    ...Object.keys(held).filter((key) => !BOX_SUMMARY_KEYS.includes(key) && key !== 'executionId'),
   ].filter((key) => plain(held[key]) || (Array.isArray(held[key]) && (held[key] as unknown[]).every(plain)));
   const parts = keys.map((key) => {
     const one = held[key];
@@ -695,26 +695,26 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   useEffect(loadScratchpads, [loadScratchpads]);
 
   /*
-   * The tin sessions this session opened, listed below the scratchpads. Each
+   * The box sessions this session opened, listed below the scratchpads. Each
    * is a sandbox an agent ran commands in; clicking one reads its log in place
    * of the transcript.
    */
-  const [sessionTins, setSessionTins] = useState<SessionTin[] | null>(null);
-  /** Which session the list above answered for, so a link's `?tin=` is never judged against the last session's tins. */
-  const [sessionTinsFor, setSessionTinsFor] = useState<string | null>(null);
-  const loadSessionTins = useCallback(() => {
+  const [sessionBoxes, setSessionBoxes] = useState<SessionBox[] | null>(null);
+  /** Which session the list above answered for, so a link's `?box=` is never judged against the last session's boxes. */
+  const [sessionBoxesFor, setSessionBoxesFor] = useState<string | null>(null);
+  const loadSessionBoxes = useCallback(() => {
     if (sessionId === '') return;
-    fetchSessionTins(sessionId)
+    fetchSessionBoxes(sessionId)
       .then((list) => {
-        setSessionTins(list);
-        setSessionTinsFor(sessionId);
+        setSessionBoxes(list);
+        setSessionBoxesFor(sessionId);
       })
       .catch(() => {
-        setSessionTins(null);
-        setSessionTinsFor(sessionId);
+        setSessionBoxes(null);
+        setSessionBoxesFor(sessionId);
       });
   }, [sessionId]);
-  useEffect(loadSessionTins, [loadSessionTins]);
+  useEffect(loadSessionBoxes, [loadSessionBoxes]);
 
   const refresh = useCallback(() => {
     loadSession();
@@ -726,8 +726,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
      * one screen whose whole point is watching work happen. Issue #479.
      */
     loadScratchpads();
-    loadSessionTins();
-  }, [loadSession, load, loadScratchpads, loadSessionTins]);
+    loadSessionBoxes();
+  }, [loadSession, load, loadScratchpads, loadSessionBoxes]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -783,159 +783,159 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [createError, setCreateError] = useState<string | null>(null);
 
   /**
-   * The tin session whose log the body is showing, or null. A fourth subview
+   * The box session whose log the body is showing, or null. A fourth subview
    * beside the three above, and exclusive with them the same way.
    */
-  const [openTin, setOpenTin] = useState<string | null>(null);
-  const [tinEvents, setTinEvents] = useState<TinEvent[]>([]);
+  const [openBox, setOpenBox] = useState<string | null>(null);
+  const [boxEvents, setBoxEvents] = useState<BoxEvent[]>([]);
   /** Where the next poll starts, so it brings only what is new. */
-  const [tinNextSeq, setTinNextSeq] = useState<number | null>(null);
-  /** Null while the log has not answered; otherwise the tin's own word on whether it could hand it over. */
-  const [tinAvailable, setTinAvailable] = useState<{ available: boolean; message: string | null } | null>(null);
+  const [boxNextSeq, setBoxNextSeq] = useState<number | null>(null);
+  /** Null while the log has not answered; otherwise the box's own word on whether it could hand it over. */
+  const [boxAvailable, setBoxAvailable] = useState<{ available: boolean; message: string | null } | null>(null);
   /** Newest first unless the reader turned it round; remembered in this browser. */
-  const [tinNewestFirst, setTinNewestFirst] = useState<boolean>(() => {
+  const [boxNewestFirst, setBoxNewestFirst] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('orknux.tin-log.order') !== 'oldest';
+      return localStorage.getItem('orknux.box-log.order') !== 'oldest';
     } catch {
       return true;
     }
   });
-  const turnTinLog = useCallback(() => {
-    setTinNewestFirst((held) => {
+  const turnBoxLog = useCallback(() => {
+    setBoxNewestFirst((held) => {
       try {
-        localStorage.setItem('orknux.tin-log.order', held ? 'oldest' : 'newest');
+        localStorage.setItem('orknux.box-log.order', held ? 'oldest' : 'newest');
       } catch {
         /* a convenience only */
       }
       return !held;
     });
   }, []);
-  const [tinError, setTinError] = useState<string | null>(null);
+  const [boxError, setBoxError] = useState<string | null>(null);
   /** Which events are drawn with their whole JSON. */
-  const [tinExpanded, setTinExpanded] = useState<number[]>([]);
+  const [boxExpanded, setBoxExpanded] = useState<number[]>([]);
   /**
    * Which executions are open, and under which of their lines the output is
    * drawn. Keyed by the execution rather than the event, so its started and
    * finished lines open and close the same output rather than two copies of it.
    */
-  const [tinOpenExecutions, setTinOpenExecutions] = useState<Record<string, number>>({});
+  const [boxOpenExecutions, setBoxOpenExecutions] = useState<Record<string, number>>({});
   /** Execution lines whose raw JSON is shown as well as their output. */
-  const [tinJsonShown, setTinJsonShown] = useState<number[]>([]);
-  /** The tin session open now, for an answer to check it is still wanted when it lands. */
-  const openTinNow = useRef<string | null>(null);
-  openTinNow.current = openTin;
+  const [boxJsonShown, setBoxJsonShown] = useState<number[]>([]);
+  /** The box session open now, for an answer to check it is still wanted when it lands. */
+  const openBoxNow = useRef<string | null>(null);
+  openBoxNow.current = openBox;
 
   /*
-   * `?tin=` names a tin session to open on arrival - the link an agent hands a
-   * person. Held here until the session's tins have answered, and only then
-   * opened or, where the session has no such tin, dropped for the transcript.
+   * `?box=` names a box session to open on arrival - the link an agent hands a
+   * person. Held here until the session's boxes have answered, and only then
+   * opened or, where the session has no such box, dropped for the transcript.
    */
   const [searchParams, setSearchParams] = useSearchParams();
-  const tinFromUrl = useRef<string | null>(null);
+  const boxFromUrl = useRef<string | null>(null);
 
   /* A different session is a different set of pads; drop back to its transcript. */
   useEffect(() => {
     setOpenPad(null);
     setPadContent(null);
     setCreating(false);
-    setOpenTin(null);
-    tinFromUrl.current = new URLSearchParams(window.location.search).get('tin');
+    setOpenBox(null);
+    boxFromUrl.current = new URLSearchParams(window.location.search).get('box');
   }, [sessionId]);
 
-  /* The address says which tin session is open, replaced rather than pushed so Back leaves the page. */
-  const tinInUrl = searchParams.get('tin');
+  /* The address says which box session is open, replaced rather than pushed so Back leaves the page. */
+  const boxInUrl = searchParams.get('box');
   useEffect(() => {
-    if (tinFromUrl.current !== null || openTin === tinInUrl) return;
+    if (boxFromUrl.current !== null || openBox === boxInUrl) return;
     setSearchParams(
       (held) => {
         const next = new URLSearchParams(held);
-        if (openTin === null) next.delete('tin');
-        else next.set('tin', openTin);
+        if (openBox === null) next.delete('box');
+        else next.set('box', openBox);
         return next;
       },
       { replace: true },
     );
-  }, [openTin, tinInUrl, setSearchParams]);
+  }, [openBox, boxInUrl, setSearchParams]);
 
   const backToTranscript = useCallback(() => {
     setOpenPad(null);
     setPadContent(null);
     setPadError(null);
     setCreating(false);
-    setOpenTin(null);
+    setOpenBox(null);
   }, []);
 
-  /** Reads a tin session's log from the start, in place of the transcript. */
-  const openSessionTin = useCallback(
+  /** Reads a box session's log from the start, in place of the transcript. */
+  const openSessionBox = useCallback(
     (id: string) => {
       if (sessionId === '') return;
       setCreating(false);
       setOpenPad(null);
       setPadContent(null);
-      setOpenTin(id);
-      setTinEvents([]);
-      setTinNextSeq(null);
-      setTinAvailable(null);
-      setTinError(null);
-      setTinExpanded([]);
-      setTinOpenExecutions({});
-      setTinJsonShown([]);
-      fetchSessionTinLog(sessionId, id)
+      setOpenBox(id);
+      setBoxEvents([]);
+      setBoxNextSeq(null);
+      setBoxAvailable(null);
+      setBoxError(null);
+      setBoxExpanded([]);
+      setBoxOpenExecutions({});
+      setBoxJsonShown([]);
+      fetchSessionBoxLog(sessionId, id)
         .then((log) => {
-          if (openTinNow.current !== id) return;
-          setTinEvents(log.events);
-          setTinNextSeq(log.nextSeq);
-          setTinAvailable({ available: log.available, message: log.message });
+          if (openBoxNow.current !== id) return;
+          setBoxEvents(log.events);
+          setBoxNextSeq(log.nextSeq);
+          setBoxAvailable({ available: log.available, message: log.message });
         })
         .catch((cause: unknown) => {
-          if (openTinNow.current !== id) return;
-          setTinError(cause instanceof Error ? cause.message : t('Could not read the tin log.'));
+          if (openBoxNow.current !== id) return;
+          setBoxError(cause instanceof Error ? cause.message : t('Could not read the box log.'));
         });
     },
     [sessionId],
   );
 
-  /* A linked tin session, opened once the session's tins say it is one of them; otherwise the transcript, and the address says so. */
+  /* A linked box session, opened once the session's boxes say it is one of them; otherwise the transcript, and the address says so. */
   useEffect(() => {
-    const wanted = tinFromUrl.current;
-    if (wanted === null || sessionTinsFor !== sessionId) return;
-    tinFromUrl.current = null;
-    if (sessionTins?.some((one) => one.id === wanted)) {
-      openSessionTin(wanted);
+    const wanted = boxFromUrl.current;
+    if (wanted === null || sessionBoxesFor !== sessionId) return;
+    boxFromUrl.current = null;
+    if (sessionBoxes?.some((one) => one.id === wanted)) {
+      openSessionBox(wanted);
       return;
     }
     setSearchParams(
       (held) => {
         const next = new URLSearchParams(held);
-        next.delete('tin');
+        next.delete('box');
         return next;
       },
       { replace: true },
     );
-  }, [sessionTins, sessionTinsFor, sessionId, openSessionTin, setSearchParams]);
+  }, [sessionBoxes, sessionBoxesFor, sessionId, openSessionBox, setSearchParams]);
 
   /** What has been written since the last read, added under what is there. */
-  const followTin = useCallback(() => {
-    if (sessionId === '' || openTin === null || tinNextSeq === null) return;
-    const asked = openTin;
-    fetchSessionTinLog(sessionId, asked, tinNextSeq)
+  const followBox = useCallback(() => {
+    if (sessionId === '' || openBox === null || boxNextSeq === null) return;
+    const asked = openBox;
+    fetchSessionBoxLog(sessionId, asked, boxNextSeq)
       .then((log) => {
-        if (openTinNow.current !== asked) return;
-        setTinEvents((held) => {
+        if (openBoxNow.current !== asked) return;
+        setBoxEvents((held) => {
           const seen = new Set(held.map((one) => one.seq));
           return [...held, ...log.events.filter((one) => !seen.has(one.seq))];
         });
-        setTinNextSeq(log.nextSeq);
-        setTinAvailable({ available: log.available, message: log.message });
-        setTinError(null);
+        setBoxNextSeq(log.nextSeq);
+        setBoxAvailable({ available: log.available, message: log.message });
+        setBoxError(null);
       })
       .catch((cause: unknown) => {
-        if (openTinNow.current !== asked) return;
-        setTinError(cause instanceof Error ? cause.message : t('Could not read the tin log.'));
+        if (openBoxNow.current !== asked) return;
+        setBoxError(cause instanceof Error ? cause.message : t('Could not read the box log.'));
       });
-  }, [sessionId, openTin, tinNextSeq]);
+  }, [sessionId, openBox, boxNextSeq]);
 
-  const openTinRow = sessionTins?.find((one) => one.id === openTin) ?? null;
+  const openBoxRow = sessionBoxes?.find((one) => one.id === openBox) ?? null;
 
   /*
    * An open log is asked again every couple of seconds from where the last
@@ -946,15 +946,15 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    * closed session simply answers with nothing.
    */
   useEffect(() => {
-    if (openTin === null || tinNextSeq === null) return;
-    const timer = window.setInterval(followTin, TIN_POLL_MS);
+    if (openBox === null || boxNextSeq === null) return;
+    const timer = window.setInterval(followBox, BOX_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [openTin, tinNextSeq, followTin]);
+  }, [openBox, boxNextSeq, followBox]);
 
   const openScratchpad = useCallback(
     (name: string) => {
       if (sessionId === '') return;
-      setOpenTin(null);
+      setOpenBox(null);
       setCreating(false);
       setOpenPad(name);
       setPadContent(null);
@@ -996,7 +996,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [padContent, padDraft, sessionId, loadScratchpads]);
 
   const startCreate = useCallback(() => {
-    setOpenTin(null);
+    setOpenBox(null);
     setCreating(true);
     setOpenPad(null);
     setPadContent(null);
@@ -1086,13 +1086,13 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
 
   /* The body shows the transcript only when no pad is open and the form is shut. */
   const showScratchpad = openPad !== null || creating;
-  const showTin = openTin !== null;
-  const showTranscript = !showScratchpad && !showTin;
-  /* The newest tin session, which the Tin tab opens when none is open yet. */
-  const newestTin =
-    sessionTins === null || sessionTins.length === 0
+  const showBox = openBox !== null;
+  const showTranscript = !showScratchpad && !showBox;
+  /* The newest box session, which the Box tab opens when none is open yet. */
+  const newestBox =
+    sessionBoxes === null || sessionBoxes.length === 0
       ? null
-      : sessionTins.reduce((newest, one) => (one.createdAt > newest.createdAt ? one : newest));
+      : sessionBoxes.reduce((newest, one) => (one.createdAt > newest.createdAt ? one : newest));
   const showAside = !missing && held !== null;
 
   return (
@@ -1220,7 +1220,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               className={styles.subview}
               role="tablist"
               aria-label={t('Session view')}
-              data-subview={creating ? 'new' : openPad !== null ? 'scratchpad' : openTin !== null ? 'tin' : 'transcript'}
+              data-subview={creating ? 'new' : openPad !== null ? 'scratchpad' : openBox !== null ? 'box' : 'transcript'}
             >
               <button
                 type="button"
@@ -1259,23 +1259,23 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                 {t('Scratchpad')}
               </button>
               {/*
-                The tin log, right of the scratchpad and the same kind of tab:
-                named for what it shows, opening the newest tin session where
+                The box log, right of the scratchpad and the same kind of tab:
+                named for what it shows, opening the newest box session where
                 none is open, and disabled where the session opened none.
               */}
               <button
                 type="button"
                 role="tab"
-                aria-selected={showTin}
-                className={showTin ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
-                disabled={!showTin && newestTin === null}
-                data-subview-tab="tin"
+                aria-selected={showBox}
+                className={showBox ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
+                disabled={!showBox && newestBox === null}
+                data-subview-tab="box"
                 onClick={() => {
-                  if (showTin || newestTin === null) return;
-                  openSessionTin(newestTin.id);
+                  if (showBox || newestBox === null) return;
+                  openSessionBox(newestBox.id);
                 }}
               >
-                {t('Tin')}
+                {t('Box')}
               </button>
             </div>
             <p className={styles.meta}>
@@ -1577,92 +1577,92 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       )}
       </div>
       {/*
-        One tin session's log, in place of the transcript: what the agent ran
+        One box session's log, in place of the transcript: what the agent ran
         and what came back, a line each, with the event's whole JSON a press
-        away. Followed while the tin session is active.
+        away. Followed while the box session is active.
       */}
-      {!missing && openTin !== null && (
-        <section className={styles.padView} aria-label={t('Tin')} data-tin-log={openTin}>
+      {!missing && openBox !== null && (
+        <section className={styles.padView} aria-label={t('Box')} data-box-log={openBox}>
           <div className={styles.padHeader}>
             <h2 className={styles.padName}>
-              {openTinRow === null ? openTin : `${openTinRow.tinName} · ${openTinRow.remoteSessionId}`}
+              {openBoxRow === null ? openBox : `${openBoxRow.boxName} · ${openBoxRow.remoteSessionId}`}
             </h2>
             <div className={styles.padButtons}>
-              {openTinRow !== null && (
+              {openBoxRow !== null && (
                 <span className={styles.padSize}>
                   <span
-                    className={openTinRow.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
+                    className={openBoxRow.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
                     aria-hidden="true"
                   />{' '}
-                  {openTinRow.status}
+                  {openBoxRow.status}
                 </span>
               )}
               <button
                 type="button"
                 className={styles.continue}
-                onClick={turnTinLog}
-                data-tin-log-order={tinNewestFirst ? 'newest' : 'oldest'}
-                title={tinNewestFirst ? t('Newest first. Press to show oldest first.') : t('Oldest first. Press to show newest first.')}
+                onClick={turnBoxLog}
+                data-box-log-order={boxNewestFirst ? 'newest' : 'oldest'}
+                title={boxNewestFirst ? t('Newest first. Press to show oldest first.') : t('Oldest first. Press to show newest first.')}
               >
-                {tinNewestFirst ? t('Newest first ↓') : t('Oldest first ↑')}
+                {boxNewestFirst ? t('Newest first ↓') : t('Oldest first ↑')}
               </button>
-              <button type="button" className={styles.continue} onClick={followTin} disabled={tinNextSeq === null}>
+              <button type="button" className={styles.continue} onClick={followBox} disabled={boxNextSeq === null}>
                 {t('Refresh')}
               </button>
             </div>
           </div>
-          {tinError !== null && (
+          {boxError !== null && (
             <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
-              {tinError}
+              {boxError}
             </p>
           )}
-          {tinAvailable === null && tinError === null && (
+          {boxAvailable === null && boxError === null && (
             <p className={styles.notice}>
               <Loader />
             </p>
           )}
-          {/* A log kept from before the tin restarted comes with a word saying so, above the events. */}
-          {tinAvailable !== null && tinAvailable.available && tinAvailable.message !== null && (
-            <p className={styles.notice} data-tin-log-note="">
-              {tinAvailable.message}
+          {/* A log kept from before the box restarted comes with a word saying so, above the events. */}
+          {boxAvailable !== null && boxAvailable.available && boxAvailable.message !== null && (
+            <p className={styles.notice} data-box-log-note="">
+              {boxAvailable.message}
             </p>
           )}
-          {tinAvailable !== null && !tinAvailable.available && (
-            <p className={styles.notice} data-tin-log-unavailable="">
-              {tinAvailable.message ?? t('The tin could not hand its log over.')}
+          {boxAvailable !== null && !boxAvailable.available && (
+            <p className={styles.notice} data-box-log-unavailable="">
+              {boxAvailable.message ?? t('The box could not hand its log over.')}
             </p>
           )}
-          {tinAvailable !== null && tinAvailable.available && tinEvents.length === 0 && (
+          {boxAvailable !== null && boxAvailable.available && boxEvents.length === 0 && (
             <p className={styles.notice}>{t('Nothing logged yet.')}</p>
           )}
-          {tinEvents.length > 0 && (
-            <ol className={styles.tinLog}>
-              {(tinNewestFirst ? [...tinEvents].reverse() : tinEvents).map((event) => {
+          {boxEvents.length > 0 && (
+            <ol className={styles.boxLog}>
+              {(boxNewestFirst ? [...boxEvents].reverse() : boxEvents).map((event) => {
                 const execution = executionOf(event.data);
                 const open =
-                  execution !== null ? execution in tinOpenExecutions : tinExpanded.includes(event.seq);
+                  execution !== null ? execution in boxOpenExecutions : boxExpanded.includes(event.seq);
                 /* An execution's output is drawn once, under the line it was opened from. */
-                const drawsOutput = execution !== null && tinOpenExecutions[execution] === event.seq;
-                const jsonShown = tinJsonShown.includes(event.seq);
+                const drawsOutput = execution !== null && boxOpenExecutions[execution] === event.seq;
+                const jsonShown = boxJsonShown.includes(event.seq);
                 return (
                   <li
                     key={event.seq}
-                    className={styles.tinEvent}
-                    data-tin-event={event.seq}
-                    data-tin-execution={execution ?? undefined}
+                    className={styles.boxEvent}
+                    data-box-event={event.seq}
+                    data-box-execution={execution ?? undefined}
                   >
                     <button
                       type="button"
-                      className={styles.tinEventLine}
+                      className={styles.boxEventLine}
                       aria-expanded={open}
                       onClick={() => {
                         if (execution === null) {
-                          setTinExpanded((held) =>
+                          setBoxExpanded((held) =>
                             held.includes(event.seq) ? held.filter((one) => one !== event.seq) : [...held, event.seq],
                           );
                           return;
                         }
-                        setTinOpenExecutions((held) => {
+                        setBoxOpenExecutions((held) => {
                           const next = { ...held };
                           if (execution in next) delete next[execution];
                           else next[execution] = event.seq;
@@ -1670,34 +1670,34 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                         });
                       }}
                     >
-                      <span className={styles.tinEventTime} title={event.at}>
+                      <span className={styles.boxEventTime} title={event.at}>
                         {clockOf(event.at)}
                       </span>
-                      <span className={styles.tinEventType}>{event.type}</span>
-                      <span className={styles.tinEventSummary} data-tin-event-summary="">
-                        {tinSummary(event.data)}
+                      <span className={styles.boxEventType}>{event.type}</span>
+                      <span className={styles.boxEventSummary} data-box-event-summary="">
+                        {boxSummary(event.data)}
                       </span>
                     </button>
-                    {open && execution === null && <pre className={styles.tinEventJson}>{prettyJson(event.data)}</pre>}
-                    {drawsOutput && openTin !== null && (
+                    {open && execution === null && <pre className={styles.boxEventJson}>{prettyJson(event.data)}</pre>}
+                    {drawsOutput && openBox !== null && (
                       <>
-                        <TinOutput sessionId={sessionId} sessionTinId={openTin} executionId={execution} />
-                        <div className={styles.tinJsonBar}>
+                        <BoxOutput sessionId={sessionId} sessionBoxId={openBox} executionId={execution} />
+                        <div className={styles.boxJsonBar}>
                           <button
                             type="button"
-                            className={styles.tinJsonToggle}
+                            className={styles.boxJsonToggle}
                             aria-expanded={jsonShown}
                             onClick={() =>
-                              setTinJsonShown((held) =>
+                              setBoxJsonShown((held) =>
                                 held.includes(event.seq) ? held.filter((one) => one !== event.seq) : [...held, event.seq],
                               )
                             }
-                            data-tin-event-json-toggle=""
+                            data-box-event-json-toggle=""
                           >
                             JSON
                           </button>
                         </div>
-                        {jsonShown && <pre className={styles.tinEventJson}>{prettyJson(event.data)}</pre>}
+                        {jsonShown && <pre className={styles.boxEventJson}>{prettyJson(event.data)}</pre>}
                       </>
                     )}
                   </li>
@@ -1803,45 +1803,49 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         )}
       </aside>
       {/*
-        The tins this session opened, below its scratchpads. Each carries the
-        family's dot - green while the tin session is active, orange once it is
+        The boxes this session opened, below its scratchpads. Each carries the
+        family's dot - green while the box session is active, orange once it is
         not - and clicking one reads its log in place of the transcript.
       */}
-      <aside className={styles.scratchpads} aria-label={t('Tins in this session')} data-session-tins="">
-        <p className={styles.familyTitle}>{t('Tins')}</p>
-        {sessionTins === null ? (
-          <p className={styles.familyNote}>{t('Could not load the tins.')}</p>
-        ) : sessionTins.length === 0 ? (
+      <aside className={styles.scratchpads} aria-label={t('Boxes in this session')} data-session-boxes="">
+        <p className={styles.familyTitle}>{t('Boxes')}</p>
+        {sessionBoxes === null ? (
+          <p className={styles.familyNote}>{t('Could not load the boxes.')}</p>
+        ) : sessionBoxes.length === 0 ? (
           <p className={styles.familyNote}>{t('None in this session yet.')}</p>
         ) : (
           <ul className={styles.familyList}>
-            {sessionTins.map((one) => {
-              const current = one.id === openTin;
+            {sessionBoxes.map((one) => {
+              const current = one.id === openBox;
               return (
                 <li key={one.id}>
                   <button
                     type="button"
                     className={current ? `${styles.familyRow} ${styles.familyRowCurrent}` : styles.familyRow}
                     aria-current={current ? 'page' : undefined}
-                    data-session-tin={one.id}
-                    data-session-tin-active={one.active ? 'true' : 'false'}
-                    title={[one.tinName, one.tinLabel, one.remoteSessionId, one.status].filter((part) => part !== null && part !== '').join(' · ')}
-                    onClick={() => openSessionTin(one.id)}
+                    data-session-box={one.id}
+                    data-session-box-active={one.active ? 'true' : 'false'}
+                    title={[one.boxName, one.boxLabel, one.remoteSessionId, one.status].filter((part) => part !== null && part !== '').join(' · ')}
+                    onClick={() => openSessionBox(one.id)}
                   >
                     <span
                       className={one.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
-                      data-session-tin-dot=""
+                      data-session-box-dot=""
                     />
-                    {/* The dot says the state; the word for it is on hover, in the row's title. */}
-                    <span className={styles.tinRowName}>{one.tinName}</span>
-                    {one.tinLabel !== null && one.tinLabel !== '' && (
-                      <span className={styles.tinRowLabel} data-session-tin-label="">
-                        {one.tinLabel}
-                      </span>
-                    )}
-                    <span className={styles.tinRowId} title={one.remoteSessionId} data-session-tin-id="">
+                    {/*
+                      The dot says the state; the word for it, and the box's
+                      name, are on hover in the row's title. The row itself is
+                      the box session's id, then its label - the name repeated
+                      the label for the local box on every row.
+                    */}
+                    <span className={styles.boxRowId} title={one.remoteSessionId} data-session-box-id="">
                       {one.remoteSessionId}
                     </span>
+                    {one.boxLabel !== null && one.boxLabel !== '' && (
+                      <span className={styles.boxRowLabel} data-session-box-label="">
+                        {one.boxLabel}
+                      </span>
+                    )}
                   </button>
                 </li>
               );
