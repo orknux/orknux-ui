@@ -1194,7 +1194,6 @@ const SHOTS = [
       await page.waitForTimeout(1500);
     },
   },
-  { name: 'shell', path: '/admin/shell' },
   { name: 'monitoring', path: '/admin/monitoring' },
   { name: 'admin-settings', path: '/admin/settings' },
   // By a setting rather than by the page having text in it: this one lays its

@@ -1,9 +1,6 @@
 /*
-  The same layout as the other admin tables - networking, integrations, plugins -
-  because this is another list of things the installation holds. What is
-  different is the status column, which is first rather than last: the question
-  somebody comes to this page with is "is that machine reachable", and an answer
-  they have to scan across a row for is an answer they will not read.
+  The same layout as the other admin tables - networking, integrations,
+  plugins - because this is another list of things the installation holds.
 */
 
 .titleBar {
@@ -29,13 +26,19 @@
   color: var(--color-text-primary);
 }
 
+.titleWithHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
 .subtitle {
   margin: 0;
   font-size: var(--text-base);
   color: var(--color-text-secondary);
 }
 
-.addShell {
+.addTin {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -89,81 +92,47 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.colStatus {
+.colName {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.colKind {
+  flex-shrink: 0;
+  width: 100px;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.colHealth {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: var(--space-8);
-  width: 130px;
+  width: 110px;
 }
 
-.colName {
-  display: flex;
+.colSessions {
   flex-shrink: 0;
-  flex-direction: column;
-  gap: var(--space-6);
-  width: 200px;
+  width: 140px;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.colLabel {
+  flex-shrink: 0;
+  width: 160px;
   min-width: 0;
-}
-
-.colAddress {
-  display: flex;
-  flex: 1 0 0;
-  min-width: 0;
-}
-
-.colKey {
-  flex-shrink: 0;
-  width: 180px;
-}
-
-.colEnabled {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: center;
-  width: 60px;
 }
 
 .colActions {
   display: flex;
   flex-shrink: 0;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--space-8);
-  width: 130px;
-}
-
-/*
-  A dot rather than a word alone, because the whole point of the column is to be
-  readable at a glance down a list of machines.
-*/
-.dotConnected,
-.dotFailed,
-.dotIdle {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-}
-
-.dotConnected {
-  background: var(--color-success);
-}
-
-.dotFailed {
-  background: var(--color-danger-solid);
-}
-
-.dotIdle {
-  background: var(--color-text-muted);
-}
-
-.statusLabel {
-  overflow: hidden;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  width: 40px;
 }
 
 .name {
@@ -171,62 +140,64 @@
   font-weight: 600;
   font-size: var(--text-base);
   color: var(--color-text-primary);
+  text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* A shell that is off is still listed, and has to read as off at a glance. */
-.nameDisabled {
-  color: var(--color-text-muted);
-}
-
-.fingerprint {
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.name:hover {
+  text-decoration: underline;
 }
 
 .address {
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.keyState {
+/* A dot rather than a word alone: the column is read at a glance down the list. */
+.dotUp,
+.dotDown {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.dotUp {
+  background: var(--color-success);
+}
+
+.dotDown {
+  background: var(--color-danger-solid);
+}
+
+.healthLabel {
   font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.none {
   color: var(--color-text-muted);
 }
 
-.toggle {
-  composes: iconButton from '../../styles/iconButton.module.css';
-}
-
-.checkAction {
-  padding: var(--space-6) var(--space-10);
+.labelTag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: var(--space-2) var(--space-8);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-6);
-  font-family: inherit;
-  font-weight: 600;
+  border-radius: var(--radius-4);
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.checkAction:hover:not(:disabled) {
-  border-color: var(--color-text-muted);
-  color: var(--color-text-primary);
-}
-
-.checkAction:disabled {
-  opacity: 0.5;
-  cursor: default;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .rowAction {
@@ -247,10 +218,3 @@
 .noticeError {
   color: var(--color-danger);
 }
-
-.titleWithHint {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-

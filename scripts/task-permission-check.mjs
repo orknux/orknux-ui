@@ -8,9 +8,10 @@
  * given the means to do and call `task_request_permission` rather than making
  * something up - which is a judgement, and only a real one makes it.
  *
- * The prompt asks for something that can only be done on a machine, and the
- * agent it is given has not been granted the shells. So the honest move, and the
- * one the briefing tells it to make, is to stop and ask.
+ * The prompt asks for something only orknux itself can answer - what this
+ * workspace holds - and the agent it is given has not been granted orknux. So
+ * the honest move, and the one the briefing tells it to make, is to stop and
+ * ask. It used the shells until they were removed.
  *
  * What is checked is the whole of the mechanism the issue asked for:
  *
@@ -29,8 +30,8 @@ import { BASE, WORKSPACE, open, check, record, shot, finish } from './suite/harn
 const stamp = Date.now();
 const AGENT = `zzScratchTaskAgent${stamp}`;
 const PROMPT =
-  `zz Scratch Task ${stamp} - run "uname -a" on one of this installation's machines ` +
-  `and tell me exactly what it printed.`;
+  `zz Scratch Task ${stamp} - list the workflows in this Orknux workspace ` +
+  `by name, exactly as Orknux reports them.`;
 
 const { browser, context, page } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -69,8 +70,8 @@ if (model === undefined) {
 /*
  * An agent granted nothing at all.
  *
- * That is the point: what it is asked to do needs the shells, it has not been
- * given them, and the only way through is to ask.
+ * That is the point: what it is asked to do needs orknux, it has not been
+ * given it, and the only way through is to ask.
  */
 const agent = (
   await gql(`mutation($input: CreateAgentInput!) { createAgent(input: $input) { id } }`, {
@@ -79,7 +80,7 @@ const agent = (
 ).createAgent;
 await gql(`mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }`, {
   id: agent.id,
-  input: { name: AGENT, modelId: model.id, shellAccess: false },
+  input: { name: AGENT, modelId: model.id, orknuxAccess: false },
 });
 
 // --- start it, and wait for it to stop --------------------------------------
@@ -118,9 +119,9 @@ check(
 if (parked !== null) {
   const asked = parked.requests.find((one) => one.decision === null);
   check(
-    asked !== undefined && asked.kind === 'PERMISSION' && asked.capability === 'SHELLS',
+    asked !== undefined && asked.kind === 'PERMISSION' && asked.capability === 'ORKNUX',
     `it asked for ${asked?.capability} and said why: ${asked?.asks}`,
-    `it stopped, but for ${asked?.kind} ${asked?.capability} rather than for the shells`,
+    `it stopped, but for ${asked?.kind} ${asked?.capability} rather than for orknux`,
   );
 
   // --- the page says so -----------------------------------------------------
@@ -130,7 +131,7 @@ if (parked !== null) {
   await waiting.waitFor({ timeout: 20_000 });
   const said = await waiting.innerText();
   check(
-    said.includes('the shells'),
+    said.includes('orknux'),
     'the page says what it is waiting for',
     `the page said "${said.replace(/\s+/g, ' ').slice(0, 120)}"`,
   );
@@ -154,17 +155,17 @@ if (parked !== null) {
   const after = await gql(
     `query($id: ID!, $agentId: ID!) {
        task(id: $id) { status grants { capability subject grantedBy } }
-       agent(id: $agentId) { shellAccess }
+       agent(id: $agentId) { orknuxAccess }
      }`,
     { id: taskId, agentId: agent.id },
   );
   check(
-    after.task.grants.length === 1 && after.task.grants[0].capability === 'SHELLS',
+    after.task.grants.length === 1 && after.task.grants[0].capability === 'ORKNUX',
     `the task was granted ${after.task.grants[0]?.capability} by ${after.task.grants[0]?.grantedBy}`,
     `the task holds ${after.task.grants.length} grant(s) rather than the one that was asked for`,
   );
   check(
-    after.agent.shellAccess === false,
+    after.agent.orknuxAccess === false,
     'the agent itself was not changed: the grant is the task’s and ends with it',
     'approving armed the agent everywhere, which is the one thing this must not do',
   );

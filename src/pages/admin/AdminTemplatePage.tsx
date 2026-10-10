@@ -30,7 +30,7 @@ export interface AdminTemplatePageProps {
 /**
  * One template: published here for the first time, or edited here afterwards.
  *
- * The same shape as the shell page — one form for adding and editing, and a
+ * The same shape as the other admin forms — one form for adding and editing, and a
  * danger zone for removing the thing — because it is the same kind of screen.
  * What is particular to a template is that its *contents* are read-only. A
  * template holds an exported file and nothing else, so the edits it has are its

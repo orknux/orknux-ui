@@ -60,13 +60,13 @@ const FORM_STYLES: ConditionFormStyles = {
  * pasted to somebody else, and can be opened in a tab of its own from the list
  * by ctrl-clicking a link that used to be a button.
  *
- * Modelled on the shell page in the admin section, which is the same shape in
+ * Modelled on the template page in the admin section, which is the same shape in
  * every respect that matters: `…/new` alongside `…/:conditionId` rendering one
  * component, a breadcrumb back to the list, deleting behind a second click in a
  * Danger Zone, and saving returning to the list.
  *
- * Saving goes back to the list on purpose, for the reason the shell page gives
- * for its own: the list is where the thing can be seen for what it is. The
+ * Saving goes back to the list on purpose, for the reason the admin forms give
+ * for theirs: the list is where the thing can be seen for what it is. The
  * server reads a condition's description off its definition, so the sentence
  * saying what this now asks is a column on the list and is nowhere on this
  * form.
@@ -208,7 +208,7 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
           )}
 
           {/*
-            Removing a condition asks twice, as the shell page does. A workflow
+            Removing a condition asks twice, as the admin forms do. A workflow
             node pointing at this stops being able to decide anything, and
             nothing puts the definition back.
           */}

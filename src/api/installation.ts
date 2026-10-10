@@ -227,6 +227,33 @@ export interface InstallationSettings {
    * administrator's decision on Temporal is how long it waits.
    */
   taskSweepConfigurable: boolean;
+  /**
+   * The local tin: the sandbox inside this server that agents granted a tin
+   * label are given sessions in. Listed under Admin -> Tins while it is on.
+   */
+  localTinEnabled: boolean;
+  /** Where local sessions' workspaces live; null is the built-in default, which `...Configured` holds. */
+  localTinLocation: string | null;
+  localTinLocationConfigured: string;
+  /** What a local session runs in: "local" (processes on this machine) or "docker". */
+  localTinRuntime: string;
+  localTinMaxSessions: number;
+  localTinMaxSessionsConfigured: number;
+  localTinDefaultTtlSeconds: number;
+  localTinDefaultTtlSecondsConfigured: number;
+  localTinMaxTtlSeconds: number;
+  localTinMaxTtlSecondsConfigured: number;
+  localTinIdleTimeoutSeconds: number;
+  localTinIdleTimeoutSecondsConfigured: number;
+  /** The tin tools, for every tin: how long a command is waited on before the agent is handed it running. */
+  tinCommandWaitSeconds: number;
+  tinCommandWaitSecondsConfigured: number;
+  tinCommandTimeoutSeconds: number;
+  tinCommandTimeoutSecondsConfigured: number;
+  tinOutputBytes: number;
+  tinOutputBytesConfigured: number;
+  tinRequestTimeoutSeconds: number;
+  tinRequestTimeoutSecondsConfigured: number;
   /** Server updates, #584: how many jars are kept for rolling back to. */
   releasesKept: number;
   /** How many starts a newly activated release gets before it is given up on. */
@@ -261,6 +288,11 @@ const FIELDS =
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
   'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured ' +
+  'localTinEnabled localTinLocation localTinLocationConfigured localTinRuntime ' +
+  'localTinMaxSessions localTinMaxSessionsConfigured localTinDefaultTtlSeconds localTinDefaultTtlSecondsConfigured ' +
+  'localTinMaxTtlSeconds localTinMaxTtlSecondsConfigured localTinIdleTimeoutSeconds localTinIdleTimeoutSecondsConfigured ' +
+  'tinCommandWaitSeconds tinCommandWaitSecondsConfigured tinCommandTimeoutSeconds tinCommandTimeoutSecondsConfigured ' +
+  'tinOutputBytes tinOutputBytesConfigured tinRequestTimeoutSeconds tinRequestTimeoutSecondsConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -781,4 +813,97 @@ export async function setPluginMaxSourceKb(kb: number): Promise<InstallationSett
     { kb },
   );
   return data.setPluginMaxSourceKb;
+}
+
+/* ---- Tins ---- */
+
+/** Whether the tin inside this server is offered at all. Takes effect as it is switched. */
+export async function setLocalTinEnabled(enabled: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinEnabled: InstallationSettings }>(
+    `mutation ($enabled: Boolean!) { setLocalTinEnabled(enabled: $enabled) { ${FIELDS} } }`,
+    { enabled },
+  );
+  return data.setLocalTinEnabled;
+}
+
+/** Where local sessions' workspaces live; null or empty puts it back to the default. */
+export async function setLocalTinLocation(location: string | null): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinLocation: InstallationSettings }>(
+    `mutation ($location: String) { setLocalTinLocation(location: $location) { ${FIELDS} } }`,
+    { location },
+  );
+  return data.setLocalTinLocation;
+}
+
+/** "local" or "docker". */
+export async function setLocalTinRuntime(runtime: string): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinRuntime: InstallationSettings }>(
+    `mutation ($runtime: String!) { setLocalTinRuntime(runtime: $runtime) { ${FIELDS} } }`,
+    { runtime },
+  );
+  return data.setLocalTinRuntime;
+}
+
+export async function setLocalTinMaxSessions(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinMaxSessions: InstallationSettings }>(
+    `mutation ($count: Int!) { setLocalTinMaxSessions(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setLocalTinMaxSessions;
+}
+
+export async function setLocalTinDefaultTtlSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinDefaultTtlSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setLocalTinDefaultTtlSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setLocalTinDefaultTtlSeconds;
+}
+
+export async function setLocalTinMaxTtlSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinMaxTtlSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setLocalTinMaxTtlSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setLocalTinMaxTtlSeconds;
+}
+
+export async function setLocalTinIdleTimeoutSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinIdleTimeoutSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setLocalTinIdleTimeoutSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setLocalTinIdleTimeoutSeconds;
+}
+
+export async function setTinCommandWaitSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setTinCommandWaitSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setTinCommandWaitSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setTinCommandWaitSeconds;
+}
+
+export async function setTinCommandTimeoutSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setTinCommandTimeoutSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setTinCommandTimeoutSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setTinCommandTimeoutSeconds;
+}
+
+export async function setTinOutputBytes(bytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setTinOutputBytes: InstallationSettings }>(
+    `mutation ($bytes: Int!) { setTinOutputBytes(bytes: $bytes) { ${FIELDS} } }`,
+    { bytes },
+  );
+  return data.setTinOutputBytes;
+}
+
+export async function setTinRequestTimeoutSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setTinRequestTimeoutSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setTinRequestTimeoutSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setTinRequestTimeoutSeconds;
 }

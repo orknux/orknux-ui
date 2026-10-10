@@ -41,7 +41,6 @@ const PL: Record<string, string> = {
   ModelProviderNameInvalid: 'Nazwa dostawcy jest wymagana',
   ProxyRuleNameInvalid: 'Nazwa reguły proxy jest wymagana',
   RoleNameInvalid: 'Rola potrzebuje nazwy',
-  ShellNameInvalid: 'Nazwa powłoki jest wymagana',
   SkillCatalogNameInvalid: 'Katalog umiejętności potrzebuje nazwy',
   SkillNameInvalid: 'Nazwa umiejętności jest wymagana',
   TriggerNameInvalid: 'Nazwa wyzwalacza jest wymagana',
@@ -308,7 +307,6 @@ const PL: Record<string, string> = {
   SecretCredentialAmbiguous:
     'Pole trzyma własne poświadczenie albo czyta je ze zmiennej przestrzeni roboczej, nie oba ' +
     'naraz. Wyślij wartość albo zmienną, nie jedno i drugie.',
-  NoShellAvailable: 'W tej instalacji nie skonfigurowano żadnej powłoki albo żadna nie jest włączona',
   FunctionExternallyManaged:
     '„{name}” pochodzi z wtyczki i nie da się jej tutaj zmienić. Wczytaj wtyczkę ponownie, aby ' +
     'zmienić to, co deklaruje.',
@@ -321,6 +319,22 @@ const PL: Record<string, string> = {
     '„{username}” loguje się przez dostawcę tożsamości, więc nie ma tu hasła do ustawienia',
   PasswordTooShort: 'Hasło potrzebuje co najmniej {shortest} znaków',
   PasswordWrong: 'To nie jest obecne hasło',
+
+  // --- tins ---------------------------------------------------------------
+  TinNotFound: 'Nie ma puszki {id}',
+  TinNameTaken: 'Puszka o nazwie „{name}” już istnieje',
+  TinNameInvalid: 'Nazwa puszki nie może być pusta ani dłuższa niż 255 znaków',
+  TinAddressInvalid: '„{address}” nie jest adresem puszki. Podaj go ze schematem, np. http://sandbox.internal:8090.',
+  LocalTinNotRemovable: 'Puszki lokalnej nie da się usunąć; wyłącza się ją w ustawieniach administracyjnych',
+  TinUnreachable: 'Nie udało się połączyć z puszką {name}',
+  LocalTinRuntimeUnknown: '„{runtime}” nie jest środowiskiem puszki lokalnej. Wybierz local albo docker.',
+  LocalTinMaxSessionsOutOfRange: '{count} to nie jest liczba sesji puszki lokalnej. Wybierz od 1 do 1000.',
+  LocalTinTtlOutOfRange: '{seconds} to nie jest czas życia sesji lokalnej. Wybierz od 60 do 604800 sekund.',
+  LocalTinIdleTimeoutOutOfRange: '{seconds} to nie jest limit bezczynności sesji lokalnej. Wybierz od 60 do 86400 sekund.',
+  TinCommandWaitOutOfRange: '{seconds} to nie jest czas oczekiwania na polecenie. Wybierz od 1 do 3600 sekund.',
+  TinCommandTimeoutOutOfRange: '{seconds} to nie jest limit czasu polecenia. Wybierz od 1 do 86400 sekund.',
+  TinOutputBytesOutOfRange: '{bytes} to nie jest liczba bajtów wyjścia polecenia. Wybierz od 1024 do 4194304.',
+  TinRequestTimeoutOutOfRange: '{seconds} to nie jest limit czasu żądania do puszki. Wybierz od 1 do 600 sekund.',
 
   // --- who is asking ------------------------------------------------------
   SignInRequired: 'Zaloguj się, aby to zobaczyć',

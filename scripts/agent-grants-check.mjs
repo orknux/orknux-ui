@@ -14,7 +14,7 @@
  * a grant is how the same tool gets granted twice and how one fails to be
  * revoked.
  *
- * **#173** - Orknux and Shells printed their explanation as a paragraph while
+ * **#173** - Orknux (and Shells, since removed) printed their explanation as a paragraph while
  * MCP Servers had a (?), which is the one arrangement UI-DESIGN-RULES.md calls
  * worse than either convention applied whole. Both moved behind a (?), and the
  * (?) is beside the row being granted rather than the heading above it.
@@ -568,7 +568,6 @@ async function measure(root, where) {
 
   for (const [name, sentence, row] of [
     ['Orknux', 'loop nothing here breaks', 'Let this agent ask orknux'],
-    ['Shells', 'can do whatever that account can', 'Let this agent open a shell'],
   ]) {
     const control = root.locator(`button[data-hint="${name}"]`);
     record((await control.count()) === 1, `${where}: ${name} has a (?)`);

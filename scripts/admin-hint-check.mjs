@@ -26,18 +26,16 @@ async function ask(query) {
 }
 
 const users = await ask('query { users { id username editable } }');
-const shells = await ask('query { shells { id name } }');
 const templates = await ask('query { componentTemplates { id name } }');
 
 // An internal one: the tokens and the password are only on a user this
 // installation owns, and an external row would hide half the page.
 const internal = (users?.users ?? []).filter((held) => held.editable !== false);
 const userId = internal[0]?.id ?? users?.users?.[0]?.id ?? null;
-const shellId = shells?.shells?.[0]?.id ?? null;
 const templateId = templates?.componentTemplates?.[0]?.id ?? null;
 
 /**
- * The six pages, what has to be reachable behind a (?), and what has to stay
+ * The five pages, what has to be reachable behind a (?), and what has to stay
  * printed. `gone` is prose that moved; `kept` is prose that must not have.
  */
 const pages = [
@@ -46,13 +44,6 @@ const pages = [
     path: userId === null ? '/admin/users/new' : `/admin/users/${userId}`,
     hints: ['Email', 'Access Tokens'],
     gone: ['A token is this user by another door'],
-    kept: [],
-  },
-  {
-    name: 'shell',
-    path: shellId === null ? '/admin/shell/new' : `/admin/shell/${shellId}`,
-    hints: ['Host', 'Username', 'Private key'],
-    gone: ['A host name or address, without a scheme', 'The account commands run as', 'OpenSSH or PEM'],
     kept: [],
   },
   {

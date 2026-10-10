@@ -11,6 +11,7 @@ import chartNetworkIcon from './assets/chart-network.svg';
 import clipboardListIcon from './assets/clipboard-list.svg';
 import cloudDownloadIcon from './assets/cloud-download.svg';
 import codeIcon from './assets/code.svg';
+import containerIcon from './assets/container.svg';
 import commandIcon from './assets/command.svg';
 import databaseIcon from './assets/database.svg';
 import fileTextIcon from './assets/file-text.svg';
@@ -29,7 +30,6 @@ import radarIcon from './assets/radar.svg';
 import templateIcon from './assets/layers.svg';
 import settingsIcon from './assets/settings.svg';
 import slidersIcon from './assets/sliders-horizontal.svg';
-import terminalIcon from './assets/terminal.svg';
 import toolIcon from './assets/tool.svg';
 import { t } from './i18n';
 
@@ -534,19 +534,18 @@ export const PAGES = [
     },
   },
   {
-    path: '/admin/shell',
+    path: '/admin/tins',
     access: 'admin',
     goTo: {
-      label: t('Shell'),
+      label: t('Tins'),
       where: 'Admin',
-      icon: terminalIcon,
-      also: 'ssh machines hosts nodes commands remote',
+      icon: containerIcon,
+      also: 'orktin sandbox sessions commands filesystem remote local runtime docker',
     },
   },
-  /* Before the one with an id in it: `new` is a page, not a shell called new. */
-  { path: '/admin/shell/new', access: 'admin', goTo: false },
-  { path: '/admin/shell/new-mcp', access: 'admin', goTo: false },
-  { path: '/admin/shell/:shellId', access: 'admin', goTo: false },
+  /* Before the one with an id in it: `new` is a page, not a tin called new. */
+  { path: '/admin/tins/new', access: 'admin', goTo: false },
+  { path: '/admin/tins/:tinId', access: 'admin', goTo: false },
   {
     path: '/admin/roles',
     access: 'admin',
@@ -598,6 +597,7 @@ export const PAGES = [
       { label: t('Watchers'), at: '#watchers', also: 'watcher interval timeout per agent limit' },
       { label: t('Sessions'), at: '#sessions', also: 'compaction summary transcript stored value' },
       { label: t('Scratchpads'), at: '#scratchpads', also: 'budget files keep days' },
+      { label: t('Tins'), at: '#tins', also: 'local tin orktin sandbox runtime docker sessions ttl idle command wait timeout output' },
       { label: t('Drawing'), at: '#drawing', also: 'diagram chart scale' },
       { label: t('Commands'), at: '#commands', also: 'marker skill' },
       { label: t('Metrics'), at: '#metrics', also: 'anonymous telemetry' },

@@ -8,10 +8,10 @@
  * leaving two thirds of a wide screen empty. That is what was reported.
  *
  * It is tempting to answer "a form should be narrow", and there is something in
- * it — but if that were this product's rule it would be the shell editor's rule
+ * it — but if that were this product's rule it would be the certificate editor's rule
  * and the template editor's rule too, and it is neither: both are forms, both
  * fill. What those pages do instead is state narrowness where narrowness is
- * actually meant, one field at a time — `.fieldNarrow` on the shell page is
+ * actually meant, one field at a time — `.fieldNarrow` on those pages is
  * `flex: 0 0 120px` because a port is five characters wide. So the cap goes,
  * and anything on this page that should be narrower than the column says so on
  * its own field. `scripts/admin-width-check.mjs` holds the section to it.

@@ -13,10 +13,10 @@
  * of the one component - `/admin/users/new` and `/admin/users/:userId` -
  * stopping at 640px. The cap was a single declaration in
  * `AdminUserPage.module.css`. So there was never a "form pages are narrower"
- * convention to honour: the other admin forms - a shell, a template, a
+ * convention to honour: the other admin forms - a template, a
  * workspace's settings, the installation's settings - all fill, and the fields
  * on them that are genuinely narrow say so one field at a time (`.fieldNarrow`
- * on the shell page is `flex: 0 0 120px`, because a port is five characters
+ * on the shell page, since removed, was `flex: 0 0 120px`, because a port is five characters
  * wide). That is where narrowness belongs. A whole panel capped is a different
  * statement, and it was being made in one file only.
  *

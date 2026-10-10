@@ -566,12 +566,12 @@ export const TESTS = [
     what: 'the note lands under its own control on a page inside the shell',
     needs: ['workflow'],
     /*
-     * It named `/admin/shell`, which is the list of machines and has never
-     * carried a (?) - so one of its four pages found nothing, wrote "(skipped
-     * …: no (?) found)" and moved on, and the run reported three measurements
-     * where the file names four. It opens `/admin/shell/new`, which is the form
-     * this was meant to be about, and a page that draws no (?) is a failure
-     * with a name on it rather than a line of prose in the log.
+     * It once named an admin list, which has never carried a (?) - so one of
+     * its pages found nothing, wrote "(skipped …: no (?) found)" and moved on,
+     * and the run reported one measurement fewer than the file names. It opens
+     * an admin form (`/admin/users/new`, since the shell form was removed), and
+     * a page that draws no (?) is a failure with a name on it rather than a
+     * line of prose in the log.
      */
   },
   {
@@ -731,7 +731,7 @@ export const TESTS = [
   },
   {
     name: 'admin-hint-check',
-    what: 'the six admin screens, same story',
+    what: 'the five admin screens, same story',
     needs: ['session'],
   },
   {
@@ -3614,36 +3614,6 @@ export const TESTS = [
     // and ORKNUX_BARE_WORKSPACE.
   },
 
-  {
-    name: 'shell-limits-check',
-    what: "a machine's own command timeout and output allowance, typed on its page and emptied again",
-    needs: ['session'],
-    /*
-     * Both numbers governed every command an agent ran and both lived only in
-     * configuration - so an installation that wanted a build machine allowed
-     * more than a minute had to be redeployed to say so, and the shipped minute
-     * was a failure the agent could not have caused and could not fix.
-     *
-     * The assertion that earns it a place is the emptying. An empty box means
-     * "whatever the installation says" and has to store null, because that is
-     * what makes changing the installation's number afterwards still move every
-     * machine that never asked for anything else - and both of the obvious
-     * mistakes pass a screenshot. A form that sent absent for an empty box
-     * would leave the old number stored, because absent means "unchanged" for
-     * the private key two fields above it; a form that sent zero would store a
-     * timeout no command survives. So the value is read back off the server
-     * rather than off the page.
-     *
-     * The other half no screen shows: the output box is kibibytes and the
-     * column is bytes, and a page that stored what it displayed would cut a
-     * build machine's allowance to a kilobyte while showing 1024 either way.
-     *
-     * 'session' rather than 'workspace' - a shell belongs to the installation
-     * and not to a team. It makes one pointed at 127.0.0.1 with no key, which
-     * nothing ever connects to, and removes it at both ends of the run.
-     */
-  },
-
   // --- tasks -----------------------------------------------------------------
   {
     name: 'task-check',
@@ -3886,7 +3856,7 @@ export const TESTS = [
      *   node scripts/suite/run.mjs --only task-permission-check
      *
      * The assertion that matters most is the last one: the grant lands on the
-     * task and the agent's own `shellAccess` is still false. Approving something
+     * task and the agent's own `orknuxAccess` is still false. Approving something
      * for one afternoon's work must not arm the agent in every chat for ever,
      * and that is the one thing about this feature that would be a security
      * defect rather than a bug.
@@ -3987,6 +3957,34 @@ export const TESTS = [
      * told what it is looking at, and the check failed on a correct product for
      * a wording nobody controls. What the issue was about is in the request the
      * panel sends, so that is what is asserted; the wording is a NOTE.
+     */
+  },
+  // --- tins ----------------------------------------------------------------
+  {
+    name: 'tins-admin-check',
+    what: 'Admin -> Tins lists a row per tin with Name, Type, Health, Active sessions, Label; a remote tin is added, tested and deleted through the page; the local tin offers only its label; Admin Settings draws every tin knob on what the server holds',
+    needs: [],
+    /*
+     * Its tins are at addresses under `.invalid`, so no test reaches a
+     * network and none is ever up. Removes what it makes and puts back the
+     * one setting it changes. Not `alone`: the settings it reads are not
+     * ones another check writes.
+     */
+  },
+  {
+    name: 'tins-agent-grant-check',
+    what: "an agent's Tins grant: starts empty, offers the labels tins carry as you type, chips added and removed, saved as tinLabels; a tin_ tool reads Hide without a label and Always with one",
+    needs: ['workspace'],
+    /* Makes a scratch agent and a scratch tin, only so there is a label to offer, and removes both. */
+  },
+  {
+    name: 'session-tins-check',
+    what: "a session's Tins panel below its scratchpads with green and orange dots, the Tin tab right of Scratchpad, and a tin session's log followed from nextSeq in place of the transcript",
+    needs: ['workspace'],
+    /*
+     * The tin sessions are stubbed, as session-family-check stubs its
+     * members: one exists because a model called a tin tool. The contract is
+     * asked of the running server. Makes nothing and removes nothing.
      */
   },
 ];

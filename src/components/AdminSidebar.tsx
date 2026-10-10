@@ -1,4 +1,5 @@
 import commandIcon from '../assets/command.svg';
+import containerIcon from '../assets/container.svg';
 import chartLineIcon from '../assets/chart-line.svg';
 import cloudDownloadIcon from '../assets/cloud-download.svg';
 import fileTextIcon from '../assets/file-text.svg';
@@ -9,7 +10,6 @@ import plugIcon from '../assets/plug.svg';
 import puzzleIcon from '../assets/puzzle.svg';
 import settingsIcon from '../assets/settings.svg';
 import stethoscopeIcon from '../assets/activity.svg';
-import terminalIcon from '../assets/terminal.svg';
 import shieldIcon from '../assets/lock-keyhole.svg';
 import userIcon from '../assets/user.svg';
 import { SidebarNavItem } from './AppShell';
@@ -26,7 +26,7 @@ export type AdminSection =
   | 'libraries'
   | 'templates'
   | 'networking'
-  | 'shell'
+  | 'tins'
   | 'monitoring'
   | 'doctor'
   | 'updates'
@@ -90,14 +90,15 @@ export function AdminSidebar({ active }: { active: AdminSection }) {
         to="/admin/networking"
       />
       {/*
-        Beside Networking, because both are about how this installation reaches
-        something that is not it: one over HTTP and one over SSH.
+        Beside Networking, because both are about what this installation
+        reaches that is not itself: one an address on the far side of a
+        proxy, the other a sandbox an agent works in.
       */}
       <SidebarNavItem
-        label={t('Shell')}
-        icon={terminalIcon}
-        active={active === 'shell'}
-        to="/admin/shell"
+        label={t('Tins')}
+        icon={containerIcon}
+        active={active === 'tins'}
+        to="/admin/tins"
       />
       <SidebarNavItem
         label={t('Monitoring')}

@@ -9,11 +9,11 @@ import { AdminLibrariesPage } from './pages/admin/AdminLibrariesPage';
 import { AdminMonitoringPage } from './pages/admin/AdminMonitoringPage';
 import { AdminCertificatePage } from './pages/admin/AdminCertificatePage';
 import { AdminNetworkingPage } from './pages/admin/AdminNetworkingPage';
-import { AdminShellPage } from './pages/admin/AdminShellPage';
+import { AdminTinPage } from './pages/admin/AdminTinPage';
+import { AdminTinsPage } from './pages/admin/AdminTinsPage';
 import { AdminUpdatesPage } from './pages/admin/AdminUpdatesPage';
 import { AdminTemplatePage } from './pages/admin/AdminTemplatePage';
 import { AdminTemplatesPage } from './pages/admin/AdminTemplatesPage';
-import { AdminShellSettingsPage } from './pages/admin/AdminShellSettingsPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { AdminPluginsPage } from './pages/admin/AdminPluginsPage';
 import { AdminRolesPage } from './pages/admin/AdminRolesPage';
@@ -170,11 +170,10 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/admin/networking': (session, onSignOut) => (
     <AdminNetworkingPage session={session} onSignOut={onSignOut} />
   ),
-  '/admin/shell': (session, onSignOut) => <AdminShellPage session={session} onSignOut={onSignOut} />,
-  /* Before the one with an id in it: `new` is a page, not a shell called new. */
-  '/admin/shell/new': (session, onSignOut) => <AdminShellSettingsPage session={session} onSignOut={onSignOut} />,
-  '/admin/shell/new-mcp': (session, onSignOut) => <AdminShellSettingsPage session={session} onSignOut={onSignOut} />,
-  '/admin/shell/:shellId': (session, onSignOut) => <AdminShellSettingsPage session={session} onSignOut={onSignOut} />,
+  '/admin/tins': (session, onSignOut) => <AdminTinsPage session={session} onSignOut={onSignOut} />,
+  /* Before the one with an id in it: `new` is a page, not a tin called new. */
+  '/admin/tins/new': (session, onSignOut) => <AdminTinPage session={session} onSignOut={onSignOut} />,
+  '/admin/tins/:tinId': (session, onSignOut) => <AdminTinPage session={session} onSignOut={onSignOut} />,
   '/admin/roles': (session, onSignOut) => <AdminRolesPage session={session} onSignOut={onSignOut} />,
   '/admin/users': (session, onSignOut) => <AdminUsersPage session={session} onSignOut={onSignOut} />,
   /* Before the one with an id in it: `new` is a page, not a user called new. */

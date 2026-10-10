@@ -30,6 +30,8 @@ import type {
   SessionScratchpadContent,
 } from '../../api/llmSessions';
 import { STATUS_LABEL } from '../../api/executions';
+import { fetchSessionTinLog, fetchSessionTins } from '../../api/tins';
+import type { SessionTin, TinEvent } from '../../api/tins';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
@@ -56,6 +58,61 @@ export interface SessionDetailPageProps {
 const PAGE_SIZE = 20;
 const PAGE_SIZES = [20, 50, 100];
 const SEARCH_PAUSE_MS = 300;
+/** How often an active tin session's log is asked for what is new. */
+const TIN_POLL_MS = 2000;
+
+/** "14:03:27" - a tin log is read within one sitting, so the day is on hover. */
+function clockOf(iso: string): string {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? iso : at.toLocaleTimeString();
+}
+
+function parsed(data: string): unknown {
+  try {
+    return JSON.parse(data);
+  } catch {
+    return data;
+  }
+}
+
+/** The event's JSON, indented, or the text as it came where it is not JSON. */
+function prettyJson(data: string): string {
+  const value = parsed(data);
+  return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+}
+
+/** Keys that say what an event was about, read first and in this order. */
+const TIN_SUMMARY_KEYS = ['command', 'cmd', 'path', 'exitCode', 'exit_code', 'status', 'message', 'error', 'output', 'stdout', 'stderr'];
+
+/**
+ * One line out of an event's JSON: the keys that say what happened first, then
+ * any other plain values, cut to what fits a row. Nothing here knows every
+ * event a tin writes, so it reads what is there rather than a list of types.
+ */
+function tinSummary(data: string): string {
+  const value = parsed(data);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return oneLine(typeof value === 'string' ? value : JSON.stringify(value));
+  }
+  const held = value as Record<string, unknown>;
+  const plain = (one: unknown) => typeof one === 'string' || typeof one === 'number' || typeof one === 'boolean';
+  const keys = [
+    ...TIN_SUMMARY_KEYS.filter((key) => key in held),
+    ...Object.keys(held).filter((key) => !TIN_SUMMARY_KEYS.includes(key)),
+  ].filter((key) => plain(held[key]) || (Array.isArray(held[key]) && (held[key] as unknown[]).every(plain)));
+  const parts = keys.map((key) => {
+    const one = held[key];
+    const text = Array.isArray(one) ? one.join(' ') : String(one);
+    if (key === 'command' || key === 'cmd') return `$ ${text}`;
+    return `${key}: ${text}`;
+  });
+  return oneLine(parts.length === 0 ? JSON.stringify(held) : parts.join(' · '));
+}
+
+function oneLine(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > 200 ? `${flat.slice(0, 199)}…` : flat;
+}
 
 const ORDERS: { label: string; order: LlmSessionEventOrder }[] = [
   { label: t('Time'), order: 'AT' },
@@ -627,6 +684,20 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [sessionId]);
   useEffect(loadScratchpads, [loadScratchpads]);
 
+  /*
+   * The tin sessions this session opened, listed below the scratchpads. Each
+   * is a sandbox an agent ran commands in; clicking one reads its log in place
+   * of the transcript.
+   */
+  const [sessionTins, setSessionTins] = useState<SessionTin[] | null>(null);
+  const loadSessionTins = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionTins(sessionId)
+      .then(setSessionTins)
+      .catch(() => setSessionTins(null));
+  }, [sessionId]);
+  useEffect(loadSessionTins, [loadSessionTins]);
+
   const refresh = useCallback(() => {
     loadSession();
     load();
@@ -637,7 +708,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
      * one screen whose whole point is watching work happen. Issue #479.
      */
     loadScratchpads();
-  }, [loadSession, load, loadScratchpads]);
+    loadSessionTins();
+  }, [loadSession, load, loadScratchpads, loadSessionTins]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -692,11 +764,29 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [creatingBusy, setCreatingBusy] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  /**
+   * The tin session whose log the body is showing, or null. A fourth subview
+   * beside the three above, and exclusive with them the same way.
+   */
+  const [openTin, setOpenTin] = useState<string | null>(null);
+  const [tinEvents, setTinEvents] = useState<TinEvent[]>([]);
+  /** Where the next poll starts, so it brings only what is new. */
+  const [tinNextSeq, setTinNextSeq] = useState<number | null>(null);
+  /** Null while the log has not answered; otherwise the tin's own word on whether it could hand it over. */
+  const [tinAvailable, setTinAvailable] = useState<{ available: boolean; message: string | null } | null>(null);
+  const [tinError, setTinError] = useState<string | null>(null);
+  /** Which events are drawn with their whole JSON. */
+  const [tinExpanded, setTinExpanded] = useState<number[]>([]);
+  /** The tin session open now, for an answer to check it is still wanted when it lands. */
+  const openTinNow = useRef<string | null>(null);
+  openTinNow.current = openTin;
+
   /* A different session is a different set of pads; drop back to its transcript. */
   useEffect(() => {
     setOpenPad(null);
     setPadContent(null);
     setCreating(false);
+    setOpenTin(null);
   }, [sessionId]);
 
   const backToTranscript = useCallback(() => {
@@ -704,11 +794,76 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
     setPadContent(null);
     setPadError(null);
     setCreating(false);
+    setOpenTin(null);
   }, []);
+
+  /** Reads a tin session's log from the start, in place of the transcript. */
+  const openSessionTin = useCallback(
+    (id: string) => {
+      if (sessionId === '') return;
+      setCreating(false);
+      setOpenPad(null);
+      setPadContent(null);
+      setOpenTin(id);
+      setTinEvents([]);
+      setTinNextSeq(null);
+      setTinAvailable(null);
+      setTinError(null);
+      setTinExpanded([]);
+      fetchSessionTinLog(sessionId, id)
+        .then((log) => {
+          if (openTinNow.current !== id) return;
+          setTinEvents(log.events);
+          setTinNextSeq(log.nextSeq);
+          setTinAvailable({ available: log.available, message: log.message });
+        })
+        .catch((cause: unknown) => {
+          if (openTinNow.current !== id) return;
+          setTinError(cause instanceof Error ? cause.message : t('Could not read the tin log.'));
+        });
+    },
+    [sessionId],
+  );
+
+  /** What has been written since the last read, added under what is there. */
+  const followTin = useCallback(() => {
+    if (sessionId === '' || openTin === null || tinNextSeq === null) return;
+    const asked = openTin;
+    fetchSessionTinLog(sessionId, asked, tinNextSeq)
+      .then((log) => {
+        if (openTinNow.current !== asked) return;
+        setTinEvents((held) => {
+          const seen = new Set(held.map((one) => one.seq));
+          return [...held, ...log.events.filter((one) => !seen.has(one.seq))];
+        });
+        setTinNextSeq(log.nextSeq);
+        setTinAvailable({ available: log.available, message: log.message });
+        setTinError(null);
+      })
+      .catch((cause: unknown) => {
+        if (openTinNow.current !== asked) return;
+        setTinError(cause instanceof Error ? cause.message : t('Could not read the tin log.'));
+      });
+  }, [sessionId, openTin, tinNextSeq]);
+
+  const openTinRow = sessionTins?.find((one) => one.id === openTin) ?? null;
+  const tinLive = openTinRow !== null && openTinRow.active;
+
+  /*
+   * While the tin session is still active its log is still being written, so it
+   * is asked again every couple of seconds from where the last answer ended. A
+   * closed one has nothing more to say and is left alone.
+   */
+  useEffect(() => {
+    if (!tinLive || tinNextSeq === null) return;
+    const timer = window.setInterval(followTin, TIN_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [tinLive, tinNextSeq, followTin]);
 
   const openScratchpad = useCallback(
     (name: string) => {
       if (sessionId === '') return;
+      setOpenTin(null);
       setCreating(false);
       setOpenPad(name);
       setPadContent(null);
@@ -750,6 +905,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [padContent, padDraft, sessionId, loadScratchpads]);
 
   const startCreate = useCallback(() => {
+    setOpenTin(null);
     setCreating(true);
     setOpenPad(null);
     setPadContent(null);
@@ -838,7 +994,14 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   });
 
   /* The body shows the transcript only when no pad is open and the form is shut. */
-  const showTranscript = openPad === null && !creating;
+  const showScratchpad = openPad !== null || creating;
+  const showTin = openTin !== null;
+  const showTranscript = !showScratchpad && !showTin;
+  /* The newest tin session, which the Tin tab opens when none is open yet. */
+  const newestTin =
+    sessionTins === null || sessionTins.length === 0
+      ? null
+      : sessionTins.reduce((newest, one) => (one.createdAt > newest.createdAt ? one : newest));
   const showAside = !missing && held !== null;
 
   return (
@@ -966,7 +1129,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               className={styles.subview}
               role="tablist"
               aria-label={t('Session view')}
-              data-subview={creating ? 'new' : openPad === null ? 'transcript' : 'scratchpad'}
+              data-subview={creating ? 'new' : openPad !== null ? 'scratchpad' : openTin !== null ? 'tin' : 'transcript'}
             >
               <button
                 type="button"
@@ -986,11 +1149,12 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               <button
                 type="button"
                 role="tab"
-                aria-selected={!showTranscript}
-                className={!showTranscript ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
-                disabled={showTranscript && (scratchpads === null || scratchpads.length === 0)}
+                aria-selected={showScratchpad}
+                className={showScratchpad ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
+                disabled={!showScratchpad && (scratchpads === null || scratchpads.length === 0)}
+                data-subview-tab="scratchpad"
                 onClick={() => {
-                  if (!showTranscript) return;
+                  if (showScratchpad) return;
                   const newest = scratchpads?.[0];
                   if (newest !== undefined) openScratchpad(newest.name);
                 }}
@@ -1002,6 +1166,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   the pad is.
                 */}
                 {t('Scratchpad')}
+              </button>
+              {/*
+                The tin log, right of the scratchpad and the same kind of tab:
+                named for what it shows, opening the newest tin session where
+                none is open, and disabled where the session opened none.
+              */}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={showTin}
+                className={showTin ? `${styles.subviewTab} ${styles.subviewTabHere}` : styles.subviewTab}
+                disabled={!showTin && newestTin === null}
+                data-subview-tab="tin"
+                onClick={() => {
+                  if (showTin || newestTin === null) return;
+                  openSessionTin(newestTin.id);
+                }}
+              >
+                {t('Tin')}
               </button>
             </div>
             <p className={styles.meta}>
@@ -1302,6 +1485,82 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         </section>
       )}
       </div>
+      {/*
+        One tin session's log, in place of the transcript: what the agent ran
+        and what came back, a line each, with the event's whole JSON a press
+        away. Followed while the tin session is active.
+      */}
+      {!missing && openTin !== null && (
+        <section className={styles.padView} aria-label={t('Tin')} data-tin-log={openTin}>
+          <div className={styles.padHeader}>
+            <h2 className={styles.padName}>
+              {openTinRow === null ? openTin : `${openTinRow.tinName} · ${openTinRow.remoteSessionId}`}
+            </h2>
+            <div className={styles.padButtons}>
+              {openTinRow !== null && (
+                <span className={styles.padSize}>
+                  <span
+                    className={openTinRow.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
+                    aria-hidden="true"
+                  />{' '}
+                  {openTinRow.status}
+                </span>
+              )}
+              <button type="button" className={styles.continue} onClick={followTin} disabled={tinNextSeq === null}>
+                {t('Refresh')}
+              </button>
+            </div>
+          </div>
+          {tinError !== null && (
+            <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
+              {tinError}
+            </p>
+          )}
+          {tinAvailable === null && tinError === null && (
+            <p className={styles.notice}>
+              <Loader />
+            </p>
+          )}
+          {tinAvailable !== null && !tinAvailable.available && (
+            <p className={styles.notice} data-tin-log-unavailable="">
+              {tinAvailable.message ?? t('The tin could not hand its log over.')}
+            </p>
+          )}
+          {tinAvailable !== null && tinAvailable.available && tinEvents.length === 0 && (
+            <p className={styles.notice}>{t('Nothing logged yet.')}</p>
+          )}
+          {tinEvents.length > 0 && (
+            <ol className={styles.tinLog}>
+              {tinEvents.map((event) => {
+                const open = tinExpanded.includes(event.seq);
+                return (
+                  <li key={event.seq} className={styles.tinEvent} data-tin-event={event.seq}>
+                    <button
+                      type="button"
+                      className={styles.tinEventLine}
+                      aria-expanded={open}
+                      onClick={() =>
+                        setTinExpanded((held) =>
+                          held.includes(event.seq) ? held.filter((one) => one !== event.seq) : [...held, event.seq],
+                        )
+                      }
+                    >
+                      <span className={styles.tinEventTime} title={event.at}>
+                        {clockOf(event.at)}
+                      </span>
+                      <span className={styles.tinEventType}>{event.type}</span>
+                      <span className={styles.tinEventSummary} data-tin-event-summary="">
+                        {tinSummary(event.data)}
+                      </span>
+                    </button>
+                    {open && <pre className={styles.tinEventJson}>{prettyJson(event.data)}</pre>}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      )}
       {showAside && (
       <div className={styles.rail}>
       {hasFamily && (
@@ -1390,6 +1649,45 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     {pad.description !== null && pad.description !== '' && (
                       <span className={styles.padRowDesc}>{pad.description}</span>
                     )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </aside>
+      {/*
+        The tins this session opened, below its scratchpads. Each carries the
+        family's dot - green while the tin session is active, orange once it is
+        not - and clicking one reads its log in place of the transcript.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('Tins in this session')} data-session-tins="">
+        <p className={styles.familyTitle}>{t('Tins')}</p>
+        {sessionTins === null ? (
+          <p className={styles.familyNote}>{t('Could not load the tins.')}</p>
+        ) : sessionTins.length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {sessionTins.map((one) => {
+              const current = one.id === openTin;
+              return (
+                <li key={one.id}>
+                  <button
+                    type="button"
+                    className={current ? `${styles.familyRow} ${styles.familyRowCurrent}` : styles.familyRow}
+                    aria-current={current ? 'page' : undefined}
+                    data-session-tin={one.id}
+                    data-session-tin-active={one.active ? 'true' : 'false'}
+                    title={`${one.remoteSessionId} · ${one.status}`}
+                    onClick={() => openSessionTin(one.id)}
+                  >
+                    <span
+                      className={one.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
+                      data-session-tin-dot=""
+                    />
+                    <span className={styles.familyName}>{one.tinName}</span>
+                    <span className={styles.padRowBytes}>{one.status}</span>
                   </button>
                 </li>
               );

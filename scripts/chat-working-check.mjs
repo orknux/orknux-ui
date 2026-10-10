@@ -38,7 +38,7 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 
 const { workspaceAgents } = await graphql(
   `query ($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 50) {
-     content { id name enabled modelId orknuxAccess shellAccess tools skillCatalogs memoryCatalogs }
+     content { id name enabled modelId orknuxAccess tools skillCatalogs memoryCatalogs }
    } }`,
   { w: WORKSPACE },
 );
@@ -54,7 +54,6 @@ const { workspaceAgents } = await graphql(
  */
 const armed = (one) =>
   one.orknuxAccess === true ||
-  one.shellAccess === true ||
   (one.tools ?? []).length > 0 ||
   (one.skillCatalogs ?? []).length > 0 ||
   (one.memoryCatalogs ?? []).length > 0;

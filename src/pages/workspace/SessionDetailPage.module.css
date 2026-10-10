@@ -1196,3 +1196,84 @@
   font-size: var(--text-sm);
   color: var(--color-text-primary);
 }
+
+/* ---- One tin session's log, in place of the transcript ---- */
+
+.tinLog {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  list-style: none;
+  overflow: hidden;
+}
+
+.tinEvent {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tinEvent:last-child {
+  border-bottom: 0;
+}
+
+/* One line per event: when, what kind, and what it was about. */
+.tinEventLine {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-8) var(--space-12);
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tinEventLine:hover {
+  background: var(--color-surface-raised);
+}
+
+.tinEventTime {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.tinEventType {
+  flex: none;
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.tinEventSummary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tinEventJson {
+  margin: 0;
+  padding: var(--space-12);
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

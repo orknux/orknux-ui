@@ -62,7 +62,7 @@ const PAGES = [
   ['admin/plugins', '/admin/plugins'],
   ['admin/roles', '/admin/roles'],
   ['admin/networking', '/admin/networking'],
-  ['admin/shell', '/admin/shell'],
+  ['admin/tins', '/admin/tins'],
   ['admin/integrations', '/admin/integrations'],
   ['chat', '/chat'],
 ];

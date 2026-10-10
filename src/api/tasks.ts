@@ -14,7 +14,6 @@ export type TaskStatus = 'QUEUED' | 'RUNNING' | 'WAITING' | 'DONE' | 'FAILED' | 
 /** Something a task may be given that its agent was not. */
 export type TaskCapability =
   | 'ORKNUX'
-  | 'SHELLS'
   | 'TOOL'
   | 'MCP_SERVER'
   | 'SKILL_CATALOG'
@@ -137,14 +136,13 @@ export const TASK_STATUSES: TaskStatus[] = [
 /** What each capability is called on the button somebody presses. */
 export const CAPABILITY_LABEL: Record<TaskCapability, string> = {
   ORKNUX: 'orknux',
-  SHELLS: 'the shells',
   TOOL: 'a tool',
   MCP_SERVER: 'an MCP server',
   SKILL_CATALOG: 'a skill catalog',
   MEMORY_CATALOG: 'a memory catalog',
 };
 
-/** What was asked for, as one phrase: "the shells", "a tool, weather". */
+/** What was asked for, as one phrase: "orknux", "a tool, weather". */
 export function asked(request: TaskRequest): string {
   if (request.capability === null) return 'an answer';
   const what = CAPABILITY_LABEL[request.capability];

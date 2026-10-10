@@ -265,6 +265,12 @@ const IN_THE_OPEN = [
     why: 'what the scratchpad panel is showing when its one query did not answer (#429)',
   },
   {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'Could not load the tins.',
+    because: 'status',
+    why: "what the session's tins panel is showing when its one query did not answer",
+  },
+  {
     file: 'src/pages/admin/AdminPluginsPage.tsx',
     says: 'The marketplace offers nothing yet.',
     because: 'status',
@@ -494,18 +500,6 @@ const IN_THE_OPEN = [
     says: 'Nothing beyond the authorities this installation came with.',
     because: 'status',
     why: 'empty, and what that means for a TLS handshake right now - the list is what this installation has added, and empty is not nothing trusted',
-  },
-  {
-    file: 'src/pages/admin/AdminShellPage.tsx',
-    says: 'No SSH shells yet. These reach a machine over SSH with a stored key.',
-    because: 'status',
-    why: 'empty, and what that half of the split page holds - the one sentence that tells the two lists apart',
-  },
-  {
-    file: 'src/pages/admin/AdminShellPage.tsx',
-    says: 'No MCP shells yet. Register a tool server on Integrations, then add one here.',
-    because: 'status',
-    why: 'empty, and where the thing it lists comes from - the split left each list needing its own sentence',
   },
   {
     file: 'src/pages/admin/AdminTemplatesPage.tsx',

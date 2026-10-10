@@ -10,7 +10,7 @@ export type ActivityCategory =
   | 'MEMORY'
   | 'OBJECT'
   | 'CHAT'
-  /** Commands run on a machine over SSH, and the shells they ran on. */
+  /** Commands run on a machine over SSH. The shells are gone; old entries still carry it. */
   | 'SHELL';
 
 export interface ActivityEntry {

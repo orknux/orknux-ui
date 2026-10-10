@@ -105,7 +105,7 @@ record(
 const after = await graphql(
   `query ($w: ID!) {
      workspaceAgents(workspaceId: $w, page: 0, size: 200) {
-       content { id name enabled modelId modelName systemPrompt description tools skillCatalogs memoryCatalogs mcpServers orknuxAccess shellAccess }
+       content { id name enabled modelId modelName systemPrompt description tools skillCatalogs memoryCatalogs mcpServers orknuxAccess }
      }
    }`,
   { w: WORKSPACE },
@@ -136,8 +136,7 @@ if (record(fresh.length === 1, `exactly one agent was made (${fresh.length} appe
       agent.skillCatalogs.every((name) => name === 'orknux_skills') &&
       agent.memoryCatalogs.length === 0 &&
       agent.mcpServers.length === 0 &&
-      agent.orknuxAccess === false &&
-      agent.shellAccess === false,
+      agent.orknuxAccess === false,
     `and it is granted nothing at all, which is what makes it something to dress rather than a surprise (${JSON.stringify({ ...agent, tools: agent.tools.filter((name) => !builtIns.has(name)) })})`,
   );
   record(landed.endsWith(`/agents/${agent.id}/settings`), 'and the page it landed on is that agent');

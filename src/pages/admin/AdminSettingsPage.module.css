@@ -219,6 +219,16 @@
   width: 6rem;
 }
 
+/* A path rather than a number: the local tin's location. */
+.retention .wideInput {
+  width: 18rem;
+}
+
+/* A choice whose words are longer than a number's digits. */
+.retention select.input {
+  width: 9rem;
+}
+
 .retentionUnit {
   font-size: var(--text-base);
   color: var(--color-text-secondary);

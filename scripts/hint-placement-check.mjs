@@ -18,15 +18,12 @@ const { browser, page } = await open({ viewport: { width: 1440, height: 900 } })
 // is where it did not - so a fix that only moved the problem would show here.
 const pages = [
   /*
-   * The shell *form*, not the shell list.
-   *
-   * This said `/admin/shell`, which is the list of machines and has never had a
-   * (?) on it - so the one line that measured this page found nothing, wrote
-   * "(skipped admin shell settings: no (?) found)" and moved on. The run then
-   * reported three assertions where the file names four pages, and passed. The
-   * page it meant is the one with the fields on it.
+   * An admin *form*, not an admin list: a list has no (?) on it, and a page
+   * with none fails as having nothing to place. This was the shell form until
+   * the shells were removed; the new-template form has notes on its fields the
+   * same way.
    */
-  { what: 'admin shell settings', at: '/admin/shell/new' },
+  { what: 'admin template settings', at: '/admin/templates/new' },
   { what: 'admin settings', at: '/admin/settings' },
   { what: 'workflow editor', at: `/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, select: '.react-flow__node' },
 ];

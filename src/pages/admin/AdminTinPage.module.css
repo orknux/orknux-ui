@@ -1,11 +1,7 @@
 /*
- * Adding a machine, and editing one: the same form either way.
- *
- * Deliberately the provider page's proportions rather than a set of its own.
- * They are the same kind of screen - a thing with an address, a credential that
- * is written but never read back, and a danger zone - and two administrator
- * forms that look almost but not quite alike is the sort of difference somebody
- * notices without being able to say why.
+ * One tin: the provider page's proportions, like the other admin forms - a
+ * thing with an address, a credential that is written but never read back,
+ * and a danger zone - with what the tin says about itself underneath.
  */
 
 .headerBlock {
@@ -104,30 +100,14 @@
 
 /* ---- Fields ---- */
 
-.fieldRow {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-24);
-  width: 100%;
-}
 
-.field,
-.fieldNarrow {
+.field {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
   min-width: 0;
 }
 
-.field {
-  flex: 1 0 0;
-}
-
-/* A port is five characters wide, and a box the width of the host is a lie
-   about what belongs in it. */
-.fieldNarrow {
-  flex: 0 0 120px;
-}
 
 .label {
   font-weight: 600;
@@ -168,9 +148,6 @@
   font-size: var(--text-md);
 }
 
-.textarea {
-  resize: vertical;
-}
 
 .input::placeholder {
   color: var(--color-text-muted);
@@ -186,12 +163,6 @@
 }
 
 
-/* The box, and the (?) that stands beside it rather than inside its label. */
-.checkboxWithHint {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-6);
-}
 
 .checkboxField {
   display: flex;
@@ -207,12 +178,6 @@
   accent-color: var(--color-accent-brand);
 }
 
-.checkboxHint {
-  display: block;
-  overflow-wrap: anywhere;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
 
 /* ---- Footer ---- */
 
@@ -240,19 +205,16 @@
   border-radius: var(--radius-full);
 }
 
-.dotConnected {
+.dotUp {
   background: var(--color-success);
 }
 
-.dotFailed {
+.dotDown {
   background: var(--color-danger-solid);
 }
 
-.dotIdle {
-  background: var(--color-text-muted);
-}
 
-.statusConnected {
+.statusOk {
   font-weight: 600;
   color: var(--color-success);
 }
@@ -262,9 +224,6 @@
   color: var(--color-danger);
 }
 
-.statusIdle {
-  color: var(--color-text-muted);
-}
 
 .buttons {
   display: flex;
@@ -351,4 +310,154 @@
 .dangerButton:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* ---- The way to the local tin's own settings ---- */
+
+.settingsLink {
+  align-self: flex-start;
+  font-size: var(--text-md);
+  color: var(--color-accent-brand);
+  text-decoration: none;
+}
+
+.settingsLink:hover {
+  text-decoration: underline;
+}
+
+/* ---- What the tin says about itself ---- */
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-12) var(--space-24);
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.factName {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.factValue {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.runtime {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.runtimeHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.runtimeName {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.runtimeState {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- The sessions it holds ---- */
+
+.empty {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tableHead,
+.tableRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  min-width: 720px;
+  padding: var(--space-10) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tableHead {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.tableRow {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.colId,
+.colRuntime {
+  flex: 1 0 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colStatus {
+  flex: 0 0 100px;
+}
+
+.colWhen {
+  flex: 0 0 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colRuns {
+  flex: 0 0 90px;
+  text-align: right;
+}
+
+.mono {
+  font-family: var(--font-mono);
 }

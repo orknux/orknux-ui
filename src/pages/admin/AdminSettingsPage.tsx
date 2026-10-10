@@ -50,6 +50,17 @@ import {
   setRevisionRetentionDays,
   setTaskSweepMinutes,
   setWorkspaceCopyLockWaitSeconds,
+  setLocalTinEnabled,
+  setLocalTinLocation,
+  setLocalTinRuntime,
+  setLocalTinMaxSessions,
+  setLocalTinDefaultTtlSeconds,
+  setLocalTinMaxTtlSeconds,
+  setLocalTinIdleTimeoutSeconds,
+  setTinCommandWaitSeconds,
+  setTinCommandTimeoutSeconds,
+  setTinOutputBytes,
+  setTinRequestTimeoutSeconds,
 } from '../../api/installation';
 import type { InstallationSettings } from '../../api/installation';
 import type { SessionUser } from '../../api/session';
@@ -173,6 +184,35 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [downloadAttempts, setDownloadAttempts] = useState('');
   const [backoffSeconds, setBackoffSeconds] = useState('');
   const [backoffMaxSeconds, setBackoffMaxSeconds] = useState('');
+  /*
+   * Tins: the local tin's own limits and where its sessions live, and the
+   * numbers every tin's tools work to. Text like the others, for their reason.
+   */
+  const [tinLocation, setTinLocation] = useState('');
+  const [tinRuntime, setTinRuntime] = useState('local');
+  const [tinMaxSessions, setTinMaxSessions] = useState('');
+  const [tinDefaultTtl, setTinDefaultTtl] = useState('');
+  const [tinMaxTtl, setTinMaxTtl] = useState('');
+  const [tinIdle, setTinIdle] = useState('');
+  const [tinWait, setTinWait] = useState('');
+  const [tinTimeout, setTinTimeout] = useState('');
+  // Held and typed in KB; the server keeps bytes, as the scratchpad budget does.
+  const [tinOutput, setTinOutput] = useState('');
+  const [tinRequest, setTinRequest] = useState('');
+
+  /** The Tins section's boxes, from what the server holds. */
+  const fillTins = useCallback((held: InstallationSettings) => {
+    setTinLocation(held.localTinLocation ?? '');
+    setTinRuntime(held.localTinRuntime);
+    setTinMaxSessions(String(held.localTinMaxSessions));
+    setTinDefaultTtl(String(held.localTinDefaultTtlSeconds));
+    setTinMaxTtl(String(held.localTinMaxTtlSeconds));
+    setTinIdle(String(held.localTinIdleTimeoutSeconds));
+    setTinWait(String(held.tinCommandWaitSeconds));
+    setTinTimeout(String(held.tinCommandTimeoutSeconds));
+    setTinOutput(String(Math.round(held.tinOutputBytes / 1024)));
+    setTinRequest(String(held.tinRequestTimeoutSeconds));
+  }, []);
 
   useEffect(() => {
     /*
@@ -234,6 +274,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setDownloadAttempts(String(held.releaseDownloadAttempts));
         setBackoffSeconds(String(held.releaseDownloadBackoffSeconds));
         setBackoffMaxSeconds(String(held.releaseDownloadBackoffMaxSeconds));
+        fillTins(held);
       })
       .catch((cause: unknown) => {
         if (abandoned) return;
@@ -242,7 +283,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     return () => {
       abandoned = true;
     };
-  }, []);
+  }, [fillTins]);
 
   /** Every switch on this page saves the same way; only the mutation differs. */
   /**
@@ -330,15 +371,37 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           held: settings.releaseDownloadBackoffMaxSeconds,
           write: setReleaseDownloadBackoffMaxSeconds,
         },
+        { typed: tinMaxSessions, held: settings.localTinMaxSessions, write: setLocalTinMaxSessions },
+        { typed: tinDefaultTtl, held: settings.localTinDefaultTtlSeconds, write: setLocalTinDefaultTtlSeconds },
+        { typed: tinMaxTtl, held: settings.localTinMaxTtlSeconds, write: setLocalTinMaxTtlSeconds },
+        { typed: tinIdle, held: settings.localTinIdleTimeoutSeconds, write: setLocalTinIdleTimeoutSeconds },
+        { typed: tinWait, held: settings.tinCommandWaitSeconds, write: setTinCommandWaitSeconds },
+        { typed: tinTimeout, held: settings.tinCommandTimeoutSeconds, write: setTinCommandTimeoutSeconds },
+        {
+          typed: tinOutput,
+          held: Math.round(settings.tinOutputBytes / 1024),
+          write: (kb: number) => setTinOutputBytes(kb * 1024),
+        },
+        { typed: tinRequest, held: settings.tinRequestTimeoutSeconds, write: setTinRequestTimeoutSeconds },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
   // it had a Save of its own, which made two on a page promised one.
   const markerTyped = marker.trim();
   const markerChanged = settings !== null && markerTyped !== '' && markerTyped !== settings.commandMarker;
+  /*
+   * The local tin's location and runtime are text, and go out with the
+   * numbers for the marker's reason. An emptied location is a change - it puts
+   * the built-in default back - so it is compared as typed rather than skipped.
+   */
+  const tinLocationTyped = tinLocation.trim();
+  const tinLocationChanged = settings !== null && tinLocationTyped !== (settings.localTinLocation ?? '');
+  const tinRuntimeChanged = settings !== null && tinRuntime !== settings.localTinRuntime;
   const changed =
     pending.length > 0 ||
     markerChanged ||
+    tinLocationChanged ||
+    tinRuntimeChanged ||
     logPending.length > 0 ||
     httpPending.length > 0 ||
     watcherPending.length > 0 ||
@@ -365,6 +428,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         held = await one.write(Number(one.typed));
       }
       if (markerChanged) held = await setCommandMarker(markerTyped);
+      if (tinLocationChanged) held = await setLocalTinLocation(tinLocationTyped === '' ? null : tinLocationTyped);
+      if (tinRuntimeChanged) held = await setLocalTinRuntime(tinRuntime);
       for (const write of logPending) await write();
       for (const write of httpPending) await write();
       for (const write of watcherPending) await write();
@@ -376,6 +441,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
       setSweep(String(held.taskSweepMinutes));
       setPluginSource(String(held.pluginMaxSourceKb));
       setPluginWait(String(held.pluginTimeoutSeconds));
+      fillTins(held);
       forgetInstallation();
       setSaved(true);
     } catch (cause: unknown) {
@@ -1201,6 +1267,307 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Scratchpads are kept for')}
                 />
                 <span className={styles.retentionUnit}>{t('days')}</span>
+              </div>
+            </div>
+
+
+            <h2 id="tins" className={styles.sectionHeading}>
+              <span className={styles.headingWithHint}>
+                {t('Tins')}
+                <FieldHint label={t('Tins')}>
+                  {t('The local tin is the sandbox inside this server; remote tins are listed under Admin → Tins. The tin tool limits apply to every tin.')}
+                </FieldHint>
+              </span>
+            </h2>
+
+            {/*
+              The local tin is on by default and offered to every agent holding
+              its label. A switch, saved as it is flipped like the others.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local tin')}</p>
+                  <FieldHint label={t('Local tin')}>
+                    {t('A tin inside this server, so agents can run commands without a remote orktin. Off, it is not listed under Admin → Tins and no new session opens in it.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <button
+                type="button"
+                id="local-tin-enabled"
+                className={styles.toggle}
+                onClick={() => void save(() => setLocalTinEnabled(!settings.localTinEnabled))}
+                disabled={busy}
+                role="switch"
+                aria-checked={settings.localTinEnabled}
+                aria-label={settings.localTinEnabled ? t('Turn the local tin off') : t('Turn the local tin on')}
+              >
+                <img
+                  src={settings.localTinEnabled ? toggleOnIcon : toggleOffIcon}
+                  alt=""
+                  width={36}
+                  height={20}
+                  data-keeps-colour
+                />
+              </button>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local tin location')}</p>
+                  <FieldHint label={t('Local tin location')}>
+                    {t('The directory local sessions keep their workspaces under. Leave it empty for the default shown in the box.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="local-tin-location"
+                  name="localTinLocation"
+                  className={`${styles.input} ${styles.wideInput}`}
+                  type="text"
+                  spellCheck={false}
+                  placeholder={settings.localTinLocationConfigured}
+                  value={tinLocation}
+                  onChange={(event) => setTinLocation(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Local tin location')}
+                />
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local tin runtime')}</p>
+                  <FieldHint label={t('Local tin runtime')}>
+                    {t('What a local session runs in. Local runs commands as processes of this server, under its account; Docker runs each session in a container of its own.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <select
+                  id="local-tin-runtime"
+                  name="localTinRuntime"
+                  className={styles.input}
+                  value={tinRuntime}
+                  onChange={(event) => setTinRuntime(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Local tin runtime')}
+                >
+                  <option value="local">{t('Local')}</option>
+                  <option value="docker">Docker</option>
+                </select>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local tin sessions at most')}</p>
+                  <FieldHint label={t('Local tin sessions at most')}>
+                    {t('How many sessions the local tin holds at once; one asked for past this is refused. Between 1 and 1000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="local-tin-max-sessions"
+                  name="localTinMaxSessions"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={tinMaxSessions}
+                  onChange={(event) => setTinMaxSessions(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Local tin sessions at most')}
+                />
+                <span className={styles.retentionUnit}>{t('sessions')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local session lifetime')}</p>
+                  <FieldHint label={t('Local session lifetime')}>
+                    {t('How long a local session lasts when the agent asks for no particular time, counted from when it opened. Between 60 and 604800.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="local-tin-default-ttl-seconds"
+                  name="localTinDefaultTtlSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={60}
+                  max={604800}
+                  value={tinDefaultTtl}
+                  onChange={(event) => setTinDefaultTtl(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Local session lifetime')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Longest local session lifetime')}</p>
+                  <FieldHint label={t('Longest local session lifetime')}>
+                    {t('The longest a local session may be asked to last. Between 60 and 604800.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="local-tin-max-ttl-seconds"
+                  name="localTinMaxTtlSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={60}
+                  max={604800}
+                  value={tinMaxTtl}
+                  onChange={(event) => setTinMaxTtl(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Longest local session lifetime')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local session idle timeout')}</p>
+                  <FieldHint label={t('Local session idle timeout')}>
+                    {t('A local session nothing has run in for this long is closed. Between 60 and 86400.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="local-tin-idle-timeout-seconds"
+                  name="localTinIdleTimeoutSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={60}
+                  max={86400}
+                  value={tinIdle}
+                  onChange={(event) => setTinIdle(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Local session idle timeout')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Command wait')}</p>
+                  <FieldHint label={t('Command wait')}>
+                    {t('How long a tin tool waits for a command to finish before handing the agent its output so far, with the command still running. Between 1 and 3600.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tin-command-wait-seconds"
+                  name="tinCommandWaitSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={3600}
+                  value={tinWait}
+                  onChange={(event) => setTinWait(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Command wait')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Command timeout')}</p>
+                  <FieldHint label={t('Command timeout')}>
+                    {t('How long one command may run at all before it is stopped. Between 1 and 86400.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tin-command-timeout-seconds"
+                  name="tinCommandTimeoutSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={86400}
+                  value={tinTimeout}
+                  onChange={(event) => setTinTimeout(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Command timeout')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Command output kept')}</p>
+                  <FieldHint label={t('Command output kept')}>
+                    {t('How much of what a command prints is handed back to the agent; the rest is cut and the agent is told so. Between 1 and 4096 KB.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tin-output-kb"
+                  name="tinOutputKb"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={4096}
+                  value={tinOutput}
+                  onChange={(event) => setTinOutput(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Command output kept')}
+                />
+                <span className={styles.retentionUnit}>{t('KB')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Tin request timeout')}</p>
+                  <FieldHint label={t('Tin request timeout')}>
+                    {t('How long this server waits for a tin to answer one request before giving up on it. Between 1 and 600.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tin-request-timeout-seconds"
+                  name="tinRequestTimeoutSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={600}
+                  value={tinRequest}
+                  onChange={(event) => setTinRequest(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Tin request timeout')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
 

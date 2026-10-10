@@ -1,0 +1,623 @@
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+
+import {
+  LOCAL_TIN_ID,
+  createTin,
+  deleteTin,
+  fetchTin,
+  fetchTinInfo,
+  fetchTinLabels,
+  fetchTinSessions,
+  testTinConnection,
+  tinKindLabel,
+  updateTin,
+} from '../../api/tins';
+import type { Tin, TinConnectionTest, TinInfo, TinInput, TinRemoteSession, TinRuntime } from '../../api/tins';
+import type { SessionUser } from '../../api/session';
+import { timeAgo } from '../../api/tools';
+import { AdminSidebar } from '../../components/AdminSidebar';
+import { AppShell } from '../../components/AppShell';
+import { BackLink } from '../../components/BackLink';
+import { FieldHint } from '../../components/FieldHint';
+import { Loader } from '../../components/Loader';
+import { duration } from '../workspace/WorkspaceWatchersPage';
+import { shellUser } from '../../session/user';
+import styles from './AdminTinPage.module.css';
+import { t, tf } from '../../i18n';
+
+export interface AdminTinPageProps {
+  session: SessionUser;
+  onSignOut?: () => void;
+}
+
+/** A value a tin may not have said, drawn as a dash rather than as "null". */
+function said(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === '' ? '—' : String(value);
+}
+
+function list(values: string[] | null | undefined): string {
+  return values === null || values === undefined || values.length === 0 ? '—' : values.join(', ');
+}
+
+function yesNo(value: boolean | null): string {
+  return value === null ? '—' : value ? t('Yes') : t('No');
+}
+
+/**
+ * One tin: registered here for the first time, or looked at and edited
+ * afterwards.
+ *
+ * A page rather than a dialog for the reason the other admin forms are pages:
+ * a tin holds a token somebody pastes out of another window, and has an address
+ * worth coming back to. Below the form is everything the tin says about itself
+ * - its version, its limits, each runtime it offers - and the sessions it holds
+ * now, because "what is this tin doing" is the next question after "does it
+ * answer".
+ *
+ * The local tin is the same page with less to edit: it is inside this server,
+ * so it has no address or token, and its limits are installation settings
+ * rather than fields here. Only its label is its own.
+ */
+export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
+  const { tinId } = useParams();
+  const navigate = useNavigate();
+  const adding = tinId === undefined;
+
+  const [tin, setTin] = useState<Tin | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [label, setLabel] = useState('');
+  /** What is typed in the token box. Empty keeps what is stored, unless clearing was asked for. */
+  const [token, setToken] = useState('');
+  const [clearToken, setClearToken] = useState(false);
+  const [knownLabels, setKnownLabels] = useState<string[]>([]);
+
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState<TinConnectionTest | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  const [info, setInfo] = useState<TinInfo | null>(null);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<TinRemoteSession[] | null>(null);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+
+  const local = tin?.kind === 'LOCAL' || tinId === LOCAL_TIN_ID;
+
+  const fill = useCallback((found: Tin) => {
+    setTin(found);
+    setName(found.name);
+    setAddress(found.address ?? '');
+    setLabel(found.label ?? '');
+    setToken('');
+    setClearToken(false);
+  }, []);
+
+  useEffect(() => {
+    let current = true;
+    fetchTinLabels()
+      .then((labels) => {
+        if (current) setKnownLabels(labels);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tinId === undefined) return;
+    let current = true;
+    fetchTin(tinId)
+      .then((found) => {
+        if (!current) return;
+        if (found === null) {
+          setLoadError(t('That tin no longer exists.'));
+          return;
+        }
+        fill(found);
+      })
+      .catch((cause: unknown) => {
+        if (current) setLoadError(cause instanceof Error ? cause.message : t('Could not load the tin.'));
+      });
+    return () => {
+      current = false;
+    };
+  }, [tinId, fill]);
+
+  /*
+   * What the tin says about itself and what it holds, asked separately from
+   * the tin's own row: a tin that cannot be reached is still a row that can be
+   * edited - which is how an address gets mended - so a refusal here is drawn
+   * where the details would be and nowhere else.
+   */
+  const loadDetails = useCallback(() => {
+    if (tinId === undefined) return;
+    setInfoError(null);
+    setSessionsError(null);
+    fetchTinInfo(tinId)
+      .then((answer) => setInfo(answer))
+      .catch((cause: unknown) => {
+        setInfo(null);
+        setInfoError(cause instanceof Error ? cause.message : t('Could not ask the tin.'));
+      });
+    fetchTinSessions(tinId)
+      .then((answer) => setSessions(answer))
+      .catch((cause: unknown) => {
+        setSessions(null);
+        setSessionsError(cause instanceof Error ? cause.message : t('Could not ask the tin.'));
+      });
+  }, [tinId]);
+
+  useEffect(loadDetails, [loadDetails]);
+
+  const complete = local ? true : name.trim() !== '' && address.trim() !== '';
+
+  /** The token as a save sends it: null keeps the stored one, "" clears it. */
+  function tokenSent(): string | null {
+    if (clearToken) return '';
+    return token === '' ? null : token;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!complete || saving) return;
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+
+    const input: TinInput = local
+      ? { name: tin?.name ?? name, label: label.trim() === '' ? null : label.trim() }
+      : {
+          name: name.trim(),
+          label: label.trim() === '' ? null : label.trim(),
+          address: address.trim(),
+          token: tokenSent(),
+        };
+
+    try {
+      if (tinId === undefined) {
+        const created = await createTin(input);
+        navigate(`/admin/tins/${encodeURIComponent(created.id)}`);
+        return;
+      }
+      fill(await updateTin(tinId, input));
+      setSaved(true);
+      loadDetails();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not save the tin.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    if (testing || address.trim() === '') return;
+    setTesting(true);
+    setTested(null);
+    setTestError(null);
+    try {
+      /*
+       * What is in the boxes, saved or not. An empty token box on a tin that
+       * holds one asks the server to use the stored token, so changing only the
+       * address can be tried before it is saved.
+       */
+      const typed = clearToken ? null : token === '' ? null : token;
+      const storedFor = !adding && typed === null && !clearToken ? (tinId ?? null) : null;
+      setTested(await testTinConnection(address.trim(), typed, storedFor));
+    } catch (cause) {
+      setTestError(cause instanceof Error ? cause.message : t('Could not test the connection.'));
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (tinId === undefined || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await deleteTin(tinId);
+      navigate('/admin/tins');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not delete the tin.'));
+      setSaving(false);
+    }
+  }
+
+  const called = adding ? t('Add tin') : (tin?.name ?? '…');
+
+  return (
+    <AppShell
+      title={adding ? t('New tin') : tin?.name}
+      user={shellUser(session)}
+      onSignOut={onSignOut}
+      sidebar={<AdminSidebar active="tins" />}
+    >
+      <header className={styles.headerBlock}>
+        <p className={styles.breadcrumbs}>
+          <BackLink to="/admin/tins" label={t('Tins')} />
+          <Link className={styles.crumbLink} to="/admin/tins">
+            {t('Tins')}
+          </Link>
+          <span className={styles.crumbSeparator}>/</span>
+          <span className={styles.crumbCurrent}>{called}</span>
+        </p>
+        <h1 className={styles.pageTitle}>{called}</h1>
+        {tin !== null && (
+          <p className={styles.subtitle} data-tin-kind={tin.kind}>
+            {tinKindLabel(tin.kind)}
+          </p>
+        )}
+      </header>
+
+      {loadError !== null ? (
+        <section className={styles.card}>
+          <p className={styles.loadError} role="alert">
+            {loadError}
+          </p>
+          <Link className={styles.crumbLink} to="/admin/tins">
+            {t('Back to Tins')}
+          </Link>
+        </section>
+      ) : !adding && tin === null ? (
+        <section className={styles.card}>
+          <Loader />
+        </section>
+      ) : (
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>{t('Tin')}</h2>
+            <div className={styles.divider} />
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="tin-name">
+                {t('Name')} {!local && <span className={styles.required}>*</span>}
+              </label>
+              <input
+                id="tin-name"
+                name="tinName"
+                className={styles.input}
+                type="text"
+                placeholder={t('e.g. build sandbox')}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                disabled={local}
+                autoFocus={adding}
+                required={!local}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <span className={styles.labelWithHint}>
+                <label className={styles.label} htmlFor="tin-address">
+                  {t('Address')} {!local && <span className={styles.required}>*</span>}
+                </label>
+                <FieldHint label={t('Address')}>
+                  {local
+                    ? t('The local tin runs inside this server, so there is nothing to reach and no token to hold.')
+                    : t('Where the orktin answers, with its scheme - http://sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.')}
+                </FieldHint>
+              </span>
+              {local ? (
+                <input
+                  id="tin-address"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  type="text"
+                  value={t('In-process')}
+                  data-tin-address="in-process"
+                  readOnly
+                  disabled
+                />
+              ) : (
+                <input
+                  id="tin-address"
+                  name="tinAddress"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  type="url"
+                  placeholder="http://sandbox.internal:8090"
+                  value={address}
+                  onChange={(event) => {
+                    setAddress(event.target.value);
+                    setTested(null);
+                  }}
+                  required
+                />
+              )}
+            </div>
+
+            {!local && (
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="tin-token">
+                    {t('API token')}
+                  </label>
+                  <FieldHint label={t('API token')}>
+                    {t('Stored encrypted and never shown again; leaving the box empty keeps whatever is already stored.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="tin-token"
+                  name="tinToken"
+                  className={`${styles.input} ${styles.inputMono}`}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={tin?.hasToken === true ? t('Stored; type to replace') : t('Optional')}
+                  value={token}
+                  data-tin-token-held={tin?.hasToken === true ? 'true' : 'false'}
+                  onChange={(event) => {
+                    setToken(event.target.value);
+                    setClearToken(false);
+                    setTested(null);
+                  }}
+                  disabled={clearToken}
+                />
+                {tin?.hasToken === true && (
+                  <label className={styles.checkboxField}>
+                    <input
+                      type="checkbox"
+                      checked={clearToken}
+                      onChange={(event) => {
+                        setClearToken(event.target.checked);
+                        if (event.target.checked) setToken('');
+                      }}
+                    />
+                    <span>{t('Remove the stored token')}</span>
+                  </label>
+                )}
+              </div>
+            )}
+
+            <div className={styles.field}>
+              <span className={styles.labelWithHint}>
+                <label className={styles.label} htmlFor="tin-label">
+                  {t('Label')}
+                </label>
+                <FieldHint label={t('Label')}>
+                  {t('What an agent is granted this tin by. Several tins may share a label, and an agent holding it may be given any of them.')}
+                </FieldHint>
+              </span>
+              <input
+                id="tin-label"
+                name="tinLabel"
+                className={`${styles.input} ${styles.inputMono}`}
+                type="text"
+                list="tin-label-suggestions"
+                spellCheck={false}
+                placeholder={t('e.g. build')}
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+              />
+              <datalist id="tin-label-suggestions">
+                {knownLabels.map((one) => (
+                  <option key={one} value={one} />
+                ))}
+              </datalist>
+            </div>
+
+            {local && (
+              <Link className={styles.settingsLink} to="/admin/settings#tins" data-tin-settings-link="">
+                {t('Local tin settings')}
+              </Link>
+            )}
+          </section>
+
+          <div className={styles.footer}>
+            <div className={styles.status} data-tin-test-result={tested === null ? undefined : tested.ok ? 'ok' : 'failed'}>
+              {error !== null ? (
+                <span className={styles.statusFailed} role="alert">
+                  {error}
+                </span>
+              ) : testError !== null ? (
+                <span className={styles.statusFailed} role="alert">
+                  {testError}
+                </span>
+              ) : tested !== null ? (
+                <>
+                  <span className={`${styles.dot} ${tested.ok ? styles.dotUp : styles.dotDown}`} aria-hidden="true" />
+                  <span className={tested.ok ? styles.statusOk : styles.statusFailed}>
+                    {tested.ok && tested.version !== null
+                      ? tf('{message} (version {version})', { message: tested.message, version: tested.version })
+                      : tested.message}
+                  </span>
+                </>
+              ) : (
+                saved && <span className={styles.statusOk}>{t('Saved.')}</span>
+              )}
+            </div>
+            <div className={styles.buttons}>
+              {!local && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => void handleTest()}
+                  disabled={testing || address.trim() === ''}
+                  data-tin-test=""
+                >
+                  {testing ? t('Testing…') : t('Test connection')}
+                </button>
+              )}
+              <button type="submit" className={styles.primaryButton} disabled={!complete || saving}>
+                {saving ? t('Saving…') : adding ? t('Add tin') : t('Save')}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {!adding && tin !== null && (
+        <>
+          <section className={styles.card} data-tin-details="">
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitle}>{t('Details')}</h2>
+              <button type="button" className={styles.secondaryButton} onClick={loadDetails}>
+                {t('Refresh')}
+              </button>
+            </div>
+            <div className={styles.divider} />
+            {infoError !== null ? (
+              <p className={styles.loadError} role="alert" data-tin-info-error="">
+                {infoError}
+              </p>
+            ) : info === null ? (
+              <Loader />
+            ) : (
+              <>
+                <dl className={styles.facts}>
+                  <Fact name={t('Version')} value={info.version} />
+                  <Fact name={t('Reports itself as')} value={info.name} />
+                  <Fact name={t('Default runtime')} value={info.defaultRuntime} />
+                  <Fact name={t('Default lifetime')} value={duration(info.defaultTtlSeconds)} />
+                  <Fact name={t('Longest lifetime')} value={duration(info.maxTtlSeconds)} />
+                  <Fact name={t('Idle timeout')} value={duration(info.defaultIdleTimeoutSeconds)} />
+                  <Fact name={t('Sessions at most')} value={String(info.maxSessions)} />
+                </dl>
+                {info.runtimes.map((runtime) => (
+                  <RuntimeBlock key={runtime.name} runtime={runtime} />
+                ))}
+              </>
+            )}
+          </section>
+
+          <section className={styles.card} data-tin-sessions="">
+            <h2 className={styles.cardTitle}>{t('Sessions')}</h2>
+            <div className={styles.divider} />
+            {sessionsError !== null ? (
+              <p className={styles.loadError} role="alert">
+                {sessionsError}
+              </p>
+            ) : sessions === null ? (
+              <Loader />
+            ) : sessions.length === 0 ? (
+              <p className={styles.empty}>{t('No sessions.')}</p>
+            ) : (
+              <div className={styles.table}>
+                <div className={styles.tableHead}>
+                  <span className={styles.colId}>{t('Session')}</span>
+                  <span className={styles.colStatus}>{t('Status')}</span>
+                  <span className={styles.colRuntime}>{t('Runtime')}</span>
+                  <span className={styles.colWhen}>{t('Last activity')}</span>
+                  <span className={styles.colWhen}>{t('Expires')}</span>
+                  <span className={styles.colRuns}>{t('Commands')}</span>
+                </div>
+                {sessions.map((one) => (
+                  <div key={one.id} className={styles.tableRow} data-tin-session={one.id}>
+                    <span className={`${styles.colId} ${styles.mono}`} title={one.labels === '' ? undefined : one.labels}>
+                      {one.id}
+                    </span>
+                    <span className={styles.colStatus}>{one.status}</span>
+                    <span className={styles.colRuntime} title={one.image ?? undefined}>
+                      {one.image === null ? one.runtime : `${one.runtime} · ${one.image}`}
+                    </span>
+                    <span className={styles.colWhen} title={one.lastActivityAt}>
+                      {timeAgo(one.lastActivityAt)}
+                    </span>
+                    <span className={styles.colWhen} title={one.expiresAt}>
+                      {new Date(one.expiresAt).toLocaleString()}
+                    </span>
+                    <span className={styles.colRuns}>
+                      {one.runningExecutions} / {one.totalExecutions}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* The local tin is switched off in Admin Settings rather than removed. */}
+      {!adding && loadError === null && tin !== null && !local && (
+        <section className={styles.dangerCard}>
+          <h2 className={styles.dangerHeading}>{t('Danger Zone')}</h2>
+          <div className={styles.divider} />
+          <div className={styles.dangerRow}>
+            <div className={styles.dangerText}>
+              <span className={styles.dangerTitle}>{t('Delete tin')}</span>
+              <span className={styles.dangerNote}>
+                {confirmingDelete
+                  ? tf('Delete {name}? Agents holding its label lose it.', { name: tin.name })
+                  : t('Remove this tin from the installation')}
+              </span>
+            </div>
+            {confirmingDelete ? (
+              <div className={styles.buttons}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={saving}
+                >
+                  {t('Keep')}
+                </button>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => void handleDelete()}
+                  disabled={saving}
+                  data-tin-delete-confirm=""
+                >
+                  {saving ? t('Deleting…') : t('Delete tin')}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={() => setConfirmingDelete(true)}
+                disabled={saving}
+                data-tin-delete=""
+              >
+                {t('Delete tin')}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+    </AppShell>
+  );
+}
+
+function Fact({ name, value }: { name: string; value: string }) {
+  return (
+    <div className={styles.fact}>
+      <dt className={styles.factName}>{name}</dt>
+      <dd className={styles.factValue}>{value}</dd>
+    </div>
+  );
+}
+
+/** One runtime the tin offers, and every limit it says it has. */
+function RuntimeBlock({ runtime }: { runtime: TinRuntime }) {
+  return (
+    <div className={styles.runtime} data-tin-runtime={runtime.name}>
+      <div className={styles.runtimeHead}>
+        <span className={`${styles.dot} ${runtime.available ? styles.dotUp : styles.dotDown}`} aria-hidden="true" />
+        <h3 className={styles.runtimeName}>{runtime.name}</h3>
+        <span className={styles.runtimeState} title={runtime.unavailableReason ?? undefined}>
+          {runtime.available ? t('Available') : said(runtime.unavailableReason)}
+        </span>
+      </div>
+      <dl className={styles.facts}>
+        <Fact name={t('Operating system')} value={runtime.os} />
+        <Fact name={t('Working directory')} value={said(runtime.workdir)} />
+        <Fact name={t('Shell')} value={list(runtime.shell)} />
+        <Fact name={t('Default image')} value={said(runtime.defaultImage)} />
+        <Fact name={t('Images')} value={list(runtime.images)} />
+        <Fact name={t('Network modes')} value={list(runtime.networkModes)} />
+        <Fact name={t('Caches')} value={list(runtime.caches)} />
+        <Fact name={t('CPUs, default / most')} value={`${said(runtime.defaultCpus)} / ${said(runtime.maxCpus)}`} />
+        <Fact name={t('Memory MB, default / most')} value={`${said(runtime.defaultMemoryMb)} / ${said(runtime.maxMemoryMb)}`} />
+        <Fact name={t('Disk limit enforced')} value={yesNo(runtime.diskLimitEnforced)} />
+      </dl>
+    </div>
+  );
+}

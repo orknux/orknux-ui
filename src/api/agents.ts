@@ -25,8 +25,6 @@ export interface Agent {
    * already inside.
    */
   orknuxAccess: boolean;
-  /** Whether it may open a shell on one of the installation's machines. */
-  shellAccess: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
   /** Which skill catalogs it may draw on. */
@@ -88,6 +86,12 @@ export interface Agent {
   memoryShare: number | null;
   /** Its own ceiling on tool rounds; null follows the installation's. */
   maxRounds: number | null;
+  /**
+   * Which tins it may open a session on, by label. Empty is none, which is
+   * where every agent starts; a tin added later under a label held here is
+   * one it can use without this agent being edited.
+   */
+  tinLabels: string[];
 }
 
 /**
@@ -142,14 +146,14 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess shellAccess memoryCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds maxTools requiredTools icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess memoryCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds tinLabels maxTools requiredTools icon memoryShare maxRounds';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
  *
  * `GRANT` is a row on the Tools list with the same Hide, Offer, Always control
  * as any other tool. The rest come with a wider grant - the skill catalogs, the
- * memory catalogs, orknux access, shell access - and are drawn as rows so the
+ * memory catalogs, orknux access and the tin labels - and are drawn as rows so the
  * list is complete, but switched where that grant is switched.
  */
 export type BuiltInToolGovernance =
@@ -158,8 +162,8 @@ export type BuiltInToolGovernance =
   | 'SKILL_CATALOGS'
   | 'MEMORY_CATALOGS'
   | 'ORKNUX_ACCESS'
-  | 'SHELL_ACCESS'
-  | 'HTTP_TOOLS';
+  | 'HTTP_TOOLS'
+  | 'TIN_ACCESS';
 
 /** One of the tools the server brings itself, and what switches it. */
 export interface BuiltInTool {
@@ -326,8 +330,6 @@ export async function updateAgent(
     mcpServers?: string[];
     /** Whether it may ask orknux about orknux; left out, the grant is unchanged. */
     orknuxAccess?: boolean;
-    /** Whether it may open a shell on a machine; left out, the grant is unchanged. */
-    shellAccess?: boolean;
     memoryCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];
@@ -338,6 +340,8 @@ export async function updateAgent(
     /** Which of the workspace's connections it may name; left out, the grant is unchanged. */
     connectionIds?: string[];
     agentIds?: string[];
+    /** Which tin labels it may open a session under; left out, the grant is unchanged. */
+    tinLabels?: string[];
     maxTools?: number | null;
     requiredTools?: string[];
     /** Which icon a node drawn from this agent starts with; null clears it. */

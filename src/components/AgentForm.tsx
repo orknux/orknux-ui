@@ -20,6 +20,7 @@ import {
   fetchSkillOffers,
   inSkillScope,
 } from '../api/skills';
+import { fetchTinLabels } from '../api/tins';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
@@ -28,6 +29,7 @@ import type { Catalogue } from './Catalogue';
 import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from './DragSize';
 import { FieldHint } from './FieldHint';
 import { IconField } from './IconField';
+import { LabelPicker } from './LabelPicker';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { segments } from './searchMatches';
 import own from './AgentForm.module.css';
@@ -272,10 +274,10 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by the memory catalogs — switch it there.');
     case 'ORKNUX_ACCESS':
       return t('Granted by Orknux access — switch it there.');
-    case 'SHELL_ACCESS':
-      return t('Granted by shell access — switch it there.');
     case 'HTTP_TOOLS':
       return t('Granted by the HTTP tools — switch it there.');
+    case 'TIN_ACCESS':
+      return t('Granted by the tin labels — switch it there.');
     default:
       return null;
   }
@@ -410,7 +412,7 @@ interface GrantListProps<Item> {
    *
    * The built-ins that come with a wider grant - the skill tools with the
    * skill catalogs, the memories with the memory catalogs, `orknux_*` with
-   * orknux access, the shells with shell access - are rows so the list is
+   * orknux access - are rows so the list is
    * complete, and read Always or Hide off that grant. Their control is
    * disabled and says so, because a control that can be pressed and does
    * nothing is worse than one that is not there. Issue #444.
@@ -857,8 +859,8 @@ function GrantList<Item>({
                 as well as a tick. The label is only the part that toggles: a
                 press on a link inside a label is a press the browser can
                 forward to the checkbox, and going to read what a grant means
-                would grant it - which is the rule the (?) beside Orknux and
-                Shells is already written to.
+                would grant it - which is the rule the (?) beside Orknux is
+                already written to.
               */
               <div
                 key={keyOf(row.item)}
@@ -1082,7 +1084,27 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [mcpServers, setMcpServers] = useState<string[]>(agent.mcpServers);
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
-  const [shellAccess, setShellAccess] = useState(agent.shellAccess);
+  /** Which tins it may open a session on, by label. Every agent starts with none. */
+  const [tinLabels, setTinLabels] = useState<string[]>(agent.tinLabels ?? []);
+  /**
+   * The labels tins carry now, offered as one is typed. Nothing on the form
+   * waits for it: a label is a name, and one typed before any tin carries it
+   * is a grant that starts working the day one does.
+   */
+  const [knownTinLabels, setKnownTinLabels] = useState<string[]>([]);
+  useEffect(() => {
+    let current = true;
+    fetchTinLabels()
+      .then((labels) => {
+        if (current) setKnownTinLabels(labels);
+      })
+      .catch(() => {
+        if (current) setKnownTinLabels([]);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   /*
@@ -1366,10 +1388,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return memoryCatalogs.length > 0;
       case 'ORKNUX_ACCESS':
         return orknuxAccess;
-      case 'SHELL_ACCESS':
-        return shellAccess;
       case 'HTTP_TOOLS':
         return tools.some((name) => HTTP_TOOLS.includes(name));
+      case 'TIN_ACCESS':
+        return tinLabels.length > 0;
       default:
         return false;
     }
@@ -1559,7 +1581,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         modelId: modelId === '' ? null : modelId,
         mcpServers,
         orknuxAccess,
-        shellAccess,
+        tinLabels,
         memoryCatalogs,
         skillCatalogs,
         hiddenSkills,
@@ -1578,7 +1600,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       });
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
-      setShellAccess(updated.shellAccess);
+      setTinLabels(updated.tinLabels ?? []);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSkillCatalogs(updated.skillCatalogs);
       setHiddenSkills(updated.hiddenSkills);
@@ -1997,7 +2019,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           styles={styles}
           catalogue={toolCatalogue}
           empty={t("No tools in this workspace yet.")}
-          hint={t('The workspace\'s own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools, the orknux_ and shell_ tools — reads the state of that grant and is switched there.')}
+          hint={t('The workspace\'s own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools, the orknux_ tools — reads the state of that grant and is switched there.')}
           keyOf={(tool) => tool.id}
           nameOf={(tool) => tool.name}
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
@@ -2191,33 +2213,29 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         </div>
 
         {/*
-          Beside Orknux because it is the same kind of switch - a grant of
-          something the agent is not otherwise offered - and plural on
-          purpose. An agent asks for a shell rather than for a named
-          machine; which one it gets is decided when the session opens.
+          Tins, by label rather than by name: an agent asks for a tin and is
+          given one whose label it holds, so a tin an administrator adds later
+          under a label already here is one this agent can use without being
+          edited. Beside Orknux because it is the same kind of grant - something
+          the agent is not otherwise offered - and the tin_ tools are rows in
+          the list above that read it.
         */}
-        <div className={styles.field}>
-          <span className={styles.label}>{t('Shells')}</span>
-          {/*
-            Beside the row for the same reason, and this is the one where it
-            matters most: what the note says is what an account on that machine
-            can do, which is a sentence about the tick rather than about the
-            word "Shells" above it.
-          */}
-          <div className={own.checkRow}>
-            <label className={own.grantToggle}>
-              <input
-                type="checkbox"
-                checked={shellAccess}
-                onChange={(event) => setShellAccess(event.target.checked)}
-              />
-              <span>{t('Let this agent open a shell and run commands on it')}</span>
-            </label>
-            <FieldHint label={t('Shells')}>
-              {t('It opens a session on one of the machines an administrator set up under Admin → Shell, gets a working directory of its own on it, and runs commands there. What contains that is the machine and the account named on it, not anything here: an agent given this can do whatever that account can. Every command is written down in the audit log under this agent\'s name.')}
+        <div className={styles.field} data-tin-grant="">
+          <span className={own.labelWithHint}>
+            <label className={styles.label} htmlFor={`${formId}-tin-labels`}>{t('Tins')}</label>
+            <FieldHint label={t('Tins')}>
+              {t('The tins this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that tin allows. Tins and their labels are set up under Admin → Tins.')}
             </FieldHint>
-          </div>
+          </span>
+          <LabelPicker
+            id={`${formId}-tin-labels`}
+            labels={tinLabels}
+            known={knownTinLabels}
+            onChange={setTinLabels}
+            placeholder={t('Add a tin label…')}
+          />
         </div>
+
 
 
         {/*

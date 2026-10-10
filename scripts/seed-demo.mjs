@@ -2202,8 +2202,8 @@ if (asColleague) {
  * what makes her page worth photographing: three tokens that were invented on
  * purpose, so nothing has to be painted over afterwards.
  *
- * Added by name and only when the name is free, the way the proxy rules and
- * shells below are: this account survives a rebuild of the workspace, and a
+ * Added by name and only when the name is free, the way the proxy rules
+ * below are: this account survives a rebuild of the workspace, and a
  * seed run twice should not leave her holding six.
  *
  * Two of them are then used - one call each, which is all it takes for the page
@@ -2311,25 +2311,21 @@ if (llmSessions.content.length === 0) {
 }
 
 
-/* ------------------------------------------- and the two installation lists */
+/* ------------------------------------------- and the installation's proxy rules */
 
 /*
- * Everything above belongs to a workspace. These two do not: shells and proxy
- * rules are the installation's, and the Admin pages holding them show whatever
- * this machine holds. On a machine with none they photograph as an empty box,
- * which tells a reader nothing about what either page is for.
+ * Everything above belongs to a workspace. This does not: proxy rules are the
+ * installation's, and the Admin page holding them shows whatever this machine
+ * holds. On a machine with none it photographs as an empty box, which tells a
+ * reader nothing about what the page is for.
  *
  * So this adds by name, and only when the name is free. Nothing here is edited
  * or deleted. The rest of this script may demolish a workspace it built itself;
- * these two lists can hold somebody's real proxies and real machines, and a
- * documentation script has no business touching those.
+ * this list can hold somebody's real proxies, and a documentation script has no
+ * business touching those.
  *
- * Every address below is a literal address on a private network, which is not a
- * style choice. A shell's host goes past the same guard every outbound address
- * goes past, and a name that does not resolve is refused as it is saved - so
- * `build.northwind.example`, which is what the rest of this seed would have
- * reached for, cannot be stored at all. A literal `10.` address has nothing to
- * look up, and points at a network this machine is not on.
+ * The proxy address is a literal address on a private network: it has nothing
+ * to look up, and points at a network this machine is not on.
  */
 
 const { proxyRules } = await gql('{ proxyRules { id name } }');
@@ -2382,39 +2378,6 @@ for (const rule of RULES) {
   await gql('mutation($input: ProxyRuleInput!) { createProxyRule(input: $input) { id } }', { input: rule });
 }
 log(`proxy rules: ${RULES.filter((rule) => !held.has(rule.name)).length} added`);
-
-const { shells } = await gql('{ shells { id name } }');
-const machines = new Set(shells.map((shell) => shell.name));
-
-/*
- * A key is made here rather than checked in.
- *
- * A shell with no key reads as "No private key is stored", which photographs
- * the one state the page is not trying to explain. A key committed to a public
- * repository is worse in a different way - it is a private key in a public
- * repository, whatever it opens - so one is generated per run, for two machines
- * on a network this is not on. It opens nothing and it outlives nothing.
- */
-const { generateKeyPairSync } = await import('node:crypto');
-const throwaway = () =>
-  generateKeyPairSync('rsa', {
-    modulusLength: 2048,
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
-    privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
-  }).privateKey;
-
-const MACHINES = [
-  { name: 'Build box', host: '10.0.4.12', port: 22, username: 'orknux' },
-  { name: 'Export runner', host: '10.0.4.19', port: 22, username: 'deploy' },
-];
-
-for (const machine of MACHINES) {
-  if (machines.has(machine.name)) continue;
-  await gql('mutation($input: ShellInput!) { createShell(input: $input) { id } }', {
-    input: { ...machine, privateKey: throwaway() },
-  });
-}
-log(`shells: ${MACHINES.filter((machine) => !machines.has(machine.name)).length} added`);
 
 /*
  * A task, set going and left going.
