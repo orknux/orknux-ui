@@ -323,6 +323,8 @@ const PL: Record<string, string> = {
   // --- tins ---------------------------------------------------------------
   TinNotFound: 'Nie ma puszki {id}',
   TinNameTaken: 'Puszka o nazwie „{name}” już istnieje',
+  TinLabelRequired: 'Puszka potrzebuje etykiety - to po niej agent dostaje do niej dostęp',
+  LocalTinNotEditable: 'Lokalnej puszki nie zmienia się tutaj. Jej etykieta to zawsze local, a ustawienia są w ustawieniach administratora',
   TinNameInvalid: 'Nazwa puszki nie może być pusta ani dłuższa niż 255 znaków',
   TinAddressInvalid: '„{address}” nie jest adresem puszki. Podaj go ze schematem, np. http://sandbox.internal:8090.',
   LocalTinNotRemovable: 'Puszki lokalnej nie da się usunąć; wyłącza się ją w ustawieniach administracyjnych',
@@ -331,6 +333,8 @@ const PL: Record<string, string> = {
   LocalTinMaxSessionsOutOfRange: '{count} to nie jest liczba sesji puszki lokalnej. Wybierz od 1 do 1000.',
   LocalTinTtlOutOfRange: '{seconds} to nie jest czas życia sesji lokalnej. Wybierz od 60 do 604800 sekund.',
   LocalTinIdleTimeoutOutOfRange: '{seconds} to nie jest limit bezczynności sesji lokalnej. Wybierz od 60 do 86400 sekund.',
+  TinOutputShownOutOfRange: '{bytes} to nie jest liczba bajtów wyjścia pokazywanego w karcie Puszka. Wybierz od 65536 do 67108864.',
+  LocalTinOutputKeptOutOfRange: '{bytes} to nie jest liczba bajtów zachowywanego wyjścia lokalnej puszki. Wybierz od 0 do 16777216.',
   TinCommandWaitOutOfRange: '{seconds} to nie jest czas oczekiwania na polecenie. Wybierz od 1 do 3600 sekund.',
   TinCommandTimeoutOutOfRange: '{seconds} to nie jest limit czasu polecenia. Wybierz od 1 do 86400 sekund.',
   TinOutputBytesOutOfRange: '{bytes} to nie jest liczba bajtów wyjścia polecenia. Wybierz od 1024 do 4194304.',

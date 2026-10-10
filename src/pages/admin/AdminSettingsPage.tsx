@@ -60,6 +60,8 @@ import {
   setTinCommandWaitSeconds,
   setTinCommandTimeoutSeconds,
   setTinOutputBytes,
+  setLocalTinOutputKeptBytes,
+  setTinOutputShownBytes,
   setTinRequestTimeoutSeconds,
 } from '../../api/installation';
 import type { InstallationSettings } from '../../api/installation';
@@ -198,6 +200,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [tinTimeout, setTinTimeout] = useState('');
   // Held and typed in KB; the server keeps bytes, as the scratchpad budget does.
   const [tinOutput, setTinOutput] = useState('');
+  // KB as well: what is kept of each command's output for reading on the session page.
+  const [tinOutputKept, setTinOutputKept] = useState('');
+  // KB too: how much of one output the session page reads and holds.
+  const [tinOutputShown, setTinOutputShown] = useState('');
   const [tinRequest, setTinRequest] = useState('');
 
   /** The Tins section's boxes, from what the server holds. */
@@ -211,6 +217,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     setTinWait(String(held.tinCommandWaitSeconds));
     setTinTimeout(String(held.tinCommandTimeoutSeconds));
     setTinOutput(String(Math.round(held.tinOutputBytes / 1024)));
+    setTinOutputKept(String(Math.round(held.localTinOutputKeptBytes / 1024)));
+    setTinOutputShown(String(Math.round(held.tinOutputShownBytes / 1024)));
     setTinRequest(String(held.tinRequestTimeoutSeconds));
   }, []);
 
@@ -375,12 +383,22 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: tinDefaultTtl, held: settings.localTinDefaultTtlSeconds, write: setLocalTinDefaultTtlSeconds },
         { typed: tinMaxTtl, held: settings.localTinMaxTtlSeconds, write: setLocalTinMaxTtlSeconds },
         { typed: tinIdle, held: settings.localTinIdleTimeoutSeconds, write: setLocalTinIdleTimeoutSeconds },
+        {
+          typed: tinOutputKept,
+          held: Math.round(settings.localTinOutputKeptBytes / 1024),
+          write: (kb: number) => setLocalTinOutputKeptBytes(kb * 1024),
+        },
         { typed: tinWait, held: settings.tinCommandWaitSeconds, write: setTinCommandWaitSeconds },
         { typed: tinTimeout, held: settings.tinCommandTimeoutSeconds, write: setTinCommandTimeoutSeconds },
         {
           typed: tinOutput,
           held: Math.round(settings.tinOutputBytes / 1024),
           write: (kb: number) => setTinOutputBytes(kb * 1024),
+        },
+        {
+          typed: tinOutputShown,
+          held: Math.round(settings.tinOutputShownBytes / 1024),
+          write: (kb: number) => setTinOutputShownBytes(kb * 1024),
         },
         { typed: tinRequest, held: settings.tinRequestTimeoutSeconds, write: setTinRequestTimeoutSeconds },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
@@ -1470,6 +1488,32 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Local tin output kept')}</p>
+                  <FieldHint label={t('Local tin output kept')}>
+                    {t('How much of each local command\'s output is kept for reading in a session\'s Tin tab. Between 0 and 16384 KB; 0 keeps none.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="local-tin-output-kept-kb"
+                  name="localTinOutputKeptKb"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={16384}
+                  value={tinOutputKept}
+                  onChange={(event) => setTinOutputKept(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Local tin output kept')}
+                />
+                <span className={styles.retentionUnit}>{t('KB')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('Command wait')}</p>
                   <FieldHint label={t('Command wait')}>
                     {t('How long a tin tool waits for a command to finish before handing the agent its output so far, with the command still running. Between 1 and 3600.')}
@@ -1540,6 +1584,32 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   onChange={(event) => setTinOutput(event.target.value)}
                   disabled={busy}
                   aria-label={t('Command output kept')}
+                />
+                <span className={styles.retentionUnit}>{t('KB')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Tin output shown')}</p>
+                  <FieldHint label={t('Tin output shown')}>
+                    {t('How much of one command\'s output a session\'s Tin tab reads and holds before it stops and says so. Between 64 and 65536 KB.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="tin-output-shown-kb"
+                  name="tinOutputShownKb"
+                  className={styles.input}
+                  type="number"
+                  min={64}
+                  max={65536}
+                  value={tinOutputShown}
+                  onChange={(event) => setTinOutputShown(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Tin output shown')}
                 />
                 <span className={styles.retentionUnit}>{t('KB')}</span>
               </div>

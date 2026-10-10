@@ -10,6 +10,15 @@
  * `nextSeq` while the tin session is active, and the tin's own message where it
  * could not hand the log over.
  *
+ * A command's line opens onto what it printed, below the line: a 240px window
+ * holding the first stretch, read on as it is scrolled and followed while the
+ * command runs, with Jump to top, Jump to bottom and a search in its corner and
+ * a handle under it that drags it taller. The event's JSON is behind a toggle.
+ *
+ * A panel row reads name, label and the tin session's id (the dot is the state),
+ * and `?tin=` in the address names the tin session open: a link opens on it,
+ * opening another replaces it, and leaving the Tin tab drops it.
+ *
  * ---------------------------------------------------------------------------
  * Why the tins are stubbed and the contract is not
  *
@@ -39,10 +48,16 @@ record(
 );
 const sessionTin = await fieldsOf('SessionTin');
 record(
-  ['id', 'tinId', 'tinName', 'tinKind', 'remoteSessionId', 'active', 'status', 'createdAt', 'lastUsedAt'].every((one) =>
+  ['id', 'tinId', 'tinName', 'tinKind', 'tinLabel', 'remoteSessionId', 'active', 'status', 'createdAt', 'lastUsedAt'].every((one) =>
     sessionTin.includes(one),
   ),
   `a session tin carries every field the panel draws (${sessionTin.join(' ')})`,
+);
+const tinOutput = await fieldsOf('TinOutput');
+record(
+  query.includes('sessionTinOutput') &&
+    ['text', 'offset', 'nextOffset', 'done', 'available', 'message', 'shownLimit'].every((one) => tinOutput.includes(one)),
+  `the server answers one execution's output a stretch at a time (${tinOutput.join(' ')})`,
 );
 const tinLog = await fieldsOf('TinLog');
 const tinEvent = await fieldsOf('TinEvent');
@@ -62,25 +77,49 @@ const iso = (ago) => new Date(NOW - ago).toISOString();
 const TINS = [
   // Older, and closed: orange, and its tin could not hand the log over.
   {
-    id: 'st-1', tinId: 'local', tinName: 'Local tin', tinKind: 'LOCAL', remoteSessionId: 'ses-old',
+    id: 'st-1', tinId: 'local', tinName: 'Local tin', tinKind: 'LOCAL', tinLabel: null, remoteSessionId: 'ses-old',
     active: false, status: 'CLOSED', createdAt: iso(3_600_000), lastUsedAt: iso(3_000_000),
   },
   // Newer, and still working: green, and the one the Tin tab opens.
   {
-    id: 'st-2', tinId: '7', tinName: 'Build box', tinKind: 'REMOTE', remoteSessionId: 'ses-new',
+    id: 'st-2', tinId: '7', tinName: 'Build box', tinKind: 'REMOTE', tinLabel: 'builders', remoteSessionId: 'ses-0f3c9a1e-7b2d-4c55-9e1a-2d6b8f4a9c10-build-box-builders-0f3c9a1e7b2d',
     active: true, status: 'RUNNING', createdAt: iso(60_000), lastUsedAt: iso(5_000),
   },
 ];
 
 const EVENTS = [
   { seq: 1, at: iso(50_000), type: 'session.created', data: JSON.stringify({ runtime: 'local', workdir: '/work' }) },
-  { seq: 2, at: iso(40_000), type: 'exec.started', data: JSON.stringify({ command: 'ls -la', cwd: '/work' }) },
-  { seq: 3, at: iso(30_000), type: 'exec.finished', data: JSON.stringify({ exitCode: 0, durationMs: 12 }) },
+  { seq: 2, at: iso(40_000), type: 'execution.started', data: JSON.stringify({ command: 'ls -la', cwd: '/work', executionId: 'ex-1' }) },
+  { seq: 3, at: iso(30_000), type: 'execution.finished', data: JSON.stringify({ exitCode: 0, durationMs: 12, executionId: 'ex-1' }) },
 ];
-const LATER = { seq: 4, at: iso(1_000), type: 'exec.started', data: JSON.stringify({ command: 'make build' }) };
+const LATER = { seq: 4, at: iso(1_000), type: 'execution.started', data: JSON.stringify({ command: 'make build', executionId: 'ex-2' }) };
 const UNAVAILABLE = 'The tin that held this session has been removed.';
 
 const askedAfter = [];
+/** How often the session the panel calls closed was asked for its log. */
+let closedAsked = 0;
+
+/*
+ * Output. ex-1 finished long ago and printed 3000 numbered lines, every
+ * hundredth carrying MARKER - far more than one 16 KB read, so the panel has
+ * to read on as it is scrolled. ex-2 is still running and prints a line a
+ * second, so the panel has to follow it. ASCII only, so a byte is a character
+ * and an offset can be checked by eye.
+ */
+const EX1 = Array.from({ length: 3000 }, (_, at) => {
+  const n = String(at + 1).padStart(5, '0');
+  return `line ${n} ${(at + 1) % 100 === 0 ? 'MARKER ' : ''}${'x'.repeat(30)}\n`;
+}).join('');
+const EX2_FROM = Date.now();
+const ex2Text = () =>
+  Array.from({ length: 1 + Math.floor((Date.now() - EX2_FROM) / 1000) }, (_, at) => `tick ${at}\n`).join('');
+const EX2_NOTE = 'Output as last recorded.';
+/** What the server says the interface may hold of ex-1 - less than it printed, so the cap is reached. */
+const EX1_SHOWN = 65_536;
+/** MARKER lines inside that limit. */
+const EX1_MARKERS = EX1.slice(0, EX1_SHOWN).split('MARKER').length - 1;
+/** Every output read, as asked. */
+const askedOutput = [];
 
 const json = (route, data) =>
   route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data }) });
@@ -88,8 +127,28 @@ const json = (route, data) =>
 await page.route('**/graphql', async (route) => {
   const body = route.request().postData() ?? '';
   const variables = JSON.parse(body || '{}').variables ?? {};
+  if (body.includes('sessionTinOutput(')) {
+    const offset = variables.offset ?? 0;
+    const limit = variables.limit ?? 16_384;
+    askedOutput.push({ executionId: variables.executionId, offset, limit });
+    const all = variables.executionId === 'ex-1' ? EX1 : ex2Text();
+    const text = all.slice(offset, offset + limit);
+    await json(route, {
+      sessionTinOutput: {
+        text,
+        offset,
+        nextOffset: offset + text.length,
+        done: variables.executionId === 'ex-1' && offset + text.length >= all.length,
+        available: true,
+        message: variables.executionId === 'ex-2' ? EX2_NOTE : null,
+        shownLimit: variables.executionId === 'ex-1' ? EX1_SHOWN : 1_048_576,
+      },
+    });
+    return;
+  }
   if (body.includes('sessionTinLog(')) {
     if (variables.sessionTinId === 'st-1') {
+      closedAsked += 1;
       await json(route, { sessionTinLog: { events: [], nextSeq: 0, available: false, message: UNAVAILABLE } });
       return;
     }
@@ -161,6 +220,54 @@ record(
 const rows = panel.locator('[data-session-tin]');
 record((await rows.count()) === 2, `it lists both tin sessions (${await rows.count()})`);
 
+/* Each row: the tin's name, its label and the tin session's id - the dot says the state, so no status word. */
+const NEW_ID = TINS[1].remoteSessionId;
+const idCell = page.locator('[data-session-tin="st-2"] [data-session-tin-id]');
+const idShown = await idCell
+  .evaluate((one) => ({
+    text: one.textContent,
+    title: one.getAttribute('title'),
+    font: getComputedStyle(one).fontFamily,
+    cut: one.scrollWidth > one.clientWidth,
+    right: one.getBoundingClientRect().right,
+    rowRight: one.closest('[data-session-tin]').getBoundingClientRect().right,
+    left: one.getBoundingClientRect().left,
+    height: one.getBoundingClientRect().height,
+    scroll: one.scrollWidth,
+    client: one.clientWidth,
+    wrap: getComputedStyle(one).whiteSpace,
+  }), null, { timeout: 5_000 })
+  .catch(() => null);
+record(idShown !== null && idShown.text === NEW_ID && idShown.title === NEW_ID, `a row shows its tin session's id, whole on hover (${JSON.stringify(idShown)})`);
+record(idShown !== null && /mono|courier|consolas/i.test(idShown.font), `in the monospace face (${idShown?.font})`);
+record(idShown !== null && idShown.cut && idShown.right <= idShown.rowRight + 1, `and a long one is cut to fit the row rather than widening it (${JSON.stringify(idShown)})`);
+const besideId = await page
+  .locator('[data-session-tin="st-2"]')
+  .evaluate((row) => {
+    const box = (sel) => row.querySelector(sel)?.getBoundingClientRect() ?? null;
+    const label = row.querySelector('[data-session-tin-label]');
+    const name = box('[data-session-tin-label]') && label.previousElementSibling;
+    const nameBox = name?.getBoundingClientRect() ?? null;
+    return {
+      name: nameBox === null ? null : { width: nameBox.width, whole: name.scrollWidth <= name.clientWidth },
+      label: label === null ? null : { width: label.getBoundingClientRect().width, whole: label.scrollWidth <= label.clientWidth },
+      idLeft: box('[data-session-tin-id]')?.left ?? null,
+      labelRight: box('[data-session-tin-label]')?.right ?? null,
+    };
+  }, null, { timeout: 5_000 })
+  .catch(() => null);
+record(
+  besideId !== null && besideId.name?.whole === true && besideId.name.width > 0 && besideId.label?.whole === true &&
+    besideId.idLeft !== null && besideId.labelRight !== null && besideId.idLeft >= besideId.labelRight,
+  `the name and the label are drawn whole, left of the id (${JSON.stringify(besideId)})`,
+);
+const labelShown = (await page.locator('[data-session-tin="st-2"] [data-session-tin-label]').innerText().catch(() => '')).trim();
+record(labelShown === 'builders', `and the tin's label (${labelShown})`);
+record((await page.locator('[data-session-tin="st-1"] [data-session-tin-label]').count()) === 0, 'a tin with no label shows none');
+const rowWords = (await panel.innerText().catch(() => '')).toUpperCase();
+record(!rowWords.includes('RUNNING') && !rowWords.includes('CLOSED'), `no row says its status in words (${JSON.stringify(rowWords)})`);
+record(((await rows.first().getAttribute('title').catch(() => '')) ?? '').match(/CLOSED|RUNNING/) !== null, 'the status is still on hover');
+
 /* The dots: the family's colours, green while active and orange once not. */
 const green = await painted('var(--color-success, #3fb950)');
 const orange = await painted('var(--color-warning, #d29922)');
@@ -190,42 +297,233 @@ record(!(await tinTab.isDisabled().catch(() => true)), 'and it can be pressed wh
 /* Pressed, it opens the newest tin session's log in place of the transcript. */
 await tinTab.click();
 const log = page.locator('[data-tin-log]');
+/** The `tin` parameter of the address, or null. */
+const tinParam = () => new URL(page.url()).searchParams.get('tin');
 await log.waitFor({ timeout: 10_000 }).catch(() => {});
 record((await page.locator('[data-subview]').getAttribute('data-subview').catch(() => null)) === 'tin', 'the body is the tin view');
 record((await log.getAttribute('data-tin-log').catch(() => null)) === 'st-2', 'and it is the newest tin session');
+await page.waitForTimeout(300);
+record(tinParam() === 'st-2', `the address names it (${page.url()})`);
 record((await page.locator('input[type="search"]').count()) === 0, 'the transcript is not drawn beside it');
 record((await tinTab.getAttribute('aria-selected')) === 'true', 'the Tin tab says it is the one open');
 
 const lines = log.locator('[data-tin-event]');
 await lines.first().waitFor({ timeout: 10_000 }).catch(() => {});
+
+/* Newest first by default, and the order button turns it round. */
+const seqs = async () => (await lines.evaluateAll((all) => all.map((one) => Number(one.getAttribute('data-tin-event')))));
+const newest = await seqs();
+record(newest.length > 1 && newest[0] > newest[newest.length - 1], `the newest event is on top (${newest.join(', ')})`);
+await page.locator('[data-tin-log-order]').click();
+const oldest = await seqs();
+record(oldest[0] < oldest[oldest.length - 1], `and the order button turns it round (${oldest.join(', ')})`);
 record((await lines.count()) >= EVENTS.length, `every event is a line (${await lines.count()})`);
 const summary = (await log.locator('[data-tin-event="2"] [data-tin-event-summary]').innerText().catch(() => '')).trim();
 record(summary.startsWith('$ ls -la'), `a command reads as the command (${summary})`);
 const lineBox = await log.locator('[data-tin-event="2"] button').first().boundingBox().catch(() => null);
 record(lineBox !== null && lineBox.height < 40, `and an event is one line (${lineBox?.height}px)`);
 
-/* The whole JSON, a press away. */
+/* A command's line opens onto what it printed, below the line. */
 await log.locator('[data-tin-event="2"] button').first().click();
-const pre = (await log.locator('[data-tin-event="2"] pre').innerText().catch(() => '')).trim();
-record(pre.includes('"command": "ls -la"'), 'pressing a line shows its JSON, indented');
+const output = log.locator('[data-tin-event="2"] [data-tin-output="ex-1"]');
+const outputText = output.locator('[data-tin-output-text]');
+await outputText.waitFor({ timeout: 10_000 }).catch(() => {});
+const shownText = await outputText.innerText().catch(() => '');
+record(shownText.startsWith('line 00001'), `pressing a command's line shows its output (${JSON.stringify(shownText.slice(0, 20))})`);
+const headerBox = await log.locator('[data-tin-event="2"] button').first().boundingBox().catch(() => null);
+const frame = output.locator('[data-tin-output-frame]');
+const frameBox = await frame.boundingBox().catch(() => null);
+record(
+  headerBox !== null && frameBox !== null && frameBox.y >= headerBox.y + headerBox.height - 1,
+  `below the line's header (${JSON.stringify(frameBox)} under ${JSON.stringify(headerBox)})`,
+);
+record(frameBox !== null && Math.abs(frameBox.height - 240) <= 4, `in a window about 240px tall (${frameBox?.height})`);
+record(
+  shownText.length > 0 && shownText.length < EX1.length && !shownText.includes('line 03000'),
+  `and only the first stretch of it (${shownText.length} of ${EX1.length} characters)`,
+);
+record(
+  (await log.locator('[data-tin-event="3"] button').first().getAttribute('aria-expanded')) === 'true' &&
+    (await log.locator('[data-tin-output]').count()) === 1,
+  "the same execution's finished line says it is open too, and the output is drawn once",
+);
+
+/* Scrolled to the bottom, it asks for the next stretch from where the first ended, and adds it under. */
+const scroller = output.locator('[data-tin-output-scroller]');
+const firstEnd = askedOutput.find((one) => one.executionId === 'ex-1')?.limit ?? 16_384;
+await scroller.evaluate((box) => {
+  box.scrollTop = box.scrollHeight;
+  box.dispatchEvent(new Event('scroll'));
+}, null, { timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(1_000);
+record(
+  askedOutput.some((one) => one.executionId === 'ex-1' && one.offset === firstEnd),
+  `scrolling to the bottom asks for the next stretch from ${firstEnd} (${JSON.stringify(askedOutput.map((one) => one.offset))})`,
+);
+const grown = await outputText.innerText().catch(() => '');
+record(
+  grown.length > shownText.length && grown.startsWith(shownText.slice(0, 1000)) && EX1.startsWith(grown.trimEnd()),
+  `and adds it under what was there (${shownText.length} then ${grown.length})`,
+);
+
+/* Jump to the top and to the bottom. */
+const scrollOf = () =>
+  scroller
+    .evaluate((box) => ({ top: box.scrollTop, height: box.scrollHeight, client: box.clientHeight }), null, { timeout: 5_000 })
+    .catch(() => ({ top: -1, height: 0, client: 0 }));
+await output.locator('[data-tin-output-top]').click({ timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(200);
+record((await scrollOf()).top === 0, 'Jump to top puts the output at its start');
+await output.locator('[data-tin-output-bottom]').click({ timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(1_500);
+const atBottom = await scrollOf();
+const whole = await outputText.innerText().catch(() => '');
+record(
+  whole.trimEnd() === EX1.slice(0, EX1_SHOWN).trimEnd(),
+  `Jump to bottom reads the rest first, up to the administrator's limit (${whole.length} of ${EX1.length}, limit ${EX1_SHOWN})`,
+);
+const pastLimit = askedOutput.filter((one) => one.executionId === 'ex-1' && one.offset + one.limit > EX1_SHOWN);
+record(pastLimit.length === 0, `and never asks for more than the limit (${JSON.stringify(pastLimit)})`);
+const capNote = (await output.locator('[data-tin-output-status]').innerText().catch(() => '')).trim();
+record(capNote === 'Only the first 64 KB of this output is shown here.', `and says how much it shows (${capNote})`);
+record(
+  atBottom.top > 0 && atBottom.top + atBottom.client >= atBottom.height - 2,
+  `and goes there (${JSON.stringify(atBottom)})`,
+);
+
+/* Search: every match highlighted, counted, and the current one brought into view. */
+const search = output.locator('[data-tin-output-search]');
+await search.fill('marker', { timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(300);
+const count = await output.locator('[data-tin-output-count]').getAttribute('data-tin-output-count').catch(() => null);
+const marks = await output.locator('mark[data-tin-output-match]').count();
+record(count === String(EX1_MARKERS) && marks === EX1_MARKERS, `searching highlights every match and counts them (${count} counted, ${marks} drawn)`);
+const shownCount = (await output.locator('[data-tin-output-count]').innerText().catch(() => '')).trim();
+record(shownCount === `1/${EX1_MARKERS}`, `and says which one is current (${shownCount})`);
+await search.press('Enter', { timeout: 5_000 }).catch(() => {});
+await search.press('Enter', { timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(300);
+const currentIndex = await output.locator('[data-tin-output-match-current]').getAttribute('data-tin-output-match').catch(() => null);
+record(currentIndex === '2', `Enter moves to the next match (${currentIndex})`);
+await search.press('Shift+Enter', { timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(300);
+const backIndex = await output.locator('[data-tin-output-match-current]').getAttribute('data-tin-output-match').catch(() => null);
+record(backIndex === '1', `and Shift+Enter to the one before (${backIndex})`);
+const inView = await page.evaluate(() => {
+  const mark = document.querySelector('[data-tin-output-match-current]');
+  const box = mark?.closest('[data-tin-output-scroller]');
+  if (!mark || !box) return null;
+  const m = mark.getBoundingClientRect();
+  const b = box.getBoundingClientRect();
+  return { inside: m.top >= b.top && m.bottom <= b.bottom, mark: m.top, from: b.top, to: b.bottom, text: mark.textContent };
+});
+record(inView !== null && inView.inside && inView.text === 'MARKER', `the current match is scrolled into the window (${JSON.stringify(inView)})`);
+await search.fill('', { timeout: 5_000 }).catch(() => {});
+
+/* Dragged taller by the handle under it. */
+const handle = output.locator('[role="separator"]');
+const handleBox = await handle.boundingBox().catch(() => null);
+if (handleBox !== null) {
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 100, { steps: 5 });
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 200, { steps: 5 });
+  await page.mouse.up();
+}
+const taller = await frame.boundingBox().catch(() => null);
+record(
+  frameBox !== null && taller !== null && taller.height >= frameBox.height + 180,
+  `dragging the handle down makes the output taller (${frameBox?.height} then ${taller?.height})`,
+);
+
+/* The raw JSON is still there, behind a small toggle. */
+record((await log.locator('[data-tin-event="2"] pre:not([data-tin-output-text])').count()) === 0, 'the JSON is not the main thing');
+await log.locator('[data-tin-event="2"] [data-tin-event-json-toggle]').click({ timeout: 5_000 }).catch(() => {});
+const pre = (await log.locator('[data-tin-event="2"] pre:not([data-tin-output-text])').innerText().catch(() => '')).trim();
+record(pre.includes('"command": "ls -la"'), 'the JSON toggle shows the event, indented');
+
+/* A line that is not a command still opens straight onto its JSON. */
+await log.locator('[data-tin-event="1"] button').first().click();
+const plain = (await log.locator('[data-tin-event="1"] pre').innerText().catch(() => '')).trim();
+record(plain.includes('"runtime": "local"'), 'pressing a line with no command shows its JSON, indented');
 
 /* Followed while active: asked again from nextSeq, and what is new is added under the rest. */
 await page.waitForTimeout(4_500);
 record(askedAfter.some((after) => after === 3), `the log is asked again from where it ended (${JSON.stringify(askedAfter)})`);
 record((await log.locator('[data-tin-event="4"]').count()) === 1, 'and the new event is drawn');
+record((await seqs()).at(-1) === 4, 'at the end, while the order is oldest first');
 record((await lines.count()) === EVENTS.length + 1, 'without drawing the old ones twice');
+
+/* A command still running: its output is followed, and the tin's word about it sits quietly above. */
+await log.locator('[data-tin-event="4"] button').first().click();
+const running = log.locator('[data-tin-output="ex-2"]');
+const runningText = running.locator('[data-tin-output-text]');
+await runningText.waitFor({ timeout: 10_000 }).catch(() => {});
+const ticksBefore = (await runningText.innerText().catch(() => '')).trim().split('\n').length;
+record(ticksBefore >= 1, `a running command shows what it has printed so far (${ticksBefore} lines)`);
+const note = (await running.locator('[data-tin-output-note]').innerText().catch(() => '')).trim();
+const noteBox = await running.locator('[data-tin-output-note]').boundingBox().catch(() => null);
+const runningFrame = await running.locator('[data-tin-output-frame]').boundingBox().catch(() => null);
+record(
+  note === EX2_NOTE && noteBox !== null && runningFrame !== null && noteBox.y + noteBox.height <= runningFrame.y + 1,
+  `a message with the text is a note above it (${note})`,
+);
+await page.waitForTimeout(4_500);
+const ticksAfter = (await runningText.innerText().catch(() => '')).trim().split('\n').length;
+record(
+  askedOutput.some((one) => one.executionId === 'ex-2' && one.offset > 0) && ticksAfter > ticksBefore,
+  `and it is followed while it runs (${ticksBefore} then ${ticksAfter} lines)`,
+);
 
 /* The closed one, from the panel: its tin's own word on why there is no log. */
 await page.locator('[data-session-tin="st-1"]').click();
 const unavailable = page.locator('[data-tin-log-unavailable]');
 await unavailable.waitFor({ timeout: 10_000 }).catch(() => {});
 record((await log.getAttribute('data-tin-log').catch(() => null)) === 'st-1', 'a row in the panel opens that tin session');
+await page.waitForTimeout(300);
+record(tinParam() === 'st-1', `the address names the tin session open (${page.url()})`);
 record((await unavailable.innerText().catch(() => '')).trim() === UNAVAILABLE, 'and where the log could not be had, says why');
 record((await page.locator('[data-session-tin="st-1"]').getAttribute('aria-current')) === 'page', 'the row says it is the one open');
+/* Followed even so: the panel's word on whether it is active can be behind, and a log that stops being asked shows nothing new until a reload. */
+const before = closedAsked;
+await page.waitForTimeout(4_500);
+record(closedAsked > before, `an open log is still asked again when the panel calls its session closed (${before} then ${closedAsked})`);
 
 /* Back to the transcript. */
 await page.getByRole('tab', { name: /Transcript|Transkrypcja/ }).click();
 record((await page.locator('[data-tin-log]').count()) === 0, 'the Transcript tab puts the transcript back');
+await page.waitForTimeout(300);
+record(tinParam() === null, `and the address drops the tin (${page.url()})`);
+
+/* A link to one tin session - what an agent hands a person - opens on its log, with its row lit. */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${WITH_TINS}?tin=st-2`, { waitUntil: 'domcontentloaded' });
+const linked = page.locator('[data-tin-log="st-2"]');
+await linked.waitFor({ timeout: 20_000 }).catch(() => {});
+record((await linked.count()) === 1, '?tin= opens that tin session\'s log on arrival');
+record((await page.locator('[data-subview-tab="tin"]').getAttribute('aria-selected').catch(() => null)) === 'true', 'on the Tin tab');
+record((await page.locator('[data-session-tin="st-2"]').getAttribute('aria-current').catch(() => null)) === 'page', 'with its row lit in the panel');
+await page.locator('[data-tin-log] [data-tin-event]').first().waitFor({ timeout: 10_000 }).catch(() => {});
+record((await page.locator('[data-tin-log] [data-tin-event]').count()) >= EVENTS.length, 'and its events drawn');
+const historyBefore = await page.evaluate(() => history.length);
+await page.locator('[data-session-tin="st-1"]').click();
+await page.locator('[data-tin-log="st-1"]').waitFor({ timeout: 10_000 }).catch(() => {});
+await page.waitForTimeout(300);
+record(tinParam() === 'st-1', `opening another tin from the panel puts it in the address (${page.url()})`);
+record((await page.evaluate(() => history.length)) === historyBefore, 'replacing the entry rather than adding one');
+await page.locator('[data-subview-tab="scratchpad"]').click({ timeout: 5_000 }).catch(() => {});
+await page.waitForTimeout(500);
+record(tinParam() === null, `and the Scratchpad tab drops it again (${page.url()})`);
+
+/* A link to a tin the session never opened falls back to the transcript, and the address stops claiming it. */
+await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${WITH_TINS}?tin=st-nope`, { waitUntil: 'domcontentloaded' });
+await page.locator('[data-session-tins] [data-session-tin]').first().waitFor({ timeout: 20_000 }).catch(() => {});
+await page.waitForTimeout(1_000);
+record(
+  (await page.locator('[data-tin-log]').count()) === 0 &&
+    (await page.locator('[data-subview]').getAttribute('data-subview').catch(() => null)) === 'transcript',
+  'a ?tin= the session does not have opens the transcript',
+);
+record(tinParam() === null, `and is dropped from the address (${page.url()})`);
 
 /* A session that opened no tins: the tab is there and cannot be pressed. */
 await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${WITHOUT}`, { waitUntil: 'domcontentloaded' });

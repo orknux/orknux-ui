@@ -75,14 +75,20 @@ export interface TinInfo {
 export interface TinRemoteSession {
   id: string;
   status: string;
-  runtime: string;
+  /** Null for a recorded session the tin no longer holds. */
+  runtime: string | null;
   image: string | null;
   labels: string;
   createdAt: string;
   lastActivityAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
   runningExecutions: number;
   totalExecutions: number;
+  /** The conversation that opened it, and its page with this session open; null when nobody here opened it. */
+  orknuxSessionId: string | null;
+  orknuxSessionUrl: string | null;
+  agentName: string | null;
+  active: boolean;
 }
 
 export interface TinConnectionTest {
@@ -97,6 +103,8 @@ export interface SessionTin {
   tinId: string;
   tinName: string;
   tinKind: TinKind;
+  /** The tin's label, or null where it has none. */
+  tinLabel: string | null;
   remoteSessionId: string;
   active: boolean;
   status: string;
@@ -141,7 +149,7 @@ const RUNTIME_FIELDS =
   'name available unavailableReason os workdir shell defaultImage images networkModes caches ' +
   'defaultCpus defaultMemoryMb maxCpus maxMemoryMb diskLimitEnforced';
 
-const SESSION_TIN_FIELDS = 'id tinId tinName tinKind remoteSessionId active status createdAt lastUsedAt';
+const SESSION_TIN_FIELDS = 'id tinId tinName tinKind tinLabel remoteSessionId active status createdAt lastUsedAt';
 
 export async function fetchTins(): Promise<Tin[]> {
   const data = await graphql<{ tins: Tin[] }>(`query Tins { tins { ${TIN_FIELDS} } }`);
@@ -173,6 +181,7 @@ export async function fetchTinSessions(id: string): Promise<TinRemoteSession[]> 
     `query TinSessions($id: ID!) {
        tinSessions(id: $id) {
          id status runtime image labels createdAt lastActivityAt expiresAt runningExecutions totalExecutions
+         orknuxSessionId orknuxSessionUrl agentName active
        }
      }`,
     { id },
@@ -200,6 +209,12 @@ export async function updateTin(id: string, input: TinInput): Promise<Tin> {
     { id, input },
   );
   return data.updateTin;
+}
+
+/** The stored token, for the eye on the token box. Administrators only, and audited. */
+export async function revealTinToken(id: string): Promise<string | null> {
+  const data = await graphql<{ revealTinToken: string | null }>(`mutation RevealTinToken($id: ID!) { revealTinToken(id: $id) }`, { id });
+  return data.revealTinToken;
 }
 
 export async function deleteTin(id: string): Promise<boolean> {
@@ -247,4 +262,43 @@ export async function fetchSessionTinLog(sessionId: string, sessionTinId: string
     { sessionId, sessionTinId, after: after ?? null },
   );
   return data.sessionTinLog;
+}
+
+/** A stretch of what one command printed, stdout and stderr together as the tin interleaved them. */
+export interface TinOutput {
+  text: string;
+  /** Where this stretch starts, in bytes. */
+  offset: number;
+  /** Where the next read starts: `offset` plus the bytes returned. */
+  nextOffset: number;
+  /** The command has finished and everything it printed has been read. */
+  done: boolean;
+  /** False when the output cannot be had; `message` says why. */
+  available: boolean;
+  /** Why it cannot be had, or a word about text that is handed over anyway. */
+  message: string | null;
+  /** The most of one output the interface reads and holds, in bytes - an Admin Settings knob. */
+  shownLimit: number;
+}
+
+/**
+ * One execution's output from `offset` (default 0), at most `limit` bytes
+ * (the server's default is 16 KB). A reader follows `nextOffset` until `done`.
+ */
+export async function fetchSessionTinOutput(
+  sessionId: string,
+  sessionTinId: string,
+  executionId: string,
+  offset?: number,
+  limit?: number,
+): Promise<TinOutput> {
+  const data = await graphql<{ sessionTinOutput: TinOutput }>(
+    `query SessionTinOutput($sessionId: ID!, $sessionTinId: ID!, $executionId: String!, $offset: Int, $limit: Int) {
+       sessionTinOutput(sessionId: $sessionId, sessionTinId: $sessionTinId, executionId: $executionId, offset: $offset, limit: $limit) {
+         text offset nextOffset done available message shownLimit
+       }
+     }`,
+    { sessionId, sessionTinId, executionId, offset: offset ?? null, limit: limit ?? null },
+  );
+  return data.sessionTinOutput;
 }

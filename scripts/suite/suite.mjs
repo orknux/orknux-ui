@@ -3863,6 +3863,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-picker-keys-check',
+    what: "the chat's agent picker walked with the arrow keys, skipping an inactive agent, and Enter choosing",
+    needs: ['workspace'],
+    /* Makes three scratch agents of its own on the workspace's chat model, so the order is known. */
+  },
+  {
     name: 'chat-working-check',
     what: 'a chat drawing what the model thought and what it looked up, and keeping neither inside the answer',
     needs: ['model'],

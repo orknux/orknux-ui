@@ -230,6 +230,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const [pickerSearch, setPickerSearch] = useState('');
+  /** Which agent the arrow keys are on, by id; null until one is pressed. */
+  const [pickerFocus, setPickerFocus] = useState<string | null>(null);
 
   const [draft, setDraft] = useState('');
   /*
@@ -2484,7 +2486,10 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               <button
                 type="button"
                 className={styles.modelButton}
-                onClick={() => setPickerOpen(!pickerOpen)}
+                onClick={() => {
+                  setPickerOpen(!pickerOpen);
+                  setPickerFocus(null);
+                }}
                 aria-expanded={pickerOpen}
               >
                 <span className={current.modelName === null ? styles.modelUnset : styles.modelName}>
@@ -2518,7 +2523,30 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                     <input
                       className={styles.searchInput}
                       value={pickerSearch}
-                      onChange={(event) => setPickerSearch(event.target.value)}
+                      onChange={(event) => {
+                        setPickerSearch(event.target.value);
+                        setPickerFocus(null);
+                      }}
+                      onKeyDown={(event) => {
+                        /*
+                          Up and down walk the agents that can answer, Enter
+                          takes the one walked to - or the first, so typing a
+                          name and pressing Enter is enough.
+                        */
+                        const choosable = pickerEntries.filter((entry) => entry.enabled);
+                        if (choosable.length === 0) return;
+                        const at = choosable.findIndex((entry) => entry.id === pickerFocus);
+                        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                          event.preventDefault();
+                          const step = event.key === 'ArrowDown' ? 1 : -1;
+                          const next = at === -1 ? (step === 1 ? 0 : choosable.length - 1) : (at + step + choosable.length) % choosable.length;
+                          setPickerFocus(choosable[next].id);
+                          document.querySelector(`[data-picker-entry="${choosable[next].id}"]`)?.scrollIntoView({ block: 'nearest' });
+                        } else if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void handleChoose((at === -1 ? choosable[0] : choosable[at]).id);
+                        }
+                      }}
                       placeholder={t('Search')}
                       aria-label={t('Search models')}
                       autoFocus
@@ -2542,9 +2570,12 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       <button
                         key={entry.id}
                         type="button"
-                        className={
-                          entry.id === current.agentId ? styles.pickerEntryCurrent : styles.pickerEntry
-                        }
+                        className={[
+                          entry.id === current.agentId ? styles.pickerEntryCurrent : styles.pickerEntry,
+                          entry.id === pickerFocus ? styles.pickerEntryFocused : '',
+                        ].join(' ')}
+                        data-picker-entry={entry.id}
+                        data-focused={entry.id === pickerFocus ? 'true' : undefined}
                         // An agent switched off, or with no model chosen, cannot
                         // answer; the server says so too, but there is no reason
                         // to offer it as a choice.

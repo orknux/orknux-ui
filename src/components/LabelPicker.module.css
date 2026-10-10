@@ -7,7 +7,7 @@
 .picker {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-10);
   min-width: 0;
 }
 
@@ -15,12 +15,12 @@
 .suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-4);
+  gap: var(--space-8);
 }
 
 /* A label is removed by clicking it, which is what the × says. */
 .chip {
-  padding: var(--space-2) var(--space-8);
+  padding: var(--space-4) var(--space-10);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-4);
@@ -37,7 +37,7 @@
 
 .input {
   max-width: 320px;
-  padding: var(--space-6) var(--space-8);
+  padding: var(--space-8) var(--space-12);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-4);
@@ -58,7 +58,7 @@
 }
 
 .suggestion {
-  padding: var(--space-2) var(--space-6);
+  padding: var(--space-4) var(--space-10);
   background: none;
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-4);

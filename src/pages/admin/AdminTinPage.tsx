@@ -10,6 +10,7 @@ import {
   fetchTinInfo,
   fetchTinLabels,
   fetchTinSessions,
+  revealTinToken,
   testTinConnection,
   tinKindLabel,
   updateTin,
@@ -21,6 +22,7 @@ import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
+import { RevealToggle } from '../../components/RevealToggle';
 import { Loader } from '../../components/Loader';
 import { duration } from '../workspace/WorkspaceWatchersPage';
 import { shellUser } from '../../session/user';
@@ -74,6 +76,8 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
   /** What is typed in the token box. Empty keeps what is stored, unless clearing was asked for. */
   const [token, setToken] = useState('');
   const [clearToken, setClearToken] = useState(false);
+  /** Whether the token box shows what is in it. */
+  const [shown, setShown] = useState(false);
   const [knownLabels, setKnownLabels] = useState<string[]>([]);
 
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +163,35 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
 
   useEffect(loadDetails, [loadDetails]);
 
-  const complete = local ? true : name.trim() !== '' && address.trim() !== '';
+  /* A tin with no label is no agent's, so a label is asked for up front. */
+  const complete = !local && name.trim() !== '' && address.trim() !== '' && label.trim() !== '';
+  /** What is still missing, said on hover over a Save that will not press. */
+  const missing = [
+    name.trim() === '' ? t('Name') : null,
+    address.trim() === '' ? t('Address') : null,
+    label.trim() === '' ? t('Label') : null,
+  ].filter((one): one is string => one !== null);
+
+  /**
+   * Shows or hides the token. A held token is fetched only when asked for, and
+   * that is written to the audit log; it then sits in the box like a typed one.
+   */
+  async function toggleReveal() {
+    if (shown) {
+      setShown(false);
+      return;
+    }
+    if (token === '' && !clearToken && tin?.hasToken === true && tinId !== undefined) {
+      try {
+        const held = await revealTinToken(tinId);
+        if (held !== null) setToken(held);
+      } catch (cause) {
+        setTestError(cause instanceof Error ? cause.message : t('Could not show the token.'));
+        return;
+      }
+    }
+    setShown(true);
+  }
 
   /** The token as a save sends it: null keeps the stored one, "" clears it. */
   function tokenSent(): string | null {
@@ -251,7 +283,29 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{called}</span>
         </p>
-        <h1 className={styles.pageTitle}>{called}</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>{called}</h1>
+          {/* Save beside the title, as on the other settings pages: the form is long and the details follow it. */}
+          {/* The local tin has nothing of its own to save: its label is fixed and its settings are Admin Settings. */}
+          {loadError === null && !local && (adding || tin !== null) && (
+            <div className={styles.headerActions}>
+              {/*
+                The title is on a wrapper, and the disabled button lets the
+                pointer through to it: a disabled control receives no mouse
+                events, so a title on it - or on a parent it covers - never shows.
+              */}
+              <span
+                className={styles.saveWrap}
+                title={missing.length > 0 ? tf('Fill in: {fields}', { fields: missing.join(', ') }) : undefined}
+                data-tin-save-blocked={missing.length > 0 ? 'true' : undefined}
+              >
+                <button type="submit" form="tin-form" className={styles.primaryButton} disabled={!complete || saving} data-tin-save="">
+                  {saving ? t('Saving…') : adding ? t('Add tin') : t('Save')}
+                </button>
+              </span>
+            </div>
+          )}
+        </div>
         {tin !== null && (
           <p className={styles.subtitle} data-tin-kind={tin.kind}>
             {tinKindLabel(tin.kind)}
@@ -273,7 +327,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
           <Loader />
         </section>
       ) : (
-        <form className={styles.form} onSubmit={handleSubmit}>
+        <form id="tin-form" className={styles.form} onSubmit={handleSubmit}>
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>{t('Tin')}</h2>
             <div className={styles.divider} />
@@ -341,14 +395,15 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                     {t('API token')}
                   </label>
                   <FieldHint label={t('API token')}>
-                    {t('Stored encrypted and never shown again; leaving the box empty keeps whatever is already stored.')}
+                    {t('Stored encrypted; the eye shows it. Leaving the box empty keeps whatever is already stored.')}
                   </FieldHint>
                 </span>
+                <div className={styles.secretRow}>
                 <input
                   id="tin-token"
                   name="tinToken"
                   className={`${styles.input} ${styles.inputMono}`}
-                  type="password"
+                  type={shown ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder={tin?.hasToken === true ? t('Stored; type to replace') : t('Optional')}
                   value={token}
@@ -360,6 +415,8 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                   }}
                   disabled={clearToken}
                 />
+                <RevealToggle shown={shown} onToggle={() => void toggleReveal()} label={t('API token')} />
+                </div>
                 {tin?.hasToken === true && (
                   <label className={styles.checkboxField}>
                     <input
@@ -379,7 +436,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
             <div className={styles.field}>
               <span className={styles.labelWithHint}>
                 <label className={styles.label} htmlFor="tin-label">
-                  {t('Label')}
+                  {t('Label')} {!local && <span className={styles.required}>*</span>}
                 </label>
                 <FieldHint label={t('Label')}>
                   {t('What an agent is granted this tin by. Several tins may share a label, and an agent holding it may be given any of them.')}
@@ -394,6 +451,8 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                 spellCheck={false}
                 placeholder={t('e.g. build')}
                 value={label}
+                required={!local}
+                readOnly={local}
                 onChange={(event) => setLabel(event.target.value)}
               />
               <datalist id="tin-label-suggestions">
@@ -445,9 +504,6 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                   {testing ? t('Testing…') : t('Test connection')}
                 </button>
               )}
-              <button type="submit" className={styles.primaryButton} disabled={!complete || saving}>
-                {saving ? t('Saving…') : adding ? t('Add tin') : t('Save')}
-              </button>
             </div>
           </div>
         </form>
@@ -473,16 +529,16 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
               <>
                 <dl className={styles.facts}>
                   <Fact name={t('Version')} value={info.version} />
-                  <Fact name={t('Reports itself as')} value={info.name} />
+                  <Fact name={t('Service')} value={info.name} />
                   <Fact name={t('Default runtime')} value={info.defaultRuntime} />
                   <Fact name={t('Default lifetime')} value={duration(info.defaultTtlSeconds)} />
                   <Fact name={t('Longest lifetime')} value={duration(info.maxTtlSeconds)} />
                   <Fact name={t('Idle timeout')} value={duration(info.defaultIdleTimeoutSeconds)} />
                   <Fact name={t('Sessions at most')} value={String(info.maxSessions)} />
+                  {info.runtimes.map((runtime) => (
+                    <RuntimeFacts key={runtime.name} runtime={runtime} />
+                  ))}
                 </dl>
-                {info.runtimes.map((runtime) => (
-                  <RuntimeBlock key={runtime.name} runtime={runtime} />
-                ))}
               </>
             )}
           </section>
@@ -502,7 +558,7 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
               <div className={styles.table}>
                 <div className={styles.tableHead}>
                   <span className={styles.colId}>{t('Session')}</span>
-                  <span className={styles.colStatus}>{t('Status')}</span>
+                  <span className={styles.colStatus}>{t('Agent')}</span>
                   <span className={styles.colRuntime}>{t('Runtime')}</span>
                   <span className={styles.colWhen}>{t('Last activity')}</span>
                   <span className={styles.colWhen}>{t('Expires')}</span>
@@ -510,18 +566,28 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
                 </div>
                 {sessions.map((one) => (
                   <div key={one.id} className={styles.tableRow} data-tin-session={one.id}>
-                    <span className={`${styles.colId} ${styles.mono}`} title={one.labels === '' ? undefined : one.labels}>
-                      {one.id}
+                    <span className={`${styles.colId} ${styles.mono}`} title={one.labels === '{}' ? undefined : one.labels}>
+                      {/* A session an agent here opened links to its conversation, with the tin's log open. */}
+                      {one.orknuxSessionUrl !== null ? (
+                        <Link to={one.orknuxSessionUrl} className={styles.sessionLink} data-tin-session-link="">
+                          {one.id}
+                        </Link>
+                      ) : (
+                        one.id
+                      )}
                     </span>
-                    <span className={styles.colStatus}>{one.status}</span>
+                    <span className={styles.colStatus} title={one.status}>
+                      <span className={`${styles.dot} ${one.active ? styles.dotUp : styles.dotIdle}`} aria-hidden="true" />{' '}
+                      {one.agentName ?? (one.orknuxSessionId === null ? t('another client') : '—')}
+                    </span>
                     <span className={styles.colRuntime} title={one.image ?? undefined}>
-                      {one.image === null ? one.runtime : `${one.runtime} · ${one.image}`}
+                      {one.runtime === null ? '—' : one.image === null ? one.runtime : `${one.runtime} · ${one.image}`}
                     </span>
                     <span className={styles.colWhen} title={one.lastActivityAt}>
                       {timeAgo(one.lastActivityAt)}
                     </span>
-                    <span className={styles.colWhen} title={one.expiresAt}>
-                      {new Date(one.expiresAt).toLocaleString()}
+                    <span className={styles.colWhen} title={one.expiresAt ?? undefined}>
+                      {one.expiresAt === null ? '—' : new Date(one.expiresAt).toLocaleString()}
                     </span>
                     <span className={styles.colRuns}>
                       {one.runningExecutions} / {one.totalExecutions}
@@ -587,6 +653,8 @@ export function AdminTinPage({ session, onSignOut }: AdminTinPageProps) {
 }
 
 function Fact({ name, value }: { name: string; value: string }) {
+  /* A fact the runtime does not have - an image on the local runtime, say - is left out, not drawn as a dash. */
+  if (/^[—\s/]*$/.test(value)) return null;
   return (
     <div className={styles.fact}>
       <dt className={styles.factName}>{name}</dt>
@@ -595,29 +663,33 @@ function Fact({ name, value }: { name: string; value: string }) {
   );
 }
 
-/** One runtime the tin offers, and every limit it says it has. */
-function RuntimeBlock({ runtime }: { runtime: TinRuntime }) {
+/**
+ * One runtime the tin offers, as more rows of the same sheet: a Runtime row
+ * saying which and whether it can run anything, then every limit it has.
+ */
+function RuntimeFacts({ runtime }: { runtime: TinRuntime }) {
   return (
-    <div className={styles.runtime} data-tin-runtime={runtime.name}>
-      <div className={styles.runtimeHead}>
-        <span className={`${styles.dot} ${runtime.available ? styles.dotUp : styles.dotDown}`} aria-hidden="true" />
-        <h3 className={styles.runtimeName}>{runtime.name}</h3>
-        <span className={styles.runtimeState} title={runtime.unavailableReason ?? undefined}>
-          {runtime.available ? t('Available') : said(runtime.unavailableReason)}
-        </span>
+    <>
+      <div className={styles.fact} data-tin-runtime={runtime.name}>
+        <dt className={styles.factName}>{t('Runtime')}</dt>
+        <dd className={styles.factValue}>
+          <span className={styles.runtimeValue} title={runtime.unavailableReason ?? undefined}>
+            <span className={`${styles.dot} ${runtime.available ? styles.dotUp : styles.dotDown}`} aria-hidden="true" />
+            {runtime.name}
+            <span className={styles.runtimeState}>{runtime.available ? t('available') : said(runtime.unavailableReason)}</span>
+          </span>
+        </dd>
       </div>
-      <dl className={styles.facts}>
-        <Fact name={t('Operating system')} value={runtime.os} />
-        <Fact name={t('Working directory')} value={said(runtime.workdir)} />
-        <Fact name={t('Shell')} value={list(runtime.shell)} />
-        <Fact name={t('Default image')} value={said(runtime.defaultImage)} />
-        <Fact name={t('Images')} value={list(runtime.images)} />
-        <Fact name={t('Network modes')} value={list(runtime.networkModes)} />
-        <Fact name={t('Caches')} value={list(runtime.caches)} />
-        <Fact name={t('CPUs, default / most')} value={`${said(runtime.defaultCpus)} / ${said(runtime.maxCpus)}`} />
-        <Fact name={t('Memory MB, default / most')} value={`${said(runtime.defaultMemoryMb)} / ${said(runtime.maxMemoryMb)}`} />
-        <Fact name={t('Disk limit enforced')} value={yesNo(runtime.diskLimitEnforced)} />
-      </dl>
-    </div>
+      <Fact name={t('Operating system')} value={runtime.os} />
+      <Fact name={t('Working directory')} value={said(runtime.workdir)} />
+      <Fact name={t('Shell')} value={runtime.shell.join(' ')} />
+      <Fact name={t('Default image')} value={said(runtime.defaultImage)} />
+      <Fact name={t('Images')} value={list(runtime.images)} />
+      <Fact name={t('Network modes')} value={list(runtime.networkModes)} />
+      <Fact name={t('Caches')} value={list(runtime.caches)} />
+      <Fact name={t('CPUs, default / most')} value={`${said(runtime.defaultCpus)} / ${said(runtime.maxCpus)}`} />
+      <Fact name={t('Memory MB, default / most')} value={`${said(runtime.defaultMemoryMb)} / ${said(runtime.maxMemoryMb)}`} />
+      <Fact name={t('Disk limit enforced')} value={yesNo(runtime.diskLimitEnforced)} />
+    </>
   );
 }

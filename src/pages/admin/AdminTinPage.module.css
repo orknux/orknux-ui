@@ -11,6 +11,32 @@
   width: 100%;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.saveWrap {
+  display: inline-flex;
+}
+
+.saveWrap[data-tin-save-blocked] {
+  cursor: not-allowed;
+}
+
+.saveWrap > button:disabled {
+  pointer-events: none;
+}
+
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 .breadcrumbs {
   display: flex;
   align-items: center;
@@ -209,6 +235,19 @@
   background: var(--color-success);
 }
 
+.dotIdle {
+  background: var(--color-warning, #d29922);
+}
+
+.sessionLink {
+  color: var(--color-accent-brand);
+  text-decoration: none;
+}
+
+.sessionLink:hover {
+  text-decoration: underline;
+}
+
 .dotDown {
   background: var(--color-danger-solid);
 }
@@ -334,18 +373,32 @@
   gap: var(--space-16);
 }
 
+/* A property sheet: the name on the left, its value on the right, one fact a row. */
 .facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-12) var(--space-24);
+  display: flex;
+  flex-direction: column;
   margin: 0;
 }
 
 .fact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: baseline;
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid var(--color-border);
   min-width: 0;
+}
+
+.fact:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
 }
 
 .factName {
@@ -384,6 +437,12 @@
   font-weight: 600;
   font-size: var(--text-base);
   color: var(--color-text-primary);
+}
+
+.runtimeValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 .runtimeState {
@@ -460,4 +519,16 @@
 
 .mono {
   font-family: var(--font-mono);
+}
+
+/* The token box and its eye, side by side. */
+.secretRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.secretRow > input {
+  flex: 1 1 auto;
+  min-width: 0;
 }

@@ -14,7 +14,7 @@ import { Loader } from '../../components/Loader';
 import { ordered, useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './AdminTinsPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface AdminTinsPageProps {
   session: SessionUser;
@@ -130,7 +130,7 @@ export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
             <div className={styles.colKind} data-tin-cell="kind">
               {tinKindLabel(tin.kind)}
             </div>
-            <div className={styles.colHealth} data-tin-cell="health" title={tin.health?.detail ?? undefined}>
+            <div className={styles.colHealth} data-tin-cell="health" title={healthTitle(tin)}>
               {tin.health === null ? (
                 <span className={styles.none}>—</span>
               ) : (
@@ -169,4 +169,13 @@ export function AdminTinsPage({ session, onSignOut }: AdminTinsPageProps) {
       </section>
     </AppShell>
   );
+}
+
+/** What the health dot means, said short on hover. */
+function healthTitle(tin: Tin): string | undefined {
+  if (tin.health === null) return undefined;
+  if (tin.health.status === 'UP') return t('Healthy: ready to take sessions');
+  return tin.health.detail === null
+    ? t('Unhealthy: cannot take sessions right now')
+    : tf('Unhealthy: {reason}', { reason: tin.health.detail });
 }

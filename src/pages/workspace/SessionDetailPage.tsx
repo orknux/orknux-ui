@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { startChat } from '../../api/chat';
 import { fetchInstallationSettings } from '../../api/installation';
@@ -48,6 +48,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './SessionDetailPage.module.css';
+import { TinOutput } from './TinOutput';
 import { t } from '../../i18n';
 
 export interface SessionDetailPageProps {
@@ -98,7 +99,8 @@ function tinSummary(data: string): string {
   const plain = (one: unknown) => typeof one === 'string' || typeof one === 'number' || typeof one === 'boolean';
   const keys = [
     ...TIN_SUMMARY_KEYS.filter((key) => key in held),
-    ...Object.keys(held).filter((key) => !TIN_SUMMARY_KEYS.includes(key)),
+    // The execution id is what the output is read by, not something a reader of the line needs.
+    ...Object.keys(held).filter((key) => !TIN_SUMMARY_KEYS.includes(key) && key !== 'executionId'),
   ].filter((key) => plain(held[key]) || (Array.isArray(held[key]) && (held[key] as unknown[]).every(plain)));
   const parts = keys.map((key) => {
     const one = held[key];
@@ -107,6 +109,14 @@ function tinSummary(data: string): string {
     return `${key}: ${text}`;
   });
   return oneLine(parts.length === 0 ? JSON.stringify(held) : parts.join(' · '));
+}
+
+/** The execution an event is about, where it names one - what its output is read by. */
+function executionOf(data: string): string | null {
+  const value = parsed(data);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  const id = (value as Record<string, unknown>).executionId;
+  return typeof id === 'string' && id !== '' ? id : typeof id === 'number' ? String(id) : null;
 }
 
 function oneLine(text: string): string {
@@ -690,11 +700,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
    * of the transcript.
    */
   const [sessionTins, setSessionTins] = useState<SessionTin[] | null>(null);
+  /** Which session the list above answered for, so a link's `?tin=` is never judged against the last session's tins. */
+  const [sessionTinsFor, setSessionTinsFor] = useState<string | null>(null);
   const loadSessionTins = useCallback(() => {
     if (sessionId === '') return;
     fetchSessionTins(sessionId)
-      .then(setSessionTins)
-      .catch(() => setSessionTins(null));
+      .then((list) => {
+        setSessionTins(list);
+        setSessionTinsFor(sessionId);
+      })
+      .catch(() => {
+        setSessionTins(null);
+        setSessionTinsFor(sessionId);
+      });
   }, [sessionId]);
   useEffect(loadSessionTins, [loadSessionTins]);
 
@@ -774,12 +792,46 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [tinNextSeq, setTinNextSeq] = useState<number | null>(null);
   /** Null while the log has not answered; otherwise the tin's own word on whether it could hand it over. */
   const [tinAvailable, setTinAvailable] = useState<{ available: boolean; message: string | null } | null>(null);
+  /** Newest first unless the reader turned it round; remembered in this browser. */
+  const [tinNewestFirst, setTinNewestFirst] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('orknux.tin-log.order') !== 'oldest';
+    } catch {
+      return true;
+    }
+  });
+  const turnTinLog = useCallback(() => {
+    setTinNewestFirst((held) => {
+      try {
+        localStorage.setItem('orknux.tin-log.order', held ? 'oldest' : 'newest');
+      } catch {
+        /* a convenience only */
+      }
+      return !held;
+    });
+  }, []);
   const [tinError, setTinError] = useState<string | null>(null);
   /** Which events are drawn with their whole JSON. */
   const [tinExpanded, setTinExpanded] = useState<number[]>([]);
+  /**
+   * Which executions are open, and under which of their lines the output is
+   * drawn. Keyed by the execution rather than the event, so its started and
+   * finished lines open and close the same output rather than two copies of it.
+   */
+  const [tinOpenExecutions, setTinOpenExecutions] = useState<Record<string, number>>({});
+  /** Execution lines whose raw JSON is shown as well as their output. */
+  const [tinJsonShown, setTinJsonShown] = useState<number[]>([]);
   /** The tin session open now, for an answer to check it is still wanted when it lands. */
   const openTinNow = useRef<string | null>(null);
   openTinNow.current = openTin;
+
+  /*
+   * `?tin=` names a tin session to open on arrival - the link an agent hands a
+   * person. Held here until the session's tins have answered, and only then
+   * opened or, where the session has no such tin, dropped for the transcript.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tinFromUrl = useRef<string | null>(null);
 
   /* A different session is a different set of pads; drop back to its transcript. */
   useEffect(() => {
@@ -787,7 +839,23 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
     setPadContent(null);
     setCreating(false);
     setOpenTin(null);
+    tinFromUrl.current = new URLSearchParams(window.location.search).get('tin');
   }, [sessionId]);
+
+  /* The address says which tin session is open, replaced rather than pushed so Back leaves the page. */
+  const tinInUrl = searchParams.get('tin');
+  useEffect(() => {
+    if (tinFromUrl.current !== null || openTin === tinInUrl) return;
+    setSearchParams(
+      (held) => {
+        const next = new URLSearchParams(held);
+        if (openTin === null) next.delete('tin');
+        else next.set('tin', openTin);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [openTin, tinInUrl, setSearchParams]);
 
   const backToTranscript = useCallback(() => {
     setOpenPad(null);
@@ -810,6 +878,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       setTinAvailable(null);
       setTinError(null);
       setTinExpanded([]);
+      setTinOpenExecutions({});
+      setTinJsonShown([]);
       fetchSessionTinLog(sessionId, id)
         .then((log) => {
           if (openTinNow.current !== id) return;
@@ -824,6 +894,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
     },
     [sessionId],
   );
+
+  /* A linked tin session, opened once the session's tins say it is one of them; otherwise the transcript, and the address says so. */
+  useEffect(() => {
+    const wanted = tinFromUrl.current;
+    if (wanted === null || sessionTinsFor !== sessionId) return;
+    tinFromUrl.current = null;
+    if (sessionTins?.some((one) => one.id === wanted)) {
+      openSessionTin(wanted);
+      return;
+    }
+    setSearchParams(
+      (held) => {
+        const next = new URLSearchParams(held);
+        next.delete('tin');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [sessionTins, sessionTinsFor, sessionId, openSessionTin, setSearchParams]);
 
   /** What has been written since the last read, added under what is there. */
   const followTin = useCallback(() => {
@@ -847,18 +936,20 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [sessionId, openTin, tinNextSeq]);
 
   const openTinRow = sessionTins?.find((one) => one.id === openTin) ?? null;
-  const tinLive = openTinRow !== null && openTinRow.active;
 
   /*
-   * While the tin session is still active its log is still being written, so it
-   * is asked again every couple of seconds from where the last answer ended. A
-   * closed one has nothing more to say and is left alone.
+   * An open log is asked again every couple of seconds from where the last
+   * answer ended, for as long as it is open. It used to stop when the panel
+   * said the session was no longer active - but the panel is only as fresh as
+   * its last load, so a session it had not caught up with drew nothing new
+   * until the page was refreshed by hand. Asking costs one small query; a
+   * closed session simply answers with nothing.
    */
   useEffect(() => {
-    if (!tinLive || tinNextSeq === null) return;
+    if (openTin === null || tinNextSeq === null) return;
     const timer = window.setInterval(followTin, TIN_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [tinLive, tinNextSeq, followTin]);
+  }, [openTin, tinNextSeq, followTin]);
 
   const openScratchpad = useCallback(
     (name: string) => {
@@ -1506,6 +1597,15 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   {openTinRow.status}
                 </span>
               )}
+              <button
+                type="button"
+                className={styles.continue}
+                onClick={turnTinLog}
+                data-tin-log-order={tinNewestFirst ? 'newest' : 'oldest'}
+                title={tinNewestFirst ? t('Newest first. Press to show oldest first.') : t('Oldest first. Press to show newest first.')}
+              >
+                {tinNewestFirst ? t('Newest first ↓') : t('Oldest first ↑')}
+              </button>
               <button type="button" className={styles.continue} onClick={followTin} disabled={tinNextSeq === null}>
                 {t('Refresh')}
               </button>
@@ -1521,6 +1621,12 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               <Loader />
             </p>
           )}
+          {/* A log kept from before the tin restarted comes with a word saying so, above the events. */}
+          {tinAvailable !== null && tinAvailable.available && tinAvailable.message !== null && (
+            <p className={styles.notice} data-tin-log-note="">
+              {tinAvailable.message}
+            </p>
+          )}
           {tinAvailable !== null && !tinAvailable.available && (
             <p className={styles.notice} data-tin-log-unavailable="">
               {tinAvailable.message ?? t('The tin could not hand its log over.')}
@@ -1531,19 +1637,38 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           )}
           {tinEvents.length > 0 && (
             <ol className={styles.tinLog}>
-              {tinEvents.map((event) => {
-                const open = tinExpanded.includes(event.seq);
+              {(tinNewestFirst ? [...tinEvents].reverse() : tinEvents).map((event) => {
+                const execution = executionOf(event.data);
+                const open =
+                  execution !== null ? execution in tinOpenExecutions : tinExpanded.includes(event.seq);
+                /* An execution's output is drawn once, under the line it was opened from. */
+                const drawsOutput = execution !== null && tinOpenExecutions[execution] === event.seq;
+                const jsonShown = tinJsonShown.includes(event.seq);
                 return (
-                  <li key={event.seq} className={styles.tinEvent} data-tin-event={event.seq}>
+                  <li
+                    key={event.seq}
+                    className={styles.tinEvent}
+                    data-tin-event={event.seq}
+                    data-tin-execution={execution ?? undefined}
+                  >
                     <button
                       type="button"
                       className={styles.tinEventLine}
                       aria-expanded={open}
-                      onClick={() =>
-                        setTinExpanded((held) =>
-                          held.includes(event.seq) ? held.filter((one) => one !== event.seq) : [...held, event.seq],
-                        )
-                      }
+                      onClick={() => {
+                        if (execution === null) {
+                          setTinExpanded((held) =>
+                            held.includes(event.seq) ? held.filter((one) => one !== event.seq) : [...held, event.seq],
+                          );
+                          return;
+                        }
+                        setTinOpenExecutions((held) => {
+                          const next = { ...held };
+                          if (execution in next) delete next[execution];
+                          else next[execution] = event.seq;
+                          return next;
+                        });
+                      }}
                     >
                       <span className={styles.tinEventTime} title={event.at}>
                         {clockOf(event.at)}
@@ -1553,7 +1678,28 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                         {tinSummary(event.data)}
                       </span>
                     </button>
-                    {open && <pre className={styles.tinEventJson}>{prettyJson(event.data)}</pre>}
+                    {open && execution === null && <pre className={styles.tinEventJson}>{prettyJson(event.data)}</pre>}
+                    {drawsOutput && openTin !== null && (
+                      <>
+                        <TinOutput sessionId={sessionId} sessionTinId={openTin} executionId={execution} />
+                        <div className={styles.tinJsonBar}>
+                          <button
+                            type="button"
+                            className={styles.tinJsonToggle}
+                            aria-expanded={jsonShown}
+                            onClick={() =>
+                              setTinJsonShown((held) =>
+                                held.includes(event.seq) ? held.filter((one) => one !== event.seq) : [...held, event.seq],
+                              )
+                            }
+                            data-tin-event-json-toggle=""
+                          >
+                            JSON
+                          </button>
+                        </div>
+                        {jsonShown && <pre className={styles.tinEventJson}>{prettyJson(event.data)}</pre>}
+                      </>
+                    )}
                   </li>
                 );
               })}
@@ -1679,15 +1825,23 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     aria-current={current ? 'page' : undefined}
                     data-session-tin={one.id}
                     data-session-tin-active={one.active ? 'true' : 'false'}
-                    title={`${one.remoteSessionId} · ${one.status}`}
+                    title={[one.tinName, one.tinLabel, one.remoteSessionId, one.status].filter((part) => part !== null && part !== '').join(' · ')}
                     onClick={() => openSessionTin(one.id)}
                   >
                     <span
                       className={one.active ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
                       data-session-tin-dot=""
                     />
-                    <span className={styles.familyName}>{one.tinName}</span>
-                    <span className={styles.padRowBytes}>{one.status}</span>
+                    {/* The dot says the state; the word for it is on hover, in the row's title. */}
+                    <span className={styles.tinRowName}>{one.tinName}</span>
+                    {one.tinLabel !== null && one.tinLabel !== '' && (
+                      <span className={styles.tinRowLabel} data-session-tin-label="">
+                        {one.tinLabel}
+                      </span>
+                    )}
+                    <span className={styles.tinRowId} title={one.remoteSessionId} data-session-tin-id="">
+                      {one.remoteSessionId}
+                    </span>
                   </button>
                 </li>
               );

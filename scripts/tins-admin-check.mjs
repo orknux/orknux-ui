@@ -100,6 +100,13 @@ record(
   `the columns read ${HEADINGS.join(', ')}, left to right (${JSON.stringify(xs)})`,
 );
 
+/* The Name heading starts where the names do, not centred over a stretched button. */
+const nameX = await page.locator('[data-tin-row] a').first().boundingBox().then((box) => box?.x ?? null).catch(() => null);
+record(
+  xs[0] !== null && nameX !== null && Math.abs(xs[0] - nameX) < 8,
+  `the Name heading is aligned left over the names (heading ${xs[0]}, name ${nameX})`,
+);
+
 const row = page.locator(`[data-tin-row="${made.id}"]`);
 record((await row.locator('[data-tin-cell="kind"]').innerText().catch(() => '')).trim() === 'Remote', 'the remote tin reads Remote');
 record((await row.locator('[data-tin-cell="label"]').innerText().catch(() => '')).trim() === 'tins-check', 'and shows its label');
@@ -108,19 +115,23 @@ const health = row.locator('[data-tin-health]');
 const status = await health.getAttribute('data-tin-health').catch(() => null);
 record(status === 'UP' || status === 'DOWN', `its health is a dot (${status})`);
 if (status !== null) {
-  const want = await painted(status === 'UP' ? 'var(--color-success)' : 'var(--color-danger-solid)');
+  const want = await painted(status === 'UP' ? 'var(--color-success, #3fb950)' : 'var(--color-warning, #d29922)');
   const got = await health.evaluate((one) => getComputedStyle(one).backgroundColor).catch(() => null);
   record(got === want, `in the colour of ${status} (${got} against ${want})`);
 }
 record(status !== 'UP', 'and an address that cannot resolve is not drawn as up');
+const healthSays = (await row.locator('[data-tin-cell="health"]').getAttribute('title').catch(() => null)) ?? '';
+record(/^Unhealthy: /.test(healthSays), `hovering it says what that means (${healthSays})`);
 
 if (local === null) {
   console.log('NOTE: the server lists no local tin (switched off here), so its row and page are not checked');
 } else {
   const localRow = page.locator(`[data-tin-row="${local.id}"]`);
   record((await localRow.locator('[data-tin-cell="kind"]').innerText().catch(() => '')).trim() === 'Local', 'the local tin reads Local');
-  record((await localRow.locator('[data-tin-health]').count()) === 0, 'and has no health dot');
-  record((await localRow.locator('[data-tin-cell="health"]').innerText().catch(() => '')).trim() === '—', 'but a dash');
+  const localHealth = await localRow.locator('[data-tin-health]').getAttribute('data-tin-health').catch(() => null);
+  record(localHealth === 'UP' || localHealth === 'DOWN', `and has a health dot of its own too (${localHealth})`);
+  const localSays = (await localRow.locator('[data-tin-cell="health"]').getAttribute('title').catch(() => null)) ?? '';
+  record(/^(Healthy|Unhealthy): /.test(localSays), `with a short status on hover (${localSays})`);
 }
 
 /* ------------------------------------------------ adding one, and removing it */
@@ -129,7 +140,10 @@ await page.getByRole('link', { name: /^Add tin/ }).click();
 await page.waitForURL('**/admin/tins/new', { timeout: 10_000 }).catch(() => {});
 record(page.url().endsWith('/admin/tins/new'), 'Add tin opens the form');
 await page.locator('#tin-name').fill(`${SCRATCH}added`);
+record((await page.locator('label[for="tin-label"] span').filter({ hasText: '*' }).count()) === 1, 'the label is marked required');
 await page.locator('#tin-address').fill(ADDRESS);
+const blocked = (await page.locator('[data-tin-save-blocked]').getAttribute('title').catch(() => null)) ?? '';
+record(blocked === 'Fill in: Label' && (await page.locator('[data-tin-save]').isDisabled()), `a blocked Add tin says why on hover (${blocked})`);
 await page.locator('#tin-label').fill('tins-check');
 
 /* The tester asks about what is typed, before anything is saved. */
@@ -159,9 +173,20 @@ if (added !== null) {
 await page.goto(`${BASE}/admin/tins/${encodeURIComponent(made.id)}`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, "the remote tin's page", { within: 60_000 }), "a remote tin's page opens");
 const token = page.locator('#tin-token');
-record((await token.inputValue().catch(() => null)) === '', 'the token box is empty: a stored token is never shown');
+record((await token.inputValue().catch(() => null)) === '', 'the token box opens empty: a stored token is fetched only when asked for');
 record((await token.getAttribute('type').catch(() => null)) === 'password', 'and is a password box');
 record((await token.getAttribute('data-tin-token-held').catch(() => null)) === 'true', 'which says one is held');
+/* The eye beside it shows the stored token. */
+await page.locator('#tin-token ~ button').first().click();
+await page.waitForTimeout(800);
+record((await token.getAttribute('type').catch(() => null)) === 'text', 'the eye shows it');
+record((await token.inputValue().catch(() => null)) === 'tins-check-token', 'and what it shows is the stored token');
+const saveBox = await page.locator('[data-tin-save]').boundingBox().catch(() => null);
+const titleBox = await page.locator('h1').first().boundingBox().catch(() => null);
+record(
+  saveBox !== null && titleBox !== null && Math.abs(saveBox.y + saveBox.height / 2 - (titleBox.y + titleBox.height / 2)) < 16 && saveBox.x > titleBox.x + titleBox.width,
+  'Save sits in the top right, beside the title',
+);
 const infoError = page.locator('[data-tin-info-error]');
 await infoError.waitFor({ timeout: 30_000 }).catch(() => {});
 record((await infoError.count()) === 1, 'a tin that cannot be reached says so where its details would be');
@@ -177,7 +202,10 @@ if (local !== null) {
   record(await address.isDisabled().catch(() => false), 'and cannot be edited');
   record(await page.locator('#tin-name').isDisabled().catch(() => false), 'nor can its name');
   record((await page.locator('#tin-token').count()) === 0, 'it has no token box');
-  record(!(await page.locator('#tin-label').isDisabled().catch(() => true)), 'its label can be edited');
+  const fixed = page.locator('#tin-label');
+  record((await fixed.getAttribute('readonly').catch(() => null)) !== null, 'its label cannot be edited');
+  record((await fixed.inputValue().catch(() => null)) === 'local', 'and is always local');
+  record((await page.locator('[data-tin-save]').count()) === 0, 'so there is no Save');
   record((await page.locator('[data-tin-delete]').count()) === 0, 'it cannot be deleted');
   record((await page.locator('[data-tin-test]').count()) === 0, 'and has nothing to test');
   const link = page.locator('[data-tin-settings-link]');
@@ -186,6 +214,11 @@ if (local !== null) {
   const info = await graphql(`query ($id: ID!) { tinInfo(id: $id) { version runtimes { name } } }`, { id: local.id }).catch(() => null);
   if (info?.tinInfo !== undefined) {
     const runtimes = page.locator('[data-tin-runtime]');
+    record(
+      (await page.locator('[data-tin-details] dl [data-tin-runtime]').count()) === (await runtimes.count()) &&
+        (await page.locator('[data-tin-details] dl dl').count()) === 0,
+      'a runtime is rows of the same sheet, not a panel inside it',
+    );
     await runtimes.first().waitFor({ timeout: 20_000 }).catch(() => {});
     record((await runtimes.count()) === info.tinInfo.runtimes.length, `every runtime it reports is drawn (${await runtimes.count()})`);
     const details = (await page.locator('[data-tin-details]').innerText().catch(() => '')).replace(/\s+/g, ' ');
@@ -202,7 +235,7 @@ if (local !== null) {
 const SETTINGS =
   'localTinEnabled localTinLocation localTinLocationConfigured localTinRuntime localTinMaxSessions localTinDefaultTtlSeconds ' +
   'localTinMaxTtlSeconds localTinIdleTimeoutSeconds tinCommandWaitSeconds tinCommandWaitSecondsConfigured ' +
-  'tinCommandTimeoutSeconds tinOutputBytes tinRequestTimeoutSeconds';
+  'tinCommandTimeoutSeconds tinOutputBytes localTinOutputKeptBytes localTinOutputKeptBytesConfigured tinOutputShownBytes tinRequestTimeoutSeconds';
 const held = (await graphql(`{ installationSettings { ${SETTINGS} } }`)).installationSettings;
 
 await page.goto(`${BASE}/admin/settings#tins`, { waitUntil: 'domcontentloaded' });
@@ -221,6 +254,8 @@ const BOXES = [
   ['tin-command-wait-seconds', held.tinCommandWaitSeconds, '1', '3600'],
   ['tin-command-timeout-seconds', held.tinCommandTimeoutSeconds, '1', '86400'],
   ['tin-output-kb', Math.round(held.tinOutputBytes / 1024), '1', '4096'],
+  ['tin-output-shown-kb', Math.round(held.tinOutputShownBytes / 1024), '64', '65536'],
+  ['local-tin-output-kept-kb', Math.round(held.localTinOutputKeptBytes / 1024), '0', '16384'],
   ['tin-request-timeout-seconds', held.tinRequestTimeoutSeconds, '1', '600'],
 ];
 for (const [id, value, min, max] of BOXES) {
@@ -252,6 +287,7 @@ await page.waitForTimeout(2_000);
 const stored = (await graphql(`{ installationSettings { tinCommandWaitSeconds } }`)).installationSettings.tinCommandWaitSeconds;
 record(stored === wanted, `the number typed is the number stored (${stored})`);
 record(held.tinCommandWaitSecondsConfigured === 300, `a fresh installation waits 300 seconds (${held.tinCommandWaitSecondsConfigured})`);
+record(held.localTinOutputKeptBytesConfigured === 1048576, `a fresh installation keeps a megabyte of each local command's output for reading (${held.localTinOutputKeptBytesConfigured})`);
 
 /* --------------------------------------------------------------- put back */
 

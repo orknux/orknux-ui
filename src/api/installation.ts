@@ -252,6 +252,12 @@ export interface InstallationSettings {
   tinCommandTimeoutSecondsConfigured: number;
   tinOutputBytes: number;
   tinOutputBytesConfigured: number;
+  /** How much of one command's output the session page reads and holds, in bytes. */
+  tinOutputShownBytes: number;
+  tinOutputShownBytesConfigured: number;
+  /** How much of each command's output is kept for reading on the session page, in bytes; 0 keeps none. */
+  localTinOutputKeptBytes: number;
+  localTinOutputKeptBytesConfigured: number;
   tinRequestTimeoutSeconds: number;
   tinRequestTimeoutSecondsConfigured: number;
   /** Server updates, #584: how many jars are kept for rolling back to. */
@@ -291,8 +297,9 @@ const FIELDS =
   'localTinEnabled localTinLocation localTinLocationConfigured localTinRuntime ' +
   'localTinMaxSessions localTinMaxSessionsConfigured localTinDefaultTtlSeconds localTinDefaultTtlSecondsConfigured ' +
   'localTinMaxTtlSeconds localTinMaxTtlSecondsConfigured localTinIdleTimeoutSeconds localTinIdleTimeoutSecondsConfigured ' +
+  'localTinOutputKeptBytes localTinOutputKeptBytesConfigured ' +
   'tinCommandWaitSeconds tinCommandWaitSecondsConfigured tinCommandTimeoutSeconds tinCommandTimeoutSecondsConfigured ' +
-  'tinOutputBytes tinOutputBytesConfigured tinRequestTimeoutSeconds tinRequestTimeoutSecondsConfigured ' +
+  'tinOutputBytes tinOutputBytesConfigured tinOutputShownBytes tinOutputShownBytesConfigured tinRequestTimeoutSeconds tinRequestTimeoutSecondsConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -898,6 +905,22 @@ export async function setTinOutputBytes(bytes: number): Promise<InstallationSett
     { bytes },
   );
   return data.setTinOutputBytes;
+}
+
+export async function setTinOutputShownBytes(bytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setTinOutputShownBytes: InstallationSettings }>(
+    `mutation ($bytes: Int!) { setTinOutputShownBytes(bytes: $bytes) { ${FIELDS} } }`,
+    { bytes },
+  );
+  return data.setTinOutputShownBytes;
+}
+
+export async function setLocalTinOutputKeptBytes(bytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setLocalTinOutputKeptBytes: InstallationSettings }>(
+    `mutation ($bytes: Int!) { setLocalTinOutputKeptBytes(bytes: $bytes) { ${FIELDS} } }`,
+    { bytes },
+  );
+  return data.setLocalTinOutputKeptBytes;
 }
 
 export async function setTinRequestTimeoutSeconds(seconds: number): Promise<InstallationSettings> {
