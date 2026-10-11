@@ -4062,6 +4062,12 @@ export const TESTS = [
     /* Makes a scratch agent and a scratch box, only so there is a label to offer, and removes both. */
   },
   {
+    name: 'agent-variable-grants-check',
+    what: "an agent's Secret Catalogs and Variable Catalogs grants: listed from the workspace's variable catalogs, saved as secretCatalogs and variableCatalogs, ticked again on reload; variable_list reads Hide without one and Always with one",
+    needs: ['workspace'],
+    /* Makes a scratch agent and two empty variable catalogs, and removes all three. */
+  },
+  {
     name: 'session-boxes-check',
     what: "a session's Boxes panel below its scratchpads with green and orange dots, the Box tab right of Scratchpad, and a box session's log followed from nextSeq in place of the transcript",
     needs: ['workspace'],

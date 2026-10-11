@@ -9,6 +9,7 @@ import { fetchPluginTools } from '../api/plugins';
 import { fetchMcpServers, fetchWorkspaceConnections } from '../api/integrations';
 import type { McpServer, WorkspaceConnection } from '../api/integrations';
 import { fetchMemoryCatalogs } from '../api/memory';
+import { fetchVariableCatalogs, type VariableCatalog } from '../api/variables';
 import { fetchWorkspace } from '../api/workspaces';
 import type { MemoryCatalog } from '../api/memory';
 import { answers, fetchModels, fetchProviders } from '../api/models';
@@ -281,6 +282,8 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by the HTTP tools — switch it there.');
     case 'BOX_ACCESS':
       return t('Granted by the box labels — switch it there.');
+    case 'VARIABLE_CATALOGS':
+      return t('Granted by the secret and variable catalogs — switch it there.');
     default:
       return null;
   }
@@ -1117,6 +1120,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   }, []);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
+  /** Whose secrets it may hand a box command, and whose plain values it may read. */
+  const [secretCatalogs, setSecretCatalogs] = useState<string[]>(agent.secretCatalogs ?? []);
+  const [variableCatalogs, setVariableCatalogs] = useState<string[]>(agent.variableCatalogs ?? []);
   /*
    * Whether this workspace has said its agents may have a built-in hidden.
    * Issue #482: while it has not, those rows are drawn read-only with the
@@ -1216,6 +1222,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     skip: noWorkspace,
   });
   const memoryCatalogue = useCatalogue('memory catalogs', () => fetchMemoryCatalogs(workspaceId), [workspaceId], {
+    skip: noWorkspace,
+  });
+  const variableCatalogue = useCatalogue('variable catalogs', () => fetchVariableCatalogs(workspaceId), [workspaceId], {
     skip: noWorkspace,
   });
   /*
@@ -1423,6 +1432,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return tools.some((name) => HTTP_TOOLS.includes(name));
       case 'BOX_ACCESS':
         return boxLabels.length > 0;
+      case 'VARIABLE_CATALOGS':
+        return secretCatalogs.length > 0 || variableCatalogs.length > 0;
       default:
         return false;
     }
@@ -1625,6 +1636,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         orknuxAccess,
         boxLabels,
         memoryCatalogs,
+        secretCatalogs,
+        variableCatalogs,
         skillCatalogs,
         hiddenSkills,
         requiredSkills,
@@ -1644,6 +1657,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setOrknuxAccess(updated.orknuxAccess);
       setBoxLabels(updated.boxLabels ?? []);
       setMemoryCatalogs(updated.memoryCatalogs);
+      setSecretCatalogs(updated.secretCatalogs ?? []);
+      setVariableCatalogs(updated.variableCatalogs ?? []);
       setSkillCatalogs(withoutBuiltInSkills(updated.skillCatalogs));
       setHiddenSkills(updated.hiddenSkills);
       setRequiredSkills(updated.requiredSkills);
@@ -1969,6 +1984,45 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           granted={memoryCatalogs}
           onChange={setMemoryCatalogs}
         />
+
+        {/*
+          The workspace's variables, two grants because they are two promises.
+          A secret catalog's secrets are used and never read: the agent names
+          one, a box command gets it as an environment variable, and what the
+          box prints shows it as ***. A variable catalog's plain values are read.
+        */}
+        <div data-secret-catalogs="">
+          <GrantList<VariableCatalog>
+            label={t('Secret Catalogs')}
+            what="secret catalogs"
+            styles={styles}
+            catalogue={variableCatalogue}
+            empty={t('No variable catalogs in this workspace yet.')}
+            hint={t('Secrets it may hand a box command by name, never seeing them; output that prints one shows ***.')}
+            keyOf={(catalog) => catalog.id}
+            nameOf={(catalog) => catalog.name}
+            metaOf={(catalog) => catalog.variableCount}
+            linkOf={() => `/workspace/${workspaceId}/variables`}
+            granted={secretCatalogs}
+            onChange={setSecretCatalogs}
+          />
+        </div>
+        <div data-variable-catalogs="">
+          <GrantList<VariableCatalog>
+            label={t('Variable Catalogs')}
+            what="variable catalogs"
+            styles={styles}
+            catalogue={variableCatalogue}
+            empty={t('No variable catalogs in this workspace yet.')}
+            hint={t('Plain values it may read and hand a box command; nothing is masked.')}
+            keyOf={(catalog) => catalog.id}
+            nameOf={(catalog) => catalog.name}
+            metaOf={(catalog) => catalog.variableCount}
+            linkOf={() => `/workspace/${workspaceId}/variables`}
+            granted={variableCatalogs}
+            onChange={setVariableCatalogs}
+          />
+        </div>
 
         {/*
           And what it may draw on of how the workspace goes about things.

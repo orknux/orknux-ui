@@ -27,6 +27,10 @@ export interface Agent {
   orknuxAccess: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
+  /** Variable catalogs whose secrets it may hand a box command, by name; never read, masked where shown. */
+  secretCatalogs?: string[];
+  /** Variable catalogs whose plain values it may read, by name. */
+  variableCatalogs?: string[];
   /** Which skill catalogs it may draw on. */
   skillCatalogs: string[];
   /**
@@ -146,7 +150,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess memoryCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
@@ -163,7 +167,8 @@ export type BuiltInToolGovernance =
   | 'MEMORY_CATALOGS'
   | 'ORKNUX_ACCESS'
   | 'HTTP_TOOLS'
-  | 'BOX_ACCESS';
+  | 'BOX_ACCESS'
+  | 'VARIABLE_CATALOGS';
 
 /** One of the tools the server brings itself, and what switches it. */
 export interface BuiltInTool {
@@ -331,6 +336,10 @@ export async function updateAgent(
     /** Whether it may ask orknux about orknux; left out, the grant is unchanged. */
     orknuxAccess?: boolean;
     memoryCatalogs?: string[];
+    /** Variable catalogs whose secrets it may use; left out, the grant is unchanged. */
+    secretCatalogs?: string[];
+    /** Variable catalogs whose plain values it may read; left out, the grant is unchanged. */
+    variableCatalogs?: string[];
     /** Which skill catalogs it may draw on; left out, the grant is unchanged. */
     skillCatalogs?: string[];
     hiddenSkills?: string[];
