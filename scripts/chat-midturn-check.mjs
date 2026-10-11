@@ -39,8 +39,35 @@ await context.addInitScript(() => {
       if (json?.data?.chatSession) json.data.chatSession = stamp(json.data.chatSession);
       return new Response(JSON.stringify(json), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+    /*
+     * Coming back to a running turn: the thread already holds the message the
+     * agent read, and the replay says where in the turn it read it.
+     */
+    const reattach = window.sessionStorage.getItem('midturn-reattach');
+    if (reattach !== null && address.includes('/graphql') && body.includes('chatMessages(')) {
+      const answered = await real(input, init);
+      const json = await answered.json();
+      const line = (content) => ({ role: 'user', content, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString(), attachments: [] });
+      if (Array.isArray(json?.data?.chatMessages)) json.data.chatMessages = [...json.data.chatMessages, line('Which colour, again?'), line(reattach)];
+      return new Response(JSON.stringify(json), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (/\/api\/chats\/[^/]+\/follow/.test(address)) {
-      return new Response(frame('idle', {}), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      if (reattach === null) {
+        return new Response(frame('idle', {}), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+      }
+      const replay = [
+        frame('following', {}),
+        frame('call', { at: 0, tool: 'midturn_before', arguments: '{}' }),
+        frame('called', { at: 0, result: 'before', failed: false }),
+        frame('personRead', { text: reattach }),
+        frame('call', { at: 1, tool: 'midturn_after', arguments: '{}' }),
+        frame('called', { at: 1, result: 'after', failed: false }),
+      ].join('');
+      // Left open: the turn is still running.
+      return new Response(new ReadableStream({ start(controller) { controller.enqueue(encode.encode(replay)); } }), {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      });
     }
     if (/\/api\/chats\/[^/]+\/stream/.test(address)) {
       return new Response(
@@ -50,6 +77,10 @@ await context.addInitScript(() => {
             window.setTimeout(() => send('call', { at: 0, tool: 'midturn_first', arguments: '{}' }), 100);
             window.setTimeout(() => send('called', { at: 0, result: 'first', failed: false }), 200);
             window.__midturn.read = (text) => send('personRead', { text });
+            window.__midturn.call = (tool) => {
+              send('call', { at: 5, tool, arguments: '{}' });
+              send('called', { at: 5, result: tool, failed: false });
+            };
             window.__midturn.release = () => {
               send('call', { at: 1, tool: 'midturn_second', arguments: '{}' });
               send('called', { at: 1, result: 'second', failed: false });
@@ -100,12 +131,43 @@ record(order.join(',') === 'first,person', `after the call it came after (${orde
 /* Queued until the agent's next step takes it in, then Read: "Sent" for minutes read as ignored. */
 const note = () => page.locator('[data-person-in-turn] [data-person-read]').first();
 record((await note().getAttribute('data-person-read')) === 'false', `it says it is queued (${(await note().innerText().catch(() => '')).trim()})`);
+/* A call made before the agent read it: the message belongs after that call, where it was read. */
+await page.evaluate(() => window.__midturn.call?.('midturn_between'));
+await page.waitForTimeout(200);
 await page.evaluate((said) => window.__midturn.read?.(said), SAID);
 await page.waitForTimeout(300);
 record((await note().getAttribute('data-person-read')) === 'true', `and read once the agent has it (${(await note().innerText().catch(() => '')).trim()})`);
+const readOrder = await page.evaluate((said) => {
+  const all = [...document.querySelectorAll('[data-person-in-turn], [data-testid="call-line"]')];
+  return all
+    .filter((one) => (one.textContent ?? '').includes(said) || /midturn_first|midturn_between/.test(one.textContent ?? ''))
+    .map((one) => (one.hasAttribute('data-person-in-turn') ? 'person' : /midturn_first/.test(one.textContent ?? '') ? 'first' : 'between'));
+}, SAID);
+record(readOrder.join(',') === 'first,between,person', `once read, it is drawn where the agent read it, after the call made in between (${readOrder.join(',')})`);
 
 await page.evaluate(() => window.__midturn.release?.());
 await page.getByText('Blue it is.').first().waitFor({ timeout: 10_000 }).catch(() => {});
 record((await page.getByText('Blue it is.').count()) > 0, 'and the turn still finishes');
+
+/*
+ * Coming back to a running turn. The thread holds the read message already, and
+ * it was drawn as a bubble above the whole turn; it belongs in the turn, between
+ * the call before its reading and the one after.
+ */
+const AGAIN = 'Actually make it green.';
+await page.evaluate((said) => window.sessionStorage.setItem('midturn-reattach', said), AGAIN);
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.getByText('midturn_after').first().waitFor({ timeout: 15_000 }).catch(() => {});
+await page.waitForTimeout(600);
+const placed = await page.evaluate((said) => {
+  const holding = [...document.querySelectorAll('*')].filter((one) => one.childElementCount === 0 && (one.textContent ?? '').trim() === said);
+  const order = [...document.querySelectorAll('[data-person-in-turn], [data-testid="call-line"]')]
+    .filter((one) => (one.textContent ?? '').includes(said) || /midturn_before|midturn_after/.test(one.textContent ?? ''))
+    .map((one) => (one.hasAttribute('data-person-in-turn') ? 'person' : /midturn_before/.test(one.textContent ?? '') ? 'before' : 'after'));
+  return { drawn: holding.length, inTurn: holding.filter((one) => one.closest('[data-person-in-turn]') !== null).length, order };
+}, AGAIN);
+record(placed.drawn === 1 && placed.inTurn === 1, `back on a running turn, the read message is drawn once, in the turn (${JSON.stringify(placed)})`);
+record(placed.order.join(',') === 'before,person,after', `between the call before its reading and the one after (${placed.order.join(',')})`);
+await page.evaluate(() => window.sessionStorage.removeItem('midturn-reattach'));
 
 await finish(browser);

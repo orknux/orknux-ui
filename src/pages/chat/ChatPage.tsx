@@ -1601,12 +1601,38 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setSessions((held) => held?.map((entry) => (entry.id === chat && entry.llmSessionId !== id ? { ...entry, llmSessionId: id } : entry)) ?? held);
       },
       /* The oldest of the person's waiting lines with these words is the one the agent just read. */
-      onPersonRead: (text) =>
+      /*
+       * Drawn where the agent read it, not where it was typed: the calls made
+       * in between were made without it, and the line sat above them as though
+       * the agent had ignored it. So it moves to the end of what the turn has
+       * done so far, stamped with now.
+       *
+       * And on a page that came back to a running turn, the thread already
+       * held it - the server files a read message into the history at once - so
+       * it was drawn as a bubble above the whole turn. The replayed frame puts
+       * it in the turn instead, and the bubble goes.
+       */
+      onPersonRead: (text) => {
+        const now = Date.now();
         setWorking((held) => {
           const at = held.calls.findIndex((call) => call.person === text && call.personRead !== true);
-          if (at < 0) return held;
-          return { ...held, calls: held.calls.map((call, index) => (index === at ? { ...call, personRead: true } : call)) };
-        }),
+          const line =
+            at >= 0
+              ? { ...held.calls[at], personRead: true, seenAt: now }
+              : { at: -now - held.calls.length, tool: '', arguments: '', result: '', failed: false, person: text, personRead: true, seenAt: now };
+          return { ...held, calls: [...held.calls.filter((_, index) => index !== at), line] };
+        });
+        setMessages((present) => {
+          let answered = -1;
+          present.forEach((message, index) => {
+            if (message.role === 'assistant' && message.content !== '') answered = index;
+          });
+          // After the last answer, the first person's message opened this turn; what came after it was read in it.
+          const asked = present.map((message, index) => ({ message, index })).filter(({ message, index }) => index > answered && message.role === 'user');
+          const drawnAbove = asked.slice(1).find(({ message }) => message.content === text);
+          return drawnAbove === undefined ? present : present.filter((_, index) => index !== drawnAbove.index);
+        });
+      },
       onSaid: (text) =>
         setWorking((held) => ({
           ...held,
