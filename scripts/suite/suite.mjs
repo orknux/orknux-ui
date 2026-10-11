@@ -1319,6 +1319,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-pin-check',
+    what: 'pinning a chat moves it under Pinned at once, not after the list reloads',
+    needs: ['workspace'],
+    /* Pins one chat and unpins it again, so the list is left as it was found. */
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, from its header',
     needs: ['workspace'],

@@ -2322,11 +2322,21 @@ ${named}`;
   }
 
   async function handlePin(entry: ChatSession) {
-    await guard(async () => {
-      await setChatPinned(entry.id, !entry.pinned);
-      await loadSessions();
-    });
+    /*
+     * Moved at once, then confirmed: the server takes milliseconds, and waiting
+     * for the whole chat list to come back made a pin take seconds to show.
+     */
+    const pinned = !entry.pinned;
     setMenuFor(null);
+    setSessions((held) => held?.map((one) => (one.id === entry.id ? { ...one, pinned } : one)) ?? held);
+    await guard(async () => {
+      try {
+        await setChatPinned(entry.id, pinned);
+      } catch (cause) {
+        setSessions((held) => held?.map((one) => (one.id === entry.id ? { ...one, pinned: entry.pinned } : one)) ?? held);
+        throw cause;
+      }
+    });
   }
 
   /**
