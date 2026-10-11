@@ -2650,6 +2650,25 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               )}
             </div>
             <div className={styles.titleActions}>
+              {/*
+                The session this chat is answered in: its transcript with every
+                tool call, the thinking, the boxes and the to-do list - the page
+                somebody went looking for by id when a chat did something odd.
+              */}
+              {workspaceId !== null && current.llmSessionId !== null && (
+                <Link
+                  className={styles.iconButton}
+                  to={`/workspace/${workspaceId}/sessions/${current.llmSessionId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={t('Open this chat’s session')}
+                  aria-label={t('Open this chat’s session')}
+                  data-chat-session-link=""
+                >
+                  {/* The icon the Sessions page goes by. */}
+                  <img src={messageSquareIcon} alt="" />
+                </Link>
+              )}
               <button
                 type="button"
                 className={styles.iconButton}

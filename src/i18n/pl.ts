@@ -1497,6 +1497,7 @@ export const PL: Record<string, string> = {
   "Writing": "Pisze",
   "Writing the answer…": "Pisze odpowiedź…",
   "Writing {tool}…": "Pisze {tool}…",
+  "Open this chat’s session": "Otwórz sesję tego czatu",
   "Show less": "Pokaż mniej",
   "Fewer settings": "Mniej ustawień",
   "Show it to edit": "Pokaż, aby edytować",

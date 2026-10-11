@@ -1289,6 +1289,16 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-session-link-check',
+    what: 'a chat links to the session it is answered in, from its header',
+    needs: ['workspace'],
+    /*
+     * Passes the real chat list through with a session id stamped on each chat,
+     * so it needs a chat and not one that happens to have a session.
+     */
+  },
+
+  {
     name: 'chat-progress-check',
     what: "what an agent writes beside its calls is drawn as it happens, between the calls it came between",
     needs: ['workspace'],
