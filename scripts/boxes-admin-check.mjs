@@ -235,7 +235,8 @@ if (local !== null) {
 const SETTINGS =
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime localBoxMaxSessions localBoxDefaultTtlSeconds ' +
   'localBoxMaxTtlSeconds localBoxIdleTimeoutSeconds boxCommandWaitSeconds boxCommandWaitSecondsConfigured ' +
-  'boxCommandTimeoutSeconds boxOutputBytes localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured boxOutputShownBytes boxRequestTimeoutSeconds boxEditUndoSteps boxEditUndoStepsConfigured';
+  'boxCommandTimeoutSeconds boxOutputBytes localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured boxOutputShownBytes boxRequestTimeoutSeconds boxEditUndoSteps boxEditUndoStepsConfigured ' +
+  'boxMaxPorts boxMaxPortsConfigured boxPortCheckSeconds boxPortCheckSecondsConfigured boxPortCheckWaitMillis boxPortCheckWaitMillisConfigured';
 const held = (await graphql(`{ installationSettings { ${SETTINGS} } }`)).installationSettings;
 
 await page.goto(`${BASE}/admin/settings#boxes`, { waitUntil: 'domcontentloaded' });
@@ -258,6 +259,9 @@ const BOXES = [
   ['local-box-output-kept-kb', Math.round(held.localBoxOutputKeptBytes / 1024), '0', '16384'],
   ['box-request-timeout-seconds', held.boxRequestTimeoutSeconds, '1', '600'],
   ['box-edit-undo-steps', held.boxEditUndoSteps, '0', '100'],
+  ['box-max-ports', held.boxMaxPorts, '0', '20'],
+  ['box-port-check-seconds', held.boxPortCheckSeconds, '2', '600'],
+  ['box-port-check-wait-ms', held.boxPortCheckWaitMillis, '100', '10000'],
 ];
 for (const [id, value, min, max] of BOXES) {
   const box = page.locator(`#${id}`);
@@ -289,6 +293,10 @@ const stored = (await graphql(`{ installationSettings { boxCommandWaitSeconds } 
 record(stored === wanted, `the number typed is the number stored (${stored})`);
 record(held.boxCommandWaitSecondsConfigured === 300, `a fresh installation waits 300 seconds (${held.boxCommandWaitSecondsConfigured})`);
 record(held.boxEditUndoStepsConfigured === 10, `a fresh installation keeps 10 box edits per session for undoing (${held.boxEditUndoStepsConfigured})`);
+record(
+  held.boxMaxPortsConfigured === 5 && held.boxPortCheckSecondsConfigured === 15 && held.boxPortCheckWaitMillisConfigured === 1500,
+  `a fresh installation lets a box session expose 5 ports, looked at every 15 s for 1500 ms (${held.boxMaxPortsConfigured}, ${held.boxPortCheckSecondsConfigured}, ${held.boxPortCheckWaitMillisConfigured})`,
+);
 record(held.localBoxOutputKeptBytesConfigured === 1048576, `a fresh installation keeps a megabyte of each local command's output for reading (${held.localBoxOutputKeptBytesConfigured})`);
 
 /* --------------------------------------------------------------- put back */

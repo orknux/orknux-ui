@@ -284,6 +284,13 @@ export interface InstallationSettings {
   /** How many file edits and writes an agent can undo per box session; 0 keeps none. */
   boxEditUndoSteps: number;
   boxEditUndoStepsConfigured: number;
+  /** Exposed box ports: how many a session may have, and how often and how long whether one answers is looked at. */
+  boxMaxPorts: number;
+  boxMaxPortsConfigured: number;
+  boxPortCheckSeconds: number;
+  boxPortCheckSecondsConfigured: number;
+  boxPortCheckWaitMillis: number;
+  boxPortCheckWaitMillisConfigured: number;
   /** Server updates, #584: how many jars are kept for rolling back to. */
   releasesKept: number;
   /** How many starts a newly activated release gets before it is given up on. */
@@ -323,7 +330,7 @@ const FIELDS =
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
   'localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured ' +
   'boxCommandWaitSeconds boxCommandWaitSecondsConfigured boxCommandTimeoutSeconds boxCommandTimeoutSecondsConfigured ' +
-  'boxOutputBytes boxOutputBytesConfigured boxOutputShownBytes boxOutputShownBytesConfigured boxRequestTimeoutSeconds boxRequestTimeoutSecondsConfigured boxEditUndoSteps boxEditUndoStepsConfigured ' +
+  'boxOutputBytes boxOutputBytesConfigured boxOutputShownBytes boxOutputShownBytesConfigured boxRequestTimeoutSeconds boxRequestTimeoutSecondsConfigured boxEditUndoSteps boxEditUndoStepsConfigured boxMaxPorts boxMaxPortsConfigured boxPortCheckSeconds boxPortCheckSecondsConfigured boxPortCheckWaitMillis boxPortCheckWaitMillisConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -1009,6 +1016,30 @@ export async function setBoxRequestTimeoutSeconds(seconds: number): Promise<Inst
     { seconds },
   );
   return data.setBoxRequestTimeoutSeconds;
+}
+
+export async function setBoxMaxPorts(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setBoxMaxPorts: InstallationSettings }>(
+    `mutation ($count: Int!) { setBoxMaxPorts(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setBoxMaxPorts;
+}
+
+export async function setBoxPortCheckSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setBoxPortCheckSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setBoxPortCheckSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setBoxPortCheckSeconds;
+}
+
+export async function setBoxPortCheckWaitMillis(millis: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setBoxPortCheckWaitMillis: InstallationSettings }>(
+    `mutation ($millis: Int!) { setBoxPortCheckWaitMillis(millis: $millis) { ${FIELDS} } }`,
+    { millis },
+  );
+  return data.setBoxPortCheckWaitMillis;
 }
 
 export async function setBoxEditUndoSteps(steps: number): Promise<InstallationSettings> {

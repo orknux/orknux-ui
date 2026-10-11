@@ -347,6 +347,15 @@ const PL: Record<string, string> = {
   BoxCommandTimeoutOutOfRange: '{seconds} to nie jest limit czasu polecenia. Wybierz od 1 do 86400 sekund.',
   BoxOutputBytesOutOfRange: '{bytes} to nie jest liczba bajtów wyjścia polecenia. Wybierz od 1024 do 4194304.',
   BoxRequestTimeoutOutOfRange: '{seconds} to nie jest limit czasu żądania do skrzynki. Wybierz od 1 do 600 sekund.',
+  BoxMaxPortsOutOfRange: '{count} to nie jest liczba portów, które sesja w skrzynce może wystawić. Wybierz od 0 do 20.',
+  BoxPortCheckOutOfRange: '{seconds} to nie jest liczba sekund ważności sprawdzenia portu. Wybierz od 2 do 600.',
+  BoxPortCheckWaitOutOfRange: '{millis} to nie jest liczba milisekund oczekiwania przy sprawdzaniu portu. Wybierz od 100 do 10000.',
+  BoxPortNotFound: 'Nie ma wystawionego portu {id}.',
+  BoxPortSessionClosed: 'Portu {port} nie da się otworzyć: jego sesja w skrzynce już nie działa.',
+  BoxPortUnreachable: 'Nie udało się otworzyć portu {port}: {why}',
+  InteractionRequestNotFound: 'Nie ma pytania {id}.',
+  InteractionOptionUnknown: '{option} nie jest jedną z odpowiedzi na to pytanie.',
+  InteractionAlreadyAnswered: 'Na pytanie {id} już odpowiedziano.',
   BoxEditUndoStepsOutOfRange: '{steps} to nie jest liczba zmian w skrzynce do cofnięcia. Wybierz od 0 do 100.',
 
   // --- who is asking ------------------------------------------------------

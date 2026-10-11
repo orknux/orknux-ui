@@ -71,6 +71,9 @@ import {
   setBoxOutputShownBytes,
   setBoxRequestTimeoutSeconds,
   setBoxEditUndoSteps,
+  setBoxMaxPorts,
+  setBoxPortCheckSeconds,
+  setBoxPortCheckWaitMillis,
 } from '../../api/installation';
 import type { InstallationSettings } from '../../api/installation';
 import type { SessionUser } from '../../api/session';
@@ -228,6 +231,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [boxOutputShown, setBoxOutputShown] = useState('');
   const [boxRequest, setBoxRequest] = useState('');
   const [boxUndoSteps, setBoxUndoSteps] = useState('');
+  const [boxPorts, setBoxPorts] = useState('');
+  const [boxPortCheck, setBoxPortCheck] = useState('');
+  const [boxPortWait, setBoxPortWait] = useState('');
 
   /** The Boxes section's boxes, from what the server holds. */
   const fillBoxes = useCallback((held: InstallationSettings) => {
@@ -244,6 +250,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     setBoxOutputShown(String(Math.round(held.boxOutputShownBytes / 1024)));
     setBoxRequest(String(held.boxRequestTimeoutSeconds));
     setBoxUndoSteps(String(held.boxEditUndoSteps));
+    setBoxPorts(String(held.boxMaxPorts));
+    setBoxPortCheck(String(held.boxPortCheckSeconds));
+    setBoxPortWait(String(held.boxPortCheckWaitMillis));
   }, []);
 
   useEffect(() => {
@@ -440,6 +449,9 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         },
         { typed: boxRequest, held: settings.boxRequestTimeoutSeconds, write: setBoxRequestTimeoutSeconds },
         { typed: boxUndoSteps, held: settings.boxEditUndoSteps, write: setBoxEditUndoSteps },
+        { typed: boxPorts, held: settings.boxMaxPorts, write: setBoxMaxPorts },
+        { typed: boxPortCheck, held: settings.boxPortCheckSeconds, write: setBoxPortCheckSeconds },
+        { typed: boxPortWait, held: settings.boxPortCheckWaitMillis, write: setBoxPortCheckWaitMillis },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -1888,6 +1900,81 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   onChange={(event) => setBoxUndoSteps(event.target.value)}
                   disabled={busy}
                   aria-label={t('Box edit undo steps')}
+                />
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Box ports per session')}</p>
+                  <FieldHint label={t('Box ports per session')}>
+                    {t('How many ports one box session may have asked for or open at once. An agent asks, and a person allows each one; 0 lets an agent ask for none. Between 0 and 20.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="box-max-ports"
+                  name="boxMaxPorts"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={boxPorts}
+                  onChange={(event) => setBoxPorts(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Box ports per session')}
+                />
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Box port check interval')}</p>
+                  <FieldHint label={t('Box port check interval')}>
+                    {t('How long a look at whether an exposed port answers is believed before the session page looks again. Each look starts a connection through the box. Between 2 and 600 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="box-port-check-seconds"
+                  name="boxPortCheckSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={2}
+                  max={600}
+                  value={boxPortCheck}
+                  onChange={(event) => setBoxPortCheck(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Box port check interval')}
+                />
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Box port check wait')}</p>
+                  <FieldHint label={t('Box port check wait')}>
+                    {t('How long a look at an exposed port waits for the box to close a connection nothing inside took. Longer for a slow box. Between 100 and 10000 milliseconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="box-port-check-wait-ms"
+                  name="boxPortCheckWaitMillis"
+                  className={styles.input}
+                  type="number"
+                  min={100}
+                  max={10000}
+                  value={boxPortWait}
+                  onChange={(event) => setBoxPortWait(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Box port check wait')}
                 />
               </div>
             </div>

@@ -1,0 +1,85 @@
+/* A question an agent is waiting on: drawn apart from what was said, so it is not read past. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: var(--space-8) 0;
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.open {
+  border-color: var(--color-accent-brand);
+}
+
+.badge {
+  align-self: flex-start;
+  padding: 0 var(--space-6);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-4);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.question {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.option {
+  padding: var(--space-6) var(--space-16);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.primary {
+  background: var(--color-accent-brand);
+  border-color: var(--color-accent-brand);
+  color: var(--color-bg);
+}
+
+.danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.outcome {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.by {
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}

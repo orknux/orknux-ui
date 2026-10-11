@@ -302,3 +302,59 @@ export async function fetchSessionBoxOutput(
   );
   return data.sessionBoxOutput;
 }
+
+/** Where a port an agent asked to expose stands. */
+export type BoxPortState = 'PENDING' | 'ENABLED' | 'DISABLED' | 'REFUSED';
+
+/** A port an agent asked to expose out of a box session, and what a person made of it. */
+export interface BoxPort {
+  id: string;
+  sessionBoxId: string;
+  boxName: string;
+  /** The label of the box the session runs on, as it is now. */
+  boxLabel: string | null;
+  port: number;
+  reason: string | null;
+  state: BoxPortState;
+  url: string | null;
+  /** Set when the address opens only on the box's own machine. */
+  note: string | null;
+  requestedBy: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  /** Whether something answers on it now; false without looking unless it is open. */
+  alive: boolean;
+  checkedAt: string | null;
+}
+
+const BOX_PORT_FIELDS =
+  'id sessionBoxId boxName boxLabel port reason state url note requestedBy createdAt decidedAt decidedBy alive checkedAt';
+
+export async function fetchSessionBoxPorts(sessionId: string): Promise<BoxPort[]> {
+  const data = await graphql<{ sessionBoxPorts: BoxPort[] }>(
+    `query SessionBoxPorts($sessionId: ID!) { sessionBoxPorts(sessionId: $sessionId) { ${BOX_PORT_FIELDS} } }`,
+    { sessionId },
+  );
+  return data.sessionBoxPorts;
+}
+
+export async function enableBoxPort(id: string): Promise<BoxPort> {
+  const data = await graphql<{ enableBoxPort: BoxPort }>(
+    `mutation EnableBoxPort($id: ID!) { enableBoxPort(id: $id) { ${BOX_PORT_FIELDS} } }`,
+    { id },
+  );
+  return data.enableBoxPort;
+}
+
+export async function disableBoxPort(id: string): Promise<BoxPort> {
+  const data = await graphql<{ disableBoxPort: BoxPort }>(
+    `mutation DisableBoxPort($id: ID!) { disableBoxPort(id: $id) { ${BOX_PORT_FIELDS} } }`,
+    { id },
+  );
+  return data.disableBoxPort;
+}
+
+export async function deleteBoxPort(id: string): Promise<void> {
+  await graphql<{ deleteBoxPort: string }>(`mutation DeleteBoxPort($id: ID!) { deleteBoxPort(id: $id) }`, { id });
+}

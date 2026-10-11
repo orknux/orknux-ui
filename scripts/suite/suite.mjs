@@ -1289,6 +1289,25 @@ export const TESTS = [
   },
 
   {
+    name: 'session-ports-check',
+    what: 'the Ports panel sits below Boxes, draws each mapping with its box label and a liveness dot, and its actions send their mutations; the question is in the transcript where it was asked',
+    needs: ['workspace'],
+    /*
+     * Stubbed: a real mapping needs an agent, a box and a person. BoxPortsTest is
+     * the server half - that asking, allowing and closing do what these draw.
+     */
+  },
+
+  {
+    name: 'chat-request-check',
+    what: "a question an agent put to the person is drawn in the chat with a button per option, and its outcome replaces the buttons once answered",
+    needs: ['workspace'],
+    /*
+     * A real chat given a session, and the request stubbed: no model has to ask.
+     */
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, from its header',
     needs: ['workspace'],

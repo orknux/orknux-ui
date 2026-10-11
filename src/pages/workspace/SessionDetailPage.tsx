@@ -33,8 +33,20 @@ import type {
   SessionWriting,
 } from '../../api/llmSessions';
 import { STATUS_LABEL } from '../../api/executions';
-import { fetchSessionBoxLog, fetchSessionBoxes } from '../../api/boxes';
-import type { SessionBox, BoxEvent } from '../../api/boxes';
+import {
+  deleteBoxPort,
+  disableBoxPort,
+  enableBoxPort,
+  fetchSessionBoxLog,
+  fetchSessionBoxPorts,
+  fetchSessionBoxes,
+} from '../../api/boxes';
+import type { SessionBox, BoxEvent, BoxPort } from '../../api/boxes';
+import { fetchSessionRequests, type InteractionRequest } from '../../api/interactions';
+import { InteractionCard, placeRequests } from '../../components/InteractionCard';
+import playIcon from '../../assets/play.svg';
+import pauseIcon from '../../assets/pause.svg';
+import trashIcon from '../../assets/trash-2.svg';
 import { fetchSessionTodos } from '../../api/todos';
 import type { SessionTodo } from '../../api/todos';
 import type { SessionUser } from '../../api/session';
@@ -739,6 +751,40 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   useEffect(loadTodos, [loadTodos]);
 
   /*
+   * The ports agents asked to expose out of their box sessions, below the
+   * notes, and the questions put to a person on their behalf - which the
+   * transcript draws where they were asked. Nothing opens until somebody says
+   * so; this is where they say it, and where they change their mind.
+   */
+  const [ports, setPorts] = useState<BoxPort[] | null>(null);
+  const [portBusy, setPortBusy] = useState<string | null>(null);
+  const [portError, setPortError] = useState<string | null>(null);
+  const [requests, setRequests] = useState<InteractionRequest[]>([]);
+  const loadPorts = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionBoxPorts(sessionId)
+      .then(setPorts)
+      .catch(() => setPorts(null));
+    fetchSessionRequests(sessionId)
+      .then(setRequests)
+      .catch(() => setRequests([]));
+  }, [sessionId]);
+  useEffect(loadPorts, [loadPorts]);
+
+  async function actOnPort(port: BoxPort, act: (id: string) => Promise<unknown>) {
+    setPortBusy(port.id);
+    setPortError(null);
+    try {
+      await act(port.id);
+    } catch (cause) {
+      setPortError(cause instanceof Error ? cause.message : t('Could not change that port.'));
+    } finally {
+      setPortBusy(null);
+      loadPorts();
+    }
+  }
+
+  /*
    * What the model is writing this second - a call being spelled out, or its
    * answer - which is in no line of the transcript until it lands. A model
    * putting a file into one call writes for minutes, and the page showed
@@ -775,9 +821,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
      */
     loadTodos();
     loadWriting();
-  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWriting]);
+    loadPorts();
+  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWriting, loadPorts]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
+
+  /** Which line each question goes before, for those asked within the lines on this page. */
+  const placedRequests = (() => {
+    const content = events?.content ?? [];
+    if (order !== 'AT' || content.length === 0) return new Map<number, InteractionRequest[]>();
+    // From the lines' own times rather than the sort control: what is on the page is what is placed among.
+    const times = content.map((event) => Date.parse(event.at));
+    const first = Math.min(...times);
+    const last = Math.max(...times);
+    const within = requests.filter((request) => {
+      const asked = Date.parse(request.createdAt);
+      return asked >= first && asked <= last;
+    });
+    return placeRequests(content, (event) => event.at, within, times[0] <= times[times.length - 1]);
+  })();
 
   /*
    * The session's family: the main one and every session an agent in it
@@ -1459,6 +1521,27 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               </p>
             )}
 
+            {/*
+              Questions an agent is waiting on, in place among the lines where
+              they were asked when the transcript is in time order; an open one
+              that falls outside the lines on this page is pinned here instead,
+              so a question is never only on another page.
+            */}
+            {(() => {
+              const content = events?.content ?? [];
+              const inTime = order === 'AT' && content.length > 0;
+              const times = content.map((event) => Date.parse(event.at));
+              const first = inTime ? Math.min(...times) : NaN;
+              const last = inTime ? Math.max(...times) : NaN;
+              const pinned = requests.filter((request) => {
+                if (!inTime) return request.chosen === null;
+                const asked = Date.parse(request.createdAt);
+                return request.chosen === null && (asked < first || asked > last);
+              });
+              return pinned.map((request) => (
+                <InteractionCard key={`pinned-${request.id}`} request={request} onAnswered={() => loadPorts()} />
+              ));
+            })()}
             {events?.content.map((event, index) => {
               /*
                * The day is a heading rather than part of every line: a session
@@ -1468,8 +1551,12 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                */
               const day = dayOf(event.at);
               const newDay = order === 'AT' && day !== '' && day !== dayOf(events.content[index - 1]?.at ?? '');
+              const asked = placedRequests.get(index) ?? [];
               return (
                 <div key={event.id}>
+                  {asked.map((request) => (
+                    <InteractionCard key={request.id} request={request} onAnswered={() => loadPorts()} />
+                  ))}
                   {newDay && <p className={styles.day}>{day}</p>}
                   {/*
                     The agent's setup where it started answering, as the block
@@ -1913,6 +2000,104 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               );
             })}
           </ul>
+        )}
+      </aside>
+      {/*
+        The ports agents asked to expose, and the one place to manage them: a
+        request waits for Allow, here or in the conversation; an open one can be
+        closed and opened again, and any of them removed. The dot is whether
+        something answers on it now, looked at on the page's refresh.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('Ports exposed from this session')} data-session-ports="">
+        <p className={styles.familyTitle}>{t('Ports')}</p>
+        {ports === null ? (
+          <p className={styles.familyNote}>{t('Could not load the ports.')}</p>
+        ) : ports.length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {ports.map((one) => (
+              <li
+                key={one.id}
+                className={styles.portRow}
+                data-session-port={one.id}
+                data-session-port-state={one.state}
+                data-session-port-alive={one.alive ? 'true' : 'false'}
+              >
+                <span className={styles.portHead}>
+                  <span
+                    className={one.alive ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`}
+                    data-session-port-dot=""
+                    title={one.alive ? t('Answering') : t('Not answering')}
+                  />
+                  <span className={styles.portNumber}>{one.port}</span>
+                  {one.state === 'ENABLED' && one.url !== null ? (
+                    <a className={styles.portUrl} href={one.url} target="_blank" rel="noreferrer" data-session-port-url="">
+                      {one.url}
+                    </a>
+                  ) : (
+                    <span className={styles.portState} data-session-port-state-label="">
+                      {one.state === 'PENDING'
+                        ? t('Waiting for approval')
+                        : one.state === 'REFUSED'
+                          ? t('Refused')
+                          : one.state === 'DISABLED'
+                            ? t('Disabled')
+                            : t('Enabled')}
+                    </span>
+                  )}
+                  {one.boxLabel !== null && one.boxLabel !== '' && (
+                    <span className={styles.boxRowLabel} data-session-port-label="">
+                      {one.boxLabel}
+                    </span>
+                  )}
+                </span>
+                {one.reason !== null && one.reason !== '' && <span className={styles.todoNote}>{one.reason}</span>}
+                {one.note !== null && one.state === 'ENABLED' && <span className={styles.todoNote}>{one.note}</span>}
+                <span className={styles.portActions}>
+                  {one.state !== 'ENABLED' && (
+                    <button
+                      type="button"
+                      className={styles.portAction}
+                      disabled={portBusy === one.id}
+                      onClick={() => void actOnPort(one, enableBoxPort)}
+                      data-session-port-enable=""
+                    >
+                      <img src={playIcon} alt="" />
+                      {one.state === 'PENDING' ? t('Allow') : t('Enable')}
+                    </button>
+                  )}
+                  {one.state === 'ENABLED' && (
+                    <button
+                      type="button"
+                      className={styles.portAction}
+                      disabled={portBusy === one.id}
+                      onClick={() => void actOnPort(one, disableBoxPort)}
+                      data-session-port-disable=""
+                    >
+                      <img src={pauseIcon} alt="" />
+                      {t('Disable')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`${styles.portAction} ${styles.portActionDanger}`}
+                    disabled={portBusy === one.id}
+                    onClick={() => void actOnPort(one, deleteBoxPort)}
+                    data-session-port-delete=""
+                  >
+                    <img src={trashIcon} alt="" />
+                    {t('Delete')}
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {portError !== null && (
+          <p className={styles.familyNote} role="alert">
+            {portError}
+          </p>
         )}
       </aside>
       {/*

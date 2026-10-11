@@ -48,6 +48,8 @@ import {
 import type { Attachment } from '../../api/attachments';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { CallLine } from '../../components/CallLine';
+import { InteractionCard, placeRequests } from '../../components/InteractionCard';
+import { fetchSessionRequests, type InteractionRequest } from '../../api/interactions';
 import { Thinking } from '../../components/Thinking';
 import { CHUNKING_DEFAULT, readAloud } from '../../components/readAloud';
 import type { Reading, SpeechChunking } from '../../components/readAloud';
@@ -876,6 +878,31 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   }, [draft, attached, chatFiles, currentId]);
 
   const current = sessions?.find((entry) => entry.id === currentId) ?? null;
+
+  /*
+   * Questions the agent put to the person here - may it expose a port, and
+   * whatever asks next - drawn among the messages where they were asked. Read
+   * again whenever a call finishes, since asking is a call, and when the page
+   * comes back into view, since an answer can be changed on the session page.
+   */
+  const [requests, setRequests] = useState<InteractionRequest[]>([]);
+  const requestsSession = current?.llmSessionId ?? null;
+  const finishedCalls = working.calls.filter((call) => call.result !== null).length;
+  const loadRequests = useCallback(() => {
+    if (requestsSession === null) {
+      setRequests([]);
+      return;
+    }
+    fetchSessionRequests(String(requestsSession))
+      .then(setRequests)
+      .catch(() => undefined);
+  }, [requestsSession]);
+  useEffect(loadRequests, [loadRequests, messages.length, finishedCalls]);
+  useEffect(() => {
+    window.addEventListener('focus', loadRequests);
+    return () => window.removeEventListener('focus', loadRequests);
+  }, [loadRequests]);
+  const placedRequests = placeRequests(messages, (message) => message.at, requests);
 
   /*
    * Whether this workspace has anything to transcribe with.
@@ -2822,6 +2849,9 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
 
             {messages.map((message, index) => (
               <Fragment key={index}>
+              {(placedRequests.get(index) ?? []).map((request) => (
+                <InteractionCard key={`request-${request.id}`} request={request} onAnswered={() => loadRequests()} />
+              ))}
               {/*
                 A call is not a turn and is not drawn as one: it was made
                 between two of them, by the agent, and the page it was carried
@@ -3184,6 +3214,9 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               */}
 
               </Fragment>
+            ))}
+            {(placedRequests.get(messages.length) ?? []).map((request) => (
+              <InteractionCard key={`request-${request.id}`} request={request} onAnswered={() => loadRequests()} />
             ))}
 
             {/*
