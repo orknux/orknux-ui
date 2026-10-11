@@ -99,7 +99,8 @@ if (await drawn(page, 'the chat log')) {
   await page.waitForTimeout(2500);
 
   const after = await strip();
-  record(after === 1, `the drawn picture is in the files strip, unreloaded (${after})`);
+  // The strip above the composer is gone: a file sits under its message, and a drawn picture is already in its answer.
+  record(after === 0, `there is no files strip to put it in, unreloaded (${after})`);
 
   /*
    * And it is the strip that changed, not the transcript alone: the picture is

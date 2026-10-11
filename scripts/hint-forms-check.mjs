@@ -238,7 +238,8 @@ const screens = [
     gone: [
       'Nodes drawn from this agent start with it',
       'a loop nothing here breaks',
-      'can do whatever that account can',
+      // Shells went, boxes took their place, and the (?) beside Boxes says the same of a box.
+      'can do whatever that box allows',
     ],
     kept: [],
   },
