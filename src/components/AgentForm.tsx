@@ -237,6 +237,9 @@ const SEARCH_FROM = 8;
  */
 const BUILT_IN = 'Built in';
 
+/** A catalog list without the server's own, which no agent is granted by name. */
+const withoutBuiltInSkills = (names: readonly string[]): string[] => names.filter((name) => name !== BUILT_IN_SKILLS);
+
 /** The tools Admin Settings -> HTTP tools switches, which bring `http_allowList` with them. Issue #602. */
 const HTTP_TOOLS = ['http_get', 'http_request', 'http_download'];
 
@@ -576,15 +579,22 @@ function GrantList<Item>({
      * grant from being hidden *silently*.
      */
     const inGroup = group === '' || (groupOf?.(item) ?? OWN_GROUP) === group;
+    /** Why the row is read-only, or null where its control works. Issue #444. */
+    const fixed = fixedOf?.(item) ?? null;
     return {
       item,
       name,
       value,
       inGroup,
-      ticked: granted.includes(value),
+      /*
+       * On a plain tick list a fixed row is held whatever is stored - the
+       * built-in skill catalog, which the server gives every agent and the
+       * form never sends - so it is ticked, counted and drawn in reach. On the
+       * tools list a fixed row reads the grant it comes with, which may be off.
+       */
+      ticked: granted.includes(value) || (onMark === undefined && fixed !== null),
       matches: needle === '' || name.toLowerCase().includes(needle),
-      /** Why the row is read-only, or null where its control works. Issue #444. */
-      fixed: fixedOf?.(item) ?? null,
+      fixed,
       /** Why no agent is offered it at the moment, whatever is granted. Issue #602. */
       unavailable: unavailableOf?.(item) ?? null,
     };
@@ -1127,7 +1137,14 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     };
   }, [workspaceId]);
 
-  const [skillCatalogs, setSkillCatalogs] = useState<string[]>(agent.skillCatalogs);
+  /*
+   * The catalogs ticked here, less the server's own. Every agent holds that one
+   * whatever its list says - the server adds it - so its row is drawn ticked
+   * and fixed, and it is never sent: an agent that predates that rule still has
+   * the name stored, and the first save takes it out of the list rather than
+   * keeping a grant that grants nothing.
+   */
+  const [skillCatalogs, setSkillCatalogs] = useState<string[]>(() => withoutBuiltInSkills(agent.skillCatalogs));
   /** Which skills inside those catalogs are out of reach, and which are always loaded. Issue #480. */
   const [hiddenSkills, setHiddenSkills] = useState<string[]>(agent.hiddenSkills);
   const [requiredSkills, setRequiredSkills] = useState<string[]>(agent.requiredSkills);
@@ -1602,7 +1619,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setOrknuxAccess(updated.orknuxAccess);
       setBoxLabels(updated.boxLabels ?? []);
       setMemoryCatalogs(updated.memoryCatalogs);
-      setSkillCatalogs(updated.skillCatalogs);
+      setSkillCatalogs(withoutBuiltInSkills(updated.skillCatalogs));
       setHiddenSkills(updated.hiddenSkills);
       setRequiredSkills(updated.requiredSkills);
       setTools(updated.tools);
@@ -1942,13 +1959,11 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           hint={t("The workspace's own catalogs, and the ones its plugins bring.")}
           keyOf={(catalog) => catalog.id}
           nameOf={(catalog) => catalog.name}
-          metaOf={(catalog) => catalog.plugin ?? catalog.count}
+          metaOf={(catalog) => (catalog.name === BUILT_IN_SKILLS ? t('Built in - every agent has it') : catalog.plugin ?? catalog.count)}
           linkOf={(catalog) => catalog.link}
           granted={skillCatalogs}
           onChange={setSkillCatalogs}
-          fixedOf={(catalog) =>
-            catalog.name === BUILT_IN_SKILLS ? t('Brought by Orknux, and held by every agent.') : null
-          }
+          fixedOf={(catalog) => (catalog.name === BUILT_IN_SKILLS ? t('Built in - every agent has it') : null)}
         />
 
         {/*

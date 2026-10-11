@@ -99,5 +99,61 @@ if (drawnOut !== null) {
   );
 }
 
+/* ------------- an agent that still has the built-in catalog stored, from before */
+
+/*
+ * Agents made before the server gave every agent the built-in catalog had its
+ * name written onto their list. The row reads the same for them - ticked,
+ * fixed, with the reason on the row in a line rather than behind a hover - and
+ * the form's next save drops the name rather than sending a grant that grants
+ * nothing. The built-in skills inside it still switch Hide, Offer and Always.
+ */
+await graphql(
+  `mutation($id: ID!, $name: String!) { updateAgent(id: $id, input: { name: $name, skillCatalogs: ["orknux_skills"] }) { skillCatalogs } }`,
+  { id: AGENT, name: made.createAgent.name },
+);
+await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${AGENT}/settings`, { waitUntil: 'domcontentloaded' });
+const catalogRow = page.locator('[data-grants="skill catalogs"] [data-grant-name="orknux_skills"]');
+await catalogRow.waitFor({ timeout: 20_000 }).catch(() => {});
+const row = await catalogRow.evaluate((one) => ({
+  text: one.innerText.replace(/\s+/g, ' '),
+  out: one.hasAttribute('data-grant-out'),
+  checked: one.querySelector('input[type=checkbox]')?.checked ?? false,
+  disabled: one.querySelector('input[type=checkbox]')?.disabled ?? false,
+})).catch(() => null);
+record(row !== null, 'the built-in catalog has a row for an agent that has it stored');
+if (row !== null) {
+  record(row.checked && row.disabled, 'it is drawn ticked and disabled');
+  record(row.text.includes('Built in - every agent has it'), `and says why on the row (${JSON.stringify(row.text)})`);
+  record(!row.out, 'and is not drawn out of reach');
+}
+
+const builtInSkill = page.locator('[data-grants="skills"] [data-grant-name]').filter({ hasText: 'Built in' }).first();
+await builtInSkill.waitFor({ timeout: 20_000 }).catch(() => {});
+const skillName = await builtInSkill.getAttribute('data-grant-name').catch(() => null);
+record(skillName !== null, `a built-in skill has a row on the skills list (${skillName})`);
+if (skillName !== null) {
+  const toggle = page.locator(`[data-grants="skills"] [data-grant-name="${skillName}"] [data-tool-state]`);
+  const before = await toggle.getAttribute('data-tool-state');
+  record(!(await toggle.isDisabled()), `its Hide / Offer / Always control can be pressed (${before})`);
+  await toggle.click();
+  const after = await toggle.getAttribute('data-tool-state');
+  record(after !== before, `a press moves it on (${before} -> ${after})`);
+
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await page.waitForTimeout(1500);
+  const saved = await graphql(`query($id: ID!) { agent(id: $id) { skillCatalogs } }`, { id: AGENT });
+  record(
+    !saved.agent.skillCatalogs.includes('orknux_skills'),
+    `the save no longer sends the built-in catalog (${JSON.stringify(saved.agent.skillCatalogs)})`,
+  );
+
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${AGENT}/settings`, { waitUntil: 'domcontentloaded' });
+  await toggle.waitFor({ timeout: 20_000 }).catch(() => {});
+  record((await toggle.getAttribute('data-tool-state').catch(() => null)) === after, `and the skill keeps ${after} after it`);
+  const again = page.locator('[data-grants="skill catalogs"] [data-grant-name="orknux_skills"] input[type=checkbox]');
+  record((await again.isChecked()) && (await again.isDisabled()), 'with the catalog still drawn ticked and disabled');
+}
+
 await sweep();
 await finish(browser);

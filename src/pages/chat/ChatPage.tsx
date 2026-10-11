@@ -1337,7 +1337,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
      * cut in that disagreed about what a turn is.
      */
     try {
-      await streamChatMessage(
+      const heard = await streamChatMessage(
         currentId,
         text,
         {
@@ -1368,6 +1368,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         true,
       );
       if (failure !== null) throw new Error(failure);
+      // The turn ended out of sight: what the server kept is the answer.
+      if (!heard) await fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
       // Files the send carried, and any picture drawn while it was answered:
       // both are attachments of this chat now, and the strip shows neither
       // until it is read back.
@@ -1612,7 +1614,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     const sentTo = currentId;
     try {
       let failure: string | null = null;
-      await streamChatMessage(
+      const heard = await streamChatMessage(
         currentId,
         said,
         {
@@ -1633,6 +1635,9 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
         asked.signal,
       );
       if (failure !== null) throw new Error(failure);
+      // The stream ended and the turn could not be followed to its end, so the
+      // history is the only place that holds how it ended.
+      if (!heard && openChat.current === sentTo) fetchChatMessages(sentTo).then(setMessages).catch(() => undefined);
       // Files the send carried, and any picture drawn while it was answered:
       // both are attachments of this chat now, and the strip shows neither
       // until it is read back.
@@ -1703,7 +1708,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     const sentTo = currentId;
     try {
       let failure: string | null = null;
-      await regenerateChatAnswer(currentId, {
+      const heard = await regenerateChatAnswer(currentId, {
         onChunk: (piece) =>
           setMessages((present) => {
             const grown = [...present];
@@ -1718,6 +1723,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
         },
       }, asked.signal);
       if (failure !== null) throw new Error(failure);
+      if (!heard && openChat.current === sentTo) fetchChatMessages(sentTo).then(setMessages).catch(() => undefined);
       await loadSessions(currentId);
     } catch (cause) {
       if (openChat.current !== sentTo) return;
@@ -1790,7 +1796,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     let answer = '';
     let failure: string | null = null;
     try {
-      await regenerateChatAnswer(currentId, {
+      const heard = await regenerateChatAnswer(currentId, {
         onChunk: (piece) => {
           answer += piece;
           setMessages((present) => {
@@ -1810,6 +1816,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
         },
       }, signal);
       if (failure !== null) throw new Error(failure);
+      if (!heard) await fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
       await loadSessions(currentId);
     } catch (cause) {
       /*

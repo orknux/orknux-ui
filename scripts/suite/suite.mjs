@@ -1266,6 +1266,18 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-reattach-check',
+    what: 'a chat stream that ends before its turn is picked up with /follow, and nothing is drawn twice',
+    needs: ['workspace'],
+    /*
+     * A 637-second round was cut at the container's async timeout and the page
+     * never showed the answer until a reload. It stubs the chat's stream - cut
+     * after a lookup, no `done` - and the plain `/follow` that replays the turn,
+     * because no real model can be told to be cut at a known frame.
+     */
+  },
+
+  {
     name: 'chat-selector-check',
     what: 'the picker above a chat is drawn at its full width, and the link out goes where the name says',
     needs: ['workspace'],
@@ -3124,11 +3136,14 @@ export const TESTS = [
 
   {
     name: 'built-in-skills-reach-check',
-    what: 'an agent with no skill catalog still holds the skill tools and the built-in catalog, drawn ticked and fixed',
+    what: 'an agent with no skill catalog still holds the skill tools and the built-in catalog, drawn ticked and fixed - and a save no longer sends it, while its skills still switch',
     needs: [],
     /*
      * Reported: the skill tools followed the catalog grants, so an agent with
      * none could not load even !caveman. The server half is SkillIdTest's.
+     * And for an agent that had the catalog's name stored from before the
+     * server granted it to everyone: the row reads the same, says why on the
+     * row, and the form's save drops the name.
      */
   },
 

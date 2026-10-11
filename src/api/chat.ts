@@ -411,7 +411,7 @@ export async function streamChatMessage(
    * Pressing Stop stops it either way, through `interruptChat`.
    */
   voice = false,
-): Promise<void> {
+): Promise<boolean> {
   const response = await fetch(`/api/chats/${id}/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -419,7 +419,7 @@ export async function streamChatMessage(
     body: JSON.stringify({ text, attachmentIds, voice }),
     signal,
   });
-  await read(response, handlers);
+  return readToTheEnd(id, response, handlers, signal);
 }
 
 /**
@@ -462,13 +462,13 @@ export async function followChat(
 ): Promise<boolean> {
   const response = await fetch(`/api/chats/${id}/follow${wait ? '?wait=true' : ''}`, { credentials: 'same-origin', signal });
   let following = false;
-  await read(response, {
+  await readToTheEnd(id, response, {
     ...handlers,
     onFollowing: () => {
       following = true;
       handlers.onFollowing?.();
     },
-  });
+  }, signal, () => following);
   return following;
 }
 
@@ -487,13 +487,132 @@ export async function regenerateChatAnswer(
   signal?: AbortSignal,
   /** Whether leaving stops it; see `streamChatMessage`. A voice again sets it. */
   voice = false,
-): Promise<void> {
+): Promise<boolean> {
   const response = await fetch(`/api/chats/${id}/regenerate?voice=${voice}`, {
     method: 'POST',
     credentials: 'same-origin',
     signal,
   });
-  await read(response, handlers);
+  return readToTheEnd(id, response, handlers, signal);
+}
+
+/**
+ * How many times a stream that ended without its last frame is picked up again
+ * before the page gives up and reads the history instead.
+ */
+const REATTACH_ATTEMPTS = 5;
+
+/** The pause before the first attempt; each one after waits that much longer. */
+const REATTACH_AFTER_MS = 1_000;
+
+/** Where a reading of one answer has got to, across the streams that carried it. */
+interface Heard {
+  /** How many of the answer's frames this stream has carried so far. */
+  position: number;
+  /** How many from the start were already handed on by an earlier stream. */
+  skip: number;
+  /** Whether `done` or `error` arrived. */
+  ended: boolean;
+  /** Whether the server said nothing is being written. */
+  idle: boolean;
+}
+
+/** The frames a reader is told about the stream rather than the answer. */
+const CONTROL_FRAMES = new Set(['following', 'idle', 'waiting']);
+
+/**
+ * Reads an answer to its last frame, picking it up again where the stream
+ * carrying it was cut.
+ *
+ * A turn's stream can end before the turn does: a proxy that closes a quiet
+ * connection, a network that drops, and - until the server stopped it - the
+ * container's own timeout for async requests, which closed every answer that
+ * took longer than five and a half minutes. Nothing failed, the reader saw the
+ * stream end, and the page went on showing the question until somebody
+ * reloaded it. The turn was still being written on the server all along.
+ *
+ * So a stream that ends without `done` or `error`, or breaks off, is picked up
+ * with `/follow`, which replays the answer in flight from its first frame. The
+ * frames this reader already handed on are skipped by position - the follow
+ * sends them in the same order, from the same list - so no line is drawn twice,
+ * and `following` is not passed on again because the page has already drawn
+ * the turn it announces. Where the server says `idle`, the turn ended while
+ * nobody was reading, and the history is the only place left that holds how.
+ *
+ * @returns whether the end of the turn was heard. False means it was not - the
+ *   server is idle, or the attempts ran out - and the caller should read the
+ *   history back rather than trust what is on screen.
+ */
+async function readToTheEnd(
+  id: string,
+  first: Response,
+  handlers: ChatStreamHandlers,
+  signal?: AbortSignal,
+  /**
+   * Whether a turn was being read when the stream ended. A follow that found
+   * nothing - idle, or a wait that ended before anything woke - has nothing to
+   * pick up, and whoever opened it decides whether to wait again.
+   */
+  reading: () => boolean = () => true,
+): Promise<boolean> {
+  // A refusal is said before the first frame and is not a cut stream.
+  if (!first.ok) {
+    await read(first, handlers);
+    return false;
+  }
+  // Carried across attempts, and kept even where a read breaks off part way.
+  const heard: Heard = { position: 0, skip: 0, ended: false, idle: false };
+  let response: Response | null = first;
+  let quiet = { ...handlers };
+  for (let attempt = 0; ; attempt++) {
+    if (response !== null) {
+      try {
+        await read(response, quiet, heard);
+        if (heard.ended) return true;
+        if (heard.idle) return false;
+      } catch (cause) {
+        if (givenUpOn(cause, signal)) throw cause;
+      }
+    }
+    if (!reading()) return false;
+    if (attempt >= REATTACH_ATTEMPTS) return false;
+    // Already announced: a re-attach is the same turn, not a new one.
+    quiet = { ...handlers, onFollowing: undefined };
+    // The follow replays from the first frame; everything up to here is drawn.
+    // A replay cut short before it caught up has drawn nothing new.
+    heard.skip = Math.max(heard.skip, heard.position);
+    heard.position = 0;
+    await pause(REATTACH_AFTER_MS * (attempt + 1), signal);
+    response = await fetch(`/api/chats/${id}/follow`, { credentials: 'same-origin', signal })
+      .then((answer) => (answer.ok ? answer : null))
+      .catch((cause: unknown) => {
+        if (givenUpOn(cause, signal)) throw cause;
+        return null;
+      });
+  }
+}
+
+function givenUpOn(cause: unknown, signal?: AbortSignal): boolean {
+  return signal?.aborted === true || (cause instanceof DOMException && cause.name === 'AbortError');
+}
+
+/** Waits, and stops waiting the moment the reader is stopped. */
+function pause(millis: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Stopped', 'AbortError'));
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    }, millis);
+    function stop() {
+      window.clearTimeout(timer);
+      reject(new DOMException('Stopped', 'AbortError'));
+    }
+    signal?.addEventListener('abort', stop, { once: true });
+  });
 }
 
 /**
@@ -512,8 +631,20 @@ export async function regenerateChatAnswer(
  * request. Folding the two sets of names together would mean a reader having to
  * know which endpoint it was talking to in order to know what a frame meant.
  */
-async function read(response: Response, handlers: ChatStreamHandlers): Promise<void> {
+async function read(
+  response: Response,
+  handlers: ChatStreamHandlers,
+  heard: Heard = { position: 0, skip: 0, ended: false, idle: false },
+): Promise<void> {
   await readEventStream(response, (frame) => {
+    if (frame.event === 'idle') heard.idle = true;
+    if (!CONTROL_FRAMES.has(frame.event)) {
+      // Counted before anything else, so a frame drawn before a cut is
+      // skipped on the replay whatever it was.
+      heard.position++;
+      if (heard.position <= heard.skip) return;
+      if (frame.event === 'done' || frame.event === 'error') heard.ended = true;
+    }
     const payload = payloadOf<{
       text?: string;
       at?: number;

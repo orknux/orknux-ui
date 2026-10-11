@@ -143,6 +143,7 @@ export const PL: Record<string, string> = {
   "Skill Details": "Szczegóły umiejętności",
   "Skill definition": "Definicja umiejętności",
   "Skill Catalogs": "Katalogi umiejętności",
+  "Built in - every agent has it": "Wbudowany - ma go każdy agent",
   "SKILL CATALOGS": "KATALOGI UMIEJĘTNOŚCI",
   "Create Skill": "Utwórz umiejętność",
   "Objects": "Obiekty",
