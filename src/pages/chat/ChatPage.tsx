@@ -1523,7 +1523,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onSaid' | 'onPersonRead' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1594,6 +1594,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        * In the same list as the calls, so it reads where it was said: before the
        * lookups it introduced. Keyed below zero, where no call's `at` can be.
        */
+      /* The chat's session exists from its first turn's start: the header's link to it shows then, not after a reload. */
+      onSession: (id) => {
+        const chat = openChat.current;
+        if (chat === null) return;
+        setSessions((held) => held?.map((entry) => (entry.id === chat && entry.llmSessionId !== id ? { ...entry, llmSessionId: id } : entry)) ?? held);
+      },
       /* The oldest of the person's waiting lines with these words is the one the agent just read. */
       onPersonRead: (text) =>
         setWorking((held) => {

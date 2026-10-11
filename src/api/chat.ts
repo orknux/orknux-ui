@@ -365,6 +365,8 @@ export interface ChatStreamHandlers {
   onFiled?: (file: Attachment) => void;
   /** What the agent wrote beside the calls it is about to make - how it reports progress. */
   onSaid?: (text: string) => void;
+  /** The session the turn is recorded in, as soon as the turn has one. */
+  onSession?: (id: string) => void;
   /** The agent has read something the person wrote while it was working. */
   onPersonRead?: (text: string) => void;
   /**
@@ -737,6 +739,7 @@ async function read(
     }
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
     else if (frame.event === 'personRead' && payload.text !== undefined) handlers.onPersonRead?.(payload.text);
+    else if (frame.event === 'session' && payload.id !== undefined) handlers.onSession?.(String(payload.id));
     else if (frame.event === 'writing' && payload.chars !== undefined) {
       handlers.onWriting?.({ tool: payload.tool ?? null, chars: payload.chars });
     }
