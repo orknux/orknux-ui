@@ -709,7 +709,11 @@ async function read(
 export function thinkingTime(millis: number): string {
   if (millis < 1000) return `${(millis / 1000).toFixed(1)} seconds`;
   const seconds = Math.round(millis / 1000);
-  return `${seconds} second${seconds === 1 ? '' : 's'}`;
+  if (seconds < 60) return `${seconds} second${seconds === 1 ? '' : 's'}`;
+  /* Past a minute, "637 seconds" is a sum to do; "10 min 37 s" is a length of time. */
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ${seconds % 60} s`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
 /**
