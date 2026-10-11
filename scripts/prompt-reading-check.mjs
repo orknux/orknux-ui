@@ -32,6 +32,7 @@ await context.addInitScript((answer) => {
             window.__reading.step = (which) => {
               if (which === 'grow') send('reading', { total: 208324, cached: 38000, processed: 104162 });
               if (which === 'write') send('writing', { tool: null, chars: 40 });
+              if (which === 'think') send('thinking', { text: 'Weighing the answer.' });
               if (which === 'done') {
                 send('chunk', { text: answer });
                 send('done', { millis: 1000 });
@@ -100,6 +101,11 @@ await page.evaluate(() => window.__reading.step?.('grow'));
 await page.waitForTimeout(400);
 const grown = await text();
 record(grown.includes('104,162 / 208,324 tokens') && grown.includes('50%'), `and the count moves (${grown.replace(/\s+/g, ' ')})`);
+/* Thinking means the prompt has been read: the reading card goes. It stayed up through a voice turn's thinking. */
+await page.evaluate(() => window.__reading.step?.('think'));
+await page.waitForTimeout(400);
+const thinking = await text();
+record(!thinking.startsWith('Reading the prompt'), `once the model thinks, the reading card is gone (${thinking.replace(/\s+/g, ' ') || 'nothing'})`);
 await page.evaluate(() => window.__reading.step?.('write'));
 await page.waitForTimeout(400);
 const writing = await text();

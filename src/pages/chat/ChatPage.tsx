@@ -1556,7 +1556,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         // read the whole of it to put it on the message and cannot see a state
         // update made in the same run of handlers.
         thinkingSoFar.current += piece;
-        setWorking((held) => ({ ...held, thinking: held.thinking + piece }));
+        // Thinking means the prompt has been read: a "Reading the prompt…" card left up said otherwise.
+        setWorking((held) => ({
+          ...held,
+          thinking: held.thinking + piece,
+          writing: held.writing?.promptTotal != null ? null : held.writing,
+        }));
       },
       /*
        * A drawn picture is put in front of the answer being written, because
