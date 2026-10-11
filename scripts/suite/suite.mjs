@@ -804,6 +804,14 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'session-todos-check',
+    what: "a session's to-do list and notes are drawn below its boxes, done items ticked and struck through",
+    // Stubs the session in the browser: the other half - that the agent's
+    // todo_* and note_to_self tools leave behind what the page reads - is
+    // SessionTodoAPITest.
+    needs: ['workspace'],
+  },
+  {
     name: 'artifact-document-check',
     what: 'an artifact that is not a picture opens in a tab, sandboxed, instead of drawing as a broken image',
     // Reads whatever the workspace holds rather than seeding one: artifacts

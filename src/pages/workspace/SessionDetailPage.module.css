@@ -1356,3 +1356,65 @@
 .lineLink:hover {
   text-decoration: underline;
 }
+
+/* ---- The agent's to-do list and notes, below the boxes ---- */
+
+.todoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+}
+
+.todoMark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+.todoMarkDone {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+}
+
+.todoMark img {
+  width: 10px;
+  height: 10px;
+}
+
+.todoBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.todoText {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.todoNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.todoRowDone .todoText {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.noteRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-8);
+}
