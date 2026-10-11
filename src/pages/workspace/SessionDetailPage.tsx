@@ -1500,14 +1500,15 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               <div className={`${styles.writingNow} ${styles.kindAgent}`} data-session-writing="">
                 <span className={styles.kindBadge}>{writing.promptTotal != null ? t('Reading') : t('Writing')}</span>
                 <span className={styles.writingAgent}>{writing.agent}</span>
-                <span className={readingShare(writing) !== null ? `${styles.stillThinking} ${styles.writingCounts}` : styles.stillThinking}>
-                  {writingParts(writing).lead !== '' && (
+                {readingShare(writing) !== null ? (
+                  <>
                     <span className={styles.readingLead} data-reading-lead="">{writingParts(writing).lead}</span>
-                  )}
-                  {writingParts(writing).rest}
-                </span>
-                {readingShare(writing) !== null && (
-                  <span className={styles.readingShare} data-reading-share="">{readingShare(writing)}%</span>
+                    <span className={styles.readingShare} data-reading-share="">{readingShare(writing)}%</span>
+                    {/* The counts on a line of their own, under what is happening. */}
+                    <span className={styles.readingDetails} data-reading-details="">{writingParts(writing).rest.trim()}</span>
+                  </>
+                ) : (
+                  <span className={styles.stillThinking}>{writingParts(writing).rest}</span>
                 )}
               </div>
             )}

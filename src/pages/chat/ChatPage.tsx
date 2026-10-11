@@ -3312,14 +3312,17 @@ ${named}`;
                           })()}
                           {writing !== null && (
                             <p className={styles.writingNow} data-chat-writing="">
-                              <span className={styles.compacting}>
-                                {writingParts(writing).lead !== '' && (
-                                  <span className={styles.readingLead} data-reading-lead="">{writingParts(writing).lead}</span>
-                                )}
-                                {writingParts(writing).rest}
-                              </span>
-                              {readingShare(writing) !== null && (
-                                <span className={styles.readingShare} data-reading-share="">{readingShare(writing)}%</span>
+                              {readingShare(writing) !== null ? (
+                                /* What is happening and how far, on one line; the counts under it. */
+                                <span className={styles.readingCard}>
+                                  <span className={styles.readingTop}>
+                                    <span className={styles.readingLead} data-reading-lead="">{writingParts(writing).lead}</span>
+                                    <span className={styles.readingShare} data-reading-share="">{readingShare(writing)}%</span>
+                                  </span>
+                                  <span className={styles.readingDetails} data-reading-details="">{writingParts(writing).rest.trim()}</span>
+                                </span>
+                              ) : (
+                                <span className={styles.compacting}>{writingParts(writing).rest}</span>
                               )}
                             </p>
                           )}

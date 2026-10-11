@@ -552,6 +552,7 @@
 
 /* What is happening, in the share's ink; the counts after it stay muted. */
 .readingLead {
+  font-size: var(--text-sm);
   color: var(--color-text-primary);
 }
 
@@ -602,8 +603,11 @@
   }
 }
 
-/* The live card's counts: muted, after the "still thinking" rule that would make them the accent. */
-.writingCounts {
+/* The reading card's counts, on their own line under the lead and the share. */
+.readingDetails {
+  flex-basis: 100%;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
   color: var(--color-text-muted);
 }
 
