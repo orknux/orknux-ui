@@ -54,6 +54,12 @@ interface Props {
   sessionId: string;
   sessionBoxId: string;
   executionId: string;
+  /**
+   * Whether the log already holds the command's finished line. `done` cannot say
+   * it alone: a finished command with more printed than one read is not done
+   * until the last stretch is read, and following it would read to the limit.
+   */
+  finished: boolean;
 }
 
 interface Held {
@@ -68,7 +74,7 @@ interface Held {
   shownLimit: number;
 }
 
-export function BoxOutput({ sessionId, sessionBoxId, executionId }: Props) {
+export function BoxOutput({ sessionId, sessionBoxId, executionId, finished }: Props) {
   const [held, setHeld] = useState<Held | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
@@ -135,7 +141,7 @@ export function BoxOutput({ sessionId, sessionBoxId, executionId }: Props) {
       .then((got) => {
         if (!wanted) return;
         /* A command still running is followed from the start; a finished one opens at its top. */
-        setFollow(!got.done && got.available);
+        setFollow(!finished && !got.done && got.available);
         setHeld({
           text: got.text,
           nextOffset: got.nextOffset,

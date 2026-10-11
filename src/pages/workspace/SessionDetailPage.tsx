@@ -1714,7 +1714,14 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     {open && execution === null && <pre className={styles.boxEventJson}>{prettyJson(event.data)}</pre>}
                     {drawsOutput && openBox !== null && (
                       <>
-                        <BoxOutput sessionId={sessionId} sessionBoxId={openBox} executionId={execution} />
+                        <BoxOutput
+                          sessionId={sessionId}
+                          sessionBoxId={openBox}
+                          executionId={execution}
+                          finished={boxEvents.some(
+                            (one) => one.type === 'execution.finished' && executionOf(one.data) === execution,
+                          )}
+                        />
                         <div className={styles.boxJsonBar}>
                           <button
                             type="button"
