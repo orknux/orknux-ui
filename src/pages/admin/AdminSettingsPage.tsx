@@ -14,6 +14,8 @@ import {
   setEmptyAnswerRetries,
   setUnusableReplyRetries,
   setModelAnswerLimitMinutes,
+  setWritingProgressMillis,
+  setWritingForgottenSeconds,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -136,6 +138,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [unusableRetries, setUnusableRetries] = useState('');
   /** How long a model may take to answer, in minutes, as typed. */
   const [answerLimit, setAnswerLimit] = useState('');
+  /** How often a model's writing is reported, in milliseconds, as typed. */
+  const [writingEvery, setWritingEvery] = useState('');
+  /** How long a report of writing is believed, in seconds, as typed. */
+  const [writingForgotten, setWritingForgotten] = useState('');
   /** How many keys one session's store may hold, as typed. */
   const [storeKeys, setStoreKeys] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
@@ -268,6 +274,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setEmptyRetries(String(held.emptyAnswerRetries));
         setUnusableRetries(String(held.unusableReplyRetries));
         setAnswerLimit(String(held.modelAnswerLimitMinutes));
+        setWritingEvery(String(held.writingProgressMillis));
+        setWritingForgotten(String(held.writingForgottenSeconds));
         setStoreKeys(String(held.sessionStoreMaxKeys));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
@@ -338,6 +346,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: emptyRetries, held: settings.emptyAnswerRetries, write: setEmptyAnswerRetries },
         { typed: unusableRetries, held: settings.unusableReplyRetries, write: setUnusableReplyRetries },
         { typed: answerLimit, held: settings.modelAnswerLimitMinutes, write: setModelAnswerLimitMinutes },
+        { typed: writingEvery, held: settings.writingProgressMillis, write: setWritingProgressMillis },
+        { typed: writingForgotten, held: settings.writingForgottenSeconds, write: setWritingForgottenSeconds },
         { typed: storeKeys, held: settings.sessionStoreMaxKeys, write: setSessionStoreMaxKeys },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
@@ -780,6 +790,60 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Model Answer Time Limit')}
                 />
                 <span className={styles.retentionUnit}>{t('minutes')}</span>
+              </div>
+            </div>
+
+            {/* How often the chat and the session page are told how far a model has got writing. It was a second, fixed. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Writing Progress Interval')}</p>
+                  <FieldHint label={t('Writing Progress Interval')}>
+                    {t('How often the chat and the session page are told how much a model has written of a long answer or tool call. Between 200 and 10000 ms.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="writing-progress-millis"
+                  name="writingProgressMillis"
+                  className={styles.input}
+                  type="number"
+                  min={200}
+                  max={10000}
+                  value={writingEvery}
+                  onChange={(event) => setWritingEvery(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Writing Progress Interval')}
+                />
+                <span className={styles.retentionUnit}>ms</span>
+              </div>
+            </div>
+
+            {/* How long "writing" stays on a session page with no new report. It was thirty seconds, fixed. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Writing Progress Forgotten After')}</p>
+                  <FieldHint label={t('Writing Progress Forgotten After')}>
+                    {t('How long a session page keeps saying a model is writing when no new report arrives - so a turn that died does not say it for ever. Between 5 and 600 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="writing-forgotten-seconds"
+                  name="writingForgottenSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={5}
+                  max={600}
+                  value={writingForgotten}
+                  onChange={(event) => setWritingForgotten(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Writing Progress Forgotten After')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
 

@@ -51,4 +51,62 @@ await graphql('mutation($m: Int!) { setModelAnswerLimitMinutes(minutes: $m) { mo
 });
 record((await stored()).modelAnswerLimitMinutes === started.modelAnswerLimitMinutes, 'put back to what it was');
 
+/*
+ * And the two numbers behind the "Writing..." line: how often it is told how far
+ * a model has got, and how long a report is believed. Both were constants.
+ */
+const writing = async () =>
+  (
+    await graphql(
+      'query { installationSettings { writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured } }',
+    )
+  ).installationSettings;
+const before = await writing();
+record(
+  before.writingProgressMillisConfigured === 1000 && before.writingForgottenSecondsConfigured === 30,
+  `a fresh installation reports writing every second and forgets it after thirty (${before.writingProgressMillisConfigured} ms, ${before.writingForgottenSecondsConfigured} s)`,
+);
+const every = () => page.getByLabel('Writing Progress Interval', { exact: true });
+const forgotten = () => page.getByLabel('Writing Progress Forgotten After', { exact: true });
+await page.goto(`${BASE}/admin/settings`, { waitUntil: 'domcontentloaded' });
+if (await drawn(page, 'admin settings')) {
+  const there = await every()
+    .waitFor({ state: 'visible', timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  record(there && (await forgotten().isVisible()), 'both writing boxes are on the page');
+  if (there) {
+    const placed = await page.evaluate(() => {
+      const limit = document.getElementById('model-answer-limit-minutes')?.getBoundingClientRect();
+      const one = document.getElementById('writing-progress-millis')?.getBoundingClientRect();
+      const two = document.getElementById('writing-forgotten-seconds')?.getBoundingClientRect();
+      return limit && one && two ? one.top > limit.bottom && two.top > one.bottom : null;
+    });
+    record(placed === true, 'under Model Answer Time Limit, in that order');
+    record(
+      (await every().inputValue()) === String(before.writingProgressMillis) &&
+        (await forgotten().inputValue()) === String(before.writingForgottenSeconds),
+      'they show what is stored',
+    );
+    const wantEvery = before.writingProgressMillis === 500 ? 750 : 500;
+    const wantForgotten = before.writingForgottenSeconds === 90 ? 60 : 90;
+    await every().fill(String(wantEvery));
+    await forgotten().fill(String(wantForgotten));
+    await page.getByRole('button', { name: 'Save the settings on this page', exact: true }).click();
+    await page.getByText('Saved.', { exact: true }).waitFor({ timeout: 10_000 }).catch(() => {});
+    const saved = await writing();
+    record(
+      saved.writingProgressMillis === wantEvery && saved.writingForgottenSeconds === wantForgotten,
+      `the server holds ${wantEvery} ms and ${wantForgotten} s after a save (${saved.writingProgressMillis}, ${saved.writingForgottenSeconds})`,
+    );
+  }
+}
+await graphql('mutation($m: Int!) { setWritingProgressMillis(millis: $m) { writingProgressMillis } }', { m: before.writingProgressMillis });
+await graphql('mutation($s: Int!) { setWritingForgottenSeconds(seconds: $s) { writingForgottenSeconds } }', { s: before.writingForgottenSeconds });
+const back = await writing();
+record(
+  back.writingProgressMillis === before.writingProgressMillis && back.writingForgottenSeconds === before.writingForgottenSeconds,
+  'both put back to what they were',
+);
+
 await finish(browser);

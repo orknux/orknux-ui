@@ -228,6 +228,12 @@ export interface InstallationSettings {
   /** How long one call to a model may take, in minutes. */
   modelAnswerLimitMinutes: number;
   modelAnswerLimitMinutesConfigured: number;
+  /** How often a page watching a model write is told how far it has got, in milliseconds. */
+  writingProgressMillis: number;
+  writingProgressMillisConfigured: number;
+  /** How long a report that a model is writing is believed without another, in seconds. */
+  writingForgottenSeconds: number;
+  writingForgottenSecondsConfigured: number;
   /** How big one value in a session's store may be, in MB. */
   sessionValueMaxMb: number;
   sessionValueMaxMbConfigured: number;
@@ -311,7 +317,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -775,6 +781,22 @@ export async function setUnusableReplyRetries(retries: number): Promise<Installa
     { retries },
   );
   return data.setUnusableReplyRetries;
+}
+
+export async function setWritingProgressMillis(millis: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWritingProgressMillis: InstallationSettings }>(
+    `mutation ($millis: Int!) { setWritingProgressMillis(millis: $millis) { ${FIELDS} } }`,
+    { millis },
+  );
+  return data.setWritingProgressMillis;
+}
+
+export async function setWritingForgottenSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWritingForgottenSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setWritingForgottenSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setWritingForgottenSeconds;
 }
 
 export async function setModelAnswerLimitMinutes(minutes: number): Promise<InstallationSettings> {
