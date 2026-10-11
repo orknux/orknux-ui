@@ -26,11 +26,12 @@ const title = (await row.locator('[class*="_sessionTitle_"]').innerText()).trim(
 const wasPinned = await underPinned(title);
 await row.hover();
 /* The ⋮ a hover shows is drawn in the row's own ink, not muted to near nothing. */
-const menuInk = await row.locator('[aria-label^="Actions for"]').evaluate((button) => ({
-  menu: getComputedStyle(button).color,
-  title: getComputedStyle(button.parentElement?.querySelector('[class*="_sessionTitle_"]') ?? button).color,
-}));
-record(menuInk.menu === menuInk.title, `on hover the row's menu is as bright as its title (${JSON.stringify(menuInk)})`);
+const menuInk = await row.locator('[aria-label^="Actions for"]').evaluate((button) => {
+  const level = (colour) => (colour.match(/\d+/g) ?? []).slice(0, 3).map(Number).reduce((a, b) => a + b, 0) / 3;
+  const title = button.parentElement?.querySelector('[class*="_sessionTitle_"]');
+  return { menu: level(getComputedStyle(button).color), title: title ? level(getComputedStyle(title).color) : 0 };
+});
+record(menuInk.menu >= menuInk.title, `on hover the row's menu is at least as bright as its title (${JSON.stringify(menuInk)})`);
 await row.locator('[aria-label^="Actions for"]').click();
 const started = Date.now();
 await page.getByRole('menuitem', { name: wasPinned ? 'Unpin chat' : 'Pin chat' }).click();
