@@ -1935,7 +1935,9 @@ ${named}`;
   async function handleRegenerate() {
     if (currentId === null || sending) return;
     const at = messages.length - 1;
-    if (messages[at]?.role !== 'assistant') return;
+    // A chat ending on the person's own message - its turn died or was stopped - is answered as it stands.
+    const unanswered = messages[at]?.role === 'user';
+    if (messages[at]?.role !== 'assistant' && !unanswered) return;
 
     /*
      * In voice mode the panel owns the turn, and asking again is a turn.
@@ -1946,7 +1948,7 @@ ${named}`;
      * so a conversation being held out loud went silent at exactly the press
      * that says the last answer was not good enough. Issue #314.
      */
-    if (voice && voiceControls.current !== null) {
+    if (voice && voiceControls.current !== null && !unanswered) {
       setError(null);
       voiceControls.current.again();
       return;
@@ -1954,7 +1956,14 @@ ${named}`;
 
     setSending(true);
     setError(null);
-    anotherTake(at);
+    if (unanswered) {
+      // Nothing to keep as a take: an empty answer under the question, filled as it streams.
+      setWorking(NOTHING_YET);
+      thinkingSoFar.current = '';
+      setMessages((present) => [...present, { role: 'assistant', content: '', actor: null, takes: [], thinking: null, thinkingMillis: null, at: null }]);
+    } else {
+      anotherTake(at);
+    }
 
     const asked = new AbortController();
     asking.current = asked;
@@ -3164,6 +3173,19 @@ ${named}`;
                       >
                         <img src={copyIcon} alt="" width={14} height={14} />
                       </button>
+                      {/* The chat ends on this message with no answer under it: ask for one, rather than retyping it. */}
+                      {index === messages.length - 1 && !sending && (
+                        <button
+                          type="button"
+                          className={styles.rowAction}
+                          onClick={() => void handleRegenerate()}
+                          title={t('Answer this')}
+                          aria-label={t('Answer this')}
+                          data-answer-this=""
+                        >
+                          <img src={refreshCwIcon} alt="" width={14} height={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

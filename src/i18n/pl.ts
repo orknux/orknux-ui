@@ -747,6 +747,7 @@ export const PL: Record<string, string> = {
   "Add to this message": "Dodaj do tej wiadomości",
   "Copy this message": "Kopiuj tę wiadomość",
   "Copy this answer": "Kopiuj tę odpowiedź",
+  "Answer this": "Odpowiedz na to",
   "Answer again": "Odpowiedz ponownie",
   "Answer again — this one is kept": "Odpowiedz ponownie — ta zostaje zachowana",
   "The answer before this one": "Poprzednia odpowiedź",

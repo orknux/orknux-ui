@@ -1343,6 +1343,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-answer-this-check',
+    what: "a chat ending on the person's own message offers to answer it, and the answer streams under it",
+    needs: ['workspace'],
+    /* Puts an unanswered question on the real history's end and stubs the regenerate stream. */
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, from its header',
     needs: ['workspace'],
