@@ -1842,7 +1842,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               onChange={(event) => { touch('companion'); setCompanion(event.target.value); }}
               disabled={workspace === null}
             >
-              <option value="">{t('None — chats keep the name they were given')}</option>
+              <option value="">{t('None — each chat’s own model names it')}</option>
               {/* A small job is still a chat job: it asks a model for a title. */}
               {models
                 .filter(answers)
