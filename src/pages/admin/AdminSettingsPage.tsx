@@ -71,6 +71,7 @@ import {
   setBoxOutputShownBytes,
   setBoxRequestTimeoutSeconds,
   setBoxEditUndoSteps,
+  setBoxSessionIdleSeconds,
   setBoxMaxPorts,
   setBoxPortCheckSeconds,
   setBoxPortCheckWaitMillis,
@@ -231,6 +232,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [boxOutputShown, setBoxOutputShown] = useState('');
   const [boxRequest, setBoxRequest] = useState('');
   const [boxUndoSteps, setBoxUndoSteps] = useState('');
+  /** How long a box session an agent opens may sit idle, as typed. */
+  const [boxSessionIdle, setBoxSessionIdle] = useState('');
   const [boxPorts, setBoxPorts] = useState('');
   const [boxPortCheck, setBoxPortCheck] = useState('');
   const [boxPortWait, setBoxPortWait] = useState('');
@@ -250,6 +253,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     setBoxOutputShown(String(Math.round(held.boxOutputShownBytes / 1024)));
     setBoxRequest(String(held.boxRequestTimeoutSeconds));
     setBoxUndoSteps(String(held.boxEditUndoSteps));
+    setBoxSessionIdle(String(held.boxSessionIdleSeconds));
     setBoxPorts(String(held.boxMaxPorts));
     setBoxPortCheck(String(held.boxPortCheckSeconds));
     setBoxPortWait(String(held.boxPortCheckWaitMillis));
@@ -449,6 +453,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         },
         { typed: boxRequest, held: settings.boxRequestTimeoutSeconds, write: setBoxRequestTimeoutSeconds },
         { typed: boxUndoSteps, held: settings.boxEditUndoSteps, write: setBoxEditUndoSteps },
+        { typed: boxSessionIdle, held: settings.boxSessionIdleSeconds, write: setBoxSessionIdleSeconds },
         { typed: boxPorts, held: settings.boxMaxPorts, write: setBoxMaxPorts },
         { typed: boxPortCheck, held: settings.boxPortCheckSeconds, write: setBoxPortCheckSeconds },
         { typed: boxPortWait, held: settings.boxPortCheckWaitMillis, write: setBoxPortCheckWaitMillis },
@@ -1901,6 +1906,33 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   disabled={busy}
                   aria-label={t('Box edit undo steps')}
                 />
+              </div>
+            </div>
+
+            {/* What every orkbox_open sends unless the agent names its own. A box's own default was 15 minutes. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Box session idle timeout')}</p>
+                  <FieldHint label={t('Box session idle timeout')}>
+                    {t('How long a box session an agent opens may go with no command before its box stops it, unless the agent asks for another. Waiting for a person counts as idle. Between 60 and 86400 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="box-session-idle-seconds"
+                  name="boxSessionIdleSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={60}
+                  max={86400}
+                  value={boxSessionIdle}
+                  onChange={(event) => setBoxSessionIdle(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Box session idle timeout')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
 

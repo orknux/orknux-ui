@@ -2586,6 +2586,8 @@ export const PL: Record<string, string> = {
   "How much of what a command prints is handed back to the agent; the rest is cut and the agent is told so. Between 1 and 4096 KB.": "Ile z tego, co wypisuje polecenie, trafia z powrotem do agenta; reszta jest obcinana, a agent się o tym dowiaduje. Od 1 do 4096 KB.",
   "Box request timeout": "Limit czasu żądania do skrzynki",
   "How long this server waits for a box to answer one request before giving up on it. Between 1 and 600.": "Jak długo ten serwer czeka na odpowiedź skrzynki na jedno żądanie, zanim z niego zrezygnuje. Od 1 do 600.",
+  "Box session idle timeout": "Limit bezczynności sesji w skrzynce",
+  "How long a box session an agent opens may go with no command before its box stops it, unless the agent asks for another. Waiting for a person counts as idle. Between 60 and 86400 seconds.": "Jak długo sesja w skrzynce otwarta przez agenta może trwać bez żadnego polecenia, zanim skrzynka ją zatrzyma, chyba że agent poprosi o inny czas. Czekanie na człowieka liczy się jako bezczynność. Od 60 do 86400 sekund.",
   "Box edit undo steps": "Kroki cofania zmian w skrzynce",
   "Box ports per session": "Porty skrzynki na sesję",
   "How many ports one box session may have asked for or open at once. An agent asks, and a person allows each one; 0 lets an agent ask for none. Between 0 and 20.": "Ile portów jedna sesja w skrzynce może mieć jednocześnie zamówionych lub otwartych. Agent prosi, a człowiek zezwala na każdy; 0 nie pozwala prosić o żaden. Od 0 do 20.",

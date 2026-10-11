@@ -235,7 +235,7 @@ if (local !== null) {
 const SETTINGS =
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime localBoxMaxSessions localBoxDefaultTtlSeconds ' +
   'localBoxMaxTtlSeconds localBoxIdleTimeoutSeconds boxCommandWaitSeconds boxCommandWaitSecondsConfigured ' +
-  'boxCommandTimeoutSeconds boxOutputBytes localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured boxOutputShownBytes boxRequestTimeoutSeconds boxEditUndoSteps boxEditUndoStepsConfigured ' +
+  'boxCommandTimeoutSeconds boxOutputBytes localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured boxOutputShownBytes boxRequestTimeoutSeconds boxEditUndoSteps boxEditUndoStepsConfigured boxSessionIdleSeconds boxSessionIdleSecondsConfigured ' +
   'boxMaxPorts boxMaxPortsConfigured boxPortCheckSeconds boxPortCheckSecondsConfigured boxPortCheckWaitMillis boxPortCheckWaitMillisConfigured';
 const held = (await graphql(`{ installationSettings { ${SETTINGS} } }`)).installationSettings;
 
@@ -259,6 +259,7 @@ const BOXES = [
   ['local-box-output-kept-kb', Math.round(held.localBoxOutputKeptBytes / 1024), '0', '16384'],
   ['box-request-timeout-seconds', held.boxRequestTimeoutSeconds, '1', '600'],
   ['box-edit-undo-steps', held.boxEditUndoSteps, '0', '100'],
+  ['box-session-idle-seconds', held.boxSessionIdleSeconds, '60', '86400'],
   ['box-max-ports', held.boxMaxPorts, '0', '20'],
   ['box-port-check-seconds', held.boxPortCheckSeconds, '2', '600'],
   ['box-port-check-wait-ms', held.boxPortCheckWaitMillis, '100', '10000'],
@@ -266,12 +267,22 @@ const BOXES = [
 for (const [id, value, min, max] of BOXES) {
   const box = page.locator(`#${id}`);
   const shown = await box.inputValue().catch(() => null);
-  const y = (await box.boundingBox().catch(() => null))?.y ?? null;
+  /*
+   * In page coordinates, measured together with the heading: the page scrolls to
+   * #boxes after it loads, and a heading measured in the viewport before that
+   * scroll against a box measured after it read some boxes as above it.
+   */
+  const below = await page
+    .evaluate((wanted) => {
+      const at = (el) => (el === null ? null : el.getBoundingClientRect().top + window.scrollY);
+      return { y: at(document.getElementById(wanted)), headingY: at(document.querySelector('h2#boxes')) };
+    }, id)
+    .catch(() => ({ y: null, headingY: null }));
   record(
     shown !== null && Number(shown) === value && (await box.getAttribute('min')) === min && (await box.getAttribute('max')) === max,
     `#${id} opens on ${value} and takes ${min} to ${max} (${shown})`,
   );
-  record(headingY !== null && y !== null && y > headingY, `#${id} is under the Boxes heading`);
+  record(below.headingY !== null && below.y !== null && below.y > below.headingY, `#${id} is under the Boxes heading`);
 }
 record(
   (await page.locator('#local-box-enabled').getAttribute('aria-checked').catch(() => null)) === String(held.localBoxEnabled),
@@ -293,6 +304,10 @@ const stored = (await graphql(`{ installationSettings { boxCommandWaitSeconds } 
 record(stored === wanted, `the number typed is the number stored (${stored})`);
 record(held.boxCommandWaitSecondsConfigured === 300, `a fresh installation waits 300 seconds (${held.boxCommandWaitSecondsConfigured})`);
 record(held.boxEditUndoStepsConfigured === 10, `a fresh installation keeps 10 box edits per session for undoing (${held.boxEditUndoStepsConfigured})`);
+record(
+  held.boxSessionIdleSecondsConfigured === 7200,
+  `a fresh installation lets a box session sit idle two hours, not a box's fifteen minutes (${held.boxSessionIdleSecondsConfigured})`,
+);
 record(
   held.boxMaxPortsConfigured === 5 && held.boxPortCheckSecondsConfigured === 15 && held.boxPortCheckWaitMillisConfigured === 1500,
   `a fresh installation lets a box session expose 5 ports, looked at every 15 s for 1500 ms (${held.boxMaxPortsConfigured}, ${held.boxPortCheckSecondsConfigured}, ${held.boxPortCheckWaitMillisConfigured})`,

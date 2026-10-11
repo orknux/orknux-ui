@@ -284,6 +284,9 @@ export interface InstallationSettings {
   /** How many file edits and writes an agent can undo per box session; 0 keeps none. */
   boxEditUndoSteps: number;
   boxEditUndoStepsConfigured: number;
+  /** How long a box session an agent opens may go with no command, in seconds. */
+  boxSessionIdleSeconds: number;
+  boxSessionIdleSecondsConfigured: number;
   /** Exposed box ports: how many a session may have, and how often and how long whether one answers is looked at. */
   boxMaxPorts: number;
   boxMaxPortsConfigured: number;
@@ -330,7 +333,7 @@ const FIELDS =
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
   'localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured ' +
   'boxCommandWaitSeconds boxCommandWaitSecondsConfigured boxCommandTimeoutSeconds boxCommandTimeoutSecondsConfigured ' +
-  'boxOutputBytes boxOutputBytesConfigured boxOutputShownBytes boxOutputShownBytesConfigured boxRequestTimeoutSeconds boxRequestTimeoutSecondsConfigured boxEditUndoSteps boxEditUndoStepsConfigured boxMaxPorts boxMaxPortsConfigured boxPortCheckSeconds boxPortCheckSecondsConfigured boxPortCheckWaitMillis boxPortCheckWaitMillisConfigured ' +
+  'boxOutputBytes boxOutputBytesConfigured boxOutputShownBytes boxOutputShownBytesConfigured boxRequestTimeoutSeconds boxRequestTimeoutSecondsConfigured boxEditUndoSteps boxEditUndoStepsConfigured boxSessionIdleSeconds boxSessionIdleSecondsConfigured boxMaxPorts boxMaxPortsConfigured boxPortCheckSeconds boxPortCheckSecondsConfigured boxPortCheckWaitMillis boxPortCheckWaitMillisConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -1040,6 +1043,14 @@ export async function setBoxPortCheckWaitMillis(millis: number): Promise<Install
     { millis },
   );
   return data.setBoxPortCheckWaitMillis;
+}
+
+export async function setBoxSessionIdleSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setBoxSessionIdleSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setBoxSessionIdleSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setBoxSessionIdleSeconds;
 }
 
 export async function setBoxEditUndoSteps(steps: number): Promise<InstallationSettings> {
