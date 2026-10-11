@@ -1502,7 +1502,7 @@ export const PL: Record<string, string> = {
   "Queued - the agent reads it at its next step": "W kolejce - agent przeczyta to przy następnym kroku",
   "Could not send that.": "Nie udało się tego wysłać.",
   "Any value works unless the server was started with --api-key.": "Dowolna wartość, chyba że serwer uruchomiono z --api-key.",
-  "Reading the prompt… {read} / {total} tokens ({share}%)": "Czytanie promptu… {read} / {total} tokenów ({share}%)",
+  "Reading the prompt… {read} / {total} tokens": "Czytanie promptu… {read} / {total} tokenów",
   "{cached} cached": "{cached} z pamięci podręcznej",
   "Reading": "Czytanie",
   "{tokens} tokens ({cached} cached)": "{tokens} tokenów ({cached} z pamięci podręcznej)",

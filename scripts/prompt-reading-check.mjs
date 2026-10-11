@@ -66,13 +66,27 @@ await line.first().waitFor({ timeout: 10_000 }).catch(() => {});
 
 const first = await text();
 record(
-  first === 'Reading the prompt… 42,610 / 208,324 tokens (20%) · 38,000 cached',
+  first.startsWith('Reading the prompt… 42,610 / 208,324 tokens · 38,000 cached'),
   `while the server reads the prompt, the chat says how far (${first})`,
+);
+/* The percentage stands apart, at the right end of the card. */
+const shareAt = async (card) =>
+  card.evaluate((box) => {
+    const share = box.querySelector('[data-reading-share]');
+    if (share === null) return null;
+    const outer = box.getBoundingClientRect();
+    const inner = share.getBoundingClientRect();
+    return { text: share.textContent?.trim(), rightGap: Math.round(outer.right - inner.right), leftOfCentre: inner.left < outer.left + outer.width / 2 };
+  });
+const chatShare = await shareAt(line.first()).catch(() => null);
+record(
+  chatShare !== null && chatShare.text === '20%' && chatShare.rightGap <= 16 && !chatShare.leftOfCentre,
+  `and the percentage sits at the right of the card (${JSON.stringify(chatShare)})`,
 );
 await page.evaluate(() => window.__reading.step?.('grow'));
 await page.waitForTimeout(400);
 const grown = await text();
-record(grown.startsWith('Reading the prompt… 104,162 / 208,324 tokens (50%)'), `and the count moves (${grown})`);
+record(grown.startsWith('Reading the prompt… 104,162 / 208,324 tokens') && grown.endsWith('50%'), `and the count moves (${grown})`);
 await page.evaluate(() => window.__reading.step?.('write'));
 await page.waitForTimeout(400);
 const writing = await text();
@@ -108,8 +122,13 @@ const card = page.locator('[data-session-writing]');
 await card.first().waitFor({ timeout: 15_000 }).catch(() => {});
 const said = ((await card.first().innerText().catch(() => '')) ?? '').trim();
 record(
-  said.startsWith('READING') && said.includes('Reading the prompt… 42,610 / 208,324 tokens (20%) · 38,000 cached'),
+  said.startsWith('READING') && said.includes('Reading the prompt… 42,610 / 208,324 tokens · 38,000 cached'),
   `the session page says the same while it reads (${said.replace(/\s+/g, ' ')})`,
+);
+const sessionShare = await shareAt(card.first()).catch(() => null);
+record(
+  sessionShare !== null && sessionShare.text === '20%' && sessionShare.rightGap <= 24 && !sessionShare.leftOfCentre,
+  `with its percentage at the right too (${JSON.stringify(sessionShare)})`,
 );
 
 /* --------------------------------------------------- the chat's running total */

@@ -1641,6 +1641,20 @@ button.attachmentName {
   margin: 0;
 }
 
+/* The share read so far, at the right end of the card, apart from the counts. */
+.writingNow:has(.readingShare) {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-16);
+}
+
+.readingShare {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
 .compacting {
   margin: 0 0 var(--space-8);
   font-size: var(--text-sm);

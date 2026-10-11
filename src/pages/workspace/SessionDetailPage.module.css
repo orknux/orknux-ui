@@ -542,6 +542,14 @@
  * it reads as part of the conversation, but it is a fact about this second and
  * not a line of the record.
  */
+/* The share read so far, at the right end of the card. */
+.readingShare {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
 .writingNow {
   display: flex;
   flex-wrap: wrap;

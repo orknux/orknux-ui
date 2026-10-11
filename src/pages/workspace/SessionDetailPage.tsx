@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { startChat, writingLabel } from '../../api/chat';
+import { readingShare, startChat, writingLabel } from '../../api/chat';
 import { FoldToggle } from '../../components/FoldToggle';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
@@ -1501,6 +1501,9 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                 <span className={styles.kindBadge}>{writing.promptTotal != null ? t('Reading') : t('Writing')}</span>
                 <span className={styles.writingAgent}>{writing.agent}</span>
                 <span className={styles.stillThinking}>{writingLabel(writing)}</span>
+                {readingShare(writing) !== null && (
+                  <span className={styles.readingShare} data-reading-share="">{readingShare(writing)}%</span>
+                )}
               </div>
             )}
             {loading && events === null && (

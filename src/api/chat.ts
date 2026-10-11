@@ -846,22 +846,30 @@ export interface Writing {
  */
 export function writingLabel(writing: Writing): string {
   /*
-   * "Reading the prompt… 42,610 / 208,324 tokens (20%) · 38,000 cached". A long
+   * "Reading the prompt… 42,610 / 208,324 tokens · 38,000 cached", with "20%" beside it. A long
    * session whose cached prefix no longer matched is read for minutes before a
    * word is written, and this is the only thing that says so.
    */
   if (writing.promptTotal != null && writing.promptProcessed != null) {
+    // The percentage is drawn apart, at the right of the card: see readingShare.
     const total = writing.promptTotal;
-    const share = total > 0 ? Math.floor((writing.promptProcessed / total) * 100) : 0;
-    const read = tf('Reading the prompt… {read} / {total} tokens ({share}%)', {
+    const read = tf('Reading the prompt… {read} / {total} tokens', {
       read: tokenCount(writing.promptProcessed),
       total: tokenCount(total),
-      share: String(share),
     });
     return writing.promptCached ? `${read} · ${tf('{cached} cached', { cached: tokenCount(writing.promptCached) })}` : read;
   }
   const what = writing.tool === null ? t('Writing the answer…') : tf('Writing {tool}…', { tool: writing.tool });
   return `${what} ${tokenCount(writing.chars)} chars (~${tokenCount(Math.round(writing.chars / 4))} tokens)`;
+}
+
+/**
+ * How far through the prompt llama.cpp is, as a whole percent - drawn at the
+ * right end of the card, apart from the counts. Null while nothing is being read.
+ */
+export function readingShare(writing: Writing): number | null {
+  if (writing.promptTotal == null || writing.promptProcessed == null) return null;
+  return writing.promptTotal > 0 ? Math.floor((writing.promptProcessed / writing.promptTotal) * 100) : 0;
 }
 
 /** 1620 -> "1,620". Grouped, because these run to five figures on a long thread. */
