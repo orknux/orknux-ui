@@ -413,9 +413,8 @@
 }
 
 /*
- * A model's thinking: dark green with a tint behind it. It is the agent's, so it
- * stays green, but drawn in the agent's own sage it was a twin of the answer
- * beside it and the badge was the only difference.
+ * A model's thinking: red, with a tint behind it. Drawn in the agent's own sage
+ * it was a twin of the answer beside it, and a darker green still read as one.
  */
 .kindThinking {
   --kind-colour: var(--color-thinking);

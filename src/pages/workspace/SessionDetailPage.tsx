@@ -144,8 +144,8 @@ const KIND_CLASS: Record<LlmSessionEventKind, string> = {
   TOOL: 'kindTool',
   USER: 'kindUser',
   SYSTEM: 'kindSystem',
-  // The agent's, so a green - but a darker one with a tint behind it: in the
-  // agent's own colour a thought and the answer after it looked the same.
+  // A colour of its own, red with a tint behind it: in the agent's colour a
+  // thought and the answer after it looked the same.
   THINKING: 'kindThinking',
   // A note the agent kept for itself — its own rule, so a reader scanning the
   // log picks out the few lines that were meant to survive it. Issue #409.
