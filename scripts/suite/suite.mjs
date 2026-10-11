@@ -3440,6 +3440,20 @@ export const TESTS = [
      * server and after a reload. Its own scratch provider, removed at both ends.
      */
   },
+
+  {
+    name: 'provider-all-tools-check',
+    what: 'a provider can hand an agent every tool up front, on by default for Ollama and OpenAI, and cap how many a request carries',
+    needs: ['workspace'],
+    /*
+     * A tool loaded mid-turn changes the top of the prompt, and a local server
+     * then reads the whole session again. `ProviderOfferAllToolsTest` proves
+     * what reaches the wire; this proves somebody can reach the switch and the
+     * cap: following the type's default, saved and read back off the server
+     * and after a reload, and put back under the type. Scratch providers,
+     * removed at both ends.
+     */
+  },
   {
     name: 'provider-chat-api-check',
     what: "an Azure OpenAI provider's chats go through Responses or chat completions, chosen on its page",

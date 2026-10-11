@@ -11,8 +11,8 @@ import type { McpServer, WorkspaceConnection } from '../api/integrations';
 import { fetchMemoryCatalogs } from '../api/memory';
 import { fetchWorkspace } from '../api/workspaces';
 import type { MemoryCatalog } from '../api/memory';
-import { answers, fetchModels } from '../api/models';
-import type { Model } from '../api/models';
+import { answers, fetchModels, fetchProviders } from '../api/models';
+import type { Model, ModelProvider } from '../api/models';
 import {
   BUILT_IN_SKILLS,
   fetchPluginSkillCatalogs,
@@ -33,7 +33,7 @@ import { LabelPicker } from './LabelPicker';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { segments } from './searchMatches';
 import own from './AgentForm.module.css';
-import { t } from '../i18n';
+import { t, tf } from '../i18n';
 
 /**
  * The class names the form paints itself with.
@@ -1198,6 +1198,20 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * two states it is in.
    */
   const noWorkspace = workspaceId === '';
+  /** The workspace's providers, only for the chosen model's cap on tools per request. */
+  const [providers, setProviders] = useState<ModelProvider[]>([]);
+  useEffect(() => {
+    if (workspaceId === '') return;
+    let wanted = true;
+    fetchProviders(workspaceId)
+      .then((found) => {
+        if (wanted) setProviders(found);
+      })
+      .catch(() => {});
+    return () => {
+      wanted = false;
+    };
+  }, [workspaceId]);
   const modelCatalogue = useCatalogue('models in this workspace', () => fetchModels(workspaceId), [workspaceId], {
     skip: noWorkspace,
   });
@@ -1439,6 +1453,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const grantedTotal = tools.length + fixedRows.filter(
     (tool) => tool.governance !== 'HTTP_TOOLS' && comesWithGrant(tool.governance),
   ).length;
+  /*
+   * The most tools one request to the chosen model's provider carries, so the
+   * form can say when this agent holds more: past it the rest are found as
+   * needed, which is a cost a provider set to offer every tool up front is
+   * there to avoid. Null while unknown, and then nothing is said.
+   */
+  const capOfModel = (() => {
+    const model = modelCatalogue.items.find((one) => one.id === modelId);
+    const provider = model === undefined ? undefined : providers.find((one) => one.id === model.providerId);
+    return provider === undefined ? null : provider.toolCap;
+  })();
   /*
    * The registered servers, which this form asks for only to know where each
    * chip's own page is - issue #251.
@@ -2124,6 +2149,14 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               </span>
             )}
           </div>
+          {capOfModel !== null && capOfModel > 0 && grantedTotal > capOfModel && (
+            <p className={own.carryingFull} data-tool-cap-warning="">
+              {tf('{granted} tools granted, and this model’s provider takes {cap} per request: the rest are found as needed.', {
+                granted: grantedTotal,
+                cap: capOfModel,
+              })}
+            </p>
+          )}
         </div>
 
         {/*

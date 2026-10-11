@@ -72,6 +72,14 @@ export interface ModelProvider {
    * False by default; the thinking is captured and shown either way.
    */
   sendsReasoning: boolean;
+  /** Every tool up front from an agent's first round, as set; null is the type's default. */
+  offerAllTools: boolean | null;
+  /** Whether it does, the default resolved: on for Ollama unless set. */
+  offersAllTools: boolean;
+  /** The most tools one request carries, as set; null is what the type takes. */
+  maxTools: number | null;
+  /** How many that is, the default resolved. */
+  toolCap: number;
   status: ProviderStatus;
   lastCheckMessage: string | null;
   lastCheckedAt: string | null;
@@ -186,6 +194,7 @@ export interface ModelUsage {
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
   'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi sendsReasoning ' +
+  'offerAllTools offersAllTools maxTools toolCap ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
@@ -319,7 +328,32 @@ export interface ProviderInput {
   chatApi?: ChatApi;
   /** Whether the model's earlier thinking is sent back. Undefined is off on create and unchanged on update. */
   sendsReasoning?: boolean;
+  /** Every tool up front; null is the type's default. Sent as given on every save. */
+  offerAllTools?: boolean | null;
+  /** The most tools one request carries, 8 to 1024; null is what the type takes. */
+  maxTools?: number | null;
 }
+
+/**
+ * Whether a provider of this type hands every tool up front when nobody said:
+ * Ollama, and OpenAI - whose type is also every OpenAI-compatible local server,
+ * llama.cpp among them. The server's `ModelProvider.offersAllTools`, mirrored.
+ */
+export function offersAllByDefault(type: ProviderType): boolean {
+  return type === 'OLLAMA' || type === 'OPENAI';
+}
+
+/**
+ * How many tools one request to a provider of this type takes, when nobody set
+ * a number - the server's `ProviderType.toolLimit`, mirrored for a placeholder.
+ */
+export const TYPE_TOOL_CAPS: Record<ProviderType, number> = {
+  OPENAI: 128,
+  AZURE_OPENAI: 128,
+  OLLAMA: 128,
+  ANTHROPIC: 256,
+  SYSTEM_ONE: 0,
+};
 
 export async function createProvider(
   workspaceId: string,

@@ -9,7 +9,9 @@ import {
   providerTypeLabel,
   removeProvider,
   revealProviderSecret,
+  offersAllByDefault,
   testProvider,
+  TYPE_TOOL_CAPS,
   updateProvider,
 } from '../../api/models';
 import type { ChatApi, ModelProvider, ProviderAuthMethod, ProviderType } from '../../api/models';
@@ -122,6 +124,14 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
    * thinking is what some providers need and others drop, so it is asked for.
    */
   const [sendsReasoning, setSendsReasoning] = useState(false);
+  /*
+   * Whether an agent on this provider is handed every tool up front. Null is
+   * the type's default - on for Ollama and OpenAI - and stays null until somebody presses
+   * the switch, so a provider moved to another type follows that type.
+   */
+  const [offerAllTools, setOfferAllTools] = useState<boolean | null>(null);
+  /** The most tools one request carries, as typed; empty is what the type takes. */
+  const [maxTools, setMaxTools] = useState('');
   /*
    * The throttle defaults this provider hands its models. Empty is no default:
    * a model may still set its own rate. Retry-After defaults to obeyed. #426.
@@ -241,6 +251,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
     setScope(found.scope ?? DEFAULT_SCOPE);
     setCheckEnabled(found.checkEnabled);
     setSendsReasoning(found.sendsReasoning);
+    setOfferAllTools(found.offerAllTools);
+    setMaxTools(found.maxTools === null ? '' : String(found.maxTools));
     setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
     setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
     setAcceptRetryAfter(found.acceptRetryAfter);
@@ -345,6 +357,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
       scope: entra ? scope.trim() || null : null,
       checkEnabled,
       sendsReasoning,
+      offerAllTools,
+      maxTools: toNumber(maxTools),
       throttleTokensPerSecond: toNumber(throttleTokens),
       throttleRequestsPerSecond: toNumber(throttleRequests),
       acceptRetryAfter,
@@ -712,6 +726,84 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                     {sendsReasoning ? t('Earlier thinking is sent back') : t('Earlier thinking is left out')}
                   </span>
                 </span>
+              </div>
+            </div>
+
+            {/*
+              Whether an agent is handed every tool from its first round. A
+              provider's setting, because what it protects is the provider's
+              prompt cache: a tool loaded mid-turn changes the top of the prompt
+              and a local server reads the whole session again.
+            */}
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <span className={styles.label} id="provider-all-tools-label">{t('All tools up front')}</span>
+                  <FieldHint label={t('All tools up front')}>
+                    {t('Hands an agent every tool it holds from its first round, with nothing to find or load, so the tool list never changes during a turn and a local server can reuse the prompt it has already read. On by default for Ollama and for OpenAI, which also covers OpenAI-compatible servers such as llama.cpp. Tools past the provider’s limit per request are still found as needed.')}
+                  </FieldHint>
+                </span>
+                <span className={styles.statusRow}>
+                  <button
+                    type="button"
+                    className={styles.toggle}
+                    onClick={() => {
+                      setOfferAllTools(!(offerAllTools ?? offersAllByDefault(type)));
+                      setSaved(false);
+                    }}
+                    role="switch"
+                    aria-checked={offerAllTools ?? offersAllByDefault(type)}
+                    aria-labelledby="provider-all-tools-label"
+                    data-testid="provider-all-tools-toggle"
+                  >
+                    <img
+                      src={(offerAllTools ?? offersAllByDefault(type)) ? toggleOnIcon : toggleOffIcon}
+                      alt=""
+                      width={36}
+                      height={20}
+                      data-keeps-colour
+                    />
+                  </button>
+                  <span className={(offerAllTools ?? offersAllByDefault(type)) ? styles.checkOn : styles.checkOff}>
+                    {(offerAllTools ?? offersAllByDefault(type)) ? t('Every tool goes out up front') : t('Tools past the agent’s limit are found as needed')}
+                    {offerAllTools === null && ` ${t('(default for this type)')}`}
+                  </span>
+                  {offerAllTools !== null && (
+                    <button
+                      type="button"
+                      className={styles.linkButton}
+                      onClick={() => {
+                        setOfferAllTools(null);
+                        setSaved(false);
+                      }}
+                      data-testid="provider-all-tools-default"
+                    >
+                      {t('Use the default')}
+                    </button>
+                  )}
+                </span>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.label} htmlFor="provider-max-tools">{t('Most tools per request')}</label>
+                  <FieldHint label={t('Most tools per request')}>
+                    {t('How many tools one request to this provider may carry. Left empty it is what the type takes - 128 for OpenAI, Azure and Ollama, 256 for Anthropic. Set it lower for a server that refuses fewer, or to keep a small model’s list short. Between 8 and 1024.')}
+                  </FieldHint>
+                </span>
+                <input
+                  id="provider-max-tools"
+                  name="maxTools"
+                  className={styles.input}
+                  type="number"
+                  min={8}
+                  max={1024}
+                  value={maxTools}
+                  placeholder={String(TYPE_TOOL_CAPS[type])}
+                  onChange={(event) => {
+                    setMaxTools(event.target.value);
+                    setSaved(false);
+                  }}
+                />
               </div>
             </div>
           </section>

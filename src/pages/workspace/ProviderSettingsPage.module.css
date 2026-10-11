@@ -418,3 +418,18 @@
   font-size: var(--text-base);
   color: var(--color-text-muted);
 }
+
+/* Back to the type's default, beside a switch somebody has pressed. */
+.linkButton {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-accent-brand);
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
