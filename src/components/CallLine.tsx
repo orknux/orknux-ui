@@ -1,3 +1,4 @@
+import { showAllLabel } from '../api/chat';
 import { useMemo, useState } from 'react';
 
 import styles from './CallLine.module.css';
@@ -172,7 +173,7 @@ function Folding({ text, what }: { text: string; what: string }) {
           onClick={() => setOpen((held) => !held)}
           aria-label={open ? `Show less of ${what}` : `Show all of ${what}`}
         >
-          {open ? t('Show less') : `Show all ${text.length.toLocaleString()} characters`}
+          {open ? t('Show less') : showAllLabel(text)}
         </button>
       )}
     </>

@@ -45,6 +45,8 @@ const EVENTS = [
     at: AT,
   },
   { id: 4, kind: 'AGENT', actor: 'Reviewer', content: 'The database was the cause.', result: null, millis: null, at: AT },
+  /* A thought long enough to fold: 4,000 characters, about 1,000 tokens. */
+  { id: 5, kind: 'THINKING', actor: 'Reviewer', content: 'Long thought. '.repeat(285) + 'abcdefghij', result: null, millis: 9000, at: AT },
 ];
 
 const SESSION = {
@@ -99,7 +101,7 @@ const drawn = await lines();
 record(drawn.length === EVENTS.length, `every line of the transcript is drawn (${drawn.length})`);
 
 const thinking = drawn.filter((one) => one.kind === 'Thinking');
-record(thinking.length === 2, `both thinking lines are drawn as thinking (${thinking.length})`);
+record(thinking.length === 3, `every thinking line is drawn as thinking (${thinking.length})`);
 
 record(
   thinking.some((one) => one.text.startsWith('Checking the runs.')),
@@ -151,5 +153,9 @@ record(
   (await page.locator('[class*="_kindChip_"][aria-pressed="true"]').innerText()).trim() === 'Thinking',
   'Thinking is one of the kinds the transcript filters by',
 );
+
+/* A folded line says what it holds in tokens as well as characters: an output limit is counted in tokens. */
+const fold = (await page.getByRole('button', { name: /^Show all [\d,]+ characters/ }).first().innerText().catch(() => '')).trim();
+record(fold === 'Show all 4,000 characters (~1,000 tokens)', `a folded line names its size in tokens too (${fold})`);
 
 await finish(browser);

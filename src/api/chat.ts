@@ -743,6 +743,17 @@ export function spendKnown(spend: ChatSpend): boolean {
   return spend.inputTokens > 0 || spend.outputTokens > 0 || spend.cost !== null;
 }
 
+/**
+ * "Show all 74,883 characters (~18,721 tokens)": what a folded text holds.
+ *
+ * Characters alone hid what mattered about a long thought - whether it came near
+ * the model's output limit, which is counted in tokens. Estimated, at the four
+ * characters to a token the rest of the product budgets with.
+ */
+export function showAllLabel(text: string): string {
+  return `Show all ${text.length.toLocaleString('en-US')} characters (~${tokenCount(Math.round(text.length / 4))} tokens)`;
+}
+
 /** 1620 -> "1,620". Grouped, because these run to five figures on a long thread. */
 export function tokenCount(tokens: number): string {
   return tokens.toLocaleString('en-US');

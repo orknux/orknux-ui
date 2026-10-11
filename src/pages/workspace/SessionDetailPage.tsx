@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { startChat } from '../../api/chat';
+import { showAllLabel, startChat } from '../../api/chat';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
   EVENT_KINDS,
@@ -211,7 +211,7 @@ function Block({ text, code, label }: { text: string; code: boolean; label?: str
       </pre>
       {long && (
         <button type="button" className={styles.fold} onClick={() => setOpen((held) => !held)}>
-          {open ? t('Show less') : `Show all ${text.length.toLocaleString()} characters`}
+          {open ? t('Show less') : showAllLabel(text)}
         </button>
       )}
     </>
