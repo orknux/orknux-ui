@@ -234,6 +234,14 @@
 .sessionRow:hover .sessionMenuButton,
 .sessionMenuButton[aria-expanded='true'] {
   visibility: visible;
+  /* Shown on hover in the row's own ink: muted, it was barely there against the row's highlight. */
+  color: var(--color-text-primary);
+}
+
+.sessionMenuButton:hover,
+.sessionMenuButton[aria-expanded='true'] {
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-4);
 }
 
 .contextMenu {
