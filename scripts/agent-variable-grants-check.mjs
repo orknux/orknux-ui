@@ -64,6 +64,8 @@ record((await secretList.count()) === 1, 'the form has a Secret Catalogs grant')
 record((await valueList.count()) === 1, 'and a Variable Catalogs grant');
 
 const row = (list, name) => list.locator(`[data-grant-name="${name}"]`);
+// The catalogs arrive after the form: wait for the row rather than counting before it is drawn.
+await row(secretList, SECRETS).waitFor({ timeout: 10_000 }).catch(() => {});
 record((await row(secretList, SECRETS).count()) === 1, "the secret grant lists the workspace's variable catalogs");
 
 const toolState = async (name) =>
