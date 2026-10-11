@@ -1370,6 +1370,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-widgets-check',
+    what: 'the timers and stopwatches an agent keeps in a chat are drawn above the composer, tick, and answer pause and remove',
+    needs: ['workspace'],
+    /* Stubs the chat's widgets and a stream that adds one mid-turn: no model can be made to start a timer on cue. */
+  },
+
+  {
     name: 'chat-progress-check',
     what: "what an agent writes beside its calls is drawn as it happens, between the calls it came between",
     needs: ['workspace'],

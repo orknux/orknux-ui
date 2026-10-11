@@ -1,3 +1,4 @@
+import type { ChatWidget } from './widgets';
 import type { Attachment } from './attachments';
 import { graphql } from './client';
 import { payloadOf, readEventStream } from './sse';
@@ -371,6 +372,8 @@ export interface ChatStreamHandlers {
   onDrew: (markdown: string) => void;
   /** A file the agent's side put on the chat during this turn; it goes under the answer. */
   onFiled?: (file: Attachment) => void;
+  /** The chat's widgets after the agent changed one, all of them. */
+  onWidgets?: (widgets: ChatWidget[]) => void;
   /** What the agent wrote beside the calls it is about to make - how it reports progress. */
   onSaid?: (text: string) => void;
   /** The session the turn is recorded in, as soon as the turn has one. */
@@ -724,6 +727,8 @@ async function read(
       total?: number;
       cached?: number;
       processed?: number;
+      /** A `widgets` frame: the chat's widgets as they now stand. */
+      widgets?: ChatWidget[];
     }>(frame);
     if (payload === null) return;
 
@@ -731,7 +736,9 @@ async function read(
     else if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
     else if (frame.event === 'thinking' && payload.text !== undefined) handlers.onThinking(payload.text);
     else if (frame.event === 'drew' && payload.markdown !== undefined) handlers.onDrew(payload.markdown);
-    else if (frame.event === 'filed' && payload.id !== undefined) {
+    else if (frame.event === 'widgets' && Array.isArray(payload.widgets)) {
+      handlers.onWidgets?.(payload.widgets.map((one) => ({ ...one, id: String(one.id) })));
+    } else if (frame.event === 'filed' && payload.id !== undefined) {
       handlers.onFiled?.({
         id: String(payload.id),
         filename: payload.filename ?? '',

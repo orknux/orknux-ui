@@ -234,6 +234,12 @@ export interface InstallationSettings {
   /** How long a report that a model is writing is believed without another, in seconds. */
   writingForgottenSeconds: number;
   writingForgottenSecondsConfigured: number;
+  /** How many widgets one chat may hold at once. */
+  widgetsPerChat: number;
+  widgetsPerChatConfigured: number;
+  /** The longest a chat's timer may run, in seconds. */
+  widgetTimerMaxSeconds: number;
+  widgetTimerMaxSecondsConfigured: number;
   /** How big one value in a session's store may be, in MB. */
   sessionValueMaxMb: number;
   sessionValueMaxMbConfigured: number;
@@ -327,7 +333,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -791,6 +797,22 @@ export async function setUnusableReplyRetries(retries: number): Promise<Installa
     { retries },
   );
   return data.setUnusableReplyRetries;
+}
+
+export async function setWidgetsPerChat(widgets: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWidgetsPerChat: InstallationSettings }>(
+    `mutation ($widgets: Int!) { setWidgetsPerChat(widgets: $widgets) { ${FIELDS} } }`,
+    { widgets },
+  );
+  return data.setWidgetsPerChat;
+}
+
+export async function setWidgetTimerMaxSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWidgetTimerMaxSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setWidgetTimerMaxSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setWidgetTimerMaxSeconds;
 }
 
 export async function setWritingProgressMillis(millis: number): Promise<InstallationSettings> {

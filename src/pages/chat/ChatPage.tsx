@@ -90,6 +90,8 @@ import { rememberWorkspace, useLastWorkspaceId } from '../../session/lastWorkspa
 import { FieldHint } from '../../components/FieldHint';
 import { copyText } from '../../components/clipboard';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
+import { ChatWidgets } from '../../components/ChatWidgets';
+import { actOnChatWidget, fetchChatWidgets, removeChatWidget, type ChatWidget } from '../../api/widgets';
 import styles from './ChatPage.module.css';
 import { t, tf } from '../../i18n';
 
@@ -189,6 +191,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [transcribing, setTranscribing] = useState(false);
   /** What is attached to the message being written, and the menu that adds to it. */
   const [attached, setAttached] = useState<Attachment[]>([]);
+  /** The timers and stopwatches the agent keeps in this chat, drawn above the composer. */
+  const [widgets, setWidgets] = useState<ChatWidget[]>([]);
   const [attaching, setAttaching] = useState(false);
   /** What has already been sent with this chat, for opening again later. */
   /**
@@ -276,6 +280,26 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   /** Where to put the caret once a completed word has been drawn into the box. */
   const caretAfter = useRef<number | null>(null);
   const [sending, setSending] = useState(false);
+
+  /*
+   * The chat's widgets, read when it opens and again when a turn ends - a turn
+   * the page was not watching may have changed them. During a turn the stream
+   * says so as it happens.
+   */
+  useEffect(() => {
+    if (currentId === null || sending) return;
+    let wanted = true;
+    fetchChatWidgets(currentId)
+      .then((held) => {
+        if (wanted) setWidgets(held);
+      })
+      .catch(() => {
+        if (wanted) setWidgets([]);
+      });
+    return () => {
+      wanted = false;
+    };
+  }, [currentId, sending]);
   /** Whether the person wrote into the turn now running; the history then holds it where the agent read it. */
   const wroteDuringTurn = useRef(false);
   /** A message written as the turn ended, too late for it: sent as a turn of its own once the page is free. */
@@ -1524,7 +1548,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1654,6 +1678,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        * A file the agent's side filed during the turn belongs to the answer the
        * turn ends, which is the message still being written - the last one.
        */
+      /* The agent changed a widget: the whole row as it now stands. */
+      onWidgets: (now) => setWidgets(now),
       onFiled: (file) =>
         setMessages((present) => {
           const at = present.length - 1;
@@ -3510,6 +3536,20 @@ ${named}`;
               {spent}
             </p>
           )}
+          {/* What the agent keeps live in this chat - timers, stopwatches - just above where the person writes. */}
+          <ChatWidgets
+            widgets={widgets}
+            onAct={(widget, action) =>
+              void actOnChatWidget(widget.id, action)
+                .then((after) => setWidgets((held) => held.map((one) => (one.id === after.id ? after : one))))
+                .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not change that widget.')))
+            }
+            onRemove={(widget) =>
+              void removeChatWidget(widget.id)
+                .then(() => setWidgets((held) => held.filter((one) => one.id !== widget.id)))
+                .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not remove that widget.')))
+            }
+          />
           <form ref={composerForm} className={styles.composer} onSubmit={handleSend}>
             {/* What is going with the message, above the box it is going from. */}
             {attached.length > 0 && (

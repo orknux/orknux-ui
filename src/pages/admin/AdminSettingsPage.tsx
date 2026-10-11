@@ -15,6 +15,8 @@ import {
   setUnusableReplyRetries,
   setModelAnswerLimitMinutes,
   setWritingProgressMillis,
+  setWidgetsPerChat,
+  setWidgetTimerMaxSeconds,
   setWritingForgottenSeconds,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
@@ -146,6 +148,10 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [writingEvery, setWritingEvery] = useState('');
   /** How long a report of writing is believed, in seconds, as typed. */
   const [writingForgotten, setWritingForgotten] = useState('');
+  /** How many widgets one chat may hold, as typed. */
+  const [widgetsMost, setWidgetsMost] = useState('');
+  /** The longest a chat's timer may run, as typed. */
+  const [timerLongest, setTimerLongest] = useState('');
   /** How many keys one session's store may hold, as typed. */
   const [storeKeys, setStoreKeys] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
@@ -289,6 +295,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setAnswerLimit(String(held.modelAnswerLimitMinutes));
         setWritingEvery(String(held.writingProgressMillis));
         setWritingForgotten(String(held.writingForgottenSeconds));
+        setWidgetsMost(String(held.widgetsPerChat));
+        setTimerLongest(String(held.widgetTimerMaxSeconds));
         setStoreKeys(String(held.sessionStoreMaxKeys));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
@@ -361,6 +369,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: answerLimit, held: settings.modelAnswerLimitMinutes, write: setModelAnswerLimitMinutes },
         { typed: writingEvery, held: settings.writingProgressMillis, write: setWritingProgressMillis },
         { typed: writingForgotten, held: settings.writingForgottenSeconds, write: setWritingForgottenSeconds },
+        { typed: widgetsMost, held: settings.widgetsPerChat, write: setWidgetsPerChat },
+        { typed: timerLongest, held: settings.widgetTimerMaxSeconds, write: setWidgetTimerMaxSeconds },
         { typed: storeKeys, held: settings.sessionStoreMaxKeys, write: setSessionStoreMaxKeys },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
@@ -859,6 +869,60 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   onChange={(event) => setWritingForgotten(event.target.value)}
                   disabled={busy}
                   aria-label={t('Writing Progress Forgotten After')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            {/* How many timers and stopwatches one chat may hold. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Widgets Per Chat')}</p>
+                  <FieldHint label={t('Widgets Per Chat')}>
+                    {t('How many widgets - timers and stopwatches an agent puts above the message box - one chat may hold at once. Between 1 and 50.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="widgets-per-chat"
+                  name="widgetsPerChat"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={widgetsMost}
+                  onChange={(event) => setWidgetsMost(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Widgets Per Chat')}
+                />
+                <span className={styles.retentionUnit}>{t('widgets')}</span>
+              </div>
+            </div>
+
+            {/* The longest a chat's timer may run. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Longest Chat Timer')}</p>
+                  <FieldHint label={t('Longest Chat Timer')}>
+                    {t('The longest a timer an agent puts in a chat may run. Between 60 and 604800 seconds; a day by default.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="widget-timer-max-seconds"
+                  name="widgetTimerMaxSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={60}
+                  max={604800}
+                  value={timerLongest}
+                  onChange={(event) => setTimerLongest(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Longest Chat Timer')}
                 />
                 <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
