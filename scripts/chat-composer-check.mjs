@@ -99,6 +99,11 @@ const after = await page.locator('[class*="_attachment_"]').count();
 record(uploads.length === 1, `a pasted picture is uploaded, both in one request (${uploads.length} requests)`);
 record(after > before, `and it is drawn as an attachment, as an uploaded one is (${before} then ${after})`);
 
+/* A picture on its own is a message: Send is offered with nothing typed. */
+await composer.fill('');
+const send = page.locator('form:has(#chat-composer) button[type="submit"]');
+record((await composer.inputValue()) === '' && (await send.isEnabled()), 'with only an attachment and no text, Send can be pressed');
+
 /* Pasting text is still pasting text. */
 const draft = await composer.inputValue();
 await composer.evaluate((box) => {

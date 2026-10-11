@@ -1704,12 +1704,13 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
 
   async function handleSend(event: FormEvent) {
     event.preventDefault();
-    if (currentId === null || draft.trim() === '') return;
+    // Words or a file: a picture sent on its own is a message.
+    if (currentId === null || (draft.trim() === '' && attached.length === 0)) return;
 
     // A command is carried out rather than said to the model: the model has no
     // way to run a workflow, and asking it to would be asking it to answer as
     // though it had.
-    if (await runCommand(draft)) return;
+    if (draft.trim() !== '' && (await runCommand(draft))) return;
 
     /*
      * What was attached is named in the message.
@@ -1728,12 +1729,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
      * conversation refers to a file that was never mentioned.
      */
     const unopenable = going.filter((file) => !file.contentType.startsWith('image/'));
-    const said =
-      unopenable.length === 0
-        ? draft.trim()
-        : `${draft.trim()}
+    const named = `Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
+    const said = unopenable.length === 0 ? draft.trim() : draft.trim() === '' ? named : `${draft.trim()}
 
-Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
+${named}`;
 
     /*
      * In voice mode the panel owns the turn, whichever way the message was
@@ -3827,7 +3826,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               <button
                 type="submit"
                 className={styles.sendButton}
-                disabled={draft.trim() === '' || (sending && !voice && current.agentId === null)}
+                disabled={(draft.trim() === '' && attached.length === 0) || (sending && !voice && current.agentId === null)}
               >
                 {sendLabel}
               </button>
