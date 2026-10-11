@@ -271,6 +271,12 @@ const IN_THE_OPEN = [
     why: "what the session's boxes panel is showing when its one query did not answer",
   },
   {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'Could not load the to-do list.',
+    because: 'status',
+    why: "what the session's to-do panel is showing when its one query did not answer",
+  },
+  {
     file: 'src/pages/admin/AdminPluginsPage.tsx',
     says: 'The marketplace offers nothing yet.',
     because: 'status',

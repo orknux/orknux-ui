@@ -137,6 +137,18 @@ record(
   `the notes, oldest first as the agent is handed them (${drawnNotes.join(' | ')})`,
 );
 
+/* Each panel's list scrolls inside its panel rather than growing it off the page. */
+const scrolling = await page.evaluate(() =>
+  [...document.querySelectorAll('[data-session-todos] ul, [data-session-notes] ul, [data-session-boxes] ul')].map((list) => {
+    const style = getComputedStyle(list);
+    return { overflow: style.overflowY, max: style.maxHeight };
+  }),
+);
+record(
+  scrolling.length > 0 && scrolling.every((one) => one.overflow === 'auto' && one.max !== 'none'),
+  `a panel's list is capped and scrolls (${JSON.stringify(scrolling)})`,
+);
+
 // A session the agent planned nothing in, and wrote nothing down in.
 todos = [];
 notes = [];

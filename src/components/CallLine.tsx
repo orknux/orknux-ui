@@ -1,4 +1,4 @@
-import { showAllLabel } from '../api/chat';
+import { FoldToggle } from './FoldToggle';
 import { useMemo, useState } from 'react';
 
 import styles from './CallLine.module.css';
@@ -165,17 +165,8 @@ function Folding({ text, what }: { text: string; what: string }) {
 
   return (
     <>
+      {long && <FoldToggle text={text} open={open} onToggle={() => setOpen((held) => !held)} what={what} />}
       <pre className={`${styles.body} ${long && !open ? styles.folded : ''}`}>{text}</pre>
-      {long && (
-        <button
-          type="button"
-          className={styles.fold}
-          onClick={() => setOpen((held) => !held)}
-          aria-label={open ? `Show less of ${what}` : `Show all of ${what}`}
-        >
-          {open ? t('Show less') : showAllLabel(text)}
-        </button>
-      )}
     </>
   );
 }

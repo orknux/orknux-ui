@@ -1484,6 +1484,7 @@ export const PL: Record<string, string> = {
   "Expand the menu": "Rozwiń menu",
   "Show catalogs": "Pokaż katalogi",
   "Hide catalogs": "Ukryj katalogi",
+  "Collapse": "Zwiń",
   "Show less": "Pokaż mniej",
   "Fewer settings": "Mniej ustawień",
   "Show it to edit": "Pokaż, aby edytować",

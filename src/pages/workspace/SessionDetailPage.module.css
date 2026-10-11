@@ -653,6 +653,17 @@
   border-radius: var(--radius-8);
 }
 
+/*
+ * A panel's list scrolls inside the panel rather than growing it: a session
+ * whose watcher opened a box every check listed sixty of them and pushed the
+ * to-do list and the notes off the bottom of the page.
+ */
+.scratchpads .familyList {
+  max-height: 32vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* At phone width the rail drops under the body rather than squeezing it. */
 @media (max-width: 720px) {
   .split {

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { showAllLabel, startChat } from '../../api/chat';
+import { startChat } from '../../api/chat';
+import { FoldToggle } from '../../components/FoldToggle';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
   EVENT_KINDS,
@@ -202,6 +203,7 @@ function Block({ text, code, label }: { text: string; code: boolean; label?: str
   return (
     <>
       {label !== undefined && <p className={styles.blockLabel}>{label}</p>}
+      {long && <FoldToggle text={text} open={open} onToggle={() => setOpen((held) => !held)} />}
       {/*
         A tool's arguments are code and are read as code; what was said is
         prose, and monospacing prose makes a conversation look like a log.
@@ -209,11 +211,6 @@ function Block({ text, code, label }: { text: string; code: boolean; label?: str
       <pre className={`${styles.content} ${code ? styles.code : ''} ${long && !open ? styles.folded : ''}`}>
         {text}
       </pre>
-      {long && (
-        <button type="button" className={styles.fold} onClick={() => setOpen((held) => !held)}>
-          {open ? t('Show less') : showAllLabel(text)}
-        </button>
-      )}
     </>
   );
 }

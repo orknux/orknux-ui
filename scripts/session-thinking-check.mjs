@@ -154,8 +154,32 @@ record(
   'Thinking is one of the kinds the transcript filters by',
 );
 
-/* A folded line says what it holds in tokens as well as characters: an output limit is counted in tokens. */
-const fold = (await page.getByRole('button', { name: /^Show all [\d,]+ characters/ }).first().innerText().catch(() => '')).trim();
-record(fold === 'Show all 4,000 characters (~1,000 tokens)', `a folded line names its size in tokens too (${fold})`);
+/*
+ * A folded line opens from an icon at its top right, which says how much it
+ * holds in tokens as well as characters - an output limit is counted in tokens -
+ * and stays where it was once the block is open.
+ */
+const toggle = page.locator('[data-fold-toggle]').first();
+const size = (await page.locator('[data-fold-size]').first().innerText().catch(() => '')).trim();
+record(size === '4,000 chars · ~1,000 tokens', `a folded line names its size in tokens too (${size})`);
+const where = await toggle.evaluate((button) => {
+  const block = button.parentElement?.nextElementSibling;
+  const b = button.getBoundingClientRect();
+  const p = block?.getBoundingClientRect();
+  return p ? { aboveTop: b.bottom <= p.top + 1, rightGap: Math.round(p.right - b.right) } : null;
+}).catch(() => null);
+record(where !== null && where.aboveTop && Math.abs(where.rightGap) <= 2, `its toggle sits at the block's top right (${JSON.stringify(where)})`);
+record(
+  (await page.getByRole('button', { name: /^Show (all|less)/ }).filter({ hasText: /Show/ }).count()) === 0,
+  'and there is no "Show all" link any more, only the icon',
+);
+const before = await toggle.boundingBox();
+await toggle.click();
+await page.waitForTimeout(200);
+const after = await toggle.boundingBox();
+record(
+  (await toggle.getAttribute('aria-expanded')) === 'true' && before !== null && after !== null && Math.abs(before.y - after.y) < 1,
+  `pressed, it opens the block and does not move (${before?.y} then ${after?.y})`,
+);
 
 await finish(browser);
