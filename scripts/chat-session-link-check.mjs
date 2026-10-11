@@ -16,12 +16,15 @@ const SESSION = '424242';
 await page.route('**/graphql', async (route) => {
   const body = route.request().postData() ?? '';
   if (!body.includes('chatSessions(') && !body.includes('chatSession(')) return route.continue();
-  const response = await route.fetch();
-  const json = await response.json();
+  // A request still in flight when the page closes has nobody to answer; dropping it is the honest end.
+  const response = await route.fetch().catch(() => null);
+  if (response === null) return;
+  const json = await response.json().catch(() => null);
+  if (json === null) return route.fulfill({ response }).catch(() => {});
   const stamp = (one) => (one && typeof one === 'object' && 'llmSessionId' in one ? { ...one, llmSessionId: SESSION } : one);
   if (Array.isArray(json?.data?.chatSessions)) json.data.chatSessions = json.data.chatSessions.map(stamp);
   if (json?.data?.chatSession) json.data.chatSession = stamp(json.data.chatSession);
-  await route.fulfill({ response, json });
+  await route.fulfill({ response, json }).catch(() => {});
 });
 
 await page.goto(`${BASE}/chat`, { waitUntil: 'domcontentloaded' });
