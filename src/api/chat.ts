@@ -1,3 +1,4 @@
+import type { Attachment } from './attachments';
 import { graphql } from './client';
 import { payloadOf, readEventStream } from './sse';
 import { t, tf } from '../i18n';
@@ -67,6 +68,12 @@ export interface ChatSession {
 export interface ChatMessage {
   role: string;
   content: string;
+  /**
+   * The files this message came with: what the person sent with it, or what
+   * the agent's side filed during the turn this answer ends. Drawn under the
+   * message; left out on a line the page made up itself.
+   */
+  attachments?: Attachment[];
   /**
    * Who said it, for a line carried into this chat from the session it
    * continues - the agent, the tool or the person, as the session recorded it.
@@ -209,7 +216,7 @@ export async function fetchChatsMentioning(workspaceId: string, text: string): P
 
 export async function fetchChatMessages(id: string): Promise<ChatMessage[]> {
   const data = await graphql<{ chatMessages: ChatMessage[] }>(
-    'query ChatMessages($id: ID!) { chatMessages(id: $id) { role content actor takes thinking thinkingMillis at } }',
+    'query ChatMessages($id: ID!) { chatMessages(id: $id) { role content actor takes thinking thinkingMillis at attachments { id filename contentType sizeBytes } } }',
     { id },
   );
   return data.chatMessages;
@@ -323,6 +330,8 @@ export interface ChatCall {
    * it asked for - its progress - drawn in order among them.
    */
   said?: string;
+  /** When the page heard of it, so a question asked during the turn can be put among the calls. */
+  seenAt?: number;
 }
 
 /** What a streaming send reports as it goes. */
@@ -348,6 +357,8 @@ export interface ChatStreamHandlers {
    * and did not show one until the page was reloaded.
    */
   onDrew: (markdown: string) => void;
+  /** A file the agent's side put on the chat during this turn; it goes under the answer. */
+  onFiled?: (file: Attachment) => void;
   /** What the agent wrote beside the calls it is about to make - how it reports progress. */
   onSaid?: (text: string) => void;
   /**
@@ -672,6 +683,10 @@ async function read(
       cost?: number | null;
       reason?: string;
       markdown?: string;
+      id?: string;
+      filename?: string;
+      contentType?: string;
+      sizeBytes?: number;
       replaced?: number;
       kept?: number;
       tokens?: number;
@@ -684,6 +699,14 @@ async function read(
     else if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
     else if (frame.event === 'thinking' && payload.text !== undefined) handlers.onThinking(payload.text);
     else if (frame.event === 'drew' && payload.markdown !== undefined) handlers.onDrew(payload.markdown);
+    else if (frame.event === 'filed' && payload.id !== undefined) {
+      handlers.onFiled?.({
+        id: String(payload.id),
+        filename: payload.filename ?? '',
+        contentType: payload.contentType ?? 'application/octet-stream',
+        sizeBytes: payload.sizeBytes ?? 0,
+      });
+    }
     else if (frame.event === 'compacting') handlers.onCompacting?.();
     else if (frame.event === 'compacted' && payload.replaced !== undefined) {
       handlers.onCompacted?.({

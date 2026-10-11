@@ -1300,10 +1300,21 @@ export const TESTS = [
 
   {
     name: 'chat-request-check',
-    what: "a question an agent put to the person is drawn in the chat with a button per option, and its outcome replaces the buttons once answered",
+    what: "a question an agent put to the person: a button per option, its outcome, at the bottom while open and between its calls once answered",
     needs: ['workspace'],
     /*
-     * A real chat given a session, and the request stubbed: no model has to ask.
+     * A real chat given a session, with its history, requests and one turn's
+     * stream stubbed in the page: no model has to ask.
+     */
+  },
+
+  {
+    name: 'chat-files-check',
+    what: "a file is drawn under the message it came with - the person's or the turn's answer - live and read back, with no strip above the composer",
+    needs: ['workspace'],
+    /*
+     * A real chat, with its history, the upload and one turn's stream stubbed
+     * in the page; the turn files one with a `filed` frame.
      */
   },
 

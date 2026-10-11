@@ -1735,3 +1735,27 @@ button.attachmentName {
 .said {
   margin: 4px 0;
 }
+
+/* The files a message came with, under it. */
+.messageFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-top: var(--space-6);
+}
+
+/* Under a person's message, against the bubble's right edge like the bubble itself. */
+.messageFilesUser {
+  justify-content: flex-end;
+}
+
+/* A question in the thread sits in the message column: past the avatar, no wider than an answer. */
+.requestRow {
+  max-width: calc(80ch + 48px);
+  padding-left: 48px;
+}
+
+/* And among a turn's calls, inside the answer, no wider than its text. */
+.requestInTurn {
+  max-width: 80ch;
+}

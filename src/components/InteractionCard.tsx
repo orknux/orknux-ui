@@ -81,6 +81,8 @@ export function placeRequests<T>(
   atOf: (line: T) => string | null,
   requests: InteractionRequest[],
   ascending = true,
+  /** Whether undated lines after the last dated one are the present, which a request is put before. */
+  undatedIsPresent = true,
 ): Map<number, InteractionRequest[]> {
   const placed = new Map<number, InteractionRequest[]>();
   /*
@@ -98,7 +100,7 @@ export function placeRequests<T>(
     for (let index = 0; index < lines.length; index += 1) {
       const said = atOf(lines[index]);
       if (said === null) {
-        if (ascending && index > lastDated) {
+        if (undatedIsPresent && ascending && index > lastDated) {
           at = index;
           break;
         }

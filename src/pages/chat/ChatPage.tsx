@@ -41,7 +41,6 @@ import type { SkillOffer } from '../../api/skills';
 import {
   attachmentUrl,
   isShowable,
-  fetchChatAttachments,
   formatSize,
   uploadAttachments,
 } from '../../api/attachments';
@@ -190,7 +189,6 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [attached, setAttached] = useState<Attachment[]>([]);
   const [attaching, setAttaching] = useState(false);
   /** What has already been sent with this chat, for opening again later. */
-  const [chatFiles, setChatFiles] = useState<Attachment[]>([]);
   /**
    * Whether a picture was drawn during the turn being answered.
    *
@@ -691,7 +689,6 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   useEffect(() => {
     setMessages([]);
-    setChatFiles([]);
     setLastSpend(null);
     // Working belongs to the turn that produced it, and that turn is in the
     // chat being left. Carried across it would sit under somebody else's answer.
@@ -710,11 +707,6 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
      * good.
      */
     const following = new AbortController();
-    fetchChatAttachments(currentId)
-      .then((held) => {
-        if (live) setChatFiles(held);
-      })
-      .catch(() => undefined);
     fetchChatMessages(currentId)
       .then(async (held) => {
         if (!live) return;
@@ -875,7 +867,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     // Only when it has stopped growing, so the scrollbar is not drawn over a
     // box that had room for the line all along.
     box.style.overflowY = wanted > height ? 'auto' : 'hidden';
-  }, [draft, attached, chatFiles, currentId]);
+  }, [draft, attached, currentId]);
 
   const current = sessions?.find((entry) => entry.id === currentId) ?? null;
 
@@ -902,7 +894,83 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     window.addEventListener('focus', loadRequests);
     return () => window.removeEventListener('focus', loadRequests);
   }, [loadRequests]);
-  const placedRequests = placeRequests(messages, (message) => message.at, requests);
+  /*
+   * Where each question goes.
+   *
+   * An open one is drawn at the bottom, just above the composer, whatever the
+   * turn is doing: it is waiting for the person, and a question scrolled up
+   * among the calls of a turn still running is one nobody sees. Answered, it
+   * goes back to when it was asked - among the calls of the turn it was asked
+   * in while that turn's working is on screen, and among the lines the history
+   * carries, by time, once it is read back.
+   */
+  const openRequests = requests.filter((request) => request.chosen === null);
+  const answeredRequests = requests.filter((request) => request.chosen !== null);
+  /*
+   * The turn on screen began with the person's last message; a question asked
+   * since belongs among its calls for as long as they are drawn - the answer
+   * that ends the turn is dated when it lands, and is not where it was asked.
+   */
+  const lastAsked = [...messages].reverse().find((message) => message.role === 'user' && message.at !== null)?.at ?? null;
+  const turnRequests =
+    working.calls.length > 0 && lastAsked !== null
+      ? answeredRequests.filter((request) => Date.parse(request.createdAt) > Date.parse(lastAsked))
+      : [];
+  const placedRequests = placeRequests(
+    messages,
+    (message) => message.at,
+    answeredRequests.filter((request) => !turnRequests.includes(request)),
+    true,
+    false,
+  );
+  /** The questions of the turn on screen, each before the first call the page heard of after it was asked. */
+  const requestsBefore = (seenAt: number | undefined, drawn: Set<string>) =>
+    turnRequests.filter((request) => {
+      if (drawn.has(request.id) || seenAt === undefined || Date.parse(request.createdAt) >= seenAt) return false;
+      drawn.add(request.id);
+      return true;
+    });
+  /** Every file this chat holds, for the viewer's arrows. */
+  const chatFiles = messages.flatMap((message) => message.attachments ?? []);
+  /**
+   * The files under one message: a picture as itself, opening in the viewer,
+   * anything else as a chip that downloads. The same drawing the strip above
+   * the composer used, which said nothing about which message a file came with.
+   */
+  const filesOf = (files: Attachment[], side: 'user' | 'assistant') =>
+    files.length === 0 ? null : (
+      <div className={side === 'user' ? `${styles.messageFiles} ${styles.messageFilesUser}` : styles.messageFiles} data-message-files="">
+        {files.map((file) =>
+          isShowable(file.contentType) ? (
+            <button
+              key={file.id}
+              type="button"
+              className={styles.chatImage}
+              onClick={() => setPreviewId(file.id)}
+              title={`Open ${file.filename}`}
+              data-message-file={file.id}
+            >
+              <img className={styles.thumb} src={attachmentUrl(file.id)} alt={file.filename} />
+            </button>
+          ) : (
+            <a
+              key={file.id}
+              className={styles.chatFile}
+              href={attachmentUrl(file.id)}
+              download={file.filename}
+              title={`Download ${file.filename}`}
+              data-message-file={file.id}
+            >
+              <span className={styles.attachmentName}>{file.filename}</span>
+              <span className={styles.attachmentSize}>{formatSize(file.sizeBytes)}</span>
+            </a>
+          ),
+        )}
+      </div>
+    );
+  /** Files a message already shows inline, as a drawn picture does, are not listed under it again. */
+  const filesUnder = (message: ChatMessage) =>
+    (message.attachments ?? []).filter((file) => !message.content.includes(`/api/attachments/${file.id}`));
 
   /*
    * Whether this workspace has anything to transcribe with.
@@ -1401,15 +1469,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       if (failure !== null) throw new Error(failure);
       // The turn ended out of sight: what the server kept is the answer.
       if (!heard) await fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
-      // Files the send carried, and any picture drawn while it was answered:
-      // both are attachments of this chat now, and the strip shows neither
-      // until it is read back.
-      if (going.length > 0 || drewPicture.current) {
-        drewPicture.current = false;
-        await fetchChatAttachments(currentId)
-          .then(setChatFiles)
-          .catch(() => undefined);
-      }
+      drewPicture.current = false;
       await loadSessions(currentId);
     } finally {
       setSending(false);
@@ -1432,7 +1492,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onSaid' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onSaid' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1506,12 +1566,31 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       onSaid: (text) =>
         setWorking((held) => ({
           ...held,
-          calls: [...held.calls, { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, said: text }],
+          calls: [
+            ...held.calls,
+            { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, said: text, seenAt: Date.now() },
+          ],
         })),
       onWriting: (writing) => setWorking((held) => ({ ...held, writing })),
       // The call it was writing has arrived, so the line saying so goes.
       onCall: (call) =>
-        setWorking((held) => ({ ...held, writing: null, calls: [...held.calls, { ...call, result: null, failed: false }] })),
+        setWorking((held) => ({
+          ...held,
+          writing: null,
+          calls: [...held.calls, { ...call, result: null, failed: false, seenAt: Date.now() }],
+        })),
+      /*
+       * A file the agent's side filed during the turn belongs to the answer the
+       * turn ends, which is the message still being written - the last one.
+       */
+      onFiled: (file) =>
+        setMessages((present) => {
+          const at = present.length - 1;
+          if (at < 0 || present[at].role !== 'assistant') return present;
+          const last = present[at];
+          if ((last.attachments ?? []).some((held) => held.id === file.id)) return present;
+          return [...present.slice(0, at), { ...last, attachments: [...(last.attachments ?? []), file] }];
+        }),
       onCalled: (answer) =>
         setWorking((held) => ({
           ...held,
@@ -1653,7 +1732,11 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     setAttached([]);
     // Shown straight away: the server has it, and waiting for the model to
     // finish before drawing what was typed reads as a dropped message.
-    setMessages((present) => [...present, { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() }]);
+    setMessages((present) => [
+      ...present,
+      // Drawn under the message at once: the files went with it, and the page knows which.
+      { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString(), attachments: going },
+    ]);
     setError(null);
     // The last answer's working, cleared as this one starts. It stayed on
     // screen after that answer landed on purpose; it belongs to that answer,
@@ -1692,15 +1775,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
       // The stream ended and the turn could not be followed to its end, so the
       // history is the only place that holds how it ended.
       if (!heard && openChat.current === sentTo) fetchChatMessages(sentTo).then(setMessages).catch(() => undefined);
-      // Files the send carried, and any picture drawn while it was answered:
-      // both are attachments of this chat now, and the strip shows neither
-      // until it is read back.
-      if (going.length > 0 || drewPicture.current) {
-        drewPicture.current = false;
-        await fetchChatAttachments(currentId)
-          .then(setChatFiles)
-          .catch(() => undefined);
-      }
+      drewPicture.current = false;
       await loadSessions(currentId);
     } catch (cause) {
       // Stopped on purpose is not a failure and is not reported as one. What is
@@ -2862,7 +2937,9 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
             {messages.map((message, index) => (
               <Fragment key={index}>
               {(placedRequests.get(index) ?? []).map((request) => (
-                <InteractionCard key={`request-${request.id}`} request={request} onAnswered={() => loadRequests()} />
+                <div key={`request-${request.id}`} className={styles.requestRow}>
+                  <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                </div>
               ))}
               {/*
                 A call is not a turn and is not drawn as one: it was made
@@ -2914,6 +2991,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       <span className={styles.sentAt}>{sentAt(message.at)}</span>
                     )}
                     <div className={styles.userBubble}>{message.content}</div>
+                    {filesOf(filesUnder(message), 'user')}
                     {/*
                       Under the bubble, inside the body, so it lines up with the
                       bubble's own edge rather than the column's. Outside the
@@ -3055,8 +3133,20 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                             live={live}
                             millis={live ? null : message.thinkingMillis}
                           />
-                          {calls.map((call) =>
-                            call.said !== undefined ? (
+                          {(() => {
+                            const drawn = new Set<string>();
+                            const before = (seenAt: number | undefined) =>
+                              requestsBefore(seenAt, drawn).map((request) => (
+                                <div key={`request-${request.id}`} className={styles.requestInTurn}>
+                                  <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                                </div>
+                              ));
+                            return (
+                              <>
+                          {calls.map((call) => (
+                            <Fragment key={call.at}>
+                            {before(call.seenAt)}
+                            {call.said !== undefined ? (
                               <div key={call.at} className={styles.said} data-said="">
                                 <Markdown>{call.said}</Markdown>
                               </div>
@@ -3076,8 +3166,13 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                               */
                               folded
                             />
-                            ),
-                          )}
+                            )}
+                            </Fragment>
+                          ))}
+                          {before(Number.POSITIVE_INFINITY)}
+                              </>
+                            );
+                          })()}
                           {writing !== null && (
                             <p className={styles.writingNow} data-chat-writing="">
                               <span className={styles.compacting}>{writingLabel(writing)}</span>
@@ -3096,6 +3191,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                       place a picture is actually *made*.
                     */}
                     <Markdown pictureLinks zoomImages>{shownTake(index, message)}</Markdown>
+                    {filesOf(filesUnder(message), 'assistant')}
                     {/*
                       Which take of this answer is being read, and the way back
                       to the others.
@@ -3228,7 +3324,9 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               </Fragment>
             ))}
             {(placedRequests.get(messages.length) ?? []).map((request) => (
-              <InteractionCard key={`request-${request.id}`} request={request} onAnswered={() => loadRequests()} />
+              <div key={`request-${request.id}`} className={styles.requestRow}>
+                <InteractionCard request={request} onAnswered={() => loadRequests()} />
+              </div>
             ))}
 
             {/*
@@ -3248,55 +3346,15 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                 <p className={styles.waiting}>Waiting for {current.agentName ?? current.modelName ?? 'the model'}…</p>
               </div>
             )}
+            {/* A question still waiting for an answer is the last thing in the chat, so it cannot be scrolled past. */}
+            {openRequests.map((request) => (
+              <div key={`request-${request.id}`} className={styles.requestRow} data-request-open-bottom="">
+                <InteractionCard request={request} onAnswered={() => loadRequests()} />
+              </div>
+            ))}
           </div>
 
           {errorBanner}
-
-          {/*
-            What has been sent with this chat, openable again.
-            
-            Above the composer rather than inside a message, because nothing
-            records which message a file came with — and "the document we were
-            looking at" is what somebody comes back for anyway.
-          */}
-          {chatFiles.length > 0 && (
-            <div className={styles.chatFiles}>
-              <span className={styles.chatFilesLabel}>Files</span>
-              {/*
-                A picture opens in the viewer; anything else downloads.
-
-                Not a choice about taste — the server sends everything that is
-                not a picture as an octet-stream marked `attachment`, so there
-                is nothing a viewer could show. The download is direct rather
-                than through a new tab, which used to open, save and close.
-              */}
-              {chatFiles.map((file) =>
-                isShowable(file.contentType) ? (
-                  <button
-                    key={file.id}
-                    type="button"
-                    className={styles.chatImage}
-                    onClick={() => setPreviewId(file.id)}
-                    title={`Open ${file.filename}`}
-                  >
-                    {/* A screenshot is worth more as itself than as its filename. */}
-                    <img className={styles.thumb} src={attachmentUrl(file.id)} alt={file.filename} />
-                  </button>
-                ) : (
-                  <a
-                    key={file.id}
-                    className={styles.chatFile}
-                    href={attachmentUrl(file.id)}
-                    download={file.filename}
-                    title={`Download ${file.filename}`}
-                  >
-                    <span className={styles.attachmentName}>{file.filename}</span>
-                    <span className={styles.attachmentSize}>{formatSize(file.sizeBytes)}</span>
-                  </a>
-                ),
-              )}
-            </div>
-          )}
 
           {spent !== null && (
             <p className={styles.spent} title={t('What this chat has read and written, all of it')}>
