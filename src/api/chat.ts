@@ -318,6 +318,11 @@ export interface ChatCall {
   result: string | null;
   /** Whether the tool could not be run at all. Meaningless while running. */
   failed: boolean;
+  /**
+   * Set on a line that is no call at all: what the agent wrote beside the calls
+   * it asked for - its progress - drawn in order among them.
+   */
+  said?: string;
 }
 
 /** What a streaming send reports as it goes. */
@@ -343,6 +348,8 @@ export interface ChatStreamHandlers {
    * and did not show one until the page was reloaded.
    */
   onDrew: (markdown: string) => void;
+  /** What the agent wrote beside the calls it is about to make - how it reports progress. */
+  onSaid?: (text: string) => void;
   onCall: (call: { at: number; tool: string; arguments: string }) => void;
   /** And what that lookup gave back. */
   onCalled: (answer: { at: number; result: string; failed: boolean }) => void;
@@ -679,6 +686,7 @@ async function read(
         summary: payload.summary ?? '',
       });
     }
+    else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
     else if (frame.event === 'call' && payload.at !== undefined) {
       handlers.onCall({
         at: payload.at,

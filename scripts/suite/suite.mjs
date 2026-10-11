@@ -1278,6 +1278,17 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-progress-check',
+    what: "what an agent writes beside its calls is drawn as it happens, between the calls it came between",
+    needs: ['workspace'],
+    /*
+     * The session kept these lines and the open chat was never told, so a long
+     * piece of work read as a thinking block and a column of lookups. Stubs the
+     * stream, because no real model can be made to remark at a known point.
+     */
+  },
+
+  {
     name: 'chat-selector-check',
     what: 'the picker above a chat is drawn at its full width, and the link out goes where the name says',
     needs: ['workspace'],

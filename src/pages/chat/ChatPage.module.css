@@ -1701,3 +1701,8 @@ button.attachmentName {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
+
+/* What the agent said between its lookups: its progress, in the answer's own voice. */
+.said {
+  margin: 4px 0;
+}

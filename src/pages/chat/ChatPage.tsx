@@ -1401,7 +1401,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onSaid' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1468,6 +1468,15 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           return [...present.slice(0, at), note, present[at]];
         });
       },
+      /*
+       * In the same list as the calls, so it reads where it was said: before the
+       * lookups it introduced. Keyed below zero, where no call's `at` can be.
+       */
+      onSaid: (text) =>
+        setWorking((held) => ({
+          ...held,
+          calls: [...held.calls, { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, said: text }],
+        })),
       onCall: (call) =>
         setWorking((held) => ({ ...held, calls: [...held.calls, { ...call, result: null, failed: false }] })),
       onCalled: (answer) =>
@@ -2978,7 +2987,12 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                             live={live}
                             millis={live ? null : message.thinkingMillis}
                           />
-                          {calls.map((call) => (
+                          {calls.map((call) =>
+                            call.said !== undefined ? (
+                              <div key={call.at} className={styles.said} data-said="">
+                                <Markdown>{call.said}</Markdown>
+                              </div>
+                            ) : (
                             <CallLine
                               key={call.at}
                               actor={call.tool}
@@ -2994,7 +3008,8 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                               */
                               folded
                             />
-                          ))}
+                            ),
+                          )}
                         </div>
                       );
                     })()}
