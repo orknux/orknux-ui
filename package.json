@@ -1,7 +1,7 @@
 {
   "name": "orknux-ui",
   "private": true,
-  "version": "0.9.9.32",
+  "version": "1.0.0",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
