@@ -46,6 +46,8 @@ const PROVIDER_TYPES: ProviderType[] = [
   'ANTHROPIC',
   'AZURE_OPENAI',
   'OLLAMA',
+  // OpenAI-shaped, and also asked how far it has read a prompt - minutes of nothing otherwise. Issue #627.
+  'LLAMA_CPP',
   // Not a language model: any server speaking the Jev format, which answers
   // typed questions with probabilities for a workflow's decision node. Issue #577.
   'SYSTEM_ONE',
@@ -83,6 +85,8 @@ function endpointHint(type: ProviderType): string {
       // `/v1/models` and `/v1/chat/completions`. The bare port serves Ollama's
       // own API at `/api/...` and 404s on both of those.
       return 'http://localhost:11434/v1';
+    case 'LLAMA_CPP':
+      return 'http://localhost:8080';
     // Any server speaking the Jev format, hosted or local, so no address is
     // assumed; `/v1/systemone` after it is added by the server.
     case 'SYSTEM_ONE':
@@ -902,7 +906,9 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                     ? t('Found in Azure Portal → Resource → Keys and Endpoint.')
                     : type === 'SYSTEM_ONE'
                       ? t('Optional: only if the server asks for one.')
-                      : t('The key the provider issued for this workspace.')
+                      : type === 'LLAMA_CPP'
+                        ? t('Any value works unless the server was started with --api-key.')
+                        : t('The key the provider issued for this workspace.')
               }
               onSource={chooseSource}
               onValue={() => {

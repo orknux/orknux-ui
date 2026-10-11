@@ -2,7 +2,7 @@ import { graphql } from './client';
 import { t } from '../i18n';
 
 /** What the endpoint speaks, not who answers there: anything OpenAI-shaped is OPENAI. */
-export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE';
+export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE' | 'LLAMA_CPP';
 export type ProviderAuthMethod = 'API_KEY' | 'ENTRA_ID';
 /**
  * Which OpenAI API an Azure OpenAI provider's chats go through. Responses is
@@ -340,7 +340,7 @@ export interface ProviderInput {
  * llama.cpp among them. The server's `ModelProvider.offersAllTools`, mirrored.
  */
 export function offersAllByDefault(type: ProviderType): boolean {
-  return type === 'OLLAMA' || type === 'OPENAI';
+  return type === 'OLLAMA' || type === 'OPENAI' || type === 'LLAMA_CPP';
 }
 
 /**
@@ -351,6 +351,7 @@ export const TYPE_TOOL_CAPS: Record<ProviderType, number> = {
   OPENAI: 128,
   AZURE_OPENAI: 128,
   OLLAMA: 128,
+  LLAMA_CPP: 128,
   ANTHROPIC: 256,
   SYSTEM_ONE: 0,
 };
@@ -513,6 +514,8 @@ export function providerTypeLabel(type: ProviderType): string {
       return t('Azure OpenAI');
     case 'OLLAMA':
       return 'Ollama';
+    case 'LLAMA_CPP':
+      return 'llama.cpp';
     // One type for any server speaking the Jev format, whoever built it. Issue #577.
     case 'SYSTEM_ONE':
       return t('Decision model (Jev format)');

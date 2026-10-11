@@ -1326,6 +1326,16 @@ export const TESTS = [
   },
 
   {
+    name: 'prompt-reading-check',
+    what: 'while a llama.cpp server reads a long prompt, the chat and the session page say how far it has got',
+    needs: ['workspace'],
+    /*
+     * Stubs the chat's stream with reading frames and the session page's live
+     * state, since no real server reads a prompt slowly on cue. Issue #627.
+     */
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, from its header',
     needs: ['workspace'],

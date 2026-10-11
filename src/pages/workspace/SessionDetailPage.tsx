@@ -1498,7 +1498,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           <section className={styles.transcript}>
             {writing !== null && (
               <div className={`${styles.writingNow} ${styles.kindAgent}`} data-session-writing="">
-                <span className={styles.kindBadge}>{t('Writing')}</span>
+                <span className={styles.kindBadge}>{writing.promptTotal != null ? t('Reading') : t('Writing')}</span>
                 <span className={styles.writingAgent}>{writing.agent}</span>
                 <span className={styles.stillThinking}>{writingLabel(writing)}</span>
               </div>

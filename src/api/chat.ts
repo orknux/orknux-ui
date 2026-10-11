@@ -44,6 +44,8 @@ export interface ChatSession {
    */
   spentInputTokens: number;
   spentOutputTokens: number;
+  /** How many of [spentInputTokens] the provider reused from its cache; 0 where it did not say. */
+  spentCachedInputTokens: number;
   /**
    * How many pictures were drawn in this chat.
    *
@@ -175,7 +177,7 @@ export interface ChatAnswer extends ChatSpend {
 
 const SESSION_FIELDS =
   'id workspaceId title pinned modelId modelName createdAt lastMessageAt agentId agentName llmSessionId ' +
-  'spentInputTokens spentOutputTokens spentPictures';
+  'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures';
 
 export async function fetchChatSessions(workspaceId: string): Promise<ChatSession[]> {
   const data = await graphql<{ chatSessions: ChatSession[] }>(
@@ -713,6 +715,9 @@ async function read(
       tokens?: number;
       summary?: string;
       chars?: number;
+      total?: number;
+      cached?: number;
+      processed?: number;
     }>(frame);
     if (payload === null) return;
 
@@ -740,7 +745,15 @@ async function read(
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
     else if (frame.event === 'personRead' && payload.text !== undefined) handlers.onPersonRead?.(payload.text);
     else if (frame.event === 'session' && payload.id !== undefined) handlers.onSession?.(String(payload.id));
-    else if (frame.event === 'writing' && payload.chars !== undefined) {
+    else if (frame.event === 'reading' && payload.total !== undefined) {
+      handlers.onWriting?.({
+        tool: null,
+        chars: 0,
+        promptTotal: payload.total,
+        promptCached: payload.cached ?? 0,
+        promptProcessed: payload.processed ?? 0,
+      });
+    } else if (frame.event === 'writing' && payload.chars !== undefined) {
       handlers.onWriting?.({ tool: payload.tool ?? null, chars: payload.chars });
     }
     else if (frame.event === 'call' && payload.at !== undefined) {
@@ -814,6 +827,14 @@ export function showAllLabel(text: string): string {
 export interface Writing {
   tool: string | null;
   chars: number;
+  /**
+   * Set while the server is still reading the prompt, before anything is
+   * written: its length in tokens, how many came from its cache, and how many
+   * it has read. Only a llama.cpp provider reports it. Issue #627.
+   */
+  promptTotal?: number | null;
+  promptCached?: number | null;
+  promptProcessed?: number | null;
 }
 
 /**
@@ -824,6 +845,21 @@ export interface Writing {
  * that time reads as a model that has stopped.
  */
 export function writingLabel(writing: Writing): string {
+  /*
+   * "Reading the prompt… 42,610 / 208,324 tokens (20%) · 38,000 cached". A long
+   * session whose cached prefix no longer matched is read for minutes before a
+   * word is written, and this is the only thing that says so.
+   */
+  if (writing.promptTotal != null && writing.promptProcessed != null) {
+    const total = writing.promptTotal;
+    const share = total > 0 ? Math.floor((writing.promptProcessed / total) * 100) : 0;
+    const read = tf('Reading the prompt… {read} / {total} tokens ({share}%)', {
+      read: tokenCount(writing.promptProcessed),
+      total: tokenCount(total),
+      share: String(share),
+    });
+    return writing.promptCached ? `${read} · ${tf('{cached} cached', { cached: tokenCount(writing.promptCached) })}` : read;
+  }
   const what = writing.tool === null ? t('Writing the answer…') : tf('Writing {tool}…', { tool: writing.tool });
   return `${what} ${tokenCount(writing.chars)} chars (~${tokenCount(Math.round(writing.chars / 4))} tokens)`;
 }

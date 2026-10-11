@@ -2661,7 +2661,18 @@ ${named}`;
    * the ordinary way a drawing adds nought, which would leave a chat that spent
    * real money on pictures reading as a chat that spent nothing.
    */
-  const spentPart = spentTokens > 0 ? `${tokenCount(spentTokens)} ${t('tokens')}` : null;
+  /*
+   * With what the provider reused from its cache beside it. Every round sends
+   * the whole conversation, so a long session's input reads as millions of
+   * tokens a local server mostly never read again. Issue #627.
+   */
+  const spentCached = current?.spentCachedInputTokens ?? 0;
+  const spentPart =
+    spentTokens === 0
+      ? null
+      : spentCached > 0
+        ? tf('{tokens} tokens ({cached} cached)', { tokens: tokenCount(spentTokens), cached: tokenCount(spentCached) })
+        : `${tokenCount(spentTokens)} ${t('tokens')}`;
   const drawnPart =
     spentPictures === 0
       ? null

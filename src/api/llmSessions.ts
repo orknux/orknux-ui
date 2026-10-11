@@ -253,11 +253,15 @@ export interface SessionWriting {
   tool: string | null;
   chars: number;
   since: string;
+  /** Set while the server is still reading the prompt (llama.cpp only); null once writing starts. */
+  promptTotal: number | null;
+  promptCached: number | null;
+  promptProcessed: number | null;
 }
 
 export async function fetchSessionWriting(id: string): Promise<SessionWriting | null> {
   const data = await graphql<{ llmSessionWriting: SessionWriting | null }>(
-    `query ($id: ID!) { llmSessionWriting(id: $id) { agent tool chars since } }`,
+    `query ($id: ID!) { llmSessionWriting(id: $id) { agent tool chars since promptTotal promptCached promptProcessed } }`,
     { id },
   );
   return data.llmSessionWriting;
