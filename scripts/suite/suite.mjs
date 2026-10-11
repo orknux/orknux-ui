@@ -479,6 +479,17 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'model-answer-limit-check',
+    what: 'how long a model may take to answer is on Admin Settings beside the retry settings, and a save is kept',
+    needs: [],
+    /*
+     * It was the SDK's ten minutes, which cut a thinking model off. Sets the
+     * installation-wide limit and puts it back, so `alone`: a model call beside
+     * it would be made under whichever limit it caught.
+     */
+    alone: true,
+  },
+  {
     name: 'step-recovery-settings-check',
     what: "the step heartbeat and an agent step's goes after a restart are on the Admin page under Workflow runs, and a save is kept",
     needs: [],

@@ -2482,6 +2482,8 @@ export const PL: Record<string, string> = {
   "Empty Answer Retries": "Ponowienia po pustej odpowiedzi",
   "How many times a round is asked again when the model sends nothing back - a dropped stream, a busy server. Between 0 and 20.": "Ile razy runda jest zadawana ponownie, gdy model nic nie odeśle - zerwany strumień, zajęty serwer. Od 0 do 20.",
   "Unusable Reply Retries": "Ponowienia po nieużytecznej odpowiedzi",
+  "Model Answer Time Limit": "Limit czasu odpowiedzi modelu",
+  "How long one call to a model may take before it is given up on - raise it for a slow local model that thinks for a long time. Between 1 and 1440 minutes.": "Ile może trwać jedno wywołanie modelu, zanim zostanie przerwane - zwiększ dla wolnego modelu lokalnego, który długo myśli. Od 1 do 1440 minut.",
   "How many times a reply the server could not use - a broken tool call, arguments that are not JSON - is put back to the model to fix. Between 0 and 10.": "Ile razy odpowiedź, której serwer nie mógł użyć - uszkodzone wywołanie narzędzia, argumenty niebędące JSON - wraca do modelu do poprawy. Od 0 do 10.",
   times: "razy",
   "Change how turns are summarised": "Zmień sposób streszczania tur",

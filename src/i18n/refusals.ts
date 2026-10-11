@@ -235,6 +235,7 @@ const PL: Record<string, string> = {
   StepHeartbeatOutOfRange: '{seconds} to nie jest sygnał życia kroku. Wybierz od 0 do 600 sekund; 0 go wyłącza.',
   // The first wait on a rate limit inside a stream that named none, #608.
   EmptyAnswerRetriesOutOfRange: '{retries} to nie jest liczba ponowień po pustej odpowiedzi. Wybierz od 0 do 20.',
+  ModelAnswerLimitOutOfRange: '{minutes} to nie jest liczba minut na odpowiedź modelu. Wybierz od 1 do 1440.',
   UnusableReplyRetriesOutOfRange: '{retries} to nie jest liczba ponowień po nieużytecznej odpowiedzi. Wybierz od 0 do 10.',
   SessionValueSizeOutOfRange: '{megabytes} MB to nie jest rozmiar, jaki może mieć wartość w sesji. Wybierz od 1 do 256.',
   SessionStoreKeysOutOfRange: '{keys} to nie jest liczba kluczy, jaką może przechowywać sesja. Wybierz od 10 do 10000.',

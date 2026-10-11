@@ -13,6 +13,7 @@ import {
   setSessionValueMaxMb,
   setEmptyAnswerRetries,
   setUnusableReplyRetries,
+  setModelAnswerLimitMinutes,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -133,6 +134,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [emptyRetries, setEmptyRetries] = useState('');
   /** How many times an unusable reply is put back, as typed. */
   const [unusableRetries, setUnusableRetries] = useState('');
+  /** How long a model may take to answer, in minutes, as typed. */
+  const [answerLimit, setAnswerLimit] = useState('');
   /** How many keys one session's store may hold, as typed. */
   const [storeKeys, setStoreKeys] = useState('');
   /** The longest one of an agent's own waits may be, as typed. */
@@ -264,6 +267,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setValueSize(String(held.sessionValueMaxMb));
         setEmptyRetries(String(held.emptyAnswerRetries));
         setUnusableRetries(String(held.unusableReplyRetries));
+        setAnswerLimit(String(held.modelAnswerLimitMinutes));
         setStoreKeys(String(held.sessionStoreMaxKeys));
         setSleep(String(held.agentSleepSeconds));
         setSleeps(String(held.agentSleepTimes));
@@ -333,6 +337,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: valueSize, held: settings.sessionValueMaxMb, write: setSessionValueMaxMb },
         { typed: emptyRetries, held: settings.emptyAnswerRetries, write: setEmptyAnswerRetries },
         { typed: unusableRetries, held: settings.unusableReplyRetries, write: setUnusableReplyRetries },
+        { typed: answerLimit, held: settings.modelAnswerLimitMinutes, write: setModelAnswerLimitMinutes },
         { typed: storeKeys, held: settings.sessionStoreMaxKeys, write: setSessionStoreMaxKeys },
         { typed: sleep, held: settings.agentSleepSeconds, write: setAgentSleepSeconds },
         { typed: sleeps, held: settings.agentSleepTimes, write: setAgentSleepTimes },
@@ -748,6 +753,33 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Unusable Reply Retries')}
                 />
                 <span className={styles.retentionUnit}>{t('times')}</span>
+              </div>
+            </div>
+
+            {/* How long one model call may take. It was the SDK's ten minutes, never chosen, which cut a thinking model off. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Model Answer Time Limit')}</p>
+                  <FieldHint label={t('Model Answer Time Limit')}>
+                    {t('How long one call to a model may take before it is given up on - raise it for a slow local model that thinks for a long time. Between 1 and 1440 minutes.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="model-answer-limit-minutes"
+                  name="modelAnswerLimitMinutes"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={answerLimit}
+                  onChange={(event) => setAnswerLimit(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Model Answer Time Limit')}
+                />
+                <span className={styles.retentionUnit}>{t('minutes')}</span>
               </div>
             </div>
 

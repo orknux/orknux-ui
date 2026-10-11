@@ -225,6 +225,9 @@ export interface InstallationSettings {
   /** How many times an unusable reply is put back to the model. */
   unusableReplyRetries: number;
   unusableReplyRetriesConfigured: number;
+  /** How long one call to a model may take, in minutes. */
+  modelAnswerLimitMinutes: number;
+  modelAnswerLimitMinutesConfigured: number;
   /** How big one value in a session's store may be, in MB. */
   sessionValueMaxMb: number;
   sessionValueMaxMbConfigured: number;
@@ -308,7 +311,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -772,6 +775,14 @@ export async function setUnusableReplyRetries(retries: number): Promise<Installa
     { retries },
   );
   return data.setUnusableReplyRetries;
+}
+
+export async function setModelAnswerLimitMinutes(minutes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setModelAnswerLimitMinutes: InstallationSettings }>(
+    `mutation ($minutes: Int!) { setModelAnswerLimitMinutes(minutes: $minutes) { ${FIELDS} } }`,
+    { minutes },
+  );
+  return data.setModelAnswerLimitMinutes;
 }
 
 export async function setSessionValueMaxMb(megabytes: number): Promise<InstallationSettings> {
