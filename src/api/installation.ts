@@ -272,6 +272,9 @@ export interface InstallationSettings {
   localBoxOutputKeptBytesConfigured: number;
   boxRequestTimeoutSeconds: number;
   boxRequestTimeoutSecondsConfigured: number;
+  /** How many file edits and writes an agent can undo per box session; 0 keeps none. */
+  boxEditUndoSteps: number;
+  boxEditUndoStepsConfigured: number;
   /** Server updates, #584: how many jars are kept for rolling back to. */
   releasesKept: number;
   /** How many starts a newly activated release gets before it is given up on. */
@@ -311,7 +314,7 @@ const FIELDS =
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
   'localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured ' +
   'boxCommandWaitSeconds boxCommandWaitSecondsConfigured boxCommandTimeoutSeconds boxCommandTimeoutSecondsConfigured ' +
-  'boxOutputBytes boxOutputBytesConfigured boxOutputShownBytes boxOutputShownBytesConfigured boxRequestTimeoutSeconds boxRequestTimeoutSecondsConfigured ' +
+  'boxOutputBytes boxOutputBytesConfigured boxOutputShownBytes boxOutputShownBytesConfigured boxRequestTimeoutSeconds boxRequestTimeoutSecondsConfigured boxEditUndoSteps boxEditUndoStepsConfigured ' +
   'releasesKept releaseBootAttempts releaseFollowSeconds releaseMaxMb releaseRestartDelaySeconds releaseDownloadSeconds ' +
   'releaseDownloadAttempts releaseDownloadBackoffSeconds releaseDownloadBackoffMaxSeconds';
 
@@ -973,4 +976,12 @@ export async function setBoxRequestTimeoutSeconds(seconds: number): Promise<Inst
     { seconds },
   );
   return data.setBoxRequestTimeoutSeconds;
+}
+
+export async function setBoxEditUndoSteps(steps: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setBoxEditUndoSteps: InstallationSettings }>(
+    `mutation ($steps: Int!) { setBoxEditUndoSteps(steps: $steps) { ${FIELDS} } }`,
+    { steps },
+  );
+  return data.setBoxEditUndoSteps;
 }

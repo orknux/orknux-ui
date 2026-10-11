@@ -67,6 +67,7 @@ import {
   setLocalBoxOutputKeptBytes,
   setBoxOutputShownBytes,
   setBoxRequestTimeoutSeconds,
+  setBoxEditUndoSteps,
 } from '../../api/installation';
 import type { InstallationSettings } from '../../api/installation';
 import type { SessionUser } from '../../api/session';
@@ -217,6 +218,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   // KB too: how much of one output the session page reads and holds.
   const [boxOutputShown, setBoxOutputShown] = useState('');
   const [boxRequest, setBoxRequest] = useState('');
+  const [boxUndoSteps, setBoxUndoSteps] = useState('');
 
   /** The Boxes section's boxes, from what the server holds. */
   const fillBoxes = useCallback((held: InstallationSettings) => {
@@ -232,6 +234,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     setBoxOutputKept(String(Math.round(held.localBoxOutputKeptBytes / 1024)));
     setBoxOutputShown(String(Math.round(held.boxOutputShownBytes / 1024)));
     setBoxRequest(String(held.boxRequestTimeoutSeconds));
+    setBoxUndoSteps(String(held.boxEditUndoSteps));
   }, []);
 
   useEffect(() => {
@@ -421,6 +424,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           write: (kb: number) => setBoxOutputShownBytes(kb * 1024),
         },
         { typed: boxRequest, held: settings.boxRequestTimeoutSeconds, write: setBoxRequestTimeoutSeconds },
+        { typed: boxUndoSteps, held: settings.boxEditUndoSteps, write: setBoxEditUndoSteps },
       ].filter((one) => one.typed.trim() !== '' && Number(one.typed) !== one.held);
 
   // The marker is text rather than a number, and goes out with the numbers:
@@ -1764,6 +1768,31 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   aria-label={t('Box request timeout')}
                 />
                 <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Box edit undo steps')}</p>
+                  <FieldHint label={t('Box edit undo steps')}>
+                    {t('How many of an agent\'s file edits and writes it can undo in one box session. Kept in memory, so a restart forgets them; 0 keeps none. Between 0 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="box-edit-undo-steps"
+                  name="boxEditUndoSteps"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={boxUndoSteps}
+                  onChange={(event) => setBoxUndoSteps(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Box edit undo steps')}
+                />
               </div>
             </div>
 

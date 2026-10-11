@@ -235,7 +235,7 @@ if (local !== null) {
 const SETTINGS =
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime localBoxMaxSessions localBoxDefaultTtlSeconds ' +
   'localBoxMaxTtlSeconds localBoxIdleTimeoutSeconds boxCommandWaitSeconds boxCommandWaitSecondsConfigured ' +
-  'boxCommandTimeoutSeconds boxOutputBytes localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured boxOutputShownBytes boxRequestTimeoutSeconds';
+  'boxCommandTimeoutSeconds boxOutputBytes localBoxOutputKeptBytes localBoxOutputKeptBytesConfigured boxOutputShownBytes boxRequestTimeoutSeconds boxEditUndoSteps boxEditUndoStepsConfigured';
 const held = (await graphql(`{ installationSettings { ${SETTINGS} } }`)).installationSettings;
 
 await page.goto(`${BASE}/admin/settings#boxes`, { waitUntil: 'domcontentloaded' });
@@ -257,6 +257,7 @@ const BOXES = [
   ['box-output-shown-kb', Math.round(held.boxOutputShownBytes / 1024), '64', '65536'],
   ['local-box-output-kept-kb', Math.round(held.localBoxOutputKeptBytes / 1024), '0', '16384'],
   ['box-request-timeout-seconds', held.boxRequestTimeoutSeconds, '1', '600'],
+  ['box-edit-undo-steps', held.boxEditUndoSteps, '0', '100'],
 ];
 for (const [id, value, min, max] of BOXES) {
   const box = page.locator(`#${id}`);
@@ -287,6 +288,7 @@ await page.waitForTimeout(2_000);
 const stored = (await graphql(`{ installationSettings { boxCommandWaitSeconds } }`)).installationSettings.boxCommandWaitSeconds;
 record(stored === wanted, `the number typed is the number stored (${stored})`);
 record(held.boxCommandWaitSecondsConfigured === 300, `a fresh installation waits 300 seconds (${held.boxCommandWaitSecondsConfigured})`);
+record(held.boxEditUndoStepsConfigured === 10, `a fresh installation keeps 10 box edits per session for undoing (${held.boxEditUndoStepsConfigured})`);
 record(held.localBoxOutputKeptBytesConfigured === 1048576, `a fresh installation keeps a megabyte of each local command's output for reading (${held.localBoxOutputKeptBytesConfigured})`);
 
 /* --------------------------------------------------------------- put back */

@@ -343,6 +343,7 @@ const PL: Record<string, string> = {
   BoxCommandTimeoutOutOfRange: '{seconds} to nie jest limit czasu polecenia. Wybierz od 1 do 86400 sekund.',
   BoxOutputBytesOutOfRange: '{bytes} to nie jest liczba bajtów wyjścia polecenia. Wybierz od 1024 do 4194304.',
   BoxRequestTimeoutOutOfRange: '{seconds} to nie jest limit czasu żądania do skrzynki. Wybierz od 1 do 600 sekund.',
+  BoxEditUndoStepsOutOfRange: '{steps} to nie jest liczba zmian w skrzynce do cofnięcia. Wybierz od 0 do 100.',
 
   // --- who is asking ------------------------------------------------------
   SignInRequired: 'Zaloguj się, aby to zobaczyć',
