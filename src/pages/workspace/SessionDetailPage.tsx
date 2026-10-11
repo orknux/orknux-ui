@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { startChat } from '../../api/chat';
+import { startChat, writingLabel } from '../../api/chat';
 import { FoldToggle } from '../../components/FoldToggle';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
   EVENT_KINDS,
   EVENT_KIND_LABEL,
   fetchLlmSession,
+  fetchSessionWriting,
   fetchLlmSessionEvents,
   removeLlmSession,
   fetchLlmSessionFamily,
@@ -29,6 +30,7 @@ import type {
   SessionExecutionLink,
   SessionScratchpad,
   SessionScratchpadContent,
+  SessionWriting,
 } from '../../api/llmSessions';
 import { STATUS_LABEL } from '../../api/executions';
 import { fetchSessionBoxLog, fetchSessionBoxes } from '../../api/boxes';
@@ -736,6 +738,21 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   }, [sessionId]);
   useEffect(loadTodos, [loadTodos]);
 
+  /*
+   * What the model is writing this second - a call being spelled out, or its
+   * answer - which is in no line of the transcript until it lands. A model
+   * putting a file into one call writes for minutes, and the page showed
+   * nothing moving in that time.
+   */
+  const [writing, setWriting] = useState<SessionWriting | null>(null);
+  const loadWriting = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionWriting(sessionId)
+      .then(setWriting)
+      .catch(() => setWriting(null));
+  }, [sessionId]);
+  useEffect(loadWriting, [loadWriting]);
+
   const refresh = useCallback(() => {
     loadSession();
     load();
@@ -757,7 +774,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
      * with the session, which loadSession above reads on the same beat.
      */
     loadTodos();
-  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos]);
+    loadWriting();
+  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWriting]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -1416,6 +1434,13 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           </div>
 
           <section className={styles.transcript}>
+            {writing !== null && (
+              <div className={`${styles.writingNow} ${styles.kindAgent}`} data-session-writing="">
+                <span className={styles.kindBadge}>{t('Writing')}</span>
+                <span className={styles.writingAgent}>{writing.agent}</span>
+                <span className={styles.stillThinking}>{writingLabel(writing)}</span>
+              </div>
+            )}
             {loading && events === null && (
               <p className={styles.notice}>
                 <Loader />

@@ -59,8 +59,19 @@ const SESSION = {
   lastEventAt: AT,
 };
 
+/* What the model is writing this second, as the server holds it in memory. */
+const WRITING = { agent: 'Reviewer', tool: 'orkbox_write', chars: 12345, since: AT };
+
 await page.route('**/graphql', async (route) => {
   const body = route.request().postData() ?? '';
+  if (body.includes('llmSessionWriting(')) {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { llmSessionWriting: WRITING } }),
+    });
+    return;
+  }
   if (body.includes('llmSessionEvents')) {
     await route.fulfill({
       status: 200,
@@ -180,6 +191,38 @@ const after = await toggle.boundingBox();
 record(
   (await toggle.getAttribute('aria-expanded')) === 'true' && before !== null && after !== null && Math.abs(before.y - after.y) < 1,
   `pressed, it opens the block and does not move (${before?.y} then ${after?.y})`,
+);
+
+/*
+ * A call being spelled out is in no line of the transcript until it is made,
+ * and a model writing a file into one can be at it for minutes - so the page
+ * says so above the transcript, with how much has arrived.
+ */
+const writingLine = await page
+  .evaluate(() => {
+    const line = document.querySelector('[data-session-writing]');
+    if (line === null) return null;
+    const next = line.nextElementSibling;
+    const box = line.getBoundingClientRect();
+    const style = getComputedStyle(line);
+    return {
+      badge: line.querySelector('[class*="_kindBadge_"]')?.textContent?.trim() ?? '',
+      agent: line.querySelector('[class*="_writingAgent_"]')?.textContent?.trim() ?? '',
+      label: line.querySelector('[class*="_stillThinking_"]')?.textContent?.trim() ?? '',
+      padding: Math.min(parseFloat(style.paddingTop), parseFloat(style.paddingLeft)),
+      border: style.borderTopStyle,
+      gapBelow: next === null ? null : Math.round(next.getBoundingClientRect().top - box.bottom),
+    };
+  })
+  .catch(() => null);
+record(
+  writingLine !== null && writingLine.badge === 'Writing' && writingLine.agent === 'Reviewer' &&
+    writingLine.label === 'Writing orkbox_write… 12,345 chars (~3,086 tokens)',
+  `while the model writes a call, the page says so above the transcript (${JSON.stringify(writingLine)})`,
+);
+record(
+  writingLine !== null && writingLine.padding >= 8 && writingLine.border === 'solid' && writingLine.gapBelow !== null && writingLine.gapBelow >= 8,
+  `as a card with room inside it and space under it (padding ${writingLine?.padding}, gap ${writingLine?.gapBelow})`,
 );
 
 await finish(browser);

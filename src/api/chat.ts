@@ -1,6 +1,6 @@
 import { graphql } from './client';
 import { payloadOf, readEventStream } from './sse';
-import { t } from '../i18n';
+import { t, tf } from '../i18n';
 
 /**
  * One conversation.
@@ -350,6 +350,12 @@ export interface ChatStreamHandlers {
   onDrew: (markdown: string) => void;
   /** What the agent wrote beside the calls it is about to make - how it reports progress. */
   onSaid?: (text: string) => void;
+  /**
+   * How far the model has got writing: the tool whose call it is spelling out,
+   * or null for its answer, and how many characters have arrived. About once a
+   * second, from the moment writing starts until the call is made.
+   */
+  onWriting?: (writing: Writing) => void;
   onCall: (call: { at: number; tool: string; arguments: string }) => void;
   /** And what that lookup gave back. */
   onCalled: (answer: { at: number; result: string; failed: boolean }) => void;
@@ -670,6 +676,7 @@ async function read(
       kept?: number;
       tokens?: number;
       summary?: string;
+      chars?: number;
     }>(frame);
     if (payload === null) return;
 
@@ -687,6 +694,9 @@ async function read(
       });
     }
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
+    else if (frame.event === 'writing' && payload.chars !== undefined) {
+      handlers.onWriting?.({ tool: payload.tool ?? null, chars: payload.chars });
+    }
     else if (frame.event === 'call' && payload.at !== undefined) {
       handlers.onCall({
         at: payload.at,
@@ -752,6 +762,24 @@ export function spendKnown(spend: ChatSpend): boolean {
  */
 export function showAllLabel(text: string): string {
   return `Show all ${text.length.toLocaleString('en-US')} characters (~${tokenCount(Math.round(text.length / 4))} tokens)`;
+}
+
+/** What a model is writing right now: a tool's call, or its answer where `tool` is null. */
+export interface Writing {
+  tool: string | null;
+  chars: number;
+}
+
+/**
+ * "Writing orkbox_write… 12,345 chars (~3,086 tokens)".
+ *
+ * A model putting a file into one call writes for minutes after its thinking
+ * ends and before the call exists, and a screen with nothing moving on it in
+ * that time reads as a model that has stopped.
+ */
+export function writingLabel(writing: Writing): string {
+  const what = writing.tool === null ? t('Writing the answer…') : tf('Writing {tool}…', { tool: writing.tool });
+  return `${what} ${tokenCount(writing.chars)} chars (~${tokenCount(Math.round(writing.chars / 4))} tokens)`;
 }
 
 /** 1620 -> "1,620". Grouped, because these run to five figures on a long thread. */

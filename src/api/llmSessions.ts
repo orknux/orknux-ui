@@ -247,6 +247,22 @@ export async function fetchLlmSession(id: string): Promise<LlmSession | null> {
   return data.llmSession;
 }
 
+/** What the session's model is writing this moment, as the server holds it in memory; null when nothing. */
+export interface SessionWriting {
+  agent: string;
+  tool: string | null;
+  chars: number;
+  since: string;
+}
+
+export async function fetchSessionWriting(id: string): Promise<SessionWriting | null> {
+  const data = await graphql<{ llmSessionWriting: SessionWriting | null }>(
+    `query ($id: ID!) { llmSessionWriting(id: $id) { agent tool chars since } }`,
+    { id },
+  );
+  return data.llmSessionWriting;
+}
+
 /**
  * Throws a session away, with everything said in it.
  *

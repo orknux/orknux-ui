@@ -23,6 +23,7 @@ import {
   spendKnown,
   thinkingTime,
   tokenCount,
+  writingLabel,
 } from '../../api/chat';
 import type {
   ChatCall,
@@ -31,6 +32,7 @@ import type {
   ChatSession,
   ChatSpend,
   ChatStreamHandlers,
+  Writing,
 } from '../../api/chat';
 import { givenUp } from '../../api/sse';
 import { fetchInstallationSettings } from '../../api/installation';
@@ -116,14 +118,16 @@ interface Working {
    * side. Issue #286.
    */
   compacting: boolean;
+  /** What the model is writing now - a call being spelled out, or the answer - until the call arrives. */
+  writing: Writing | null;
 }
 
 /** A turn that has done nothing yet, which is also what a new chat shows. */
-const NOTHING_YET: Working = { thinking: '', calls: [], compacting: false };
+const NOTHING_YET: Working = { thinking: '', calls: [], compacting: false, writing: null };
 
 /** Whether there is anything of the working to draw. */
 const anyWorking = (working: Working) =>
-  working.thinking.trim() !== '' || working.calls.length > 0 || working.compacting;
+  working.thinking.trim() !== '' || working.calls.length > 0 || working.compacting || working.writing !== null;
 
 /**
  * Chat.
@@ -1401,7 +1405,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onSaid' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onSaid' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1477,8 +1481,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           ...held,
           calls: [...held.calls, { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, said: text }],
         })),
+      onWriting: (writing) => setWorking((held) => ({ ...held, writing })),
+      // The call it was writing has arrived, so the line saying so goes.
       onCall: (call) =>
-        setWorking((held) => ({ ...held, calls: [...held.calls, { ...call, result: null, failed: false }] })),
+        setWorking((held) => ({ ...held, writing: null, calls: [...held.calls, { ...call, result: null, failed: false }] })),
       onCalled: (answer) =>
         setWorking((held) => ({
           ...held,
@@ -2974,7 +2980,8 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                         it is the reason for the silence.
                       */
                       const compacting = live && working.compacting;
-                      if (thinking.trim() === '' && calls.length === 0 && !compacting) return null;
+                      const writing = live ? working.writing : null;
+                      if (thinking.trim() === '' && calls.length === 0 && !compacting && writing === null) return null;
                       return (
                         <div className={styles.working}>
                           {compacting && (
@@ -3009,6 +3016,11 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                               folded
                             />
                             ),
+                          )}
+                          {writing !== null && (
+                            <p className={styles.writingNow} data-chat-writing="">
+                              <span className={styles.compacting}>{writingLabel(writing)}</span>
+                            </p>
                           )}
                         </div>
                       );

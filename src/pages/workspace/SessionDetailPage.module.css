@@ -537,6 +537,30 @@
  * Quiet: it is a measurement of a wait, not a heading, and a transcript of
  * thirty turns should not read as thirty timers.
  */
+/*
+ * What the model is writing now, above the transcript: drawn as a line is, so
+ * it reads as part of the conversation, but it is a fact about this second and
+ * not a line of the record.
+ */
+.writingNow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--kind-colour);
+  border-radius: var(--radius-8);
+  font-size: var(--text-sm);
+}
+
+.writingAgent {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .thoughtFor,
 .stillThinking {
   font-size: var(--text-2xs);

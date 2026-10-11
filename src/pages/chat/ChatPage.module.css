@@ -1612,6 +1612,20 @@ button.attachmentName {
  * before a token of the answer, and it is the reason for the silence. It
  * pulses, because a line that does not is a line that has finished.
  */
+/* What the model is writing now, as a small card among the lookups rather than loose text between them. */
+.writingNow {
+  align-self: flex-start;
+  margin: var(--space-4) 0;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.writingNow .compacting {
+  margin: 0;
+}
+
 .compacting {
   margin: 0 0 var(--space-8);
   font-size: var(--text-sm);

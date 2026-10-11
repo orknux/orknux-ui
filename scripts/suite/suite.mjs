@@ -1300,6 +1300,18 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-writing-check',
+    what: 'while a model spells out a long tool call or its answer, the chat says what it is writing and how much has arrived',
+    needs: ['workspace'],
+    /*
+     * A model put a file into one call and wrote for minutes after its thinking
+     * ended, with nothing on the screen moving. Stubs the stream and /follow,
+     * because no real model can be made to write a call of a known size, and a
+     * real turn running on the chat would draw lines of its own.
+     */
+  },
+
+  {
     name: 'chat-selector-check',
     what: 'the picker above a chat is drawn at its full width, and the link out goes where the name says',
     needs: ['workspace'],
