@@ -1498,6 +1498,8 @@ export const PL: Record<string, string> = {
   "Writing the answer…": "Pisze odpowiedź…",
   "Writing {tool}…": "Pisze {tool}…",
   "Open this chat’s session": "Otwórz sesję tego czatu",
+  "Sent while the agent was working": "Wysłane, gdy agent pracował",
+  "Could not send that.": "Nie udało się tego wysłać.",
   "Show less": "Pokaż mniej",
   "Fewer settings": "Mniej ustawień",
   "Show it to edit": "Pokaż, aby edytować",

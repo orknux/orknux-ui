@@ -97,9 +97,12 @@ record(answering === 'Writing the answer… 40 chars (~10 tokens)', `an answer b
 
 await page.evaluate(() => window.__writing.step?.('done'));
 await page.getByText(ANSWER).first().waitFor({ timeout: 10_000 }).catch(() => {});
-/* Over once the composer offers Send again; the page reads the chat back first. */
-const button = page.locator('form:has(#chat-composer) button[type="submit"]');
-for (let poll = 0; poll < 100 && ((await button.textContent()) ?? '').trim() !== 'Send'; poll += 1) await page.waitForTimeout(100);
+/*
+ * Over once Stop is gone. Not once Send is offered again: in a chat with an
+ * agent Send stays live through the turn, for writing into it.
+ */
+const stop = page.locator('form:has(#chat-composer) button', { hasText: 'Stop' });
+for (let poll = 0; poll < 100 && (await stop.count()) > 0; poll += 1) await page.waitForTimeout(100);
 record((await line.count()) === 0, 'and nothing says it is writing once the turn is over');
 
 await finish(browser);

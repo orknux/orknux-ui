@@ -1336,6 +1336,16 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-midturn-check',
+    what: 'what the person writes while the agent works goes to the running turn and is drawn there at once',
+    needs: ['workspace'],
+    /*
+     * Stubs the stream, the post and the agent on the chat list: no real model
+     * can be held mid-turn on cue, and the open chat may have no agent.
+     */
+  },
+
+  {
     name: 'chat-progress-check',
     what: "what an agent writes beside its calls is drawn as it happens, between the calls it came between",
     needs: ['workspace'],

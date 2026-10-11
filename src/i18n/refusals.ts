@@ -197,6 +197,7 @@ const PL: Record<string, string> = {
   ChatAgentMissing: 'Ta przestrzeń robocza nie ma agenta do rozmowy; najpierw dodaj jednego',
   ChatDisabled: 'Czat jest wyłączony w tej instalacji',
   ChatMessageEmpty: 'Nie ma czego wysłać',
+  ChatCannotBeToldMidTurn: 'Model tego czatu odpowiada jednym wywołaniem i nie przeczyta niczego w trakcie; wyślij, gdy odpowiedź będzie gotowa.',
   ChatModelNotChosen: 'Ten czat nie ma modelu, który mógłby odpowiedzieć; wybierz najpierw jeden',
   ChatPictureModelNotChosen:
     'Ta przestrzeń robocza nie ma modelu obrazu. Wybierz jeden w ustawieniach czatu przestrzeni ' +

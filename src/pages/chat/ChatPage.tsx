@@ -7,6 +7,7 @@ import {
   chooseChatAgent,
   deleteChat,
   fetchChatMessages,
+  postChatMessageDuringTurn,
   fetchChatSession,
   fetchChatSessions,
   fetchChatsMentioning,
@@ -274,6 +275,36 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   /** Where to put the caret once a completed word has been drawn into the box. */
   const caretAfter = useRef<number | null>(null);
   const [sending, setSending] = useState(false);
+  /** Whether the person wrote into the turn now running; the history then holds it where the agent read it. */
+  const wroteDuringTurn = useRef(false);
+  /** A message written as the turn ended, too late for it: sent as a turn of its own once the page is free. */
+  const sendAfterTurn = useRef<string | null>(null);
+  const composerForm = useRef<HTMLFormElement>(null);
+  /*
+   * When the turn is over: a message written into it is in the history now,
+   * where the agent read it, so the history is read back to show it there rather
+   * than leaving it in the turn's working that the next send clears. And one
+   * that came too late for the turn goes now as a turn of its own.
+   */
+  useEffect(() => {
+    if (sending) return;
+    if (wroteDuringTurn.current && currentId !== null) {
+      wroteDuringTurn.current = false;
+      // The history holds the calls and asides too, so the turn's live account of them goes.
+      fetchChatMessages(currentId)
+        .then((held) => {
+          setMessages(held);
+          setWorking(NOTHING_YET);
+        })
+        .catch(() => undefined);
+    }
+    const late = sendAfterTurn.current;
+    if (late !== null) {
+      sendAfterTurn.current = null;
+      setDraft(late);
+      window.setTimeout(() => composerForm.current?.requestSubmit(), 0);
+    }
+  }, [sending, currentId]);
   /**
    * The request answering the turn in flight, so it can be stopped.
    *
@@ -1726,6 +1757,34 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
       return;
     }
 
+    /*
+     * Said while the agent is working: not a second turn, but a message the
+     * turn reads at its next round, so the agent can change course without being
+     * stopped. Drawn at once among what the turn is doing, where it was said. A
+     * chat with no agent answers in one call and has no round to read it in, so
+     * there it waits as before.
+     */
+    if (sending && current?.agentId != null) {
+      const text = said;
+      setDraft('');
+      setAttached([]);
+      setError(null);
+      wroteDuringTurn.current = true;
+      setWorking((held) => ({
+        ...held,
+        calls: [
+          ...held.calls,
+          { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, person: text, seenAt: Date.now() },
+        ],
+      }));
+      const taken = await postChatMessageDuringTurn(currentId, text).catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : t('Could not send that.'));
+        return null;
+      });
+      // The turn ended before it arrived: it goes as a turn of its own, once this one is put away.
+      if (taken === false) sendAfterTurn.current = text;
+      return;
+    }
     if (sending) return;
     setSending(true);
     setDraft('');
@@ -2313,9 +2372,17 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
    * turn is in flight puts what was typed in the queue rather than nowhere.
    * A button labelled with the turn's progress and refusing the press would be
    * the same message lost that voice mode was just taught to keep.
+   *
+   * In a chat with an agent it says Send again as soon as something is typed
+   * mid-turn, because then pressing it writes into the turn; until then it
+   * keeps saying what the turn is doing.
    */
   const sendLabel =
-    voice || !sending ? 'Send' : answering ? t('Answering…') : t('Waiting…');
+    voice || !sending || (current?.agentId != null && draft.trim() !== '')
+      ? 'Send'
+      : answering
+        ? t('Answering…')
+        : t('Waiting…');
 
   /*
    * One banner, drawn in whichever half is showing. It cannot simply sit above
@@ -3146,7 +3213,12 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                           {calls.map((call) => (
                             <Fragment key={call.at}>
                             {before(call.seenAt)}
-                            {call.said !== undefined ? (
+                            {call.person !== undefined ? (
+                              <div key={call.at} className={styles.personInTurn} data-person-in-turn="">
+                                <div className={styles.personInTurnText}>{call.person}</div>
+                                <span className={styles.personInTurnNote}>{t('Sent while the agent was working')}</span>
+                              </div>
+                            ) : call.said !== undefined ? (
                               <div key={call.at} className={styles.said} data-said="">
                                 <Markdown>{call.said}</Markdown>
                               </div>
@@ -3361,7 +3433,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               {spent}
             </p>
           )}
-          <form className={styles.composer} onSubmit={handleSend}>
+          <form ref={composerForm} className={styles.composer} onSubmit={handleSend}>
             {/* What is going with the message, above the box it is going from. */}
             {attached.length > 0 && (
               <div className={styles.attachments}>
@@ -3755,7 +3827,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
               <button
                 type="submit"
                 className={styles.sendButton}
-                disabled={draft.trim() === '' || (sending && !voice)}
+                disabled={draft.trim() === '' || (sending && !voice && current.agentId === null)}
               >
                 {sendLabel}
               </button>

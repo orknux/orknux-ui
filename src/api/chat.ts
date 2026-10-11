@@ -330,6 +330,8 @@ export interface ChatCall {
    * it asked for - its progress - drawn in order among them.
    */
   said?: string;
+  /** Set on a line that is no call either: what the person wrote while the agent was working. */
+  person?: string;
   /** When the page heard of it, so a question asked during the turn can be put among the calls. */
   seenAt?: number;
 }
@@ -455,6 +457,19 @@ export async function streamChatMessage(
  * the browser is reading closes on its own once the server puts the interrupted
  * turn back.
  */
+/**
+ * Writes into the turn being answered, for the agent to read at its next round.
+ * False where no turn is running any more - it ended between the press and this
+ * arriving - and the message is then to be sent as a turn of its own.
+ */
+export async function postChatMessageDuringTurn(id: string, text: string): Promise<boolean> {
+  const data = await graphql<{ postChatMessageDuringTurn: boolean }>(
+    `mutation ($id: ID!, $text: String!) { postChatMessageDuringTurn(id: $id, text: $text) }`,
+    { id, text },
+  );
+  return data.postChatMessageDuringTurn;
+}
+
 export async function interruptChat(id: string): Promise<void> {
   await fetch(`/api/chats/${id}/interrupt`, { method: 'POST', credentials: 'same-origin' });
 }
