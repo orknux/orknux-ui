@@ -24,7 +24,7 @@ import {
   spendKnown,
   thinkingTime,
   tokenCount,
-  writingLabel,
+  writingParts,
   readingShare,
 } from '../../api/chat';
 import type {
@@ -3312,7 +3312,12 @@ ${named}`;
                           })()}
                           {writing !== null && (
                             <p className={styles.writingNow} data-chat-writing="">
-                              <span className={styles.compacting}>{writingLabel(writing)}</span>
+                              <span className={styles.compacting}>
+                                {writingParts(writing).lead !== '' && (
+                                  <span className={styles.readingLead} data-reading-lead="">{writingParts(writing).lead}</span>
+                                )}
+                                {writingParts(writing).rest}
+                              </span>
                               {readingShare(writing) !== null && (
                                 <span className={styles.readingShare} data-reading-share="">{readingShare(writing)}%</span>
                               )}

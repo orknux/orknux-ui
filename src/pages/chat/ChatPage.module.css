@@ -1648,8 +1648,8 @@ button.attachmentName {
   gap: var(--space-16);
 }
 
-/* The counts read in the same ink as the share beside them, not muted next to it. */
-.writingNow:has(.readingShare) .compacting {
+/* What is happening, in the share's ink; the counts after it stay muted. */
+.readingLead {
   color: var(--color-text-primary);
 }
 

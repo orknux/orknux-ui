@@ -864,6 +864,18 @@ export function writingLabel(writing: Writing): string {
 }
 
 /**
+ * The card's label as its lead - "Reading the prompt…", drawn brighter - and
+ * the rest. The lead is empty for anything but reading.
+ */
+export function writingParts(writing: Writing): { lead: string; rest: string } {
+  const whole = writingLabel(writing);
+  const lead = t('Reading the prompt…');
+  return readingShare(writing) !== null && whole.startsWith(lead)
+    ? { lead, rest: whole.slice(lead.length) }
+    : { lead: '', rest: whole };
+}
+
+/**
  * How far through the prompt llama.cpp is, as a whole percent - drawn at the
  * right end of the card, apart from the counts. Null while nothing is being read.
  */

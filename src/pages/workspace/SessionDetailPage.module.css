@@ -550,8 +550,8 @@
   color: var(--color-text-primary);
 }
 
-/* The counts read in the same ink as the share beside them. */
-.writingNow:has(.readingShare) .stillThinking {
+/* What is happening, in the share's ink; the counts after it stay muted. */
+.readingLead {
   color: var(--color-text-primary);
 }
 
@@ -600,6 +600,11 @@
   .stillThinking {
     animation: none;
   }
+}
+
+/* The live card's counts: muted, after the "still thinking" rule that would make them the accent. */
+.writingCounts {
+  color: var(--color-text-muted);
 }
 
 .blockLabel {

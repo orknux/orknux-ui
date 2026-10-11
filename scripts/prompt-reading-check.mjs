@@ -76,12 +76,18 @@ const shareAt = async (card) =>
     if (share === null) return null;
     const outer = box.getBoundingClientRect();
     const inner = share.getBoundingClientRect();
-    const label = [...box.querySelectorAll('span')].find((one) => (one.textContent ?? '').startsWith('Reading the prompt'));
+    // The lead - "Reading the prompt…" - is in the share's ink; the counts after it are not.
+    const label = box.querySelector('[data-reading-lead]');
+    const counts = label?.parentElement ?? null;
     return {
       text: share.textContent?.trim(),
       rightGap: Math.round(outer.right - inner.right),
       leftOfCentre: inner.left < outer.left + outer.width / 2,
-      sameInk: label !== undefined && getComputedStyle(label).color === getComputedStyle(share).color,
+      sameInk:
+        label !== null &&
+        counts !== null &&
+        getComputedStyle(label).color === getComputedStyle(share).color &&
+        getComputedStyle(counts).color !== getComputedStyle(share).color,
     };
   });
 const chatShare = await shareAt(line.first()).catch(() => null);
