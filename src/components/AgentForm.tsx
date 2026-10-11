@@ -2242,13 +2242,15 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('The boxes this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that box allows. Boxes and their labels are set up under Admin → Boxes.')}
             </FieldHint>
           </span>
-          <LabelPicker
-            id={`${formId}-box-labels`}
-            labels={boxLabels}
-            known={knownBoxLabels}
-            onChange={setBoxLabels}
-            placeholder={t('Add a box label…')}
-          />
+          <div className={own.labelBox} data-box-grant-box="">
+            <LabelPicker
+              id={`${formId}-box-labels`}
+              labels={boxLabels}
+              known={knownBoxLabels}
+              onChange={setBoxLabels}
+              placeholder={t('Add a box label…')}
+            />
+          </div>
         </div>
 
 

@@ -71,6 +71,20 @@ record(await drawn(page, "the agent's settings"), "the agent's settings open");
 const grant = page.locator('[data-box-grant]');
 const there = await grant.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
 record(there, 'the form has a Boxes grant');
+
+/* In a padded box like the grants around it, not loose on the panel. */
+const inset = await grant.evaluate((field) => {
+  const box = field.querySelector('[data-box-grant-box]');
+  const input = field.querySelector('input');
+  if (box === null || input === null) return null;
+  const outer = box.getBoundingClientRect();
+  const inner = input.getBoundingClientRect();
+  return { left: Math.round(inner.left - outer.left), bottom: Math.round(outer.bottom - inner.bottom), border: getComputedStyle(box).borderTopStyle };
+}).catch(() => null);
+record(
+  inset !== null && inset.border === 'solid' && inset.left >= 8 && inset.bottom >= 8,
+  `the labels sit in a bordered box with room inside it (${JSON.stringify(inset)})`,
+);
 record((await grant.locator('[data-label-chip]').count()) === 0, 'holding no label');
 
 /* A box tool reads the grant: Hide with no label, not pressable. */

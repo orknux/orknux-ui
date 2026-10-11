@@ -572,3 +572,11 @@
   cursor: pointer;
   user-select: none;
 }
+
+/* The box labels, in a box of their own like every other grant on the form rather than loose on the panel. */
+.labelBox {
+  padding: var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
