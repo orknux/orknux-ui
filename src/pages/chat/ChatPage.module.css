@@ -1191,13 +1191,28 @@ button.attachmentName {
   cursor: default;
 }
 
+/*
+ * A popover above the button, not a square: a sweep for the 32px row button
+ * swept this up by its shape in the stylesheet, and the menu became a 32px box
+ * with "Upload files" wrapped inside it, hanging over the input.
+ */
 .addMenu {
-  composes: rowAction from '../../styles/rowAction.module.css';
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + var(--space-6));
+  left: 0;
+  min-width: 160px;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
 }
 
 .addMenuItem {
   display: block;
   width: 100%;
+  white-space: nowrap;
   padding: var(--space-6) var(--space-8);
   background: none;
   border: 0;

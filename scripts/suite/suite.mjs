@@ -1318,6 +1318,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-composer-check',
+    what: 'a pasted picture is attached, the "+" menu opens above on one line, and chat rows draw no icon',
+    needs: ['workspace'],
+    /* Stubs the upload, so nothing is stored; needs a chat whose model takes attachments. */
+  },
+
+  {
     name: 'chat-progress-check',
     what: "what an agent writes beside its calls is drawn as it happens, between the calls it came between",
     needs: ['workspace'],

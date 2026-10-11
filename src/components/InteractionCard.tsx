@@ -83,12 +83,27 @@ export function placeRequests<T>(
   ascending = true,
 ): Map<number, InteractionRequest[]> {
   const placed = new Map<number, InteractionRequest[]>();
+  /*
+   * Lines with no time after the last one that has one are the present - an
+   * answer still being written - so a request comes before them. Undated lines
+   * further up are older ones and are passed over.
+   */
+  let lastDated = -1;
+  lines.forEach((line, index) => {
+    if (atOf(line) !== null) lastDated = index;
+  });
   for (const request of requests) {
     const asked = Date.parse(request.createdAt);
     let at = lines.length;
     for (let index = 0; index < lines.length; index += 1) {
       const said = atOf(lines[index]);
-      if (said === null) continue;
+      if (said === null) {
+        if (ascending && index > lastDated) {
+          at = index;
+          break;
+        }
+        continue;
+      }
       const when = Date.parse(said);
       if (ascending ? when > asked : when < asked) {
         at = index;

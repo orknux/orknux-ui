@@ -15,7 +15,20 @@ import { BASE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
-const ASKED = new Date().toISOString();
+/*
+ * The conversation the requests sit in: a question, then an answer written
+ * after both requests were asked. A request goes where it was asked - above that
+ * answer - and not under the newest line for ever, which is where an answered
+ * one used to stay.
+ */
+const T0 = new Date(Date.now() - 120_000).toISOString();
+const ASKED = new Date(Date.now() - 60_000).toISOString();
+const ANSWER = 'The port is open; here is what I found after it.';
+const MESSAGES = [
+  { role: 'user', content: 'Expose me a running instance.', actor: null, takes: [], thinking: null, thinkingMillis: null, at: T0 },
+  // Undated, as the answer a page is still writing is: the present, after anything asked during it.
+  { role: 'assistant', content: ANSWER, actor: 'Builder', takes: [], thinking: null, thinkingMillis: null, at: null },
+];
 let requests = [
   {
     id: '51',
@@ -66,6 +79,9 @@ await page.route('**/graphql', async (route) => {
       body: JSON.stringify({ data: { answerRequest: requests.find((one) => one.id === variables.id) } }),
     });
   }
+  if (body.includes('chatMessages(')) {
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { chatMessages: MESSAGES } }) });
+  }
   if (body.includes('sessionRequests(')) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { sessionRequests: requests } }) });
   }
@@ -98,6 +114,17 @@ const settled = (await page.locator('[data-interaction="52"] [data-interaction-o
 record(
   settled.startsWith('Disabled') && (await page.locator('[data-interaction="52"] [data-interaction-option]').count()) === 0,
   `one settled on the session page shows that outcome and no buttons (${settled})`,
+);
+
+/* Placed by when it was asked: below the question, above the answer written after it. */
+const order = await page.evaluate((answer) => {
+  const top = (element) => (element === null ? null : Math.round(element.getBoundingClientRect().top));
+  const said = [...document.querySelectorAll('p, li, div')].find((one) => one.childElementCount === 0 && (one.textContent ?? '').includes(answer));
+  return { answered: top(document.querySelector('[data-interaction="52"]')), answer: top(said ?? null) };
+}, ANSWER);
+record(
+  order.answered !== null && order.answer !== null && order.answered < order.answer,
+  `an answered request sits where it was asked, above the answer that came after it (${JSON.stringify(order)})`,
 );
 
 await page.click('[data-interaction="51"] [data-interaction-option="allow"]');

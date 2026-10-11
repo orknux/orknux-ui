@@ -1241,7 +1241,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * sentence is still being typed — and so a failure is a chip that did not
    * appear rather than a message that would not go.
    */
-  async function handleFiles(files: FileList | null) {
+  async function handleFiles(files: FileList | File[] | null) {
     if (files === null || files.length === 0 || workspaceId === null) return;
 
     setAttaching(true);
@@ -1349,7 +1349,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
 
     setMessages((present) => [
       ...present,
-      { role: 'user', content: text, actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
+      { role: 'user', content: text, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() },
       { role: 'assistant', content: '', actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
     ]);
     setError(null);
@@ -1533,6 +1533,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function keepThinkingOnAnswer(spend: ChatSpend) {
     setLastSpend(spend);
+    /*
+     * The answer is dated when it is finished, as the store dates it. Left
+     * without a time it could not be placed against anything asked while it was
+     * being written, and a question the agent put mid-turn sank below it.
+     */
+    setMessages((present) => {
+      const last = present.length - 1;
+      if (last < 0 || present[last].role !== 'assistant' || present[last].at !== null) return present;
+      const grown = [...present];
+      grown[last] = { ...grown[last], at: new Date().toISOString() };
+      return grown;
+    });
     const thought = thinkingSoFar.current;
     if (thought.trim() === '') return;
     setMessages((present) => {
@@ -1567,7 +1579,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     setCommandAt(-1);
     setMessages((present) => [
       ...present,
-      { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
+      { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() },
     ]);
 
     const answer = await runChatCommand(workspaceId, head, rest.join(' ').trim() || null).catch(
@@ -1575,7 +1587,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     );
     setMessages((present) => [
       ...present,
-      { role: 'assistant', content: answer, actor: null, takes: [], thinking: null, thinkingMillis: null, at: null },
+      { role: 'assistant', content: answer, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() },
     ]);
     return true;
   }
@@ -1641,7 +1653,7 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
     setAttached([]);
     // Shown straight away: the server has it, and waiting for the model to
     // finish before drawing what was typed reads as a dropped message.
-    setMessages((present) => [...present, { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: null }]);
+    setMessages((present) => [...present, { role: 'user', content: said, actor: null, takes: [], thinking: null, thinkingMillis: null, at: new Date().toISOString() }]);
     setError(null);
     // The last answer's working, cleared as this one starts. It stayed on
     // screen after that answer landed on purpose; it belongs to that answer,
@@ -3523,6 +3535,19 @@ Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
                   setCommandsShut(false);
                 }}
                 onKeyDown={handleComposerKey}
+                /*
+                  A pasted picture is attached the way an uploaded one is. Text
+                  is left to the box: only a paste that carries files and no
+                  text is taken over, so copying a cell from a spreadsheet -
+                  which carries both - still pastes the words.
+                */
+                onPaste={(event) => {
+                  if (!attachmentsAllowed) return;
+                  const pasted = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
+                  if (pasted.length === 0 || event.clipboardData.getData('text/plain') !== '') return;
+                  event.preventDefault();
+                  void handleFiles(pasted);
+                }}
                 onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
                 placeholder={t('Type a message...')}
                 rows={1}
@@ -3736,11 +3761,8 @@ function SessionRow({
   return (
     <div className={`${styles.sessionRow} ${current ? styles.sessionRowCurrent : ''}`}>
       <button type="button" className={styles.sessionButton} onClick={onSelect}>
-        {pinnedRow ? (
-          <span className={styles.pinDot} aria-hidden="true" />
-        ) : (
-          <img src={messageSquareIcon} alt="" width={14} height={14} />
-        )}
+        {/* No icon: the same speech bubble on every row said nothing. A pinned one keeps its dot, which does. */}
+        {pinnedRow && <span className={styles.pinDot} aria-hidden="true" />}
         <span className={styles.sessionTitle}>{entry.title}</span>
       </button>
       <button
