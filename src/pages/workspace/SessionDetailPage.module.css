@@ -550,6 +550,11 @@
   color: var(--color-text-primary);
 }
 
+/* The counts read in the same ink as the share beside them. */
+.writingNow:has(.readingShare) .stillThinking {
+  color: var(--color-text-primary);
+}
+
 .writingNow {
   display: flex;
   flex-wrap: wrap;

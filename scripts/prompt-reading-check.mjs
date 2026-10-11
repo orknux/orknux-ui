@@ -76,11 +76,17 @@ const shareAt = async (card) =>
     if (share === null) return null;
     const outer = box.getBoundingClientRect();
     const inner = share.getBoundingClientRect();
-    return { text: share.textContent?.trim(), rightGap: Math.round(outer.right - inner.right), leftOfCentre: inner.left < outer.left + outer.width / 2 };
+    const label = [...box.querySelectorAll('span')].find((one) => (one.textContent ?? '').startsWith('Reading the prompt'));
+    return {
+      text: share.textContent?.trim(),
+      rightGap: Math.round(outer.right - inner.right),
+      leftOfCentre: inner.left < outer.left + outer.width / 2,
+      sameInk: label !== undefined && getComputedStyle(label).color === getComputedStyle(share).color,
+    };
   });
 const chatShare = await shareAt(line.first()).catch(() => null);
 record(
-  chatShare !== null && chatShare.text === '20%' && chatShare.rightGap <= 16 && !chatShare.leftOfCentre,
+  chatShare !== null && chatShare.text === '20%' && chatShare.rightGap <= 16 && !chatShare.leftOfCentre && chatShare.sameInk,
   `and the percentage sits at the right of the card (${JSON.stringify(chatShare)})`,
 );
 await page.evaluate(() => window.__reading.step?.('grow'));
@@ -127,7 +133,7 @@ record(
 );
 const sessionShare = await shareAt(card.first()).catch(() => null);
 record(
-  sessionShare !== null && sessionShare.text === '20%' && sessionShare.rightGap <= 24 && !sessionShare.leftOfCentre,
+  sessionShare !== null && sessionShare.text === '20%' && sessionShare.rightGap <= 24 && !sessionShare.leftOfCentre && sessionShare.sameInk,
   `with its percentage at the right too (${JSON.stringify(sessionShare)})`,
 );
 
