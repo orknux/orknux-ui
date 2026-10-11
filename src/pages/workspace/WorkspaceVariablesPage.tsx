@@ -894,9 +894,18 @@ function VariableTable({
   function valueFieldFor(
     draft: Draft,
     change: (next: Partial<Draft>) => void,
-    options: { readable: boolean; label: string; placeholder: string; onEnter: () => void; onEscape?: () => void; hint?: string },
+    options: {
+      readable: boolean;
+      label: string;
+      placeholder: string;
+      onEnter: () => void;
+      onEscape?: () => void;
+      hint?: string;
+      /** Covered but still typed into: a secret being written for the first time, which has nothing stored to hide. */
+      typedBlind?: boolean;
+    },
   ) {
-    const { readable, label, placeholder, onEnter, onEscape, hint } = options;
+    const { readable, label, placeholder, onEnter, onEscape, hint, typedBlind = false } = options;
     const offer = offerOf(draft);
     const classes = `${table.cellInput} ${table.mono}`;
 
@@ -905,9 +914,18 @@ function VariableTable({
         <input
           className={classes}
           type="password"
-          autoComplete="off"
+          autoComplete="new-password"
           value={draft.value}
-          readOnly
+          readOnly={!typedBlind}
+          onChange={typedBlind ? (event) => change({ value: event.target.value }) : undefined}
+          onKeyDown={
+            typedBlind
+              ? (event) => {
+                  if (event.key === 'Enter') onEnter();
+                  if (event.key === 'Escape') onEscape?.();
+                }
+              : undefined
+          }
           placeholder={placeholder}
           title={hint}
           aria-label={label}
@@ -1167,6 +1185,8 @@ function VariableTable({
               <span className={table.valueStack}>
                 {valueFieldFor(adding, (next) => setAdding((held) => ({ ...(held ?? EMPTY), ...next })), {
                   readable: kind === 'VALUE' || addingShown,
+                  // Typed into while covered: the eye is for checking a paste, not a gate in front of the box.
+                  typedBlind: true,
                   label: t('New value'),
                   placeholder: t('Value'),
                   onEnter: () => void add(),

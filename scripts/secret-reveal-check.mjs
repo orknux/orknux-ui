@@ -146,6 +146,27 @@ if (await drawn(page, 'the variables page')) {
     eyes.length > 0,
     `and the variables page, which everything was made to agree with, still names its own the same way: ${JSON.stringify(eyes.slice(0, 3))}`,
   );
+
+  /*
+   * A new secret is typed straight in, covered. The eye is for checking a paste;
+   * it was a gate, and the box took no typing until it was pressed.
+   */
+  const addSecret = page.getByRole('button', { name: '+ Add Secret' }).first();
+  if ((await addSecret.count()) > 0) {
+    await addSecret.click();
+    const value = page.getByLabel('New value').last();
+    await value.waitFor({ timeout: 5_000 }).catch(() => {});
+    await value.click().catch(() => {});
+    await page.keyboard.type('s3cr3t-typed', { delay: 10 });
+    const typed = await value.evaluate((input) => ({ value: input.value, type: input.type })).catch(() => null);
+    record(
+      typed?.value === 's3cr3t-typed' && typed.type === 'password',
+      `a new secret is typed into straight away, still covered (${JSON.stringify(typed && { length: typed.value.length, type: typed.type })})`,
+    );
+    await page.keyboard.press('Escape');
+  } else {
+    record(false, `the variables page in workspace ${WORKSPACE} offers no "+ Add Secret"`);
+  }
 }
 
 await finish(browser);
