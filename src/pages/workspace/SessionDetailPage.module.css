@@ -1374,7 +1374,8 @@
   width: 14px;
   height: 14px;
   margin-top: 2px;
-  border: 1px solid var(--color-border);
+  /* The panel's own border colour made an open item's box all but invisible on the panel; muted text reads as a box. */
+  border: 1.5px solid var(--color-text-muted);
   border-radius: var(--radius-4);
 }
 

@@ -114,6 +114,23 @@ const noted = items.find((one) => one.id === '3');
 record(noted?.note === 'Postgres and SQLite' && noted.noteBelow === true, `an item's note is drawn under it (${noted?.note})`);
 record(open1?.note === '', 'an item with no note draws none');
 
+/* An open item's box has to be seen: 3:1 against what is behind it, the bar for anything that is not text. */
+const contrast = await page.evaluate(() => {
+  const mark = document.querySelector('[data-session-todo-done="false"] [data-session-todo-mark]');
+  if (mark === null) return null;
+  const rgb = (value) => (value.match(/[\d.]+/g) ?? []).slice(0, 4).map(Number);
+  let behind = mark.parentElement;
+  while (behind !== null && (rgb(getComputedStyle(behind).backgroundColor)[3] ?? 1) === 0) behind = behind.parentElement;
+  const lum = ([r, g, b]) => {
+    const one = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * one(r) + 0.7152 * one(g) + 0.0722 * one(b);
+  };
+  const a = lum(rgb(getComputedStyle(mark).borderTopColor));
+  const b = lum(rgb(getComputedStyle(behind ?? document.body).backgroundColor));
+  return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 10) / 10;
+});
+record(contrast !== null && contrast >= 3, `an open item's box stands out from the panel (${contrast}:1)`);
+
 const drawnNotes = await page.$$eval('[data-session-note-text]', (all) => all.map((one) => one.textContent?.trim()));
 record(
   drawnNotes.join(' | ') === 'Steps 1-3 done | The third test is the flaky one',
