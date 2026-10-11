@@ -1523,7 +1523,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onSaid' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onSaid' | 'onPersonRead' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1594,6 +1594,13 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        * In the same list as the calls, so it reads where it was said: before the
        * lookups it introduced. Keyed below zero, where no call's `at` can be.
        */
+      /* The oldest of the person's waiting lines with these words is the one the agent just read. */
+      onPersonRead: (text) =>
+        setWorking((held) => {
+          const at = held.calls.findIndex((call) => call.person === text && call.personRead !== true);
+          if (at < 0) return held;
+          return { ...held, calls: held.calls.map((call, index) => (index === at ? { ...call, personRead: true } : call)) };
+        }),
       onSaid: (text) =>
         setWorking((held) => ({
           ...held,
@@ -3215,7 +3222,12 @@ ${named}`;
                             {call.person !== undefined ? (
                               <div key={call.at} className={styles.personInTurn} data-person-in-turn="">
                                 <div className={styles.personInTurnText}>{call.person}</div>
-                                <span className={styles.personInTurnNote}>{t('Sent while the agent was working')}</span>
+                                {/* Queued until the agent's next step takes it in: a model reading a long prompt can take minutes to get there. */}
+                                <span className={styles.personInTurnNote} data-person-read={call.personRead === true ? 'true' : 'false'}>
+                                  {call.personRead === true
+                                    ? t('Read by the agent')
+                                    : t('Queued - the agent reads it at its next step')}
+                                </span>
                               </div>
                             ) : call.said !== undefined ? (
                               <div key={call.at} className={styles.said} data-said="">

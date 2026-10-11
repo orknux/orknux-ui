@@ -332,6 +332,8 @@ export interface ChatCall {
   said?: string;
   /** Set on a line that is no call either: what the person wrote while the agent was working. */
   person?: string;
+  /** Whether the agent has read [person] yet: until then it waits in the inbox for the agent's next step. */
+  personRead?: boolean;
   /** When the page heard of it, so a question asked during the turn can be put among the calls. */
   seenAt?: number;
 }
@@ -363,6 +365,8 @@ export interface ChatStreamHandlers {
   onFiled?: (file: Attachment) => void;
   /** What the agent wrote beside the calls it is about to make - how it reports progress. */
   onSaid?: (text: string) => void;
+  /** The agent has read something the person wrote while it was working. */
+  onPersonRead?: (text: string) => void;
   /**
    * How far the model has got writing: the tool whose call it is spelling out,
    * or null for its answer, and how many characters have arrived. About once a
@@ -732,6 +736,7 @@ async function read(
       });
     }
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
+    else if (frame.event === 'personRead' && payload.text !== undefined) handlers.onPersonRead?.(payload.text);
     else if (frame.event === 'writing' && payload.chars !== undefined) {
       handlers.onWriting?.({ tool: payload.tool ?? null, chars: payload.chars });
     }

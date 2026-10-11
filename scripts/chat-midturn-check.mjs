@@ -49,6 +49,7 @@ await context.addInitScript(() => {
             const send = (event, data) => controller.enqueue(encode.encode(frame(event, data)));
             window.setTimeout(() => send('call', { at: 0, tool: 'midturn_first', arguments: '{}' }), 100);
             window.setTimeout(() => send('called', { at: 0, result: 'first', failed: false }), 200);
+            window.__midturn.read = (text) => send('personRead', { text });
             window.__midturn.release = () => {
               send('call', { at: 1, tool: 'midturn_second', arguments: '{}' });
               send('called', { at: 1, result: 'second', failed: false });
@@ -95,6 +96,13 @@ const order = await page.evaluate((said) => {
     .map((one) => (one.hasAttribute('data-person-in-turn') ? 'person' : /midturn_first/.test(one.textContent ?? '') ? 'first' : 'second'));
 }, SAID);
 record(order.join(',') === 'first,person', `after the call it came after (${order.join(',')})`);
+
+/* Queued until the agent's next step takes it in, then Read: "Sent" for minutes read as ignored. */
+const note = () => page.locator('[data-person-in-turn] [data-person-read]').first();
+record((await note().getAttribute('data-person-read')) === 'false', `it says it is queued (${(await note().innerText().catch(() => '')).trim()})`);
+await page.evaluate((said) => window.__midturn.read?.(said), SAID);
+await page.waitForTimeout(300);
+record((await note().getAttribute('data-person-read')) === 'true', `and read once the agent has it (${(await note().innerText().catch(() => '')).trim()})`);
 
 await page.evaluate(() => window.__midturn.release?.());
 await page.getByText('Blue it is.').first().waitFor({ timeout: 10_000 }).catch(() => {});
