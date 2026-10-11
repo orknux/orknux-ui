@@ -1690,9 +1690,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
      */
     setMessages((present) => {
       const last = present.length - 1;
-      if (last < 0 || present[last].role !== 'assistant' || present[last].at !== null) return present;
+      if (last < 0 || present[last].role !== 'assistant') return present;
       const grown = [...present];
-      grown[last] = { ...grown[last], at: new Date().toISOString() };
+      grown[last] = { ...grown[last], spend, at: grown[last].at ?? new Date().toISOString() };
       return grown;
     });
     const thought = thinkingSoFar.current;
@@ -3161,14 +3161,15 @@ ${named}`;
                       <span className={styles.sentAt}>{sentAt(message.at)}</span>
                     )}
                     {/* Only the answer just given has a time behind it. */}
-                    {lastSpend !== null && index === messages.length - 1 && (
+                    {/* The time of the turn that wrote this answer, on that answer: a new turn's answer shows none until its own. */}
+                    {message.spend !== undefined && index === messages.length - 1 && (
                       <button
                         type="button"
                         className={styles.thought}
                         onClick={() => setThoughtOpen(!thoughtOpen)}
                         aria-expanded={thoughtOpen}
                       >
-                        Thought for {thinkingTime(lastSpend.millis)}
+                        Thought for {thinkingTime(message.spend.millis)}
                         <img
                           className={thoughtOpen ? styles.thoughtChevronOpen : styles.thoughtChevron}
                           src={chevronDown12Icon}
@@ -3178,22 +3179,22 @@ ${named}`;
                         />
                       </button>
                     )}
-                    {thoughtOpen && lastSpend !== null && index === messages.length - 1 && (
+                    {thoughtOpen && message.spend !== undefined && index === messages.length - 1 && (
                       <p className={styles.thoughtDetail}>
                         {spend === null ? (
                           <>
-                            The provider took {lastSpend.millis} ms to answer. Nothing else is
+                            The provider took {message.spend!.millis} ms to answer. Nothing else is
                             recorded: the history keeps what was said, not how it was arrived at.
                           </>
                         ) : (
                           <>
-                            The provider took {lastSpend.millis} ms to answer, and charged for{' '}
-                            {tokenCount(lastSpend.inputTokens)} tokens in and{' '}
-                            {tokenCount(lastSpend.outputTokens)} out - every round of this turn, so
+                            The provider took {message.spend!.millis} ms to answer, and charged for{' '}
+                            {tokenCount(message.spend!.inputTokens)} tokens in and{' '}
+                            {tokenCount(message.spend!.outputTokens)} out - every round of this turn, so
                             a lookup an agent made on the way is counted here too.{' '}
-                            {lastSpend.cost === null
+                            {message.spend!.cost === null
                               ? t('This model carries no prices, so there is nothing to cost that at.')
-                              : `At the prices recorded for it that is ${costAmount(lastSpend.cost)}.`}{' '}
+                              : `At the prices recorded for it that is ${costAmount(message.spend!.cost)}.`}{' '}
                             {/*
                               This used to say none of it was kept, which was
                               true of every one of these numbers until the chat

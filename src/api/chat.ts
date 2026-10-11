@@ -68,6 +68,12 @@ export interface ChatSession {
  * these arrive from the query rather than being anything the chat can produce.
  */
 export interface ChatMessage {
+  /**
+   * What the turn that wrote this answer took, on the answer just given only. Kept
+   * on the message rather than beside the page, where the next turn's answer
+   * showed the last one's time until its own came.
+   */
+  spend?: ChatSpend;
   role: string;
   content: string;
   /**

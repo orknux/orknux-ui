@@ -1336,6 +1336,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-turn-time-check',
+    what: "an answer's Thought for is its own turn's time, and a turn still running shows none",
+    needs: ['workspace'],
+    /* Stubs two turns' streams, because the bug was one turn's time drawn under the next. */
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, from its header',
     needs: ['workspace'],
