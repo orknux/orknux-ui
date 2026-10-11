@@ -242,6 +242,7 @@ const PL: Record<string, string> = {
   WidgetsPerChatOutOfRange: '{widgets} to nie jest liczba widżetów jednego czatu. Wybierz od 1 do 50.',
   WidgetTimerLimitOutOfRange: '{seconds} to nie jest liczba sekund minutnika w czacie. Wybierz od 60 do 604800.',
   ChatWidgetNotFound: 'Ten czat nie ma widżetu {id}.',
+  ReadingShownAfterOutOfRange: '{seconds} to nie jest liczba sekund czytania promptu przed jego pokazaniem. Wybierz od 0 do 120.',
   WritingForgottenOutOfRange: '{seconds} to nie jest liczba sekund ważności raportu pisania. Wybierz od 5 do 600.',
   UnusableReplyRetriesOutOfRange: '{retries} to nie jest liczba ponowień po nieużytecznej odpowiedzi. Wybierz od 0 do 10.',
   SessionValueSizeOutOfRange: '{megabytes} MB to nie jest rozmiar, jaki może mieć wartość w sesji. Wybierz od 1 do 256.',

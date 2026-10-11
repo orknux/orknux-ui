@@ -18,6 +18,7 @@ import {
   setWidgetsPerChat,
   setWidgetTimerMaxSeconds,
   setWritingForgottenSeconds,
+  setReadingShownAfterSeconds,
   setWorkflowStepsAtOnce,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -148,6 +149,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [writingEvery, setWritingEvery] = useState('');
   /** How long a report of writing is believed, in seconds, as typed. */
   const [writingForgotten, setWritingForgotten] = useState('');
+  /** How long a prompt is read before it is shown, in seconds, as typed. */
+  const [readingAfter, setReadingAfter] = useState('');
   /** How many widgets one chat may hold, as typed. */
   const [widgetsMost, setWidgetsMost] = useState('');
   /** The longest a chat's timer may run, as typed. */
@@ -295,6 +298,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setAnswerLimit(String(held.modelAnswerLimitMinutes));
         setWritingEvery(String(held.writingProgressMillis));
         setWritingForgotten(String(held.writingForgottenSeconds));
+        setReadingAfter(String(held.readingShownAfterSeconds));
         setWidgetsMost(String(held.widgetsPerChat));
         setTimerLongest(String(held.widgetTimerMaxSeconds));
         setStoreKeys(String(held.sessionStoreMaxKeys));
@@ -369,6 +373,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: answerLimit, held: settings.modelAnswerLimitMinutes, write: setModelAnswerLimitMinutes },
         { typed: writingEvery, held: settings.writingProgressMillis, write: setWritingProgressMillis },
         { typed: writingForgotten, held: settings.writingForgottenSeconds, write: setWritingForgottenSeconds },
+        { typed: readingAfter, held: settings.readingShownAfterSeconds, write: setReadingShownAfterSeconds },
         { typed: widgetsMost, held: settings.widgetsPerChat, write: setWidgetsPerChat },
         { typed: timerLongest, held: settings.widgetTimerMaxSeconds, write: setWidgetTimerMaxSeconds },
         { typed: storeKeys, held: settings.sessionStoreMaxKeys, write: setSessionStoreMaxKeys },
@@ -869,6 +874,33 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                   onChange={(event) => setWritingForgotten(event.target.value)}
                   disabled={busy}
                   aria-label={t('Writing Progress Forgotten After')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
+              </div>
+            </div>
+
+            {/* How long a prompt is read before "Reading the prompt…" shows. It showed for every read, however short. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Reading Progress Shown After')}</p>
+                  <FieldHint label={t('Reading Progress Shown After')}>
+                    {t('How long a llama.cpp server has to have been reading a prompt before the chat and the session page say so - a read shorter than this is never shown. 0 shows it at once. Between 0 and 120 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="reading-shown-after-seconds"
+                  name="readingShownAfterSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={readingAfter}
+                  onChange={(event) => setReadingAfter(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Reading Progress Shown After')}
                 />
                 <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>

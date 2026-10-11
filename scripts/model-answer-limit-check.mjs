@@ -109,4 +109,36 @@ record(
   'both put back to what they were',
 );
 
+
+/*
+ * Reading Progress Shown After: how long a prompt is read before "Reading the
+ * prompt…" shows. It showed for every read, however short.
+ */
+const reading = async () =>
+  (await graphql('query { installationSettings { readingShownAfterSeconds readingShownAfterSecondsConfigured } }')).installationSettings;
+const readBefore = await reading();
+record(readBefore.readingShownAfterSecondsConfigured === 5, `a fresh installation shows a read after five seconds (${readBefore.readingShownAfterSecondsConfigured})`);
+const after = () => page.getByLabel('Reading Progress Shown After', { exact: true });
+await page.goto(`${BASE}/admin/settings`, { waitUntil: 'domcontentloaded' });
+if (await drawn(page, 'admin settings')) {
+  const there = await after()
+    .waitFor({ state: 'visible', timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  const placed = await page.evaluate(() => {
+    const above = document.getElementById('writing-forgotten-seconds')?.getBoundingClientRect();
+    const box = document.getElementById('reading-shown-after-seconds')?.getBoundingClientRect();
+    return above && box ? box.top > above.bottom : null;
+  });
+  record(there && placed === true, 'its box is on the page, under Writing Progress Forgotten After');
+  record(there && (await after().inputValue()) === String(readBefore.readingShownAfterSeconds), 'and shows what is stored');
+  const want = readBefore.readingShownAfterSeconds === 0 ? 3 : 0;
+  await after().fill(String(want));
+  await page.getByRole('button', { name: 'Save the settings on this page', exact: true }).click();
+  await page.getByText('Saved.', { exact: true }).waitFor({ timeout: 10_000 }).catch(() => {});
+  const savedRead = await reading();
+  record(savedRead.readingShownAfterSeconds === want, `the server holds ${want} s after a save (${savedRead.readingShownAfterSeconds})`);
+}
+await graphql('mutation($s: Int!) { setReadingShownAfterSeconds(seconds: $s) { readingShownAfterSeconds } }', { s: readBefore.readingShownAfterSeconds });
+record((await reading()).readingShownAfterSeconds === readBefore.readingShownAfterSeconds, 'and put back to what it was');
 await finish(browser);

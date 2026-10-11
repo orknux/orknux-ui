@@ -234,6 +234,9 @@ export interface InstallationSettings {
   /** How long a report that a model is writing is believed without another, in seconds. */
   writingForgottenSeconds: number;
   writingForgottenSecondsConfigured: number;
+  /** How long a prompt is read, in seconds, before the page is told it is being read; 0 tells at once. */
+  readingShownAfterSeconds: number;
+  readingShownAfterSecondsConfigured: number;
   /** How many widgets one chat may hold at once. */
   widgetsPerChat: number;
   widgetsPerChatConfigured: number;
@@ -333,7 +336,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured readingShownAfterSeconds readingShownAfterSecondsConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -829,6 +832,14 @@ export async function setWritingForgottenSeconds(seconds: number): Promise<Insta
     { seconds },
   );
   return data.setWritingForgottenSeconds;
+}
+
+export async function setReadingShownAfterSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReadingShownAfterSeconds: InstallationSettings }>(
+    `mutation ($seconds: Int!) { setReadingShownAfterSeconds(seconds: $seconds) { ${FIELDS} } }`,
+    { seconds },
+  );
+  return data.setReadingShownAfterSeconds;
 }
 
 export async function setModelAnswerLimitMinutes(minutes: number): Promise<InstallationSettings> {

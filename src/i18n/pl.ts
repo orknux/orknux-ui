@@ -2526,6 +2526,8 @@ export const PL: Record<string, string> = {
   "Could not change that widget.": "Nie udało się zmienić tego widżetu.",
   "Could not remove that widget.": "Nie udało się usunąć tego widżetu.",
   "How often the chat and the session page are told how much a model has written of a long answer or tool call. Between 200 and 10000 ms.": "Jak często czat i strona sesji dowiadują się, ile model napisał z długiej odpowiedzi lub wywołania narzędzia. Od 200 do 10000 ms.",
+  "Reading Progress Shown After": "Pokazuj czytanie promptu po",
+  "How long a llama.cpp server has to have been reading a prompt before the chat and the session page say so - a read shorter than this is never shown. 0 shows it at once. Between 0 and 120 seconds.": "Jak długo serwer llama.cpp musi czytać prompt, zanim czat i strona sesji to pokażą - krótsze czytanie nie jest pokazywane wcale. 0 pokazuje od razu. Od 0 do 120 sekund.",
   "Writing Progress Forgotten After": "Raport pisania zapominany po",
   "How long a session page keeps saying a model is writing when no new report arrives - so a turn that died does not say it for ever. Between 5 and 600 seconds.": "Jak długo strona sesji pokazuje, że model pisze, gdy nie przychodzi nowy raport - by przerwana tura nie mówiła tego w nieskończoność. Od 5 do 600 sekund.",
   "How long one call to a model may take before it is given up on - raise it for a slow local model that thinks for a long time. Between 1 and 1440 minutes.": "Ile może trwać jedno wywołanie modelu, zanim zostanie przerwane - zwiększ dla wolnego modelu lokalnego, który długo myśli. Od 1 do 1440 minut.",
