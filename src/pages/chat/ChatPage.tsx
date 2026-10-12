@@ -3575,6 +3575,7 @@ ${named}`;
           </div>
 
           {errorBanner}
+          {passingBanner}
 
           {spent !== null && (
             <p className={styles.spent} title={t('What this chat has read and written, all of it')}>

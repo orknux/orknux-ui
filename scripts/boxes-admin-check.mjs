@@ -17,7 +17,7 @@
  * Boxes are made with a name nobody would mistake for real at an address under
  * `.invalid`, which can never resolve, so no test ever reaches a network.
  * Everything it makes it removes, and it sweeps what a killed run left behind.
- * The one setting it changes it puts back.
+ * The settings it changes it puts back.
  */
 import { BASE, open, record, drawn, finish } from './suite/harness.mjs';
 
@@ -79,6 +79,10 @@ const painted = (value) =>
   }, value);
 
 /* ------------------------------------------------------------------ the list */
+
+/* The local box's row is checked too: switched off here, it is switched on for the run and off again after. */
+const localWasOn = (await graphql(`{ installationSettings { localBoxEnabled } }`)).installationSettings.localBoxEnabled;
+if (!localWasOn) await graphql(`mutation { setLocalBoxEnabled(enabled: true) { localBoxEnabled } }`).catch(() => {});
 
 const listed = await listBoxes();
 const local = listed.find((one) => one.kind === 'LOCAL') ?? null;
@@ -327,6 +331,8 @@ record(
 record(held.localBoxOutputKeptBytesConfigured === 1048576, `a fresh installation keeps a megabyte of each local command's output for reading (${held.localBoxOutputKeptBytesConfigured})`);
 
 /* --------------------------------------------------------------- put back */
+
+if (!localWasOn) await graphql(`mutation { setLocalBoxEnabled(enabled: false) { localBoxEnabled } }`).catch(() => {});
 
 await graphql(`mutation ($s: Int!) { setBoxCommandWaitSeconds(seconds: $s) { boxCommandWaitSeconds } }`, {
   s: held.boxCommandWaitSeconds,
