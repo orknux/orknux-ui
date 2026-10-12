@@ -93,6 +93,21 @@ const rows = page.locator('[data-box-row]');
 await rows.first().waitFor({ timeout: 20_000 }).catch(() => {});
 record((await rows.count()) === listed.length, `a row per box the server lists (${await rows.count()} of ${listed.length})`);
 
+/* It reloads by itself on the shared interval, so health and sessions stay current without a reload. */
+const auto = page.locator('select[aria-label="Refresh automatically"]').first();
+record(await auto.isVisible({ timeout: 5_000 }).catch(() => false), 'the boxes list offers automatic refresh');
+const chosen = await auto.inputValue().catch(() => null);
+let asked = 0;
+const counting = (request) => {
+  if (request.url().includes('/graphql') && (request.postData() ?? '').includes('query Boxes')) asked += 1;
+};
+page.on('request', counting);
+await auto.selectOption('1').catch(() => {});
+await page.waitForTimeout(3_500);
+page.off('request', counting);
+record(asked >= 2, `and at a second it asks for the boxes again by itself (${asked} times in 3.5s)`);
+if (chosen !== null) await auto.selectOption(chosen).catch(() => {});
+
 /* The columns, left to right in the order asked for. */
 const HEADINGS = ['Name', 'Type', 'Health', 'Active sessions', 'Free sessions', 'Label'];
 const xs = [];

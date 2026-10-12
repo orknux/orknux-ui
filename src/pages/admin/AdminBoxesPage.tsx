@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { fetchBoxes, boxKindLabel } from '../../api/boxes';
+import { AutoRefresh } from '../../components/AutoRefresh';
 import type { Box } from '../../api/boxes';
 import type { SessionUser } from '../../api/session';
 import plusIcon from '../../assets/plus.svg';
@@ -36,19 +37,37 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [order, ascending, sortBy] = useTableSort<BoxOrder>('admin-boxes', 'NAME', true, ['SESSIONS', 'FREE']);
 
-  useEffect(() => {
-    let current = true;
+  const [loading, setLoading] = useState(false);
+  const mounted = useRef(true);
+
+  /*
+   * Reloaded on the shared interval: a box's health and its working, idle and
+   * free sessions change while nobody touches the page, as agents open and
+   * close sessions on it. A failed reload keeps the rows already drawn.
+   */
+  const load = useCallback(() => {
+    setLoading(true);
     fetchBoxes()
       .then((found) => {
-        if (current) setBoxes(found);
+        if (!mounted.current) return;
+        setBoxes(found);
+        setError(null);
       })
       .catch((cause: unknown) => {
-        if (current) setError(cause instanceof Error ? cause.message : t('Could not load the boxes.'));
+        if (mounted.current) setError(cause instanceof Error ? cause.message : t('Could not load the boxes.'));
+      })
+      .finally(() => {
+        if (mounted.current) setLoading(false);
       });
-    return () => {
-      current = false;
-    };
   }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    load();
+    return () => {
+      mounted.current = false;
+    };
+  }, [load]);
 
   const rows = ordered(
     boxes ?? [],
@@ -86,10 +105,13 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
           </h1>
           <p className={styles.subtitle}>{t('Sandboxes agents can run commands in.')}</p>
         </div>
-        <Link className={styles.addBox} to="/admin/boxes/new">
-          <img src={plusIcon} alt="" width={14} height={14} />
-          {t('Add box')}
-        </Link>
+        <div className={styles.titleActions}>
+          <AutoRefresh onRefresh={load} busy={loading} defaultSeconds={5} />
+          <Link className={styles.addBox} to="/admin/boxes/new">
+            <img src={plusIcon} alt="" width={14} height={14} />
+            {t('Add box')}
+          </Link>
+        </div>
       </header>
 
       <section className={styles.card}>

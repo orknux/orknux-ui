@@ -11,6 +11,13 @@
   width: 100%;
 }
 
+.titleActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-shrink: 0;
+}
+
 .titleBlock {
   display: flex;
   flex: 1 0 0;
