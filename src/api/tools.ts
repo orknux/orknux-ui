@@ -6,6 +6,7 @@ import type { FunctionExternal, ScriptImport, ScriptImportInput } from './functi
 import { SCRIPT_LIBRARY_IMPORT_FIELDS, asLibraryInput } from './libraries';
 import type { ScriptLibraryImport, ScriptLibraryImportInput } from './libraries';
 import { t } from '../i18n';
+import { zoned } from '../session/timeZone';
 
 /**
  * One argument a tool takes, in the order it takes them.
@@ -490,5 +491,5 @@ export function timeAgo(iso: string): string {
   if (days < 14) return t('1 week ago');
   if (days < 31) return `${Math.round(days / 7)} weeks ago`;
 
-  return new Date(then).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(then).toLocaleDateString('en-US', zoned({ month: 'short', day: 'numeric', year: 'numeric' }));
 }

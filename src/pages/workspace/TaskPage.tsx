@@ -30,6 +30,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './TaskPage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface TaskPageProps {
   session: SessionUser;
@@ -438,7 +439,7 @@ export function TaskPage({ session, onSignOut }: TaskPageProps) {
                   <span className={styles.labelWithHint}>
                     <span>
                       {t('Waits until')}{' '}
-                      {new Date(task.waitingUntil).toLocaleString()}
+                      {new Date(task.waitingUntil).toLocaleString(undefined, zoned())}
                     </span>
                     <FieldHint label={t('How long it waits')}>
                       {t('A task that has stopped to ask does nothing at all until somebody answers, so it is not left standing for ever. How long it waits is the installation’s, set by')}{' '}

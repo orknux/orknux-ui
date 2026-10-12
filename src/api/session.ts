@@ -20,6 +20,8 @@ export interface SessionUser {
    * lets the browser open in the language it is already set to.
    */
   language?: string | null;
+  /** The time zone they read times in, as an IANA name. Absent or null where the browser's own is used. */
+  timeZone?: string | null;
   /**
    * Whether a chat prints what an answer cost beside how long it took. False
    * until somebody turns it on, on the Preferences page.

@@ -21,6 +21,7 @@ import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import styles from './AdminTemplatePage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface AdminTemplatePageProps {
   session: SessionUser;
@@ -270,7 +271,7 @@ export function AdminTemplatePage({ session, onSignOut }: AdminTemplatePageProps
                       <span>Format version {template.formatVersion}</span>
                       {template.producedBy !== null && <span>From {template.producedBy}</span>}
                       <span>
-                        Published by {template.createdBy} on {new Date(template.createdAt).toLocaleDateString()}
+                        Published by {template.createdBy} on {new Date(template.createdAt).toLocaleDateString(undefined, zoned())}
                       </span>
                     </p>
                   </>

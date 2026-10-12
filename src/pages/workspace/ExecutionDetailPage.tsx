@@ -52,6 +52,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './ExecutionDetailPage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface ExecutionDetailPageProps {
   session: SessionUser;
@@ -1562,7 +1563,7 @@ function formatStamp(iso: string | null | undefined): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
 
-  const day = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+  const day = new Intl.DateTimeFormat('en-US', zoned({ month: 'short', day: 'numeric', year: 'numeric' })).format(date);
   return `${day} ${timeOf(iso)}`;
 }
 
@@ -1571,12 +1572,12 @@ function timeOf(iso: string | null): string {
   if (iso === null) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat('en-GB', zoned({
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-  }).format(date);
+  })).format(date);
 }
 
 /** Payloads are stored as the engine wrote them; indent them when they are JSON. */

@@ -6,6 +6,7 @@ import styles from './App.module.css';
 import type { Credentials, SessionUser } from './api/session';
 import { fetchWorkspaces } from './api/workspaces';
 import { adoptLanguage } from './session/language';
+import { adoptTimeZone } from './session/timeZone';
 import { ForgotPasswordPage } from './pages/login/ForgotPasswordPage';
 import { LoginPage } from './pages/login/LoginPage';
 import { ResetPasswordPage } from './pages/login/ResetPasswordPage';
@@ -51,6 +52,7 @@ export function App() {
            * screen in the old one for the moment before it goes.
            */
           if (adoptLanguage(found?.language)) return;
+          adoptTimeZone(found?.timeZone);
           setSession(found);
           setReachable(true);
           setCheckingSession(false);
@@ -90,6 +92,7 @@ export function App() {
     setHome(undefined);
     const signedIn = await login(credentials);
     if (adoptLanguage(signedIn.language)) return;
+    adoptTimeZone(signedIn.timeZone);
     setSession(signedIn);
   }, []);
 

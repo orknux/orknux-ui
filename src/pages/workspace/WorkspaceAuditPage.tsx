@@ -30,6 +30,7 @@ import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceAuditPage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface WorkspaceAuditPageProps {
   session: SessionUser;
@@ -282,7 +283,7 @@ function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
 
-  const day = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-  const time = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+  const day = new Intl.DateTimeFormat('en-US', zoned({ month: 'short', day: 'numeric', year: 'numeric' })).format(date);
+  const time = new Intl.DateTimeFormat('en-US', zoned({ hour: '2-digit', minute: '2-digit', hour12: false })).format(date);
   return `${day} ${time}`;
 }

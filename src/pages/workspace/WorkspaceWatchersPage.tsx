@@ -16,6 +16,7 @@ import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { t, tf } from '../../i18n';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceWatchersPage.module.css';
+import { zoned } from '../../session/timeZone';
 
 export interface WorkspaceWatchersPageProps {
   session: SessionUser;
@@ -28,7 +29,7 @@ export interface WorkspaceWatchersPageProps {
  */
 /** A moment as the reader's own clock and calendar say it, not the server's UTC: "12.10.2026, 18:05:14". */
 function local(iso: string): string {
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString(undefined, zoned());
 }
 
 export function duration(seconds: number): string {

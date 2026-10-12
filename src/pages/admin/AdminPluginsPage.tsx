@@ -40,6 +40,7 @@ import { shellUser } from '../../session/user';
 import { useTheme } from '../../session/useTheme';
 import styles from './AdminPluginsPage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface AdminPluginsPageProps {
   session: SessionUser;
@@ -1745,7 +1746,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                               <p className={styles.historyRow}>
                                 <span className={styles.historyVersion}>{release.version}</span>
                                 <span className={styles.historyAt}>
-                                  {new Date(release.published).toLocaleDateString()}
+                                  {new Date(release.published).toLocaleDateString(undefined, zoned())}
                                 </span>
                                 {!release.available && (
                                   <span
@@ -1790,7 +1791,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
                                 <p key={release.version} className={styles.historyRow}>
                                   <span className={styles.historyVersion}>{release.version}</span>
                                   <span className={styles.historyAt}>
-                                    {new Date(release.published).toLocaleDateString()}
+                                    {new Date(release.published).toLocaleDateString(undefined, zoned())}
                                   </span>
                                   {/*
                                     Said on the row it is true of. The bytes of

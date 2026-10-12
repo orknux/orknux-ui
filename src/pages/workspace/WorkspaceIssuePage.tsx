@@ -63,6 +63,7 @@ import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceIssuePage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 /**
  * How many existing labels are offered at once.
@@ -2067,7 +2068,7 @@ function History({ history, error, statuses, onShowComment }: HistoryProps) {
           */
           <p key={event.id} className={styles.historyRecording}>
             Changes have been recorded from here on. What happened before{' '}
-            <time dateTime={event.at} title={new Date(event.at).toLocaleString()}>
+            <time dateTime={event.at} title={new Date(event.at).toLocaleString(undefined, zoned())}>
               {timeAgo(event.at)}
             </time>{' '}
             was not written down.
@@ -2085,7 +2086,7 @@ function History({ history, error, statuses, onShowComment }: HistoryProps) {
                   dateTime={event.at}
                   /* The exact moment on hover: "3 days ago" is the right thing
                      to read and the wrong thing to work from. */
-                  title={new Date(event.at).toLocaleString()}
+                  title={new Date(event.at).toLocaleString(undefined, zoned())}
                 >
                   {timeAgo(event.at)}
                 </time>

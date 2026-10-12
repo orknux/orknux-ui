@@ -1,5 +1,6 @@
 import { graphql } from './client';
 import type { PageOf } from './client';
+import { zoned } from '../session/timeZone';
 
 /** A folder of memories, with what it holds. */
 export interface MemoryCatalog {
@@ -164,5 +165,5 @@ export async function deleteMemory(id: string): Promise<boolean> {
 export function memoryDate(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return at.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+  return at.toLocaleDateString('en-US', zoned({ month: 'short', day: '2-digit', year: 'numeric' }));
 }

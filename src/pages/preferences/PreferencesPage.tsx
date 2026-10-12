@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { SessionUser } from '../../api/session';
-import { setChatCostShown, setMyLanguage, setUserEmail, setUserEmailNotifications } from '../../api/users';
+import { setChatCostShown, setMyLanguage, setMyTimeZone, setUserEmail, setUserEmailNotifications } from '../../api/users';
 import moonIcon from '../../assets/moon.svg';
 import sunIcon from '../../assets/sun.svg';
 import { AccessTokens } from '../../components/AccessTokens';
@@ -10,6 +10,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { currentLanguage, LANGUAGE_NAMES, LANGUAGES, setLanguage } from '../../session/language';
 import type { Language } from '../../session/language';
 import { applyTheme, currentTheme, rememberTheme } from '../../session/theme';
+import { adoptTimeZone, browserTimeZone, chosenTimeZone, timeZones } from '../../session/timeZone';
 import type { Theme } from '../../session/theme';
 import { shellUser } from '../../session/user';
 import {
@@ -47,7 +48,7 @@ import {
   useSaveShortcut,
 } from '../../session/shortcut';
 import styles from './PreferencesPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface PreferencesPageProps {
   session: SessionUser;
@@ -163,6 +164,29 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
   const language = currentLanguage();
   const [choosing, setChoosing] = useState(false);
   const [languageError, setLanguageError] = useState<string | null>(null);
+
+  /**
+   * The time zone, sent and then applied. No reload: this page draws no times,
+   * and every page after it formats its times as it renders.
+   */
+  const [zone, setZone] = useState<string>(chosenTimeZone() ?? '');
+  const [savingZone, setSavingZone] = useState(false);
+  const [zoneError, setZoneError] = useState<string | null>(null);
+
+  async function chooseZone(next: string) {
+    if (next === zone || savingZone) return;
+    setZoneError(null);
+    setSavingZone(true);
+    try {
+      await setMyTimeZone(next === '' ? null : next);
+      adoptTimeZone(next === '' ? null : next);
+      setZone(next);
+    } catch (cause) {
+      setZoneError(cause instanceof Error ? cause.message : t('Could not save that.'));
+    } finally {
+      setSavingZone(false);
+    }
+  }
 
   async function chooseLanguage(next: Language) {
     if (next === language || choosing) return;
@@ -499,6 +523,34 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
               {languageError !== null && (
                 <p className={styles.error} role="alert">
                   {languageError}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <label className={styles.settingLabel} htmlFor="preferences-time-zone">{t('Time Zone')}</label>
+                <FieldHint label={t('Time Zone')}>
+                  {t('Every date and time is shown in it. Kept with your account, so it follows you to another machine.')}
+                </FieldHint>
+              </span>
+              <select
+                id="preferences-time-zone"
+                className={styles.input}
+                value={zone}
+                disabled={savingZone}
+                onChange={(event) => void chooseZone(event.target.value)}
+              >
+                <option value="">{tf("This browser's ({zone})", { zone: browserTimeZone() })}</option>
+                {timeZones().map((one) => (
+                  <option key={one} value={one}>
+                    {one}
+                  </option>
+                ))}
+              </select>
+              {zoneError !== null && (
+                <p className={styles.error} role="alert">
+                  {zoneError}
                 </p>
               )}
             </div>

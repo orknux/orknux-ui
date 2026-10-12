@@ -94,6 +94,7 @@ import { ChatWidgets } from '../../components/ChatWidgets';
 import { actOnChatWidget, fetchChatWidgets, removeChatWidget, type ChatWidget } from '../../api/widgets';
 import styles from './ChatPage.module.css';
 import { t, tf } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface ChatPageProps {
   session: SessionUser;
@@ -519,8 +520,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       when.getMonth() === today.getMonth() &&
       when.getDate() === today.getDate();
     return sameDay
-      ? when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : when.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      ? when.toLocaleTimeString([], zoned({ hour: '2-digit', minute: '2-digit' }))
+      : when.toLocaleString([], zoned({ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
   };
 
     const findMark = (index: number): string | undefined => {

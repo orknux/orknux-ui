@@ -16,6 +16,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { t, tf } from '../../i18n';
 import page from './AdminSettingsPage.module.css';
 import styles from './LogLevelsSection.module.css';
+import { zoned } from '../../session/timeZone';
 
 /** A write the page's one Save sends, alongside its own numbers. */
 export type PendingWrite = () => Promise<void>;
@@ -138,7 +139,7 @@ export function LogLevelsSection({ onPending }: LogLevelsSectionProps) {
               <p className={styles.reverts}>
                 {tf('Goes back to {level} at {time}.', {
                   level: root.defaultLevel ?? 'INFO',
-                  time: new Date(root.revertsAt).toLocaleTimeString(),
+                  time: new Date(root.revertsAt).toLocaleTimeString(undefined, zoned()),
                 })}
               </p>
             )}

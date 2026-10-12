@@ -29,6 +29,8 @@ export interface AppUser {
   emailNotifications: boolean;
   /** The language they read the product in. Null where they have not chosen. */
   language: string | null;
+  /** The time zone they read times in, as an IANA name. Null where their browser's own is used. */
+  timeZone: string | null;
   /** Whether their chats print what an answer cost as well as how long it took. */
   chatCostShown: boolean;
   type: UserType;
@@ -42,7 +44,7 @@ export interface AppUser {
 }
 
 const USER_FIELDS =
-  'id username displayName email emailChosen emailNotifications chatCostShown language type roles { id name } ' +
+  'id username displayName email emailChosen emailNotifications chatCostShown language timeZone type roles { id name } ' +
   'editable hasPassword lastModifiedAt lastModifiedBy';
 
 /** A token, as it is listed: never its secret, which is shown once. */
@@ -159,6 +161,17 @@ export async function setChatCostShown(shown: boolean): Promise<AppUser> {
  * decides again. Nothing here applies the choice: the picker does that, and
  * only once this has answered - see PreferencesPage.
  */
+/** Records which time zone somebody reads times in; null puts them back to their browser's own. */
+export async function setMyTimeZone(timeZone: string | null): Promise<AppUser> {
+  const data = await graphql<{ setMyTimeZone: AppUser }>(
+    `mutation ($timeZone: String) {
+       setMyTimeZone(timeZone: $timeZone) { ${USER_FIELDS} }
+     }`,
+    { timeZone },
+  );
+  return data.setMyTimeZone;
+}
+
 export async function setMyLanguage(language: string | null): Promise<AppUser> {
   const data = await graphql<{ setMyLanguage: AppUser }>(
     `mutation ($language: String) {

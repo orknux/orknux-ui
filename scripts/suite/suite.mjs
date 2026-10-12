@@ -562,6 +562,15 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'time-zone-check',
+    what: 'Preferences -> Time Zone: a zone chosen in the picker is saved, comes back with the session, and the times on a page are drawn in it',
+    needs: ['workspace'],
+    /*
+     * Changes alice's own time zone and puts it back however it ends; the
+     * times are read off one stubbed watcher row with a fixed moment.
+     */
+  },
+  {
     name: 'watchers-check',
     what: 'AI -> Watchers opens on the running ones with Active / Finished at the top left, Stop removes one, Finished draws the ended; Admin Settings draws the three limits',
     needs: ['workspace'],

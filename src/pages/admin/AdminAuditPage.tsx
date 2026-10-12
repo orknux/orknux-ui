@@ -19,6 +19,7 @@ import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './AdminAuditPage.module.css';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface AdminAuditPageProps {
   session: SessionUser;
@@ -227,7 +228,7 @@ function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
 
-  const day = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-  const time = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+  const day = new Intl.DateTimeFormat('en-US', zoned({ month: 'short', day: 'numeric', year: 'numeric' })).format(date);
+  const time = new Intl.DateTimeFormat('en-US', zoned({ hour: '2-digit', minute: '2-digit', hour12: false })).format(date);
   return `${day} ${time}`;
 }

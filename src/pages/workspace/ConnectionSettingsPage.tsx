@@ -45,6 +45,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
 import { t, tf } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface ConnectionSettingsPageProps {
   session: SessionUser;
@@ -1083,8 +1084,8 @@ function clock(iso: string | null): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
   return at.toDateString() === new Date().toDateString()
-    ? at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : at.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    ? at.toLocaleTimeString([], zoned({ hour: '2-digit', minute: '2-digit' }))
+    : at.toLocaleString([], zoned({ dateStyle: 'short', timeStyle: 'short' }));
 }
 
 /** "2 min ago", in whichever language is being read. */

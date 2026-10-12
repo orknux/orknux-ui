@@ -68,6 +68,7 @@ import { shellUser } from '../../session/user';
 import styles from './SessionDetailPage.module.css';
 import { BoxOutput } from './BoxOutput';
 import { t } from '../../i18n';
+import { zoned } from '../../session/timeZone';
 
 export interface SessionDetailPageProps {
   session: SessionUser;
@@ -83,7 +84,7 @@ const BOX_POLL_MS = 2000;
 /** "14:03:27" - a box log is read within one sitting, so the day is on hover. */
 function clockOf(iso: string): string {
   const at = new Date(iso);
-  return Number.isNaN(at.getTime()) ? iso : at.toLocaleTimeString();
+  return Number.isNaN(at.getTime()) ? iso : at.toLocaleTimeString(undefined, zoned());
 }
 
 function parsed(data: string): unknown {
@@ -193,14 +194,14 @@ function readable(kind: LlmSessionEventKind, content: string | null): string {
 function timeOfDay(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  return at.toLocaleTimeString(undefined, zoned({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
 }
 
 /** Which day a line falls on, so a fortnight of conversation is not one wall. */
 function dayOf(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '';
-  return at.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return at.toLocaleDateString(undefined, zoned({ weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }));
 }
 
 /**
