@@ -31,7 +31,11 @@ await context.addInitScript(() => {
               send('done', { millis });
               controller.close();
             };
-            if (turn === 1) window.setTimeout(() => end('First answer.', 46000), 200);
+            if (turn === 1)
+              window.setTimeout(() => {
+                send('titleFailed', { reason: 'Invalid API key' });
+                end('First answer.', 46000);
+              }, 200);
             else window.__turns.finish = () => end('Second answer.', 23000);
           },
         }),
@@ -58,6 +62,10 @@ await page.getByText('First answer.').first().waitFor({ timeout: 10_000 }).catch
 await page.waitForTimeout(300);
 const afterFirst = await times();
 record(afterFirst.some((one) => one.includes('46 seconds')), `the first answer shows its own time (${JSON.stringify(afterFirst)})`);
+
+/* A chat its model could not name says so for a moment, rather than staying New chat in silence. */
+const notice = (await page.locator('[data-chat-passing]').innerText().catch(() => '')).trim();
+record(notice.includes('Invalid API key'), `a naming that failed is said in the chat (${notice || 'nothing'})`);
 
 await ask('Second question.');
 await page.waitForTimeout(800);

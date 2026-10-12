@@ -128,6 +128,9 @@ interface Working {
 }
 
 /** A turn that has done nothing yet, which is also what a new chat shows. */
+/** How long a short-lived notice stays on screen. */
+const PASSING_MS = 8000;
+
 const NOTHING_YET: Working = { thinking: '', calls: [], compacting: false, writing: null };
 
 /** Whether there is anything of the working to draw. */
@@ -362,6 +365,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * which is the honest answer rather than a gap to be filled with noughts.
    */
   const [lastSpend, setLastSpend] = useState<ChatSpend | null>(null);
+  /** A short-lived notice, such as a chat its model could not name. */
+  const [passing, setPassing] = useState<string | null>(null);
   /**
    * What the answer being written now is thinking, and what it has looked up.
    *
@@ -1548,7 +1553,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1624,6 +1629,11 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        * In the same list as the calls, so it reads where it was said: before the
        * lookups it introduced. Keyed below zero, where no call's `at` can be.
        */
+      /* Said for a moment and gone: naming failing is worth knowing, not worth a line in the chat. */
+      onTitleFailed: (reason) => {
+        setPassing(tf('Could not name this chat: {reason}', { reason }));
+        window.setTimeout(() => setPassing(null), PASSING_MS);
+      },
       /* The chat's session exists from its first turn's start: the header's link to it shows then, not after a reload. */
       onSession: (id) => {
         const chat = openChat.current;
@@ -2479,6 +2489,13 @@ ${named}`;
    * would ride up over it, so anything failing while no chat is open would be
    * reported invisibly — which is exactly how a dead workspace hid itself.
    */
+  const passingBanner =
+    passing === null ? null : (
+      <p className={styles.error} role="status" data-chat-passing="">
+        {passing}
+      </p>
+    );
+
   const errorBanner =
     error === null ? null : (
       <p className={styles.error} role="alert">
@@ -2739,6 +2756,7 @@ ${named}`;
       {current === null ? (
         <div className={styles.empty}>
           {errorBanner}
+          {passingBanner}
           <p className={styles.emptyTitle}>{noAgents ? t('No agent to chat with') : t('No chat open')}</p>
           {/*
             The way out stays in the open; what a chat *is* goes behind the (?).

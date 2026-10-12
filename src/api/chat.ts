@@ -380,6 +380,8 @@ export interface ChatStreamHandlers {
   onSession?: (id: string) => void;
   /** The agent has read something the person wrote while it was working. */
   onPersonRead?: (text: string) => void;
+  /** The chat could not be named by its model, and why - said for a moment, it is not part of the answer. */
+  onTitleFailed?: (reason: string) => void;
   /**
    * How far the model has got writing: the tool whose call it is spelling out,
    * or null for its answer, and how many characters have arrived. About once a
@@ -757,6 +759,7 @@ async function read(
     }
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
     else if (frame.event === 'personRead' && payload.text !== undefined) handlers.onPersonRead?.(payload.text);
+    else if (frame.event === 'titleFailed' && payload.reason !== undefined) handlers.onTitleFailed?.(String(payload.reason));
     else if (frame.event === 'session' && payload.id !== undefined) handlers.onSession?.(String(payload.id));
     else if (frame.event === 'reading' && payload.total !== undefined) {
       handlers.onWriting?.({

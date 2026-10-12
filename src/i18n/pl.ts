@@ -1507,6 +1507,7 @@ export const PL: Record<string, string> = {
   "{cached} cached": "{cached} z pamięci podręcznej",
   "Reading": "Czytanie",
   "{tokens} tokens ({cached} cached)": "{tokens} tokenów ({cached} z pamięci podręcznej)",
+  "Could not name this chat: {reason}": "Nie udało się nazwać tego czatu: {reason}",
   "Show less": "Pokaż mniej",
   "Fewer settings": "Mniej ustawień",
   "Show it to edit": "Pokaż, aby edytować",
