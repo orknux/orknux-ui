@@ -124,6 +124,10 @@ export interface SessionBox {
   status: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /** The session that opened it: another one of this conversation's where it is shared with a subagent or its asker. */
+  openedIn: string;
+  /** The agent that opened it, where recorded. */
+  openedBy: string | null;
 }
 
 /** One line of what happened in a box session. `data` is JSON text. */
@@ -163,7 +167,7 @@ const RUNTIME_FIELDS =
   'name available unavailableReason os workdir shell defaultImage images networkModes caches ' +
   'defaultCpus defaultMemoryMb maxCpus maxMemoryMb diskLimitEnforced';
 
-const SESSION_BOX_FIELDS = 'id boxId boxName boxKind boxLabel remoteSessionId active status createdAt lastUsedAt';
+const SESSION_BOX_FIELDS = 'id boxId boxName boxKind boxLabel remoteSessionId active status createdAt lastUsedAt openedIn openedBy';
 
 export async function fetchBoxes(): Promise<Box[]> {
   const data = await graphql<{ boxes: Box[] }>(`query Boxes { boxes { ${BOX_FIELDS} } }`);

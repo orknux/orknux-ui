@@ -67,7 +67,7 @@ import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './SessionDetailPage.module.css';
 import { BoxOutput } from './BoxOutput';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import { moment, zoned } from '../../session/timeZone';
 
 export interface SessionDetailPageProps {
@@ -2028,6 +2028,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     {one.boxLabel !== null && one.boxLabel !== '' && (
                       <span className={styles.boxRowLabel} data-session-box-label="">
                         {one.boxLabel}
+                      </span>
+                    )}
+                    {/*
+                      Opened elsewhere in the conversation - by the agent that
+                      asked this one, or a subagent it asked - and worked in here.
+                    */}
+                    {one.openedIn !== sessionId && (
+                      <span
+                        className={styles.boxRowLabel}
+                        data-session-box-shared=""
+                        title={one.openedBy === null ? t('Opened in another session of this conversation') : tf('Opened by {agent} in another session of this conversation', { agent: one.openedBy })}
+                      >
+                        {t('shared')}
                       </span>
                     )}
                   </button>
