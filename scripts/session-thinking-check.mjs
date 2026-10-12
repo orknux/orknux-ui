@@ -212,6 +212,11 @@ const writingLine = await page
       padding: Math.min(parseFloat(style.paddingTop), parseFloat(style.paddingLeft)),
       border: style.borderTopStyle,
       gapBelow: next === null ? null : Math.round(next.getBoundingClientRect().top - box.bottom),
+      // From the search and filters above the transcript, which it sat flush against.
+      gapAbove: (() => {
+        const above = line.closest('section')?.previousElementSibling;
+        return above == null ? null : Math.round(box.top - above.getBoundingClientRect().bottom);
+      })(),
     };
   })
   .catch(() => null);
@@ -223,6 +228,10 @@ record(
 record(
   writingLine !== null && writingLine.padding >= 8 && writingLine.border === 'solid' && writingLine.gapBelow !== null && writingLine.gapBelow >= 8,
   `as a card with room inside it and space under it (padding ${writingLine?.padding}, gap ${writingLine?.gapBelow})`,
+);
+record(
+  writingLine !== null && writingLine.gapAbove !== null && writingLine.gapAbove >= 12,
+  `and space above it, apart from the filters (gap ${writingLine?.gapAbove})`,
 );
 
 await finish(browser);
