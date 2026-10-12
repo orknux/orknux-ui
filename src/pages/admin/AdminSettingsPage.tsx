@@ -1725,7 +1725,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
                 <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('Local box sessions at most')}</p>
                   <FieldHint label={t('Local box sessions at most')}>
-                    {t('How many sessions the local box holds at once; one asked for past this is refused. Between 1 and 1000.')}
+                    {t('How many sessions may work on the local box at once - being made or running a command. Idle ones do not count. Between 1 and 1000.')}
                   </FieldHint>
                 </span>
               </div>

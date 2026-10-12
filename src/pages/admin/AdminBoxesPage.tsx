@@ -157,7 +157,7 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
             <div className={styles.colSessions} data-box-cell="sessions">
               {box.capacity !== null ? (
                 <span
-                  title={tf('{busy} running a command, {idle} idle - open with nothing running, still holding a place', {
+                  title={tf('{busy} running a command, {idle} idle - open with nothing running, not counted against the limit', {
                     busy: box.capacity.busy,
                     idle: box.capacity.idle,
                   })}
@@ -177,7 +177,7 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
             <div
               className={styles.colFree}
               data-box-cell="free"
-              title={box.capacity === null ? undefined : tf('{free} more of the {max} it holds at once', { free: box.capacity.free, max: box.capacity.max })}
+              title={box.capacity === null ? undefined : tf('{free} more of the {max} that may work at once', { free: box.capacity.free, max: box.capacity.max })}
             >
               {box.capacity === null ? (
                 <span className={styles.none}>—</span>

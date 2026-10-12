@@ -4,8 +4,8 @@
  *
  * What is pinned is what is drawn. The list has a row per box the server
  * lists, with its columns in the order Name, Type, Health, Active sessions,
- * Free sessions, Label; active split into working and idle, since an idle
- * session holds a place as much as a working one; a remote box's health is a dot in the colour of its status, and the
+ * Free sessions, Label; active split into working and idle, since only a
+ * working session takes a place against the limit; a remote box's health is a dot in the colour of its status, and the
  * local box - in-process, nothing to reach - has a dash there instead. A box's
  * page holds its token write-only, tests a connection on what is typed before
  * anything is saved, and says why its details could not be had when the box
@@ -137,7 +137,7 @@ if (local === null) {
 
   /* How full it is, as the server counts it: working and idle apart, and the room left of the most it takes. */
   const room = (await graphql(`{ box(id: "local") { capacity { active busy idle max free } } }`)).box?.capacity ?? null;
-  record(room !== null && room.busy + room.idle === room.active && room.free === room.max - room.active, `the local box says how full it is (${JSON.stringify(room)})`);
+  record(room !== null && room.busy + room.idle === room.active && room.free === room.max - room.busy, `the local box says how full it is (${JSON.stringify(room)})`);
   if (room !== null) {
     const sessionsCell = (await localRow.locator('[data-box-cell="sessions"]').innerText().catch(() => '')).trim();
     record(sessionsCell === `${room.busy} working · ${room.idle} idle`, `its active sessions read working and idle apart (${sessionsCell})`);
