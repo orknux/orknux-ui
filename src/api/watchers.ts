@@ -62,16 +62,42 @@ export interface WatcherSettings {
   maxPerAgentConfigured: number;
   minAgentCheckSeconds: number;
   minAgentCheckSecondsConfigured: number;
-  /** The length of watcher that gets three looks of the agent's own; the schedule is measured against it. */
-  lookScaleSeconds: number;
-  lookScaleSecondsConfigured: number;
+  /** How the agent's own looks back off where it gave no agent check. */
+  lookBackoff: LookBackoff;
+  lookBackoffConfigured: LookBackoff;
+}
+
+/** Exponential backoff: the first look after initialSeconds, each wait after that the last times multiplier, up to maxSeconds. */
+export interface LookBackoff {
+  initialSeconds: number;
+  multiplier: number;
+  maxSeconds: number;
+}
+
+/**
+ * When, in seconds after a watcher of `timeout` seconds was set, the agent's
+ * looks fall - the first no sooner than `floor`. The server's
+ * LookBackoff.looksWithin, so the Admin page can show what a backoff does
+ * before it is saved.
+ */
+export function looksWithin(backoff: LookBackoff, timeout: number, floor = 0): number[] {
+  const at: number[] = [];
+  let delay = Math.max(backoff.initialSeconds, floor);
+  let t = delay;
+  while (t < timeout && at.length < 10_000) {
+    at.push(t);
+    delay = Math.max(delay, Math.min(Math.ceil(delay * backoff.multiplier), backoff.maxSeconds));
+    t += delay;
+  }
+  return at;
 }
 
 const FIELDS = `id sessionId sessionTitle agentName tool arguments conditionKind condition toolResultPath intervalSeconds
   agentCheckIntervalSeconds timeoutSeconds note description status checks matched outcome createdAt expiresAt nextCheckAt lastCheckedAt lastResult finishedAt`;
 
 const SETTINGS = `maxSeconds maxSecondsConfigured minIntervalSeconds minIntervalSecondsConfigured
-  maxPerAgent maxPerAgentConfigured minAgentCheckSeconds minAgentCheckSecondsConfigured lookScaleSeconds lookScaleSecondsConfigured`;
+  maxPerAgent maxPerAgentConfigured minAgentCheckSeconds minAgentCheckSecondsConfigured
+  lookBackoff { initialSeconds multiplier maxSeconds } lookBackoffConfigured { initialSeconds multiplier maxSeconds }`;
 
 /** The running ones, newest first; or, `finished`, every one that has ended, most recently ended first. */
 export async function fetchWatchers(
@@ -113,12 +139,14 @@ export async function setWatcherMaxSeconds(seconds: number): Promise<WatcherSett
   return data.setWatcherMaxSeconds;
 }
 
-export async function setWatcherLookScaleSeconds(seconds: number): Promise<WatcherSettings> {
-  const data = await graphql<{ setWatcherLookScaleSeconds: WatcherSettings }>(
-    `mutation ($seconds: Int!) { setWatcherLookScaleSeconds(seconds: $seconds) { ${SETTINGS} } }`,
-    { seconds },
+export async function setWatcherLookBackoff(backoff: LookBackoff): Promise<WatcherSettings> {
+  const data = await graphql<{ setWatcherLookBackoff: WatcherSettings }>(
+    `mutation ($initialSeconds: Int!, $multiplier: Float!, $maxSeconds: Int!) {
+       setWatcherLookBackoff(initialSeconds: $initialSeconds, multiplier: $multiplier, maxSeconds: $maxSeconds) { ${SETTINGS} }
+     }`,
+    { ...backoff },
   );
-  return data.setWatcherLookScaleSeconds;
+  return data.setWatcherLookBackoff;
 }
 
 export async function setWatcherMinIntervalSeconds(seconds: number): Promise<WatcherSettings> {

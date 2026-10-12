@@ -41,7 +41,7 @@ const listed = await graphql(
 ).catch(() => null);
 record(listed?.watchers !== undefined, 'and answers the page query for this workspace');
 
-const limits = await graphql(`query { watcherSettings { maxSeconds minIntervalSeconds maxPerAgent minAgentCheckSeconds lookScaleSeconds } }`).catch(() => null);
+const limits = await graphql(`query { watcherSettings { maxSeconds minIntervalSeconds maxPerAgent minAgentCheckSeconds lookBackoff { initialSeconds multiplier maxSeconds } } }`).catch(() => null);
 record(limits?.watcherSettings !== undefined, 'and the five limits');
 
 /* ------------------------------------------------------------ the drawing - */
@@ -213,6 +213,31 @@ record((await value('watcher-max-seconds')) === String(held.maxSeconds), 'it dra
 record((await value('watcher-min-interval')) === String(held.minIntervalSeconds), 'the shortest interval');
 record((await value('watcher-max-per-agent')) === String(held.maxPerAgent), 'and how many one agent may have');
 record((await value('watcher-min-agent-check')) === String(held.minAgentCheckSeconds), 'and how often the agent may be woken to look');
-record((await value('watcher-look-scale')) === String(held.lookScaleSeconds), `and the length of watcher that gets three looks (${held.lookScaleSeconds})`);
+const backoff = held.lookBackoff ?? {};
+record(
+  (await value('watcher-look-initial')) === String(backoff.initialSeconds) &&
+    (await value('watcher-look-multiplier')) === String(backoff.multiplier) &&
+    (await value('watcher-look-max')) === String(backoff.maxSeconds),
+  `and the looks' backoff: first delay, multiplier and longest wait (${backoff.initialSeconds} x${backoff.multiplier} up to ${backoff.maxSeconds})`,
+);
+
+/* The simulation is worked out from the boxes as they are typed, before anything is saved. */
+const simulated = page.locator('[data-testid="watcher-look-simulated"]');
+await page.locator('#watcher-look-initial').fill('300');
+await page.locator('#watcher-look-multiplier').fill('2');
+await page.locator('#watcher-look-max').fill('86400');
+await page.locator('#watcher-min-agent-check').fill('300');
+const hourLine = (await simulated.nth(2).textContent({ timeout: 5_000 }).catch(() => '')) ?? '';
+record(/3 looks, at 5m, 15m, 35m$/.test(hourLine), `it shows when the agent would look on an hour-long watcher (${hourLine})`);
+const lines = await simulated.count();
+record(lines === 6, `for six watcher lengths, ten minutes to a week (${lines})`);
+await page.locator('#watcher-look-multiplier').fill('3');
+const tripled = (await simulated.nth(2).textContent({ timeout: 5_000 }).catch(() => '')) ?? '';
+record(/2 looks, at 5m, 20m$/.test(tripled), `and follows a changed multiplier at once (${tripled})`);
+const weekLine = (await simulated.nth(5).textContent({ timeout: 5_000 }).catch(() => '')) ?? '';
+record(/more$/.test(weekLine), `a long list of looks is cut short and counted (${weekLine})`);
+await page.locator('#watcher-look-max').fill('100');
+const refused = await page.locator('[data-testid="watcher-look-simulation"]').textContent({ timeout: 5_000 }).catch(() => '');
+record(/Not a backoff/.test(refused ?? ''), 'a longest wait shorter than the first delay is said to be no backoff');
 
 await finish(browser);

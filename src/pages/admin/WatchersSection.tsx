@@ -4,18 +4,19 @@ import {
   fetchWatcherSettings,
   setWatcherMaxPerAgent,
   setWatcherMaxSeconds,
-  setWatcherLookScaleSeconds,
+  looksWithin,
+  setWatcherLookBackoff,
   setWatcherMinAgentCheckSeconds,
   setWatcherMinIntervalSeconds,
 } from '../../api/watchers';
-import type { WatcherSettings } from '../../api/watchers';
+import type { LookBackoff, WatcherSettings } from '../../api/watchers';
 import { FieldHint } from '../../components/FieldHint';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import page from './AdminSettingsPage.module.css';
 import type { PendingWrite } from './LogLevelsSection';
 
 export interface WatchersSectionProps {
-  /** Told which of the five numbers differ from the server's, so the page's Save can send them. */
+  /** Told which of the numbers differ from the server's, so the page's Save can send them. */
   onPending: (writes: PendingWrite[]) => void;
   /** While the page is saving, so the boxes are not typed into mid-save. */
   busy?: boolean;
@@ -24,10 +25,11 @@ export interface WatchersSectionProps {
 /**
  * Admin -> Settings -> Watchers. Issue #606.
  *
- * Five numbers bounding what an agent may ask a watcher to do: how long one
+ * The numbers bounding what an agent may ask a watcher to do: how long one
  * may run, how often it may call its tool, how often it may wake the agent to
- * look at the result itself (#618), how those looks are spaced where the agent
- * gave none, and how many one agent may have running.
+ * look at the result itself (#618), how those looks back off where the agent
+ * gave no spacing, and how many one agent may have running. Under the backoff,
+ * what it would do to a few watcher lengths, worked out as it is typed.
  * They go out with the page's one Save, like its other numbers.
  */
 export function WatchersSection({ onPending, busy = false }: WatchersSectionProps) {
@@ -36,7 +38,9 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
   const [minInterval, setMinInterval] = useState('');
   const [perAgent, setPerAgent] = useState('');
   const [agentCheck, setAgentCheck] = useState('');
-  const [lookScale, setLookScale] = useState('');
+  const [lookInitial, setLookInitial] = useState('');
+  const [lookMultiplier, setLookMultiplier] = useState('');
+  const [lookMax, setLookMax] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function hold(settings: WatcherSettings) {
@@ -45,7 +49,9 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
     setMinInterval(String(settings.minIntervalSeconds));
     setPerAgent(String(settings.maxPerAgent));
     setAgentCheck(String(settings.minAgentCheckSeconds));
-    setLookScale(String(settings.lookScaleSeconds));
+    setLookInitial(String(settings.lookBackoff.initialSeconds));
+    setLookMultiplier(String(settings.lookBackoff.multiplier));
+    setLookMax(String(settings.lookBackoff.maxSeconds));
   }
 
   useEffect(() => {
@@ -85,9 +91,28 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
     changed(minInterval, held.minIntervalSeconds, setWatcherMinIntervalSeconds);
     changed(perAgent, held.maxPerAgent, setWatcherMaxPerAgent);
     changed(agentCheck, held.minAgentCheckSeconds, setWatcherMinAgentCheckSeconds);
-    changed(lookScale, held.lookScaleSeconds, setWatcherLookScaleSeconds);
+    const backoff = typedBackoff(lookInitial, lookMultiplier, lookMax);
+    const stored = held.lookBackoff;
+    if (
+      backoff !== null &&
+      (backoff.initialSeconds !== stored.initialSeconds || backoff.multiplier !== stored.multiplier || backoff.maxSeconds !== stored.maxSeconds)
+    ) {
+      // One write for all three: the ceiling is only valid against the initial delay.
+      writes.push(async () => {
+        setError(null);
+        try {
+          hold(await setWatcherLookBackoff(backoff));
+        } catch (cause: unknown) {
+          setError(cause instanceof Error ? cause.message : t('That could not be saved.'));
+          throw cause;
+        }
+      });
+    }
     onPending(writes);
-  }, [held, maxSeconds, minInterval, perAgent, agentCheck, lookScale, onPending]);
+  }, [held, maxSeconds, minInterval, perAgent, agentCheck, lookInitial, lookMultiplier, lookMax, onPending]);
+
+  const simulated = typedBackoff(lookInitial, lookMultiplier, lookMax);
+  const floor = Number(agentCheck) > 0 ? Number(agentCheck) : 0;
 
   return (
     <>
@@ -182,26 +207,93 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
       <div className={page.setting}>
         <div className={page.settingText}>
           <span className={page.labelWithHint}>
-            <p className={page.settingLabel}>{t('Three looks by the agent from')}</p>
-            <FieldHint label={t('Three looks by the agent from')}>
-              {t("Where the agent gave no agent check, its looks are spaced evenly by the watcher's length. A watcher this long gets three; from a twelfth of it one, from a third two, and one more each time the length doubles. With an hour: 5-20 min one, 20-60 min two, 1-2 h three, 2-4 h four. Between 60 seconds and a week.")}
+            <p className={page.settingLabel}>{t("Agent's own looks: first after")}</p>
+            <FieldHint label={t("Agent's own looks: first after")}>
+              {t('Where the agent gave no agent check, its looks back off exponentially: the first after this delay, each wait after that the last one times the multiplier, never longer than the longest wait. Between 60 seconds and a week.')}
             </FieldHint>
           </span>
         </div>
         <div className={page.retention}>
           <input
-            id="watcher-look-scale"
-            name="watcherLookScaleSeconds"
+            id="watcher-look-initial"
+            name="watcherLookInitialSeconds"
             className={page.input}
             type="number"
             min={60}
             max={604800}
-            value={lookScale}
-            onChange={(event) => setLookScale(event.target.value)}
+            value={lookInitial}
+            onChange={(event) => setLookInitial(event.target.value)}
             disabled={busy || held === null}
-            aria-label={t('Three looks by the agent from')}
+            aria-label={t("Agent's own looks: first after")}
           />
           <span className={page.retentionUnit}>{t('seconds')}</span>
+        </div>
+      </div>
+
+      <div className={page.setting}>
+        <div className={page.settingText}>
+          <span className={page.labelWithHint}>
+            <p className={page.settingLabel}>{t('Each wait multiplied by')}</p>
+            <FieldHint label={t('Each wait multiplied by')}>
+              {t('2 doubles every wait; 1 keeps the first delay as a fixed interval. Between 1 and 10.')}
+            </FieldHint>
+          </span>
+        </div>
+        <div className={page.retention}>
+          <input
+            id="watcher-look-multiplier"
+            name="watcherLookMultiplier"
+            className={page.input}
+            type="number"
+            min={1}
+            max={10}
+            step={0.1}
+            value={lookMultiplier}
+            onChange={(event) => setLookMultiplier(event.target.value)}
+            disabled={busy || held === null}
+            aria-label={t('Each wait multiplied by')}
+          />
+        </div>
+      </div>
+
+      <div className={page.setting}>
+        <div className={page.settingText}>
+          <span className={page.labelWithHint}>
+            <p className={page.settingLabel}>{t('Longest wait between looks')}</p>
+            <FieldHint label={t('Longest wait between looks')}>
+              {t('Once a wait reaches this it stops growing, so a week-long watcher is still looked at. At least the first delay, and at most a year.')}
+            </FieldHint>
+          </span>
+        </div>
+        <div className={page.retention}>
+          <input
+            id="watcher-look-max"
+            name="watcherLookMaxSeconds"
+            className={page.input}
+            type="number"
+            min={60}
+            max={31536000}
+            value={lookMax}
+            onChange={(event) => setLookMax(event.target.value)}
+            disabled={busy || held === null}
+            aria-label={t('Longest wait between looks')}
+          />
+          <span className={page.retentionUnit}>{t('seconds')}</span>
+        </div>
+      </div>
+
+      <div className={page.setting} data-testid="watcher-look-simulation">
+        <div className={page.settingText}>
+          <p className={page.settingLabel}>{t('When the agent would look')}</p>
+          {simulated === null ? (
+            <p className={page.settingNote}>{t('Not a backoff: the first delay must be 60 seconds or more, the multiplier 1 to 10, and the longest wait at least the first delay.')}</p>
+          ) : (
+            SIMULATED_LENGTHS.map((length) => (
+              <p key={length} className={page.settingNote} data-testid="watcher-look-simulated">
+                {simulatedLine(length, looksWithin(simulated, length, floor))}
+              </p>
+            ))
+          )}
         </div>
       </div>
 
@@ -231,4 +323,44 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
       </div>
     </>
   );
+}
+
+/** The watcher lengths the backoff is shown against: short to the week a watcher may run by default. */
+const SIMULATED_LENGTHS = [10 * 60, 30 * 60, 60 * 60, 4 * 60 * 60, 24 * 60 * 60, 7 * 24 * 60 * 60];
+
+/** The most look times one line names; the rest are counted. */
+const SHOWN_LOOKS = 8;
+
+/** The three boxes as a backoff, or null where they do not make one - the server's LookBackoff.problem. */
+function typedBackoff(initial: string, multiplier: string, max: string): LookBackoff | null {
+  if (initial.trim() === '' || multiplier.trim() === '' || max.trim() === '') return null;
+  const backoff = { initialSeconds: Number(initial), multiplier: Number(multiplier), maxSeconds: Number(max) };
+  const whole = Number.isInteger(backoff.initialSeconds) && Number.isInteger(backoff.maxSeconds);
+  const fits =
+    backoff.initialSeconds >= 60 &&
+    backoff.initialSeconds <= 604800 &&
+    backoff.multiplier >= 1 &&
+    backoff.multiplier <= 10 &&
+    backoff.maxSeconds >= backoff.initialSeconds &&
+    backoff.maxSeconds <= 31536000;
+  return whole && fits ? backoff : null;
+}
+
+/** "1 h watcher: 3 looks, at 5m, 15m, 35m" - when, from the moment it was set. */
+function simulatedLine(length: number, at: number[]): string {
+  const watcher = tf('{length} watcher', { length: compact(length) });
+  if (at.length === 0) return tf('{watcher}: no look', { watcher });
+  const shown = at.slice(0, SHOWN_LOOKS).map(compact).join(', ');
+  const more = at.length > SHOWN_LOOKS ? tf(' and {count} more', { count: at.length - SHOWN_LOOKS }) : '';
+  return tf('{watcher}: {count} looks, at {times}{more}', { watcher, count: at.length, times: shown, more });
+}
+
+/** 300 -> "5m", 4500 -> "1h15m", 90000 -> "1d1h". */
+function compact(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  const parts = [days > 0 ? `${days}d` : '', hours > 0 ? `${hours}h` : '', minutes > 0 ? `${minutes}m` : '', rest > 0 ? `${rest}s` : ''];
+  return parts.filter((part) => part !== '').slice(0, 2).join('') || '0s';
 }
