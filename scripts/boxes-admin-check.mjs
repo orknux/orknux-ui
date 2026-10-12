@@ -4,7 +4,8 @@
  *
  * What is pinned is what is drawn. The list has a row per box the server
  * lists, with its columns in the order Name, Type, Health, Active sessions,
- * Label; a remote box's health is a dot in the colour of its status, and the
+ * Free sessions, Label; active split into working and idle, since an idle
+ * session holds a place as much as a working one; a remote box's health is a dot in the colour of its status, and the
  * local box - in-process, nothing to reach - has a dash there instead. A box's
  * page holds its token write-only, tests a connection on what is typed before
  * anything is saved, and says why its details could not be had when the box
@@ -43,7 +44,7 @@ record(
 );
 const boxFields = await fieldsOf('Box');
 record(
-  ['id', 'name', 'kind', 'label', 'address', 'hasToken', 'health', 'activeSessions', 'createdAt'].every((one) =>
+  ['id', 'name', 'kind', 'label', 'address', 'hasToken', 'health', 'activeSessions', 'capacity', 'createdAt'].every((one) =>
     boxFields.includes(one),
   ),
   `a box carries every field the list draws (${boxFields.join(' ')})`,
@@ -89,7 +90,7 @@ await rows.first().waitFor({ timeout: 20_000 }).catch(() => {});
 record((await rows.count()) === listed.length, `a row per box the server lists (${await rows.count()} of ${listed.length})`);
 
 /* The columns, left to right in the order asked for. */
-const HEADINGS = ['Name', 'Type', 'Health', 'Active sessions', 'Label'];
+const HEADINGS = ['Name', 'Type', 'Health', 'Active sessions', 'Free sessions', 'Label'];
 const xs = [];
 for (const heading of HEADINGS) {
   const box = await page.locator('button', { hasText: new RegExp(`^${heading}`) }).first().boundingBox().catch(() => null);
@@ -122,6 +123,7 @@ if (status !== null) {
 record(status !== 'UP', 'and an address that cannot resolve is not drawn as up');
 const healthSays = (await row.locator('[data-box-cell="health"]').getAttribute('title').catch(() => null)) ?? '';
 record(/^Unhealthy: /.test(healthSays), `hovering it says what that means (${healthSays})`);
+record((await row.locator('[data-box-cell="free"]').innerText().catch(() => '')).trim() === '—', 'a box that cannot be asked has no free count to give');
 
 if (local === null) {
   console.log('NOTE: the server lists no local box (switched off here), so its row and page are not checked');
@@ -132,6 +134,16 @@ if (local === null) {
   record(localHealth === 'UP' || localHealth === 'DOWN', `and has a health dot of its own too (${localHealth})`);
   const localSays = (await localRow.locator('[data-box-cell="health"]').getAttribute('title').catch(() => null)) ?? '';
   record(/^(Healthy|Unhealthy): /.test(localSays), `with a short status on hover (${localSays})`);
+
+  /* How full it is, as the server counts it: working and idle apart, and the room left of the most it takes. */
+  const room = (await graphql(`{ box(id: "local") { capacity { active busy idle max free } } }`)).box?.capacity ?? null;
+  record(room !== null && room.busy + room.idle === room.active && room.free === room.max - room.active, `the local box says how full it is (${JSON.stringify(room)})`);
+  if (room !== null) {
+    const sessionsCell = (await localRow.locator('[data-box-cell="sessions"]').innerText().catch(() => '')).trim();
+    record(sessionsCell === `${room.busy} working · ${room.idle} idle`, `its active sessions read working and idle apart (${sessionsCell})`);
+    const freeCell = (await localRow.locator('[data-box-cell="free"]').innerText().catch(() => '')).trim();
+    record(freeCell === `${room.free} / ${room.max}`, `and its free sessions of the most it takes (${freeCell})`);
+  }
 }
 
 /* ------------------------------------------------ adding one, and removing it */

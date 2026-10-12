@@ -21,7 +21,7 @@ export interface AdminBoxesPageProps {
   onSignOut?: () => void;
 }
 
-type BoxOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'LABEL';
+type BoxOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'FREE' | 'LABEL';
 
 /**
  * The boxes this installation can give an agent a session in.
@@ -34,7 +34,7 @@ type BoxOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'LABEL';
 export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
   const [boxes, setBoxes] = useState<Box[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [order, ascending, sortBy] = useTableSort<BoxOrder>('admin-boxes', 'NAME', true, ['SESSIONS']);
+  const [order, ascending, sortBy] = useTableSort<BoxOrder>('admin-boxes', 'NAME', true, ['SESSIONS', 'FREE']);
 
   useEffect(() => {
     let current = true;
@@ -59,7 +59,9 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
         case 'HEALTH':
           return box.health?.status ?? null;
         case 'SESSIONS':
-          return box.activeSessions;
+          return box.capacity?.active ?? box.activeSessions;
+        case 'FREE':
+          return box.capacity?.free ?? null;
         case 'LABEL':
           return box.label;
         default:
@@ -103,6 +105,14 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
             onSort={sortBy}
             className={styles.colSessions}
           />
+          <ColumnHeader
+            label={t('Free sessions')}
+            order="FREE"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colFree}
+          />
           <ColumnHeader label={t('Label')} order="LABEL" current={order} ascending={ascending} onSort={sortBy} className={styles.colLabel} />
           <div className={styles.colActions} />
         </div>
@@ -145,7 +155,38 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
               )}
             </div>
             <div className={styles.colSessions} data-box-cell="sessions">
-              {box.activeSessions === null ? <span className={styles.none}>—</span> : box.activeSessions}
+              {box.capacity !== null ? (
+                <span
+                  title={tf('{busy} running a command, {idle} idle - open with nothing running, still holding a place', {
+                    busy: box.capacity.busy,
+                    idle: box.capacity.idle,
+                  })}
+                >
+                  <span data-box-busy>{tf('{n} working', { n: box.capacity.busy })}</span>
+                  <span className={styles.none} data-box-idle>
+                    {' · '}
+                    {tf('{n} idle', { n: box.capacity.idle })}
+                  </span>
+                </span>
+              ) : box.activeSessions === null ? (
+                <span className={styles.none}>—</span>
+              ) : (
+                box.activeSessions
+              )}
+            </div>
+            <div
+              className={styles.colFree}
+              data-box-cell="free"
+              title={box.capacity === null ? undefined : tf('{free} more of the {max} it holds at once', { free: box.capacity.free, max: box.capacity.max })}
+            >
+              {box.capacity === null ? (
+                <span className={styles.none}>—</span>
+              ) : (
+                <>
+                  <span className={box.capacity.free === 0 ? styles.full : undefined}>{box.capacity.free}</span>
+                  <span className={styles.none}> / {box.capacity.max}</span>
+                </>
+              )}
             </div>
             <div className={styles.colLabel} data-box-cell="label">
               {box.label === null || box.label === '' ? (

@@ -119,9 +119,22 @@
 
 .colSessions {
   flex-shrink: 0;
-  width: 140px;
+  width: 170px;
   font-size: var(--text-md);
   color: var(--color-text-secondary);
+}
+
+.colFree {
+  flex-shrink: 0;
+  width: 130px;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+/* A box with no room left: the next session asked for is refused. */
+.full {
+  color: var(--color-danger);
+  font-weight: 600;
 }
 
 .colLabel {

@@ -38,7 +38,21 @@ export interface Box {
   health: BoxHealth | null;
   /** Null when the box could not be asked. */
   activeSessions: number | null;
+  /** How full it is, counted as it counts when it refuses a session; null when it could not be asked. */
+  capacity: BoxCapacity | null;
   createdAt: string | null;
+}
+
+/** A box's sessions: those open, the most it takes, and the room left. */
+export interface BoxCapacity {
+  /** Busy and idle together: what the box counts against max. */
+  active: number;
+  /** Running a command, or still being made. */
+  busy: number;
+  /** Open with nothing running, waiting until its idle timeout - holding a place all the same. */
+  idle: number;
+  max: number;
+  free: number;
 }
 
 export interface BoxRuntime {
@@ -143,7 +157,7 @@ export function boxKindLabel(kind: BoxKind): string {
 }
 
 const BOX_FIELDS =
-  'id name kind label address hasToken health { status detail } activeSessions createdAt';
+  'id name kind label address hasToken health { status detail } activeSessions capacity { active busy idle max free } createdAt';
 
 const RUNTIME_FIELDS =
   'name available unavailableReason os workdir shell defaultImage images networkModes caches ' +
