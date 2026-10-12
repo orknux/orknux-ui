@@ -41,8 +41,8 @@ const listed = await graphql(
 ).catch(() => null);
 record(listed?.watchers !== undefined, 'and answers the page query for this workspace');
 
-const limits = await graphql(`query { watcherSettings { maxSeconds minIntervalSeconds maxPerAgent minAgentCheckSeconds } }`).catch(() => null);
-record(limits?.watcherSettings !== undefined, 'and the four limits');
+const limits = await graphql(`query { watcherSettings { maxSeconds minIntervalSeconds maxPerAgent minAgentCheckSeconds lookScaleSeconds } }`).catch(() => null);
+record(limits?.watcherSettings !== undefined, 'and the five limits');
 
 /* ------------------------------------------------------------ the drawing - */
 
@@ -157,6 +157,14 @@ const checkHeading = await page.locator('[class*="tableHeader"] span', { hasText
 const checkCell = await rows.nth(1).locator('[data-testid="watcher-agent-check"]').boundingBox().catch(() => null);
 record(checkHeading !== null && checkCell !== null && Math.abs(checkHeading.x - checkCell.x) < 2, 'under an Agent check heading');
 record(/minutes? ago|just now/.test(text), 'and when it was set');
+
+/* Hovering a time says it on the reader's clock, never the server's UTC: an ISO string ending in Z read as local was taken for local. */
+const ISO = /\d{4}-\d\d-\d\dT\d\d:\d\d|Z$/;
+const setTitle = (await rows.first().locator('[data-testid="watcher-set"]').getAttribute('title').catch(() => null)) ?? '';
+const nextTitle = (await rows.first().locator('[data-testid="watcher-next-check"]').getAttribute('title').catch(() => null)) ?? '';
+record(setTitle !== '' && !ISO.test(setTitle) && !ISO.test(nextTitle), `when it was set and looks next read as local times on hover (${setTitle} | ${nextTitle})`);
+const endsTitle = (await rows.first().locator('[data-testid="watcher-timeout"]').getAttribute('title').catch(() => null)) ?? '';
+record(/^Ends /.test(endsTitle) && !ISO.test(endsTitle), `and the timeout says when it ends (${endsTitle})`);
 // The label the agent gave it, in a column of its own beside the call, and a dash where it gave none. #621.
 const labels = await rows.locator('[data-testid="watcher-description"]').allInnerTexts();
 record(labels.length === 2 && labels[0] === 'nightly build of main' && labels[1] === '—', `a watcher's description has a column of its own (${labels.join(' | ')})`);
@@ -205,5 +213,6 @@ record((await value('watcher-max-seconds')) === String(held.maxSeconds), 'it dra
 record((await value('watcher-min-interval')) === String(held.minIntervalSeconds), 'the shortest interval');
 record((await value('watcher-max-per-agent')) === String(held.maxPerAgent), 'and how many one agent may have');
 record((await value('watcher-min-agent-check')) === String(held.minAgentCheckSeconds), 'and how often the agent may be woken to look');
+record((await value('watcher-look-scale')) === String(held.lookScaleSeconds), `and the length of watcher that gets three looks (${held.lookScaleSeconds})`);
 
 await finish(browser);

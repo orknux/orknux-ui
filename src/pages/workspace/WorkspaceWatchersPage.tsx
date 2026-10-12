@@ -26,6 +26,11 @@ export interface WorkspaceWatchersPageProps {
  * A length of time as somebody reads it: seconds up to two minutes, then
  * minutes, hours and days. Units, not prose, so the same in both languages.
  */
+/** A moment as the reader's own clock and calendar say it, not the server's UTC: "12.10.2026, 18:05:14". */
+function local(iso: string): string {
+  return new Date(iso).toLocaleString();
+}
+
 export function duration(seconds: number): string {
   if (seconds < 120) return `${seconds} s`;
   if (seconds < 7200) return `${Math.round(seconds / 60)} min`;
@@ -232,13 +237,15 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
             <span className={`${styles.colNumber} ${styles.muted}`} data-testid="watcher-agent-check">
               {one.agentCheckIntervalSeconds != null ? duration(one.agentCheckIntervalSeconds) : <span className={styles.nothing}>—</span>}
             </span>
-            <span className={`${styles.colNumber} ${styles.muted}`}>{duration(one.timeoutSeconds)}</span>
-            <span className={`${styles.colWhen} ${styles.muted}`} title={one.createdAt}>
+            <span className={`${styles.colNumber} ${styles.muted}`} title={tf('Ends {when}', { when: local(one.expiresAt) })} data-testid="watcher-timeout">
+              {duration(one.timeoutSeconds)}
+            </span>
+            <span className={`${styles.colWhen} ${styles.muted}`} title={local(one.createdAt)} data-testid="watcher-set">
               {timeAgo(one.createdAt)}
             </span>
             <span
               className={`${styles.colWhen} ${styles.muted}`}
-              title={one.lastResult ?? one.lastCheckedAt ?? undefined}
+              title={one.lastResult ?? (one.lastCheckedAt === null ? undefined : local(one.lastCheckedAt))}
               data-testid="watcher-last-check"
             >
               {one.lastCheckedAt === null ? (
@@ -248,7 +255,7 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
               )}
             </span>
             {!finished && (
-              <span className={`${styles.colWhen} ${styles.muted}`} title={one.nextCheckAt} data-testid="watcher-next-check">
+              <span className={`${styles.colWhen} ${styles.muted}`} title={local(one.nextCheckAt)} data-testid="watcher-next-check">
                 {new Date(one.nextCheckAt).getTime() <= Date.now()
                   ? t('due now')
                   : tf('in {time}', { time: duration(secondsFrom(one.nextCheckAt)) })}
@@ -256,7 +263,7 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
             )}
             {finished ? (
               <>
-                <span className={`${styles.colWhen} ${styles.muted}`} title={one.finishedAt ?? undefined}>
+                <span className={`${styles.colWhen} ${styles.muted}`} title={one.finishedAt === null ? undefined : local(one.finishedAt)}>
                   {one.finishedAt === null ? <span className={styles.nothing}>—</span> : timeAgo(one.finishedAt)}
                 </span>
                 <span className={styles.colOutcome} title={one.outcome ?? undefined} data-watcher-status={one.status}>

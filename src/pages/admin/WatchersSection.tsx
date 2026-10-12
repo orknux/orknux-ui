@@ -4,6 +4,7 @@ import {
   fetchWatcherSettings,
   setWatcherMaxPerAgent,
   setWatcherMaxSeconds,
+  setWatcherLookScaleSeconds,
   setWatcherMinAgentCheckSeconds,
   setWatcherMinIntervalSeconds,
 } from '../../api/watchers';
@@ -14,7 +15,7 @@ import page from './AdminSettingsPage.module.css';
 import type { PendingWrite } from './LogLevelsSection';
 
 export interface WatchersSectionProps {
-  /** Told which of the four numbers differ from the server's, so the page's Save can send them. */
+  /** Told which of the five numbers differ from the server's, so the page's Save can send them. */
   onPending: (writes: PendingWrite[]) => void;
   /** While the page is saving, so the boxes are not typed into mid-save. */
   busy?: boolean;
@@ -23,9 +24,10 @@ export interface WatchersSectionProps {
 /**
  * Admin -> Settings -> Watchers. Issue #606.
  *
- * Four numbers bounding what an agent may ask a watcher to do: how long one
+ * Five numbers bounding what an agent may ask a watcher to do: how long one
  * may run, how often it may call its tool, how often it may wake the agent to
- * look at the result itself (#618), and how many one agent may have running.
+ * look at the result itself (#618), how those looks are spaced where the agent
+ * gave none, and how many one agent may have running.
  * They go out with the page's one Save, like its other numbers.
  */
 export function WatchersSection({ onPending, busy = false }: WatchersSectionProps) {
@@ -34,6 +36,7 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
   const [minInterval, setMinInterval] = useState('');
   const [perAgent, setPerAgent] = useState('');
   const [agentCheck, setAgentCheck] = useState('');
+  const [lookScale, setLookScale] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function hold(settings: WatcherSettings) {
@@ -42,6 +45,7 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
     setMinInterval(String(settings.minIntervalSeconds));
     setPerAgent(String(settings.maxPerAgent));
     setAgentCheck(String(settings.minAgentCheckSeconds));
+    setLookScale(String(settings.lookScaleSeconds));
   }
 
   useEffect(() => {
@@ -81,8 +85,9 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
     changed(minInterval, held.minIntervalSeconds, setWatcherMinIntervalSeconds);
     changed(perAgent, held.maxPerAgent, setWatcherMaxPerAgent);
     changed(agentCheck, held.minAgentCheckSeconds, setWatcherMinAgentCheckSeconds);
+    changed(lookScale, held.lookScaleSeconds, setWatcherLookScaleSeconds);
     onPending(writes);
-  }, [held, maxSeconds, minInterval, perAgent, agentCheck, onPending]);
+  }, [held, maxSeconds, minInterval, perAgent, agentCheck, lookScale, onPending]);
 
   return (
     <>
@@ -169,6 +174,32 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
             onChange={(event) => setAgentCheck(event.target.value)}
             disabled={busy || held === null}
             aria-label={t('The shortest interval between two looks by the agent')}
+          />
+          <span className={page.retentionUnit}>{t('seconds')}</span>
+        </div>
+      </div>
+
+      <div className={page.setting}>
+        <div className={page.settingText}>
+          <span className={page.labelWithHint}>
+            <p className={page.settingLabel}>{t('Three looks by the agent from')}</p>
+            <FieldHint label={t('Three looks by the agent from')}>
+              {t("Where the agent gave no agent check, its looks are spaced evenly by the watcher's length. A watcher this long gets three; from a twelfth of it one, from a third two, and one more each time the length doubles. With an hour: 5-20 min one, 20-60 min two, 1-2 h three, 2-4 h four. Between 60 seconds and a week.")}
+            </FieldHint>
+          </span>
+        </div>
+        <div className={page.retention}>
+          <input
+            id="watcher-look-scale"
+            name="watcherLookScaleSeconds"
+            className={page.input}
+            type="number"
+            min={60}
+            max={604800}
+            value={lookScale}
+            onChange={(event) => setLookScale(event.target.value)}
+            disabled={busy || held === null}
+            aria-label={t('Three looks by the agent from')}
           />
           <span className={page.retentionUnit}>{t('seconds')}</span>
         </div>
