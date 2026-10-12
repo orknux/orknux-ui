@@ -315,10 +315,18 @@ function EventLine({ event, workspaceId }: { event: LlmSessionEvent; workspaceId
             {event.millis === null ? t('still thinking') : `thought for ${thoughtFor(event.millis)}`}
           </span>
         )}
-        <span className={styles.at} title={moment(event.at)}>
-          {timeOfDay(event.at)}
-        </span>
-        {headFold && <FoldToggle text={text} open={open} onToggle={() => setOpen((was) => !was)} />}
+        {/* The time sits right before the toggle where the line folds from its head. */}
+        {headFold ? (
+          <FoldToggle text={text} open={open} onToggle={() => setOpen((was) => !was)}>
+            <span className={styles.at} title={moment(event.at)}>
+              {timeOfDay(event.at)}
+            </span>
+          </FoldToggle>
+        ) : (
+          <span className={styles.at} title={moment(event.at)}>
+            {timeOfDay(event.at)}
+          </span>
+        )}
       </div>
       {text.trim() === '' && answered.trim() === '' ? (
         <p className={styles.nothing}>{t('Nothing was recorded on this line.')}</p>

@@ -183,6 +183,7 @@ const where = await toggle.evaluate((button) => {
   const middle = (r) => r.top + r.height / 2;
   return time && block && size
     ? {
+        timeBeforeToggle: size.right <= time.left + 1 && time.right <= b.left + 1,
         oneLine: Math.round(Math.abs(middle(b) - middle(time))) <= 4 && Math.round(Math.abs(middle(size) - middle(time))) <= 4,
         aboveTop: b.bottom <= block.top + 1,
         rightGap: Math.round(block.right - b.right),
@@ -190,6 +191,7 @@ const where = await toggle.evaluate((button) => {
     : null;
 }).catch(() => null);
 record(where !== null && where.oneLine, `its size and toggle are on the line with the time, not under it (${JSON.stringify(where)})`);
+record(where !== null && where.timeBeforeToggle, `the time sits right before the toggle, after the size (${JSON.stringify(where)})`);
 record(where !== null && where.aboveTop && Math.abs(where.rightGap) <= 2, `and the toggle sits at the block's top right (${JSON.stringify(where)})`);
 record(
   (await page.getByRole('button', { name: /^Show (all|less)/ }).filter({ hasText: /Show/ }).count()) === 0,
