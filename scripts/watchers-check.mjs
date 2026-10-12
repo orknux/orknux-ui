@@ -221,6 +221,16 @@ record(
   `and the looks' backoff: first delay, multiplier and longest wait (${backoff.initialSeconds} x${backoff.multiplier} up to ${backoff.maxSeconds})`,
 );
 
+/* The three numbers and the simulation sit in one panel of their own, inside the section. */
+const panel = page.locator('[data-testid="watcher-looks"]');
+const panelHeading = ((await panel.locator('#watcher-looks').textContent({ timeout: 5_000 }).catch(() => '')) ?? '').trim();
+const inside = await panel.locator('#watcher-look-initial, #watcher-look-multiplier, #watcher-look-max, [data-testid="watcher-look-simulation"]').count();
+record(panelHeading === "Agent's watcher looks" && inside === 4, `under an "Agent's watcher looks" panel holding the three and the simulation (${panelHeading}, ${inside})`);
+const outer = await panel.boundingBox().catch(() => null);
+const firstRow = await panel.locator('#watcher-look-initial').locator('xpath=ancestor::div[contains(@class, "setting")][1]').boundingBox().catch(() => null);
+record(outer !== null && firstRow !== null && firstRow.x > outer.x + 4 && firstRow.x + firstRow.width < outer.x + outer.width - 4,
+  `set inside it, not beside it (${JSON.stringify(outer)} / ${JSON.stringify(firstRow)})`);
+
 /* The simulation is worked out from the boxes as they are typed, before anything is saved. */
 const simulated = page.locator('[data-testid="watcher-look-simulated"]');
 await page.locator('#watcher-look-initial').fill('300');

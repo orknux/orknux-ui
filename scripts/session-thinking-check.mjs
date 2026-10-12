@@ -168,18 +168,29 @@ record(
 /*
  * A folded line opens from an icon at its top right, which says how much it
  * holds in tokens as well as characters - an output limit is counted in tokens -
- * and stays where it was once the block is open.
+ * and stays where it was once the block is open. Both sit on the line's head,
+ * beside the time and "still thinking", not on a row of their own under it.
  */
 const toggle = page.locator('[data-fold-toggle]').first();
 const size = (await page.locator('[data-fold-size]').first().innerText().catch(() => '')).trim();
 record(size === '4,000 chars · ~1,000 tokens', `a folded line names its size in tokens too (${size})`);
 const where = await toggle.evaluate((button) => {
-  const block = button.parentElement?.nextElementSibling;
+  const line = button.closest('article');
+  const time = line?.querySelector('[class*="_at_"]')?.getBoundingClientRect();
+  const block = line?.querySelector('pre')?.getBoundingClientRect();
+  const size = button.parentElement?.querySelector('[data-fold-size]')?.getBoundingClientRect();
   const b = button.getBoundingClientRect();
-  const p = block?.getBoundingClientRect();
-  return p ? { aboveTop: b.bottom <= p.top + 1, rightGap: Math.round(p.right - b.right) } : null;
+  const middle = (r) => r.top + r.height / 2;
+  return time && block && size
+    ? {
+        oneLine: Math.round(Math.abs(middle(b) - middle(time))) <= 4 && Math.round(Math.abs(middle(size) - middle(time))) <= 4,
+        aboveTop: b.bottom <= block.top + 1,
+        rightGap: Math.round(block.right - b.right),
+      }
+    : null;
 }).catch(() => null);
-record(where !== null && where.aboveTop && Math.abs(where.rightGap) <= 2, `its toggle sits at the block's top right (${JSON.stringify(where)})`);
+record(where !== null && where.oneLine, `its size and toggle are on the line with the time, not under it (${JSON.stringify(where)})`);
+record(where !== null && where.aboveTop && Math.abs(where.rightGap) <= 2, `and the toggle sits at the block's top right (${JSON.stringify(where)})`);
 record(
   (await page.getByRole('button', { name: /^Show (all|less)/ }).filter({ hasText: /Show/ }).count()) === 0,
   'and there is no "Show all" link any more, only the icon',
@@ -233,5 +244,9 @@ record(
   writingLine !== null && writingLine.gapAbove !== null && writingLine.gapAbove >= 12,
   `and space above it, apart from the filters (gap ${writingLine?.gapAbove})`,
 );
+
+/* Hovering a line's time says the date and time on the reader's clock, never the ISO string the record holds. */
+const hover = (await page.locator('[class*="_at_"]').first().getAttribute('title').catch(() => null)) ?? '';
+record(hover !== '' && !/T\d\d:\d\d|Z$/.test(hover) && /2026/.test(hover), `a line's time reads as a local date and time on hover (${hover})`);
 
 await finish(browser);

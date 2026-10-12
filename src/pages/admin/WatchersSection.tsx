@@ -204,98 +204,105 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
         </div>
       </div>
 
-      <div className={page.setting}>
-        <div className={page.settingText}>
-          <span className={page.labelWithHint}>
-            <p className={page.settingLabel}>{t("Agent's own looks: first after")}</p>
-            <FieldHint label={t("Agent's own looks: first after")}>
-              {t('Where the agent gave no agent check, its looks back off exponentially: the first after this delay, each wait after that the last one times the multiplier, never longer than the longest wait. Between 60 seconds and a week.')}
-            </FieldHint>
-          </span>
-        </div>
-        <div className={page.retention}>
-          <input
-            id="watcher-look-initial"
-            name="watcherLookInitialSeconds"
-            className={page.input}
-            type="number"
-            min={60}
-            max={604800}
-            value={lookInitial}
-            onChange={(event) => setLookInitial(event.target.value)}
-            disabled={busy || held === null}
-            aria-label={t("Agent's own looks: first after")}
-          />
-          <span className={page.retentionUnit}>{t('seconds')}</span>
-        </div>
-      </div>
+      <section className={page.settingGroup} aria-labelledby="watcher-looks" data-testid="watcher-looks">
+        <span className={page.labelWithHint}>
+          <p className={page.settingLabel} id="watcher-looks">{t("Agent's watcher looks")}</p>
+          <FieldHint label={t("Agent's watcher looks")}>
+            {t('Where the agent gave no agent check, its looks back off exponentially: the first after the first delay, each wait after that the last one times the multiplier, never longer than the longest wait.')}
+          </FieldHint>
+        </span>
 
-      <div className={page.setting}>
-        <div className={page.settingText}>
-          <span className={page.labelWithHint}>
-            <p className={page.settingLabel}>{t('Each wait multiplied by')}</p>
-            <FieldHint label={t('Each wait multiplied by')}>
-              {t('2 doubles every wait; 1 keeps the first delay as a fixed interval. Between 1 and 10.')}
-            </FieldHint>
-          </span>
+        <div className={page.setting}>
+          <div className={page.settingText}>
+            <span className={page.labelWithHint}>
+              <p className={page.settingLabel}>{t('First look after')}</p>
+              <FieldHint label={t('First look after')}>{t('Between 60 seconds and a week.')}</FieldHint>
+            </span>
+          </div>
+          <div className={page.retention}>
+            <input
+              id="watcher-look-initial"
+              name="watcherLookInitialSeconds"
+              className={page.input}
+              type="number"
+              min={60}
+              max={604800}
+              value={lookInitial}
+              onChange={(event) => setLookInitial(event.target.value)}
+              disabled={busy || held === null}
+              aria-label={t('First look after')}
+            />
+            <span className={page.retentionUnit}>{t('seconds')}</span>
+          </div>
         </div>
-        <div className={page.retention}>
-          <input
-            id="watcher-look-multiplier"
-            name="watcherLookMultiplier"
-            className={page.input}
-            type="number"
-            min={1}
-            max={10}
-            step={0.1}
-            value={lookMultiplier}
-            onChange={(event) => setLookMultiplier(event.target.value)}
-            disabled={busy || held === null}
-            aria-label={t('Each wait multiplied by')}
-          />
-        </div>
-      </div>
 
-      <div className={page.setting}>
-        <div className={page.settingText}>
-          <span className={page.labelWithHint}>
-            <p className={page.settingLabel}>{t('Longest wait between looks')}</p>
-            <FieldHint label={t('Longest wait between looks')}>
-              {t('Once a wait reaches this it stops growing, so a week-long watcher is still looked at. At least the first delay, and at most a year.')}
-            </FieldHint>
-          </span>
+        <div className={page.setting}>
+          <div className={page.settingText}>
+            <span className={page.labelWithHint}>
+              <p className={page.settingLabel}>{t('Each wait multiplied by')}</p>
+              <FieldHint label={t('Each wait multiplied by')}>
+                {t('2 doubles every wait; 1 keeps the first delay as a fixed interval. Between 1 and 10.')}
+              </FieldHint>
+            </span>
+          </div>
+          <div className={page.retention}>
+            <input
+              id="watcher-look-multiplier"
+              name="watcherLookMultiplier"
+              className={page.input}
+              type="number"
+              min={1}
+              max={10}
+              step={0.1}
+              value={lookMultiplier}
+              onChange={(event) => setLookMultiplier(event.target.value)}
+              disabled={busy || held === null}
+              aria-label={t('Each wait multiplied by')}
+            />
+          </div>
         </div>
-        <div className={page.retention}>
-          <input
-            id="watcher-look-max"
-            name="watcherLookMaxSeconds"
-            className={page.input}
-            type="number"
-            min={60}
-            max={31536000}
-            value={lookMax}
-            onChange={(event) => setLookMax(event.target.value)}
-            disabled={busy || held === null}
-            aria-label={t('Longest wait between looks')}
-          />
-          <span className={page.retentionUnit}>{t('seconds')}</span>
-        </div>
-      </div>
 
-      <div className={page.setting} data-testid="watcher-look-simulation">
-        <div className={page.settingText}>
-          <p className={page.settingLabel}>{t('When the agent would look')}</p>
-          {simulated === null ? (
-            <p className={page.settingNote}>{t('Not a backoff: the first delay must be 60 seconds or more, the multiplier 1 to 10, and the longest wait at least the first delay.')}</p>
-          ) : (
-            SIMULATED_LENGTHS.map((length) => (
-              <p key={length} className={page.settingNote} data-testid="watcher-look-simulated">
-                {simulatedLine(length, looksWithin(simulated, length, floor))}
-              </p>
-            ))
-          )}
+        <div className={page.setting}>
+          <div className={page.settingText}>
+            <span className={page.labelWithHint}>
+              <p className={page.settingLabel}>{t('Longest wait')}</p>
+              <FieldHint label={t('Longest wait')}>
+                {t('Once a wait reaches this it stops growing, so a week-long watcher is still looked at. At least the first delay, and at most a year.')}
+              </FieldHint>
+            </span>
+          </div>
+          <div className={page.retention}>
+            <input
+              id="watcher-look-max"
+              name="watcherLookMaxSeconds"
+              className={page.input}
+              type="number"
+              min={60}
+              max={31536000}
+              value={lookMax}
+              onChange={(event) => setLookMax(event.target.value)}
+              disabled={busy || held === null}
+              aria-label={t('Longest wait')}
+            />
+            <span className={page.retentionUnit}>{t('seconds')}</span>
+          </div>
         </div>
-      </div>
+
+        <div className={page.setting} data-testid="watcher-look-simulation">
+          <div className={page.settingText}>
+            <p className={page.settingLabel}>{t('When the agent would look')}</p>
+            {simulated === null ? (
+              <p className={page.settingNote}>{t('Not a backoff: the first delay must be 60 seconds or more, the multiplier 1 to 10, and the longest wait at least the first delay.')}</p>
+            ) : (
+              SIMULATED_LENGTHS.map((length) => (
+                <p key={length} className={page.settingNote} data-testid="watcher-look-simulated">
+                  {simulatedLine(length, looksWithin(simulated, length, floor))}
+                </p>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
 
       <div className={page.setting}>
         <div className={page.settingText}>

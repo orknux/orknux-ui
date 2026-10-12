@@ -43,6 +43,7 @@ import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceTriggersPage.module.css';
 import { t } from '../../i18n';
+import { moment } from '../../session/timeZone';
 
 export interface WorkspaceTriggersPageProps {
   session: SessionUser;
@@ -465,7 +466,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
           )}
           {history?.content.map((firing) => (
             <div key={firing.id} className={styles.historyRow}>
-              <span className={`${styles.colWhen} ${styles.muted}`} title={firing.at}>
+              <span className={`${styles.colWhen} ${styles.muted}`} title={moment(firing.at)}>
                 {when(firing.at)}
               </span>
               {/* The trigger opens from here: an entry usually raises a question about it. */}

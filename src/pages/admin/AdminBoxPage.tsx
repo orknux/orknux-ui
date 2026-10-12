@@ -28,7 +28,7 @@ import { duration } from '../workspace/WorkspaceWatchersPage';
 import { shellUser } from '../../session/user';
 import styles from './AdminBoxPage.module.css';
 import { t, tf } from '../../i18n';
-import { zoned } from '../../session/timeZone';
+import { moment, zoned } from '../../session/timeZone';
 
 export interface AdminBoxPageProps {
   session: SessionUser;
@@ -584,10 +584,10 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
                     <span className={styles.colRuntime} title={one.image ?? undefined}>
                       {one.runtime === null ? '—' : one.image === null ? one.runtime : `${one.runtime} · ${one.image}`}
                     </span>
-                    <span className={styles.colWhen} title={one.lastActivityAt}>
+                    <span className={styles.colWhen} title={moment(one.lastActivityAt)}>
                       {timeAgo(one.lastActivityAt)}
                     </span>
-                    <span className={styles.colWhen} title={one.expiresAt ?? undefined}>
+                    <span className={styles.colWhen} title={one.expiresAt === null ? undefined : moment(one.expiresAt)}>
                       {one.expiresAt === null ? '—' : new Date(one.expiresAt).toLocaleString(undefined, zoned())}
                     </span>
                     <span className={styles.colRuns}>

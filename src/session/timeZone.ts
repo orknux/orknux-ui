@@ -48,3 +48,13 @@ function known(name: string): boolean {
     return false;
   }
 }
+
+/**
+ * A moment as the reader reads it, date and time in their zone - what a
+ * timestamp says on hover. An ISO string there ended in Z and was read as
+ * local time. Anything that does not parse is shown as it came.
+ */
+export function moment(iso: string): string {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? iso : at.toLocaleString(undefined, zoned());
+}

@@ -68,7 +68,7 @@ import { shellUser } from '../../session/user';
 import styles from './SessionDetailPage.module.css';
 import { BoxOutput } from './BoxOutput';
 import { t } from '../../i18n';
-import { zoned } from '../../session/timeZone';
+import { moment, zoned } from '../../session/timeZone';
 
 export interface SessionDetailPageProps {
   session: SessionUser;
@@ -211,14 +211,26 @@ function dayOf(iso: string): string {
  * what came back - and each folds on its own. Sharing one `open` between them
  * would mean opening a long answer to read a short call.
  */
-function Block({ text, code, label }: { text: string; code: boolean; label?: string }) {
+function Block({
+  text,
+  code,
+  label,
+  folded,
+}: {
+  text: string;
+  code: boolean;
+  label?: string;
+  /** Whether it is open, where the line's head holds the toggle rather than the block. */
+  folded?: { open: boolean };
+}) {
   const long = text.length > FOLD_OVER_CHARS;
-  const [open, setOpen] = useState(false);
+  const [held, setOpen] = useState(false);
+  const open = folded?.open ?? held;
 
   return (
     <>
       {label !== undefined && <p className={styles.blockLabel}>{label}</p>}
-      {long && <FoldToggle text={text} open={open} onToggle={() => setOpen((held) => !held)} />}
+      {long && folded === undefined && <FoldToggle text={text} open={open} onToggle={() => setOpen((was) => !was)} />}
       {/*
         A tool's arguments are code and are read as code; what was said is
         prose, and monospacing prose makes a conversation look like a log.
@@ -259,6 +271,7 @@ function formatBytes(bytes: number): string {
 /** One line of the transcript: what happened, and for a tool, what came back. */
 function EventLine({ event, workspaceId }: { event: LlmSessionEvent; workspaceId: string }) {
   const text = readable(event.kind, event.content);
+  const [open, setOpen] = useState(false);
   /* A turn summarised to fit its window: the settings that decide how are a press away. */
   const compacted = event.kind === 'SYSTEM' && (event.content ?? '').startsWith("The turn outgrew the model's window");
 
@@ -276,6 +289,12 @@ function EventLine({ event, workspaceId }: { event: LlmSessionEvent; workspaceId
    * agent's line is what it said, and there is no second half to show.
    */
   const answered = event.kind === 'TOOL' ? readable(event.kind, event.result) : '';
+  /*
+   * A line with one long block says its size and folds from its own head, on
+   * the line with the time and "still thinking", rather than on a row of its
+   * own under them. A tool line keeps one per block, since each folds alone.
+   */
+  const headFold = answered.trim() === '' && text.trim() !== '' && text.length > FOLD_OVER_CHARS;
 
   return (
     <article className={`${styles.event} ${styles[KIND_CLASS[event.kind]]}`}>
@@ -296,16 +315,22 @@ function EventLine({ event, workspaceId }: { event: LlmSessionEvent; workspaceId
             {event.millis === null ? t('still thinking') : `thought for ${thoughtFor(event.millis)}`}
           </span>
         )}
-        <span className={styles.at} title={event.at}>
+        <span className={styles.at} title={moment(event.at)}>
           {timeOfDay(event.at)}
         </span>
+        {headFold && <FoldToggle text={text} open={open} onToggle={() => setOpen((was) => !was)} />}
       </div>
       {text.trim() === '' && answered.trim() === '' ? (
         <p className={styles.nothing}>{t('Nothing was recorded on this line.')}</p>
       ) : (
         <>
           {text.trim() !== '' && (
-            <Block text={text} code={event.kind === 'TOOL'} label={answered === '' ? undefined : t('Asked')} />
+            <Block
+              text={text}
+              code={event.kind === 'TOOL'}
+              label={answered === '' ? undefined : t('Asked')}
+              folded={headFold ? { open } : undefined}
+            />
           )}
 
           {/*
@@ -415,7 +440,7 @@ function AgentDetailsBlock({
           )}
           {details.model != null ? ` · ${details.model}` : ''}
         </span>
-        <span className={styles.at} title={at}>
+        <span className={styles.at} title={moment(at)}>
           {timeOfDay(at)}
         </span>
       </div>
@@ -1822,7 +1847,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                         });
                       }}
                     >
-                      <span className={styles.boxEventTime} title={event.at}>
+                      <span className={styles.boxEventTime} title={moment(event.at)}>
                         {clockOf(event.at)}
                       </span>
                       <span className={styles.boxEventType}>{event.type}</span>

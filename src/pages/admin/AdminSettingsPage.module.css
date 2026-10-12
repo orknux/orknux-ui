@@ -76,6 +76,25 @@
   border-radius: var(--radius-6);
 }
 
+/*
+ * A panel of settings that only mean something together - a heading with its
+ * hint, then the rows, set into the panel on the page's own ground.
+ */
+.settingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-16);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.settingGroup .setting {
+  background: var(--color-surface);
+}
+
 .settingText {
   display: flex;
   flex: 1 0 0;
