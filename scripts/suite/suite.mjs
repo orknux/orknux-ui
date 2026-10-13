@@ -577,6 +577,12 @@ export const TESTS = [
     /* The session and its watchers are stubbed; the query is asked of the running server for its contract. */
   },
   {
+    name: 'session-timers-check',
+    what: "A session page's Timers panel lists the reminders its agent set, waiting first and soonest first, with each note and when it comes up",
+    needs: ['workspace'],
+    /* The session and its timers are stubbed; the query is asked of the running server for its contract. */
+  },
+  {
     name: 'watchers-check',
     what: 'AI -> Watchers opens on the running ones with Active / Finished at the top left, Stop removes one, Finished draws the ended; Admin Settings draws the three limits',
     needs: ['workspace'],

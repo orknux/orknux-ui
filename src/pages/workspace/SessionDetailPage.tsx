@@ -50,7 +50,9 @@ import trashIcon from '../../assets/trash-2.svg';
 import { fetchSessionTodos } from '../../api/todos';
 import { fetchSessionWatchers } from '../../api/watchers';
 import type { Watcher } from '../../api/watchers';
-import { statusLabel as watcherStatus } from './WorkspaceWatchersPage';
+import { statusLabel as watcherStatus, duration } from './WorkspaceWatchersPage';
+import { fetchSessionTimers } from '../../api/sessionTimers';
+import type { SessionTimer } from '../../api/sessionTimers';
 import type { SessionTodo } from '../../api/todos';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -801,6 +803,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   useEffect(loadWatchers, [loadWatchers]);
 
   /*
+   * The reminders this session's agent set, waiting ones first: what will wake
+   * it, which the transcript shows only as the call that set it.
+   */
+  const [timers, setTimers] = useState<SessionTimer[] | null>(null);
+  const loadTimers = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionTimers(sessionId)
+      .then(setTimers)
+      .catch(() => setTimers(null));
+  }, [sessionId]);
+  useEffect(loadTimers, [loadTimers]);
+
+  /*
    * The ports agents asked to expose out of their box sessions, below the
    * notes, and the questions put to a person on their behalf - which the
    * transcript draws where they were asked. Nothing opens until somebody says
@@ -871,9 +886,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
      */
     loadTodos();
     loadWatchers();
+    loadTimers();
     loadWriting();
     loadPorts();
-  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWatchers, loadWriting, loadPorts]);
+  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWatchers, loadTimers, loadWriting, loadPorts]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -2207,6 +2223,45 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     </span>
                   </span>
                 </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+      {/*
+        The reminders this session's agent set: waiting ones first, soonest
+        first, each with its note and when it comes up; then the ones that rang.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('Timers in this session')} data-session-timers="">
+        <p className={styles.familyTitle}>{t('Timers')}</p>
+        {timers === null ? (
+          <p className={styles.familyNote}>{t('Could not load the timers.')}</p>
+        ) : timers.length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {[
+              ...timers.filter((one) => one.rangAt === null).sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
+              ...timers.filter((one) => one.rangAt !== null),
+            ].map((one) => (
+              <li
+                key={one.id}
+                className={styles.todoRow}
+                title={moment(one.dueAt)}
+                data-session-timer={one.id}
+                data-session-timer-waiting={one.rangAt === null ? 'true' : 'false'}
+              >
+                <span className={one.rangAt === null ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`} />
+                <span className={styles.todoBody}>
+                  <span className={styles.todoText} data-session-timer-text="">
+                    {one.note}
+                  </span>
+                  <span className={styles.todoNote} data-session-timer-state="">
+                    {one.rangAt === null
+                      ? tf('Due in {time}', { time: duration(Math.max(0, Math.round((new Date(one.dueAt).getTime() - Date.now()) / 1000))) })
+                      : tf('Rang {when}', { when: timeAgo(one.rangAt) })}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>
