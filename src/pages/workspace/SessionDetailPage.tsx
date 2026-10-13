@@ -978,12 +978,13 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
     loadFamily();
   }, [events, loadFamily]);
   /*
-   * The panel is simply there where there is a family - a session with
-   * subagent sessions draws it beside its transcript, level with the search
-   * bar, and one with none draws nothing. It was a button that opened it;
-   * a thing that exists should not have to be asked for. Issue #388.
+   * The panel is simply there - beside the transcript, level with the search
+   * bar - listing the session alone where it asked no other agent, like every
+   * other panel in the column says it has nothing rather than vanishing. It
+   * was a button that opened it; a thing that exists should not have to be
+   * asked for. Issue #388.
    */
-  const hasFamily = family !== null && family.length > 1;
+  const hasFamily = family !== null && family.length > 0;
 
   /*
    * Which subview the body is showing: the transcript, one scratchpad's content,

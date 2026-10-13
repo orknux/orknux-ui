@@ -48,15 +48,20 @@ const FAMILY = [
   { id: '424244', key: 'chat:planning:ask-2', title: 'Find the service owners', main: false, depth: 1, active: true, lastEventAt: '2026-09-23T09:04:00Z' },
 ];
 
+/* A session that asked nobody: the server answers it alone. */
+const LONE = '424250';
+const ALONE = [{ id: LONE, key: 'chat:solo', title: 'A session on its own', main: true, depth: 0, active: false, lastEventAt: '2026-09-23T09:00:00Z' }];
+
 await page.route('**/graphql', async (route) => {
   const body = route.request().postData() ?? '';
   if (body.includes('llmSessionFamily(')) {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { llmSessionFamily: FAMILY } }) });
+    const family = JSON.parse(body).variables?.id === LONE ? ALONE : FAMILY;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { llmSessionFamily: family } }) });
     return;
   }
   if (body.includes('llmSession(')) {
     const asked = JSON.parse(body).variables?.id ?? MAIN;
-    const one = FAMILY.find((held) => held.id === asked) ?? FAMILY[0];
+    const one = [...FAMILY, ...ALONE].find((held) => held.id === asked) ?? FAMILY[0];
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -141,5 +146,15 @@ record(
   await page.locator('[data-session-member][aria-current="page"]').getAttribute('data-session-member').then((id) => id === '424243'),
   'and the panel now marks that one as current',
 );
+
+/* ------------------------------------------------------- on its own ----- */
+
+// A session that asked no other agent still has the panel, listing itself:
+// every other panel in the column says it has nothing rather than vanishing.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/sessions/${LONE}`, { waitUntil: 'domcontentloaded' });
+const alone = await page.locator('#session-family').waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
+record(alone, 'a session on its own still has the Sessions panel');
+const only = await page.locator('[data-session-member]').allInnerTexts().catch(() => []);
+record(only.length === 1 && only[0] === 'A session on its own', `listing just itself (${JSON.stringify(only)})`);
 
 await finish(browser);
