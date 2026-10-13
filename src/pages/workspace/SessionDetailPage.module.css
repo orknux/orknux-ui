@@ -1107,6 +1107,11 @@
   background: var(--color-warning, #d29922);
 }
 
+/* Something that has happened and is over: a timer that rang. */
+.dotDone {
+  background: var(--color-text-muted);
+}
+
 .familyButton {
   display: inline-flex;
   align-items: center;

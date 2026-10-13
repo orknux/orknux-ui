@@ -2439,6 +2439,7 @@ export const PL: Record<string, string> = {
   "Timers": "Minutniki",
   "Could not load the timers.": "Nie udało się wczytać minutników.",
   "Due in {time}": "Za {time}",
+  "Rang {count} times · last {when}": "Zadzwonił {count} razy · ostatnio {when}",
   "Rang {when}": "Zadzwonił {when}",
   "Watchers in this session": "Obserwatory w tej sesji",
   "{status} · check {checks} · set {when}": "{status} · sprawdzenie {checks} · ustawiony {when}",

@@ -25,9 +25,15 @@ const SESSION = { id: '9003', key: 'zz-timers-check', keyPrefix: 'zz', workspace
 const EVENTS = [{ id: 1, kind: 'AGENT', actor: 'Builder', content: 'I will say hi again shortly.', result: null, millis: null, at: AT }];
 
 const from = (seconds) => new Date(Date.now() + seconds * 1000).toISOString();
-/* Newest first, as the server answers: the rung one is newest, and the later of the two waiting is set after the sooner. */
+/*
+ * Newest first, as the server answers: three rings of one re-armed reminder are newest, and the later of the
+ * two waiting is set after the sooner. The rings fold into one row - an agent re-arming every few seconds
+ * otherwise fills the panel with identical rows.
+ */
 const TIMERS = [
-  { id: '3', note: 'said hi', createdAt: from(-30), dueAt: from(-20), rangAt: from(-20) },
+  { id: '5', note: 'said hi', createdAt: from(-30), dueAt: from(-20), rangAt: from(-20) },
+  { id: '4', note: 'said hi', createdAt: from(-40), dueAt: from(-30), rangAt: from(-30) },
+  { id: '3', note: 'said hi', createdAt: from(-50), dueAt: from(-40), rangAt: from(-40) },
   { id: '2', note: 'look at the report', createdAt: from(-60), dueAt: from(3600), rangAt: null },
   { id: '1', note: 'say hi again', createdAt: from(-90), dueAt: from(300), rangAt: null },
 ];
@@ -51,16 +57,16 @@ record(title === 'Timers', `under the heading Timers (${title})`);
 
 const rows = panel.locator('[data-session-timer]');
 await rows.first().waitFor({ timeout: 10_000 }).catch(() => {});
-record((await rows.count()) === 3, `a row per timer the session set (${await rows.count()})`);
+record((await rows.count()) === 3, `a row per waiting timer, and one for the rings of the same note (${await rows.count()})`);
 const order = await rows.evaluateAll((all) => all.map((one) => one.getAttribute('data-session-timer')));
-record(order.join(',') === '1,2,3', `waiting first and soonest first, then the rung one (${order.join(',')})`);
+record(order.join(',') === '1,2,5', `waiting first and soonest first, then the rung ones as one row, by the latest (${order.join(',')})`);
 
 const text = ((await rows.nth(0).locator('[data-session-timer-text]').textContent().catch(() => '')) ?? '').trim();
 record(text === 'say hi again', `a row says what the reminder is for (${text})`);
 const due = ((await rows.nth(0).locator('[data-session-timer-state]').textContent().catch(() => '')) ?? '').trim();
 record(/^Due in (299|300) s$|^Due in 5 min$/.test(due), `and when it comes up (${due})`);
 const rang = ((await rows.nth(2).locator('[data-session-timer-state]').textContent().catch(() => '')) ?? '').trim();
-record(/^Rang /.test(rang), `or that it rang (${rang})`);
+record(/^Rang 3 times · last /.test(rang), `or how often it rang, and when last (${rang})`);
 
 /* Beside the transcript, above the to-do list. */
 const box = await panel.boundingBox().catch(() => null);

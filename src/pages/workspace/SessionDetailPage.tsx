@@ -621,6 +621,37 @@ function SessionRuns({ workspaceId, sessionId }: { workspaceId: string; sessionI
  * fortnight of conversation is more than a page holds - so the search, the kind
  * filter and the sort all belong to this page rather than to what it is reading.
  */
+/** One row of the Timers panel: a reminder still waiting, or every one that rang with the same note. */
+interface TimerRow {
+  id: string;
+  note: string;
+  dueAt: string;
+  rangAt: string | null;
+  count: number;
+}
+
+/**
+ * The Timers panel's rows: waiting reminders one each, soonest first, then the
+ * rung ones folded by note, newest first. An agent re-arming a reminder every
+ * few seconds leaves one row per ring, and fifty identical rows say less than
+ * "Rang 50 times".
+ */
+function timerRows(timers: SessionTimer[]): TimerRow[] {
+  const waiting = timers
+    .filter((one) => one.rangAt === null)
+    .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+    .map((one) => ({ ...one, count: 1 }));
+  const rung = new Map<string, TimerRow>();
+  /* Newest first, as the server answers, so the first of a note is its latest ring. */
+  for (const one of timers) {
+    if (one.rangAt === null) continue;
+    const seen = rung.get(one.note);
+    if (seen) seen.count += 1;
+    else rung.set(one.note, { ...one, count: 1 });
+  }
+  return [...waiting, ...rung.values()];
+}
+
 export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps) {
   const { workspaceId = '', sessionId = '' } = useParams();
 
@@ -2240,18 +2271,16 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           <p className={styles.familyNote}>{t('None in this session yet.')}</p>
         ) : (
           <ul className={styles.familyList}>
-            {[
-              ...timers.filter((one) => one.rangAt === null).sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
-              ...timers.filter((one) => one.rangAt !== null),
-            ].map((one) => (
+            {timerRows(timers).map((one) => (
               <li
                 key={one.id}
                 className={styles.todoRow}
-                title={moment(one.dueAt)}
+                title={moment(one.rangAt ?? one.dueAt)}
                 data-session-timer={one.id}
                 data-session-timer-waiting={one.rangAt === null ? 'true' : 'false'}
+                data-session-timer-count={one.count}
               >
-                <span className={one.rangAt === null ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`} />
+                <span className={one.rangAt === null ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotDone}`} />
                 <span className={styles.todoBody}>
                   <span className={styles.todoText} data-session-timer-text="">
                     {one.note}
@@ -2259,7 +2288,9 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                   <span className={styles.todoNote} data-session-timer-state="">
                     {one.rangAt === null
                       ? tf('Due in {time}', { time: duration(Math.max(0, Math.round((new Date(one.dueAt).getTime() - Date.now()) / 1000))) })
-                      : tf('Rang {when}', { when: timeAgo(one.rangAt) })}
+                      : one.count > 1
+                        ? tf('Rang {count} times · last {when}', { count: one.count, when: timeAgo(one.rangAt) })
+                        : tf('Rang {when}', { when: timeAgo(one.rangAt) })}
                   </span>
                 </span>
               </li>
