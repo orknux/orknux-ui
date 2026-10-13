@@ -881,6 +881,12 @@ export function VoiceMode({
     busy.current = false;
   }
 
+  /** Throws away what is waiting for the next turn, leaving the turn in flight alone. */
+  function cancelWaiting() {
+    queued.current = null;
+    setWaiting(null);
+  }
+
   /**
    * Stops the answer because somebody talked over it. Issue #342.
    *
@@ -996,8 +1002,21 @@ export function VoiceMode({
           somebody can still do something about.
         */}
         {waiting !== null && (
-          <p className={styles.waiting} aria-live="polite">
+          <p className={styles.waiting} aria-live="polite" data-voice-waiting="">
             <span className={styles.saidLabel}>{t('Waiting')}</span>
+              {/*
+                Taken back before it goes: something said to the room, or a
+                thought abandoned while the answer was still coming. Only the
+                waiting message - the turn in flight is the circle's to stop.
+              */}
+              <button
+                type="button"
+                className={styles.cancelWaiting}
+                onClick={cancelWaiting}
+                data-voice-cancel-waiting=""
+              >
+                {t('Cancel')}
+              </button>
             {waiting}
           </p>
         )}
