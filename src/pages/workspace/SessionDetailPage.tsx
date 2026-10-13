@@ -48,6 +48,9 @@ import playIcon from '../../assets/play.svg';
 import pauseIcon from '../../assets/pause.svg';
 import trashIcon from '../../assets/trash-2.svg';
 import { fetchSessionTodos } from '../../api/todos';
+import { fetchSessionWatchers } from '../../api/watchers';
+import type { Watcher } from '../../api/watchers';
+import { statusLabel as watcherStatus } from './WorkspaceWatchersPage';
 import type { SessionTodo } from '../../api/todos';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -785,6 +788,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   useEffect(loadTodos, [loadTodos]);
 
   /*
+   * The watchers this session set, running ones first: what the agent is
+   * waiting on, which the transcript only shows as the call that set it.
+   */
+  const [watchers, setWatchers] = useState<Watcher[] | null>(null);
+  const loadWatchers = useCallback(() => {
+    if (sessionId === '') return;
+    fetchSessionWatchers(sessionId)
+      .then(setWatchers)
+      .catch(() => setWatchers(null));
+  }, [sessionId]);
+  useEffect(loadWatchers, [loadWatchers]);
+
+  /*
    * The ports agents asked to expose out of their box sessions, below the
    * notes, and the questions put to a person on their behalf - which the
    * transcript draws where they were asked. Nothing opens until somebody says
@@ -854,9 +870,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
      * with the session, which loadSession above reads on the same beat.
      */
     loadTodos();
+    loadWatchers();
     loadWriting();
     loadPorts();
-  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWriting, loadPorts]);
+  }, [loadSession, load, loadScratchpads, loadSessionBoxes, loadTodos, loadWatchers, loadWriting, loadPorts]);
 
   const filtered = debouncedSearch.trim() !== '' || kinds.length > 0;
 
@@ -2154,6 +2171,45 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           <p className={styles.familyNote} role="alert">
             {portError}
           </p>
+        )}
+      </aside>
+      {/*
+        The watchers this session set: running ones first, each with what it
+        is for (or the tool it calls) and where it stands. A row opens the
+        workspace's Watchers page, where one can be stopped.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('Watchers in this session')} data-session-watchers="">
+        <p className={styles.familyTitle}>{t('Watchers')}</p>
+        {watchers === null ? (
+          <p className={styles.familyNote}>{t('Could not load the watchers.')}</p>
+        ) : watchers.length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {[...watchers.filter((one) => one.status === 'ACTIVE'), ...watchers.filter((one) => one.status !== 'ACTIVE')].map((one) => (
+              <li key={one.id}>
+                <Link
+                  className={styles.watcherRow}
+                  to={`/workspace/${workspaceId}/watchers`}
+                  title={`${one.tool}(${one.arguments}) · ${one.conditionKind} ${one.condition}`}
+                  data-session-watcher={one.id}
+                  data-session-watcher-status={one.status}
+                >
+                  <span className={one.status === 'ACTIVE' ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotIdle}`} />
+                  <span className={styles.todoBody}>
+                    <span className={styles.todoText} data-session-watcher-text="">
+                      {one.description ?? one.tool}
+                    </span>
+                    <span className={styles.todoNote} data-session-watcher-state="">
+                      {one.status === 'ACTIVE'
+                        ? tf('{status} · check {checks} · set {when}', { status: watcherStatus(one.status), checks: one.checks, when: timeAgo(one.createdAt) })
+                        : tf('{status} · {when}', { status: watcherStatus(one.status), when: timeAgo(one.finishedAt ?? one.createdAt) })}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </aside>
       {/*

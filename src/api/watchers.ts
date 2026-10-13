@@ -117,6 +117,15 @@ export async function fetchWatchers(
   return data.watchers;
 }
 
+/** The watchers set in one session, running and ended, newest first. */
+export async function fetchSessionWatchers(sessionId: string): Promise<Watcher[]> {
+  const data = await graphql<{ sessionWatchers: Watcher[] }>(
+    `query ($sessionId: ID!) { sessionWatchers(sessionId: $sessionId) { ${FIELDS} } }`,
+    { sessionId },
+  );
+  return data.sessionWatchers;
+}
+
 /** Ends a running one; its agent is told, in its conversation. */
 export async function stopWatcher(id: string): Promise<Watcher> {
   const data = await graphql<{ stopWatcher: Watcher }>(

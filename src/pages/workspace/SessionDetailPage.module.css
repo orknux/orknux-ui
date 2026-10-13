@@ -1470,6 +1470,24 @@
   text-decoration: line-through;
 }
 
+/* A watcher: its dot, then what it is for and where it stands, the whole row a link to the Watchers page. */
+.watcherRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-4);
+  text-decoration: none;
+}
+
+.watcherRow:hover {
+  background: var(--color-surface-hover);
+}
+
+.watcherRow .dot {
+  margin-top: 6px;
+}
+
 .noteRow {
   display: flex;
   flex-direction: column;

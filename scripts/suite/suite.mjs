@@ -571,6 +571,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'session-watchers-check',
+    what: "A session page's Watchers panel lists the watchers it set, running first, with what each is for and where it stands",
+    needs: ['workspace'],
+    /* The session and its watchers are stubbed; the query is asked of the running server for its contract. */
+  },
+  {
     name: 'watchers-check',
     what: 'AI -> Watchers opens on the running ones with Active / Finished at the top left, Stop removes one, Finished draws the ended; Admin Settings draws the three limits',
     needs: ['workspace'],

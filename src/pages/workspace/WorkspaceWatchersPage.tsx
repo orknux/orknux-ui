@@ -44,7 +44,7 @@ function secondsFrom(iso: string): number {
   return Math.max(0, Math.round(Math.abs(Date.now() - new Date(iso).getTime()) / 1000));
 }
 
-function statusLabel(status: WatcherStatus): string {
+export function statusLabel(status: WatcherStatus): string {
   switch (status) {
     case 'ACTIVE':
       return t('Running');
