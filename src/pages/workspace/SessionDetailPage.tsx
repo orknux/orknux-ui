@@ -621,35 +621,52 @@ function SessionRuns({ workspaceId, sessionId }: { workspaceId: string; sessionI
  * fortnight of conversation is more than a page holds - so the search, the kind
  * filter and the sort all belong to this page rather than to what it is reading.
  */
-/** One row of the Timers panel: a reminder still waiting, or every one that rang with the same note. */
+/** One row of the Timers panel: every reminder set with one note - the next one due, if any, and how often it rang. */
 interface TimerRow {
-  id: string;
   note: string;
-  dueAt: string;
+  /** The soonest of them still waiting, or null when none is. */
+  dueAt: string | null;
+  /** The latest ring, or null when none has rung. */
   rangAt: string | null;
-  count: number;
+  rang: number;
 }
 
 /**
- * The Timers panel's rows: waiting reminders one each, soonest first, then the
- * rung ones folded by note, newest first. An agent re-arming a reminder every
- * few seconds leaves one row per ring, and fifty identical rows say less than
- * "Rang 50 times".
+ * The Timers panel's rows, one per note: those with a reminder waiting first,
+ * soonest first, then those that only rang, latest first.
+ *
+ * Per note rather than per reminder, waiting and rung together, because an
+ * agent re-arming a reminder every few seconds sets a new one on every ring:
+ * one row each was a panel of identical rows, and a waiting row beside the rung
+ * ones appeared and folded away on every ring. One row that says "Due in 3 s ·
+ * rang 11 times" stays where it is.
  */
 function timerRows(timers: SessionTimer[]): TimerRow[] {
-  const waiting = timers
-    .filter((one) => one.rangAt === null)
-    .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
-    .map((one) => ({ ...one, count: 1 }));
-  const rung = new Map<string, TimerRow>();
-  /* Newest first, as the server answers, so the first of a note is its latest ring. */
+  const byNote = new Map<string, TimerRow>();
+  /* Newest first, as the server answers, so the first ring of a note met is its latest. */
   for (const one of timers) {
-    if (one.rangAt === null) continue;
-    const seen = rung.get(one.note);
-    if (seen) seen.count += 1;
-    else rung.set(one.note, { ...one, count: 1 });
+    const row = byNote.get(one.note) ?? { note: one.note, dueAt: null, rangAt: null, rang: 0 };
+    if (one.rangAt === null) {
+      if (row.dueAt === null || one.dueAt < row.dueAt) row.dueAt = one.dueAt;
+    } else {
+      row.rang += 1;
+      row.rangAt ??= one.rangAt;
+    }
+    byNote.set(one.note, row);
   }
-  return [...waiting, ...rung.values()];
+  const rows = [...byNote.values()];
+  return [
+    ...rows.filter((one) => one.dueAt !== null).sort((a, b) => (a.dueAt ?? '').localeCompare(b.dueAt ?? '')),
+    ...rows.filter((one) => one.dueAt === null),
+  ];
+}
+
+/** "Due in 3 s", and how often it rang before where it has. */
+function timerDue(row: TimerRow & { dueAt: string }): string {
+  const time = duration(Math.max(0, Math.round((new Date(row.dueAt).getTime() - Date.now()) / 1000)));
+  if (row.rang === 0) return tf('Due in {time}', { time });
+  if (row.rang === 1) return tf('Due in {time} · rang once', { time });
+  return tf('Due in {time} · rang {count} times', { time, count: row.rang });
 }
 
 export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps) {
@@ -2273,24 +2290,24 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           <ul className={styles.familyList}>
             {timerRows(timers).map((one) => (
               <li
-                key={one.id}
+                key={one.note}
                 className={styles.todoRow}
-                title={moment(one.rangAt ?? one.dueAt)}
-                data-session-timer={one.id}
-                data-session-timer-waiting={one.rangAt === null ? 'true' : 'false'}
-                data-session-timer-count={one.count}
+                title={moment(one.dueAt ?? one.rangAt ?? '')}
+                data-session-timer={one.note}
+                data-session-timer-waiting={one.dueAt !== null ? 'true' : 'false'}
+                data-session-timer-count={one.rang}
               >
-                <span className={one.rangAt === null ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotDone}`} />
+                <span className={one.dueAt !== null ? `${styles.dot} ${styles.dotActive}` : `${styles.dot} ${styles.dotDone}`} />
                 <span className={styles.todoBody}>
                   <span className={styles.todoText} data-session-timer-text="">
                     {one.note}
                   </span>
                   <span className={styles.todoNote} data-session-timer-state="">
-                    {one.rangAt === null
-                      ? tf('Due in {time}', { time: duration(Math.max(0, Math.round((new Date(one.dueAt).getTime() - Date.now()) / 1000))) })
-                      : one.count > 1
-                        ? tf('Rang {count} times · last {when}', { count: one.count, when: timeAgo(one.rangAt) })
-                        : tf('Rang {when}', { when: timeAgo(one.rangAt) })}
+                    {one.dueAt !== null
+                      ? timerDue({ ...one, dueAt: one.dueAt })
+                      : one.rang > 1
+                        ? tf('Rang {count} times · last {when}', { count: one.rang, when: timeAgo(one.rangAt ?? '') })
+                        : tf('Rang {when}', { when: timeAgo(one.rangAt ?? '') })}
                   </span>
                 </span>
               </li>

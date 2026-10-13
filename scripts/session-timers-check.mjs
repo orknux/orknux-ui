@@ -26,16 +26,20 @@ const EVENTS = [{ id: 1, kind: 'AGENT', actor: 'Builder', content: 'I will say h
 
 const from = (seconds) => new Date(Date.now() + seconds * 1000).toISOString();
 /*
- * Newest first, as the server answers: three rings of one re-armed reminder are newest, and the later of the
- * two waiting is set after the sooner. The rings fold into one row - an agent re-arming every few seconds
- * otherwise fills the panel with identical rows.
+ * Newest first, as the server answers. "said hi" is a reminder its agent
+ * re-arms on every ring: three rang and the fourth is waiting, and all four are
+ * one row - one each was a panel of identical rows, and a waiting row that
+ * appeared and folded away on every ring. "old one" rang once and was not set
+ * again.
  */
 const TIMERS = [
+  { id: '6', note: 'said hi', createdAt: from(-5), dueAt: from(90), rangAt: null },
   { id: '5', note: 'said hi', createdAt: from(-30), dueAt: from(-20), rangAt: from(-20) },
   { id: '4', note: 'said hi', createdAt: from(-40), dueAt: from(-30), rangAt: from(-30) },
   { id: '3', note: 'said hi', createdAt: from(-50), dueAt: from(-40), rangAt: from(-40) },
   { id: '2', note: 'look at the report', createdAt: from(-60), dueAt: from(3600), rangAt: null },
   { id: '1', note: 'say hi again', createdAt: from(-90), dueAt: from(300), rangAt: null },
+  { id: '0', note: 'old one', createdAt: from(-900), dueAt: from(-800), rangAt: from(-800) },
 ];
 
 await page.route('**/graphql', async (route) => {
@@ -57,16 +61,19 @@ record(title === 'Timers', `under the heading Timers (${title})`);
 
 const rows = panel.locator('[data-session-timer]');
 await rows.first().waitFor({ timeout: 10_000 }).catch(() => {});
-record((await rows.count()) === 3, `a row per waiting timer, and one for the rings of the same note (${await rows.count()})`);
+record((await rows.count()) === 4, `a row per note, waiting and rung together (${await rows.count()})`);
 const order = await rows.evaluateAll((all) => all.map((one) => one.getAttribute('data-session-timer')));
-record(order.join(',') === '1,2,5', `waiting first and soonest first, then the rung ones as one row, by the latest (${order.join(',')})`);
+record(order.join('|') === 'said hi|say hi again|look at the report|old one', `waiting first and soonest first, then what only rang (${order.join('|')})`);
 
-const text = ((await rows.nth(0).locator('[data-session-timer-text]').textContent().catch(() => '')) ?? '').trim();
+const state = async (n) => ((await rows.nth(n).locator('[data-session-timer-state]').textContent().catch(() => '')) ?? '').trim();
+const rearmed = await state(0);
+record(/^Due in [1-9][0-9] s · rang 3 times$/.test(rearmed), `a re-armed reminder says when it is next due and how often it rang (${rearmed})`);
+const text = ((await rows.nth(1).locator('[data-session-timer-text]').textContent().catch(() => '')) ?? '').trim();
 record(text === 'say hi again', `a row says what the reminder is for (${text})`);
-const due = ((await rows.nth(0).locator('[data-session-timer-state]').textContent().catch(() => '')) ?? '').trim();
+const due = await state(1);
 record(/^Due in (299|300) s$|^Due in 5 min$/.test(due), `and when it comes up (${due})`);
-const rang = ((await rows.nth(2).locator('[data-session-timer-state]').textContent().catch(() => '')) ?? '').trim();
-record(/^Rang 3 times · last /.test(rang), `or how often it rang, and when last (${rang})`);
+const rang = await state(3);
+record(/^Rang /.test(rang) && !/times/.test(rang), `or that it rang (${rang})`);
 
 /* Beside the transcript, above the to-do list. */
 const box = await panel.boundingBox().catch(() => null);
