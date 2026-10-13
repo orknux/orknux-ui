@@ -321,12 +321,12 @@ function EventLine({ event, workspaceId }: { event: LlmSessionEvent; workspaceId
         {/* The time sits right before the toggle where the line folds from its head. */}
         {headFold ? (
           <FoldToggle text={text} open={open} onToggle={() => setOpen((was) => !was)}>
-            <span className={styles.at} title={moment(event.at)}>
+            <span className={styles.at} title={moment(event.at)} data-at={event.at}>
               {timeOfDay(event.at)}
             </span>
           </FoldToggle>
         ) : (
-          <span className={styles.at} title={moment(event.at)}>
+          <span className={styles.at} title={moment(event.at)} data-at={event.at}>
             {timeOfDay(event.at)}
           </span>
         )}
@@ -451,7 +451,7 @@ function AgentDetailsBlock({
           )}
           {details.model != null ? ` · ${details.model}` : ''}
         </span>
-        <span className={styles.at} title={moment(at)}>
+        <span className={styles.at} title={moment(at)} data-at={at}>
           {timeOfDay(at)}
         </span>
       </div>

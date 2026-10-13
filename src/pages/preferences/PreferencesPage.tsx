@@ -541,7 +541,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                 disabled={savingZone}
                 onChange={(event) => void chooseZone(event.target.value)}
               >
-                <option value="">{tf("This browser's ({zone})", { zone: browserTimeZone() })}</option>
+                <option value="">{tf('This browser\'s ({zone})',{ zone: browserTimeZone() })}</option>
                 {timeZones().map((one) => (
                   <option key={one} value={one}>
                     {one}

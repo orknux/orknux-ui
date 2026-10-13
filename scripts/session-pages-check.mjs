@@ -306,8 +306,8 @@ const drawnLines = () =>
     lines.map((line) => ({
       kind: line.querySelector('[class*="_kindBadge_"]')?.textContent?.trim() ?? '',
       actor: line.querySelector('[class*="_actor_"]')?.textContent?.trim() ?? '',
-      /* The exact moment, which the page carries as the title of the clock. */
-      at: line.querySelector('span[title]')?.getAttribute('title') ?? '',
+      /* The exact moment, which the clock carries as data; its title is the moment as a person reads it. */
+      at: line.querySelector('[data-at]')?.getAttribute('data-at') ?? '',
     })),
   );
 

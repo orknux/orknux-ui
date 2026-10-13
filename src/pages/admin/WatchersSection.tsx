@@ -206,8 +206,8 @@ export function WatchersSection({ onPending, busy = false }: WatchersSectionProp
 
       <section className={page.settingGroup} aria-labelledby="watcher-looks" data-testid="watcher-looks">
         <span className={page.labelWithHint}>
-          <p className={page.settingLabel} id="watcher-looks">{t("Agent's watcher looks")}</p>
-          <FieldHint label={t("Agent's watcher looks")}>
+          <p className={page.settingLabel} id="watcher-looks">{t('Agent\'s watcher looks')}</p>
+          <FieldHint label={t('Agent\'s watcher looks')}>
             {t('Where the agent gave no agent check, its looks back off exponentially: the first after the first delay, each wait after that the last one times the multiplier, never longer than the longest wait.')}
           </FieldHint>
         </span>
