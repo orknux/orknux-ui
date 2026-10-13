@@ -10,6 +10,7 @@ const REDO_KEY = 'orknux.redoShortcut';
 const DUPLICATE_KEY = 'orknux.duplicateShortcut';
 const ADD_KEY = 'orknux.addShortcut';
 const PUBLISH_KEY = 'orknux.publishShortcut';
+const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
 
 /** What opens the palette when nothing has been chosen. */
 export const DEFAULT_SHORTCUT = 'Ctrl+Q';
@@ -121,6 +122,18 @@ export const DEFAULT_ADD_SHORTCUT = 'A';
 export const DEFAULT_PUBLISH_SHORTCUT = 'Ctrl+Enter';
 
 /**
+ * What mutes and unmutes the microphone in voice mode when nothing has been
+ * chosen.
+ *
+ * Alt+M, M for mute. A modifier rather than a bare M, because it is heard while
+ * the composer beside the panel has the caret, and somebody typing a word with
+ * an M in it should not go deaf. Not Ctrl+M, which a browser can take to mute
+ * the tab - the opposite direction - nor Ctrl+Shift+M, which opens Chrome's
+ * profile menu. Nothing else here claims it.
+ */
+export const DEFAULT_VOICE_MUTE_SHORTCUT = 'Alt+M';
+
+/**
  * Which keystroke opens the command palette, written the way it is shown:
  * modifiers in a fixed order, then the key — `Ctrl+Q`, `Ctrl+Shift+P`, `Alt+G`.
  *
@@ -187,6 +200,7 @@ const redoing = remembered(REDO_KEY, DEFAULT_REDO_SHORTCUT);
 const duplicating = remembered(DUPLICATE_KEY, DEFAULT_DUPLICATE_SHORTCUT);
 const addingNode = remembered(ADD_KEY, DEFAULT_ADD_SHORTCUT);
 const publishing = remembered(PUBLISH_KEY, DEFAULT_PUBLISH_SHORTCUT);
+const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
 
 export function paletteShortcut(): Shortcut {
   return palette.get();
@@ -306,6 +320,18 @@ export function setPublishShortcut(next: Shortcut): void {
 
 export function usePublishShortcut(): Shortcut {
   return publishing.use();
+}
+
+export function voiceMuteShortcut(): Shortcut {
+  return voiceMuting.get();
+}
+
+export function setVoiceMuteShortcut(next: Shortcut): void {
+  voiceMuting.set(next);
+}
+
+export function useVoiceMuteShortcut(): Shortcut {
+  return voiceMuting.use();
 }
 
 /** One key, named as somebody would read it rather than as the browser sends it. */

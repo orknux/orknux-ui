@@ -23,6 +23,7 @@ import {
   DEFAULT_REDO_SHORTCUT,
   DEFAULT_DUPLICATE_SHORTCUT,
   DEFAULT_PUBLISH_SHORTCUT,
+  DEFAULT_VOICE_MUTE_SHORTCUT,
   DEFAULT_RECENT_SHORTCUT,
   DEFAULT_SAVE_SHORTCUT,
   setFormatShortcut,
@@ -32,6 +33,7 @@ import {
   setRedoShortcut,
   setDuplicateShortcut,
   setPublishShortcut,
+  setVoiceMuteShortcut,
   setPaletteShortcut,
   setRecentShortcut,
   setSaveShortcut,
@@ -43,6 +45,7 @@ import {
   useRedoShortcut,
   useDuplicateShortcut,
   usePublishShortcut,
+  useVoiceMuteShortcut,
   usePaletteShortcut,
   useRecentShortcut,
   useSaveShortcut,
@@ -77,6 +80,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
   const redo = useRedoShortcut();
   const duplicate = useDuplicateShortcut();
   const publish = usePublishShortcut();
+  const voiceMute = useVoiceMuteShortcut();
   /**
    * Which shortcut the next keystroke belongs to, or null while none is being
    * recorded. Not a boolean: there are ten of these now, and they share the one
@@ -93,6 +97,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
     | 'redo'
     | 'duplicate'
     | 'publish'
+    | 'voiceMute'
     | null
   >(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -140,6 +145,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
       else if (recording === 'redo') setRedoShortcut(said);
       else if (recording === 'duplicate') setDuplicateShortcut(said);
       else if (recording === 'publish') setPublishShortcut(said);
+      else if (recording === 'voiceMute') setVoiceMuteShortcut(said);
       else setFormatShortcut(said);
       setRecording(null);
       setRefused(null);
@@ -948,6 +954,43 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                 )}
               </div>
               {recording === 'publish' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting} data-voice-mute-setting="">
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="voice-mute-shortcut">
+                  {t('Voice Mute Shortcut')}
+                </span>
+                <FieldHint label={t('Voice Mute Shortcut')}>
+                  {t('Mutes and unmutes your microphone while voice mode is open. Muted, nothing you say is heard or sent, and the answer being read aloud goes on.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'voiceMute' ? styles.optionCurrent : styles.option}
+                  aria-labelledby="voice-mute-shortcut"
+                  data-voice-mute-record=""
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'voiceMute' ? null : 'voiceMute'));
+                  }}
+                >
+                  {recording === 'voiceMute' ? t('Press any keys…') : voiceMute}
+                </button>
+                {voiceMute !== DEFAULT_VOICE_MUTE_SHORTCUT && recording !== 'voiceMute' && (
+                  <button
+                    type="button"
+                    className={styles.option}
+                    onClick={() => setVoiceMuteShortcut(DEFAULT_VOICE_MUTE_SHORTCUT)}
+                  >{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'voiceMute' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>

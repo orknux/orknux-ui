@@ -5,7 +5,8 @@ import { CHUNKING_DEFAULT, readAloud } from './readAloud';
 import type { Reading, SpeechChunking } from './readAloud';
 import { transcribe } from '../api/transcription';
 import styles from './VoiceMode.module.css';
-import { t } from '../i18n';
+import { t, tf } from '../i18n';
+import { matches, useVoiceMuteShortcut } from '../session/shortcut';
 
 /**
  * Hands-free conversation: it listens, sends what it heard, and reads the
@@ -377,6 +378,39 @@ export function VoiceMode({
     });
   }, [pauseSetting, overRoomSetting, unattendedSetting, bargeSetting]);
   const stream = useRef<MediaStream | null>(null);
+
+  /*
+   * Muted: the microphone stays open and its track is switched off, so the
+   * level reads nothing, no turn starts and nothing is recorded or sent - while
+   * the answer being read aloud goes on. Off rather than closed because closing
+   * is what made the gaps between turns deaf, and unmuting should be instant.
+   *
+   * A ref beside the state because a microphone opened after the press - the
+   * loop reopens one after every utterance - has to come up muted too, and the
+   * callback that opens it is not rebuilt for a state change.
+   */
+  const [muted, setMuted] = useState(false);
+  const mutedNow = useRef(false);
+  const muteShortcut = useVoiceMuteShortcut();
+  const toggleMute = useCallback(() => {
+    const next = !mutedNow.current;
+    mutedNow.current = next;
+    stream.current?.getAudioTracks().forEach((track) => {
+      track.enabled = !next;
+    });
+    setMuted(next);
+  }, []);
+  useEffect(() => {
+    // Heard wherever the caret is, the composer included: it is a combination
+    // with a modifier, which nobody types into a message.
+    function onKey(event: KeyboardEvent) {
+      if (!matches(event, muteShortcut)) return;
+      event.preventDefault();
+      toggleMute();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [muteShortcut, toggleMute]);
   const recorder = useRef<MediaRecorder | null>(null);
   const context = useRef<AudioContext | null>(null);
   const frame = useRef<number | null>(null);
@@ -604,6 +638,9 @@ export function VoiceMode({
     // saying so: two open microphones means one of them has nobody.
     release();
     stream.current = opened;
+    opened.getAudioTracks().forEach((track) => {
+      track.enabled = !mutedNow.current;
+    });
     const ears = new AudioContext();
     context.current = ears;
     const analyser = ears.createAnalyser();
@@ -673,7 +710,8 @@ export function VoiceMode({
        * easier to satisfy wins, so a quiet voice in a quiet room passes on the
        * ratio and a normal voice in a noisy one passes on the level.
        */
-      const aVoice = loudness > Math.max(floor * overRoom, VISIBLE_LEVEL) || loudness > SPEECH_LEVEL;
+      const aVoice =
+        !mutedNow.current && (loudness > Math.max(floor * overRoom, VISIBLE_LEVEL) || loudness > SPEECH_LEVEL);
       if (aVoice) {
         spokeAt = now;
       }
@@ -889,15 +927,33 @@ export function VoiceMode({
   }
 
   const caption =
-    phase === 'listening' ? 'Listening' : phase === 'thinking' ? 'Thinking' : 'Speaking';
+    muted && phase === 'listening'
+      ? t('Muted')
+      : phase === 'listening'
+        ? 'Listening'
+        : phase === 'thinking'
+          ? 'Thinking'
+          : 'Speaking';
 
   return (
     <aside className={styles.panel} aria-label={t('Voice mode')}>
       <header className={styles.head}>
         <h2 className={styles.title}>{t('Voice')}</h2>
-        <button type="button" className={styles.close} onClick={onClose} aria-label={t('Leave voice mode')}>
-          {t('Leave')}
-        </button>
+        <span className={styles.actions}>
+          <button
+            type="button"
+            className={muted ? `${styles.close} ${styles.muted}` : styles.close}
+            onClick={toggleMute}
+            aria-pressed={muted}
+            title={tf('{action} ({shortcut})', { action: muted ? t('Unmute') : t('Mute'), shortcut: muteShortcut })}
+            data-voice-mute=""
+          >
+            {muted ? t('Unmute') : t('Mute')}
+          </button>
+          <button type="button" className={styles.close} onClick={onClose} aria-label={t('Leave voice mode')}>
+            {t('Leave')}
+          </button>
+        </span>
       </header>
 
       <button
@@ -925,7 +981,9 @@ export function VoiceMode({
         for the same reason the caption above it does.
       */}
       <p className={styles.hint}>
-        {phase === 'listening'
+        {muted
+          ? tf('Muted — press {shortcut} to speak again.', { shortcut: muteShortcut })
+          : phase === 'listening'
           ? t('Speak — it answers when you stop.')
           : phase === 'speaking'
             ? t('Tap the circle to cut in.')

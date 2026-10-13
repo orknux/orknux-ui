@@ -2376,6 +2376,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'voice-mute-check',
+    what: 'Voice mode mutes by a button and by the shortcut chosen in Preferences; muted, a voice moves nothing, is not transcribed and is not sent',
+    needs: ['workspace'],
+    /* Makes two models and a chat and removes them; puts the turn-taking and the shortcut back. */
+  },
+  {
     name: 'voice-talk-over-check',
     what: 'a voice over an answer stops it, and a cough over one does not',
     needs: ['workspace'],

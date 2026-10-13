@@ -46,6 +46,17 @@
   color: var(--color-text-primary);
 }
 
+.actions {
+  display: flex;
+  gap: var(--space-8);
+}
+
+/* Muted is a state somebody must not forget they are in, so it is not quiet grey. */
+.muted {
+  border-color: var(--color-danger, #f85149);
+  color: var(--color-danger, #f85149);
+}
+
 /*
  * The circle.
  *
