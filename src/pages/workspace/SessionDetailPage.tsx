@@ -2238,6 +2238,83 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         )}
       </aside>
       {/*
+        The agent's to-do list, below the boxes. Open items first, in the
+        agent's order, and then the done ones, muted and struck through, rather
+        than folded into a count: the prompt folds them because the model has no
+        use for what it finished, but a person reading the session is asking
+        exactly that - how far it got - and the open ones are still what the eye
+        lands on first.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('To-do list in this session')} data-session-todos="">
+        <p className={styles.familyTitle}>{t('To-do')}</p>
+        {todos === null ? (
+          <p className={styles.familyNote}>{t('Could not load the to-do list.')}</p>
+        ) : todos.length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {[...todos.filter((one) => !one.done), ...todos.filter((one) => one.done)].map((one) => (
+              <li
+                key={one.id}
+                className={one.done ? `${styles.todoRow} ${styles.todoRowDone}` : styles.todoRow}
+                data-session-todo={one.id}
+                data-session-todo-done={one.done ? 'true' : 'false'}
+              >
+                <span
+                  className={one.done ? `${styles.todoMark} ${styles.todoMarkDone}` : styles.todoMark}
+                  role="img"
+                  aria-label={one.done ? t('Done') : t('Not done yet')}
+                  data-session-todo-mark=""
+                >
+                  {one.done && <img src={checkIcon} alt="" />}
+                </span>
+                <span className={styles.todoBody}>
+                  <span className={styles.todoText} data-session-todo-text="">
+                    {one.text}
+                  </span>
+                  {one.note !== null && one.note !== '' && (
+                    <span className={styles.todoNote} data-session-todo-note="">
+                      {one.note}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+      {/*
+        What the agents here wrote down for themselves with note_to_self, below
+        the to-dos. Read off the session the page already loads - the same rows
+        the agent is handed back at every turn, in the order it is handed them,
+        oldest first - rather than off the transcript's NOTE lines, which are
+        one filtered page of the log and miss whatever is on another page. In
+        written order because that is how the agent reads them: the panel shows
+        what the agent is carrying, not a feed. The NOTE lines in the transcript
+        stay where they were written, for a reader following the conversation.
+      */}
+      <aside className={styles.scratchpads} aria-label={t('Notes in this session')} data-session-notes="">
+        <p className={styles.familyTitle}>{t('Notes')}</p>
+        {held === null ? (
+          <p className={styles.familyNote}>{t('Loading…')}</p>
+        ) : (held.notes ?? []).length === 0 ? (
+          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
+        ) : (
+          <ul className={styles.familyList}>
+            {(held.notes ?? []).map((one) => (
+              <li key={one.id} className={styles.noteRow} data-session-note={one.id}>
+                <span className={styles.todoText} data-session-note-text="">
+                  {one.note}
+                </span>
+                <span className={styles.todoNote}>
+                  {one.writtenBy} · {timeAgo(one.writtenAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+      {/*
         The watchers this session set: running ones first, each with what it
         is for (or the tool it calls) and where it stands. A row opens the
         workspace's Watchers page, where one can be stopped.
@@ -2309,83 +2386,6 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                         ? tf('Rang {count} times · last {when}', { count: one.rang, when: timeAgo(one.rangAt ?? '') })
                         : tf('Rang {when}', { when: timeAgo(one.rangAt ?? '') })}
                   </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-      {/*
-        The agent's to-do list, below the boxes. Open items first, in the
-        agent's order, and then the done ones, muted and struck through, rather
-        than folded into a count: the prompt folds them because the model has no
-        use for what it finished, but a person reading the session is asking
-        exactly that - how far it got - and the open ones are still what the eye
-        lands on first.
-      */}
-      <aside className={styles.scratchpads} aria-label={t('To-do list in this session')} data-session-todos="">
-        <p className={styles.familyTitle}>{t('To-do')}</p>
-        {todos === null ? (
-          <p className={styles.familyNote}>{t('Could not load the to-do list.')}</p>
-        ) : todos.length === 0 ? (
-          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
-        ) : (
-          <ul className={styles.familyList}>
-            {[...todos.filter((one) => !one.done), ...todos.filter((one) => one.done)].map((one) => (
-              <li
-                key={one.id}
-                className={one.done ? `${styles.todoRow} ${styles.todoRowDone}` : styles.todoRow}
-                data-session-todo={one.id}
-                data-session-todo-done={one.done ? 'true' : 'false'}
-              >
-                <span
-                  className={one.done ? `${styles.todoMark} ${styles.todoMarkDone}` : styles.todoMark}
-                  role="img"
-                  aria-label={one.done ? t('Done') : t('Not done yet')}
-                  data-session-todo-mark=""
-                >
-                  {one.done && <img src={checkIcon} alt="" />}
-                </span>
-                <span className={styles.todoBody}>
-                  <span className={styles.todoText} data-session-todo-text="">
-                    {one.text}
-                  </span>
-                  {one.note !== null && one.note !== '' && (
-                    <span className={styles.todoNote} data-session-todo-note="">
-                      {one.note}
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-      {/*
-        What the agents here wrote down for themselves with note_to_self, below
-        the to-dos. Read off the session the page already loads - the same rows
-        the agent is handed back at every turn, in the order it is handed them,
-        oldest first - rather than off the transcript's NOTE lines, which are
-        one filtered page of the log and miss whatever is on another page. In
-        written order because that is how the agent reads them: the panel shows
-        what the agent is carrying, not a feed. The NOTE lines in the transcript
-        stay where they were written, for a reader following the conversation.
-      */}
-      <aside className={styles.scratchpads} aria-label={t('Notes in this session')} data-session-notes="">
-        <p className={styles.familyTitle}>{t('Notes')}</p>
-        {held === null ? (
-          <p className={styles.familyNote}>{t('Loading…')}</p>
-        ) : (held.notes ?? []).length === 0 ? (
-          <p className={styles.familyNote}>{t('None in this session yet.')}</p>
-        ) : (
-          <ul className={styles.familyList}>
-            {(held.notes ?? []).map((one) => (
-              <li key={one.id} className={styles.noteRow} data-session-note={one.id}>
-                <span className={styles.todoText} data-session-note-text="">
-                  {one.note}
-                </span>
-                <span className={styles.todoNote}>
-                  {one.writtenBy} · {timeAgo(one.writtenAt)}
                 </span>
               </li>
             ))}

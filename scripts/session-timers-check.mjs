@@ -75,9 +75,9 @@ record(/^Due in (299|300) s$|^Due in 5 min$/.test(due), `and when it comes up ($
 const rang = await state(3);
 record(/^Rang /.test(rang) && !/times/.test(rang), `or that it rang (${rang})`);
 
-/* Beside the transcript, above the to-do list. */
+/* Beside the transcript, below the notes. */
 const box = await panel.boundingBox().catch(() => null);
-const todo = await page.locator('[data-session-todos]').boundingBox().catch(() => null);
-record(box !== null && todo !== null && box.y < todo.y && Math.abs(box.x - todo.x) <= 1, `in the side column, above the to-do list (${box?.y} / ${todo?.y})`);
+const notes = await page.locator('[data-session-notes]').boundingBox().catch(() => null);
+record(box !== null && notes !== null && box.y > notes.y && Math.abs(box.x - notes.x) <= 1, `in the side column, below the notes (${box?.y} / ${notes?.y})`);
 
 await finish(browser);

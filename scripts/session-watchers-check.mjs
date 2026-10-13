@@ -73,9 +73,9 @@ record(/^Fired · /.test(ended), `or how it ended (${ended})`);
 const href = await rows.nth(0).getAttribute('href').catch(() => null);
 record(href === `/workspace/${WORKSPACE}/watchers`, `a row opens the workspace's Watchers page (${href})`);
 
-/* Beside the transcript, above the to-do list. */
+/* Beside the transcript, below the notes. */
 const box = await panel.boundingBox().catch(() => null);
-const todo = await page.locator('[data-session-todos]').boundingBox().catch(() => null);
-record(box !== null && todo !== null && box.y < todo.y && Math.abs(box.x - todo.x) <= 1, `in the side column, above the to-do list (${box?.y} / ${todo?.y})`);
+const notes = await page.locator('[data-session-notes]').boundingBox().catch(() => null);
+record(box !== null && notes !== null && box.y > notes.y && Math.abs(box.x - notes.x) <= 1, `in the side column, below the notes (${box?.y} / ${notes?.y})`);
 
 await finish(browser);
