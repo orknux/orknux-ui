@@ -1130,6 +1130,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
                 speechOverRoomPercent: held.voiceSpeechOverRoomPercent,
                 unattendedMicrophoneMs: held.voiceUnattendedMicrophoneMs,
                 bargeInMs: held.voiceBargeInMs,
+                bargeInWhileThinking: held.voiceBargeInWhileThinking,
               },
         );
       })

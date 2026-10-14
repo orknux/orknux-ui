@@ -368,6 +368,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [unattended, setUnattended] = useState('');
   /** How long somebody talks over the answer before it stops; 0 is off. #342. */
   const [bargeIn, setBargeIn] = useState('');
+  const [bargeThinking, setBargeThinking] = useState(true);
   /**
    * Where an answer is cut for the speech model, drafted.
    *
@@ -511,6 +512,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setOverRoom(inBox(found?.voiceSpeechOverRoomPercent ?? null, AS_IS));
         setUnattended(inBox(found?.voiceUnattendedMicrophoneMs ?? null, A_MINUTE));
         setBargeIn(inBox(found?.voiceBargeInMs ?? null, A_SECOND));
+        setBargeThinking(found?.voiceBargeInWhileThinking ?? true);
         setChunking(found?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
         setCompanion(found?.companionModelId ?? '');
         setTranscription(found?.transcriptionModelId ?? '');
@@ -753,6 +755,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           asStored(overRoom, AS_IS),
           asStored(unattended, A_MINUTE),
           asStored(bargeIn, A_SECOND),
+          // On is the default and is stored as nothing; only off is a departure.
+          bargeThinking ? null : false,
         );
       }
       if (touched.has('chunking')) {
@@ -819,6 +823,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setOverRoom(inBox(held.voiceSpeechOverRoomPercent, AS_IS));
     setUnattended(inBox(held.voiceUnattendedMicrophoneMs, A_MINUTE));
     setBargeIn(inBox(held.voiceBargeInMs, A_SECOND));
+    setBargeThinking(held.voiceBargeInWhileThinking ?? true);
     setChunking(held.voiceSpeechChunking);
     setCompactAfter(held.compactAfterTokens == null ? '' : String(held.compactAfterTokens));
     setSummaryTokens(held.compactionSummaryTokens == null ? '' : String(held.compactionSummaryTokens));
@@ -2179,6 +2184,29 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             />
             <span className={styles.unit}>{t('seconds')}</span>
           </div>
+        </div>
+
+        {/*
+          The same interruption while the model is still thinking: on unless the
+          workspace turns it off, after the same hold as above.
+        */}
+        <div className={styles.checkRowWithHint}>
+          <label className={styles.checkRow}>
+            <input
+              id="voice-barge-in-thinking"
+              type="checkbox"
+              checked={bargeThinking}
+              disabled={workspace === null}
+              onChange={(event) => {
+                touch('voice');
+                setBargeThinking(event.target.checked);
+              }}
+            />
+            <span>{t('Talking while it thinks stops it too')}</span>
+          </label>
+          <FieldHint label={t('Talking while it thinks stops it too')}>
+            {t('Talking for as long as the setting above asks, while the model is still working out its answer, stops it and listens - what you said becomes the next turn. Off, it is left to finish and what you said waits for the turn after. On by default.')}
+          </FieldHint>
         </div>
 
         {/*

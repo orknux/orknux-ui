@@ -187,6 +187,8 @@ export interface Workspace {
    * uses its own number.
    */
   voiceBargeInMs: number | null;
+  /** Whether talking while the model thinks stops it too; null is the default, on. */
+  voiceBargeInWhileThinking: boolean | null;
   /**
    * Where an answer is cut before it is handed to the speech model.
    *
@@ -206,7 +208,7 @@ const WORKSPACE_FIELDS =
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
-  'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs ' +
+  'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
   'voiceSpeechChunking chatShowTimestamps';
 
 /** Just enough of a role to name it where a workspace lists what opens it. */
@@ -522,6 +524,8 @@ export async function setWorkspaceVoiceTurnTaking(
   unattendedMicrophoneMs: number | null,
   /** How long somebody talks over the answer before it stops; 0 is off. #342. */
   bargeInMs: number | null,
+  /** Whether talking while the model thinks stops it too; null is the default, on. */
+  bargeInWhileThinking: boolean | null,
 ): Promise<Workspace> {
   const data = await graphql<{ setWorkspaceVoiceTurnTaking: Workspace }>(
     `mutation SetWorkspaceVoiceTurnTaking(
@@ -530,6 +534,7 @@ export async function setWorkspaceVoiceTurnTaking(
        $speechOverRoomPercent: Int
        $unattendedMicrophoneMs: Int
        $bargeInMs: Int
+       $bargeInWhileThinking: Boolean
      ) {
        setWorkspaceVoiceTurnTaking(
          workspaceId: $workspaceId
@@ -537,9 +542,10 @@ export async function setWorkspaceVoiceTurnTaking(
          speechOverRoomPercent: $speechOverRoomPercent
          unattendedMicrophoneMs: $unattendedMicrophoneMs
          bargeInMs: $bargeInMs
+         bargeInWhileThinking: $bargeInWhileThinking
        ) { ${WORKSPACE_FIELDS} }
      }`,
-    { workspaceId, pauseEndsTurnMs, speechOverRoomPercent, unattendedMicrophoneMs, bargeInMs },
+    { workspaceId, pauseEndsTurnMs, speechOverRoomPercent, unattendedMicrophoneMs, bargeInMs, bargeInWhileThinking },
   );
   return data.setWorkspaceVoiceTurnTaking;
 }

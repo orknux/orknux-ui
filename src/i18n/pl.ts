@@ -2450,6 +2450,8 @@ export const PL: Record<string, string> = {
   "Muted": "Wyciszony",
   "{action} ({shortcut})": "{action} ({shortcut})",
   "Muted — press {shortcut} to speak again.": "Wyciszony — naciśnij {shortcut}, by znów mówić.",
+  "Talking while it thinks stops it too": "Mówienie, gdy model myśli, też go zatrzymuje",
+  "Talking for as long as the setting above asks, while the model is still working out its answer, stops it and listens - what you said becomes the next turn. Off, it is left to finish and what you said waits for the turn after. On by default.": "Mówienie tak długo, jak wymaga ustawienie powyżej, gdy model wciąż obmyśla odpowiedź, zatrzymuje go i słucha — to, co powiesz, staje się następną turą. Wyłączone: model kończy, a to, co powiesz, czeka na kolejną turę. Domyślnie włączone.",
   "Watchers in this session": "Obserwatory w tej sesji",
   "{status} · check {checks} · set {when}": "{status} · sprawdzenie {checks} · ustawiony {when}",
   "{status} · {when}": "{status} · {when}",

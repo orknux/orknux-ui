@@ -50,6 +50,13 @@ export interface VoiceTurnTaking {
    * conversation: say "no, not that" and be listened to.
    */
   bargeInMs: number | null;
+  /**
+   * Whether talking while the model is still thinking stops it too, after the
+   * same hold. Null is the default, which is on: somebody who starts talking
+   * before the answer has started has usually changed their mind about the
+   * question, and waiting out an answer to the old one is the slow way round.
+   */
+  bargeInWhileThinking?: boolean | null;
 }
 
 export interface VoiceModeProps {
@@ -234,6 +241,7 @@ export const VOICE_TURN_TAKING_DEFAULTS = {
   speechOverRoomPercent: SPEECH_OVER_ROOM * 100,
   unattendedMicrophoneMs: LONGEST_TURN_MS,
   bargeInMs: BARGE_IN_MS,
+  bargeInWhileThinking: true,
 } as const;
 
 /** What is really in force: whatever the workspace decided, else the above. */
@@ -247,6 +255,7 @@ function inForce(chosen: VoiceTurnTaking | null | undefined) {
     // Zero is the workspace saying "leave the answer alone", which is a decision
     // and not an absence - so it has to survive the `??` that fills in a null.
     bargeMs: chosen?.bargeInMs ?? VOICE_TURN_TAKING_DEFAULTS.bargeInMs,
+    bargeThinking: chosen?.bargeInWhileThinking ?? VOICE_TURN_TAKING_DEFAULTS.bargeInWhileThinking,
   };
 }
 
@@ -305,6 +314,8 @@ export function VoiceMode({
    * and it is written where the state is so the two cannot disagree.
    */
   const speakingNow = useRef(false);
+  /** The same for thinking, which talking can stop too where the workspace allows. */
+  const thinkingNow = useRef(false);
   const [level, setLevel] = useState(0);
   const [said, setSaid] = useState<Said | null>(null);
   /** What was said into the gap and has not been sent yet, for the panel to show. */
@@ -368,6 +379,7 @@ export function VoiceMode({
   const overRoomSetting = turnTaking?.speechOverRoomPercent ?? null;
   const unattendedSetting = turnTaking?.unattendedMicrophoneMs ?? null;
   const bargeSetting = turnTaking?.bargeInMs ?? null;
+  const bargeThinkingSetting = turnTaking?.bargeInWhileThinking ?? null;
   const decided = useRef(inForce(turnTaking));
   useEffect(() => {
     decided.current = inForce({
@@ -375,8 +387,9 @@ export function VoiceMode({
       speechOverRoomPercent: overRoomSetting,
       unattendedMicrophoneMs: unattendedSetting,
       bargeInMs: bargeSetting,
+      bargeInWhileThinking: bargeThinkingSetting,
     });
-  }, [pauseSetting, overRoomSetting, unattendedSetting, bargeSetting]);
+  }, [pauseSetting, overRoomSetting, unattendedSetting, bargeSetting, bargeThinkingSetting]);
   const stream = useRef<MediaStream | null>(null);
 
   /*
@@ -699,7 +712,7 @@ export function VoiceMode({
 
       // Whatever is in force this frame: the workspace's, where it has decided
       // anything, and the constants above where it has not.
-      const { pauseMs, overRoom, unattendedMs, bargeMs } = decided.current;
+      const { pauseMs, overRoom, unattendedMs, bargeMs, bargeThinking } = decided.current;
 
       /*
        * Clear of the room, or loud in its own right.
@@ -747,7 +760,14 @@ export function VoiceMode({
        * room with poor echo cancellation needs - there the panel hears itself
        * and would stop on its own voice, every time.
        */
-      if (!speakingNow.current || bargeMs <= 0) {
+      /*
+       * And talking while the model is still thinking, by the same hold, unless
+       * the workspace turned that off: somebody who starts talking before the
+       * answer has is usually changing the question, and sitting through an
+       * answer to the old one first is the slow way round.
+       */
+      const interruptible = speakingNow.current || (thinkingNow.current && bargeThinking);
+      if (!interruptible || bargeMs <= 0) {
         overAnswerSince = null;
       } else if (aVoice) {
         if (overAnswerSince === null || now - overAnswerLast > bargeMs / 2) overAnswerSince = now;
@@ -850,6 +870,7 @@ export function VoiceMode({
   useEffect(() => {
     onPhase?.(phase);
     speakingNow.current = phase === 'speaking';
+    thinkingNow.current = phase === 'thinking';
   }, [phase, onPhase]);
 
   useImperativeHandle(ref, () => ({ interrupt, again, say }));
