@@ -278,6 +278,18 @@ const IN_THE_OPEN = [
   },
   {
     file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'Could not load the watchers.',
+    because: 'status',
+    why: "what the session's Watchers panel is showing when its one query did not answer",
+  },
+  {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
+    says: 'Could not load the timers.',
+    because: 'status',
+    why: "what the session's Timers panel is showing when its one query did not answer",
+  },
+  {
+    file: 'src/pages/workspace/SessionDetailPage.tsx',
     says: 'Could not load the ports.',
     because: 'status',
     why: "what the session's Ports panel is showing when its one query did not answer",

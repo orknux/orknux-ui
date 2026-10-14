@@ -679,13 +679,36 @@
  * The right rail: the sessions panel and, below it, the session's scratchpads.
  * Sticky as a whole so both follow a long transcript. Issue #429.
  */
+/*
+ * The side column never makes the page taller than the transcript beside it.
+ *
+ * With Sessions, Watchers and Timers added its panels ran past a 900px window,
+ * and the page scrolled for them - so an open scratchpad, sized to the room the
+ * page has, no longer fitted it. The outer column stretches to the height of
+ * the body beside it and reports none of its own (`contain: size`), clipping
+ * what is beyond; the inner one is the sticky part, as tall as the room it has
+ * - the body's height, or the window's once a long transcript scrolls - and
+ * scrolls inside itself past that.
+ */
 .rail {
+  flex: 0 0 260px;
+  align-self: stretch;
+  contain: size;
+  overflow: clip;
+}
+
+.railInner {
   position: sticky;
   top: 0;
-  flex: 0 0 260px;
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
+  max-height: min(100%, 100dvh);
+  overflow-y: auto;
+}
+
+.railInner > * {
+  flex: none;
 }
 
 .family,
@@ -717,8 +740,15 @@
   }
 
   .rail {
-    position: static;
     flex-basis: auto;
+    contain: none;
+    overflow: visible;
+  }
+
+  .railInner {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

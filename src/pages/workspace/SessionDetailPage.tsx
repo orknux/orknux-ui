@@ -1983,6 +1983,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       )}
       {showAside && (
       <div className={styles.rail}>
+      <div className={styles.railInner}>
       {hasFamily && (
         <aside id="session-family" className={styles.family} aria-label={t('Sessions in this conversation')}>
           <p className={styles.familyTitle}>{t('Sessions')}</p>
@@ -2393,6 +2394,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           </ul>
         )}
       </aside>
+      </div>
       </div>
       )}
       </div>
