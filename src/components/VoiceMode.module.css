@@ -46,6 +46,33 @@
   color: var(--color-text-primary);
 }
 
+/* How much of the answer has been read: a thin bar under the caption, with the percentage. */
+.heardBar {
+  position: relative;
+  display: block;
+  width: 60%;
+  height: 4px;
+  margin-bottom: var(--space-16);
+  border-radius: 2px;
+  background: var(--color-border);
+}
+
+.heardFill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-accent-brand);
+}
+
+.heardShare {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
 .actions {
   display: flex;
   gap: var(--space-8);

@@ -320,6 +320,8 @@ export function VoiceMode({
   const [said, setSaid] = useState<Said | null>(null);
   /** What was said into the gap and has not been sent yet, for the panel to show. */
   const [waiting, setWaiting] = useState<string | null>(null);
+  /** How much of the answer being read has been heard, 0 to 1; null before any of it. */
+  const [heard, setHeard] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /*
@@ -520,6 +522,9 @@ export function VoiceMode({
           onStart: () => {
             if (live.current && mine === turn.current) setPhase('speaking');
           },
+          onProgress: (part) => {
+            if (live.current && mine === turn.current) setHeard(part);
+          },
           onEnd: () => {
             if (live.current && mine === turn.current) nextTurn.current();
           },
@@ -530,6 +535,7 @@ export function VoiceMode({
         chunking,
       );
       reading.current = say;
+      setHeard(null);
 
       void (async () => {
         try {
@@ -1001,6 +1007,22 @@ export function VoiceMode({
       <p className={styles.caption} aria-live="polite">
         {caption}
       </p>
+
+      {/* How much of the answer has been read, while it is being read. */}
+      {phase === 'speaking' && heard !== null && (
+        <span
+          className={styles.heardBar}
+          role="progressbar"
+          aria-label={t('Read aloud so far')}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(heard * 100)}
+          data-read-progress=""
+        >
+          <span className={styles.heardFill} style={{ width: `${Math.round(heard * 100)}%` }} />
+          <span className={styles.heardShare}>{Math.round(heard * 100)}%</span>
+        </span>
+      )}
 
       {/*
         A reading of what the thing is doing now and what to do about it, which

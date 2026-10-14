@@ -113,6 +113,18 @@ export interface Listener {
   onEnd?: () => void;
   /** Called at most once, with why nothing could be read. */
   onFailure?: (reason: string) => void;
+  /**
+   * How much of what has been handed over has been heard, from 0 to 1, as it
+   * plays.
+   *
+   * Worked out here because nobody else can: a speech API answers audio and
+   * says nothing about progress, so this counts the characters of the pieces
+   * already played and adds the playing clip's share of its own characters by
+   * how far into it the audio is. Measured against what has been handed over
+   * so far, so while an answer is still arriving it can step back as more of
+   * it is queued.
+   */
+  onProgress?: (heard: number) => void;
 }
 
 /**
@@ -188,6 +200,12 @@ export function readAloud(
 ): Reading {
   /** Pieces that have not been asked for yet, in the order they must be heard. */
   const pending: string[] = [];
+  /** Characters handed over to be read, and of those the ones already heard. */
+  let total = 0;
+  let heard = 0;
+  function progress(within: number) {
+    if (total > 0) listener.onProgress?.(Math.min(1, (heard + within) / total));
+  }
   /**
    * The next clip, already being made while the current one plays.
    *
@@ -196,7 +214,7 @@ export function readAloud(
    * that will not be wanted for minutes - and if the answer is cut short, most
    * of it never will be.
    */
-  let ahead: Promise<Blob> | null = null;
+  let ahead: { clip: Promise<Blob>; chars: number } | null = null;
   let playing: { element: HTMLAudioElement; url: string; done: () => void } | null = null;
   /** How much of the spoken text has been handed over to be read. */
   let read = 0;
@@ -233,13 +251,13 @@ export function readAloud(
   }
 
   /** Asks for the next piece, or answers null when there is none waiting. */
-  function ask(): Promise<Blob> | null {
+  function ask(): { clip: Promise<Blob>; chars: number } | null {
     const next = pending.shift();
-    return next === undefined ? null : speak(workspaceId, next);
+    return next === undefined ? null : { clip: speak(workspaceId, next), chars: next.length };
   }
 
   /** Plays one clip and resolves when it has finished, or at once if it cannot. */
-  function play(clip: Blob) {
+  function play(clip: Blob, chars: number) {
     return new Promise<void>((done) => {
       if (stopped) {
         done();
@@ -266,6 +284,10 @@ export function readAloud(
         },
         { once: true },
       );
+      element.addEventListener('timeupdate', () => {
+        if (stopped || !Number.isFinite(element.duration) || element.duration <= 0) return;
+        progress(chars * Math.min(1, element.currentTime / element.duration));
+      });
       element.addEventListener('ended', () => done(), { once: true });
       // A clip that will not play must not stop the ones behind it.
       element.addEventListener('error', () => done(), { once: true });
@@ -285,13 +307,16 @@ export function readAloud(
       ahead = ask();
       // A piece that could not be read is skipped rather than ending the
       // answer: the rest of it is still worth hearing.
-      const clip = await next.catch((cause: unknown) => {
+      const clip = await next.clip.catch((cause: unknown) => {
         fail(cause);
         return null;
       });
       if (stopped) break;
-      if (clip !== null) await play(clip);
+      if (clip !== null) await play(clip, next.chars);
       hush();
+      // Played or skipped, it is behind the reader now.
+      heard += next.chars;
+      progress(0);
     }
 
     draining = false;
@@ -332,6 +357,7 @@ export function readAloud(
 
       read += upTo;
       pending.push(...parts);
+      total += parts.reduce((sum, part) => sum + part.length, 0);
       void drain();
     },
     stop() {

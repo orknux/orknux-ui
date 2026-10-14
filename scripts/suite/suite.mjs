@@ -1956,6 +1956,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'read-progress-check',
+    what: 'An answer read aloud shows how much of it has been heard, as a bar and a percentage that climb with the audio and go when it ends',
+    needs: ['workspace'],
+    /* Stubs the chat's stream and the speech endpoint; makes a speech model and a chat and removes them. */
+  },
+  {
     name: 'spoken-answer-check',
     what: 'the speaker under an answer reads what it renders to, a sentence at a time',
     needs: ['workspace'],

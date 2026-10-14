@@ -222,6 +222,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   const [speaking, setSpeaking] = useState<number | null>(null);
   const [fetchingSpeech, setFetchingSpeech] = useState<number | null>(null);
+  /** How much of the answer being read aloud has been heard, 0 to 1; null while nothing is. */
+  const [speechHeard, setSpeechHeard] = useState<number | null>(null);
   /**
    * The reading in flight, so a second press can stop the first.
    *
@@ -1405,6 +1407,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     reading.current = null;
     setSpeaking(null);
     setFetchingSpeech(null);
+    setSpeechHeard(null);
   }
 
   /**
@@ -1440,6 +1443,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         },
         onEnd: () => {
           if (reading.current === say) hush();
+        },
+        onProgress: (heard) => {
+          if (reading.current === say) setSpeechHeard(heard);
         },
         onFailure: (reason) => {
           if (reading.current !== say) return;
@@ -3532,6 +3538,22 @@ ${named}`;
                         </button>
                       )}
                       {fetchingSpeech === index && <span className={styles.copied}>Reading…</span>}
+                      {speaking === index && speechHeard !== null && (
+                        <span
+                          className={styles.readProgress}
+                          role="progressbar"
+                          aria-label={t('Read aloud so far')}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={Math.round(speechHeard * 100)}
+                          data-read-progress=""
+                        >
+                          <span className={styles.readTrack}>
+                            <span className={styles.readFill} style={{ width: `${Math.round(speechHeard * 100)}%` }} />
+                          </span>
+                          {Math.round(speechHeard * 100)}%
+                        </span>
+                      )}
                       {copySaid(index)}
                     </div>
                   </div>
