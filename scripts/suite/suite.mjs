@@ -1398,6 +1398,12 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-timer-sound-check',
+    what: "A chat timer chimes when it is seen to reach nought, as the workspace says unless its agent chose otherwise for it, and not for one already done",
+    needs: [],
+    /* The widgets and the workspace's setting are stubbed; the fields are asked of the running server. */
+  },
+  {
     name: 'chat-widgets-check',
     what: 'the timers and stopwatches an agent keeps in a chat are drawn above the composer, tick, and answer pause and remove',
     needs: ['workspace'],

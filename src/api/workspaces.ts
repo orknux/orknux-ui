@@ -200,6 +200,8 @@ export interface Workspace {
   voiceSpeechChunking: SpeechChunking;
   /** Whether this workspace's chats show when each message was sent. */
   chatShowTimestamps: boolean;
+  /** Whether a chat timer sounds when it ends, unless the agent chose otherwise for it. */
+  widgetTimerSound: boolean;
 }
 
 const WORKSPACE_FIELDS =
@@ -209,7 +211,7 @@ const WORKSPACE_FIELDS =
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
-  'voiceSpeechChunking chatShowTimestamps';
+  'voiceSpeechChunking chatShowTimestamps widgetTimerSound';
 
 /** Just enough of a role to name it where a workspace lists what opens it. */
 export interface WorkspaceRole {
@@ -356,6 +358,17 @@ export async function setWorkspaceChatTimestamps(
     { workspaceId, shown },
   );
   return data.setWorkspaceChatTimestamps;
+}
+
+/** Whether this workspace's chat timers sound when they end. */
+export async function setWorkspaceWidgetTimerSound(workspaceId: string, sound: boolean): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceWidgetTimerSound: Workspace }>(
+    `mutation SetWorkspaceWidgetTimerSound($workspaceId: ID!, $sound: Boolean!) {
+       setWorkspaceWidgetTimerSound(workspaceId: $workspaceId, sound: $sound) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, sound },
+  );
+  return data.setWorkspaceWidgetTimerSound;
 }
 
 export async function setWorkspaceQuickChatWrites(

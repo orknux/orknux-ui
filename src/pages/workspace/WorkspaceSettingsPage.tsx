@@ -37,6 +37,7 @@ import {
   setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
   setWorkspaceChatTimestamps,
+  setWorkspaceWidgetTimerSound,
   setWorkspaceQuickChatWrites,
   setWorkspaceSpeechModel,
   setWorkspaceTranscriptionModel,
@@ -415,6 +416,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [quickChatWrites, setQuickChatWrites] = useState(false);
   /** Whether chats in this workspace show when each message was sent. Issue #323. */
   const [chatTimestamps, setChatTimestamps] = useState(false);
+  const [timerSound, setTimerSound] = useState(true);
 
   /**
    * Which settings the person actually touched.
@@ -521,6 +523,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setQuickChat(found?.quickChatModelId ?? '');
         setQuickChatWrites(found?.quickChatMayWrite ?? false);
         setChatTimestamps(found?.chatShowTimestamps ?? false);
+        setTimerSound(found?.widgetTimerSound ?? true);
         setCompactAfter(found?.compactAfterTokens == null ? '' : String(found.compactAfterTokens));
         setSummaryTokens(found?.compactionSummaryTokens == null ? '' : String(found.compactionSummaryTokens));
         setSummariser(found?.compactionModelId ?? '');
@@ -741,6 +744,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('chatTimestamps')) {
         latest = await setWorkspaceChatTimestamps(workspaceId, chatTimestamps);
       }
+      if (touched.has('timerSound')) {
+        latest = await setWorkspaceWidgetTimerSound(workspaceId, timerSound);
+      }
       if (touched.has('quickChat')) {
         latest = await setWorkspaceQuickChatModel(workspaceId, asNull(quickChat));
       }
@@ -819,6 +825,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setQuickChat(held.quickChatModelId ?? '');
     setQuickChatWrites(held.quickChatMayWrite);
     setChatTimestamps(held.chatShowTimestamps);
+    setTimerSound(held.widgetTimerSound);
     setPause(inBox(held.voicePauseEndsTurnMs, A_SECOND));
     setOverRoom(inBox(held.voiceSpeechOverRoomPercent, AS_IS));
     setUnattended(inBox(held.voiceUnattendedMicrophoneMs, A_MINUTE));
@@ -1876,6 +1883,21 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </label>
             <FieldHint label={t('Show when each message was sent')}>
               {t('A small time beside each message in this workspace’s chats. The time was always recorded; this decides whether it is drawn. Off by default.')}
+            </FieldHint>
+          </div>
+
+          <div className={styles.checkRowWithHint}>
+            <label className={styles.checkRow}>
+              <input
+                id="widget-timer-sound"
+                type="checkbox"
+                checked={timerSound}
+                onChange={(event) => { touch('timerSound'); setTimerSound(event.target.checked); }}
+              />
+              <span>{t('Chat timers sound when they end')}</span>
+            </label>
+            <FieldHint label={t('Chat timers sound when they end')}>
+              {t('A short chime when a timer an agent put above the message box reaches nought, in the chat that is open. An agent overrides this for one timer only when you tell it to. On by default.')}
             </FieldHint>
           </div>
 

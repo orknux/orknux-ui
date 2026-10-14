@@ -1046,6 +1046,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [reads, setReads] = useState(false);
   /** Whether the workspace shows when each message was sent. Issue #323. */
   const [showTimestamps, setShowTimestamps] = useState(false);
+  /** Whether a chat timer sounds when it ends, where its agent chose nothing: the workspace's setting. */
+  const [timerSound, setTimerSound] = useState(true);
   /*
    * Whether this chat is being held out loud.
    *
@@ -1120,6 +1122,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setHears(held?.transcriptionModelId != null);
         setReads(held?.speechModelId != null);
         setShowTimestamps(held?.chatShowTimestamps ?? false);
+        setTimerSound(held?.widgetTimerSound ?? true);
         setWorkspaceMarker(held === null ? null : (held.commandMarker ?? held.commandMarkerDefault));
         setChunking(held?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
         setTurnTaking(
@@ -3587,6 +3590,7 @@ ${named}`;
           {/* What the agent keeps live in this chat - timers, stopwatches - just above where the person writes. */}
           <ChatWidgets
             widgets={widgets}
+            soundByDefault={timerSound}
             onAct={(widget, action) =>
               void actOnChatWidget(widget.id, action)
                 .then((after) => setWidgets((held) => held.map((one) => (one.id === after.id ? after : one))))

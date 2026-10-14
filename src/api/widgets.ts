@@ -19,6 +19,8 @@ export interface ChatWidget {
   endsAt: string | null;
   remainingSeconds: number | null;
   wake: boolean | null;
+  /** Whether the timer sounds when it ends, where the agent chose; null follows the workspace. */
+  sound: boolean | null;
   startedAt: string | null;
   accumulatedMillis: number | null;
   elapsedMillis: number | null;
@@ -26,7 +28,7 @@ export interface ChatWidget {
 }
 
 export const WIDGET_FIELDS =
-  'id kind label createdBy running done asOf durationSeconds endsAt remainingSeconds wake startedAt accumulatedMillis elapsedMillis laps';
+  'id kind label createdBy running done asOf durationSeconds endsAt remainingSeconds wake sound startedAt accumulatedMillis elapsedMillis laps';
 
 export async function fetchChatWidgets(chatId: string): Promise<ChatWidget[]> {
   const data = await graphql<{ chatWidgets: ChatWidget[] }>(

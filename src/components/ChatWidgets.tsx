@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import flagIcon from '../assets/flag.svg';
 import pauseIcon from '../assets/pause.svg';
 import playIcon from '../assets/play.svg';
@@ -13,6 +13,39 @@ interface ChatWidgetsProps {
   /** `pause`, `resume`, `reset` or `lap` pressed on one. */
   onAct: (widget: ChatWidget, action: string) => void;
   onRemove: (widget: ChatWidget) => void;
+  /** Whether a timer sounds when it ends, where its agent made no choice for it: the workspace's setting. */
+  soundByDefault?: boolean;
+}
+
+/**
+ * Three short tones, made here rather than played from a file: a sound the
+ * page synthesises cannot fail to load, and needs no asset in the bundle. A
+ * browser that refuses audio before the person has touched the page is left
+ * to refuse - the timer still shows it ended.
+ */
+function chime() {
+  try {
+    const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (Context === undefined) return;
+    const audio = new Context();
+    const start = audio.currentTime + 0.05;
+    for (let at = 0; at < 3; at += 1) {
+      const tone = audio.createOscillator();
+      const level = audio.createGain();
+      tone.type = 'sine';
+      tone.frequency.value = 880;
+      const from = start + at * 0.35;
+      level.gain.setValueAtTime(0.0001, from);
+      level.gain.exponentialRampToValueAtTime(0.3, from + 0.02);
+      level.gain.exponentialRampToValueAtTime(0.0001, from + 0.25);
+      tone.connect(level).connect(audio.destination);
+      tone.start(from);
+      tone.stop(from + 0.3);
+    }
+    window.setTimeout(() => void audio.close().catch(() => undefined), 1_500);
+  } catch {
+    // No sound is not worth failing a page over.
+  }
 }
 
 /** 75 -> "1:15", 3725 -> "1:02:05". */
@@ -34,7 +67,7 @@ export function clock(totalSeconds: number): string {
  * widgets were read (`asOf`), so a laptop a minute fast does not show a minute
  * gone that is not.
  */
-export function ChatWidgets({ widgets, onAct, onRemove }: ChatWidgetsProps) {
+export function ChatWidgets({ widgets, onAct, onRemove, soundByDefault = true }: ChatWidgetsProps) {
   const [now, setNow] = useState(() => Date.now());
   const anyRunning = widgets.some((one) => one.running);
   useEffect(() => {
@@ -44,6 +77,27 @@ export function ChatWidgets({ widgets, onAct, onRemove }: ChatWidgetsProps) {
   }, [anyRunning]);
   // When these widgets were read, by both clocks: the difference is how far the browser's is off.
   const [readAt] = useState(() => new Map<string, number>());
+
+  /*
+   * A timer sounds when it is seen to reach nought: running on one tick, done
+   * on the next. Not one that was already done when the page opened - that
+   * ended while nobody was looking, and a chime on every visit would be noise.
+   * Whether it sounds is the agent's choice for that timer where it made one
+   * (only when the person asked), and the workspace's otherwise.
+   */
+  const counting = useRef(new Set<string>());
+  useEffect(() => {
+    const seen = new Set<string>();
+    for (const widget of widgets) {
+      if (widget.kind !== 'TIMER') continue;
+      const key = widget.id;
+      const left = widget.endsAt === null ? (widget.remainingSeconds ?? 0) : Date.parse(widget.endsAt) - (now + (Date.parse(widget.asOf) - (readAt.get(`${widget.id}:${widget.asOf}`) ?? now)));
+      const runningNow = widget.endsAt !== null && left > 0;
+      if (runningNow) seen.add(key);
+      else if (widget.endsAt !== null && counting.current.has(key) && (widget.sound ?? soundByDefault)) chime();
+    }
+    counting.current = seen;
+  }, [now, widgets, soundByDefault, readAt]);
 
   if (widgets.length === 0) return null;
   return (
@@ -74,6 +128,7 @@ export function ChatWidgets({ widgets, onAct, onRemove }: ChatWidgetsProps) {
             data-chat-widget={widget.id}
             data-widget-kind={widget.kind}
             data-widget-running={running ? 'true' : 'false'}
+            data-widget-sound={timer ? ((widget.sound ?? soundByDefault) ? 'on' : 'off') : undefined}
             title={laps.length > 0 ? laps.map((lap, at) => `${t('Lap')} ${at + 1}: ${clock(lap / 1000)}`).join('\n') : undefined}
           >
             <div className={styles.top}>
