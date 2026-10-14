@@ -855,21 +855,68 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * the floor again, which is what the observer is for - it keeps the newest
    * turn in view until somebody scrolls away from it themselves.
    */
+  /*
+   * Whether the log is following its foot, kept across renders.
+   *
+   * It was decided afresh on every change to the turns, so a reader who had
+   * scrolled up was pulled back down by the next piece of an answer. And it was
+   * turned off by any scroll event that found the foot more than 40px away -
+   * including the one the log's own scroll raises a frame later, by which time
+   * more of the answer can have landed: the log took its own scroll for the
+   * reader leaving and stopped following, and the end of an answer grew out of
+   * sight. Now only a scroll upward turns it off, coming back near the foot
+   * turns it on, and a new chat or a new message of the person's own starts it
+   * again - they have just said something, and the answer is what they are
+   * waiting to read.
+   */
+  const following = useRef(true);
+  const personSaid = useRef(0);
+  useEffect(() => {
+    following.current = true;
+  }, [currentId]);
+  useEffect(() => {
+    const said = messages.filter((one) => one.role === 'user').length;
+    if (said > personSaid.current) following.current = true;
+    personSaid.current = said;
+  }, [messages]);
+
   useEffect(() => {
     const log = logBox;
     if (log === null) return;
 
-    let following = true;
+    let lastTop = log.scrollTop;
     const toBottom = () => {
-      if (following) log.scrollTo({ top: log.scrollHeight });
+      if (!following.current) return;
+      log.scrollTo({ top: log.scrollHeight });
+      lastTop = log.scrollTop;
     };
 
     const frame = requestAnimationFrame(toBottom);
     // Reading up is a decision; nothing below should undo it.
     const onScroll = () => {
-      following = log.scrollHeight - log.clientHeight - log.scrollTop < 40;
+      const near = log.scrollHeight - log.clientHeight - log.scrollTop < 40;
+      if (near) following.current = true;
+      else if (log.scrollTop < lastTop - 2) following.current = false;
+      lastTop = log.scrollTop;
     };
     log.addEventListener('scroll', onScroll, { passive: true });
+    /*
+     * And the reader's own gesture upward, heard before the frame it moves: a
+     * piece of the answer landing in that same frame would otherwise scroll
+     * them back down before the scroll event said they had left.
+     */
+    const onWheel = (event: globalThis.WheelEvent) => {
+      if (event.deltaY < 0) following.current = false;
+    };
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (['PageUp', 'Home', 'ArrowUp'].includes(event.key) && event.target === log) following.current = false;
+    };
+    const onTouch = () => {
+      following.current = false;
+    };
+    log.addEventListener('wheel', onWheel, { passive: true });
+    log.addEventListener('keydown', onKey);
+    log.addEventListener('touchmove', onTouch, { passive: true });
 
     const grew = new ResizeObserver(toBottom);
     grew.observe(log);
@@ -878,6 +925,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     return () => {
       cancelAnimationFrame(frame);
       log.removeEventListener('scroll', onScroll);
+      log.removeEventListener('wheel', onWheel);
+      log.removeEventListener('keydown', onKey);
+      log.removeEventListener('touchmove', onTouch);
       grew.disconnect();
     };
   }, [messages, currentId, logBox]);

@@ -1404,6 +1404,12 @@ export const TESTS = [
     /* The widgets and the workspace's setting are stubbed; the fields are asked of the running server. */
   },
   {
+    name: 'chat-follow-bottom-check',
+    what: 'After sending, the conversation stays at its foot through a tall streamed answer, and a reader who scrolls up with the wheel is left there',
+    needs: ['workspace'],
+    /* Stubs the chat's stream; makes a chat and removes it. */
+  },
+  {
     name: 'chat-widgets-check',
     what: 'the timers and stopwatches an agent keeps in a chat are drawn above the composer, tick, and answer pause and remove',
     needs: ['workspace'],
