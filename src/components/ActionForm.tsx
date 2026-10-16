@@ -445,6 +445,16 @@ export function ActionForm({
     [connections],
   );
 
+  /**
+   * The connections a message may go through, which is Slack's and nothing
+   * else: the server sends through no other kind, so a Jira connection here
+   * saved cleanly and was skipped on every run.
+   */
+  const messageConnections = useMemo(
+    () => connections.filter((candidate) => candidate.type === 'SLACK'),
+    [connections],
+  );
+
   const chosenFunction = useMemo(
     () => functions.find((candidate) => candidate.id === functionId) ?? null,
     [functions, functionId],
@@ -460,6 +470,11 @@ export function ActionForm({
   const connectionOptions = useMemo(
     () => connections.map((held) => ({ value: held.id, label: held.name, hint: held.effectiveUrl })),
     [connections],
+  );
+
+  const messageConnectionOptions = useMemo(
+    () => messageConnections.map((held) => ({ value: held.id, label: held.name, hint: held.effectiveUrl })),
+    [messageConnections],
   );
 
   const mailConnectionOptions = useMemo(
@@ -558,7 +573,8 @@ export function ActionForm({
    */
   const connectionUsable =
     connectionId !== '' &&
-    (subtype !== 'SEND_EMAIL' || mailConnections.some((candidate) => candidate.id === connectionId));
+    (subtype !== 'SEND_EMAIL' || mailConnections.some((candidate) => candidate.id === connectionId)) &&
+    (subtype !== 'OUTGOING_CONNECTION' || messageConnections.some((candidate) => candidate.id === connectionId));
 
   /* ------------------------------------------- what the connection can see */
 
@@ -888,10 +904,14 @@ export function ActionForm({
                 </span>
                 <DefinitionPicker
                   id="action-connection"
-                  value={connectionId}
-                  options={connectionOptions}
+                  value={connectionUsable ? connectionId : ''}
+                  options={messageConnectionOptions}
                   onChoose={setConnectionId}
-                  placeholder={t('Select connection…')}
+                  placeholder={
+                    messageConnections.length === 0
+                      ? t('No Slack connection in this workspace')
+                      : t('Select connection…')
+                  }
                   searchPlaceholder={t("Search connections…")}
                   failure={connectionCatalogue.failure}
                 />

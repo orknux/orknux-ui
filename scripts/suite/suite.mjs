@@ -1707,6 +1707,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'action-message-connection-check',
+    what: 'an action sending a message offers only the connections that can send one',
+    needs: ['workspace'],
+    /* Makes an HTTP connection standing in for Jira and disconnects it at the end. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],

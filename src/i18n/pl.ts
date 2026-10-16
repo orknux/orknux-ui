@@ -1616,6 +1616,7 @@ export const PL: Record<string, string> = {
   "Message Channel": "Kanał wiadomości",
   "Message Text": "Treść wiadomości",
   "Reply in Thread": "Odpowiedz w wątku",
+  "No Slack connection in this workspace": "W tej przestrzeni roboczej nie ma połączenia Slack",
   "Outgoing Connection": "Połączenie wychodzące",
   "MCP server": "Serwer MCP",
   "MCP servers": "Serwery MCP",
