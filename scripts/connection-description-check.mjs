@@ -56,6 +56,13 @@ record(offered, "the connection's page offers its description");
 const SECOND = 'staging Jira, for trying workflows';
 if (offered) {
   record((await box.inputValue()) === FIRST, 'holding what it was made with');
+  // Save at the top of the card, level with its title, not under the last field.
+  const placed = await page.evaluate(() => {
+    const save = [...document.querySelectorAll('button')].find((one) => one.textContent.trim() === 'Save')?.getBoundingClientRect();
+    const name = document.querySelector('#connection-name')?.getBoundingClientRect();
+    return save && name ? { save: Math.round(save.top), firstField: Math.round(name.top) } : null;
+  });
+  record(placed !== null && placed.save < placed.firstField, `Save sits above the card's first field (${JSON.stringify(placed)})`);
   await box.fill(SECOND);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.waitForTimeout(1_000);

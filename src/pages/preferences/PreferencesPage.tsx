@@ -393,12 +393,30 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
     >
       <div className={styles.page}>
         <div className={styles.container}>
-          <header className={styles.header}>
-            <h1 className={styles.title}>{t('User Preferences')}</h1>
-            <p className={styles.subtitle}>
-              {t('Manage your developer profile, app appearance, models, and security keys.')}
-            </p>
-          </header>
+          <div className={styles.headerRow}>
+            <header className={styles.header}>
+              <h1 className={styles.title}>{t('User Preferences')}</h1>
+              <p className={styles.subtitle}>
+                {t('Manage your developer profile, app appearance, models, and security keys.')}
+              </p>
+            </header>
+            {/* The page's one press, at the top where it is seen without scrolling, and how much is waiting for it. */}
+            <div className={styles.pageFoot}>
+              {unsaved > 0 && (
+                <span className={styles.pageUnsaved} data-preferences-unsaved="">
+                  {unsaved === 1 ? t('1 unsaved') : `${unsaved} unsaved`}
+                </span>
+              )}
+              <button
+                type="button"
+                className={styles.pageSave}
+                disabled={saving || unsaved === 0}
+                onClick={() => void saveAll()}
+              >
+                {saving ? t('Saving…') : t('Save')}
+              </button>
+            </div>
+          </div>
 
           <section className={styles.card}>
             <h2 className={styles.sectionTitle}>{t('Profile')}</h2>
@@ -1060,22 +1078,6 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
             </div>
           </section>
 
-          {/* The page's one press, and how much is waiting for it. */}
-          <div className={styles.pageFoot}>
-            {unsaved > 0 && (
-              <span className={styles.pageUnsaved} data-preferences-unsaved="">
-                {unsaved === 1 ? t('1 unsaved') : `${unsaved} unsaved`}
-              </span>
-            )}
-            <button
-              type="button"
-              className={styles.pageSave}
-              disabled={saving || unsaved === 0}
-              onClick={() => void saveAll()}
-            >
-              {saving ? t('Saving…') : t('Save')}
-            </button>
-          </div>
         </div>
       </div>
     </AppShell>

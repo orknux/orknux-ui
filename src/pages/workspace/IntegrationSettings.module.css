@@ -70,6 +70,21 @@
   border-radius: var(--radius-8);
 }
 
+/* A card's title on the left and its Save on the right, level with it. */
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.headActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 .cardTitles {
   display: flex;
   flex-direction: column;

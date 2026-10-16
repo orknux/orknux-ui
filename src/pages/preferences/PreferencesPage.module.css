@@ -239,22 +239,41 @@
   color: var(--color-danger);
 }
 
-/* The page's one Save, at its foot, as the plugins and workspace settings pages have it. */
-.pageFoot {
+/* The title on the left and the page's one Save on the right, centred against the title and its line together. */
+.headerRow {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.pageFoot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
   gap: var(--space-12);
-  padding: var(--space-12) var(--space-16) var(--space-4);
 }
 
+/* What is waiting, said plainly beside Save: a dot and the count, not a footnote. */
 .pageUnsaved {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
+.pageUnsaved::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-brand);
+}
+
+/* The size of the other pages' primary buttons - Add Server, Add Connection. */
 .pageSave {
-  padding: var(--space-10) var(--space-16);
+  padding: var(--space-8) var(--space-14);
   background: var(--color-accent-brand);
   border: 0;
   border-radius: var(--radius-6);

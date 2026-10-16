@@ -593,13 +593,37 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
       ) : (
         <>
           <section className={styles.card}>
-            <div className={styles.cardTitles}>
-              <h2 className={styles.cardTitle}>{t('General')}</h2>
-              <p className={styles.cardSubtitle}>
-                {locked
-                  ? t('Connection settings inherited from admin defaults')
-                  : t('Connection settings for this workspace')}
-              </p>
+            {/* Save at the top of the card, level with its title, rather than under the last field. */}
+            <div className={styles.cardHead}>
+              <div className={styles.cardTitles}>
+                <h2 className={styles.cardTitle}>{t('General')}</h2>
+                <p className={styles.cardSubtitle}>
+                  {locked
+                    ? t('Connection settings inherited from admin defaults')
+                    : t('Connection settings for this workspace')}
+                </p>
+              </div>
+              {!locked && (
+                <div className={styles.headActions}>
+                  {namedSaved && nameError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+                  {nameError !== null && <p className={styles.savedNote}>{nameError}</p>}
+                  <button
+                    type="button"
+                    className={styles.save}
+                    onClick={() => void handleSaveName()}
+                    disabled={
+                      savingName ||
+                      name.trim() === '' ||
+                      (addressEditable && address.trim() === '') ||
+                      (name.trim() === connection?.name &&
+                        (!addressEditable || address.trim() === connection?.url) &&
+                        description.trim() === (connection?.description ?? ''))
+                    }
+                  >
+                    {savingName ? t('Saving…') : t('Save')}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/*
@@ -728,27 +752,6 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
               />
             )}
 
-            {!locked && (
-              <div className={styles.actionRow}>
-                {namedSaved && nameError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-                {nameError !== null && <p className={styles.savedNote}>{nameError}</p>}
-                <button
-                  type="button"
-                  className={styles.save}
-                  onClick={() => void handleSaveName()}
-                  disabled={
-                    savingName ||
-                    name.trim() === '' ||
-                    (addressEditable && address.trim() === '') ||
-                    (name.trim() === connection?.name &&
-                      (!addressEditable || address.trim() === connection?.url) &&
-                      description.trim() === (connection?.description ?? ''))
-                  }
-                >
-                  {savingName ? t('Saving…') : t('Save')}
-                </button>
-              </div>
-            )}
           </section>
 
           <form className={styles.card} onSubmit={handleSave}>
