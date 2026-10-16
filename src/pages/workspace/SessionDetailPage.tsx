@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { readingShare, startChat, writingParts } from '../../api/chat';
+import { costAmount, readingShare, startChat, tokenCount, writingParts } from '../../api/chat';
+import { fetchWorkspace } from '../../api/workspaces';
 import { FoldToggle } from '../../components/FoldToggle';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
@@ -687,6 +688,15 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [continuing, setContinuing] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [held, setHeld] = useState<LlmSession | null>(null);
+
+  /** Whether this workspace shows what a session has cost; on until it says otherwise. */
+  const [costShown, setCostShown] = useState(true);
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchWorkspace(workspaceId)
+      .then((found) => setCostShown(found?.sessionCostShown ?? true))
+      .catch(() => setCostShown(true));
+  }, [workspaceId]);
   const [missing, setMissing] = useState(false);
   const [events, setEvents] = useState<LlmSessionEventPage | null>(null);
   const [page, setPage] = usePageWithin(sessionId);
@@ -1525,6 +1535,24 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               is a link straight to it; several expand into a list. A session
               nothing wrote into draws nothing. Issue #420.
             */}
+            {/*
+              What the session has cost: every model call made into it, a round
+              that asked for tools as well as one that answered, and the price
+              where the model carries one. The workspace decides whether it is
+              shown.
+            */}
+            {held !== null && costShown && held.spent != null && held.spent.inputTokens + held.spent.outputTokens > 0 && (
+              <p className={styles.meta} data-session-spend="">
+                {tf('{input} in · {output} out', {
+                  input: tokenCount(held.spent.inputTokens),
+                  output: tokenCount(held.spent.outputTokens),
+                })}
+                {held.spent.cachedInputTokens > 0 && ` (${tf('{cached} cached', { cached: tokenCount(held.spent.cachedInputTokens) })})`}
+                {' · '}
+                {held.spent.cost === null ? t('no price set') : costAmount(Number(held.spent.cost))}
+                {held.spent.cost !== null && held.spent.partlyUnpriced && ` (${t('some calls unpriced')})`}
+              </p>
+            )}
             {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
           </>
         )}

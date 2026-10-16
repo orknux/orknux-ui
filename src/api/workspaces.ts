@@ -202,6 +202,8 @@ export interface Workspace {
   chatShowTimestamps: boolean;
   /** Whether a chat timer sounds when it ends, unless the agent chose otherwise for it. */
   widgetTimerSound: boolean;
+  /** Whether a session page shows what the session has cost. */
+  sessionCostShown: boolean;
 }
 
 const WORKSPACE_FIELDS =
@@ -211,7 +213,7 @@ const WORKSPACE_FIELDS =
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
-  'voiceSpeechChunking chatShowTimestamps widgetTimerSound';
+  'voiceSpeechChunking chatShowTimestamps widgetTimerSound sessionCostShown';
 
 /** Just enough of a role to name it where a workspace lists what opens it. */
 export interface WorkspaceRole {
@@ -358,6 +360,17 @@ export async function setWorkspaceChatTimestamps(
     { workspaceId, shown },
   );
   return data.setWorkspaceChatTimestamps;
+}
+
+/** Whether this workspace's session pages show what a session has cost. */
+export async function setWorkspaceSessionCostShown(workspaceId: string, shown: boolean): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceSessionCostShown: Workspace }>(
+    `mutation SetWorkspaceSessionCostShown($workspaceId: ID!, $shown: Boolean!) {
+       setWorkspaceSessionCostShown(workspaceId: $workspaceId, shown: $shown) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, shown },
+  );
+  return data.setWorkspaceSessionCostShown;
 }
 
 /** Whether this workspace's chat timers sound when they end. */

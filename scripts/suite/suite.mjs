@@ -577,6 +577,12 @@ export const TESTS = [
     /* The session and its watchers are stubbed; the query is asked of the running server for its contract. */
   },
   {
+    name: 'session-spend-check',
+    what: "A session page shows what the session cost - tokens in and out, the cached, and the money - unless its workspace turned the meter off",
+    needs: ['workspace'],
+    /* The session and the workspace's switch are stubbed; the fields are asked of the running server. */
+  },
+  {
     name: 'session-timers-check',
     what: "A session page's Timers panel lists the reminders its agent set, waiting first and soonest first, with each note and when it comes up",
     needs: ['workspace'],

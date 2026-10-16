@@ -38,6 +38,7 @@ import {
   setWorkspaceQuickChatModel,
   setWorkspaceChatTimestamps,
   setWorkspaceWidgetTimerSound,
+  setWorkspaceSessionCostShown,
   setWorkspaceQuickChatWrites,
   setWorkspaceSpeechModel,
   setWorkspaceTranscriptionModel,
@@ -417,6 +418,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   /** Whether chats in this workspace show when each message was sent. Issue #323. */
   const [chatTimestamps, setChatTimestamps] = useState(false);
   const [timerSound, setTimerSound] = useState(true);
+  const [sessionCost, setSessionCost] = useState(true);
 
   /**
    * Which settings the person actually touched.
@@ -524,6 +526,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setQuickChatWrites(found?.quickChatMayWrite ?? false);
         setChatTimestamps(found?.chatShowTimestamps ?? false);
         setTimerSound(found?.widgetTimerSound ?? true);
+        setSessionCost(found?.sessionCostShown ?? true);
         setCompactAfter(found?.compactAfterTokens == null ? '' : String(found.compactAfterTokens));
         setSummaryTokens(found?.compactionSummaryTokens == null ? '' : String(found.compactionSummaryTokens));
         setSummariser(found?.compactionModelId ?? '');
@@ -747,6 +750,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('timerSound')) {
         latest = await setWorkspaceWidgetTimerSound(workspaceId, timerSound);
       }
+      if (touched.has('sessionCost')) {
+        latest = await setWorkspaceSessionCostShown(workspaceId, sessionCost);
+      }
       if (touched.has('quickChat')) {
         latest = await setWorkspaceQuickChatModel(workspaceId, asNull(quickChat));
       }
@@ -826,6 +832,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setQuickChatWrites(held.quickChatMayWrite);
     setChatTimestamps(held.chatShowTimestamps);
     setTimerSound(held.widgetTimerSound);
+    setSessionCost(held.sessionCostShown);
     setPause(inBox(held.voicePauseEndsTurnMs, A_SECOND));
     setOverRoom(inBox(held.voiceSpeechOverRoomPercent, AS_IS));
     setUnattended(inBox(held.voiceUnattendedMicrophoneMs, A_MINUTE));
@@ -1898,6 +1905,21 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </label>
             <FieldHint label={t('Chat timers sound when they end')}>
               {t('A short chime when a timer an agent put above the message box reaches nought, in the chat that is open. An agent overrides this for one timer only when you tell it to. On by default.')}
+            </FieldHint>
+          </div>
+
+          <div className={styles.checkRowWithHint}>
+            <label className={styles.checkRow}>
+              <input
+                id="session-cost-shown"
+                type="checkbox"
+                checked={sessionCost}
+                onChange={(event) => { touch('sessionCost'); setSessionCost(event.target.checked); }}
+              />
+              <span>{t('Session pages show what a session has cost')}</span>
+            </label>
+            <FieldHint label={t('Session pages show what a session has cost')}>
+              {t('The tokens every model call in a session was charged, and their price where the model has one, under the session\'s name. On by default.')}
             </FieldHint>
           </div>
 

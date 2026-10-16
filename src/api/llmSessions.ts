@@ -33,6 +33,19 @@ export interface LlmSession {
    * every note in the workspace to draw a page that shows none of them.
    */
   notes?: LlmSessionNote[];
+  /** What every model call made into it was charged; asked for by the session page only. */
+  spent?: SessionSpend | null;
+}
+
+/** What a session has cost, in tokens and - where the models are priced - money. */
+export interface SessionSpend {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+  /** A decimal in the models' currency; null where no call was priced. */
+  cost: string | null;
+  /** Some call's model had no price, so the cost is part of the whole. */
+  partlyUnpriced: boolean;
 }
 
 /**
@@ -161,7 +174,7 @@ export const EVENT_KINDS: LlmSessionEventKind[] = ['AGENT_DETAILS', 'USER', 'AGE
 const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount';
 
 /** What one opened session adds, and a row of the list does not. Issue #371. */
-const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
+const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt } spent { inputTokens outputTokens cachedInputTokens cost partlyUnpriced }`;
 
 /** What an AGENT_DETAILS line carries, and the rest carry as null. Issue #441. */
 const AGENT_DETAILS_FIELDS =
