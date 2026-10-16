@@ -578,7 +578,7 @@ export const TESTS = [
   },
   {
     name: 'session-rail-fit-check',
-    what: "A session page's side column fits the window and never scrolls itself: empty panels are one line, full ones share the rest and scroll their own lists",
+    what: "A session page's side column grows with its panels and has no scrollbar of its own - the page scrolls - while each full panel scrolls its own list",
     needs: ['workspace'],
     /* The session and three full panels are stubbed. */
   },

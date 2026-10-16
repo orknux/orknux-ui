@@ -135,6 +135,7 @@ const readLayout = () =>
         (one) => one.getBoundingClientRect().top >= editor.getBoundingClientRect().bottom - 2,
       ).length,
       frameScrolls: frame.scrollHeight > frame.clientHeight + 4,
+      frameOverflow: Math.max(0, frame.scrollHeight - frame.clientHeight),
       frameBottom: Math.round(frame.getBoundingClientRect().bottom),
     };
   });
@@ -176,9 +177,17 @@ if (await drawn(page, 'the session page')) {
         seen.editor.height > 400,
         `which in a 900px window is a document rather than a box (${seen.editor.height}px, and it was 360px)`,
       );
+      /*
+       * The page scrolls for nothing under the editor: only as far as the side
+       * column reaches past the frame, which grows with its panels and is
+       * meant to make the page scroll when they are taller than the window.
+       */
+      const columnPast = seen.rail === null ? 0 : Math.max(0, seen.rail.bottom - seen.frameBottom);
+      // Under a column that runs past the frame, the clearance every page keeps for the launcher too.
+      const clearance = columnPast > 0 ? 112 : 0;
       record(
-        !seen.frameScrolls,
-        'and the page does not scroll past its frame with a pad open, so that room was room there was',
+        seen.frameOverflow <= columnPast + clearance + 24,
+        `and the page scrolls no further than the side column reaches (${seen.frameOverflow}px, the column ${columnPast}px past the frame)`,
       );
 
       /* Above the document, and to the right of its name, on the one line. */

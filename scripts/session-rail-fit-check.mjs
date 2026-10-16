@@ -1,16 +1,14 @@
 /**
- * A session page's side column fits the window, and its panels share it.
+ * A session page's side column grows with its panels and has no scrollbar of
+ * its own; when they are taller than the window, the page scrolls.
  *
- * The column scrolled as a whole once its panels held more than the window,
- * and a full panel took all the height it wanted while the others went below
- * the fold. Now the column is as tall as the room below its top edge and no
- * more; an empty panel keeps its own size, and a full one gives way and
- * scrolls its own list - so together they never need the column to scroll.
+ * The column used to scroll as a whole, a scrollbar inside the page beside the
+ * transcript's. What is wanted is the page's own scroll: each panel keeps its
+ * list's cap and scrolls that list, and the column is as tall as its panels.
  *
- * Three panels are filled with forty rows each and the rest left empty. What
- * is measured is what is drawn: the column's height against the window, that
- * the column itself has nothing to scroll, that each full list does, and that
- * an empty panel is no taller than its heading and its line.
+ * Three panels are filled with forty rows each. Measured on the page: the
+ * column has nothing of its own to scroll and is not clipped, each full list
+ * scrolls inside its panel, and the page is what scrolls to reach the last one.
  *
  * The session and its panels are stubbed. Makes nothing and removes nothing.
  */
@@ -49,24 +47,21 @@ await page.locator('[data-session-todo]').first().waitFor({ timeout: 20_000 }).c
 await page.waitForTimeout(800);
 
 const seen = await page.evaluate(() => {
-  const rail = document.querySelector('[data-session-rail]');
+  const rail = document.querySelector('[data-session-rail]') ?? document.querySelector('[class*="_railInner_"]');
   if (!rail) return null;
-  const box = rail.getBoundingClientRect();
+  const outer = rail.parentElement;
   const panels = [...rail.children].map((panel) => {
     const list = panel.querySelector('[class*="_familyList_"]');
-    const rect = panel.getBoundingClientRect();
-    return {
-      label: panel.getAttribute('aria-label') ?? '',
-      height: Math.round(rect.height),
-      bottom: Math.round(rect.bottom),
-      rows: list ? list.children.length : 0,
-      listScrolls: list ? list.scrollHeight > list.clientHeight + 2 : false,
-    };
+    return { label: panel.getAttribute('aria-label') ?? '', rows: list ? list.children.length : 0, listScrolls: list ? list.scrollHeight > list.clientHeight + 2 : false };
   });
+  const scrollers = [...document.querySelectorAll('*')].filter((one) => one.scrollHeight > one.clientHeight + 2 && ['auto', 'scroll'].includes(getComputedStyle(one).overflowY));
+  const last = rail.lastElementChild.getBoundingClientRect();
   return {
+    railScrolls: rail.scrollHeight > rail.clientHeight + 2 || ['auto', 'scroll'].includes(getComputedStyle(rail).overflowY),
+    outerClips: ['hidden', 'clip'].includes(getComputedStyle(outer).overflowY),
+    pageScrolls: scrollers.some((one) => !rail.contains(one) && one !== rail && one.contains(rail)),
+    lastBottom: Math.round(last.bottom),
     window: window.innerHeight,
-    railBottom: Math.round(box.bottom),
-    railScrolls: rail.scrollHeight > rail.clientHeight + 2,
     panels,
   };
 });
@@ -76,13 +71,11 @@ if (seen === null) {
   await finish(browser);
 }
 
-record(seen.railBottom <= seen.window, `the column ends inside the window (${seen.railBottom} of ${seen.window})`);
-record(!seen.railScrolls, 'the column has nothing of its own to scroll');
+record(!seen.railScrolls, 'the column has no scrollbar of its own');
+record(!seen.outerClips, 'and nothing around it clips it');
 const full = seen.panels.filter((one) => one.rows >= 40);
 record(full.length === 3, `three panels hold forty rows each (${full.map((one) => one.label).join(', ')})`);
 record(full.every((one) => one.listScrolls), 'each full panel scrolls its own list');
-record(seen.panels.every((one) => one.bottom <= seen.railBottom + 1), 'and every panel is inside the column, none cut off below it');
-const empty = seen.panels.filter((one) => one.rows === 0 && /Boxes|Ports|Notes/.test(one.label));
-record(empty.length > 0 && empty.every((one) => one.height <= 90), `an empty panel keeps its own size (${empty.map((one) => `${one.label}: ${one.height}px`).join(', ')})`);
+record(seen.lastBottom > seen.window && seen.pageScrolls, `the panels run past the window and the page is what scrolls (last panel ends at ${seen.lastBottom} of ${seen.window})`);
 
 await finish(browser);
