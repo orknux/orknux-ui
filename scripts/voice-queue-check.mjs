@@ -228,7 +228,39 @@ await context.addInitScript(
 
 /* ----------------------------------------------------------- the fixture */
 
+/*
+ * Talking while the model thinks stops it, by default since 1.0.4 - and this
+ * check talks into a thinking turn on purpose, to see what is said there held.
+ * So the workspace leaves a thinking model alone for the length of the run,
+ * and gets back whatever it had: the interruption is
+ * voice-talk-over-thinking-check's to test.
+ */
+const VOICE_FIELDS = 'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking';
+const SET_VOICE = `mutation($w: ID!, $pause: Int, $over: Int, $unattended: Int, $barge: Int, $thinking: Boolean) {
+  setWorkspaceVoiceTurnTaking(workspaceId: $w, pauseEndsTurnMs: $pause, speechOverRoomPercent: $over,
+    unattendedMicrophoneMs: $unattended, bargeInMs: $barge, bargeInWhileThinking: $thinking) { id }
+}`;
+let voiceWas;
+const voiceAs = (held, thinking) => ({
+  w: WORKSPACE,
+  pause: held.voicePauseEndsTurnMs,
+  over: held.voiceSpeechOverRoomPercent,
+  unattended: held.voiceUnattendedMicrophoneMs,
+  barge: held.voiceBargeInMs,
+  thinking,
+});
+async function leaveThinkingAlone() {
+  const { workspace } = await graphql(`query($id: ID!) { workspace(id: $id) { ${VOICE_FIELDS} } }`, { id: WORKSPACE });
+  voiceWas = workspace;
+  await graphql(SET_VOICE, voiceAs(workspace, false));
+}
+async function putVoiceBack() {
+  if (voiceWas === undefined) return;
+  await graphql(SET_VOICE, voiceAs(voiceWas, voiceWas.voiceBargeInWhileThinking)).catch(() => undefined);
+}
+
 async function sweep() {
+  await putVoiceBack();
   const { models } = await graphql(`query($w: ID!) { models(workspaceId: $w) { id name } }`, {
     w: WORKSPACE,
   });
@@ -263,6 +295,7 @@ async function sweep() {
 }
 
 await sweep();
+await leaveThinkingAlone();
 
 const { modelProviders } = await graphql(`query($w: ID!) { modelProviders(workspaceId: $w) { id name } }`, {
   w: WORKSPACE,
