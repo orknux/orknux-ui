@@ -1719,6 +1719,12 @@ export const TESTS = [
     /* Loads a plugin of its own with an options parameter, and unloads it. */
   },
   {
+    name: 'workflow-variable-reference-check',
+    what: 'a node parameter can reference a plain workspace variable, and a secret is not offered',
+    needs: ['workspace'],
+    /* Makes a function, an action, a workflow and two variables, and removes them. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],

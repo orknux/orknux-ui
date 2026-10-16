@@ -77,6 +77,7 @@ import type { Trigger } from '../../api/triggers';
 import { removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
 import activityIcon from '../../assets/activity.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
+import { useWorkspaceVariables } from './workspaceVariables';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import cloudUploadIcon from '../../assets/cloud-upload.svg';
 import copyIcon from '../../assets/copy.svg';
@@ -2259,10 +2260,31 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * reading the event that started the run even if a later node produces a field
    * by the same name.
    */
+  /*
+   * The workspace's plain variables, offered under their own heading and read
+   * when the step runs as `variables.<id>`. Secrets are left out: a parameter is
+   * handed on as text, into a message or a prompt, and a secret referenced into
+   * one would be published. They reach code through a function's externals.
+   */
+  const { variables: workspaceVariables, refresh: refreshVariables } = useWorkspaceVariables(workspaceId);
+  const variableOptions = useMemo<FieldOption[]>(
+    () =>
+      workspaceVariables
+        .filter((variable) => variable.kind === 'VALUE')
+        .map((variable) => ({
+          groupKey: '__variables',
+          groupName: t('Workspace variables'),
+          field: variable.name,
+          expression: `variables.${variable.id}`,
+          type: variable.type,
+        })),
+    [workspaceVariables],
+  );
+
   const fieldOptions = useMemo<FieldOption[]>(() => {
     return nodes
       .filter((node) => node.id !== selectedKey)
-      .flatMap((node) => {
+      .flatMap((node): FieldOption[] => {
         const data = node.data as NodeData;
         const produced = ports[node.id]?.outputs ?? data.outputs ?? [];
         return produced.map((port) => ({
@@ -2272,8 +2294,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           expression: data.kind === 'TRIGGER' ? `trigger.${port.name}` : port.name,
           type: port.type,
         }));
-      });
-  }, [nodes, ports, selectedKey]);
+      })
+      .concat(variableOptions);
+  }, [nodes, ports, selectedKey, variableOptions]);
 
   /**
    * The session nodes leading into whichever node is selected.
@@ -2879,6 +2902,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    */
   const loadCatalogues = useCallback(() => {
     if (workspaceId === '') return;
+    refreshVariables();
     Promise.all([
       fetchWorkspaceTriggers(workspaceId, 0, TRIGGER_PAGE_SIZE).then((page) => page.content),
       workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedTriggers(workspaceId, workflowId),
@@ -2932,6 +2956,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     fetchImageSizePresets(workspaceId)
       .then(setImagePresets)
       .catch(() => setImagePresets([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, workflowId]);
 
   useEffect(() => {
