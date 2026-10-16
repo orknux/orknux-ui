@@ -74,6 +74,19 @@ const dash = ((await unpriced.locator('span').nth(1).textContent().catch(() => '
 const why = (await unpriced.getAttribute('title').catch(() => null)) ?? '';
 record(dash === '—' && /no price/i.test(why), `unpriced, the cost is a dash and the reason is on hover (${dash} / ${why})`);
 
+/*
+ * Nothing counted: still shown, at nought, with why on hover. Hidden until
+ * something was counted, it read as switched off on every older session.
+ */
+SESSION.spent = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, cost: null, partlyUnpriced: false };
+await show(true);
+const empty = page.locator('[data-session-spend]');
+await empty.waitFor({ timeout: 15_000 }).catch(() => {});
+const zero = ((await page.locator('[data-spend="input"]').textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+const told = (await empty.getAttribute('title').catch(() => null)) ?? '';
+record((await empty.count()) === 1 && zero.trim() === 'Input tokens0', `a session with nothing counted still shows the meter, at nought (${zero})`);
+record(/1\.0\.7/.test(told), `and says why on hover (${told})`);
+
 await show(false);
 record((await page.locator('[data-session-spend]').count()) === 0, 'a workspace that turned it off sees none');
 

@@ -2462,6 +2462,7 @@ export const PL: Record<string, string> = {
   "The tokens every model call in a session was charged, and their price where the model has one, under the session's name. On by default.": "Tokeny naliczone za każde wywołanie modelu w sesji i ich cena, jeśli model ją ma, pod nazwą sesji. Domyślnie włączone.",
   "What this session cost": "Ile kosztowała ta sesja",
   "Cost": "Koszt",
+  "Nothing counted yet. Calls are counted from 1.0.7 on, where the provider reports what it charged.": "Jeszcze nic nie policzono. Wywołania są liczone od wersji 1.0.7, o ile dostawca podaje, ile naliczył.",
   "No price is set on the model, so only the tokens are counted.": "Model nie ma ustalonej ceny, więc liczone są tylko tokeny.",
   "Some calls were on a model with no price; they are not in this.": "Część wywołań była na modelu bez ceny; nie ma ich w tej kwocie.",
   "partial": "częściowo",

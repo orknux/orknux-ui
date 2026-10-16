@@ -680,7 +680,16 @@ function SpendMeter({ spent }: { spent: SessionSpend }) {
   const cachedShare = spent.inputTokens > 0 ? Math.round((spent.cachedInputTokens / spent.inputTokens) * 100) : 0;
   const cost = spent.cost === null ? null : costAmount(Number(spent.cost));
   return (
-    <div className={styles.spendMeter} data-session-spend="" aria-label={t('What this session cost')}>
+    <div
+      className={styles.spendMeter}
+      data-session-spend=""
+      aria-label={t('What this session cost')}
+      title={
+        spent.inputTokens + spent.outputTokens === 0
+          ? t('Nothing counted yet. Calls are counted from 1.0.7 on, where the provider reports what it charged.')
+          : undefined
+      }
+    >
       <span className={styles.spendStat} data-spend="input">
         <span className={styles.spendLabel}>{t('Input tokens')}</span>
         <span className={styles.spendValue}>{tokenCount(spent.inputTokens)}</span>
@@ -1589,11 +1598,11 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               What the session has cost: every model call made into it, a round
               that asked for tools as well as one that answered, and the price
               where the model carries one. The workspace decides whether it is
-              shown.
+              shown, and it is shown even at nought: hidden until something was
+              counted, it read as switched off on every session from before
+              spend was recorded, and on any whose provider reported nothing.
             */}
-            {held !== null && costShown && held.spent != null && held.spent.inputTokens + held.spent.outputTokens > 0 && (
-              <SpendMeter spent={held.spent} />
-            )}
+            {held !== null && costShown && held.spent != null && <SpendMeter spent={held.spent} />}
             {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
           </>
         )}
