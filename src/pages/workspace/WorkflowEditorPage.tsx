@@ -76,6 +76,7 @@ import { fetchWorkflowOwnedTriggers, fetchWorkspaceTriggers } from '../../api/tr
 import type { Trigger } from '../../api/triggers';
 import { removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
 import activityIcon from '../../assets/activity.svg';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import cloudUploadIcon from '../../assets/cloud-upload.svg';
 import copyIcon from '../../assets/copy.svg';
@@ -2870,8 +2871,13 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     loadGraph();
   }, [loadGraph]);
 
-  // The catalogues a trigger node and an action node pick from.
-  useEffect(() => {
+  /*
+   * The catalogues a node picks from. Named because two things ask for them:
+   * opening the editor, and Refresh - an agent made in another tab, or a trigger
+   * an agent created through the orknux tools, is not in a picker read before it
+   * existed.
+   */
+  const loadCatalogues = useCallback(() => {
     if (workspaceId === '') return;
     Promise.all([
       fetchWorkspaceTriggers(workspaceId, 0, TRIGGER_PAGE_SIZE).then((page) => page.content),
@@ -2926,7 +2932,27 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     fetchImageSizePresets(workspaceId)
       .then(setImagePresets)
       .catch(() => setImagePresets([]));
-  }, [workspaceId]);
+  }, [workspaceId, workflowId]);
+
+  useEffect(() => {
+    loadCatalogues();
+  }, [loadCatalogues]);
+
+  /*
+   * Refresh: the pickers always, and the graph when nothing on the canvas is
+   * unsaved. With unsaved work it asks first, in Discard's words, because
+   * reading the graph again is putting it back as it was last saved.
+   */
+  function refresh() {
+    loadCatalogues();
+    if (unsaved) {
+      setDiscarding(true);
+      return;
+    }
+    setSelectedKey(null);
+    setDraft(null);
+    loadGraph();
+  }
 
   /*
    * What the image node's model takes, asked when the model is picked.
@@ -4900,6 +4926,14 @@ Change the keystroke in Preferences.`}
             disabled={busy}
             data-tip={'Discard changes\nPuts the graph back as it was last saved.'}
           >{t('Discard')}</button>
+          <ToolButton
+            label={t('Refresh')}
+            note={t('Reads the graph and the lists its nodes pick from again.')}
+            onClick={refresh}
+            disabled={busy}
+          >
+            <img src={refreshIcon} alt="" width={16} height={16} />
+          </ToolButton>
           {/*
             The keystroke is shown on the button that does the same thing,
             because that is the only way anybody finds out it exists without
@@ -7053,7 +7087,9 @@ Change the keystroke in Preferences.`}
       <ConfirmDialog
         subject={discarding ? name : null}
         kind="discard"
-        onClose={() => setDiscarding(false)}
+        onClose={() => {
+          setDiscarding(false);
+        }}
         onConfirm={async () => {
           setSelectedKey(null);
           setDraft(null);

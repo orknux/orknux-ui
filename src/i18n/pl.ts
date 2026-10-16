@@ -1702,6 +1702,7 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
+  "Reads the graph and the lists its nodes pick from again.": "Wczytuje ponownie graf i listy, z których wybierają jego węzły.",
   "Change them": "Zmień je",
   "Show": "Pokaż",
   "List": "Lista",

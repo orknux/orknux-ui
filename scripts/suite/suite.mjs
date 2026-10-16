@@ -2886,6 +2886,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'workflow-editor-refresh-check',
+    what: "the workflow editor's Refresh reads the graph and the pickers again, and asks before throwing away unsaved work",
+    needs: ['workspace'],
+    /*
+     * Reads the workspace's workflow and adds a node it never saves; cancelling
+     * the question leaves the canvas as it was. Changes nothing on the server.
+     */
+  },
+  {
     name: 'sessions-spend-columns-check',
     what: "the sessions list shows each session's tokens and cost, a dash where there is none, and sorts by either",
     needs: ['workspace'],
