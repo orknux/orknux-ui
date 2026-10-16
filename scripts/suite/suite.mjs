@@ -1725,6 +1725,12 @@ export const TESTS = [
     /* Makes a function, an action, a workflow and two variables, and removes them. */
   },
   {
+    name: 'workflow-create-opens-editor-check',
+    what: 'creating a workflow opens its editor',
+    needs: ['workspace'],
+    /* Makes a workflow and removes it. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],

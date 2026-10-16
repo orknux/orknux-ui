@@ -517,10 +517,14 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
         open={creating}
         workspaceId={workspaceId}
         onClose={() => setCreating(false)}
-        onCreated={() => {
+        onCreated={(made) => {
           setCreating(false);
-          setPage(1);
-          load();
+          /*
+           * Straight into the editor, as Duplicate does: a workflow just made
+           * is an empty graph, and drawing it is the next thing anybody does -
+           * finding the new row in the list and opening it was a detour.
+           */
+          navigate(`/workspace/${workspaceId}/workflows/${made.workflowId}/editor`);
         }}
       />
 
