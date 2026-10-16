@@ -676,17 +676,22 @@ function timerDue(row: TimerRow & { dueAt: string }): string {
  * cached (with its share, drawn as a bar), output, and the money. A bare line
  * of numbers glued together read as debris rather than a meter.
  */
+/** What is left clear under the side column: the launcher's clearance at the foot of the window. */
+const RAIL_FOOT = 72;
+/** The least the column is given, so a very short window still shows a panel or two. */
+const RAIL_LEAST = 240;
+
 function SpendMeter({ spent }: { spent: SessionSpend }) {
   const cachedShare = spent.inputTokens > 0 ? Math.round((spent.cachedInputTokens / spent.inputTokens) * 100) : 0;
   const cost = spent.cost === null ? null : costAmount(Number(spent.cost));
   return (
     <div className={styles.spendMeter} data-session-spend="" aria-label={t('What this session cost')}>
       <span className={styles.spendStat} data-spend="input">
-        <span className={styles.spendLabel}>{t('Input')}</span>
+        <span className={styles.spendLabel}>{t('Input tokens')}</span>
         <span className={styles.spendValue}>{tokenCount(spent.inputTokens)}</span>
       </span>
       <span className={styles.spendStat} data-spend="cached">
-        <span className={styles.spendLabel}>{t('Cached')}</span>
+        <span className={styles.spendLabel}>{t('Cached tokens')}</span>
         <span className={styles.spendValue}>
           {tokenCount(spent.cachedInputTokens)}
           <span className={styles.spendShare}>{cachedShare}%</span>
@@ -696,7 +701,7 @@ function SpendMeter({ spent }: { spent: SessionSpend }) {
         </span>
       </span>
       <span className={styles.spendStat} data-spend="output">
-        <span className={styles.spendLabel}>{t('Output')}</span>
+        <span className={styles.spendLabel}>{t('Output tokens')}</span>
         <span className={styles.spendValue}>{tokenCount(spent.outputTokens)}</span>
       </span>
       <span
@@ -738,6 +743,67 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [continuing, setContinuing] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [held, setHeld] = useState<LlmSession | null>(null);
+
+  /*
+   * The side column is as tall as the room below its top edge, and no taller.
+   *
+   * Its panels share that room - an empty one at its own size, a full one
+   * shrinking and scrolling its own list - so together they never need the
+   * column to scroll. The room changes with where the column sits: some way
+   * down the page at first, at the top of the frame once the transcript has
+   * scrolled it there. So it is measured, on scroll and on resize, rather than
+   * guessed in a stylesheet that cannot see where the column is.
+   */
+  const railInner = useRef<HTMLDivElement | null>(null);
+  /** Measures again; also called the moment the column appears, which is after the session has loaded. */
+  const fitRail = useRef<() => void>(() => undefined);
+  /** Hears a panel filling up or emptying, which changes which panels share the room. */
+  const railChanged = useRef<MutationObserver | null>(null);
+  const holdRail = useCallback((element: HTMLDivElement | null) => {
+    railInner.current = element;
+    if (element === null) return;
+    railChanged.current?.observe(element, { childList: true, subtree: true });
+    fitRail.current();
+  }, []);
+  useEffect(() => {
+    let frame = 0;
+    const fit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rail = railInner.current;
+        if (rail === null) return;
+        /*
+         * A panel holding nothing is said in one line and keeps that size; only
+         * the panels that hold something share the rest. Marked here rather
+         * than by each panel, because what a panel holds arrives on its own
+         * schedule - and the observer below brings this round when it does.
+         */
+        for (const panel of Array.from(rail.children)) {
+          const list = panel.querySelector('ul');
+          const empty = list === null || list.children.length === 0;
+          if (empty) panel.setAttribute('data-empty', '');
+          else panel.removeAttribute('data-empty');
+        }
+        const room = window.innerHeight - rail.getBoundingClientRect().top - RAIL_FOOT;
+        rail.style.maxHeight = `${Math.max(RAIL_LEAST, Math.floor(room))}px`;
+      });
+    };
+    fitRail.current = fit;
+    const changed = new MutationObserver(fit);
+    railChanged.current = changed;
+    if (railInner.current !== null) changed.observe(railInner.current, { childList: true, subtree: true });
+    fit();
+    window.addEventListener('resize', fit);
+    // Captured, so the frame's own scrolling is heard and not only the window's.
+    window.addEventListener('scroll', fit, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      changed.disconnect();
+      railChanged.current = null;
+      window.removeEventListener('resize', fit);
+      window.removeEventListener('scroll', fit, true);
+    };
+  }, []);
 
   /** Whether this workspace shows what a session has cost; on until it says otherwise. */
   const [costShown, setCostShown] = useState(true);
@@ -2052,7 +2118,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       )}
       {showAside && (
       <div className={styles.rail}>
-      <div className={styles.railInner}>
+      <div className={styles.railInner} ref={holdRail} data-session-rail="">
       {hasFamily && (
         <aside id="session-family" className={styles.family} aria-label={t('Sessions in this conversation')}>
           <p className={styles.familyTitle}>{t('Sessions')}</p>

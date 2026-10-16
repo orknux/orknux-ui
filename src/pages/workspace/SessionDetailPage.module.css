@@ -160,6 +160,8 @@
 /* What the session cost: labelled figures in one bordered strip, divided like a stat row. */
 .spendMeter {
   display: inline-flex;
+  align-self: flex-start;
+  width: fit-content;
   flex-wrap: wrap;
   align-items: stretch;
   margin-top: var(--space-8);
@@ -754,25 +756,63 @@
  * - the body's height, or the window's once a long transcript scrolls - and
  * scrolls inside itself past that.
  */
+/*
+ * As tall as the row, so the sticky column inside has a track to stick along,
+ * and reporting no size of its own - 260px wide whatever a long name would
+ * rather, and adding nothing to the page's height, which a scratchpad's editor
+ * is sized to fill exactly. It does not clip: the column inside is capped at
+ * the room left in the window, so drawing past this box past a short
+ * transcript stays on screen and never makes the page scroll.
+ */
 .rail {
   flex: 0 0 260px;
   align-self: stretch;
   contain: size;
-  overflow: clip;
 }
 
+/*
+ * The column never scrolls as a whole. Its height is the room below it,
+ * measured by the page; its panels share that height - an empty one keeps its
+ * own size, a full one gives way and scrolls its list - so together they fit.
+ */
 .railInner {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  max-height: min(100%, 100dvh);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
+.railInner {
+  gap: var(--space-10);
+}
+
+/* A panel holding something gives way to the others; its floor is its title, and two rows of a longer list. */
 .railInner > * {
+  flex: 0 1 auto;
+  /* Its automatic minimum is all it holds, which would refuse to give way; the list's own floor is below. */
+  min-height: 0;
+}
+
+.railInner .familyList:has(> :nth-child(3)) {
+  min-height: 56px;
+}
+
+/* A panel holding nothing is one line - its title, and that there is nothing - and keeps that size. */
+.railInner > [data-empty] {
   flex: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-8);
+  min-height: 0;
+  padding-block: var(--space-8);
+}
+
+.railInner > [data-empty] > * {
+  margin: 0;
 }
 
 .family,
@@ -791,8 +831,10 @@
  * whose watcher opened a box every check listed sixty of them and pushed the
  * to-do list and the notes off the bottom of the page.
  */
-.scratchpads .familyList {
-  max-height: 32vh;
+.scratchpads .familyList,
+.family .familyList {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -811,8 +853,13 @@
 
   .railInner {
     position: static;
-    max-height: none;
-    overflow-y: visible;
+    max-height: none !important;
+    overflow: visible;
+  }
+
+  .railInner > * {
+    min-height: 0;
+    overflow: visible;
   }
 }
 

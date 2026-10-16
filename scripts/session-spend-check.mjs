@@ -60,9 +60,9 @@ const figures = await page.evaluate(() =>
   ),
 );
 console.log(JSON.stringify(figures));
-record(JSON.stringify(figures.input) === JSON.stringify(['Input', '1,500,000']), `input, labelled (${figures.input})`);
-record(JSON.stringify(figures.cached) === JSON.stringify(['Cached', '400,00027%']), `cached, labelled, with its share of the input (${figures.cached})`);
-record(JSON.stringify(figures.output) === JSON.stringify(['Output', '150,000']), `output, labelled (${figures.output})`);
+record(JSON.stringify(figures.input) === JSON.stringify(['Input tokens', '1,500,000']), `input, labelled (${figures.input})`);
+record(JSON.stringify(figures.cached) === JSON.stringify(['Cached tokens', '400,00027%']), `cached, labelled, with its share of the input (${figures.cached})`);
+record(JSON.stringify(figures.output) === JSON.stringify(['Output tokens', '150,000']), `output, labelled (${figures.output})`);
 record(JSON.stringify(figures.cost) === JSON.stringify(['Cost', '$4.5000']), `and the cost, labelled (${figures.cost})`);
 
 /* With no price on the model: a dash, and why on hover - not a remark in the line. */

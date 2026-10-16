@@ -577,6 +577,12 @@ export const TESTS = [
     /* The session and its watchers are stubbed; the query is asked of the running server for its contract. */
   },
   {
+    name: 'session-rail-fit-check',
+    what: "A session page's side column fits the window and never scrolls itself: empty panels are one line, full ones share the rest and scroll their own lists",
+    needs: ['workspace'],
+    /* The session and three full panels are stubbed. */
+  },
+  {
     name: 'session-spend-check',
     what: "A session page shows what the session cost - tokens in and out, the cached, and the money - unless its workspace turned the meter off",
     needs: ['workspace'],

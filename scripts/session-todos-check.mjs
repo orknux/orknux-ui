@@ -137,7 +137,11 @@ record(
   `the notes, oldest first as the agent is handed them (${drawnNotes.join(' | ')})`,
 );
 
-/* Each panel's list scrolls inside its panel rather than growing it off the page. */
+/*
+ * Each panel's list scrolls inside its panel rather than growing it off the
+ * page. Its cap is no longer a height of its own: the column is as tall as the
+ * window allows and the panels share it - session-rail-fit-check measures that.
+ */
 const scrolling = await page.evaluate(() =>
   [...document.querySelectorAll('[data-session-todos] ul, [data-session-notes] ul, [data-session-boxes] ul')].map((list) => {
     const style = getComputedStyle(list);
@@ -145,8 +149,8 @@ const scrolling = await page.evaluate(() =>
   }),
 );
 record(
-  scrolling.length > 0 && scrolling.every((one) => one.overflow === 'auto' && one.max !== 'none'),
-  `a panel's list is capped and scrolls (${JSON.stringify(scrolling)})`,
+  scrolling.length > 0 && scrolling.every((one) => one.overflow === 'auto'),
+  `a panel's list scrolls inside its panel (${JSON.stringify(scrolling)})`,
 );
 
 // A session the agent planned nothing in, and wrote nothing down in.
