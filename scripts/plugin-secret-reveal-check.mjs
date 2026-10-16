@@ -213,6 +213,29 @@ if (offered) {
   await storedEye.click();
   await page.waitForTimeout(300);
   record((await box.inputValue()) === '', 'hidden again, the box is empty as before');
+
+  /* Emptied: a box that opened empty is no change, a revealed secret emptied is one. */
+  await box.fill('x');
+  await box.fill('');
+  await page.waitForTimeout(300);
+  record((await unsavedNote.count()) === 0, 'a character typed and taken back over a stored secret is no change');
+
+  await storedEye.click();
+  await page.waitForFunction((typed) => document.querySelector('input[autocomplete="new-password"]')?.value === typed, TYPED, { timeout: 10_000 }).catch(() => undefined);
+  await box.fill('');
+  await page.waitForTimeout(300);
+  record((await unsavedNote.textContent().catch(() => '')) === '1 unsaved', 'a revealed secret emptied is a change to save');
+  record(await save.isEnabled(), 'and Save can be pressed');
+  await save.click();
+  await page.waitForFunction(() => document.querySelector('[class*="_pageUnsaved_"]') === null, null, { timeout: 10_000 }).catch(() => undefined);
+  const { workspacePlugins: clearedNow } = await graphql(
+    `query($w: ID!) { workspacePlugins(workspaceId: $w) { plugin { id } parameters { name secretSet } } }`,
+    { w: WORKSPACE },
+  );
+  record(
+    clearedNow.find((one) => one.plugin.id === holding.plugin.id)?.parameters.find((one) => one.name === secret.name)?.secretSet === false,
+    'saved, the stored secret is gone',
+  );
 }
 
 await clean();

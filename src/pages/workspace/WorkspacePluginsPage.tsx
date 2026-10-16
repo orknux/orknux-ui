@@ -99,6 +99,12 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
    * without a round trip.
    */
   const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>({});
+  /**
+   * The boxes emptied where they showed what is stored - a plain value, or a
+   * secret somebody revealed. Only those: a stored secret's box opens empty,
+   * and a character typed into it and taken back must not erase the secret.
+   */
+  const [clearing, setClearing] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('plugins');
 
@@ -207,7 +213,10 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
     entry.parameters
       .filter((parameter) => {
         const draft = drafts[entry.plugin.id]?.[parameter.name];
-        return draft !== undefined && draft.trim() !== '' && draft.trim() !== (parameter.literal ?? '');
+        if (draft === undefined) return false;
+        // Emptied where the box showed what is stored: a change, which saving makes by clearing it.
+        if (draft.trim() === '') return clearing.has(`${entry.plugin.id}/${parameter.name}`);
+        return draft.trim() !== (parameter.literal ?? '');
       })
       .map((parameter) => ({ pluginId: entry.plugin.id, name: parameter.name })),
   );
@@ -222,7 +231,10 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
    */
   async function saveAll() {
     for (const one of unsaved) {
-      const stored = await onSet(one.pluginId, one.name, { literal: (drafts[one.pluginId]?.[one.name] ?? '').trim() });
+      const typed = (drafts[one.pluginId]?.[one.name] ?? '').trim();
+      const stored = typed === ''
+        ? await onClear(one.pluginId, one.name)
+        : await onSet(one.pluginId, one.name, { literal: typed });
       /*
        * Stored, it is no longer a draft. Comparing the draft with what came
        * back was enough for a plain value and never for a secret, which comes
@@ -266,13 +278,15 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
     }
   }
 
-  async function onClear(pluginId: string, name: string) {
+  async function onClear(pluginId: string, name: string): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       replace(await clearPluginParameter(workspaceId, pluginId, name));
+      return true;
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : t('Could not clear that parameter.'));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -449,12 +463,19 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
                           busy={busy}
                           onSet={(answer) => void onSet(entry.plugin.id, parameter.name, answer)}
                           onClear={() => void onClear(entry.plugin.id, parameter.name)}
-                          onTyped={(value) =>
+                          onTyped={(value, clears) => {
                             setDrafts((held) => ({
                               ...held,
                               [entry.plugin.id]: { ...(held[entry.plugin.id] ?? {}), [parameter.name]: value },
-                            }))
-                          }
+                            }));
+                            setClearing((held) => {
+                              const next = new Set(held);
+                              const key = `${entry.plugin.id}/${parameter.name}`;
+                              if (clears) next.add(key);
+                              else next.delete(key);
+                              return next;
+                            });
+                          }}
                           onSubmit={() => void saveAll()}
                           draft={drafts[entry.plugin.id]?.[parameter.name]}
                           workspaceId={workspaceId}
@@ -564,7 +585,7 @@ interface ParameterRowProps {
    * picker still stores itself: choosing a variable or a connection is a
    * finished act, and nothing is half-typed about it.
    */
-  onTyped: (value: string) => void;
+  onTyped: (value: string, clears: boolean) => void;
   /** Enter in the box, which saves the whole plugin's settings. */
   onSubmit: () => void;
   /** What is typed and not yet stored, or undefined once it has been - which puts the box back to what is stored. */
@@ -901,7 +922,8 @@ function ParameterRow({
             spellCheck={false}
             onChange={(event) => {
               setTyped(event.target.value);
-              onTyped(event.target.value);
+              // Emptied where it showed what is stored: saving clears it.
+              onTyped(event.target.value, event.target.value.trim() === '' && (revealed || parameter.literal !== null));
             }}
             onKeyDown={(event) => {
               if (event.key === 'Enter') onSubmit();
@@ -921,7 +943,7 @@ function ParameterRow({
             />
           )}
           {/* And over a stored one, which the server shows when asked. */}
-          {parameter.secret && parameter.secretSet && (typed === '' || revealed) && draft === undefined && (
+          {parameter.secret && parameter.secretSet && (typed === '' || revealed) && (draft ?? '') === '' && (
             <RevealToggle shown={revealed} label={parameter.name} onToggle={() => void toggleStored()} />
           )}
         </div>
