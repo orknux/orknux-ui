@@ -31,6 +31,7 @@ import type {
   SessionExecutionLink,
   SessionScratchpad,
   SessionScratchpadContent,
+  SessionSpend,
   SessionWriting,
 } from '../../api/llmSessions';
 import { STATUS_LABEL } from '../../api/executions';
@@ -668,6 +669,55 @@ function timerDue(row: TimerRow & { dueAt: string }): string {
   if (row.rang === 0) return tf('Due in {time}', { time });
   if (row.rang === 1) return tf('Due in {time} · rang once', { time });
   return tf('Due in {time} · rang {count} times', { time, count: row.rang });
+}
+
+/**
+ * What a session has cost, as a strip of labelled figures: input, of which
+ * cached (with its share, drawn as a bar), output, and the money. A bare line
+ * of numbers glued together read as debris rather than a meter.
+ */
+function SpendMeter({ spent }: { spent: SessionSpend }) {
+  const cachedShare = spent.inputTokens > 0 ? Math.round((spent.cachedInputTokens / spent.inputTokens) * 100) : 0;
+  const cost = spent.cost === null ? null : costAmount(Number(spent.cost));
+  return (
+    <div className={styles.spendMeter} data-session-spend="" aria-label={t('What this session cost')}>
+      <span className={styles.spendStat} data-spend="input">
+        <span className={styles.spendLabel}>{t('Input')}</span>
+        <span className={styles.spendValue}>{tokenCount(spent.inputTokens)}</span>
+      </span>
+      <span className={styles.spendStat} data-spend="cached">
+        <span className={styles.spendLabel}>{t('Cached')}</span>
+        <span className={styles.spendValue}>
+          {tokenCount(spent.cachedInputTokens)}
+          <span className={styles.spendShare}>{cachedShare}%</span>
+        </span>
+        <span className={styles.spendBar} aria-hidden="true">
+          <span className={styles.spendFill} style={{ width: `${cachedShare}%` }} />
+        </span>
+      </span>
+      <span className={styles.spendStat} data-spend="output">
+        <span className={styles.spendLabel}>{t('Output')}</span>
+        <span className={styles.spendValue}>{tokenCount(spent.outputTokens)}</span>
+      </span>
+      <span
+        className={styles.spendStat}
+        data-spend="cost"
+        title={
+          cost === null
+            ? t('No price is set on the model, so only the tokens are counted.')
+            : spent.partlyUnpriced
+              ? t('Some calls were on a model with no price; they are not in this.')
+              : undefined
+        }
+      >
+        <span className={styles.spendLabel}>{t('Cost')}</span>
+        <span className={cost === null ? `${styles.spendValue} ${styles.spendMuted}` : styles.spendValue}>
+          {cost ?? '—'}
+          {cost !== null && spent.partlyUnpriced && <span className={styles.spendShare}>{t('partial')}</span>}
+        </span>
+      </span>
+    </div>
+  );
 }
 
 export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps) {
@@ -1542,16 +1592,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               shown.
             */}
             {held !== null && costShown && held.spent != null && held.spent.inputTokens + held.spent.outputTokens > 0 && (
-              <p className={styles.meta} data-session-spend="">
-                {tf('{input} in · {output} out', {
-                  input: tokenCount(held.spent.inputTokens),
-                  output: tokenCount(held.spent.outputTokens),
-                })}
-                {held.spent.cachedInputTokens > 0 && ` (${tf('{cached} cached', { cached: tokenCount(held.spent.cachedInputTokens) })})`}
-                {' · '}
-                {held.spent.cost === null ? t('no price set') : costAmount(Number(held.spent.cost))}
-                {held.spent.cost !== null && held.spent.partlyUnpriced && ` (${t('some calls unpriced')})`}
-              </p>
+              <SpendMeter spent={held.spent} />
             )}
             {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
           </>

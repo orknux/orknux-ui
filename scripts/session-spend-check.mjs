@@ -50,8 +50,29 @@ await show(true);
 const meter = page.locator('[data-session-spend]');
 const drawn = await meter.waitFor({ timeout: 15_000 }).then(() => true).catch(() => false);
 record(drawn, 'the session page shows what it cost');
-const said = ((await meter.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
-record(said === '1,500,000 in · 150,000 out (400,000 cached) · $4.5000', `tokens in and out, the cached, and the money (${said})`);
+/* Each figure under its own label, so the strip says what it is rather than reading as stray numbers. */
+const figures = await page.evaluate(() =>
+  Object.fromEntries(
+    [...document.querySelectorAll('[data-session-spend] [data-spend]')].map((one) => [
+      one.getAttribute('data-spend'),
+      [...one.children].map((part) => part.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean),
+    ]),
+  ),
+);
+console.log(JSON.stringify(figures));
+record(JSON.stringify(figures.input) === JSON.stringify(['Input', '1,500,000']), `input, labelled (${figures.input})`);
+record(JSON.stringify(figures.cached) === JSON.stringify(['Cached', '400,00027%']), `cached, labelled, with its share of the input (${figures.cached})`);
+record(JSON.stringify(figures.output) === JSON.stringify(['Output', '150,000']), `output, labelled (${figures.output})`);
+record(JSON.stringify(figures.cost) === JSON.stringify(['Cost', '$4.5000']), `and the cost, labelled (${figures.cost})`);
+
+/* With no price on the model: a dash, and why on hover - not a remark in the line. */
+SESSION.spent = { ...SESSION.spent, cost: null, partlyUnpriced: true };
+await show(true);
+const unpriced = page.locator('[data-spend="cost"]');
+await unpriced.waitFor({ timeout: 15_000 }).catch(() => {});
+const dash = ((await unpriced.locator('span').nth(1).textContent().catch(() => '')) ?? '').trim();
+const why = (await unpriced.getAttribute('title').catch(() => null)) ?? '';
+record(dash === '—' && /no price/i.test(why), `unpriced, the cost is a dash and the reason is on hover (${dash} / ${why})`);
 
 await show(false);
 record((await page.locator('[data-session-spend]').count()) === 0, 'a workspace that turned it off sees none');
