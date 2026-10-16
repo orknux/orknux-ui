@@ -126,6 +126,8 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
 
   const [connection, setConnection] = useState<WorkspaceConnection | null>(null);
   const [name, setName] = useState('');
+  /** The connection's own address - a mail connection's server - where it is this workspace's to change. */
+  const [address, setAddress] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [namedSaved, setNamedSaved] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -195,6 +197,7 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
         }
         setConnection(found);
         setName(found.name);
+        setAddress(found.url);
         setAuthType(found.authType);
         setUrlOverride(found.urlOverride ?? '');
         setSmtpUsername(found.smtpUsername ?? '');
@@ -256,6 +259,8 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
    * only meant to send.
    */
   const slack = kind === 'SLACK';
+  /** Slack has one address and an inherited connection follows the default's; every other one is the workspace's. */
+  const addressEditable = connection !== null && !connection.inherited && !slack;
 
   /**
    * What Slack said this token can do, where this connection is a Slack one.
@@ -418,9 +423,19 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
     setNameError(null);
     setNamedSaved(false);
     try {
-      const updated = await updateWorkspaceConnection(connectionId, { name: name.trim() });
+      /*
+       * The address with the name, where the address is the workspace's: a
+       * connection it made pointed where it was made pointing, and the only
+       * way to move it was the override below - which a mail connection does
+       * not have, so its server could not be changed at all.
+       */
+      const updated = await updateWorkspaceConnection(connectionId, {
+        name: name.trim(),
+        ...(addressEditable ? { url: address.trim() } : {}),
+      });
       setConnection(updated);
       setName(updated.name);
+      setAddress(updated.url);
       setNamedSaved(true);
     } catch (cause) {
       setNameError(cause instanceof Error ? cause.message : t('Could not rename the connection.'));
@@ -661,11 +676,30 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
                 </div>
               </div>
             )}
-            <ReadOnlyField
-              label={mail ? t('Mail Server') : t('Default API Host URL')}
-              value={connection?.url ?? ''}
-              locked={locked}
-            />
+            {addressEditable ? (
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="connection-url">
+                  {mail ? t('Mail Server') : t('URL')}
+                </label>
+                <div className={styles.inputWrapper}>
+                  <input
+                    id="connection-url"
+                    name="url"
+                    className={styles.input}
+                    type="text"
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder={mail ? 'smtp.example.com' : 'https://'}
+                  />
+                </div>
+              </div>
+            ) : (
+              <ReadOnlyField
+                label={mail ? t('Mail Server') : t('Default API Host URL')}
+                value={connection?.url ?? ''}
+                locked={locked}
+              />
+            )}
 
             {!locked && (
               <div className={styles.actionRow}>
@@ -675,9 +709,14 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
                   type="button"
                   className={styles.save}
                   onClick={() => void handleSaveName()}
-                  disabled={savingName || name.trim() === '' || name.trim() === connection?.name}
+                  disabled={
+                    savingName ||
+                    name.trim() === '' ||
+                    (addressEditable && address.trim() === '') ||
+                    (name.trim() === connection?.name && (!addressEditable || address.trim() === connection?.url))
+                  }
                 >
-                  {savingName ? t('Saving…') : t('Save Name')}
+                  {savingName ? t('Saving…') : addressEditable ? t('Save') : t('Save Name')}
                 </button>
               </div>
             )}

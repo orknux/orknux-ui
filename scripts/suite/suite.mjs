@@ -3784,6 +3784,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'connection-url-check',
+    what: "A workspace's own connection can be pointed elsewhere on its page - an HTTP one's URL and a mail one's server - and Slack's address is not offered",
+    needs: ['workspace'],
+    /* Makes three connections over the API and disconnects them. */
+  },
+  {
     name: 'connection-share-check',
     what: 'the connection page offers no Share card and no "Export as default"',
     needs: ['workspace'],
