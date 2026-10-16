@@ -68,8 +68,8 @@ function statusDot(status: ConnectionStatus): string {
  * Two unions, because they are two lists: an MCP server has an address and a
  * connection has a type, and one list of names would offer each the other's.
  */
-type ServerColumn = 'NAME' | 'ADDRESS' | 'AUTH';
-type ConnectionColumn = 'NAME' | 'TYPE' | 'STATUS';
+type ServerColumn = 'NAME' | 'ADDRESS' | 'AUTH' | 'STATUS';
+type ConnectionColumn = 'NAME' | 'DESCRIPTION' | 'TYPE' | 'STATUS';
 
 export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceIntegrationsPageProps) {
   const { workspaceId = '' } = useParams();
@@ -149,6 +149,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
   const serverKey = (held: McpServer) => {
     if (serverOrder === 'ADDRESS') return held.address;
     if (serverOrder === 'AUTH') return held.authType;
+    if (serverOrder === 'STATUS') return reachableLabel(held.reachable);
     return held.name;
   };
   const connectionKey = (held: WorkspaceConnection) => {
@@ -156,6 +157,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     // rather than falling together under the HTTP they both are.
     if (connectionOrder === 'TYPE') return connectionKindLabel(held, kinds);
     if (connectionOrder === 'STATUS') return held.status;
+    if (connectionOrder === 'DESCRIPTION') return held.description ?? '';
     return held.name;
   };
 
@@ -256,6 +258,15 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             onSort={sortServers}
             className={styles.colMeta}
           />
+          {/* Every row draws a status; its heading was missing, so Auth sat over it. */}
+          <ColumnHeader
+            label={t('Status')}
+            order="STATUS"
+            current={serverOrder}
+            ascending={serverAscending}
+            onSort={sortServers}
+            className={styles.colMeta}
+          />
           <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 
@@ -345,12 +356,20 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             className={styles.colName}
           />
           <ColumnHeader
+            label={t('Description')}
+            order="DESCRIPTION"
+            current={connectionOrder}
+            ascending={connectionAscending}
+            onSort={sortConnections}
+            className={styles.colGrow}
+          />
+          <ColumnHeader
             label={t('Type')}
             order="TYPE"
             current={connectionOrder}
             ascending={connectionAscending}
             onSort={sortConnections}
-            className={styles.colGrow}
+            className={styles.colMeta}
           />
           <ColumnHeader
             label={t('Status')}
@@ -377,10 +396,6 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             className={`${styles.row} ${styles.rowOpens}`}
             onClick={() => navigate(`/workspace/${workspaceId}/integrations/connections/${connection.id}`)}
           >
-            {/*
-              What it is for, under its name and whole on hover: two
-              connections to one system are told apart by it.
-            */}
             <Link
               className={`${styles.colName} ${styles.openName}`}
               to={`/workspace/${workspaceId}/integrations/connections/${connection.id}`}
@@ -388,17 +403,21 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
               data-connection-row={connection.name}
             >
               <ConnectionIcon type={connection.type} bare />
-              <span className={styles.nameStack}>
-                <span className={styles.connectionName}>{connection.name}</span>
-                {connection.description !== null && (
-                  <span className={styles.connectionDescription} data-connection-description="">
-                    {connection.description}
-                  </span>
-                )}
-              </span>
+              <span className={styles.connectionName}>{connection.name}</span>
             </Link>
+            {/*
+              What it is for, in a column of its own - two connections to one
+              system are told apart by it - cut to the column and whole on hover.
+            */}
             <span
-              className={`${styles.colGrow} ${connection.status === 'CONNECTED' ? styles.type : styles.typeMuted}`}
+              className={`${styles.colGrow} ${styles.description}`}
+              title={connection.description ?? undefined}
+              data-connection-description=""
+            >
+              {connection.description ?? ''}
+            </span>
+            <span
+              className={`${styles.colMeta} ${connection.status === 'CONNECTED' ? styles.type : styles.typeMuted}`}
             >
               {connectionKindLabel(connection, kinds)}
             </span>

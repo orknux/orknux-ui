@@ -3790,6 +3790,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'integrations-table-check',
+    what: "The Integrations tables line up: a heading over every column, names left-aligned in a name's weight, and a connection's description in its own column",
+    needs: ['workspace'],
+    /* The servers and connections are stubbed. */
+  },
+  {
     name: 'connection-description-check',
     what: "A connection's description shows under its name in the list and whole on hover, is found by the list's search, and is changed on its page",
     needs: ['workspace'],

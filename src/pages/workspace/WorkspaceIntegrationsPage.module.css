@@ -135,22 +135,12 @@
   width: 80px;
 }
 
+/*
+ * One rule for both tables' names. 1.0.6 put another rule between the two
+ * selectors, which gave a server's name that rule instead: laid out as a
+ * column, so centred, and without the weight and size a name has.
+ */
 .serverName,
-/* The name over what it is for, both cut to the column, so a row grows by one short line and no more. */
-.nameStack {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.connectionDescription {
-  overflow: hidden;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .connectionName {
   overflow: hidden;
   font-weight: 600;
@@ -163,6 +153,15 @@
 .address {
   overflow: hidden;
   font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* What a connection is for, in its own column: cut to it, whole on hover. */
+.description {
+  overflow: hidden;
   font-size: var(--text-md);
   color: var(--color-text-secondary);
   text-overflow: ellipsis;

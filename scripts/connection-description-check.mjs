@@ -43,9 +43,10 @@ await page.waitForTimeout(800);
 const row = page.locator(`[data-connection-row="${NAME}"]`);
 const found = await row.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
 record(found, "the list's search finds a connection by what it is for");
-const shown = ((await row.locator('[data-connection-description]').textContent().catch(() => '')) ?? '').trim();
-record(shown === FIRST, `the list shows it under the name (${shown})`);
-record((await row.getAttribute('title').catch(() => null)) === FIRST, 'and whole on hover');
+const cell = row.locator('xpath=..').locator('[data-connection-description]');
+const shown = ((await cell.textContent().catch(() => '')) ?? '').trim();
+record(shown === FIRST, `the list shows it in its own column (${shown})`);
+record((await cell.getAttribute('title').catch(() => null)) === FIRST, 'and whole on hover');
 
 /* Changed on its own page, saved with the name. */
 await page.goto(`${integrations}/connections/${made.id}`, { waitUntil: 'domcontentloaded' });
