@@ -50,11 +50,12 @@ import type {
   WorkflowStatus,
 } from '../../api/graph';
 import type { SessionUser } from '../../api/session';
-import { createAction, fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/actions';
+import { createAction, fetchPluginActions, fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/actions';
+import type { PluginAction } from '../../api/actions';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Action } from '../../api/actions';
 import type { Agent } from '../../api/agents';
-import { fetchWorkflowOwnedConditions, fetchWorkspaceConditions,
+import { createCondition, fetchWorkflowOwnedConditions, fetchWorkspaceConditions,
   VALUE_SUBJECT,
 } from '../../api/conditions';
 import type { Condition } from '../../api/conditions';
@@ -390,6 +391,9 @@ const IMAGE_PARAMETERS = ['prompt'];
  * field does - the difference is only what the thing made belongs to.
  */
 const CUSTOM = 'custom:new';
+/** A plugin row in a node's picker: `plugin-action:jira/comment`, `plugin-function:<id>`. */
+const PLUGIN_ACTION = 'plugin-action:';
+const PLUGIN_FUNCTION = 'plugin-function:';
 
 /**
  * The panel's own names for what a definition's form needs.
@@ -2569,6 +2573,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     );
   }, [ports, setNodes]);
   const [actions, setActions] = useState<Action[]>([]);
+  /** What the loaded plugins offer as actions, for the node's picker to list beside the workspace's own. */
+  const [pluginActions, setPluginActions] = useState<PluginAction[]>([]);
   /** The actions that speak, so their nodes are drawn as a speaker where nobody chose an icon. */
   const speakingActions = useMemo(
     () => new Set(actions.filter((one) => one.subtype === 'SPEAK').map((one) => one.id)),
@@ -2616,6 +2622,81 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * the function.
    */
   const [functions, setFunctions] = useState<WorkspaceFunction[]>([]);
+
+  /*
+   * A plugin's actions and functions, offered in the node's pickers as they
+   * are. They used to be reachable only by Custom..., then the right subtype,
+   * then the plugin's entry - three choices for what is one: "this node does
+   * Jira's comment". Picking one makes that Custom definition here.
+   */
+  const pluginFunctions = useMemo(() => functions.filter((fn) => fn.scope === 'PLUGIN'), [functions]);
+  const pluginActionRows = useMemo(
+    () => [
+      ...pluginActions.map((held) => ({
+        value: `${PLUGIN_ACTION}${held.pluginKey}/${held.name}`,
+        label: held.label,
+        hint: tf('{plugin} plugin action', { plugin: held.pluginName }),
+      })),
+      ...pluginFunctions.map((fn) => ({
+        value: `${PLUGIN_FUNCTION}${fn.id}`,
+        label: fn.name,
+        hint: tf('{plugin} plugin function', { plugin: fn.plugin?.name ?? '' }),
+      })),
+    ],
+    [pluginActions, pluginFunctions],
+  );
+  const pluginConditionRows = useMemo(
+    () =>
+      pluginFunctions
+        .filter((fn) => fn.returnType === 'BOOLEAN')
+        .map((fn) => ({
+          value: `${PLUGIN_FUNCTION}${fn.id}`,
+          label: fn.name,
+          hint: tf('{plugin} plugin function', { plugin: fn.plugin?.name ?? '' }),
+        })),
+    [pluginFunctions],
+  );
+
+  /** The node's own action, made for a plugin row picked; its id, or null where it could not be made. */
+  async function ownActionFor(chosen: string): Promise<string | null> {
+    try {
+      let made: Action;
+      if (chosen.startsWith(PLUGIN_ACTION)) {
+        const [pluginKey, pluginAction] = chosen.slice(PLUGIN_ACTION.length).split('/');
+        const held = pluginActions.find((one) => one.pluginKey === pluginKey && one.name === pluginAction);
+        made = await createAction({
+          workspaceId, workflowId, type: 'EXECUTE', subtype: 'PLUGIN_ACTION',
+          name: held?.label ?? pluginAction, pluginKey, pluginAction,
+        });
+      } else {
+        const id = chosen.slice(PLUGIN_FUNCTION.length);
+        const fn = functions.find((one) => one.id === id);
+        made = await createAction({
+          workspaceId, workflowId, type: 'EXECUTE', subtype: 'FUNCTION', name: fn?.name ?? id, functionId: id,
+        });
+      }
+      setActions((held) => [...held, made]);
+      return made.id;
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : t('Could not use that plugin here.'));
+      return null;
+    }
+  }
+
+  /** The same, for a condition: a plugin function that answers yes or no. */
+  async function ownConditionFor(chosen: string): Promise<string | null> {
+    try {
+      const id = chosen.slice(PLUGIN_FUNCTION.length);
+      const fn = functions.find((one) => one.id === id);
+      const made = await createCondition({ workspaceId, workflowId, type: 'FUNCTION', name: fn?.name ?? id, functionId: id });
+      setConditions((held) => [...held, made]);
+      return made.id;
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : t('Could not use that plugin here.'));
+      return null;
+    }
+  }
+
   const [agents, setAgents] = useState<Agent[]>([]);
   const [objects, setObjects] = useState<WorkflowObject[]>([]);
   /*
@@ -2923,6 +3004,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     ])
       .then(([shared, own]) => setActions([...shared, ...own]))
       .catch(() => setActions([]));
+    fetchPluginActions(workspaceId)
+      .then(setPluginActions)
+      .catch(() => setPluginActions([]));
     // Not a catalogue anything is picked from here: see `slackSend` below.
     fetchWorkspaceConnections(workspaceId)
       .then(setConnections)
@@ -5614,7 +5698,8 @@ Change the keystroke in Preferences.`}
                           */
                           label: action.workflowId === null ? action.name : t('Custom'),
                           hint: action.workflowId === null ? undefined : action.name,
-                        }))}
+                        }))
+                        .concat(pluginActionRows)}
                       create={{
                         value: CUSTOM,
                         label: t('Custom…'),
@@ -5642,6 +5727,12 @@ Change the keystroke in Preferences.`}
                            * "I still cant save custom action".
                            */
                           setDraft({ ...draft, actionId: ownedAction?.id ?? null });
+                          return;
+                        }
+                        if (chosen.startsWith(PLUGIN_ACTION) || chosen.startsWith(PLUGIN_FUNCTION)) {
+                          void ownActionFor(chosen).then((id) => {
+                            if (id !== null) setDraft((current) => (current === null ? current : { ...current, actionId: id }));
+                          });
                           return;
                         }
                         setDraft({ ...draft, actionId: chosen || null });
@@ -5906,7 +5997,8 @@ Change the keystroke in Preferences.`}
                           // note on the action picker.
                           label: held.workflowId === null ? held.name : t('Custom'),
                           hint: held.workflowId === null ? undefined : held.name,
-                        }))}
+                        }))
+                        .concat(pluginConditionRows)}
                       create={{
                         value: CUSTOM,
                         label: t('Custom…'),
@@ -5934,6 +6026,12 @@ Change the keystroke in Preferences.`}
                            * "I still cant save custom action".
                            */
                           setDraft({ ...draft, conditionId: ownedCondition?.id ?? null });
+                          return;
+                        }
+                        if (chosen.startsWith(PLUGIN_FUNCTION)) {
+                          void ownConditionFor(chosen).then((id) => {
+                            if (id !== null) setDraft((current) => (current === null ? current : { ...current, conditionId: id }));
+                          });
                           return;
                         }
                         setDraft({ ...draft, conditionId: chosen || null });

@@ -1731,6 +1731,12 @@ export const TESTS = [
     /* Makes a workflow and removes it. */
   },
   {
+    name: 'node-plugin-picker-check',
+    what: "a node's Action and Condition pickers offer the plugins' actions and functions, and picking one makes the node's own definition",
+    needs: ['workspace'],
+    /* Loads a plugin of its own and unloads it; makes a workflow, whose own definitions go with it. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],
