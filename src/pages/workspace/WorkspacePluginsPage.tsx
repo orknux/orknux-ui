@@ -105,6 +105,16 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
    * and a character typed into it and taken back must not erase the secret.
    */
   const [clearing, setClearing] = useState<Set<string>>(() => new Set());
+  /**
+   * A variable picked under Reference and not yet saved, by plugin and name.
+   *
+   * Kept apart from the typed drafts because it is answered differently - by
+   * which variable, not by text. Every control on this page waits for Save:
+   * the pickers used to store the moment they changed while the boxes beside
+   * them waited, so whether a change needed saving depended on which kind of
+   * control it was made in.
+   */
+  const [references, setReferences] = useState<Record<string, Record<string, string>>>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('plugins');
 
@@ -218,7 +228,19 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
         if (draft.trim() === '') return clearing.has(`${entry.plugin.id}/${parameter.name}`);
         return draft.trim() !== (parameter.literal ?? '');
       })
-      .map((parameter) => ({ pluginId: entry.plugin.id, name: parameter.name })),
+      .map((parameter) => ({ pluginId: entry.plugin.id, name: parameter.name, variableId: null as string | null }))
+      .concat(
+        entry.parameters
+          .filter((parameter) => {
+            const picked = references[entry.plugin.id]?.[parameter.name];
+            return picked !== undefined && picked !== parameter.variableId;
+          })
+          .map((parameter) => ({
+            pluginId: entry.plugin.id,
+            name: parameter.name,
+            variableId: references[entry.plugin.id]?.[parameter.name] ?? null,
+          })),
+      ),
   );
 
   /**
@@ -231,6 +253,16 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
    */
   async function saveAll() {
     for (const one of unsaved) {
+      if (one.variableId !== null) {
+        if (await onSet(one.pluginId, one.name, { variableId: one.variableId })) {
+          setReferences((held) => {
+            const mine = { ...(held[one.pluginId] ?? {}) };
+            delete mine[one.name];
+            return { ...held, [one.pluginId]: mine };
+          });
+        }
+        continue;
+      }
       const typed = (drafts[one.pluginId]?.[one.name] ?? '').trim();
       const stored = typed === ''
         ? await onClear(one.pluginId, one.name)
@@ -461,9 +493,26 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
                           variables={variables}
                           connections={connections}
                           busy={busy}
-                          onSet={(answer) => void onSet(entry.plugin.id, parameter.name, answer)}
+                          onPicked={(variableId) => {
+                            setReferences((held) => ({
+                              ...held,
+                              [entry.plugin.id]: { ...(held[entry.plugin.id] ?? {}), [parameter.name]: variableId },
+                            }));
+                            // A reference picked replaces a value typed, as saving it would.
+                            setDrafts((held) => {
+                              const mine = { ...(held[entry.plugin.id] ?? {}) };
+                              delete mine[parameter.name];
+                              return { ...held, [entry.plugin.id]: mine };
+                            });
+                          }}
                           onClear={() => void onClear(entry.plugin.id, parameter.name)}
                           onTyped={(value, clears) => {
+                            // And a value typed or chosen replaces a reference picked.
+                            setReferences((held) => {
+                              const mine = { ...(held[entry.plugin.id] ?? {}) };
+                              delete mine[parameter.name];
+                              return { ...held, [entry.plugin.id]: mine };
+                            });
                             setDrafts((held) => ({
                               ...held,
                               [entry.plugin.id]: { ...(held[entry.plugin.id] ?? {}), [parameter.name]: value },
@@ -478,6 +527,7 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
                           }}
                           onSubmit={() => void saveAll()}
                           draft={drafts[entry.plugin.id]?.[parameter.name]}
+                          picked={references[entry.plugin.id]?.[parameter.name]}
                           workspaceId={workspaceId}
                         />
                       ))}
@@ -575,21 +625,24 @@ interface ParameterRowProps {
   variables: Variable[];
   connections: WorkspaceConnection[];
   busy: boolean;
-  onSet: (answer: { literal: string } | { variableId: string }) => void;
+  /** A variable chosen under Reference, held until Save like anything typed. */
+  onPicked: (variableId: string) => void;
   onClear: () => void;
   /**
    * What is in the box right now, reported as it is typed.
    *
-   * The press that stores it lives at the bottom of the plugin rather than on
-   * this row, so the row holds the text and the card holds the decision. A
-   * picker still stores itself: choosing a variable or a connection is a
-   * finished act, and nothing is half-typed about it.
+   * The press that stores it lives at the top of the page rather than on this
+   * row, so the row holds the text and the page holds the decision. A choice in
+   * a picker - a connection, one of the plugin's options - is reported the same
+   * way, so every change on the page waits for Save alike.
    */
   onTyped: (value: string, clears: boolean) => void;
   /** Enter in the box, which saves the whole plugin's settings. */
   onSubmit: () => void;
   /** What is typed and not yet stored, or undefined once it has been - which puts the box back to what is stored. */
   draft?: string;
+  /** The variable picked under Reference and not yet saved. */
+  picked?: string;
   workspaceId: string;
 }
 
@@ -619,11 +672,12 @@ function ParameterRow({
   variables,
   connections,
   busy,
-  onSet,
+  onPicked,
   onClear,
   onTyped,
   onSubmit,
   draft,
+  picked,
   workspaceId,
 }: ParameterRowProps) {
   const [typed, setTyped] = useState(parameter.literal ?? '');
@@ -811,10 +865,10 @@ function ParameterRow({
         <div className={styles.reference}>
           <FieldPicker
             options={options}
-            value={parameter.variableId ?? ''}
+            value={picked ?? parameter.variableId ?? ''}
             label={`${parameter.name} reference`}
             labels={VARIABLE_LABELS}
-            onChange={(option) => onSet({ variableId: option.expression })}
+            onChange={(option) => onPicked(option.expression)}
           />
         </div>
       ) : takesConnection ? (
@@ -829,10 +883,10 @@ function ParameterRow({
           <select
             id={fieldId}
             className={`${styles.input} ${styles.parameterValue}`}
-            value={parameter.literal ?? ''}
+            value={draft ?? parameter.literal ?? ''}
             disabled={busy}
             onChange={(event) => {
-              if (event.target.value !== '') onSet({ literal: event.target.value });
+              if (event.target.value !== '') onTyped(event.target.value, false);
             }}
           >
             <option value="" disabled>
@@ -870,10 +924,10 @@ function ParameterRow({
           <select
             id={fieldId}
             className={`${styles.input} ${styles.parameterValue}`}
-            value={parameter.literal ?? ''}
+            value={draft ?? parameter.literal ?? ''}
             disabled={busy}
             onChange={(event) => {
-              if (event.target.value !== '') onSet({ literal: event.target.value });
+              if (event.target.value !== '') onTyped(event.target.value, false);
             }}
           >
             <option value="" disabled>

@@ -1713,6 +1713,12 @@ export const TESTS = [
     /* Makes an HTTP connection standing in for Jira and disconnects it at the end. */
   },
   {
+    name: 'plugin-picker-save-check',
+    what: 'a choice in a plugin parameter picker waits for Save, like anything typed',
+    needs: ['workspace'],
+    /* Loads a plugin of its own with an options parameter, and unloads it. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],
