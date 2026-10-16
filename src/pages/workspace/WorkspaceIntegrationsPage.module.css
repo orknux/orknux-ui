@@ -136,6 +136,21 @@
 }
 
 .serverName,
+/* The name over what it is for, both cut to the column, so a row grows by one short line and no more. */
+.nameStack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.connectionDescription {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .connectionName {
   overflow: hidden;
   font-weight: 600;

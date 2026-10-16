@@ -333,7 +333,7 @@ record((await revealAppToken(connection.id)) === null, 'and the referenced app-l
 
 await atSettings();
 await page.fill('#connection-name', `${SCRATCH} slack ${stamp} renamed`);
-await page.getByRole('button', { name: 'Save Name', exact: true }).click().catch(() => {});
+await page.getByRole('button', { name: 'Save', exact: true }).click().catch(() => {});
 await page.waitForTimeout(800);
 await save();
 

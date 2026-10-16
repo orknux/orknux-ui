@@ -3784,6 +3784,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'connection-description-check',
+    what: "A connection's description shows under its name in the list and whole on hover, is found by the list's search, and is changed on its page",
+    needs: ['workspace'],
+    /* Makes one connection over the API and disconnects it. */
+  },
+  {
     name: 'connection-url-check',
     what: "A workspace's own connection can be pointed elsewhere on its page - an HTTP one's URL and a mail one's server - and Slack's address is not offered",
     needs: ['workspace'],

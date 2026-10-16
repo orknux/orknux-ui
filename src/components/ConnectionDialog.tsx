@@ -43,6 +43,7 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
   const [name, setName] = useState('');
   const [type, setType] = useState<ConnectionType | ''>('');
   const [url, setUrl] = useState('');
+  const [description, setDescription] = useState('');
   const [addToExistingWorkspaces, setAddToExistingWorkspaces] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +57,7 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
       setName(editing?.name ?? '');
       setType(editing?.type ?? '');
       setUrl(editing?.url ?? '');
+      setDescription(editing?.description ?? '');
       setAddToExistingWorkspaces(false);
       setConfirmingDelete(false);
       setError(null);
@@ -76,7 +78,7 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
 
     setSubmitting(true);
     setError(null);
-    const input = { name: name.trim(), type, url: url.trim() };
+    const input = { name: name.trim(), type, url: url.trim(), description: description.trim() };
     try {
       const saved =
         editing === null
@@ -130,6 +132,22 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
                 onChange={(event) => setName(event.target.value)}
                 autoFocus
                 required
+              />
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="connection-description">{t('Description')}</label>
+            <div className={styles.inputWrapper}>
+              <input
+                id="connection-description"
+                name="connectionDescription"
+                className={styles.input}
+                type="text"
+                maxLength={500}
+                placeholder={t('What it is for, e.g. production Jira, the support project')}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
               />
             </div>
           </div>

@@ -128,6 +128,8 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
   const [name, setName] = useState('');
   /** The connection's own address - a mail connection's server - where it is this workspace's to change. */
   const [address, setAddress] = useState('');
+  /** What it is for, where the connection is the workspace's own. */
+  const [description, setDescription] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [namedSaved, setNamedSaved] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -198,6 +200,7 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
         setConnection(found);
         setName(found.name);
         setAddress(found.url);
+        setDescription(found.description ?? '');
         setAuthType(found.authType);
         setUrlOverride(found.urlOverride ?? '');
         setSmtpUsername(found.smtpUsername ?? '');
@@ -432,10 +435,12 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
       const updated = await updateWorkspaceConnection(connectionId, {
         name: name.trim(),
         ...(addressEditable ? { url: address.trim() } : {}),
+        ...(locked ? {} : { description: description.trim() }),
       });
       setConnection(updated);
       setName(updated.name);
       setAddress(updated.url);
+      setDescription(updated.description ?? '');
       setNamedSaved(true);
     } catch (cause) {
       setNameError(cause instanceof Error ? cause.message : t('Could not rename the connection.'));
@@ -603,7 +608,12 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
               the API has always accepted it; there was simply nowhere to type.
             */}
             {locked ? (
-              <ReadOnlyField label={t('Integration Name')} value={connection?.name ?? ''} locked />
+              <>
+                <ReadOnlyField label={t('Integration Name')} value={connection?.name ?? ''} locked />
+                {connection?.description != null && (
+                  <ReadOnlyField label={t('Description')} value={connection.description} locked />
+                )}
+              </>
             ) : (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="connection-name">
@@ -616,6 +626,23 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     placeholder={t('Name this connection')}
+                  />
+                </div>
+              </div>
+            )}
+            {!locked && connection !== null && (
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="connection-description">
+                  {t('Description')}
+                </label>
+                <div className={styles.inputWrapper}>
+                  <input
+                    id="connection-description"
+                    className={styles.input}
+                    maxLength={500}
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder={t('What it is for, e.g. production Jira, the support project')}
                   />
                 </div>
               </div>
@@ -713,10 +740,12 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
                     savingName ||
                     name.trim() === '' ||
                     (addressEditable && address.trim() === '') ||
-                    (name.trim() === connection?.name && (!addressEditable || address.trim() === connection?.url))
+                    (name.trim() === connection?.name &&
+                      (!addressEditable || address.trim() === connection?.url) &&
+                      description.trim() === (connection?.description ?? ''))
                   }
                 >
-                  {savingName ? t('Saving…') : addressEditable ? t('Save') : t('Save Name')}
+                  {savingName ? t('Saving…') : t('Save')}
                 </button>
               </div>
             )}

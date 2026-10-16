@@ -128,6 +128,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     return connections.filter(
       (held) =>
         held.name.toLowerCase().includes(looking) ||
+        (held.description ?? '').toLowerCase().includes(looking) ||
         held.type.toLowerCase().includes(looking) ||
         connectionKindLabel(held, kinds).toLowerCase().includes(looking),
     );
@@ -376,12 +377,25 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             className={`${styles.row} ${styles.rowOpens}`}
             onClick={() => navigate(`/workspace/${workspaceId}/integrations/connections/${connection.id}`)}
           >
+            {/*
+              What it is for, under its name and whole on hover: two
+              connections to one system are told apart by it.
+            */}
             <Link
               className={`${styles.colName} ${styles.openName}`}
               to={`/workspace/${workspaceId}/integrations/connections/${connection.id}`}
+              title={connection.description ?? undefined}
+              data-connection-row={connection.name}
             >
               <ConnectionIcon type={connection.type} bare />
-              <span className={styles.connectionName}>{connection.name}</span>
+              <span className={styles.nameStack}>
+                <span className={styles.connectionName}>{connection.name}</span>
+                {connection.description !== null && (
+                  <span className={styles.connectionDescription} data-connection-description="">
+                    {connection.description}
+                  </span>
+                )}
+              </span>
             </Link>
             <span
               className={`${styles.colGrow} ${connection.status === 'CONNECTED' ? styles.type : styles.typeMuted}`}

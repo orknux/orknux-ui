@@ -53,6 +53,8 @@ export interface Connection {
   name: string;
   type: ConnectionType;
   url: string;
+  /** What it is for, in a sentence; null where nobody said. */
+  description: string | null;
 }
 
 /** A connection as one workspace holds it. Credentials are never returned here. */
@@ -68,6 +70,8 @@ export interface WorkspaceConnection {
    */
   pluginType: string | null;
   url: string;
+  /** What it is for, in a sentence: shown under the name, on hover, and to an agent beside the name. */
+  description: string | null;
   urlOverride: string | null;
   effectiveUrl: string;
   authType: AuthType;
@@ -143,9 +147,9 @@ export interface McpServerCheck {
   tools: number | null;
 }
 
-const CONNECTION_FIELDS = 'id name type url';
+const CONNECTION_FIELDS = 'id name type url description';
 const WORKSPACE_CONNECTION_FIELDS =
-  'id workspaceId name type pluginType url urlOverride effectiveUrl authType headers { name value } inherited secretSet ' +
+  'id workspaceId name type pluginType url description urlOverride effectiveUrl authType headers { name value } inherited secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing ' +
   'appTokenSet appTokenVariableId appTokenVariableName appTokenVariableCatalog appTokenVariableMissing ' +
   'userTokenSet userTokenVariableId userTokenVariableName userTokenVariableCatalog userTokenVariableMissing ' +
@@ -324,6 +328,8 @@ export interface ConnectionInput {
   name: string;
   type: ConnectionType;
   url: string;
+  /** What it is for; carried to every workspace's copy. */
+  description?: string;
   /** Also hand the connection to the workspaces that already exist. */
   addToExistingWorkspaces?: boolean;
 }
@@ -364,6 +370,8 @@ export async function createWorkspaceConnection(input: {
   workspaceId: string;
   name: string;
   type: ConnectionType;
+  /** What it is for, in a sentence. */
+  description?: string;
   /**
    * The plugin kind to label it as, sent with `type: 'HTTP'`. Omitted for a core
    * kind and for a plain endpoint; see `WorkspaceConnection.pluginType`.
@@ -405,6 +413,8 @@ export async function updateWorkspaceConnection(
   input: {
     /** Ignored for inherited connections, which follow the admin default. */
     name?: string;
+    /** Omitted leaves it alone; empty takes it off. Ignored for inherited connections. */
+    description?: string;
     /**
      * What kind of service this is. The server has always accepted a change
      * here; this client simply never sent one, so a connection's kind could

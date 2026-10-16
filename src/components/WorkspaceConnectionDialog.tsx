@@ -73,6 +73,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   /**
    * What the Type menu is on: a core kind, or the id of a kind a plugin
    * declares. Issue #363. One value rather than a type and a label side by
@@ -113,6 +114,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
 
     if (open && !dialog.open) {
       setName('');
+      setDescription('');
       setChoice('');
       setUrl('');
       setAuthType('BEARER_TOKEN');
@@ -221,6 +223,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
       const created = await createWorkspaceConnection({
         workspaceId,
         name: name.trim(),
+        description: description.trim() || undefined,
         type,
         // The label, where a plugin's kind was chosen: the rest of what is sent
         // is exactly what a plain HTTP endpoint sends.
@@ -287,6 +290,22 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                 onChange={(event) => setName(event.target.value)}
                 autoFocus
                 required
+              />
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="workspace-connection-description">{t('Description')}</label>
+            <div className={styles.inputWrapper}>
+              <input
+                id="workspace-connection-description"
+                name="connectionDescription"
+                className={styles.input}
+                type="text"
+                maxLength={500}
+                placeholder={t('What it is for, e.g. production Jira, the support project')}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
               />
             </div>
           </div>

@@ -124,7 +124,7 @@ export function AdminIntegrationsPage({ session, onSignOut }: AdminIntegrationsP
 
         {connections?.content.map((connection) => (
           <div key={connection.id} className={styles.row}>
-            <span className={styles.colName}>
+            <span className={styles.colName} title={connection.description ?? undefined}>
               <ConnectionIcon type={connection.type} />
               <span className={styles.name}>{connection.name}</span>
             </span>
