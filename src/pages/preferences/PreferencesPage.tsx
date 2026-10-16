@@ -49,9 +49,49 @@ import {
   usePaletteShortcut,
   useRecentShortcut,
   useSaveShortcut,
+  paletteShortcut,
+  recentShortcut,
+  saveShortcut,
+  formatShortcut,
+  turnShortcut,
+  addShortcut,
+  undoShortcut,
+  redoShortcut,
+  duplicateShortcut,
+  publishShortcut,
+  voiceMuteShortcut,
 } from '../../session/shortcut';
 import styles from './PreferencesPage.module.css';
 import { t, tf } from '../../i18n';
+
+/** The shortcuts this page sets, by the name a draft is kept under. */
+type ShortcutKey =
+  | 'palette'
+  | 'recent'
+  | 'save'
+  | 'format'
+  | 'turn'
+  | 'add'
+  | 'undo'
+  | 'redo'
+  | 'duplicate'
+  | 'publish'
+  | 'voiceMute';
+
+/** How each is read and how each is stored, for Save. */
+const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string) => void }[] = [
+  { key: 'palette', stored: paletteShortcut, store: setPaletteShortcut },
+  { key: 'recent', stored: recentShortcut, store: setRecentShortcut },
+  { key: 'save', stored: saveShortcut, store: setSaveShortcut },
+  { key: 'format', stored: formatShortcut, store: setFormatShortcut },
+  { key: 'turn', stored: turnShortcut, store: setTurnShortcut },
+  { key: 'add', stored: addShortcut, store: setAddShortcut },
+  { key: 'undo', stored: undoShortcut, store: setUndoShortcut },
+  { key: 'redo', stored: redoShortcut, store: setRedoShortcut },
+  { key: 'duplicate', stored: duplicateShortcut, store: setDuplicateShortcut },
+  { key: 'publish', stored: publishShortcut, store: setPublishShortcut },
+  { key: 'voiceMute', stored: voiceMuteShortcut, store: setVoiceMuteShortcut },
+];
 
 export interface PreferencesPageProps {
   session: SessionUser;
@@ -70,17 +110,38 @@ export interface PreferencesPageProps {
  * arrive.
  */
 export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
-  const shortcut = usePaletteShortcut();
-  const recent = useRecentShortcut();
-  const save = useSaveShortcut();
-  const format = useFormatShortcut();
-  const turn = useTurnShortcut();
-  const add = useAddShortcut();
-  const undo = useUndoShortcut();
-  const redo = useRedoShortcut();
-  const duplicate = useDuplicateShortcut();
-  const publish = usePublishShortcut();
-  const voiceMute = useVoiceMuteShortcut();
+  /*
+   * Every change on this page is a draft until Save. It used to take effect
+   * the moment it was made - a shortcut recorded, a theme pressed, a language
+   * chosen - with nothing to press and nothing to say whether it had taken; a
+   * Save at the foot and a count of what is waiting is how every other
+   * settings page reads.
+   */
+  const [shortcutDrafts, setShortcutDrafts] = useState<Partial<Record<ShortcutKey, string>>>({});
+  const draftShortcut = (key: ShortcutKey, next: string) =>
+    setShortcutDrafts((held) => ({ ...held, [key]: next }));
+  const storedPalette = usePaletteShortcut();
+  const shortcut = shortcutDrafts.palette ?? storedPalette;
+  const storedRecent = useRecentShortcut();
+  const recent = shortcutDrafts.recent ?? storedRecent;
+  const storedSave = useSaveShortcut();
+  const save = shortcutDrafts.save ?? storedSave;
+  const storedFormat = useFormatShortcut();
+  const format = shortcutDrafts.format ?? storedFormat;
+  const storedTurn = useTurnShortcut();
+  const turn = shortcutDrafts.turn ?? storedTurn;
+  const storedAdd = useAddShortcut();
+  const add = shortcutDrafts.add ?? storedAdd;
+  const storedUndo = useUndoShortcut();
+  const undo = shortcutDrafts.undo ?? storedUndo;
+  const storedRedo = useRedoShortcut();
+  const redo = shortcutDrafts.redo ?? storedRedo;
+  const storedDuplicate = useDuplicateShortcut();
+  const duplicate = shortcutDrafts.duplicate ?? storedDuplicate;
+  const storedPublish = usePublishShortcut();
+  const publish = shortcutDrafts.publish ?? storedPublish;
+  const storedVoiceMute = useVoiceMuteShortcut();
+  const voiceMute = shortcutDrafts.voiceMute ?? storedVoiceMute;
   /**
    * Which shortcut the next keystroke belongs to, or null while none is being
    * recorded. Not a boolean: there are ten of these now, and they share the one
@@ -136,17 +197,17 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
         return;
       }
 
-      if (recording === 'palette') setPaletteShortcut(said);
-      else if (recording === 'recent') setRecentShortcut(said);
-      else if (recording === 'save') setSaveShortcut(said);
-      else if (recording === 'turn') setTurnShortcut(said);
-      else if (recording === 'add') setAddShortcut(said);
-      else if (recording === 'undo') setUndoShortcut(said);
-      else if (recording === 'redo') setRedoShortcut(said);
-      else if (recording === 'duplicate') setDuplicateShortcut(said);
-      else if (recording === 'publish') setPublishShortcut(said);
-      else if (recording === 'voiceMute') setVoiceMuteShortcut(said);
-      else setFormatShortcut(said);
+      if (recording === 'palette') draftShortcut('palette', said);
+      else if (recording === 'recent') draftShortcut('recent', said);
+      else if (recording === 'save') draftShortcut('save', said);
+      else if (recording === 'turn') draftShortcut('turn', said);
+      else if (recording === 'add') draftShortcut('add', said);
+      else if (recording === 'undo') draftShortcut('undo', said);
+      else if (recording === 'redo') draftShortcut('redo', said);
+      else if (recording === 'duplicate') draftShortcut('duplicate', said);
+      else if (recording === 'publish') draftShortcut('publish', said);
+      else if (recording === 'voiceMute') draftShortcut('voiceMute', said);
+      else draftShortcut('format', said);
       setRecording(null);
       setRefused(null);
     }
@@ -168,7 +229,6 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
    * also means a refusal leaves everything as it was, with the reason on screen.
    */
   const language = currentLanguage();
-  const [choosing, setChoosing] = useState(false);
   const [languageError, setLanguageError] = useState<string | null>(null);
 
   /**
@@ -176,37 +236,11 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
    * and every page after it formats its times as it renders.
    */
   const [zone, setZone] = useState<string>(chosenTimeZone() ?? '');
-  const [savingZone, setSavingZone] = useState(false);
+  const [savedZone, setSavedZone] = useState<string>(chosenTimeZone() ?? '');
   const [zoneError, setZoneError] = useState<string | null>(null);
 
-  async function chooseZone(next: string) {
-    if (next === zone || savingZone) return;
-    setZoneError(null);
-    setSavingZone(true);
-    try {
-      await setMyTimeZone(next === '' ? null : next);
-      adoptTimeZone(next === '' ? null : next);
-      setZone(next);
-    } catch (cause) {
-      setZoneError(cause instanceof Error ? cause.message : t('Could not save that.'));
-    } finally {
-      setSavingZone(false);
-    }
-  }
-
-  async function chooseLanguage(next: Language) {
-    if (next === language || choosing) return;
-    setLanguageError(null);
-    setChoosing(true);
-    try {
-      await setMyLanguage(next);
-      // Applies it, remembers it, and reloads into it. Nothing after this runs.
-      setLanguage(next);
-    } catch (cause) {
-      setLanguageError(cause instanceof Error ? cause.message : t('Could not save that.'));
-      setChoosing(false);
-    }
-  }
+  /** The language chosen and not yet saved; applying it reloads the page, so it is saved last. */
+  const [pickedLanguage, setPickedLanguage] = useState<Language>(language);
 
   /*
    * The address, as it is now and as it is being typed.
@@ -220,13 +254,10 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
   const [email, setEmail] = useState(session.email ?? '');
   /** What the server last said, so the button knows whether anything has changed. */
   const [savedEmail, setSavedEmail] = useState(session.email ?? '');
-  const [savingEmail, setSavingEmail] = useState(false);
   const [emailSaid, setEmailSaid] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  async function saveEmail() {
-    if (savingEmail) return;
-    setSavingEmail(true);
+  async function saveEmail(): Promise<boolean> {
     setEmailError(null);
     setEmailSaid(null);
     try {
@@ -238,10 +269,10 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
           ? t('Cleared. Your directory entry fills it in again at your next sign-in.')
           : t('Saved. Signing in no longer overwrites it.'),
       );
+      return true;
     } catch (cause) {
       setEmailError(cause instanceof Error ? cause.message : t('Could not save the address.'));
-    } finally {
-      setSavingEmail(false);
+      return false;
     }
   }
 
@@ -255,26 +286,8 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
    * Save beside it would only be a second thing to remember to press.
    */
   const [notify, setNotify] = useState(session.emailNotifications !== false);
-  const [savingNotify, setSavingNotify] = useState(false);
+  const [savedNotify, setSavedNotify] = useState(session.emailNotifications !== false);
   const [notifyError, setNotifyError] = useState<string | null>(null);
-
-  async function chooseNotify(next: boolean) {
-    if (savingNotify || next === notify) return;
-    setSavingNotify(true);
-    setNotifyError(null);
-    // Shown at once, and put back below if the server disagrees: the control is
-    // a switch, and a switch that waits for a round trip reads as a broken one.
-    setNotify(next);
-    try {
-      const held = await setUserEmailNotifications(next);
-      setNotify(held.emailNotifications);
-    } catch (cause) {
-      setNotify(!next);
-      setNotifyError(cause instanceof Error ? cause.message : t('Could not save that.'));
-    } finally {
-      setSavingNotify(false);
-    }
-  }
 
   /**
    * Whether a chat prints what an answer cost beside how long it took.
@@ -287,30 +300,87 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
    * spend wants it watched wherever they sign in.
    */
   const [costShown, setCostShown] = useState(session.chatCostShown === true);
-  const [savingCost, setSavingCost] = useState(false);
+  const [savedCost, setSavedCost] = useState(session.chatCostShown === true);
   const [costError, setCostError] = useState<string | null>(null);
 
-  async function chooseCost(next: boolean) {
-    if (savingCost || next === costShown) return;
-    setSavingCost(true);
-    setCostError(null);
-    setCostShown(next);
-    try {
-      const held = await setChatCostShown(next);
-      setCostShown(held.chatCostShown);
-    } catch (cause) {
-      setCostShown(!next);
-      setCostError(cause instanceof Error ? cause.message : t('Could not save that.'));
-    } finally {
-      setSavingCost(false);
-    }
-  }
+  const [savedTheme, setSavedTheme] = useState<Theme>(currentTheme);
 
-  function choose(next: Theme) {
-    // Applied first: the page it changes is the page being looked at.
-    applyTheme(next);
-    rememberTheme(next);
-    setTheme(next);
+  /** Every setting that differs from what is stored, by name - what the count at the foot counts. */
+  const shortcutsUnsaved = SHORTCUTS.filter(
+    ({ key, stored }) => shortcutDrafts[key] !== undefined && shortcutDrafts[key] !== stored(),
+  );
+  const unsaved = [
+    email.trim() !== savedEmail,
+    notify !== savedNotify,
+    costShown !== savedCost,
+    zone !== savedZone,
+    theme !== savedTheme,
+    pickedLanguage !== language,
+  ].filter(Boolean).length + shortcutsUnsaved.length;
+  const [saving, setSaving] = useState(false);
+
+  /**
+   * Everything waiting, stored. Each setting is its own write with its own
+   * refusal, said beside it; what stored stays stored. The language goes last,
+   * because applying it reloads the page.
+   */
+  async function saveAll() {
+    if (saving) return;
+    setSaving(true);
+    let failed = false;
+    if (email.trim() !== savedEmail && !(await saveEmail())) failed = true;
+    if (notify !== savedNotify) {
+      setNotifyError(null);
+      try {
+        const held = await setUserEmailNotifications(notify);
+        setNotify(held.emailNotifications);
+        setSavedNotify(held.emailNotifications);
+      } catch (cause) {
+        setNotifyError(cause instanceof Error ? cause.message : t('Could not save that.'));
+        failed = true;
+      }
+    }
+    if (costShown !== savedCost) {
+      setCostError(null);
+      try {
+        const held = await setChatCostShown(costShown);
+        setCostShown(held.chatCostShown);
+        setSavedCost(held.chatCostShown);
+      } catch (cause) {
+        setCostError(cause instanceof Error ? cause.message : t('Could not save that.'));
+        failed = true;
+      }
+    }
+    if (zone !== savedZone) {
+      setZoneError(null);
+      try {
+        await setMyTimeZone(zone === '' ? null : zone);
+        adoptTimeZone(zone === '' ? null : zone);
+        setSavedZone(zone);
+      } catch (cause) {
+        setZoneError(cause instanceof Error ? cause.message : t('Could not save that.'));
+        failed = true;
+      }
+    }
+    if (theme !== savedTheme) {
+      applyTheme(theme);
+      rememberTheme(theme);
+      setSavedTheme(theme);
+    }
+    for (const { key, store } of shortcutsUnsaved) store(shortcutDrafts[key] as string);
+    setShortcutDrafts({});
+    if (pickedLanguage !== language && !failed) {
+      setLanguageError(null);
+      try {
+        await setMyLanguage(pickedLanguage);
+        // Applies it, remembers it, and reloads into it. Nothing after this runs.
+        setLanguage(pickedLanguage);
+        return;
+      } catch (cause) {
+        setLanguageError(cause instanceof Error ? cause.message : t('Could not save that.'));
+      }
+    }
+    setSaving(false);
   }
 
   return (
@@ -356,14 +426,6 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                     setEmailError(null);
                   }}
                 />
-                <button
-                  type="button"
-                  className={styles.save}
-                  onClick={() => void saveEmail()}
-                  disabled={savingEmail || email.trim() === savedEmail}
-                >
-                  {savingEmail ? t('Saving…') : 'Save'}
-                </button>
               </div>
               {emailSaid !== null && <p className={styles.done}>{emailSaid}</p>}
               {emailError !== null && (
@@ -410,17 +472,17 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   type="button"
                   role="radio"
                   aria-checked={notify}
-                  disabled={savingNotify}
+                  disabled={saving}
                   className={notify ? styles.optionCurrent : styles.option}
-                  onClick={() => void chooseNotify(true)}
+                  onClick={() => setNotify(true)}
                 >{t('On')}</button>
                 <button
                   type="button"
                   role="radio"
                   aria-checked={!notify}
-                  disabled={savingNotify}
+                  disabled={saving}
                   className={notify ? styles.option : styles.optionCurrent}
-                  onClick={() => void chooseNotify(false)}
+                  onClick={() => setNotify(false)}
                 >{t('Off')}</button>
               </div>
               {notifyError !== null && (
@@ -461,17 +523,17 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   type="button"
                   role="radio"
                   aria-checked={costShown}
-                  disabled={savingCost}
+                  disabled={saving}
                   className={costShown ? styles.optionCurrent : styles.option}
-                  onClick={() => void chooseCost(true)}
+                  onClick={() => setCostShown(true)}
                 >{t('On')}</button>
                 <button
                   type="button"
                   role="radio"
                   aria-checked={!costShown}
-                  disabled={savingCost}
+                  disabled={saving}
                   className={costShown ? styles.option : styles.optionCurrent}
-                  onClick={() => void chooseCost(false)}
+                  onClick={() => setCostShown(false)}
                 >{t('Off')}</button>
               </div>
               {costError !== null && (
@@ -517,10 +579,10 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                     type="button"
                     role="radio"
                     lang={one}
-                    disabled={choosing}
-                    aria-checked={language === one}
-                    className={language === one ? styles.optionCurrent : styles.option}
-                    onClick={() => void chooseLanguage(one)}
+                    disabled={saving}
+                    aria-checked={pickedLanguage === one}
+                    className={pickedLanguage === one ? styles.optionCurrent : styles.option}
+                    onClick={() => setPickedLanguage(one)}
                   >
                     {LANGUAGE_NAMES[one]}
                   </button>
@@ -544,8 +606,8 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                 id="preferences-time-zone"
                 className={styles.input}
                 value={zone}
-                disabled={savingZone}
-                onChange={(event) => void chooseZone(event.target.value)}
+                disabled={saving}
+                onChange={(event) => setZone(event.target.value)}
               >
                 <option value="">{tf('This browser\'s ({zone})',{ zone: browserTimeZone() })}</option>
                 {timeZones().map((one) => (
@@ -576,7 +638,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   role="radio"
                   aria-checked={theme === 'dark'}
                   className={theme === 'dark' ? styles.optionCurrent : styles.option}
-                  onClick={() => choose('dark')}
+                  onClick={() => setTheme('dark')}
                 >
                   <img src={moonIcon} alt="" width={14} height={14} />
                   {t('Dark Mode')}
@@ -586,7 +648,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   role="radio"
                   aria-checked={theme === 'light'}
                   className={theme === 'light' ? styles.optionCurrent : styles.option}
-                  onClick={() => choose('light')}
+                  onClick={() => setTheme('light')}
                 >
                   <img src={sunIcon} alt="" width={14} height={14} />
                   {t('Light Mode')}
@@ -628,7 +690,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setPaletteShortcut(DEFAULT_SHORTCUT)}
+                    onClick={() => draftShortcut('palette', DEFAULT_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -670,7 +732,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setRecentShortcut(DEFAULT_RECENT_SHORTCUT)}
+                    onClick={() => draftShortcut('recent', DEFAULT_RECENT_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -710,7 +772,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setSaveShortcut(DEFAULT_SAVE_SHORTCUT)}
+                    onClick={() => draftShortcut('save', DEFAULT_SAVE_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -752,7 +814,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setFormatShortcut(DEFAULT_FORMAT_SHORTCUT)}
+                    onClick={() => draftShortcut('format', DEFAULT_FORMAT_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -791,7 +853,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   {recording === 'turn' ? t('Press any keys…') : turn}
                 </button>
                 {turn !== DEFAULT_TURN_SHORTCUT && recording !== 'turn' && (
-                  <button type="button" className={styles.option} onClick={() => setTurnShortcut(DEFAULT_TURN_SHORTCUT)}>{t('Reset')}</button>
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('turn', DEFAULT_TURN_SHORTCUT)}>{t('Reset')}</button>
                 )}
               </div>
               {recording === 'turn' && (
@@ -822,7 +884,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   {recording === 'add' ? t('Press any keys…') : add}
                 </button>
                 {add !== DEFAULT_ADD_SHORTCUT && recording !== 'add' && (
-                  <button type="button" className={styles.option} onClick={() => setAddShortcut(DEFAULT_ADD_SHORTCUT)}>{t('Reset')}</button>
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('add', DEFAULT_ADD_SHORTCUT)}>{t('Reset')}</button>
                 )}
               </div>
               {recording === 'add' && (
@@ -851,7 +913,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   {recording === 'undo' ? t('Press any keys…') : undo}
                 </button>
                 {undo !== DEFAULT_UNDO_SHORTCUT && recording !== 'undo' && (
-                  <button type="button" className={styles.option} onClick={() => setUndoShortcut(DEFAULT_UNDO_SHORTCUT)}>{t('Reset')}</button>
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('undo', DEFAULT_UNDO_SHORTCUT)}>{t('Reset')}</button>
                 )}
               </div>
               {recording === 'undo' && (
@@ -880,7 +942,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   {recording === 'redo' ? t('Press any keys…') : redo}
                 </button>
                 {redo !== DEFAULT_REDO_SHORTCUT && recording !== 'redo' && (
-                  <button type="button" className={styles.option} onClick={() => setRedoShortcut(DEFAULT_REDO_SHORTCUT)}>{t('Reset')}</button>
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('redo', DEFAULT_REDO_SHORTCUT)}>{t('Reset')}</button>
                 )}
               </div>
               {recording === 'redo' && (
@@ -914,7 +976,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setDuplicateShortcut(DEFAULT_DUPLICATE_SHORTCUT)}
+                    onClick={() => draftShortcut('duplicate', DEFAULT_DUPLICATE_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -949,7 +1011,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setPublishShortcut(DEFAULT_PUBLISH_SHORTCUT)}
+                    onClick={() => draftShortcut('publish', DEFAULT_PUBLISH_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -986,7 +1048,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                   <button
                     type="button"
                     className={styles.option}
-                    onClick={() => setVoiceMuteShortcut(DEFAULT_VOICE_MUTE_SHORTCUT)}
+                    onClick={() => draftShortcut('voiceMute', DEFAULT_VOICE_MUTE_SHORTCUT)}
                   >{t('Reset')}</button>
                 )}
               </div>
@@ -997,6 +1059,23 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
               )}
             </div>
           </section>
+
+          {/* The page's one press, and how much is waiting for it. */}
+          <div className={styles.pageFoot}>
+            {unsaved > 0 && (
+              <span className={styles.pageUnsaved} data-preferences-unsaved="">
+                {unsaved === 1 ? t('1 unsaved') : `${unsaved} unsaved`}
+              </span>
+            )}
+            <button
+              type="button"
+              className={styles.pageSave}
+              disabled={saving || unsaved === 0}
+              onClick={() => void saveAll()}
+            >
+              {saving ? t('Saving…') : t('Save')}
+            </button>
+          </div>
         </div>
       </div>
     </AppShell>

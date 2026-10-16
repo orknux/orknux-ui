@@ -30,7 +30,9 @@ try {
 
   const saved = page.waitForResponse((answer) => (answer.request().postData() ?? '').includes('setMyTimeZone'), { timeout: 10_000 }).catch(() => null);
   await picker.selectOption('Pacific/Kiritimati');
-  record((await saved) !== null, 'choosing one saves it');
+  // Preferences keeps a change as a draft until its Save.
+  await page.locator('[class*="_pageSave_"]').click();
+  record((await saved) !== null, 'choosing one and saving stores it');
 
   const session = await page.request.get(`${BASE}/api/session`).then((answer) => answer.json()).catch(() => ({}));
   record(session?.timeZone === 'Pacific/Kiritimati', `and the session carries it back (${session?.timeZone})`);

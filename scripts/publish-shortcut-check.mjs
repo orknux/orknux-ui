@@ -248,6 +248,9 @@ if (listed) {
   await page.waitForTimeout(600);
   const chosen = (await row.locator('button').first().innerText()).trim();
   record(chosen === 'Ctrl+Alt+P', `Preferences took the new keystroke (${chosen})`);
+  // Preferences keeps a change as a draft until its Save.
+  await page.locator('[class*="_pageSave_"]').click();
+  await page.waitForTimeout(400);
 
   /* Back to a draft, so there is something for the new key to do. */
   await draft(`${PREFIX} says again`);
@@ -272,6 +275,7 @@ if (listed) {
   await page.waitForSelector('#publish-shortcut', { timeout: 20_000 });
   const back = page.locator('#publish-shortcut').locator('xpath=../..').locator('[class*="_options_"]');
   await back.locator('button', { hasText: /^Reset$/ }).click();
+  await page.locator('[class*="_pageSave_"]').click();
   await page.waitForTimeout(400);
   record(
     (await back.locator('button').first().innerText()).trim() === 'Ctrl+Enter',

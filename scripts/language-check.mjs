@@ -170,6 +170,8 @@ try {
     window.__beforeLanguage = true;
   });
   await polish.click();
+  // Preferences keeps a change as a draft until its Save, which reloads into the language.
+  await page.locator('[class*="_pageSave_"]').click();
   await page.waitForFunction(() => window.__beforeLanguage === undefined, undefined, { timeout: 20_000 });
   await page.waitForSelector('h1');
   await page.waitForTimeout(500);

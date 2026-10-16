@@ -238,3 +238,35 @@
   font-size: var(--text-xs);
   color: var(--color-danger);
 }
+
+/* The page's one Save, at its foot, as the plugins and workspace settings pages have it. */
+.pageFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16) var(--space-4);
+}
+
+.pageUnsaved {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.pageSave {
+  padding: var(--space-10) var(--space-16);
+  background: var(--color-accent-brand);
+  border: 0;
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.pageSave:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

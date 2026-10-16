@@ -119,6 +119,40 @@ for (const viewport of SIZES) {
   await context.close();
 }
 
+/*
+ * A change is a draft until Save. Preferences applied each one the moment it
+ * was made, with nothing to press and nothing saying it had taken; now a change
+ * is counted at the foot, nothing happens until Save, and Save applies it.
+ * Driven on the theme, which shows on the page itself.
+ */
+{
+  const context = await signIn(await browser.newContext({ viewport: { width: 1440, height: 900 } }));
+  const page = await context.newPage();
+  await page.goto(`${BASE}/preferences`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#interface-theme', { timeout: 20_000 });
+  const themeNow = () => page.evaluate(() => document.documentElement.getAttribute('data-theme') ?? 'dark');
+  const before = await themeNow();
+  const other = before === 'light' ? 'Dark Mode' : 'Light Mode';
+  const save = page.locator('[class*="_pageSave_"]');
+  const unsaved = page.locator('[data-preferences-unsaved]');
+
+  record(await save.isDisabled(), 'nothing changed, Save has nothing to store');
+  await page.getByRole('radio', { name: other }).click();
+  await page.waitForTimeout(300);
+  record((await unsaved.textContent().catch(() => '')) === '1 unsaved', 'a change is counted at the foot');
+  record((await themeNow()) === before, 'and nothing is applied before Save');
+  await save.click();
+  await page.waitForTimeout(500);
+  record((await themeNow()) !== before, 'Save applies it');
+  record((await unsaved.count()) === 0 && (await save.isDisabled()), 'and nothing is waiting any more');
+
+  // Put back.
+  await page.getByRole('radio', { name: before === 'light' ? 'Light Mode' : 'Dark Mode' }).click();
+  await save.click();
+  await page.waitForTimeout(300);
+  await context.close();
+}
+
 // Everything above is recorded; `ok` is only what the log says out loud.
 console.log(ok ? 'both window sizes are right' : 'see the failures above');
 await finish(browser);

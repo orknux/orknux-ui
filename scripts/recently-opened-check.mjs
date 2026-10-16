@@ -278,6 +278,9 @@ if (offeredThere) {
   await page.waitForTimeout(600);
   const chosen = (await options.locator('button').first().innerText()).trim();
   record(chosen === 'Ctrl+Alt+J', `Preferences took a new keystroke (${chosen})`);
+  // Preferences keeps a change as a draft until its Save.
+  await page.locator('[class*="_pageSave_"]').click();
+  await page.waitForTimeout(400);
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/issues`, { waitUntil: 'domcontentloaded' });
   await openRecent('Control+Shift+E');
@@ -302,6 +305,7 @@ if (offeredThere) {
   await page.waitForSelector('#recent-shortcut', { timeout: 20_000 });
   const back = page.locator('#recent-shortcut').locator('xpath=../..').locator('[class*="_options_"]');
   await back.locator('button', { hasText: /^Reset$/ }).click();
+  await page.locator('[class*="_pageSave_"]').click();
   await page.waitForTimeout(400);
   record(
     (await back.locator('button').first().innerText()).trim() === 'Ctrl+Shift+E',

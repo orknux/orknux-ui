@@ -240,6 +240,9 @@ await recorder.click();
 await page.keyboard.press('Control+Shift+K');
 const chosen = ((await recorder.textContent()) ?? '').trim();
 record(chosen === CHOSEN, `pressing a combination chooses it (${chosen})`);
+// Preferences keeps a change as a draft until its Save.
+await page.locator('[class*="_pageSave_"]').click();
+await page.waitForTimeout(300);
 
 /* ------------------------------------------------------------ the panel */
 

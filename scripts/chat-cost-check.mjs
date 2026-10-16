@@ -166,6 +166,8 @@ await first.page
   .locator('[class*="_setting_"]', { has: first.page.locator(HINT) })
   .getByRole('radio', { name: 'On' })
   .click();
+// Preferences keeps a change as a draft until its Save.
+await first.page.locator('[class*="_pageSave_"]').click();
 await first.page.waitForTimeout(600);
 await first.page.screenshot({ path: shot('chat-cost-preference.png') });
 await first.context.close();
@@ -185,6 +187,7 @@ await second.page
   .locator('[class*="_setting_"]', { has: second.page.locator(HINT) })
   .getByRole('radio', { name: 'Off' })
   .click();
+await second.page.locator('[class*="_pageSave_"]').click();
 await second.page.waitForTimeout(600);
 const restored = await readControl(second.page);
 record(
