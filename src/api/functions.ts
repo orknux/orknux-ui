@@ -648,6 +648,68 @@ export function parametersOf(
   return { params };
 }
 
+/**
+ * Where the declaration's return annotation is - the `: Promise<Ticket>` between
+ * the parameter list and the body - or null where it has none.
+ *
+ * Walked rather than matched, for the reason the parameters are: an annotation
+ * has brackets of its own, and the body's `{` is the first one outside them.
+ */
+function returnAnnotation(source: string): { from: number; to: number; text: string } | null {
+  const found = declaration(source);
+  if (found === null) return null;
+  const colon = /^\s*:/.exec(source.slice(found.to + 1));
+  if (colon === null) return null;
+  const from = found.to + 1 + colon[0].length;
+  let depth = 0;
+  for (let at = from; at < source.length; at += 1) {
+    const ch = source[at];
+    if (ch === '<' || ch === '(' || ch === '[') depth += 1;
+    else if (ch === '>' || ch === ')' || ch === ']') depth -= 1;
+    else if (ch === '{' && depth === 0) {
+      const text = source.slice(from, at);
+      return { from, to: from + text.trimEnd().length, text: text.trim() };
+    }
+  }
+  return null;
+}
+
+/**
+ * What the code says this function returns, read off its declaration's return
+ * annotation, unwrapped from `Promise<…>` since every function here is async.
+ *
+ * Null where there is no annotation, or one that names no shape orknux has:
+ * the panel is left as it is, which is the parameters' rule for mid-edit code.
+ * `void` is returning nothing.
+ */
+export function returnTypeOf(
+  source: string,
+  objects: { id: string; name: string }[],
+): { type: ValueType; objectId: string | null } | null {
+  const held = returnAnnotation(source);
+  if (held === null) return null;
+  const promised = /^Promise\s*<([\s\S]*)>$/.exec(held.text);
+  const written = (promised === null ? held.text : promised[1]).trim();
+  if (written === 'void' || written === 'undefined') return { type: 'NONE', objectId: null };
+  const read = typeOfAnnotation(written, objects);
+  return read === null ? null : { type: read.type, objectId: read.objectId ?? null };
+}
+
+/**
+ * The same code, annotated as returning this - where it was annotated at all.
+ *
+ * Only an annotation already there is rewritten: code nobody annotated is left
+ * as it was written, and the panel alone says what it returns.
+ */
+export function withReturnType(source: string, type: ValueType, objectName?: string | null): string {
+  const held = returnAnnotation(source);
+  if (held === null) return source;
+  const wrapped = /^Promise\s*</.test(held.text);
+  const inner = type === 'NONE' ? 'void' : tsType(type, objectName);
+  const wanted = wrapped ? `Promise<${inner}>` : inner;
+  return held.text === wanted ? source : source.slice(0, held.from) + wanted + source.slice(held.to);
+}
+
 /** The name a written parameter starts with, ignoring what it was annotated with. */
 function nameOf(entry: string): string | null {
   const name = /^\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\??\s*(?::|=|$)/.exec(entry);

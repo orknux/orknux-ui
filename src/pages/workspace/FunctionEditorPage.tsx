@@ -14,6 +14,8 @@ import {
   timeAgo,
   namesObject,
   parametersOf,
+  returnTypeOf,
+  withReturnType,
   sameParameters,
   setFunctionTimeout,
   starterSource,
@@ -969,6 +971,25 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
       if (source !== openedWith.current && written !== null && written !== identifier(name)) {
         declaredAs.current = written;
         setName(written);
+        setSaved(false);
+      }
+
+      /*
+       * And the return type, from the annotation after the parameter list.
+       * The panel's Return Type was the one half of the signature that never
+       * followed the code: `): Promise<Ticket>` typed in left it on Map, and the
+       * panel is what is saved. Read only where the code annotates it; a map
+       * read back where the panel names an object keeps the object, by the
+       * parameters' rule, since an unresolved object is written as a map.
+       */
+      const returned = returnTypeOf(source, objects);
+      if (
+        returned !== null &&
+        !(returned.type === 'MAP' && returnType === 'OBJECT') &&
+        (returned.type !== returnType || (namesObject(returned.type) && returned.objectId !== returnObjectId))
+      ) {
+        setReturnType(returned.type);
+        setReturnObjectId(namesObject(returned.type) ? returned.objectId : null);
         setSaved(false);
       }
 
@@ -2258,7 +2279,12 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                       const type = event.target.value as ValueType;
                       setReturnType(type);
                       // Same rule as a parameter's: naming an object means naming one.
-                      setReturnObjectId(namesObject(type) ? (returnObjectId ?? objects[0]?.id ?? null) : null);
+                      const object = namesObject(type) ? (returnObjectId ?? objects[0]?.id ?? null) : null;
+                      setReturnObjectId(object);
+                      // And an annotation in the code says the same thing, where there is one.
+                      setSource((current) =>
+                        withReturnType(current, type, objects.find((held) => held.id === object)?.name),
+                      );
                       setSaved(false);
                     }}
                   >
@@ -2282,6 +2308,8 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                         aria-label={t('Returned object')}
                         onChange={(event) => {
                           setReturnObjectId(event.target.value);
+                          const named = objects.find((held) => held.id === event.target.value)?.name;
+                          setSource((current) => withReturnType(current, returnType, named));
                           setSaved(false);
                         }}
                       >

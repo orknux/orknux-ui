@@ -206,4 +206,48 @@ record(
   )})`,
 );
 
+/* ---- the return type, which the panel never read back ---- */
+
+const returnPicker = 'select[aria-label="Return type"]';
+const returned = () => page.inputValue(returnPicker).catch(() => null);
+record((await returned()) === 'STRING', `the panel starts on the stored return type (${await returned()})`);
+
+await writeAll(
+  `export default function ${NAME}(caseNumber: number): number {
+  return caseNumber * 2;
+}
+`,
+  'caseNumber * 2',
+);
+let followed = null;
+for (let waited = 0; waited < 15_000 && followed !== 'NUMBER'; waited += 150) {
+  followed = await returned();
+  if (followed !== 'NUMBER') await page.waitForTimeout(150);
+}
+record(followed === 'NUMBER', `a return type written in the declaration moves the panel (${followed})`);
+
+await writeAll(
+  `export default async function ${NAME}(caseNumber: number): Promise<boolean> {
+  return caseNumber > 2;
+}
+`,
+  'caseNumber > 2',
+);
+followed = null;
+for (let waited = 0; waited < 15_000 && followed !== 'BOOLEAN'; waited += 150) {
+  followed = await returned();
+  if (followed !== 'BOOLEAN') await page.waitForTimeout(150);
+}
+record(followed === 'BOOLEAN', `and one wrapped in Promise<...> as well (${followed})`);
+
+await page.selectOption(returnPicker, 'STRING');
+const rewrote = await until(
+  (now) => (now.code ?? '').includes('Promise<string>'),
+  'the annotation to follow the panel',
+  15_000,
+);
+record(rewrote !== null, 'choosing a return type in the panel rewrites the annotation that was there');
+await page.waitForTimeout(3000);
+record((await returned()) === 'STRING', `and the two settle on it (${await returned()})`);
+
 await clean();
