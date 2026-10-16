@@ -763,6 +763,20 @@ export async function setPluginParameter(
   return data.setPluginParameter;
 }
 
+/**
+ * The secret typed into one parameter, for the settings page's eye; null where
+ * none was typed. The server records that it was read.
+ */
+export async function revealPluginParameter(workspaceId: string, pluginId: string, name: string): Promise<string | null> {
+  const data = await graphql<{ revealPluginParameter: string | null }>(
+    `mutation RevealPluginParameter($workspaceId: ID!, $pluginId: ID!, $name: String!) {
+      revealPluginParameter(workspaceId: $workspaceId, pluginId: $pluginId, name: $name)
+    }`,
+    { workspaceId, pluginId, name },
+  );
+  return data.revealPluginParameter;
+}
+
 /** Unsets one parameter. A required one is marked as missing again. */
 export async function clearPluginParameter(
   workspaceId: string,

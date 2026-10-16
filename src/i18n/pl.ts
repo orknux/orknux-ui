@@ -2455,6 +2455,7 @@ export const PL: Record<string, string> = {
   "Chat timers sound when they end": "Minutniki w czacie dzwonią, gdy się kończą",
   "A short chime when a timer an agent put above the message box reaches nought, in the chat that is open. An agent overrides this for one timer only when you tell it to. On by default.": "Krótki dźwięk, gdy minutnik ustawiony przez agenta nad polem wiadomości dojdzie do zera, w otwartym czacie. Agent zmienia to dla jednego minutnika tylko wtedy, gdy mu to powiesz. Domyślnie włączone.",
   "Read aloud so far": "Przeczytano dotąd",
+  "Could not show that secret.": "Nie udało się pokazać tego sekretu.",
   "Watchers in this session": "Obserwatory w tej sesji",
   "{status} · check {checks} · set {when}": "{status} · sprawdzenie {checks} · ustawiony {when}",
   "{status} · {when}": "{status} · {when}",

@@ -14,7 +14,8 @@
  * server never hands a stored secret back and a control promising one would be
  * promising the one thing it cannot give.
  *
- * Nothing is saved: the value is typed and the page is left. Loads a plugin of
+ * Then it is saved: "1 unsaved" and Save follow it, the box empties, and the
+ * stored secret is shown back when asked for. Loads a plugin of
  * its own with one secret parameter - a seeded installation has no plugins at
  * all, and the developer's is the only one with a Slack in it - and unloads it
  * afterwards.
@@ -169,10 +170,49 @@ const hidden = await page
   .catch(() => false);
 record(hidden, 'and pressing it again puts it away');
 
+/* ------------------------------------------------- saved, and shown back ---- */
+
 /*
- * Left as it was found: the value is cleared rather than saved, so this check
- * cannot leave a plugin holding a made-up credential.
+ * Saved, a typed secret stops being unsaved. The page compared the draft with
+ * what came back, and a secret comes back as nothing - so it read "1 unsaved"
+ * for good after it was stored, and the box went on holding it. The plugin is
+ * this check's own and is unloaded below, so saving leaves nothing behind.
  */
-await box.fill('');
+const unsavedNote = page.locator('[class*="_pageUnsaved_"]');
+const save = page.locator('[class*="_pageSave_"]');
+record((await unsavedNote.textContent().catch(() => '')) === '1 unsaved', 'typed and not stored, the page says 1 unsaved');
+record(await save.isEnabled(), 'and Save can be pressed');
+await save.click();
+await page.waitForFunction(() => document.querySelector('[class*="_pageUnsaved_"]') === null, null, { timeout: 10_000 }).catch(() => undefined);
+record((await unsavedNote.count()) === 0, 'saved, nothing is unsaved any more');
+record(await save.isDisabled(), 'and Save has nothing to store');
+const after = await box.inputValue().catch(() => null);
+record(after === '', `the box is empty again, saying there is one stored (${JSON.stringify(after)})`);
+const { workspacePlugins: storedNow } = await graphql(
+  `query($w: ID!) { workspacePlugins(workspaceId: $w) { plugin { id } parameters { name secretSet } } }`,
+  { w: WORKSPACE },
+);
+record(
+  storedNow.find((one) => one.plugin.id === holding.plugin.id)?.parameters.find((one) => one.name === secret.name)?.secretSet === true,
+  'and the server holds it',
+);
+
+/*
+ * The stored secret can be shown when asked for: the eye is over the empty box
+ * now, the server hands the value back - and records that it did - and the
+ * box shows it, as a connection's credentials are shown.
+ */
+const storedEye = box.locator('xpath=following-sibling::button[@aria-pressed]').first();
+const offered = await storedEye.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
+record(offered, 'over a stored secret there is an eye');
+if (offered) {
+  await storedEye.click();
+  await page.waitForFunction((typed) => document.querySelector('input[autocomplete="new-password"]')?.value === typed, TYPED, { timeout: 10_000 }).catch(() => undefined);
+  record((await box.inputValue()) === TYPED && (await box.getAttribute('type')) === 'text', 'which shows what is stored, readable');
+  record((await unsavedNote.count()) === 0, 'and looking at it is not a change');
+  await storedEye.click();
+  await page.waitForTimeout(300);
+  record((await box.inputValue()) === '', 'hidden again, the box is empty as before');
+}
 
 await clean();

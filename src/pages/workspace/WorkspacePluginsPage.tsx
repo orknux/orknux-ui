@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 
 import {
   clearPluginParameter,
+  revealPluginParameter,
   fetchWorkspacePlugins,
   setPluginParameter,
 } from '../../api/plugins';
@@ -221,7 +222,20 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
    */
   async function saveAll() {
     for (const one of unsaved) {
-      await onSet(one.pluginId, one.name, { literal: (drafts[one.pluginId]?.[one.name] ?? '').trim() });
+      const stored = await onSet(one.pluginId, one.name, { literal: (drafts[one.pluginId]?.[one.name] ?? '').trim() });
+      /*
+       * Stored, it is no longer a draft. Comparing the draft with what came
+       * back was enough for a plain value and never for a secret, which comes
+       * back as nothing: a typed secret read as unsaved for good after it was
+       * saved, and the box went on holding it.
+       */
+      if (stored) {
+        setDrafts((held) => {
+          const mine = { ...(held[one.pluginId] ?? {}) };
+          delete mine[one.name];
+          return { ...held, [one.pluginId]: mine };
+        });
+      }
     }
   }
 
@@ -238,13 +252,15 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
     pluginId: string,
     name: string,
     answer: { literal: string } | { variableId: string },
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       replace(await setPluginParameter(workspaceId, pluginId, name, answer));
+      return true;
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : t('Could not set that parameter.'));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -440,6 +456,8 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
                             }))
                           }
                           onSubmit={() => void saveAll()}
+                          draft={drafts[entry.plugin.id]?.[parameter.name]}
+                          workspaceId={workspaceId}
                         />
                       ))}
                     </div>
@@ -549,6 +567,9 @@ interface ParameterRowProps {
   onTyped: (value: string) => void;
   /** Enter in the box, which saves the whole plugin's settings. */
   onSubmit: () => void;
+  /** What is typed and not yet stored, or undefined once it has been - which puts the box back to what is stored. */
+  draft?: string;
+  workspaceId: string;
 }
 
 /**
@@ -581,12 +602,47 @@ function ParameterRow({
   onClear,
   onTyped,
   onSubmit,
+  draft,
+  workspaceId,
 }: ParameterRowProps) {
   const [typed, setTyped] = useState(parameter.literal ?? '');
 
   // The stored value is the one to edit whenever it changes underneath, which it
-  // does every time an answer comes back from the server.
-  useEffect(() => setTyped(parameter.literal ?? ''), [parameter.literal]);
+  // does every time an answer comes back from the server - and once a draft is
+  // stored, which for a secret changes nothing that comes back.
+  useEffect(() => {
+    if (draft === undefined) {
+      setTyped(parameter.literal ?? '');
+      setRevealed(false);
+    }
+  }, [parameter.literal, draft]);
+
+  /*
+   * A stored secret, shown when asked for: the server hands it back one at a
+   * time and records that it did, as it does a connection's credentials. Put
+   * in the box as the stored value rather than as a draft, so looking at it is
+   * not a change - and taken away again when it is hidden.
+   */
+  const [revealed, setRevealed] = useState(false);
+  const [revealError, setRevealError] = useState<string | null>(null);
+  async function toggleStored() {
+    if (revealed) {
+      setRevealed(false);
+      setShowTyped(false);
+      setTyped('');
+      return;
+    }
+    setRevealError(null);
+    try {
+      const secret = await revealPluginParameter(workspaceId, pluginId, parameter.name);
+      if (secret === null) return;
+      setTyped(secret);
+      setRevealed(true);
+      setShowTyped(true);
+    } catch (cause: unknown) {
+      setRevealError(cause instanceof Error ? cause.message : t('Could not show that secret.'));
+    }
+  }
 
   const takesConnection = parameter.type.toLowerCase() === 'connection';
   /**
@@ -857,12 +913,16 @@ function ParameterRow({
             and over a box holding the placeholder it would promise the stored
             secret - which is the one thing it cannot give.
           */}
-          {parameter.secret && typed !== '' && (
+          {parameter.secret && typed !== '' && !revealed && (
             <RevealToggle
               shown={showTyped}
               label={parameter.name}
               onToggle={() => setShowTyped((on) => !on)}
             />
+          )}
+          {/* And over a stored one, which the server shows when asked. */}
+          {parameter.secret && parameter.secretSet && (typed === '' || revealed) && draft === undefined && (
+            <RevealToggle shown={revealed} label={parameter.name} onToggle={() => void toggleStored()} />
           )}
         </div>
       )}
@@ -872,6 +932,7 @@ function ParameterRow({
         answer this parameter is a list that is empty - and the second is what
         the parameter currently is, which is a reading and not an explanation.
       */}
+      {revealError !== null && <p className={styles.parameterNote} role="alert">{revealError}</p>}
       {parameter.secret && mode === 'REFERENCE' && variables.length === 0 && (
         <p className={styles.parameterNote}>
           {t('This workspace has no variables yet. Add one on the Variables page and it will be offered here - or type the secret in under Value, where it is stored encrypted and never shown back.')}
