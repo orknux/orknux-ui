@@ -2887,7 +2887,7 @@ export const TESTS = [
   },
   {
     name: 'sessions-spend-columns-check',
-    what: 'the sessions list shows each session's tokens and cost, a dash where there is none, and sorts by either',
+    what: "the sessions list shows each session's tokens and cost, a dash where there is none, and sorts by either",
     needs: ['workspace'],
     /*
      * The rows are a fixture: what a session's spend adds up to and the server's
