@@ -2886,6 +2886,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'sessions-spend-columns-check',
+    what: 'the sessions list shows each session's tokens and cost, a dash where there is none, and sorts by either',
+    needs: ['workspace'],
+    /*
+     * The rows are a fixture: what a session's spend adds up to and the server's
+     * TOKENS and COST orders are SessionSpendTest's business. Changes nothing.
+     */
+  },
+  {
     name: 'run-step-session-link-check',
     what: 'an agent step on a run links to the session it kept, and a step that kept none links nowhere',
     needs: ['workspace'],

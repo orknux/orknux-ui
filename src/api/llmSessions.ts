@@ -96,7 +96,7 @@ export interface SessionAgentDetails {
  * rather than columns of the session, so the server orders those in the query.
  * Issue #419.
  */
-export type LlmSessionOrder = 'KEY' | 'CREATED' | 'LAST_EVENT' | 'LINES' | 'SUBAGENTS';
+export type LlmSessionOrder = 'KEY' | 'CREATED' | 'LAST_EVENT' | 'LINES' | 'SUBAGENTS' | 'TOKENS' | 'COST';
 
 /**
  * What one line of a transcript is.
@@ -171,10 +171,11 @@ export const EVENT_KIND_LABEL: Record<LlmSessionEventKind, string> = {
  */
 export const EVENT_KINDS: LlmSessionEventKind[] = ['AGENT_DETAILS', 'USER', 'AGENT', 'TOOL', 'THINKING', 'NOTE', 'SYSTEM'];
 
-const SESSION_FIELDS = 'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount';
+const SESSION_FIELDS =
+  'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount spent { inputTokens outputTokens cachedInputTokens cost partlyUnpriced }';
 
 /** What one opened session adds, and a row of the list does not. Issue #371. */
-const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt } spent { inputTokens outputTokens cachedInputTokens cost partlyUnpriced }`;
+const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
 
 /** What an AGENT_DETAILS line carries, and the rest carry as null. Issue #441. */
 const AGENT_DETAILS_FIELDS =

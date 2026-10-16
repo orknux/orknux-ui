@@ -202,6 +202,8 @@
 .colPrefix,
 .colCount,
 .colSubs,
+.colTokens,
+.colCost,
 .colOpened,
 .colSpoken {
   padding: 0 var(--space-16);
@@ -254,6 +256,19 @@
 .colCount {
   flex-shrink: 0;
   width: 80px;
+}
+
+/* What the session cost, when the workspace shows it: tokens in and out together, and money. */
+.colTokens {
+  flex-shrink: 0;
+  width: 100px;
+  font-variant-numeric: tabular-nums;
+}
+
+.colCost {
+  flex-shrink: 0;
+  width: 90px;
+  font-variant-numeric: tabular-nums;
 }
 
 .colOpened,

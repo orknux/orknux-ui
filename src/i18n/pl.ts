@@ -2464,6 +2464,8 @@ export const PL: Record<string, string> = {
   "Some calls were on a model with no price; they are not in this.": "Część wywołań była na modelu bez ceny; nie ma ich w tej kwocie.",
   "partial": "częściowo",
   "Input tokens": "Tokeny wejścia",
+  "Tokens": "Tokeny",
+  "{input} in ({cached} cached) · {output} out": "{input} wejścia ({cached} z pamięci podręcznej) · {output} wyjścia",
   "Cached tokens": "Tokeny z pamięci podręcznej",
   "Output tokens": "Tokeny wyjścia",
   "Watchers in this session": "Obserwatory w tej sesji",

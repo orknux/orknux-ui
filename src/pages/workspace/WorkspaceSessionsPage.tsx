@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { costAmount, tokenCount } from '../../api/chat';
 import { fetchLlmSessions } from '../../api/llmSessions';
-import type { LlmSessionOrder, LlmSessionPage } from '../../api/llmSessions';
+import type { LlmSession, LlmSessionOrder, LlmSessionPage } from '../../api/llmSessions';
+import { fetchWorkspace } from '../../api/workspaces';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import refreshIcon from '../../assets/refresh-cw.svg';
@@ -20,7 +22,7 @@ import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceSessionsPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface WorkspaceSessionsPageProps {
   session: SessionUser;
@@ -33,6 +35,52 @@ const SEARCH_PAUSE_MS = 300;
  * Asked of the server rather than sorted here, for the reason every paged list
  * has: sorting the rows on screen orders the page and not the workspace.
  */
+/**
+ * A row's spend: its tokens, in and out together, with the split on hover, and
+ * the money. A session that called no model shows a dash in both, and one whose
+ * models have no price shows a dash for the cost - the reason on hover.
+ */
+function SpendCells({ spent }: { spent: LlmSession['spent'] }) {
+  const tokens = spent === null || spent === undefined ? 0 : spent.inputTokens + spent.outputTokens;
+  if (spent === null || spent === undefined || tokens === 0) {
+    return (
+      <>
+        <span className={`${styles.colTokens} ${styles.muted}`} data-session-tokens="0"><span className={styles.nothing}>—</span></span>
+        <span className={`${styles.colCost} ${styles.muted}`} data-session-cost=""><span className={styles.nothing}>—</span></span>
+      </>
+    );
+  }
+  const cost = spent.cost === null ? null : costAmount(Number(spent.cost));
+  return (
+    <>
+      <span
+        className={`${styles.colTokens} ${styles.muted}`}
+        data-session-tokens={tokens}
+        title={tf('{input} in ({cached} cached) · {output} out', {
+          input: tokenCount(spent.inputTokens),
+          cached: tokenCount(spent.cachedInputTokens),
+          output: tokenCount(spent.outputTokens),
+        })}
+      >
+        {tokenCount(tokens)}
+      </span>
+      <span
+        className={`${styles.colCost} ${styles.muted}`}
+        data-session-cost={spent.cost ?? ''}
+        title={
+          cost === null
+            ? t('No price is set on the model, so only the tokens are counted.')
+            : spent.partlyUnpriced
+              ? t('Some calls were on a model with no price; they are not in this.')
+              : undefined
+        }
+      >
+        {cost === null ? <span className={styles.nothing}>—</span> : `${cost}${spent.partlyUnpriced ? '+' : ''}`}
+      </span>
+    </>
+  );
+}
+
 /**
  * The conversations this workspace's agents have kept.
  *
@@ -59,6 +107,14 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
    * a switch away here, and always on the conversation's own page. Issue #389.
    */
   const [includeSubagents, setIncludeSubagents] = useState(false);
+  /** Whether this workspace shows what a session has cost - the session page's switch, which the two columns follow. */
+  const [costShown, setCostShown] = useState(true);
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchWorkspace(workspaceId)
+      .then((found) => setCostShown(found?.sessionCostShown ?? true))
+      .catch(() => setCostShown(true));
+  }, [workspaceId]);
 
   /**
    * A heading pressed: the same column turns round, a different one starts on
@@ -221,6 +277,26 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             onSort={sortBy}
             className={styles.colSubs}
           />
+          {costShown && (
+            <>
+              <ColumnHeader
+                label={t('Tokens')}
+                order="TOKENS"
+                current={order}
+                ascending={ascending}
+                onSort={sortBy}
+                className={styles.colTokens}
+              />
+              <ColumnHeader
+                label={t('Cost')}
+                order="COST"
+                current={order}
+                ascending={ascending}
+                onSort={sortBy}
+                className={styles.colCost}
+              />
+            </>
+          )}
           <ColumnHeader
             label={t('Opened')}
             order="CREATED"
@@ -313,6 +389,7 @@ export function WorkspaceSessionsPage({ session, onSignOut }: WorkspaceSessionsP
             <span className={`${styles.colSubs} ${styles.muted}`} data-session-subagents={one.subagentCount}>
               {one.subagentCount === 0 ? <span className={styles.nothing}>—</span> : one.subagentCount}
             </span>
+            {costShown && <SpendCells spent={one.spent ?? null} />}
             <span className={`${styles.colOpened} ${styles.muted}`}>{timeAgo(one.createdAt)}</span>
             <span className={`${styles.colSpoken} ${styles.muted}`}>
               {/* Null is a session opened and never spoken in, which sorts last
