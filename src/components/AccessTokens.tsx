@@ -87,6 +87,8 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
         <div className={styles.list}>
           {tokens.map((token) => (
             <div key={token.id} className={styles.token} data-testid="access-token">
+              {/* A bullet per line, so the tokens read as a list. */}
+              <span className={styles.marker} aria-hidden="true" data-token-marker="" />
               <span className={styles.name}>{token.name}</span>
               <span
                 className={token.readOnly ? `${styles.access} ${styles.accessRead}` : styles.access}

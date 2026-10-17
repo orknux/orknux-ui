@@ -21,6 +21,12 @@ const target =
   (await graphql('mutation { createUser(input: { username: "own-tokens-check", displayName: "Token check" }) { id username editable } }'))
     .createUser;
 
+// Tokens an earlier run left behind, revoked first so the list holds only this run's.
+const { userTokens } = await graphql(`query($id: ID!) { userTokens(id: $id) { id name } }`, { id: target.id });
+for (const old of userTokens.filter((one) => one.name.startsWith('token-access-check'))) {
+  await graphql(`mutation($id: ID!) { deleteUserToken(id: $id) }`, { id: old.id }).catch(() => undefined);
+}
+
 await page.goto(`${BASE}/admin/users/${target.id}`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, "the user's page"), "the user's page opens");
 const section = page.getByTestId('access-tokens');
@@ -56,13 +62,14 @@ const sizes = await row.evaluate((one) => {
   const px = (el) => (el === null ? 0 : parseFloat(getComputedStyle(el).fontSize));
   const parts = [...one.children];
   return {
-    name: px(parts[0]),
+    name: px(one.querySelector('[class*="_name_"]')),
     access: px(one.querySelector('[data-token-access]')),
     when: px(parts.find((el) => /used/.test(el.textContent ?? '')) ?? null),
     revoke: px(one.querySelector('button')),
   };
 });
 // Drawn as a user's roles are: the name at 13px, what is known of it at 12px beside it.
+record((await row.locator('[data-token-marker]').count()) === 1, 'each token is marked as a list item');
 record(sizes.name === 13 && sizes.when === 12 && sizes.access >= 12 && sizes.revoke === 13, `the row reads as a role does - name 13px, details 12px (${JSON.stringify(sizes)})`);
 
 /* A saved token is a list row, not something to type into: it does not wear the input's box. */

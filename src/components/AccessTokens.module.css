@@ -28,8 +28,16 @@
 
 .token {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-8);
+}
+
+.marker {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
 }
 
 /* Room between the list and the box that makes the next one, so the two read as separate things. */
