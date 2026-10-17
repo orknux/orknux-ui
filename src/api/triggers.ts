@@ -113,11 +113,11 @@ const TRIGGER_FIELDS =
 
 const WORKSPACE_TRIGGERS_QUERY = `
   query WorkspaceTriggers(
-    $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean
+    $workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $order: String, $ascending: Boolean, $source: String
   ) {
     workspaceTriggers(
       workspaceId: $workspaceId, page: $page, size: $size, search: $search,
-      order: $order, ascending: $ascending
+      order: $order, ascending: $ascending, source: $source
     ) {
       content { ${TRIGGER_FIELDS} }
       page
@@ -169,6 +169,8 @@ export async function fetchWorkspaceTriggers(
   search = '',
   order: TriggerOrder = 'NAME',
   ascending = true,
+  /** Where they listen - a value of fetchTriggerSources - or '' for any. */
+  source = '',
 ): Promise<PageOf<Trigger>> {
   const data = await graphql<{ workspaceTriggers: PageOf<Trigger> }>(WORKSPACE_TRIGGERS_QUERY, {
     workspaceId,
@@ -177,8 +179,24 @@ export async function fetchWorkspaceTriggers(
     search: search.trim() === '' ? null : search.trim(),
     order,
     ascending,
+    source: source === '' ? null : source,
   });
   return data.workspaceTriggers;
+}
+
+export interface TriggerSource {
+  /** `cron`, `webhook`, or `connection:<id>`. */
+  value: string;
+  label: string;
+}
+
+/** Where this workspace's triggers listen, for the list's Source sieve - only the sources in use. */
+export async function fetchTriggerSources(workspaceId: string): Promise<TriggerSource[]> {
+  const data = await graphql<{ workspaceTriggerSources: TriggerSource[] }>(
+    `query TriggerSources($workspaceId: ID!) { workspaceTriggerSources(workspaceId: $workspaceId) { value label } }`,
+    { workspaceId },
+  );
+  return data.workspaceTriggerSources;
 }
 
 /**

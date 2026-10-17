@@ -3,17 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
-import {
-  FIRING_OUTCOME_LABEL,
-  TRIGGER_TYPE_LABEL,
-  cannotReceive,
-  fetchSlackBotUsers,
-  fetchWorkspaceTriggerFirings,
-  fetchWorkspaceTriggers,
-  listensForMessages,
-  setTriggerEnabled,
-} from '../../api/triggers';
-import type { SlackBotUser, Trigger, TriggerFiring, TriggerOrder } from '../../api/triggers';
+import { FIRING_OUTCOME_LABEL, TRIGGER_TYPE_LABEL, cannotReceive, fetchSlackBotUsers, fetchTriggerSources, fetchWorkspaceTriggerFirings, fetchWorkspaceTriggers, listensForMessages, setTriggerEnabled } from '../../api/triggers';
+import type { SlackBotUser, Trigger, TriggerFiring, TriggerOrder, TriggerSource } from '../../api/triggers';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -34,6 +25,7 @@ import { TriggerFirings, firedAt } from '../../components/TriggerFirings';
 import type { TriggerFiringsStyles } from '../../components/TriggerFirings';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
+import { FilterSelect } from '../../components/FilterSelect';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -90,7 +82,10 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
 
   // A new search is a new list, so it starts at its first page rather
   // than at page four of the previous one.
-  useEffect(() => setPage(1), [searching]);
+  /** Where the listed triggers listen, or '' for anywhere; the choices are the sources in use. */
+  const [source, setSource] = useState('');
+  const [sources, setSources] = useState<TriggerSource[]>([]);
+  useEffect(() => setPage(1), [searching, source]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -121,11 +116,18 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
    */
   const asked = useRef('');
 
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchTriggerSources(workspaceId)
+      .then(setSources)
+      .catch(() => setSources([]));
+  }, [workspaceId, triggers?.totalElements]);
+
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setLoading(true);
     setError(null);
-    fetchWorkspaceTriggers(workspaceId, page - 1, pageSize, searching, order, ascending)
+    fetchWorkspaceTriggers(workspaceId, page - 1, pageSize, searching, order, ascending, source)
       .then((result) => {
         setTriggers(result);
         setLoading(false);
@@ -135,7 +137,7 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
         setError(cause instanceof Error ? cause.message : t('Could not load triggers.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, searching, order, ascending]);
+  }, [workspaceId, page, pageSize, searching, order, ascending, source]);
 
   useEffect(load, [load]);
 
@@ -220,6 +222,14 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
             value={typed}
             onChange={setTyped}
             placeholder={t('Search triggers...')}
+          />
+          <FilterSelect
+            label={t('Source')}
+            value={source}
+            onChange={setSource}
+            all={t('All sources')}
+            options={sources}
+            testId="trigger-source-filter"
           />
         </SearchRow>
 

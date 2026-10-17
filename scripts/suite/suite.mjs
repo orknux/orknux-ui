@@ -311,6 +311,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'trigger-source-filter-check',
+    what: 'the triggers list is narrowed by where a trigger listens, on the server, so a sieve reaches every page',
+    needs: ['workspace'],
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
