@@ -126,6 +126,13 @@ record(
 
 await page.click('#node-field-type-0');
 await page.waitForSelector('[role="option"]', { timeout: 10_000 });
+/*
+ * No `object` on offer: a node field has nowhere to keep fields of its own, so
+ * an object defined in place is not a thing it can be - and offered one it
+ * chose nothing, the stored answer matching no option.
+ */
+const bare = await page.locator('[role="option"]').filter({ hasText: /^object$/ }).count();
+record(bare === 0, `a field of the node's own is not offered an object defined in place (${bare})`);
 await page.locator('[role="option"]', { hasText: 'number' }).first().click();
 await page.waitForTimeout(400);
 record((await says()) === 'number', `the type chosen is the one shown (${JSON.stringify(await says())})`);

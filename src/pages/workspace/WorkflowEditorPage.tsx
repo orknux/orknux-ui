@@ -3188,6 +3188,14 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   /** What a property here may be one of; the same list the object's page offers. */
   // The same list the object's own page offers, `object` included: this panel edits the saved shape itself.
   const shapeTypes = useMemo(() => typeOptionsOf(objects, true), [objects]);
+  /*
+   * Without `object` for a field of the node's own. A node field is a kind, an
+   * element kind and a reference, with nowhere to keep fields of its own - so
+   * an object defined in place is not a thing it can be, and offered one it
+   * chose nothing: the stored answer matched no option and read as unselected.
+   * A Custom shape that needs an object inside is a saved shape.
+   */
+  const fieldTypes = useMemo(() => typeOptionsOf(objects), [objects]);
 
   const shapeEdited = useMemo(() => {
     if (shape === null) return false;
@@ -6726,7 +6734,7 @@ Change the keystroke in Preferences.`}
                                       elementKind: mapping.fieldElementKind,
                                       refObjectId: mapping.fieldRefObjectId,
                                     }).type}
-                                    options={shapeTypes}
+                                    options={fieldTypes}
                                     onChoose={(chosen) =>
                                       setFieldType(index, chosen, fieldIsMany(mapping))
                                     }
