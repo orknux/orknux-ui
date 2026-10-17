@@ -7486,7 +7486,7 @@ Change the keystroke in Preferences.`}
         extra={
           <button
             type="button"
-            className={dialogStyles.linkButton}
+            className={dialogStyles.ghost}
             onClick={() => {
               setBuilding(null);
               setBuildingSchema(true);

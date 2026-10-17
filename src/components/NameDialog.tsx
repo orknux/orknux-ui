@@ -138,9 +138,9 @@ export function NameDialog({
           </p>
         )}
 
+        {/* A third way in, a button on a line of its own above the confirming pair: in a narrow panel three in a row broke apart. */}
+        {extra !== undefined && <div className={styles.lead}>{extra}</div>}
         <div className={styles.actions}>
-          {/* Away from the confirming pair, at the left; in a narrow panel the pair moves to a line of its own under it. */}
-          {extra !== undefined && <span className={styles.lead}>{extra}</span>}
           <button type="button" className={styles.ghost} onClick={onClose} disabled={submitting}>
             {t('Cancel')}
           </button>

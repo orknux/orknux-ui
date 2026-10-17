@@ -85,16 +85,15 @@
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-8);
 }
 
-/* A third offer beside Cancel and Create, kept to the left of them; the row wraps before a button's words do. */
+/* A third way in, a button on a line of its own above the confirming pair. */
 .lead {
   display: flex;
-  margin-right: auto;
+  justify-content: flex-start;
 }
 
 /* A delete offered inside an edit form sits away from the confirming pair. */

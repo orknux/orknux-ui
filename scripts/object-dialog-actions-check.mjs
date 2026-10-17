@@ -1,7 +1,8 @@
 /**
- * The Create Object panel's three buttons - From JSON Schema…, Cancel, Create
- * Object - each keep their words on one line. The panel is narrow, and the
- * three in one row wrapped every word of the first onto its own line.
+ * The Create Object panel offers From JSON Schema… as a button on a line of
+ * its own above Cancel and Create Object, which stand side by side. The panel is
+ * narrow: three buttons in one row wrapped the first word by word, and let
+ * wrap they split Cancel from Create.
  *
  * Makes a workflow under a name of its own and removes it again.
  */
@@ -36,11 +37,9 @@ try {
     page.getByRole('button', { name: 'Cancel' }).last().boundingBox(),
     page.getByRole('button', { name: 'Create Object' }).boundingBox(),
   ]);
-  const tallest = Math.max(...boxes.map((box) => box?.height ?? 999));
-  const shortest = Math.min(...boxes.map((box) => box?.height ?? 0));
-  record(boxes.every((box) => box !== null) && tallest - shortest < 2 && tallest <= 48, `each button keeps to one line (${boxes.map((box) => Math.round(box?.height ?? 0)).join(', ')} px tall)`);
   const [a, b, c] = boxes;
-  record(a !== null && b !== null && c !== null && a.x + a.width <= b.x && b.x + b.width <= c.x, 'From JSON Schema… stands left of Cancel and Create Object');
+  record(a !== null && b !== null && c !== null && Math.abs(a.height - b.height) < 2 && Math.abs(b.height - c.height) < 2 && b.height <= 48, `each is a button of the same height, on one line (${boxes.map((box) => Math.round(box?.height ?? 0)).join(', ')} px tall)`);
+  record(a !== null && b !== null && c !== null && a.y + a.height <= b.y && Math.abs(b.y - c.y) < 2 && b.x + b.width <= c.x, 'From JSON Schema… stands above Cancel and Create Object, which stand side by side');
 } finally {
   const { workspaceWorkflows } = await graphql(
     `query($w: ID!) { workspaceWorkflows(workspaceId: $w, size: 200) { content { id name } } }`,
