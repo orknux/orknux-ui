@@ -93,10 +93,15 @@ try {
     await page.keyboard.insertText(text);
   };
   const createButton = dialog.getByRole('button', { name: 'Create Object' });
-  const readingOf = async () => (await dialog.getByTestId('schema-reading').textContent()) ?? '';
+  const readingOf = async () => (await dialog.getByTestId('schema-reading').getAttribute('title')) ?? '';
+  const verdictOf = async () => ({
+    word: ((await dialog.getByTestId('schema-reading').textContent()) ?? '').trim(),
+    valid: (await dialog.getByTestId('schema-reading').getAttribute('data-valid')) === 'true',
+  });
   await typeSchema('{ "type": "string" }');
   await dialog.getByTestId('schema-reading').waitFor({ timeout: 5_000 });
-  record(/not an object/.test(await readingOf()), 'a schema of a string is said not to be an object');
+  record((await verdictOf()).word === 'Invalid' && !(await verdictOf()).valid, 'a schema of a string reads Invalid, in one word');
+  record(/not an object/.test(await readingOf()), 'and the hover says why: not an object');
   record(await createButton.isDisabled(), 'and Create waits');
   const above = await dialog.evaluate((one) => {
     const note = one.querySelector('[data-testid="schema-reading"]');
@@ -104,6 +109,9 @@ try {
     return note && box ? note.getBoundingClientRect().bottom <= box.getBoundingClientRect().top : false;
   });
   record(above, 'and it is said above the box, not under it');
+  await typeSchema('{ "type": "object", "properties": { "issue-related-events": { "type": "string" } } }');
+  await page.waitForTimeout(150);
+  record(!(await verdictOf()).valid && /issue-related-events is not a usable property name/.test(await readingOf()), 'a key no reference could follow reads Invalid, naming the key');
   await typeSchema('{ "type": "object", "properties": { "a": ');
   await page.waitForTimeout(150);
   record(/Not JSON/.test(await readingOf()), 'half-typed JSON is said not to be JSON');
@@ -117,7 +125,8 @@ try {
     definitions: { Customer: { type: 'object', properties: { name: { type: 'string' } } } },
   }));
   await page.waitForTimeout(150);
-  record(/3 properties .*2 defined in place .*1 arrays/.test(await readingOf()), `a readable schema is counted (${await readingOf()})`);
+  record((await verdictOf()).word === 'Valid' && (await verdictOf()).valid, 'a readable schema reads Valid');
+  record(/3 properties .*2 defined in place .*1 arrays/.test(await readingOf()), `and the hover counts it (${await readingOf()})`);
   await createButton.click();
   await page.waitForURL(/\/objects\/\d+$/, { timeout: 10_000 });
   const schemaId = page.url().split('/').pop();

@@ -34,6 +34,8 @@ const typeOf = (node: Node): string | null => {
   return null;
 };
 const isObjectSchema = (node: Node): boolean => typeOf(node) === 'object' || isNode(node.properties);
+/** What a property may be called: what can be written after a dot, which is how a property is read. The server holds the same line. */
+const USABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** `{"$ref": "#/definitions/Address"}` read as the definition, as the server reads it; anything else as it is. */
 function resolve(node: unknown, root: Node, hops = 0): unknown {
@@ -64,13 +66,15 @@ export function readSchema(text: string): SchemaReading | null {
   const top = root;
   let nested = 0;
   let arrays = 0;
+  let unusable: string | null = null;
   const leftBehind = new Set<string>();
   const walk = (raw: unknown, depth: number) => {
     const node = resolve(raw, top);
     if (!isNode(node) || depth > 40) return;
     LEFT_BEHIND.forEach((keyword) => { if (keyword in node) leftBehind.add(keyword); });
     if (isNode(node.properties)) {
-      Object.values(node.properties).forEach((raw) => {
+      Object.entries(node.properties).forEach(([key, raw]) => {
+        if (unusable === null && !USABLE_NAME.test(key)) unusable = key;
         const child = resolve(raw, top);
         if (!isNode(child)) return;
         if (isObjectSchema(child)) nested += 1;
@@ -85,6 +89,9 @@ export function readSchema(text: string): SchemaReading | null {
     }
   };
   walk(top, 0);
+  if (unusable !== null) {
+    return { ok: false, says: tf('{name} is not a usable property name: letters, digits and _ only, as a reference reads it after a dot.', { name: unusable }) };
+  }
   return { ok: true, properties: Object.keys(root.properties).length, nested, arrays, leftBehind: [...leftBehind] };
 }
 
@@ -187,9 +194,14 @@ export function SchemaDialog({ placement = 'modal', open, onClose, onSubmit }: S
           <div className={styles.field}>
             <div className={own.labelRow}>
               <span className={styles.label} id="schema-object-schema-label">{t('JSON Schema')}</span>
+              {/* One word, green or red; what it is based on waits on the hover. */}
               {reading !== null && (
-                <span className={reading.ok ? own.reading : own.readingBad} role="status" data-testid="schema-reading">
-                  {reading.ok
+                <span
+                  className={reading.ok ? own.valid : own.invalid}
+                  role="status"
+                  data-testid="schema-reading"
+                  data-valid={reading.ok ? 'true' : 'false'}
+                  title={reading.ok
                     ? [
                         tf('{count} properties', { count: reading.properties }),
                         reading.nested > 0 ? tf('{count} defined in place', { count: reading.nested }) : null,
@@ -197,6 +209,9 @@ export function SchemaDialog({ placement = 'modal', open, onClose, onSubmit }: S
                         reading.leftBehind.length > 0 ? tf('left behind: {keywords}', { keywords: reading.leftBehind.join(', ') }) : null,
                       ].filter((part) => part !== null).join(' · ')
                     : reading.says}
+                >
+                  <span className={own.dot} aria-hidden="true" />
+                  {reading.ok ? t('Valid') : t('Invalid')}
                 </span>
               )}
             </div>

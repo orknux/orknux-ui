@@ -38,17 +38,29 @@
   white-space: nowrap;
 }
 
-.reading,
-.readingBad {
-  min-width: 0;
-  overflow: hidden;
+.valid,
+.invalid {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-text-muted);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+  cursor: help;
 }
 
-.readingBad {
+.valid {
+  color: var(--color-accent-brand);
+}
+
+.invalid {
   color: var(--color-danger);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
