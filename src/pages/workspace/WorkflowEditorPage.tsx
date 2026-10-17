@@ -1,4 +1,4 @@
-import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -2226,6 +2226,34 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    */
   const addByKey = useRef(false);
   /*
+   * Where the pointer is, and where the Add menu was opened when its keystroke
+   * opened it over the canvas: the menu is drawn there and the node it adds is
+   * put there, which is where somebody looking at that spot means it to go.
+   * Null when the toolbar's button opened it, which keeps the middle of the view.
+   */
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  const addAt = useRef<{ x: number; y: number } | null>(null);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const addDropdown = useRef<HTMLDivElement>(null);
+  /*
+   * Kept inside the window, measured rather than guessed: opened near the
+   * bottom it opens upward from the pointer, near the right edge leftward.
+   */
+  useLayoutEffect(() => {
+    const menu = addDropdown.current;
+    if (menuAt === null || menu === null) return;
+    const { width, height } = menu.getBoundingClientRect();
+    menu.style.left = `${menuAt.x + width > window.innerWidth - 8 ? Math.max(8, menuAt.x - width) : menuAt.x}px`;
+    menu.style.top = `${menuAt.y + height > window.innerHeight - 8 ? Math.max(8, menuAt.y - height) : menuAt.y}px`;
+  });
+  useEffect(() => {
+    const onMove = (event: MouseEvent) => {
+      pointer.current = { x: event.clientX, y: event.clientY };
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+  /*
    * Which definition the builder panel is holding, if any.
    *
    * A node kind rather than a boolean per picker: only one node is selected, so
@@ -3490,9 +3518,13 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   function whereNewNodesGo(current: Node[]): { x: number; y: number } {
     const canvas = document.querySelector<HTMLElement>('.react-flow');
     const box = canvas?.getBoundingClientRect();
-    const middle = box === undefined
-      ? { x: 80 + current.length * 40, y: 80 + current.length * 30 }
-      : screenToFlowPosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    // Opened by its keystroke over the canvas, the menu was where the pointer was, and so is the node.
+    const at = addAt.current;
+    const middle = at !== null
+      ? screenToFlowPosition(at)
+      : box === undefined
+        ? { x: 80 + current.length * 40, y: 80 + current.length * 30 }
+        : screenToFlowPosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
 
     /*
      * From the middle of the node rather than its corner, which is what a
@@ -4665,6 +4697,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       if (typingText(event.target)) return;
       event.preventDefault();
       addByKey.current = true;
+      const box = document.querySelector<HTMLElement>('.react-flow')?.getBoundingClientRect();
+      const at = pointer.current;
+      const over = at !== null && box !== undefined && at.x >= box.left && at.x <= box.right && at.y >= box.top && at.y <= box.bottom;
+      addAt.current = over ? at : null;
+      setMenuAt(over ? at : null);
       setAdding((open) => !open);
     }
 
@@ -4700,7 +4737,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * not inherit a keyboard's focus.
    */
   useEffect(() => {
-    if (!adding) return;
+    if (!adding) {
+      // After the render that placed the node, so the point is still there to place it by.
+      addAt.current = null;
+      return;
+    }
     if (addByKey.current) {
       addMenu.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
     }
@@ -5091,7 +5132,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
             <button
               type="button"
               className={adding ? `${styles.iconButton} ${styles.iconButtonOn}` : styles.iconButton}
-              onClick={() => setAdding((open) => !open)}
+              onClick={() => {
+                addAt.current = null;
+                setMenuAt(null);
+                setAdding((open) => !open);
+              }}
               aria-haspopup="menu"
               aria-expanded={adding}
               aria-label={`Add node (${addKey})`}
@@ -5101,7 +5146,12 @@ Change the keystroke in Preferences.`}
               <img src={plusIcon} alt="" width={16} height={16} />
             </button>
             {adding && (
-              <div className={styles.addDropdown} role="menu">
+              <div
+                className={menuAt === null ? styles.addDropdown : `${styles.addDropdown} ${styles.addDropdownAt}`}
+                role="menu"
+                ref={addDropdown}
+                style={menuAt === null ? undefined : { left: menuAt.x, top: menuAt.y }}
+              >
                 {ADD_ORDER.map((kind) => (
                   <button
                     key={kind}

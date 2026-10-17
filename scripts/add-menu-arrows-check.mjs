@@ -63,6 +63,22 @@ try {
   await page.waitForTimeout(800);
   const after = await page.locator('.react-flow__node').count();
   record(after === before + 1 && (await page.getByRole('menu').count()) === 0, `Enter adds the entry under focus and closes the menu (${before} then ${after})`);
+
+  // The keystroke over the canvas opens the menu at the pointer, and the node it adds lands there.
+  const pane = await page.locator('.react-flow').boundingBox();
+  const spot = { x: Math.round(pane.x + pane.width * 0.3), y: Math.round(pane.y + pane.height * 0.3) };
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.move(spot.x, spot.y);
+  await page.keyboard.press('a');
+  await page.getByRole('menu').waitFor({ timeout: 5_000 });
+  const menu = await page.getByRole('menu').boundingBox();
+  record(Math.abs(menu.x - spot.x) <= 2 && Math.abs(menu.y - spot.y) <= 2, `the keystroke opens the menu at the pointer (${Math.round(menu.x - spot.x)}, ${Math.round(menu.y - spot.y)} off)`);
+  const beforeKeyed = await page.locator('.react-flow__node').count();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(800);
+  const placed = await page.locator('.react-flow__node.selected').first().boundingBox();
+  const off = placed === null ? null : Math.round(Math.hypot(placed.x + placed.width / 2 - spot.x, placed.y + placed.height / 2 - spot.y));
+  record((await page.locator('.react-flow__node').count()) === beforeKeyed + 1 && off !== null && off <= 40, `and the node it adds lands where the pointer was (${off}px from it)`);
 } finally {
   await sweep();
 }

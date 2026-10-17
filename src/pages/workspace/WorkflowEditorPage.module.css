@@ -118,6 +118,12 @@
  * spelling the six buttons used to carry across the bar all day for the sake of
  * the few seconds a month somebody is choosing between them.
  */
+/* Opened by its keystroke over the canvas: at the pointer, over everything. */
+.addDropdown.addDropdownAt {
+  position: fixed;
+  z-index: 50;
+}
+
 .addDropdown {
   position: absolute;
   top: calc(100% + var(--space-6));
