@@ -67,6 +67,16 @@ try {
   });
   record(stacked !== null && Math.abs(stacked.left) <= 1 && stacked.above, `the name's label stands over its box, flush left (${JSON.stringify(stacked)})`);
 
+  // The remove sits in the card's top corner on the label's line, not on a line of its own between the fields.
+  const corner = await page.evaluate(() => {
+    const box = document.getElementById('node-shape-name-1');
+    const card = box?.closest('div[class*="shapeRow"]');
+    const remove = card?.querySelector('button[aria-label], button[title]');
+    if (!box || !card || !remove) return null;
+    const b = box.getBoundingClientRect(); const r = remove.getBoundingClientRect(); const c = card.getBoundingClientRect();
+    return { aboveBox: r.bottom <= b.top + 1, rightEdge: Math.round(c.right - r.right) };
+  });
+  record(corner !== null && corner.aboveBox && corner.rightEdge >= 0 && corner.rightEdge <= 16, `the remove is in the card's top corner (${JSON.stringify(corner)})`);
   const picked = (await page.locator('#node-shape-type-1').textContent())?.trim() ?? '';
   record(picked === 'object', `the row that is an object defined in place says so (${picked})`);
   const nested = page.locator('#node-shape-1-name-0');

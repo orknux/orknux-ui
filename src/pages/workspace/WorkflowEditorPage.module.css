@@ -1603,6 +1603,7 @@ select.input {
  * page puts around them belongs to the page.
  */
 .shapeRow {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -1642,15 +1643,28 @@ select.input {
   border-radius: var(--radius-4);
 }
 
+/* The panel stacks the row's fields, which left the remove on a line of its own: it goes to the card's top corner, on the NAME label's line. */
 .shapeActionCol {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
   display: flex;
-  align-items: flex-end;
+}
+
+/* Sized to the label's line it sits on. */
+.shapeActionCol .shapeDelete {
+  padding: 0;
+}
+
+.shapeActionCol .shapeDelete svg {
+  width: 14px;
+  height: 14px;
 }
 
 .shapeDelete {
   display: flex;
   align-items: center;
-  padding: var(--space-4);
+  padding: 2px;
   background: none;
   border: 0;
   color: var(--color-text-muted);
