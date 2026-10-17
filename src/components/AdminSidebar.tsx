@@ -1,5 +1,6 @@
 import commandIcon from '../assets/command.svg';
 import containerIcon from '../assets/container.svg';
+import chartColumnIcon from '../assets/chart-column.svg';
 import chartLineIcon from '../assets/chart-line.svg';
 import cloudDownloadIcon from '../assets/cloud-download.svg';
 import fileTextIcon from '../assets/file-text.svg';
@@ -28,6 +29,7 @@ export type AdminSection =
   | 'networking'
   | 'boxes'
   | 'monitoring'
+  | 'reports'
   | 'doctor'
   | 'updates'
   | 'settings';
@@ -99,6 +101,13 @@ export function AdminSidebar({ active }: { active: AdminSection }) {
         icon={containerIcon}
         active={active === 'boxes'}
         to="/admin/boxes"
+      />
+      {/* Beside Monitoring: one says whether things work, this what they were used for. */}
+      <SidebarNavItem
+        label={t('Reports')}
+        icon={chartColumnIcon}
+        active={active === 'reports'}
+        to="/admin/reports"
       />
       <SidebarNavItem
         label={t('Monitoring')}

@@ -77,7 +77,8 @@ function sources(from = join(ROOT, 'src')) {
  * untranslated as any other. A call on a variable is not a string this
  * catalogue could ever hold, so it is not one to complain about either.
  */
-const CALL = /\btf?\(\s*(['"])((?:[^'"\\]|\\.)*)\1/g;
+// The other quote may appear inside: t("at each call's price") is one key, not "at each call".
+const CALL = /\btf?\(\s*(['"])((?:(?!\1)[^\\]|\\.)*)\1/g;
 
 const called = new Map();
 for (const path of sources()) {

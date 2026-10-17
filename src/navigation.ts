@@ -6,6 +6,7 @@ import bookIcon from './assets/book.svg';
 import botIcon from './assets/bot.svg';
 import boxIcon from './assets/box.svg';
 import imageIcon from './assets/image.svg';
+import chartColumnIcon from './assets/chart-column.svg';
 import chartLineIcon from './assets/chart-line.svg';
 import chartNetworkIcon from './assets/chart-network.svg';
 import clipboardListIcon from './assets/clipboard-list.svg';
@@ -555,6 +556,11 @@ export const PAGES = [
     path: '/admin/monitoring',
     access: 'admin',
     goTo: { label: t('Monitoring'), where: 'Admin', icon: chartLineIcon, also: 'health temporal' },
+  },
+  {
+    path: '/admin/reports',
+    access: 'admin',
+    goTo: { label: t('Reports'), where: 'Admin', icon: chartColumnIcon, also: 'usage tokens cost people slack tracking' },
   },
   {
     path: '/admin/doctor',

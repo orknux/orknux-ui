@@ -550,6 +550,12 @@ const IN_THE_OPEN = [
     why: 'an empty transcript',
   },
   {
+    file: 'src/pages/admin/AdminReportsPage.tsx',
+    says: 'Nothing recorded in this period.',
+    because: 'status',
+    why: 'an empty report, in place of an empty table',
+  },
+  {
     file: 'src/pages/workspace/ExecutionDetailPage.tsx',
     says: 'No step detail was recorded for this run.',
     because: 'status',

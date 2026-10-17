@@ -1,0 +1,368 @@
+.titleHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+}
+
+.title {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--text-2xl);
+  color: var(--color-text-primary);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  padding: var(--space-20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.sectionHeading {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+/* ---- The switch ---- */
+
+.trackingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.headingRow {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.stateOn,
+.stateOff {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+}
+
+.stateOn {
+  color: var(--color-accent-brand);
+}
+
+.stateOff {
+  color: var(--color-text-muted);
+}
+
+.toggle {
+  composes: iconButton from '../../styles/iconButton.module.css';
+}
+
+.offSince {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+/* ---- The report ---- */
+
+.reportHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pickerLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.pickerBox {
+  position: relative;
+  display: flex;
+}
+
+.pickerSelect {
+  width: 200px;
+  min-width: 150px;
+  text-overflow: ellipsis;
+  padding: var(--space-8) var(--space-32) var(--space-8) var(--space-10);
+  appearance: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.pickerSelect:focus {
+  border-color: var(--color-accent-brand);
+  outline: none;
+}
+
+.pickerChevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-10);
+  margin-top: -6px;
+  pointer-events: none;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+@media (max-width: 900px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-14) var(--space-16);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.tileLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.tileValue {
+  font-weight: 600;
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+}
+
+.tileNote {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.notice {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.noticeError {
+  color: var(--color-danger);
+}
+
+.tableBox {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.table,
+.sessionTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table {
+  min-width: 860px;
+}
+
+.table th,
+.sessionTable th {
+  padding: var(--space-10) var(--space-12);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  letter-spacing: 0.55px;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.table th {
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: var(--space-10) var(--space-12);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.table tbody tr:first-child td {
+  border-top: 0;
+}
+
+.table th.number,
+.table td.number,
+.sessionTable th.number,
+.sessionTable td.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.rowOpen td {
+  background: var(--color-surface-raised);
+}
+
+.personButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chevron,
+.chevronOpen {
+  flex: none;
+  opacity: 0.6;
+  transition: transform 0.15s;
+}
+
+.chevron {
+  transform: rotate(-90deg);
+}
+
+.person {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.personName {
+  font-weight: 600;
+}
+
+.personDetail {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.source {
+  display: inline-block;
+  padding: 1px var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sourceSLACK {
+  border-color: #4a3f7a;
+  color: #b9a9f5;
+}
+
+.sourceORKNUX {
+  border-color: var(--color-accent-brand);
+  color: var(--color-accent-brand);
+}
+
+/* ---- One person's sessions, opened under their row ---- */
+
+.table td.detailCell,
+.detailRow > td {
+  padding: 0 var(--space-12) var(--space-12) var(--space-32);
+  background: var(--color-bg);
+  border-top: 0;
+}
+
+.sessions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.sessionTable th {
+  padding: var(--space-10) var(--space-8) var(--space-6);
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+}
+
+.sessionTable td {
+  padding: var(--space-6) var(--space-8);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-md);
+}
+
+.shareCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.bar {
+  display: inline-block;
+  width: 80px;
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent-brand);
+}
+
+.sharePct {
+  min-width: 36px;
+}
+
+.sessionTable a {
+  color: var(--color-accent-brand);
+  text-decoration: none;
+}
+
+.sessionTable a:hover {
+  text-decoration: underline;
+}

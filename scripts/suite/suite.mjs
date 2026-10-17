@@ -242,6 +242,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'usage-report-check',
+    what: "Admin > Reports: the usage tracking switch survives a reload, and the report draws people and their sessions",
+    needs: [],
+    /*
+     * The switch is the whole of what is recorded, so it is pressed, reloaded
+     * and put back. The table half runs where the period holds anything; an
+     * empty one has to say so rather than draw an empty table.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
