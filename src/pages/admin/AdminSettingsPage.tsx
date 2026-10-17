@@ -576,6 +576,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     <AppShell
       user={shellUser(session)}
       onSignOut={onSignOut}
+      scrollContent
       sidebar={<AdminSidebar active="settings" />}
     >
       {/* The sections down the side, read off the headings below: eighteen of them, and the menu is how one is found. */}

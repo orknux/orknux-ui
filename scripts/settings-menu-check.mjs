@@ -30,6 +30,10 @@ for (const [where, path, settle] of [
     `${where}: one entry per heading, in order (${agreement.entries.length})`,
   );
 
+  // A heading with a (?) beside it is named without it: "Chat", not "Chat?".
+  const labels = await menu.locator('a').allInnerTexts();
+  record(labels.every((one) => !/\?$/.test(one.trim())), `${where}: no entry carries a hint's question mark (${labels.filter((one) => /\?$/.test(one.trim())).join(', ') || 'none'})`);
+
   const sticky = await menu.evaluate((one) => getComputedStyle(one).position);
   record(sticky === 'sticky', `${where}: the menu stays with the frame (${sticky})`);
 
@@ -46,6 +50,18 @@ for (const [where, path, settle] of [
   record(landed.top >= 0 && landed.top < 120, `${where}: pressing an entry brings its heading up (${Math.round(landed.top)}px from the top)`);
   record(landed.current === last, `${where}: and that entry is marked current (${landed.current})`);
   record(landed.menuTop >= 0 && landed.menuTop < 200, `${where}: the menu is still in view after the scroll (${Math.round(landed.menuTop)}px)`);
+  // The knobs scrolled, not the page: the top bar with the logo and the sidebar have not moved.
+  const frame = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const logo = [...document.querySelectorAll('header, nav, a, span')].find((one) => /^ORKNUX$/i.test(one.textContent?.trim() ?? ''));
+    return {
+      pageScrolled: document.scrollingElement?.scrollTop ?? 0,
+      mainScrolled: main?.scrollTop ?? 0,
+      logoTop: logo?.getBoundingClientRect().top ?? -1,
+    };
+  });
+  record(frame.pageScrolled === 0 && frame.mainScrolled > 0, `${where}: the settings scroll in their own frame, not the page (page ${frame.pageScrolled}, knobs ${frame.mainScrolled})`);
+  record(frame.logoTop >= 0 && frame.logoTop < 60, `${where}: the logo is still at the top (${Math.round(frame.logoTop)}px)`);
 }
 
 await finish(browser);

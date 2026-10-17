@@ -14,8 +14,23 @@ interface Entry {
   label: string;
 }
 
-/** How far under the top of the frame a heading lands when its entry is pressed, so it is not under the top bar. */
-const HEADING_CLEARANCE_PX = 88;
+/** How far under the top of its scrolling frame a heading lands when its entry is pressed. */
+const HEADING_GAP_PX = 24;
+
+/**
+ * The box the page's content scrolls in: the main area where the shell scrolls
+ * the content under its top bar, else the window. Where a heading lands, and
+ * which one counts as current, are measured from its top, not the window's.
+ */
+function scrollerOf(element: HTMLElement): HTMLElement | null {
+  let held: HTMLElement | null = element.parentElement;
+  while (held !== null) {
+    const overflow = getComputedStyle(held).overflowY;
+    if (overflow === 'auto' || overflow === 'scroll') return held;
+    held = held.parentElement;
+  }
+  return null;
+}
 
 /**
  * The sections of a long settings page, down the side of it.
@@ -37,9 +52,9 @@ export function SectionMenu({ within }: SectionMenuProps) {
     const scan = () => {
       const headings = [...root.querySelectorAll<HTMLHeadingElement>('h2[id]')];
       headings.forEach((heading) => {
-        heading.style.scrollMarginTop = `${HEADING_CLEARANCE_PX}px`;
+        heading.style.scrollMarginTop = `${HEADING_GAP_PX}px`;
       });
-      const found = headings.map((heading) => ({ id: heading.id, label: heading.textContent?.trim() ?? heading.id }));
+      const found = headings.map((heading) => ({ id: heading.id, label: labelOf(heading) }));
       setEntries((held) => (sameEntries(held, found) ? held : found));
     };
     scan();
@@ -61,10 +76,12 @@ export function SectionMenu({ within }: SectionMenuProps) {
      * heading happens to cross the viewport, which marks two at once and none
      * while a long section fills the screen.
      */
+    const scroller = scrollerOf(root);
     const mark = () => {
+      const line = (scroller?.getBoundingClientRect().top ?? 0) + HEADING_GAP_PX + 8;
       let chosen: string | null = headings[0]?.id ?? null;
       for (const heading of headings) {
-        if (heading.getBoundingClientRect().top <= HEADING_CLEARANCE_PX + 8) chosen = heading.id;
+        if (heading.getBoundingClientRect().top <= line) chosen = heading.id;
       }
       setCurrent(chosen);
     };
@@ -98,6 +115,16 @@ export function SectionMenu({ within }: SectionMenuProps) {
       ))}
     </nav>
   );
+}
+
+/**
+ * What a heading says, without what sits beside it: the (?) of a hint is a
+ * button in the heading, and "Chat?" is not the section's name.
+ */
+function labelOf(heading: HTMLElement): string {
+  const copy = heading.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('button, [role="tooltip"], [role="button"]').forEach((one) => one.remove());
+  return copy.textContent?.trim() || heading.id;
 }
 
 function sameEntries(a: Entry[], b: Entry[]): boolean {

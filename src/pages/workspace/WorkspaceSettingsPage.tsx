@@ -939,6 +939,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         workspacePath={`/workspace/${workspaceId}`}
         showAdmin={session.admin}
         onSignOut={onSignOut}
+        scrollContent
         sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
       >
         <section className={styles.card} data-testid="settings-refused">
@@ -959,6 +960,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       workspacePath={`/workspace/${workspaceId}`}
       showAdmin={session.admin}
       onSignOut={onSignOut}
+      scrollContent
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
       <div className={menuStyles.withMenu}>
