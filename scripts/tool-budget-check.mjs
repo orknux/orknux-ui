@@ -92,7 +92,7 @@ console.log(`built-ins: ${BY_NAME.length} by name, ${WITH_GRANT.length} with a w
 
 await graphql(
   `mutation($id: ID!, $name: String!, $tools: [String!]) {
-     updateAgent(id: $id, input: { name: $name, tools: $tools, skillCatalogs: [] }) { tools }
+     updateAgent(id: $id, input: { name: $name, tools: $tools, skillCatalogs: [], memoryCatalogs: [] }) { tools }
    }`,
   { id: AGENT, name: made.createAgent.name, tools: [TOOL, ...BY_NAME] },
 );

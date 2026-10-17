@@ -151,6 +151,9 @@ const reference = page
 record(await reference.isDisabled(), 'and Reference cannot be pressed for one');
 
 await picker.first().selectOption({ label: CONNECTION });
+await page.waitForTimeout(400);
+// A choice waits for Save like anything typed, since every control on the page does.
+await page.locator('[class*="_pageSave_"]').click();
 await page.waitForTimeout(1200);
 const { workspacePlugins } = await graphql(
   `query ($workspaceId: ID!) {
@@ -161,7 +164,7 @@ const { workspacePlugins } = await graphql(
 const scratch = workspacePlugins.find((one) => one.plugin.key === KEY);
 record(
   scratch?.parameters.find((one) => one.name === 'door')?.literal === String(connectionId),
-  'picking stores the id the server validates',
+  'picking and saving stores the id the server validates',
 );
 
 /*

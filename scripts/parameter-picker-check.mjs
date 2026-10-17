@@ -77,8 +77,14 @@ record(
 );
 record(seen.region?.tag === 'INPUT', `the one that named none is still typed (${seen.region?.tag ?? 'missing'})`);
 
-// Choosing stores it, which is the whole point of the control.
+// Choosing and saving stores it: a choice waits for Save like anything typed.
+// Whatever is stored first moves away from 'brave', so a value left by an
+// earlier run cannot pass this on its own.
+await page.selectOption('select[id$="-backend"]', 'tavily');
+await page.locator('[class*="_pageSave_"]').click().catch(() => {});
+await page.waitForTimeout(1200);
 await page.selectOption('select[id$="-backend"]', 'brave');
+await page.locator('[class*="_pageSave_"]').click();
 await page.waitForTimeout(1500);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(2500);

@@ -120,6 +120,8 @@ made.push(...fresh.map((one) => one.id));
 
 if (record(fresh.length === 1, `exactly one agent was made (${fresh.length} appeared)`)) {
   const agent = fresh[0];
+  const workspaceCatalogs = (await graphql(`query($w: ID!) { memoryCatalogs(workspaceId: $w) { name } }`, { w: WORKSPACE }))
+    .memoryCatalogs.map((one) => one.name);
   record(agent.modelId === chatModel.id, `it is on the model the row was for (${agent.modelName})`);
   record(
     agent.name === chatModel.name || agent.name.startsWith(`${chatModel.name} `),
@@ -132,9 +134,11 @@ if (record(fresh.length === 1, `exactly one agent was made (${fresh.length} appe
       // The server's own tools are on for every agent since #444 - a built-in is
       // on unless somebody turned it off - so "nothing" is nothing beyond them.
       agent.tools.every((name) => builtIns.has(name)) &&
-      // And the skills the server brings, granted by default since e3d262b4.
-      agent.skillCatalogs.every((name) => name === 'orknux_skills') &&
-      agent.memoryCatalogs.length === 0 &&
+      // And the skills the server brings, granted by default since e3d262b4,
+      // with every plugin's skill catalog since 1.0.8.
+      agent.skillCatalogs.every((name) => name === 'orknux_skills' || name.endsWith('_plugin')) &&
+      // Since 1.0.8 a new agent holds the workspace's memory catalogs, and nothing else.
+      agent.memoryCatalogs.every((name) => workspaceCatalogs.includes(name)) &&
       agent.mcpServers.length === 0 &&
       agent.orknuxAccess === false,
     `and it is granted nothing at all, which is what makes it something to dress rather than a surprise (${JSON.stringify({ ...agent, tools: agent.tools.filter((name) => !builtIns.has(name)) })})`,
