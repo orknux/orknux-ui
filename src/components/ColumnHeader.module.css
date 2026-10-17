@@ -13,6 +13,18 @@
 }
 
 /*
+ * A row, whatever the column's own class says. A column whose cells stack a
+ * name above a description is a flex column, and the heading wears that class
+ * too - where `align-items: center` centres across the width, so NAME sat in the
+ * middle of a column of left-aligned names. Doubled to outrank the column's
+ * class whichever stylesheet loads last; the column still decides where along
+ * the row the heading sits, through its own justify-content.
+ */
+.head.head {
+  flex-direction: row;
+}
+
+/*
  * The press itself. Transparent and inheriting everything: the headings of a
  * table are drawn in the table's own font, size, letter-spacing and colour, and
  * a button that brought a browser's defaults with it would be the one heading

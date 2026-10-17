@@ -231,6 +231,17 @@ export const TESTS = [
      */
   },
   {
+    name: 'heading-alignment-check',
+    what: 'a sortable heading starts where its column's cells start',
+    needs: [],
+    /*
+     * The Roles table drew NAME centred over left-aligned names: a column whose
+     * cells stack two lines is a flex column, and the heading wearing its class
+     * was centred across the width by it. Measured on the admin tables whose
+     * first column stacks.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
