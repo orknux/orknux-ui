@@ -44,8 +44,9 @@ import {
   setWorkspaceTranscriptionModel,
   setWorkspaceVoiceSpeechChunking,
   setWorkspaceVoiceTurnTaking,
+  setWorkspaceMemberRole,
 } from '../../api/workspaces';
-import type { Workspace } from '../../api/workspaces';
+import type { Workspace, WorkspaceMemberRole } from '../../api/workspaces';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import { AppShell } from '../../components/AppShell';
 import { CatalogueNote, useCatalogue } from '../../components/Catalogue';
@@ -438,6 +439,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
    * become.
    */
   const [touched, setTouched] = useState<ReadonlySet<string>>(new Set());
+  /** Member roles chosen and not yet saved, by username; written with everything else by Save Changes. */
+  const [memberRoles, setMemberRoles] = useState<Record<string, WorkspaceMemberRole>>({});
+  const [membersVersion, setMembersVersion] = useState(0);
 
   /** Marks one setting as this person's to save, and clears any stale "Saved.". */
   function touch(what: string) {
@@ -787,6 +791,13 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       const writer = threshold === null || summariser === '' ? null : summariser;
       if (touched.has('compaction')) {
         latest = await setWorkspaceCompaction(workspaceId, threshold, summary, writer);
+      }
+      if (touched.has('members')) {
+        for (const [username, role] of Object.entries(memberRoles)) {
+          await setWorkspaceMemberRole(workspaceId, username, role);
+        }
+        setMemberRoles({});
+        setMembersVersion((held) => held + 1);
       }
 
       if (latest != null) {
@@ -1413,7 +1424,17 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         was saying so once per agent, again on every agent made afterwards, and
         could read the decision back only by opening every one of them.
       */}
-      {workspace?.administered === true && <WorkspaceMembers workspaceId={workspaceId} />}
+      {workspace?.administered === true && (
+        <WorkspaceMembers
+          workspaceId={workspaceId}
+          pending={memberRoles}
+          onPending={(next) => {
+            setMemberRoles(next);
+            touch('members');
+          }}
+          version={membersVersion}
+        />
+      )}
 
       <section className={styles.card}>
         <div className={styles.sectionTitle}>

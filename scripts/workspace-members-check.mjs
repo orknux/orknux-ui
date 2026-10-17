@@ -60,7 +60,9 @@ try {
   const me = before.find((one) => one.username === USER);
   record(me !== undefined && me.fixed, `the signed-in administrator is listed, fixed (${JSON.stringify(me)})`);
   const other = before.find((one) => one.username === guinea.username);
-  record(other !== undefined && !other.fixed && other.role === 'USER', `the member the role lets in is listed as a user (${JSON.stringify(other)})`);
+  record(other !== undefined && !other.fixed, `the member the role lets in is listed, not fixed (${JSON.stringify(other)})`);
+  const was = other?.role ?? 'USER';
+  const flipped = was === 'ADMIN' ? 'USER' : 'ADMIN';
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/settings`, { waitUntil: 'domcontentloaded' });
   await drawn(page, 'Members');
@@ -76,25 +78,27 @@ try {
   );
 
   const pickerOf = () => section.locator(`[data-username="${guinea.username}"] select`);
-  record((await pickerOf().inputValue()) === 'USER', `${guinea.username}'s picker says User`);
-  await pickerOf().selectOption('ADMIN');
-  await page.waitForFunction(
-    (name) => document.querySelector(`[data-username="${name}"] select`)?.getAttribute('data-member-role') === 'ADMIN',
-    guinea.username,
-  );
+  const saveButton = page.getByRole('button', { name: 'Save Changes' });
+  record((await pickerOf().inputValue()) === was, `${guinea.username}'s picker says what the server has (${was})`);
+  // A choice is a draft until the page's Save Changes, like every other field on the page.
+  await pickerOf().selectOption(flipped);
+  await page.waitForTimeout(300);
+  const drafted = (await members()).find((one) => one.username === guinea.username);
+  record(drafted?.role === was, `choosing ${flipped} writes nothing yet (server says ${drafted?.role})`);
+  record(await saveButton.isEnabled(), "and the page's Save Changes wakes up");
+  await saveButton.click();
+  await page.getByText('Saved.').waitFor({ timeout: 10_000 });
   const after = (await members()).find((one) => one.username === guinea.username);
-  record(after?.role === 'ADMIN', `choosing Workspace admin is saved (server says ${after?.role})`);
+  record(after?.role === flipped, `Save Changes writes it (server says ${after?.role})`);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await drawn(page, 'Members');
   await pickerOf().waitFor({ timeout: 10_000 });
-  record((await pickerOf().inputValue()) === 'ADMIN', 'and a reload still shows it');
-  await pickerOf().selectOption('USER');
-  await page.waitForFunction(
-    (name) => document.querySelector(`[data-username="${name}"] select`)?.getAttribute('data-member-role') === 'USER',
-    guinea.username,
-  );
+  record((await pickerOf().inputValue()) === flipped, 'and a reload still shows it');
+  await pickerOf().selectOption(was);
+  await saveButton.click();
+  await page.getByText('Saved.').waitFor({ timeout: 10_000 });
   const restored = (await members()).find((one) => one.username === guinea.username);
-  record(restored?.role === 'USER', 'and put back to User');
+  record(restored?.role === was, `and put back to ${was} the same way`);
 } finally {
   await setUserRoles(guineaRoles).catch(() => undefined);
   await setWorkspaceRoles(workspaceRoles).catch(() => undefined);
