@@ -326,6 +326,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'rectangle-select-check',
+    what: "the canvas's corner button and its keystroke switch a drag between panning and selecting what a rectangle touches",
+    needs: ['workspace'],
+  },
+  {
     name: 'add-menu-arrows-check',
     what: "the editor's Add menu is walked with the arrow keys, and Enter adds the entry under focus",
     needs: ['workspace'],

@@ -19,6 +19,7 @@ import {
   DEFAULT_FORMAT_SHORTCUT,
   DEFAULT_TURN_SHORTCUT,
   DEFAULT_ADD_SHORTCUT,
+  DEFAULT_SELECT_SHORTCUT,
   DEFAULT_UNDO_SHORTCUT,
   DEFAULT_REDO_SHORTCUT,
   DEFAULT_DUPLICATE_SHORTCUT,
@@ -29,6 +30,7 @@ import {
   setFormatShortcut,
   setTurnShortcut,
   setAddShortcut,
+  setSelectShortcut,
   setUndoShortcut,
   setRedoShortcut,
   setDuplicateShortcut,
@@ -41,6 +43,7 @@ import {
   useFormatShortcut,
   useTurnShortcut,
   useAddShortcut,
+  useSelectShortcut,
   useUndoShortcut,
   useRedoShortcut,
   useDuplicateShortcut,
@@ -55,6 +58,7 @@ import {
   formatShortcut,
   turnShortcut,
   addShortcut,
+  selectShortcut,
   undoShortcut,
   redoShortcut,
   duplicateShortcut,
@@ -72,6 +76,7 @@ type ShortcutKey =
   | 'format'
   | 'turn'
   | 'add'
+  | 'select'
   | 'undo'
   | 'redo'
   | 'duplicate'
@@ -86,6 +91,7 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'format', stored: formatShortcut, store: setFormatShortcut },
   { key: 'turn', stored: turnShortcut, store: setTurnShortcut },
   { key: 'add', stored: addShortcut, store: setAddShortcut },
+  { key: 'select', stored: selectShortcut, store: setSelectShortcut },
   { key: 'undo', stored: undoShortcut, store: setUndoShortcut },
   { key: 'redo', stored: redoShortcut, store: setRedoShortcut },
   { key: 'duplicate', stored: duplicateShortcut, store: setDuplicateShortcut },
@@ -132,6 +138,8 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
   const turn = shortcutDrafts.turn ?? storedTurn;
   const storedAdd = useAddShortcut();
   const add = shortcutDrafts.add ?? storedAdd;
+  const storedSelect = useSelectShortcut();
+  const select = shortcutDrafts.select ?? storedSelect;
   const storedUndo = useUndoShortcut();
   const undo = shortcutDrafts.undo ?? storedUndo;
   const storedRedo = useRedoShortcut();
@@ -154,6 +162,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
     | 'format'
     | 'turn'
     | 'add'
+    | 'select'
     | 'undo'
     | 'redo'
     | 'duplicate'
@@ -185,14 +194,15 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
         return;
       }
       /*
-       * A bare letter is refused everywhere except the two canvas ones.
+       * A bare letter is refused everywhere except the three canvas ones.
        *
        * The others fire wherever somebody is typing, so a letter alone would
-       * trigger them mid-word. Turning a node and opening the Add menu are only
-       * honoured on the canvas, where a letter is free - which is why R and A
-       * can be the defaults there and cannot be anywhere else.
+       * trigger them mid-word. Turning a node, opening the Add menu and the
+       * selection rectangle are only honoured on the canvas, where a letter is
+       * free - which is why R, A and S can be the defaults there and cannot be
+       * anywhere else.
        */
-      if (recording !== 'turn' && recording !== 'add' && !usable(said)) {
+      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && !usable(said)) {
         setRefused(said);
         return;
       }
@@ -202,6 +212,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
       else if (recording === 'save') draftShortcut('save', said);
       else if (recording === 'turn') draftShortcut('turn', said);
       else if (recording === 'add') draftShortcut('add', said);
+      else if (recording === 'select') draftShortcut('select', said);
       else if (recording === 'undo') draftShortcut('undo', said);
       else if (recording === 'redo') draftShortcut('redo', said);
       else if (recording === 'duplicate') draftShortcut('duplicate', said);
@@ -906,6 +917,37 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                 )}
               </div>
               {recording === 'add' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="select-shortcut">
+                  {t('Rectangle Select Shortcut')}
+                </span>
+                <FieldHint label={t('Rectangle Select Shortcut')}>
+                  {t('Switches the workflow canvas between panning and drawing a selection rectangle, the same as the button in its corner. Shift-drag draws one at any time. A bare letter is allowed here because only the canvas hears it.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'select' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'select' ? null : 'select'));
+                  }}
+                >
+                  {recording === 'select' ? t('Press any keys…') : select}
+                </button>
+                {select !== DEFAULT_SELECT_SHORTCUT && recording !== 'select' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('select', DEFAULT_SELECT_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'select' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>

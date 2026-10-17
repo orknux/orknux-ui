@@ -9,6 +9,7 @@ const UNDO_KEY = 'orknux.undoShortcut';
 const REDO_KEY = 'orknux.redoShortcut';
 const DUPLICATE_KEY = 'orknux.duplicateShortcut';
 const ADD_KEY = 'orknux.addShortcut';
+const SELECT_KEY = 'orknux.selectShortcut';
 const PUBLISH_KEY = 'orknux.publishShortcut';
 const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
 
@@ -95,6 +96,15 @@ export const DEFAULT_DUPLICATE_SHORTCUT = 'Ctrl+D';
  * Flow's own keys are Backspace, Shift, Space and the platform modifier.
  */
 export const DEFAULT_ADD_SHORTCUT = 'A';
+
+/**
+ * What switches the canvas between panning and drawing a selection rectangle
+ * when nothing has been chosen: S, for select. A bare letter for the reason A
+ * is, and held to the canvas the same way. React Flow draws the rectangle on
+ * a Shift-drag whatever this says; the mode is for a trackpad, where holding a
+ * key through a drag is the awkward part.
+ */
+export const DEFAULT_SELECT_SHORTCUT = 'S';
 
 /**
  * What publishes the workflow on screen when nothing has been chosen.
@@ -199,6 +209,7 @@ const undoing = remembered(UNDO_KEY, DEFAULT_UNDO_SHORTCUT);
 const redoing = remembered(REDO_KEY, DEFAULT_REDO_SHORTCUT);
 const duplicating = remembered(DUPLICATE_KEY, DEFAULT_DUPLICATE_SHORTCUT);
 const addingNode = remembered(ADD_KEY, DEFAULT_ADD_SHORTCUT);
+const selecting = remembered(SELECT_KEY, DEFAULT_SELECT_SHORTCUT);
 const publishing = remembered(PUBLISH_KEY, DEFAULT_PUBLISH_SHORTCUT);
 const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
 
@@ -308,6 +319,18 @@ export function setAddShortcut(next: Shortcut): void {
 
 export function useAddShortcut(): Shortcut {
   return addingNode.use();
+}
+
+export function selectShortcut(): Shortcut {
+  return selecting.get();
+}
+
+export function setSelectShortcut(next: Shortcut): void {
+  selecting.set(next);
+}
+
+export function useSelectShortcut(): Shortcut {
+  return selecting.use();
 }
 
 export function publishShortcut(): Shortcut {

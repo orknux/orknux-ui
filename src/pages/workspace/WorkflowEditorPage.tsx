@@ -19,6 +19,7 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   addEdge,
   getBezierPath,
   reconnectEdge,
@@ -87,6 +88,7 @@ import pencilIcon from '../../assets/pencil.svg';
 import playIcon from '../../assets/play.svg';
 import plusIcon from '../../assets/plus.svg';
 import redoIcon from '../../assets/redo.svg';
+import marqueeIcon from '../../assets/marquee.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
@@ -122,6 +124,7 @@ import type { ImageParameterSpec } from '../../api/graph';
 import {
   matches,
   useAddShortcut,
+  useSelectShortcut,
   useDuplicateShortcut,
   usePublishShortcut,
   useRedoShortcut,
@@ -1844,6 +1847,8 @@ export interface ToolButtonProps {
   shortcut?: string | null;
   /** A second line - why it is grey, or where the keystroke is changed. */
   note?: string | null;
+  /** For a button that is a mode: whether it is on, said to assistive technology. */
+  pressed?: boolean;
   /** The look of the button; the plain icon square unless something else is wanted. */
   className?: string;
   disabled?: boolean;
@@ -1863,7 +1868,7 @@ export interface ToolButtonProps {
  * and the keystroke is appended to both from the same string, so what is read
  * aloud and what is shown can never say different things.
  */
-function ToolButton({ label, shortcut, note, className, disabled, onClick, children }: ToolButtonProps) {
+function ToolButton({ label, shortcut, note, className, disabled, pressed, onClick, children }: ToolButtonProps) {
   const named = shortcut === undefined || shortcut === null ? label : `${label} (${shortcut})`;
   return (
     <button
@@ -1871,6 +1876,7 @@ function ToolButton({ label, shortcut, note, className, disabled, onClick, child
       className={className === undefined ? styles.iconButton : `${styles.iconButton} ${className}`}
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={pressed}
       aria-label={note === undefined || note === null ? named : `${named}. ${note}`}
       data-tip={note === undefined || note === null ? named : `${named}\n${note}`}
     >
@@ -4338,6 +4344,26 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const redoKey = useRedoShortcut();
   const copyKey = useDuplicateShortcut();
   const addKey = useAddShortcut();
+  const selectKey = useSelectShortcut();
+  /*
+   * Whether a drag on the empty canvas draws a selection rectangle or pans.
+   *
+   * Panning is the default, and Shift-drag selects at any time - React Flow's
+   * own. The mode exists for the trackpad, where holding Shift through a drag
+   * is the awkward half; switched from the corner button or the keystroke, it
+   * stays on until switched off, and the middle and right buttons still pan.
+   */
+  const [marquee, setMarquee] = useState(false);
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!matches(event, selectKey)) return;
+      if (typingText(event.target)) return;
+      event.preventDefault();
+      setMarquee((on) => !on);
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [selectKey]);
   const publishKey = usePublishShortcut();
 
   /** Read by the keyboard handler, which must not start a second save. */
@@ -5068,6 +5094,17 @@ Change the keystroke in Preferences.`}
           <ToolButton label={t('Redo')} shortcut={redoKey} onClick={() => redo()} disabled={steps.forward === 0}>
             <img src={redoIcon} alt="" width={16} height={16} />
           </ToolButton>
+          {/* A mode rather than an act: lit while it is on, and a drag on empty canvas selects instead of panning. */}
+          <ToolButton
+            label={t('Rectangle select')}
+            shortcut={selectKey}
+            note={marquee ? t('On: a drag on the canvas selects what it touches; the middle button pans.') : t('Off: a drag on the canvas pans. Shift-drag selects at any time.')}
+            className={marquee ? styles.iconButtonOn : undefined}
+            pressed={marquee}
+            onClick={() => setMarquee((on) => !on)}
+          >
+            <img src={marqueeIcon} alt="" width={16} height={16} />
+          </ToolButton>
           {/*
             The one that keeps its word.
 
@@ -5210,6 +5247,10 @@ Change the keystroke in Preferences.`}
                * and Backspace or Delete removes all of it. Issue #630.
                */
               multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
+              selectionOnDrag={marquee}
+              panOnDrag={marquee ? [1, 2] : true}
+              // What the rectangle touches, not only what it swallows: a node half inside is a node meant.
+              selectionMode={SelectionMode.Partial}
               // Delete as well as Backspace: React Flow listens for Backspace alone, so Delete did nothing.
               deleteKeyCode={['Backspace', 'Delete']}
               onEdgesChange={onEdgesChange}
