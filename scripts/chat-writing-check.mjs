@@ -42,8 +42,10 @@ data: ${JSON.stringify(data)}
               if (which === 'answer') {
                 send('writing', { tool: null, chars: 40 });
               }
-              if (which === 'done') {
+              if (which === 'chunk') {
                 send('chunk', { text: answer });
+              }
+              if (which === 'done') {
                 send('done', { millis: 1000 });
                 controller.close();
               }
@@ -94,6 +96,12 @@ await page.evaluate(() => window.__writing.step?.('answer'));
 await page.waitForTimeout(400);
 const answering = await text();
 record(answering === 'Writing the answer… 40 chars (~10 tokens)', `an answer being written says that instead (${answering})`);
+
+// The answer's text arriving is the answer showing: the count of it goes, though the turn runs on.
+await page.evaluate(() => window.__writing.step?.('chunk'));
+await page.getByText(ANSWER).first().waitFor({ timeout: 10_000 }).catch(() => {});
+await page.waitForTimeout(300);
+record((await line.count()) === 0, 'the line goes once the answer itself is showing, while the turn is still running');
 
 await page.evaluate(() => window.__writing.step?.('done'));
 await page.getByText(ANSWER).first().waitFor({ timeout: 10_000 }).catch(() => {});

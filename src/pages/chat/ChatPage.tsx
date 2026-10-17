@@ -3389,7 +3389,15 @@ ${named}`;
                         it is the reason for the silence.
                       */
                       const compacting = live && working.compacting;
-                      const writing = live ? working.writing : null;
+                      /*
+                        "Writing the answer…" stops once the answer is showing:
+                        it counts what the reader cannot see yet, and nothing
+                        clears it while the turn runs on, so it stayed beside
+                        the text it described, its count frozen at the first
+                        frame. A tool being spelled out still says so.
+                      */
+                      const answering = working.writing !== null && working.writing.tool === null && working.writing.promptTotal == null;
+                      const writing = live && !(answering && message.content.trim() !== '') ? working.writing : null;
                       if (thinking.trim() === '' && calls.length === 0 && !compacting && writing === null) return null;
                       return (
                         <div className={styles.working}>
