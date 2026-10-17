@@ -30,7 +30,7 @@
 /* The header as a band of its own, so it reads as the table's heading and not as one more row. */
 .table th {
   padding: var(--space-10) var(--space-12);
-  background: var(--color-table-head);
+  background: var(--color-surface-raised);
   border-bottom: 1px solid var(--color-border);
   font-family: var(--font-mono);
   font-weight: 600;

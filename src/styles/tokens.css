@@ -18,8 +18,6 @@
   --color-bg: #09090b;
   --color-surface: #121214;
   --color-surface-raised: #18181b;
-  /* A table's header band: a step above the card a table sits on, so the heading reads as one. */
-  --color-table-head: #27272a;
 
   /*
    * The scrollbar's thumb: bright enough to find, quiet enough to ignore.
@@ -198,7 +196,6 @@
   --color-bg: #ffffff;
   --color-surface: #fafafa;
   --color-surface-raised: #f4f4f5;
-  --color-table-head: #e4e4e7;
 
   /* The same idea the other way up: dark enough to see on a light page. */
   --color-scrollbar: #c4c4c8;
