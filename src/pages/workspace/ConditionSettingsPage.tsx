@@ -5,6 +5,7 @@ import { deleteCondition, fetchCondition } from '../../api/conditions';
 import type { Condition } from '../../api/conditions';
 import type { SessionUser } from '../../api/session';
 import { AppShell } from '../../components/AppShell';
+import { SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { ConditionForm } from '../../components/ConditionForm';
 import type { ConditionFormStyles } from '../../components/ConditionForm';
@@ -85,8 +86,10 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
   const [condition, setCondition] = useState<Condition | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  /** The header's action slot, where the form draws its Save. Issue #386. */
+  /** The save strip's row, where the form draws its Save and Discard. See `SaveBar`. */
   const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
+  /** Bumped by Discard: the form starts over from the record this page holds. */
+  const [discards, setDiscards] = useState(0);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -142,6 +145,7 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
 
   return (
     <AppShell
+      scrollContent
       title={adding ? t('New condition') : condition?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -158,8 +162,6 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{called}</h1>
-          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
-          <div ref={setHeaderActions} className={styles.headerActions} />
         </div>
         <p className={styles.subtitle}>
           {t('A reusable question, for workflow branching and action triggers. What it asks is read off the definition below and shown wherever the condition is used.')}
@@ -185,7 +187,8 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
             over rather than leaving the previous one's values behind.
           */}
           <ConditionForm
-            key={condition?.id ?? 'new'}
+            key={`${condition?.id ?? 'new'}-${discards}`}
+            onDiscard={() => setDiscards((held) => held + 1)}
             workspaceId={workspaceId}
             condition={condition}
             preset={adding ? preset : null}
@@ -259,6 +262,8 @@ export function ConditionSettingsPage({ session, onSignOut }: ConditionSettingsP
           )}
         </>
       )}
+      {/* The form's Save floats at the foot of the window, in view wherever the reader has scrolled to. */}
+      <SaveBar slot={setHeaderActions} />
     </AppShell>
   );
 }

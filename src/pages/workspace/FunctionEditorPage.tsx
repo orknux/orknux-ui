@@ -38,6 +38,7 @@ import plusIcon from '../../assets/plus.svg';
 import wandIcon from '../../assets/wand.svg';
 import { VARIABLE_TYPE_LABEL } from '../../api/variables';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { CodeDiff } from '../../components/CodeDiff';
 import { CodeEditor } from '../../components/CodeEditor';
@@ -1110,6 +1111,40 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
    * the page as it opens: the name it arrives with, no details, and the stub in
    * the column. Anything else is somebody's work.
    */
+  /**
+   * Back to the function as it was loaded or last saved, or to the blank one
+   * a new function opens as; nothing goes to the server. The code column and
+   * the details follow the fields, as they do on load.
+   */
+  function discard() {
+    if (creating) {
+      setName(NEW_FUNCTION_NAME);
+      setDescription('');
+      setTimeoutSeconds('');
+      setReturnType('MAP');
+      setReturnObjectId(null);
+      setParams([]);
+      setExternals([]);
+      setImports([]);
+      setLibraries([]);
+      setSource(stub);
+    } else if (fn !== null) {
+      declaredAs.current = identifier(fn.name);
+      setName(fn.name);
+      setDescription(fn.description ?? '');
+      setTimeoutSeconds(fn.timeoutSeconds == null ? '' : String(fn.timeoutSeconds));
+      setSource(fn.typescript ?? fn.source);
+      setReturnType(fn.returnType);
+      setReturnObjectId(fn.returnObjectId);
+      setParams(fn.params);
+      setExternals(fn.externals.map((external) => external.variableId));
+      setImports(fn.imports);
+      setLibraries(fn.libraries);
+    }
+    setSaved(false);
+    setStatus(null);
+  }
+
   const unsaved = useMemo(() => {
     if (creating) {
       return !(
@@ -1367,6 +1402,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
 
   return (
     <AppShell
+      scrollContent
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
       showAdmin={session.admin}
@@ -1467,9 +1503,10 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   >{t('Wrap in Condition')}</button>
                 )}
                 {/*
-                  Beside the button it is about, not down in the footer where it
-                  used to sit - and in the button's own word. See
-                  `ValidationStatus`.
+                  Beside the button it is about, in the button's own word - see
+                  `ValidationStatus`. By the title rather than in the save strip:
+                  validating needs no edit, and the strip is there only while
+                  something is unsaved.
                 */}
                 <ValidationStatus
                   subject={t("The code")}
@@ -1485,15 +1522,6 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                 />
                 <button type="button" className={styles.ghostButton} onClick={handleValidate}>
                   {t('Validate')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.saveButton}
-                  onClick={handleSave}
-                  // A function has to be called something before it can be made.
-                  disabled={saving || (creating && name.trim() === '')}
-                >
-                  {saving ? t('Saving…') : creating ? t('Create Function') : t('Save Changes')}
                 </button>
               </div>
             </div>
@@ -2434,6 +2462,18 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
               )}
             </aside>
           </div>
+          <SaveBar>
+            <DiscardButton onDiscard={discard} disabled={saving || !unsaved} />
+            <button
+              type="button"
+              className={styles.saveButton}
+              onClick={handleSave}
+              // A function has to be called something before it can be made.
+              disabled={saving || (creating && name.trim() === '') || !unsaved}
+            >
+              {saving ? t('Saving…') : creating ? t('Create Function') : t('Save Changes')}
+            </button>
+          </SaveBar>
         </>
       )}
 

@@ -50,6 +50,7 @@ import {
 import type { Workspace, WorkspaceMemberRole } from '../../api/workspaces';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { CatalogueNote, useCatalogue } from '../../components/Catalogue';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
@@ -820,6 +821,20 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     }
   }
 
+  /**
+   * Back to the workspace as it was loaded or last saved: every draft rebuilt
+   * from it, the members' pending roles dropped, and nothing left touched.
+   * Nothing goes to the server - this page holds what it showed.
+   */
+  function discard() {
+    if (workspace === null) return;
+    rebuild(workspace);
+    setMemberRoles({});
+    setTouched(new Set());
+    setSavedAll(false);
+    setSaveError(null);
+  }
+
   /** Every draft, put back to what the workspace holds. */
   function rebuild(held: Workspace) {
     setName(held.name);
@@ -985,9 +1000,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       <SectionMenu within={sectionsRef} />
       <div className={menuStyles.sections} ref={sectionsRef}>
       {/*
-        The save in the header, where every other editor's is since #386: this
-        page is long, and a button at the foot of it is one somebody scrolls
-        past on the way out. The note beside it says which of the three states
+        The save is in the strip floating at the foot of the window, where
+        every editor's is: this page is long, and a button in its header was
+        one somebody scrolled away from. The note beside it says which of the three states
         the page is in, and a refusal takes its place where there is one - the
         server names the setting in its sentence, which is what lets one line
         stand for a page of fields. Issue #452.
@@ -995,23 +1010,6 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       <header className={styles.header}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{t('Workspace Settings')}</h1>
-          <div className={styles.headerActions}>
-            {saveError !== null ? (
-              <p className={styles.error} role="alert">{saveError}</p>
-            ) : (
-              <p className={savedAll ? `${styles.pageActionsNote} ${styles.pageActionsSaved}` : styles.pageActionsNote}>
-                {savedAll ? t('Saved.') : dirty ? t('Not saved yet.') : ''}
-              </p>
-            )}
-            <button
-              type="button"
-              className={styles.save}
-              onClick={() => void saveAll()}
-              disabled={workspace === null || saving || !dirty || refusal !== null}
-            >
-              {saving ? t('Saving…') : t('Save Changes')}
-            </button>
-          </div>
         </div>
       </header>
 
@@ -2596,6 +2594,25 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       </section>
 
       </div>
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      <SaveBar>
+        {saveError !== null ? (
+          <p className={styles.error} role="alert">{saveError}</p>
+        ) : (
+          <p className={savedAll ? `${styles.pageActionsNote} ${styles.pageActionsSaved}` : styles.pageActionsNote}>
+            {savedAll ? t('Saved.') : dirty ? t('Not saved yet.') : ''}
+          </p>
+        )}
+        <DiscardButton onDiscard={discard} disabled={workspace === null || saving || !dirty} />
+        <button
+          type="button"
+          className={styles.save}
+          onClick={() => void saveAll()}
+          disabled={workspace === null || saving || !dirty || refusal !== null}
+        >
+          {saving ? t('Saving…') : t('Save Changes')}
+        </button>
+      </SaveBar>
       </div>
     </AppShell>
   );

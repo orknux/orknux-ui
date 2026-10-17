@@ -137,16 +137,15 @@ for (const viewport of SIZES) {
   const unsaved = page.locator('[data-preferences-unsaved]');
 
   record(await save.isDisabled(), 'nothing changed, Save has nothing to store');
-  // At the top, level with the title: above the first section and on screen without scrolling.
+  // In the strip floating at the foot of the window: on screen without scrolling, wherever the page is.
   const placed = await page.evaluate(() => {
     const button = document.querySelector('[class*="_pageSave_"]')?.getBoundingClientRect();
-    const title = document.querySelector('h1')?.getBoundingClientRect();
-    const firstCard = document.querySelector('[class*="_card_"]')?.getBoundingClientRect();
-    return button && title && firstCard ? { save: Math.round(button.top), title: Math.round(title.top), card: Math.round(firstCard.top), right: Math.round(button.right), titleRight: Math.round(title.right) } : null;
+    const strip = document.querySelector('[data-testid="save-bar"]')?.getBoundingClientRect();
+    return button && strip ? { save: Math.round(button.top), strip: Math.round(strip.top), stripBottom: Math.round(strip.bottom), window: innerHeight } : null;
   });
   record(
-    placed !== null && placed.save < placed.card && placed.save < 300 && placed.right > placed.titleRight,
-    `Save is at the top, beside the title and above the first section (${JSON.stringify(placed)})`,
+    placed !== null && placed.save >= placed.strip && placed.save < placed.stripBottom && placed.stripBottom <= placed.window,
+    `Save is in the strip at the foot of the window, on screen without scrolling (${JSON.stringify(placed)})`,
   );
   await page.getByRole('radio', { name: other }).click();
   await page.waitForTimeout(300);

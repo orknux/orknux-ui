@@ -18,6 +18,8 @@ import linkIcon from '../../assets/link.svg';
 import listOrderedIcon from '../../assets/list-ordered.svg';
 import listIcon from '../../assets/list.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -67,7 +69,7 @@ const MARKS: { key: string; label?: string; icon?: string; title: string; mark: 
  * editors get. The toolbar inserts markdown around the selection rather than
  * hiding it, so what is stored is what was typed.
  */
-export function MemoryEditorPage({ session, onSignOut }: MemoryEditorPageProps) {
+function MemoryEditorView({ session, onSignOut, onDiscard }: MemoryEditorPageProps & { onDiscard: () => void }) {
   const { workspaceId = '', memoryId } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -206,8 +208,16 @@ export function MemoryEditorPage({ session, onSignOut }: MemoryEditorPageProps) 
   const catalogName = catalogs.find((one) => one.id === catalogId)?.name ?? '';
   const complete = title.trim() !== '' && content.trim() !== '' && catalogId !== '';
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ title, content, catalogId }, [memory]);
+
   return (
     <AppShell
+      scrollContent
       title={adding ? t('New note') : memory?.title}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -222,11 +232,6 @@ export function MemoryEditorPage({ session, onSignOut }: MemoryEditorPageProps) 
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.crumbCurrent}>{adding ? t('New memory') : (memory?.title ?? '…')}</span>
         </p>
-        <span className={styles.spacer} />
-        {saved && <span className={styles.saved}>{t('Saved.')}</span>}
-        <button type="button" className={styles.save} onClick={() => void handleSave()} disabled={!complete || saving}>
-          {saving ? t('Saving…') : adding ? t('Create Memory') : t('Save Changes')}
-        </button>
       </header>
 
       {error !== null && (
@@ -345,6 +350,28 @@ export function MemoryEditorPage({ session, onSignOut }: MemoryEditorPageProps) 
           </aside>
         </div>
       )}
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      <SaveBar>
+        {saved && <span className={styles.saved}>{t('Saved.')}</span>}
+        <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+        <button type="button" className={styles.save} onClick={() => void handleSave()} disabled={!complete || saving || !changed}>
+          {saving ? t('Saving…') : adding ? t('Create Memory') : t('Save Changes')}
+        </button>
+      </SaveBar>
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function MemoryEditorPage(props: MemoryEditorPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <MemoryEditorView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

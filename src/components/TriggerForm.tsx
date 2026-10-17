@@ -40,6 +40,8 @@ import { IconField } from './IconField';
 import { NameDialog } from './NameDialog';
 import own from './TriggerForm.module.css';
 import { t } from '../i18n';
+import { DiscardButton } from './SaveBar';
+import { useDirty } from './useDirty';
 
 /**
  * The class names the form paints itself with.
@@ -119,13 +121,21 @@ export interface TriggerFormProps {
    * Where the page wants the Save button drawn, when that is not the foot of the
    * form. Issue #386.
    *
-   * A settings page puts it in its header, beside the title, so saving a long
-   * form never needs a scroll. The button is the same one - same submit, same
+   * A settings page puts it in the strip floating at the foot of the window
+   * (`SaveBar`), in view wherever a long form is scrolled to - it was beside
+   * the title since #386, which answered scrolling to the foot and left the
+   * reader scrolling to the top instead. The button is the same one - same submit, same
    * disabled and label states - reached through the `form` attribute and drawn
    * into this element by a portal. Left undefined everywhere else (the create
    * dialog), where the button stays at the foot.
    */
   actionsSlot?: HTMLElement | null;
+  /**
+   * Puts the form back to the record it was opened on. Given by a page that
+   * holds that record, which starts the form over from it; drawn as the bar's
+   * Discard beside Save.
+   */
+  onDiscard?: () => void;
 }
 
 /** The zones the form offers; anything else can be typed into the server. */
@@ -172,6 +182,7 @@ export function TriggerForm({
   namedAfter,
   onCancel,
   actionsSlot,
+  onDiscard,
 }: TriggerFormProps) {
   /** Ties the Save button to this form when a header draws it apart. Issue #386. */
   const formId = useId();
@@ -456,6 +467,15 @@ export function TriggerForm({
       enabled,
   };
   }
+
+  /*
+   * Whether there is anything to save, on a page that offers Discard: what the
+   * form would store against what it held when it opened on this trigger and
+   * as each save hands it back. A dialog or a node's panel keeps its button as
+   * it was.
+   */
+  const changed = useDirty(settingsNow(), [trigger]);
+  const unchanged = onDiscard !== undefined && !changed;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1252,8 +1272,8 @@ export function TriggerForm({
               /*
                * The button, and beside it whatever the frame keeps in the form
                * rather than elsewhere. Drawn at the foot, or portaled into the
-               * page's header where one is offered - the button carries its own
-               * `form`, so submitting works from either place. Issue #386.
+               * page's floating Save bar where one is offered - the button carries
+               * its own `form`, so submitting works from either place.
                */
               const buttons = (
                 <>
@@ -1262,11 +1282,12 @@ export function TriggerForm({
                       {t('Cancel')}
                     </button>
                   )}
+                  {onDiscard !== undefined && <DiscardButton onDiscard={onDiscard} disabled={submitting || unchanged} />}
                   <button
                     type="submit"
                     form={formId}
                     className={styles.filled}
-                    disabled={!complete || submitting}
+                    disabled={!complete || submitting || unchanged}
                   >
                     {submitting ? t('Saving…') : editing ? t('Save Changes') : t('Create Trigger')}
                   </button>

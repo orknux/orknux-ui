@@ -17,7 +17,7 @@
  * model's details rather than patching them, so a card sending only its own two
  * fields would quietly clear the name, the id and the prices.
  *
- * The Save is the page's one Save, in the header - the three cards used to
+ * The Save is the page's one Save, in the strip at the foot - the three cards used to
  * carry one each, and were reported as three buttons for one page. So the same
  * press is asked to carry a quota and a throttle typed on the other two cards
  * as well: one press, three groups stored, or the merge is a button that moved
@@ -138,12 +138,11 @@ const form = page.locator('form:has(#context-window)');
 const windowBox = page.locator('#context-window');
 const output = page.locator('#max-output');
 /*
- * The one Save, in the header. Found by its words rather than by `type=submit`,
- * because the point is that there is no submit button left on any card. The
- * header is the page's - the one with the title in it - not the shell's top bar.
+ * The one Save, in the strip floating at the foot of the window. Found by its
+ * words rather than by `type=submit`, because the point is that there is no
+ * submit button left on any card.
  */
-const header = page.locator('header:has(h1)');
-const save = header.getByRole('button', { name: 'Save Changes' });
+const save = page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes' });
 
 record((await windowBox.inputValue()) === '', 'the model arrives with the window box empty, which is "not recorded"');
 record((await output.inputValue()) === '', 'and with the max output box empty');
@@ -151,7 +150,7 @@ record(
   (await form.locator('button[data-hint="Context Window"]').count()) === 1,
   'the field carries the (?) that says what the number is for',
 );
-record((await save.count()) === 1, 'the page has one Save Changes, beside its title');
+record((await save.count()) === 1, 'the page has one Save Changes, in the strip at the foot');
 record(
   (await page.getByRole('button', { name: 'Save Changes' }).count()) === 1 &&
     (await page.locator('form button[type="submit"]').count()) === 0,
@@ -173,12 +172,12 @@ await save.click();
  * long it takes is the server's - beside another worker it took longer, and the
  * card was read before it had said anything.
  */
-await header.getByText('Saved.', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
+await page.getByTestId('save-bar').getByText('Saved.', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
 await page.waitForTimeout(200);
 
 record(
-  (await header.innerText()).includes('Saved.'),
-  'saving says so, in the header where the button is',
+  (await page.getByTestId('save-bar').innerText()).includes('Saved.'),
+  'saving says so, in the strip where the button is',
 );
 await page.screenshot({ path: shot('model-window-saved.png') });
 

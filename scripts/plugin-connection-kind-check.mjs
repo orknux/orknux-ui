@@ -391,7 +391,8 @@ try {
 
   await page.selectOption('#connection-type', 'HTTP');
   await page.waitForTimeout(300);
-  await page.locator('button[type="submit"]', { hasText: 'Save Credentials' }).click();
+  // The page's one Save, in the strip at the foot of the window.
+  await page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes', exact: true }).click();
   await page.waitForTimeout(1500);
   record(sent.update !== null, 'page: saving sent the update mutation');
   record(
@@ -407,11 +408,13 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('#connection-type').waitFor({ state: 'visible', timeout: 20_000 });
   await page.waitForTimeout(600);
-  await page.locator('button[type="submit"]', { hasText: 'Save Credentials' }).click();
+  // Something to save that is not the menu: Save is off while nothing has changed.
+  await page.fill('#connection-description', `plugin-connection-kind-check ${Date.now()}`);
+  await page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes', exact: true }).click();
   await page.waitForTimeout(1500);
   record(
     sent.update !== null && sent.update.pluginType === undefined,
-    `page: saving a credential without touching the menu leaves the label alone (${JSON.stringify(sent.update?.pluginType)})`,
+    `page: saving without touching the menu leaves the label alone (${JSON.stringify(sent.update?.pluginType)})`,
   );
 
   /* ------------------------------------------------- canned: the picker */

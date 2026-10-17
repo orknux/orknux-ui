@@ -34,6 +34,8 @@ import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { segments } from './searchMatches';
 import own from './AgentForm.module.css';
 import { t, tf } from '../i18n';
+import { DiscardButton } from './SaveBar';
+import { useDirty } from './useDirty';
 
 /**
  * The class names the form paints itself with.
@@ -99,13 +101,21 @@ export interface AgentFormProps {
    * Where the page wants the Save button drawn, when that is not the foot of the
    * form. Issue #386.
    *
-   * A settings page puts it in its header, beside the title, so saving a long
-   * form never needs a scroll. The button is the same one - same submit, same
+   * A settings page puts it in the strip floating at the foot of the window
+   * (`SaveBar`), in view wherever a long form is scrolled to - it was beside
+   * the title since #386, which answered scrolling to the foot and left the
+   * reader scrolling to the top instead. The button is the same one - same submit, same
    * disabled and label states - reached through the `form` attribute and drawn
    * into this element by a portal. Left undefined in the workflow editor's
    * panel, where the button stays at the foot.
    */
   actionsSlot?: HTMLElement | null;
+  /**
+   * Puts the form back to the record it was opened on. Given by a page that
+   * holds that record, which starts the form over from it; drawn as the bar's
+   * Discard beside Save.
+   */
+  onDiscard?: () => void;
 }
 
 /** The whole of a workspace's tools fits in the list. */
@@ -1087,7 +1097,7 @@ function GrantList<Item>({
  * panel renders it only while open - so following one agent to another starts
  * the form over instead of leaving the previous one's values in it.
  */
-export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCancel, actionsSlot }: AgentFormProps) {
+export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCancel, actionsSlot, onDiscard }: AgentFormProps) {
   /** Ties the Save button to this form when a header draws it apart. Issue #386. */
   const formId = useId();
   const [name, setName] = useState(agent.name);
@@ -1605,6 +1615,42 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
 
 
 
+  /** What Save sends: the fields as the agent would be stored. */
+  const sent = {
+    name: name.trim(),
+    description: description.trim() || undefined,
+    systemPrompt: systemPrompt.trim() || undefined,
+    // Empty is "none chosen", which the server stores as null.
+    modelId: modelId === '' ? null : modelId,
+    mcpServers,
+    orknuxAccess,
+    boxLabels,
+    memoryCatalogs,
+    secretCatalogs,
+    variableCatalogs,
+    skillCatalogs,
+    hiddenSkills,
+    requiredSkills,
+    tools,
+    connectionIds,
+    agentIds,
+    maxTools: maxTools.trim() === '' ? null : Number(maxTools),
+    requiredTools,
+    icon,
+    // Sent every save rather than left out, which is what lets the slider
+    // put it back to the default.
+    memoryShare: asked,
+    // The same rule: blank is null, and null is the installation's number.
+    maxRounds: rounds.trim() === '' ? null : Number(rounds),
+  };
+  /*
+   * Whether there is anything to save, on a page that offers Discard. The
+   * baseline is the agent as the form was opened on it and as each save hands
+   * it back; a dialog making one has no such page, and keeps its button as it was.
+   */
+  const changed = useDirty(sent, [agent]);
+  const unchanged = onDiscard !== undefined && !changed;
+
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (name.trim() === '' || saving) return;
@@ -1613,33 +1659,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     setSaveError(null);
     setSaved(false);
     try {
-      const updated = await updateAgent(agent.id, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        systemPrompt: systemPrompt.trim() || undefined,
-        // Empty is "none chosen", which the server stores as null.
-        modelId: modelId === '' ? null : modelId,
-        mcpServers,
-        orknuxAccess,
-        boxLabels,
-        memoryCatalogs,
-        secretCatalogs,
-        variableCatalogs,
-        skillCatalogs,
-        hiddenSkills,
-        requiredSkills,
-        tools,
-        connectionIds,
-        agentIds,
-        maxTools: maxTools.trim() === '' ? null : Number(maxTools),
-        requiredTools,
-        icon,
-        // Sent every save rather than left out, which is what lets the slider
-        // put it back to the default.
-        memoryShare: asked,
-        // The same rule: blank is null, and null is the installation's number.
-        maxRounds: rounds.trim() === '' ? null : Number(rounds),
-      });
+      const updated = await updateAgent(agent.id, sent);
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
       setBoxLabels(updated.boxLabels ?? []);
@@ -2356,10 +2376,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
 
       {(() => {
         /*
-         * The button, the "Saved." note beside it, and a Cancel where the frame
-         * offers one. Drawn at the foot, or portaled into the page's header
-         * where one is offered - the button carries its own `form`, so
-         * submitting works from either place. Issue #386.
+         * The button, the "Saved." note beside it, and a Cancel or a Discard
+         * where the frame offers one. Drawn at the foot, or portaled into the
+         * page's floating Save bar where one is offered - the button carries
+         * its own `form`, so submitting works from either place.
          */
         const buttons = (
           <>
@@ -2376,11 +2396,12 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               instead of: the mutation refuses it from the same calculation, and
               this is only the form saying so before the press rather than after.
             */}
+            {onDiscard !== undefined && <DiscardButton onDiscard={onDiscard} disabled={saving || unchanged} />}
             <button
               type="submit"
               form={formId}
               className={styles.filled}
-              disabled={name.trim() === '' || saving || refusal !== null}
+              disabled={name.trim() === '' || saving || refusal !== null || unchanged}
             >
               {saving ? t('Saving…') : t('Save Changes')}
             </button>

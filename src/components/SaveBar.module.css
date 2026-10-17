@@ -1,0 +1,57 @@
+/*
+ * A page's Save, in a strip with the shell: from the sidebar's edge to the
+ * window's right, sitting on the attribution footer. Left, bottom and the
+ * side padding are measured by the component; the top border is the only
+ * line between the strip and the page.
+ */
+.bar {
+  position: fixed;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-12);
+  /* The sidebar's own colour, so the strip reads as the shell's, not as one more card on the page. */
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 20%);
+}
+
+/* What the bar covers at the end of the page, kept as room in the page so the last field rests above it. */
+.spacer {
+  flex: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* Discard, beside Save: a quiet outline, the opposite of the filled Save it sits by. */
+.discard {
+  padding: var(--space-8) var(--space-16);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.discard:hover:not(:disabled) {
+  background: var(--color-surface);
+}
+
+.discard:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

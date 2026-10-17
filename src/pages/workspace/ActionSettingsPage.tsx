@@ -7,6 +7,7 @@ import type { SessionUser } from '../../api/session';
 import { ActionForm } from '../../components/ActionForm';
 import type { ActionFormStyles } from '../../components/ActionForm';
 import { AppShell } from '../../components/AppShell';
+import { SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
 import { UsedBy } from '../../components/UsedBy';
@@ -93,8 +94,10 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
   const [action, setAction] = useState<Action | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  /** The header's action slot, where the form draws its Save. Issue #386. */
+  /** The save strip's row, where the form draws its Save and Discard. See `SaveBar`. */
   const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
+  /** Bumped by Discard: the form starts over from the record this page holds. */
+  const [discards, setDiscards] = useState(0);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -136,6 +139,7 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
 
   return (
     <AppShell
+      scrollContent
       title={adding ? t('New action') : action?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -152,8 +156,6 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{called}</h1>
-          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
-          <div ref={setHeaderActions} className={styles.headerActions} />
         </div>
         <p className={styles.subtitle}>
           {t('A reusable block a workflow node points at. What it asks for follows its type, and the parameters below are read off those settings.')}
@@ -179,7 +181,8 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
             over rather than leaving the previous one's values behind.
           */}
           <ActionForm
-            key={action?.id ?? 'new'}
+            key={`${action?.id ?? 'new'}-${discards}`}
+            onDiscard={() => setDiscards((held) => held + 1)}
             workspaceId={workspaceId}
             action={action}
             styles={FORM_STYLES}
@@ -254,6 +257,8 @@ export function ActionSettingsPage({ session, onSignOut }: ActionSettingsPagePro
           )}
         </>
       )}
+      {/* The form's Save floats at the foot of the window, in view wherever the reader has scrolled to. */}
+      <SaveBar slot={setHeaderActions} />
     </AppShell>
   );
 }

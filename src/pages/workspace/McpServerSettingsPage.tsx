@@ -15,6 +15,8 @@ import type { SessionUser } from '../../api/session';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import penIcon from '../../assets/pen.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { HeaderRowsEditor } from '../../components/HeaderRowsEditor';
 import { Loader } from '../../components/Loader';
@@ -34,10 +36,10 @@ export interface McpServerSettingsPageProps {
 
 const AUTH_TYPES: AuthType[] = ['NONE', 'API_KEY', 'BEARER_TOKEN', 'BASIC'];
 
-export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsPageProps) {
+function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSettingsPageProps & { onDiscard: () => void }) {
   const { workspaceId = '', serverId = '' } = useParams();
   const navigate = useNavigate();
-  /** Ties the header's Save button to the General form below. Issue #386. */
+  /** Ties the save strip's button to the General form. See `SaveBar`. */
   const formId = useId();
 
   const [server, setServer] = useState<McpServer | null>(null);
@@ -224,8 +226,16 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
     navigate(`/workspace/${workspaceId}/integrations`);
   }
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, address, authType, headers, sending: secret.sending }, [server]);
+
   return (
     <AppShell
+      scrollContent
       title={server?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -245,11 +255,9 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{server?.name ?? '…'}</h1>
           <img src={penIcon} alt="" width={12} height={12} />
-          {/* Check and Save beside the title, so saving never needs a scroll to
-              the foot; Save drives the General form through its `form`. #386. */}
+          {/* A check needs no edit, so it stays by the title; Save comes up in the strip at the foot once there is something to save. */}
           {server !== null && (
             <div className={styles.headerActions}>
-              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
               <button
                 type="button"
                 className={styles.testButton}
@@ -257,14 +265,6 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
                 disabled={checking}
               >
                 {checking ? t('Checking…') : t('Check')}
-              </button>
-              <button
-                type="submit"
-                form={formId}
-                className={styles.save}
-                disabled={name.trim() === '' || address.trim() === '' || saving}
-              >
-                {saving ? t('Saving…') : t('Save Changes')}
               </button>
             </div>
           )}
@@ -404,8 +404,8 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
               </p>
             )}
             {/*
-              Check and Save are drawn up in the page header now, so saving a long
-              form never needs a scroll to the foot. They stay side by side there,
+              Check and Save are in the strip floating at the foot of the window,
+              in view wherever the form is scrolled to. They stay side by side there,
               Check first: one asks the server whether these details work and the
               other keeps them, and anybody setting a server up does both in the
               same breath. Issue #386.
@@ -441,6 +441,35 @@ export function McpServerSettingsPage({ session, onSignOut }: McpServerSettingsP
           </section>
         </>
       )}
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      {server !== null && (
+        <SaveBar>
+          {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+          <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+          <button
+            type="submit"
+            form={formId}
+            className={styles.save}
+            disabled={name.trim() === '' || address.trim() === '' || saving || !changed}
+          >
+            {saving ? t('Saving…') : t('Save Changes')}
+          </button>
+        </SaveBar>
+      )}
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function McpServerSettingsPage(props: McpServerSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <McpServerSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

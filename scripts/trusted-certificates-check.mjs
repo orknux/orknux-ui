@@ -104,7 +104,8 @@ record(
 
 await page.fill('#certificate-name', NAME);
 await page.fill('#certificate-pem', 'this is not a certificate');
-await page.click('button[type="submit"]');
+// The page's Save, in the strip at the foot of the window.
+await page.click('[data-testid="save-bar"] button[type="submit"]');
 
 const refused = await page
   .waitForSelector('text=/does not look like PEM/i', { timeout: 20_000 })
@@ -124,7 +125,7 @@ record(
 /* ---- adding it for real ---- */
 
 await page.fill('#certificate-pem', PEM);
-await page.click('button[type="submit"]');
+await page.click('[data-testid="save-bar"] button[type="submit"]');
 
 const added = await page
   .waitForURL(/\/admin\/networking\/certificates\/\d+$/, { timeout: 20_000 })
@@ -135,8 +136,11 @@ record(added, `adding it lands on the row that now exists (${page.url().replace(
 /* ---- renaming it, which is the other half of the page ---- */
 
 if (added) {
+  // Once the row it landed on has loaded: what loads is what an edit is measured against.
+  await page.waitForFunction(() => (document.querySelector('#certificate-name')?.value ?? '') !== '', null, { timeout: 20_000 }).catch(() => undefined);
+  await page.waitForTimeout(800);
   await page.fill('#certificate-name', RENAMED);
-  await page.click('button[type="submit"]');
+  await page.click('[data-testid="save-bar"] button[type="submit"]');
   await page.waitForSelector('text=Saved.', { timeout: 20_000 }).catch(() => undefined);
 
   const { trustedCertificates } = await graphql(`query { trustedCertificates { name subject } }`);

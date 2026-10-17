@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -257,12 +257,43 @@ export function QuickChat({ workspacePath }: QuickChatProps) {
     }
   }
 
+  /*
+   * The window's tail: a point from its bottom edge down at the AI button that
+   * opened it, so the window reads as that button's and not as a page dialog.
+   * Measured rather than placed in the stylesheet, because the window is not
+   * centred on the button and either can move with the window's size.
+   */
+  const panel = useRef<HTMLElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
+  const [tail, setTail] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) {
+      setTail(null);
+      return undefined;
+    }
+    const place = () => {
+      const window_ = panel.current?.getBoundingClientRect();
+      const button = launcher.current?.getBoundingClientRect();
+      if (window_ === undefined || button === undefined) return;
+      setTail({ left: button.left + button.width / 2, top: window_.bottom });
+    };
+    place();
+    const watcher = new ResizeObserver(place);
+    if (panel.current !== null) watcher.observe(panel.current);
+    if (launcher.current !== null) watcher.observe(launcher.current);
+    window.addEventListener('resize', place);
+    return () => {
+      watcher.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [open, offered]);
+
   if (!offered) return null;
 
   return (
     <>
       {open && (
-        <section className={styles.panel} aria-label={t('Quick chat')}>
+        <section ref={panel} className={styles.panel} aria-label={t('Quick chat')}>
           <header className={styles.header}>
             <span className={styles.title}>{t('Ask about this page')}</span>
             <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label={t('Close')}>
@@ -343,7 +374,12 @@ export function QuickChat({ workspacePath }: QuickChatProps) {
         </section>
       )}
 
+      {open && tail !== null && (
+        <span className={styles.tail} style={{ left: tail.left, top: tail.top }} aria-hidden="true" data-testid="quick-chat-tail" />
+      )}
+
       <button
+        ref={launcher}
         type="button"
         className={open ? `${styles.launcher} ${styles.launcherOpen}` : styles.launcher}
         onClick={() => setOpen((was) => !was)}

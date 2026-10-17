@@ -20,6 +20,8 @@ import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -98,11 +100,11 @@ function endpointHint(type: ProviderType): string {
  * Adds a provider, and edits one afterwards — the same form either way, because
  * what it asks for does not change once the provider exists.
  */
-export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPageProps) {
+function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSettingsPageProps & { onDiscard: () => void }) {
   const { workspaceId = '', providerId } = useParams();
   const navigate = useNavigate();
   const adding = providerId === undefined;
-  /** Ties the header's Save button to the form below. Issue #386. */
+  /** Ties the save strip's button to the form. See `SaveBar`. */
   const formId = useId();
   const { variables, refresh: refreshVariables } = useWorkspaceVariables(workspaceId);
 
@@ -240,6 +242,19 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
 
     return () => clearInterval(timer);
   }, [providerId, provider]);
+
+  /**
+   * Back to the provider as it was loaded or last saved, without asking the
+   * server again; a provider being added holds nothing to go back to, so the
+   * page starts over.
+   */
+  function discard() {
+    if (provider === null) {
+      onDiscard();
+      return;
+    }
+    apply(provider);
+  }
 
   function apply(found: ModelProvider) {
     setProvider(found);
@@ -463,8 +478,16 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
   }
 
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty(values(), [provider]);
+
   return (
     <AppShell
+      scrollContent
       title={adding ? t('New provider') : provider?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -483,9 +506,7 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{adding ? t('Add Provider') : (provider?.name ?? 'Provider')}</h1>
-          {/* Test and Save beside the title, so saving never needs a scroll to
-              the foot; Save drives the form through its `form`. The connection
-              status stays at the foot where the check reports it. Issue #386. */}
+          {/* A check needs no edit, so it stays by the title; Save comes up in the strip at the foot once there is something to save. */}
           {loadError === null && (adding || provider !== null) && (
             <div className={styles.headerActions}>
               <button
@@ -495,9 +516,6 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                 disabled={testing || name.trim() === '' || endpoint.trim() === ''}
               >
                 {testing ? 'Checking…' : t('Test Connection')}
-              </button>
-              <button type="submit" form={formId} className={styles.primaryButton} disabled={saving}>
-                {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}
               </button>
             </div>
           )}
@@ -1050,8 +1068,8 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
                 saved && <span className={styles.statusConnected}>{t('Saved.')}</span>
               )}
             </div>
-            {/* Test and Save are drawn up in the page header now, so saving never
-                needs a scroll to the foot; the status above stays here. #386. */}
+            {/* Test and Save are in the strip floating at the foot of the window;
+                the status above stays here, beside what it reports on. */}
           </div>
         </form>
       )}
@@ -1073,6 +1091,21 @@ export function ProviderSettingsPage({ session, onSignOut }: ProviderSettingsPag
           </button>
         </div>
       </section>
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      {loadError === null && (adding || provider !== null) && (
+        <SaveBar>
+          <DiscardButton onDiscard={discard} disabled={saving || !changed} />
+          <button type="submit" form={formId} className={styles.primaryButton} disabled={saving || !changed}>
+            {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}
+          </button>
+        </SaveBar>
+      )}
     </AppShell>
   );
+}
+
+/** The page, started over by Discard where it has nothing held to go back to - a provider being added. */
+export function ProviderSettingsPage(props: ProviderSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <ProviderSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

@@ -41,7 +41,8 @@ async function move(connection, to, what) {
   record(offered, `${what}: the address is a box the workspace can change`);
   if (!offered) return;
   await box.fill(to);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // The page's one Save, in the strip at the foot of the window.
+  await page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes', exact: true }).click();
   await page.waitForTimeout(1_000);
   const stored = (await listed()).find((one) => one.id === connection.id)?.url ?? null;
   record(stored === to, `${what}: saved, the server holds the new address (${stored})`);

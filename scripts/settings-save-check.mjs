@@ -24,10 +24,10 @@ const saves = () =>
     const all = [...document.querySelectorAll('button')].filter(
       (one) => one.textContent.trim() === 'Save',
     );
-    const card = document.querySelector('section header');
+    const strip = document.querySelector('[data-testid="save-bar"]');
     return {
       count: all.length,
-      inTheHeader: all.filter((one) => card?.contains(one) === true).length,
+      inTheStrip: all.filter((one) => strip?.contains(one) === true).length,
       enabled: all.filter((one) => !one.disabled).length,
       saidSaved: document.body.innerText.includes('Saved.'),
     };
@@ -35,7 +35,7 @@ const saves = () =>
 
 const opened = await saves();
 record(opened.count === 1, `one Save on the page (${opened.count})`);
-record(opened.inTheHeader === 1, 'and it is in the page\'s own header, beside the title');
+record(opened.inTheStrip === 1, 'and it is in the strip floating at the foot of the window');
 record(
   opened.enabled === 0,
   'quiet until something differs from what the server holds',

@@ -34,6 +34,7 @@ import codeIcon from '../../assets/code.svg';
 import plusIcon from '../../assets/plus.svg';
 import wandIcon from '../../assets/wand.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { CodeDiff } from '../../components/CodeDiff';
 import { CodeEditor } from '../../components/CodeEditor';
@@ -706,6 +707,14 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
    * A tool is always one that exists - there is no create route to this page -
    * so a null baseline means still loading, and there is nothing to lose yet.
    */
+  /** Back to the tool as it was loaded or last saved; nothing goes to the server. */
+  function discard() {
+    if (tool === null) return;
+    apply(tool);
+    setSaved(false);
+    setSaveError(null);
+  }
+
   const unsaved = useMemo(() => {
     if (tool === null) return false;
     return (
@@ -783,6 +792,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
 
   return (
     <AppShell
+      scrollContent
       title={tool?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -850,14 +860,6 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
               }
             />
             <button type="button" className={styles.secondaryButton} onClick={() => void handleValidate()}>{t('Validate')}</button>
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={() => void handleSave()}
-              disabled={saving || tool === null}
-            >
-              {saving ? t('Saving…') : t('Save Changes')}
-            </button>
           </div>
         </div>
       </header>
@@ -1613,6 +1615,18 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
         onLeave={guard.leave}
         onSaveAndLeave={guard.saveAndLeave}
       />
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      <SaveBar>
+        <DiscardButton onDiscard={discard} disabled={saving || !unsaved} />
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={() => void handleSave()}
+          disabled={saving || tool === null || !unsaved}
+        >
+          {saving ? t('Saving…') : t('Save Changes')}
+        </button>
+      </SaveBar>
     </AppShell>
   );
 }

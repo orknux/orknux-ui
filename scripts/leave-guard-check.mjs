@@ -102,7 +102,8 @@ async function openEditor() {
 
 /** Types at the end of the first line, which is somebody editing the code. */
 async function type(what) {
-  await page.locator('.view-lines').click();
+  // The first line itself: the middle of a tall editor can be under the save strip floating at the window's foot.
+  await page.locator('.view-lines .view-line').first().click();
   await page.keyboard.press('End');
   await page.keyboard.type(what);
   await page.waitForTimeout(700);
@@ -149,7 +150,7 @@ await page.waitForTimeout(400);
 
 /* ------------------------------------------- typed, then taken back out again */
 
-await page.locator('.view-lines').click();
+await page.locator('.view-lines .view-line').first().click();
 await page.keyboard.press('End');
 for (let at = 0; at < EDIT.length; at += 1) await page.keyboard.press('Backspace');
 await page.waitForTimeout(900);

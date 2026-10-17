@@ -196,8 +196,9 @@ async function atSettings() {
   await page.waitForTimeout(400);
 }
 
+// The page's one Save, in the strip at the foot: it saves the name and the credentials together.
 async function save() {
-  const button = page.getByRole('button', { name: 'Save Credentials', exact: true });
+  const button = page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes', exact: true });
   await button.waitFor({ state: 'visible', timeout: 20_000 });
   await button.click();
   await page.waitForTimeout(1500);
@@ -333,8 +334,6 @@ record((await revealAppToken(connection.id)) === null, 'and the referenced app-l
 
 await atSettings();
 await page.fill('#connection-name', `${SCRATCH} slack ${stamp} renamed`);
-await page.getByRole('button', { name: 'Save', exact: true }).click().catch(() => {});
-await page.waitForTimeout(800);
 await save();
 
 const untouched = await stored();

@@ -212,11 +212,12 @@ await page.locator('#box-token ~ button').first().click();
 await page.waitForTimeout(800);
 record((await token.getAttribute('type').catch(() => null)) === 'text', 'the eye shows it');
 record((await token.inputValue().catch(() => null)) === 'boxes-check-token', 'and what it shows is the stored token');
+// Save is the page's, in the strip floating at the foot of the window.
 const saveBox = await page.locator('[data-box-save]').boundingBox().catch(() => null);
-const titleBox = await page.locator('h1').first().boundingBox().catch(() => null);
+const stripBox = await page.getByTestId('save-bar').boundingBox().catch(() => null);
 record(
-  saveBox !== null && titleBox !== null && Math.abs(saveBox.y + saveBox.height / 2 - (titleBox.y + titleBox.height / 2)) < 16 && saveBox.x > titleBox.x + titleBox.width,
-  'Save sits in the top right, beside the title',
+  saveBox !== null && stripBox !== null && saveBox.y >= stripBox.y && saveBox.y + saveBox.height <= stripBox.y + stripBox.height,
+  'Save sits in the strip at the foot of the window',
 );
 const infoError = page.locator('[data-box-info-error]');
 await infoError.waitFor({ timeout: 30_000 }).catch(() => {});

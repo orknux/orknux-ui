@@ -13,6 +13,7 @@ import {
 import type { ModelUsage } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -42,12 +43,12 @@ export interface ModelSettingsPageProps {
  * drawer beside an image or decision node; this page adds the two things a
  * drawer has no room for - the usage figures and the removal.
  */
-export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps) {
+function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageProps & { onDiscard: () => void }) {
   const { workspaceId = '', modelId = '' } = useParams();
   const navigate = useNavigate();
 
   const form = useModelForm(workspaceId, modelId);
-  const { model, loadError, saveError, saved, saving } = form;
+  const { model, loadError, saveError, saved, saving, changed } = form;
   const [usage, setUsage] = useState<ModelUsage | null>(null);
   /**
    * The window the figures are for, as typed.
@@ -115,6 +116,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
 
   return (
     <AppShell
+      scrollContent
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
       showAdmin={session.admin}
@@ -134,31 +136,7 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{model?.name ?? 'Model'}</h1>
-          {/*
-            The one Save, beside the title, so saving never needs a scroll to the
-            foot of a card - and one rather than three, so a page with three cards
-            edited is one press rather than three. Issue #386.
-          */}
-          {model !== null && (
-            <div className={styles.headerActions}>
-              {saved && saveError === null && <p className={styles.saved}>{t('Saved.')}</p>}
-              <button
-                type="button"
-                className={styles.primaryButton}
-                onClick={() => void form.save()}
-                disabled={saving}
-              >
-                {saving ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
-          )}
         </div>
-        {/* Under the title rather than at the foot of a card: it is where the press was. */}
-        {saveError !== null && (
-          <p className={styles.saveError} role="alert">
-            {saveError}
-          </p>
-        )}
       </header>
 
       {loadError !== null ? (
@@ -396,6 +374,27 @@ export function ModelSettingsPage({ session, onSignOut }: ModelSettingsPageProps
           </section>
         </>
       )}
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      {model !== null && (
+        <SaveBar>
+          {/* Beside the button, which is where the press was. */}
+          {saveError !== null && (
+            <p className={styles.saveError} role="alert">
+              {saveError}
+            </p>
+          )}
+          {saved && saveError === null && <p className={styles.saved}>{t('Saved.')}</p>}
+          <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => void form.save()}
+            disabled={saving || !changed}
+          >
+            {saving ? t('Saving…') : t('Save Changes')}
+          </button>
+        </SaveBar>
+      )}
       </div>
     </AppShell>
   );
@@ -431,4 +430,18 @@ function Figure({ label, value, accent }: { label: string; value: string; accent
       <span className={accent ? styles.figureValueAccent : styles.figureValue}>{value}</span>
     </div>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function ModelSettingsPage(props: ModelSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <ModelSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

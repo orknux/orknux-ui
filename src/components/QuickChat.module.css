@@ -17,7 +17,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  padding: var(--space-10) var(--space-16);
+  /*
+   * Short enough to sit inside the footer's row. At 10px a side it stood
+   * 3px taller than the row and poked up over the save strip that rests on
+   * the footer; save-bar-check measures the two boxes apart.
+   */
+  padding: var(--space-6) var(--space-16);
   background: var(--color-accent-brand);
   border: 0;
   border-radius: var(--radius-full);
@@ -63,6 +68,24 @@
   border-radius: var(--radius-12);
   box-shadow: var(--shadow-modal);
   overflow: hidden;
+}
+
+/*
+ * The tail from the window's bottom edge down to the AI button: a square
+ * turned on its corner, in the window's own colour and border, laid over the
+ * window's bottom border so the two read as one outline. Its centre is placed
+ * on that border, over the button's centre, by the component.
+ */
+.tail {
+  position: fixed;
+  z-index: 41;
+  width: 14px;
+  height: 14px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
 }
 
 .header {

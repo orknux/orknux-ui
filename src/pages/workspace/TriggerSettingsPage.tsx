@@ -5,6 +5,7 @@ import type { SessionUser } from '../../api/session';
 import { deleteTrigger, fetchTrigger } from '../../api/triggers';
 import type { Trigger } from '../../api/triggers';
 import { AppShell } from '../../components/AppShell';
+import { SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
 import { TriggerFirings } from '../../components/TriggerFirings';
@@ -79,8 +80,10 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
   const [saved, setSaved] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  /** The header's action slot, where the form draws its Save. Issue #386. */
+  /** The save strip's row, where the form draws its Save and Discard. See `SaveBar`. */
   const [headerActions, setHeaderActions] = useState<HTMLDivElement | null>(null);
+  /** Bumped by Discard: the form starts over from the record this page holds. */
+  const [discards, setDiscards] = useState(0);
   /** Whether the execution history is drawn; collapsed by default - it runs long. Issue #427. */
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -121,6 +124,7 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
 
   return (
     <AppShell
+      scrollContent
       title={trigger?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -137,8 +141,6 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{t('Trigger Settings')}</h1>
-          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
-          <div ref={setHeaderActions} className={styles.headerActions} />
         </div>
       </header>
 
@@ -161,7 +163,8 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
               over rather than leaving the previous one's values behind.
             */}
             <TriggerForm
-              key={trigger.id}
+              key={`${trigger.id}-${discards}`}
+              onDiscard={() => setDiscards((held) => held + 1)}
               workspaceId={workspaceId}
               trigger={trigger}
               styles={FORM_STYLES}
@@ -238,6 +241,8 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
           </>
         )
       )}
+      {/* The form's Save floats at the foot of the window, in view wherever the reader has scrolled to. */}
+      <SaveBar slot={setHeaderActions} />
     </AppShell>
   );
 }

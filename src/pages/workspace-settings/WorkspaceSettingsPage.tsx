@@ -9,6 +9,8 @@ import type { SessionUser } from '../../api/session';
 import { fetchWorkspaces, updateWorkspace } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { CatalogueNote, useCatalogue } from '../../components/Catalogue';
 import { DeleteWorkspaceDialog } from '../../components/DeleteWorkspaceDialog';
@@ -27,10 +29,10 @@ export interface WorkspaceSettingsPageProps {
 
 const WORKSPACE_LIST_SIZE = 100;
 
-export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsPageProps) {
+function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSettingsPageProps & { onDiscard: () => void }) {
   const { workspaceId = '' } = useParams();
   const navigate = useNavigate();
-  /** Ties the header's Save button to the General form below. Issue #386. */
+  /** Ties the save strip's button to the General form. See `SaveBar`. */
   const formId = useId();
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -127,8 +129,16 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     }
   }
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, description, roleIds, adminRoleIds }, [workspace]);
+
   return (
     <AppShell
+      scrollContent
       user={shellUser(session)}
       onSignOut={onSignOut}
       sidebar={<AdminSidebar active="workspaces" />}
@@ -141,21 +151,6 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{t('Workspace Settings')}</h1>
-          {/* Save beside the title so a long form never needs a scroll to save;
-              it drives the General form below through its `form`. Issue #386. */}
-          {workspace !== null && (
-            <div className={styles.headerActions}>
-              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-              <button
-                type="submit"
-                form={formId}
-                className={styles.save}
-                disabled={name.trim() === '' || saving}
-              >
-                {saving ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
-          )}
         </div>
       </header>
 
@@ -339,7 +334,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
                 {saveError}
               </p>
             )}
-            {/* The Save for this form is drawn up in the page header. Issue #386. */}
+            {/* The Save for this form is in the strip floating at the foot of the window. */}
           </form>
 
           {/*
@@ -374,6 +369,35 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           navigate('/admin');
         }}
       />
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      {workspace !== null && (
+        <SaveBar>
+          {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+          <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+          <button
+            type="submit"
+            form={formId}
+            className={styles.save}
+            disabled={name.trim() === '' || saving || !changed}
+          >
+            {saving ? t('Saving…') : t('Save Changes')}
+          </button>
+        </SaveBar>
+      )}
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function WorkspaceSettingsPage(props: WorkspaceSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <WorkspaceSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

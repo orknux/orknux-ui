@@ -127,6 +127,8 @@ record(forward !== null && forward.chatApi === 'RESPONSES', `it goes back to Res
  * provider at all.
  */
 await load(plain.id);
+// Save is off while nothing has changed, so the name is what changes; the type's choice is what is being watched.
+await page.fill('#provider-name', `${(await page.inputValue('#provider-name'))} saved`);
 await saveIt();
 const plainAfter = await stored(plain.id);
 record(plainAfter !== null && plainAfter.chatApi === null, `an OpenAI provider still saves, and still holds none (${plainAfter?.chatApi})`);

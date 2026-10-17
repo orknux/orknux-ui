@@ -15,6 +15,8 @@ import {
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AccessTokens } from '../../components/AccessTokens';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -49,7 +51,7 @@ export interface AdminUserPageProps {
  * administrator of a new installation, somebody who needs one workspace for a
  * fortnight, anybody nobody is going to make a group for.
  */
-export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
+function AdminUserView({ session, onSignOut, onDiscard }: AdminUserPageProps & { onDiscard: () => void }) {
   const { userId = '' } = useParams();
   const navigate = useNavigate();
   const creating = userId === '';
@@ -69,6 +71,8 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
   const [savedEmail, setSavedEmail] = useState('');
   const [emailSaid, setEmailSaid] = useState<string | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
+  /** Bumped when the fields are filled from the server - on load and after each save - so what they say is the baseline again. */
+  const [stores, setStores] = useState(0);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +106,7 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
           setExternal(!found.editable);
           setHasPassword(found.hasPassword);
           setChosen(new Set(found.roles.map((role) => role.id)));
+          setStores((held) => held + 1);
         }
       })
       .catch((cause: unknown) => {
@@ -140,6 +145,7 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
         // The page stays: a second change - a role after a name - is made from
         // here, not from the row found again in the list.
         setSaved(true);
+      setStores((held) => held + 1);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the user.'));
@@ -187,8 +193,16 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
 
   const called = displayName.trim() || username.trim() || t('New user');
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ username, displayName, roles: [...chosen].sort() }, [stores]);
+
   return (
     <AppShell
+      scrollContent
       title={displayName.trim() || username.trim() || (creating ? t('New user') : undefined)}
       user={shellUser(session)}
       showAdmin={session.admin}
@@ -225,20 +239,6 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
                 </p>
               </div>
             </div>
-            {/*
-              For an external user this saves the roles and nothing else — their
-              name and username are the provider's, and the address has its own
-              button beside it.
-            */}
-            {saved && error === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
-            <button
-              type="button"
-              className={styles.save}
-              onClick={() => void save()}
-              disabled={saving || username.trim() === ''}
-            >
-              {saving ? t('Saving…') : creating ? t('Create User') : t('Save Changes')}
-            </button>
           </header>
 
           {error !== null && (
@@ -424,8 +424,40 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
               </>
             )}
           </div>
+          {/*
+            For an external user this saves the roles and nothing else — their
+            name and username are the provider's, and the address has its own
+            button beside it. Floating at the foot of the window, in view
+            wherever the reader has scrolled to.
+          */}
+          <SaveBar>
+            {saved && error === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
+            <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+            <button
+              type="button"
+              className={styles.save}
+              onClick={() => void save()}
+              disabled={saving || username.trim() === '' || !changed}
+            >
+              {saving ? t('Saving…') : creating ? t('Create User') : t('Save Changes')}
+            </button>
+          </SaveBar>
         </section>
       )}
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function AdminUserPage(props: AdminUserPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <AdminUserView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

@@ -20,6 +20,7 @@ import toggleOnIcon from '../assets/toggle-on.svg';
 import { FieldHint } from './FieldHint';
 import styles from './ModelForm.module.css';
 import { t } from '../i18n';
+import { useDirty } from './useDirty';
 
 /**
  * A model's settings, as one form drawn in two frames.
@@ -342,9 +343,20 @@ export function useModelForm(workspaceId: string, modelId: string) {
     }
   }
 
+  /** Whether the fields say anything the stored model does not; the page's Save and Discard are off while they do not. */
+  const changed = useDirty(
+    {
+      name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
+      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost,
+      tokenLimit, resetInterval, requestsPerMinute, throttleTokens, throttleRequests, retryAfter,
+    },
+    [model],
+  );
+
   return {
     workspaceId,
     model,
+    changed,
     loadError,
     saveError,
     setSaveError,

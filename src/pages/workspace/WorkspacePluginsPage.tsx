@@ -14,6 +14,7 @@ import type { SessionUser } from '../../api/session';
 import type { Variable } from '../../api/variables';
 import puzzleIcon from '../../assets/puzzle.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { FieldHint } from '../../components/FieldHint';
 import { FieldPicker } from '../../components/FieldPicker';
@@ -69,7 +70,7 @@ const VARIABLE_LABELS: FieldPickerLabels = {
  * the parameter itself. Both come from the server rather than being worked out
  * here, or the row and what is inside it would eventually disagree.
  */
-export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPageProps) {
+function WorkspacePluginsView({ session, onSignOut, onDiscard }: WorkspacePluginsPageProps & { onDiscard: () => void }) {
   const { workspaceId = '' } = useParams();
 
   const [plugins, setPlugins] = useState<WorkspacePlugin[] | null>(null);
@@ -326,6 +327,7 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
 
   return (
     <AppShell
+      scrollContent
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
       showAdmin={session.admin}
@@ -554,19 +556,6 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
           because a page of forms and one button owes an answer to "did it take
           all of them".
         */}
-        <div className={styles.pageFoot}>
-          {unsaved.length > 0 && (
-            <span className={styles.pageUnsaved}>
-              {unsaved.length === 1 ? t('1 unsaved') : `${unsaved.length} unsaved`}
-            </span>
-          )}
-          <button
-            type="button"
-            className={styles.pageSave}
-            disabled={busy || unsaved.length === 0}
-            onClick={() => void saveAll()}
-          >{t('Save')}</button>
-        </div>
 
         {matching !== null && matching.length > 0 && (
           <CompactPagination
@@ -579,6 +568,20 @@ export function WorkspacePluginsPage({ session, onSignOut }: WorkspacePluginsPag
             onPageSizeChange={setPageSize}
           />
         )}
+        <SaveBar>
+          {unsaved.length > 0 && (
+            <span className={styles.pageUnsaved}>
+              {unsaved.length === 1 ? t('1 unsaved') : `${unsaved.length} unsaved`}
+            </span>
+          )}
+          <DiscardButton onDiscard={onDiscard} disabled={busy || unsaved.length === 0} />
+          <button
+            type="button"
+            className={styles.pageSave}
+            disabled={busy || unsaved.length === 0}
+            onClick={() => void saveAll()}
+          >{t('Save')}</button>
+        </SaveBar>
       </section>
     </AppShell>
   );
@@ -1031,4 +1034,18 @@ function ParameterRow({
       )}
     </div>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function WorkspacePluginsPage(props: WorkspacePluginsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <WorkspacePluginsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

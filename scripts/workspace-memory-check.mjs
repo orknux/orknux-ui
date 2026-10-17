@@ -521,6 +521,8 @@ if (drew) {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${AGENT}/settings`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(AGENT_SLIDER, { timeout: 20_000 });
   await page.waitForTimeout(1400);
+  // Save is off while nothing has changed, so something is changed: what is being asked is whether the share stops it.
+  await page.fill('#agent-description', `workspace-memory-check ${Date.now()}`);
 
   const inheriting = await settled(AGENT_SLIDER);
   record(inheriting?.said === 'Default', 'the agent still sits at Default, because it has set nothing');
@@ -557,6 +559,8 @@ if (drew) {
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector(AGENT_SLIDER, { timeout: 20_000 });
+  await page.waitForTimeout(1400);
+  await page.fill('#agent-description', `workspace-memory-check ${Date.now()}`);
   const modelless = await settled(AGENT_SLIDER);
   const withNoModel = await budgetOf(null, null);
 

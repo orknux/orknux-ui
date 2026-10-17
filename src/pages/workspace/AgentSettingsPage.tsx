@@ -7,6 +7,7 @@ import type { SessionUser } from '../../api/session';
 import { AgentForm } from '../../components/AgentForm';
 import type { AgentFormStyles } from '../../components/AgentForm';
 import { AppShell } from '../../components/AppShell';
+import { SaveBar } from '../../components/SaveBar';
 import { SectionMenu } from '../../components/SectionMenu';
 import menuStyles from '../../components/SectionMenu.module.css';
 import { BackLink } from '../../components/BackLink';
@@ -60,7 +61,7 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   /**
-   * The header's action slot, where the form draws its Save. Issue #386.
+   * The save strip's row, where the form draws its Save and Discard. See `SaveBar`.
    *
    * A callback ref kept in state rather than a plain ref, so the form re-renders
    * into it once the element exists - the header is drawn before the form loads,
@@ -118,8 +119,6 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{t('Agent Settings')}</h1>
-          {/* The form's Save is drawn in here, beside the title. Issue #386. */}
-          <div ref={setHeaderActions} className={styles.headerActions} />
         </div>
       </header>
 
@@ -147,6 +146,7 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
             styles={FORM_STYLES}
             heading={<h2 className={styles.sectionHeading}>General</h2>}
             onSaved={setAgent}
+            onDiscard={() => setRestores((held) => held + 1)}
             actionsSlot={headerActions}
           />
 
@@ -198,6 +198,8 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
         </>
       )}
 
+      {/* The form's Save floats at the foot of the window, in view wherever the reader has scrolled to. */}
+      <SaveBar slot={setHeaderActions} />
       </div>
       </div>
 

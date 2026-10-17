@@ -326,6 +326,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'save-bar-check',
+    what: "every page that saves has Save and Discard in one strip on the footer, from the sidebar to the window's edge, above the AI button",
+    needs: ['workspace'],
+  },
+  {
     name: 'agent-settings-menu-check',
     what: "an agent's settings have a menu of the form's fields and cards, that scrolls to them and searches them",
     needs: ['workspace'],

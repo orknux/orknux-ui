@@ -35,6 +35,8 @@ import type { SlackBotUser } from '../../api/triggers';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import lockIcon from '../../assets/lock-keyhole.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -119,12 +121,14 @@ function secretHint(kind: ConnectionType | null) {
   }
 }
 
-export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSettingsPageProps) {
+function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSettingsPageProps & { onDiscard: () => void }) {
   /** True while the export is being confirmed; the name once it has happened. */
   const { workspaceId = '', connectionId = '' } = useParams();
   const navigate = useNavigate();
 
   const [connection, setConnection] = useState<WorkspaceConnection | null>(null);
+  /** Bumped after each save, so what the fields say is the baseline again; the first arrival of the connection is the other. */
+  const [stores, setStores] = useState(0);
   const [name, setName] = useState('');
   /** The connection's own address - a mail connection's server - where it is this workspace's to change. */
   const [address, setAddress] = useState('');
@@ -419,6 +423,36 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
    * Credentials" to rename something would be a surprise, and renaming should
    * not ask for the secret to be re-entered.
    */
+  /**
+   * Whether the General card says anything the stored connection does not.
+   * The page has one Save now, and it renames only where there is a rename.
+   */
+  const named = () =>
+    !locked &&
+    connection !== null &&
+    !(name.trim() === connection.name &&
+      (!addressEditable || address.trim() === connection.url) &&
+      description.trim() === (connection.description ?? ''));
+
+  /**
+   * The page's one Save: the General card where it changed, then the
+   * credentials, as their own two presses used to.
+   *
+   * There were two, one per card, and a page with two buttons that both say
+   * Save is two decisions about which one the change needed. Kept as two calls,
+   * because the name is not a credential and the server takes them apart.
+   */
+  async function saveAll() {
+    if (named()) {
+      if (name.trim() === '' || (addressEditable && address.trim() === '')) {
+        setNameError(t('A connection needs a name and an address.'));
+        return;
+      }
+      await handleSaveName();
+    }
+    await handleSave();
+  }
+
   async function handleSaveName() {
     if (savingName) return;
 
@@ -442,6 +476,7 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
       setAddress(updated.url);
       setDescription(updated.description ?? '');
       setNamedSaved(true);
+      setStores((held) => held + 1);
     } catch (cause) {
       setNameError(cause instanceof Error ? cause.message : t('Could not rename the connection.'));
     } finally {
@@ -449,8 +484,8 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
     }
   }
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSave(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     if (saving) return;
 
     // Said before the save rather than after it: a picker left on its
@@ -531,6 +566,7 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
       appToken.reset({ stored: updated.appTokenSet, variable: updated.appTokenVariableId });
       userToken.reset({ stored: updated.userTokenSet, variable: updated.userTokenVariableId });
       setSaved(true);
+      setStores((held) => held + 1);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : t('Could not save the credentials.'));
     } finally {
@@ -559,8 +595,16 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
 
   const locked = connection?.inherited ?? false;
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, address, description, type, pluginChoice, authType, urlOverride, smtpPort, smtpUsername, smtpFrom, smtpSecurity, secret: secret.sending, appToken: appToken.sending, userToken: userToken.sending }, [connection === null, stores]);
+
   return (
     <AppShell
+      scrollContent
       title={connection?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -593,7 +637,6 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
       ) : (
         <>
           <section className={styles.card}>
-            {/* Save at the top of the card, level with its title, rather than under the last field. */}
             <div className={styles.cardHead}>
               <div className={styles.cardTitles}>
                 <h2 className={styles.cardTitle}>{t('General')}</h2>
@@ -603,27 +646,6 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
                     : t('Connection settings for this workspace')}
                 </p>
               </div>
-              {!locked && (
-                <div className={styles.headActions}>
-                  {namedSaved && nameError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-                  {nameError !== null && <p className={styles.savedNote}>{nameError}</p>}
-                  <button
-                    type="button"
-                    className={styles.save}
-                    onClick={() => void handleSaveName()}
-                    disabled={
-                      savingName ||
-                      name.trim() === '' ||
-                      (addressEditable && address.trim() === '') ||
-                      (name.trim() === connection?.name &&
-                        (!addressEditable || address.trim() === connection?.url) &&
-                        description.trim() === (connection?.description ?? ''))
-                    }
-                  >
-                    {savingName ? t('Saving…') : t('Save')}
-                  </button>
-                </div>
-              )}
             </div>
 
             {/*
@@ -754,7 +776,7 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
 
           </section>
 
-          <form className={styles.card} onSubmit={handleSave}>
+          <form id="connection-credentials" className={styles.card} onSubmit={handleSave}>
             <h2 className={styles.cardTitle}>{t('Active Credentials')}</h2>
 
             {/*
@@ -1060,14 +1082,10 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
               </p>
             )}
 
-            {/* Checking and saving are the two things to do here, so they sit together. */}
+            {/* Checking stays with what it checks; saving is the page's one Save, floating at the foot. */}
             <div className={styles.actionRow}>
-              {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
               <button type="button" className={styles.testButton} onClick={handleTest} disabled={testing}>
                 {testing ? 'Checking…' : t('Test Connection')}
-              </button>
-              <button type="submit" className={styles.save} disabled={saving}>
-                {saving ? t('Saving…') : t('Save Credentials')}
               </button>
             </div>
           </form>
@@ -1088,6 +1106,20 @@ export function ConnectionSettingsPage({ session, onSignOut }: ConnectionSetting
               </button>
             </div>
           </section>
+          {/* Floating at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+          <SaveBar>
+            {nameError !== null && <p className={styles.savedNote}>{nameError}</p>}
+            {saveError === null && nameError === null && (saved || namedSaved) && <p className={styles.savedNote}>{t('Saved.')}</p>}
+            <DiscardButton onDiscard={onDiscard} disabled={saving || savingName || !changed} />
+            <button
+              type="button"
+              className={styles.save}
+              onClick={() => void saveAll()}
+              disabled={saving || savingName || !changed}
+            >
+              {saving || savingName ? t('Saving…') : t('Save Changes')}
+            </button>
+          </SaveBar>
         </>
       )}
     </AppShell>
@@ -1183,4 +1215,18 @@ function ReadOnlyField({ label, value, locked }: { label: string; value: string;
       </div>
     </div>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function ConnectionSettingsPage(props: ConnectionSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <ConnectionSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

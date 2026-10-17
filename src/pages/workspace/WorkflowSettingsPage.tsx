@@ -6,6 +6,8 @@ import type { SessionUser } from '../../api/session';
 import { fetchWorkspaceWorkflows, removeWorkflow, updateWorkflow } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
 import { PublicationHistory } from '../../components/PublicationHistory';
@@ -27,10 +29,10 @@ const WORKFLOW_LIST_SIZE = 100;
  * No frame exists for this one; the workflows row now opens a settings cog, so
  * this mirrors the agent settings page and keeps removal reachable.
  */
-export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPageProps) {
+function WorkflowSettingsView({ session, onSignOut, onDiscard }: WorkflowSettingsPageProps & { onDiscard: () => void }) {
   const { workspaceId = '', workflowId = '' } = useParams();
   const navigate = useNavigate();
-  /** Ties the header's Save button to the General form below. Issue #386. */
+  /** Ties the save strip's button to the General form. See `SaveBar`. */
   const formId = useId();
 
   const [workflow, setWorkflow] = useState<WorkspaceWorkflow | null>(null);
@@ -106,8 +108,16 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
     }
   }
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, description }, [workflow]);
+
   return (
     <AppShell
+      scrollContent
       title={workflow?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -136,21 +146,6 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
             >
               {t('Open Editor')}
             </Link>
-            {/* Save beside the title so a long form never needs a scroll to save;
-                it drives the General form below through its `form`. Issue #386. */}
-            {workflow !== null && (
-              <>
-                {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
-                <button
-                  type="submit"
-                  form={formId}
-                  className={styles.save}
-                  disabled={name.trim() === '' || saving}
-                >
-                  {saving ? t('Saving…') : t('Save Changes')}
-                </button>
-              </>
-            )}
           </div>
         </div>
       </header>
@@ -219,7 +214,7 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
                 {saveError}
               </p>
             )}
-            {/* The Save for this form is drawn up in the page header. Issue #386. */}
+            {/* The Save for this form is in the strip floating at the foot of the window. */}
           </form>
 
           {/*
@@ -269,6 +264,35 @@ export function WorkflowSettingsPage({ session, onSignOut }: WorkflowSettingsPag
           navigate(`/workspace/${workspaceId}`);
         }}
       />
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to; it drives the General form through its `form`. */}
+      {workflow !== null && (
+        <SaveBar>
+          {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
+          <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+          <button
+            type="submit"
+            form={formId}
+            className={styles.save}
+            disabled={name.trim() === '' || saving || !changed}
+          >
+            {saving ? t('Saving…') : t('Save Changes')}
+          </button>
+        </SaveBar>
+      )}
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function WorkflowSettingsPage(props: WorkflowSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <WorkflowSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

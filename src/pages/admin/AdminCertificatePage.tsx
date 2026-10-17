@@ -11,6 +11,8 @@ import {
 import type { SessionUser } from '../../api/session';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -36,7 +38,7 @@ export interface AdminCertificatePageProps {
  * back which authority was added is the question somebody debugging a refused
  * handshake actually has.
  */
-export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePageProps) {
+function AdminCertificateView({ session, onSignOut, onDiscard }: AdminCertificatePageProps & { onDiscard: () => void }) {
   const navigate = useNavigate();
   const { certificateId = '' } = useParams();
   /** The one route that is not an id: `/new` opens the same page with nothing in it. */
@@ -44,6 +46,8 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
 
   const [name, setName] = useState('');
   const [pem, setPem] = useState('');
+  /** Bumped when the fields are filled from the server - on load and after each save - so what they say is the baseline again. */
+  const [stores, setStores] = useState(0);
   const [subject, setSubject] = useState<string | null>(null);
   const [addedBy, setAddedBy] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -76,6 +80,7 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
         } else {
           setName(found.name);
           setPem(found.pem);
+          setStores((held) => held + 1);
           setSubject(found.subject);
           setAddedBy(found.addedBy);
           setExpiresAt(found.expiresAt);
@@ -112,6 +117,7 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
         setExpired(updated.expired);
       }
       setSaved(true);
+      setStores((held) => held + 1);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('That could not be saved.'));
     } finally {
@@ -129,8 +135,16 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
     }
   }
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, pem }, [stores]);
+
   return (
     <AppShell
+      scrollContent
       user={shellUser(session)}
       onSignOut={onSignOut}
       sidebar={<AdminSidebar active="networking" />}
@@ -168,7 +182,7 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
         <Loader />
       ) : (
         <>
-          <form className={styles.card} onSubmit={save}>
+          <form id="certificate-form" className={styles.card} onSubmit={save}>
             <div className={styles.field}>
               <span className={styles.labelWithHint}>
                 <label className={styles.label} htmlFor="certificate-name">{t('Name')}</label>
@@ -219,17 +233,20 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
               </p>
             )}
 
-            <div className={styles.footer}>
+            {/* Floating at the foot of the window, above the AI button. Drawn into the body, so the button names its form. */}
+            <SaveBar>
               {error !== null && <p className={styles.error}>{error}</p>}
               {saved && error === null && <p className={styles.saved}>{t('Saved.')}</p>}
+              <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
               <button
                 type="submit"
+                form="certificate-form"
                 className={styles.save}
-                disabled={saving || name.trim() === '' || pem.trim() === ''}
+                disabled={saving || name.trim() === '' || pem.trim() === '' || !changed}
               >
                 {saving ? t('Saving…') : adding ? t('Add') : t('Save Changes')}
               </button>
-            </div>
+            </SaveBar>
           </form>
 
           {!adding && (
@@ -252,4 +269,18 @@ export function AdminCertificatePage({ session, onSignOut }: AdminCertificatePag
       )}
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function AdminCertificatePage(props: AdminCertificatePageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <AdminCertificateView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

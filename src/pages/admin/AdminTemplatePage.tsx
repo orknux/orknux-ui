@@ -15,6 +15,8 @@ import {
 import { KIND_LABEL, saveJson } from '../../api/transfer';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -44,7 +46,7 @@ export interface AdminTemplatePageProps {
  * loud. Everybody who sees a named thing beside the thing it was made from
  * assumes the two follow each other. These do not.
  */
-export function AdminTemplatePage({ session, onSignOut }: AdminTemplatePageProps) {
+function AdminTemplateView({ session, onSignOut, onDiscard }: AdminTemplatePageProps & { onDiscard: () => void }) {
   const { templateId } = useParams();
   const navigate = useNavigate();
   const adding = templateId === undefined;
@@ -152,8 +154,16 @@ export function AdminTemplatePage({ session, onSignOut }: AdminTemplatePageProps
 
   const called = adding ? t('New Template') : (template?.name ?? '…');
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, description, envelope: envelope === null ? null : fileName }, [template]);
+
   return (
     <AppShell
+      scrollContent
       title={adding ? t('New template') : template?.name}
       user={shellUser(session)}
       showAdmin={session.admin}
@@ -185,7 +195,7 @@ export function AdminTemplatePage({ session, onSignOut }: AdminTemplatePageProps
           <Loader />
         </section>
       ) : (
-        <form className={styles.form} onSubmit={(event) => void handleSubmit(event)}>
+        <form id="template-form" className={styles.form} onSubmit={(event) => void handleSubmit(event)}>
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>{t('Template')}</h2>
             <div className={styles.divider} />
@@ -327,19 +337,19 @@ export function AdminTemplatePage({ session, onSignOut }: AdminTemplatePageProps
             </div>
           </section>
 
-          <div className={styles.footer}>
-            <div className={styles.buttons}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => navigate('/admin/templates')}
-                disabled={saving}
-              >{t('Cancel')}</button>
-              <button type="submit" className={styles.primaryButton} disabled={!complete || saving}>
-                {saving ? t('Saving…') : adding ? t('Publish Template') : t('Save Changes')}
-              </button>
-            </div>
-          </div>
+          {/* Floating at the foot of the window, above the AI button. Drawn into the body, so the button names its form. */}
+          <SaveBar>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => navigate('/admin/templates')}
+              disabled={saving}
+            >{t('Cancel')}</button>
+            <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
+            <button type="submit" form="template-form" className={styles.primaryButton} disabled={!complete || saving || !changed}>
+              {saving ? t('Saving…') : adding ? t('Publish Template') : t('Save Changes')}
+            </button>
+          </SaveBar>
 
           {error !== null && (
             <p className={styles.loadError} role="alert">
@@ -392,4 +402,18 @@ export function AdminTemplatePage({ session, onSignOut }: AdminTemplatePageProps
       )}
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function AdminTemplatePage(props: AdminTemplatePageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <AdminTemplateView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

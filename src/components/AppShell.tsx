@@ -425,6 +425,7 @@ export function AppShell({
           <nav
             className={collapsed ? `${styles.sidebar} ${styles.sidebarCollapsed}` : styles.sidebar}
             aria-label={t('Primary')}
+            data-shell-sidebar=""
           >
             {sidebar}
           </nav>
@@ -498,7 +499,7 @@ export function AppShell({
         than on a page, for the same reason: every signed-in screen is drawn
         inside this, so there is no screen it can be missing from.
       */}
-      <footer className={styles.attributionBar}>
+      <footer className={styles.attributionBar} data-shell-footer="">
         <Attribution compact />
       </footer>
     </div>

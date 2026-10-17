@@ -15,6 +15,7 @@ import { timeAgo } from '../../api/tools';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import fileTextIcon from '../../assets/file-text.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -215,6 +216,14 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
    * A skill is always one that exists, there being no create route to this
    * page, so a null baseline means still loading and there is nothing to lose.
    */
+  /** Back to the skill as it was loaded or last saved; nothing goes to the server. */
+  function discard() {
+    if (skill === null) return;
+    apply(skill);
+    setSaved(false);
+    setSaveError(null);
+  }
+
   const unsaved = useMemo(() => {
     if (skill === null) return false;
     return (
@@ -275,6 +284,7 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
 
   return (
     <AppShell
+      scrollContent
       title={skill?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -305,9 +315,8 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
               </button>
             )}
           </div>
+          {/* Validating needs no edit, so it stays by the title with its verdict; Save comes up in the strip at the foot. */}
           <div className={styles.actions}>
-            {/* Beside the button that caused it, where somebody is already looking. */}
-            {saved && saveError === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
             {/*
               Beside the button it is about, not down in the footer where it
               used to sit - and in the button's own word. See `ValidationStatus`.
@@ -324,14 +333,6 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
               }
             />
             <button type="button" className={styles.secondaryButton} onClick={() => void handleValidate()}>{t('Validate')}</button>
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={() => void handleSave()}
-              disabled={saving || skill === null}
-            >
-              {saving ? t('Saving…') : t('Save Changes')}
-            </button>
           </div>
         </div>
       </header>
@@ -530,6 +531,20 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
         onLeave={guard.leave}
         onSaveAndLeave={guard.saveAndLeave}
       />
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      <SaveBar>
+        {/* Beside the button that caused it, where somebody is already looking. */}
+        {saved && saveError === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
+        <DiscardButton onDiscard={discard} disabled={saving || !unsaved} />
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={() => void handleSave()}
+          disabled={saving || skill === null || !unsaved}
+        >
+          {saving ? t('Saving…') : t('Save Changes')}
+        </button>
+      </SaveBar>
     </AppShell>
   );
 }

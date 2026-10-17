@@ -88,6 +88,7 @@ import { AdminSidebar } from '../../components/AdminSidebar';
 import { SectionMenu } from '../../components/SectionMenu';
 import menuStyles from '../../components/SectionMenu.module.css';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { forgetInstallation } from '../../session/installation';
@@ -114,7 +115,7 @@ export interface AdminSettingsPageProps {
  * said no, the switch is not offered — it would be a control that cannot do what
  * it says.
  */
-export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps) {
+function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageProps & { onDiscard: () => void }) {
   const [settings, setSettings] = useState<InstallationSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -591,7 +592,8 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             </p>
           </div>
           {/*
-            One Save, at the top, for every number on the page.
+            One Save for every number on the page, floating at the foot of
+            the window so it is in view wherever the reader has scrolled.
 
             There were four - one per field, each beside its own box - and four
             buttons that do the same verb is four decisions about when to press
@@ -602,18 +604,6 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
             switch that lies about what it is showing, and those take effect as
             they are flipped.
           */}
-          {settings !== null && (
-            <div className={styles.headActions}>
-              {saved && <span className={styles.savedMark}>{t('Saved.')}</span>}
-              <button
-                type="button"
-                className={styles.primaryButton}
-                onClick={() => void saveAll()}
-                disabled={busy || !changed}
-                aria-label={t('Save the settings on this page')}
-              >{t('Save')}</button>
-            </div>
-          )}
         </header>
 
         {settings === null && error === null && (
@@ -2777,6 +2767,19 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
 
           </>
         )}
+        {settings !== null && (
+          <SaveBar>
+            {saved && <span className={styles.savedMark}>{t('Saved.')}</span>}
+            <DiscardButton onDiscard={onDiscard} disabled={busy || !changed} />
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => void saveAll()}
+              disabled={busy || !changed}
+              aria-label={t('Save the settings on this page')}
+            >{t('Save')}</button>
+          </SaveBar>
+        )}
       </section>
       </div>
     </AppShell>
@@ -2829,4 +2832,18 @@ function NumberSetting({
       </div>
     </div>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function AdminSettingsPage(props: AdminSettingsPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <AdminSettingsView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

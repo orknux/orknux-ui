@@ -6,6 +6,7 @@ import moonIcon from '../../assets/moon.svg';
 import sunIcon from '../../assets/sun.svg';
 import { AccessTokens } from '../../components/AccessTokens';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { FieldHint } from '../../components/FieldHint';
 import { currentLanguage, LANGUAGE_NAMES, LANGUAGES, setLanguage } from '../../session/language';
 import type { Language } from '../../session/language';
@@ -115,7 +116,7 @@ export interface PreferencesPageProps {
  * question and not how small it is. Security keys belong here too, when they
  * arrive.
  */
-export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
+function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps & { onDiscard: () => void }) {
   /*
    * Every change on this page is a draft until Save. It used to take effect
    * the moment it was made - a shortcut recorded, a theme pressed, a language
@@ -396,6 +397,7 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
 
   return (
     <AppShell
+      scrollContent
       user={shellUser(session)}
       showAdmin={session.admin}
       onSignOut={onSignOut}
@@ -411,22 +413,6 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
                 {t('Manage your developer profile, app appearance, models, and security keys.')}
               </p>
             </header>
-            {/* The page's one press, at the top where it is seen without scrolling, and how much is waiting for it. */}
-            <div className={styles.pageFoot}>
-              {unsaved > 0 && (
-                <span className={styles.pageUnsaved} data-preferences-unsaved="">
-                  {unsaved === 1 ? t('1 unsaved') : `${unsaved} unsaved`}
-                </span>
-              )}
-              <button
-                type="button"
-                className={styles.pageSave}
-                disabled={saving || unsaved === 0}
-                onClick={() => void saveAll()}
-              >
-                {saving ? t('Saving…') : t('Save')}
-              </button>
-            </div>
           </div>
 
           <section className={styles.card}>
@@ -1120,8 +1106,39 @@ export function PreferencesPage({ session, onSignOut }: PreferencesPageProps) {
             </div>
           </section>
 
+          {/* The page's one press, floating at the foot of the window, and how much is waiting for it. */}
+          <SaveBar>
+            {unsaved > 0 && (
+              <span className={styles.pageUnsaved} data-preferences-unsaved="">
+                {unsaved === 1 ? t('1 unsaved') : `${unsaved} unsaved`}
+              </span>
+            )}
+            <DiscardButton onDiscard={onDiscard} disabled={saving || unsaved === 0} />
+            <button
+              type="button"
+              className={styles.pageSave}
+              disabled={saving || unsaved === 0}
+              onClick={() => void saveAll()}
+            >
+              {saving ? t('Saving…') : t('Save')}
+            </button>
+          </SaveBar>
         </div>
       </div>
     </AppShell>
   );
+}
+
+/**
+ * The page, started over by Discard.
+ *
+ * Discard puts every field back to what the server holds. This page keeps
+ * its drafts across many fields and sections, so rather than a second copy
+ * of the code that fills them, the page is drawn again from the start and
+ * fills them the one way it always does - a round trip, which is the price
+ * of there being one way.
+ */
+export function PreferencesPage(props: PreferencesPageProps) {
+  const [discards, setDiscards] = useState(0);
+  return <PreferencesView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
 }

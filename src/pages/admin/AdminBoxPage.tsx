@@ -20,6 +20,8 @@ import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
+import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
 import { RevealToggle } from '../../components/RevealToggle';
@@ -105,6 +107,19 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
     setToken('');
     setClearToken(false);
   }, []);
+
+  /** Back to the box as it was loaded or last saved, or to the blank one being added; nothing goes to the server. */
+  function discard() {
+    if (box !== null) {
+      fill(box);
+      return;
+    }
+    setName('');
+    setAddress('');
+    setLabel('');
+    setToken('');
+    setClearToken(false);
+  }
 
   useEffect(() => {
     let current = true;
@@ -268,8 +283,16 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
 
   const called = adding ? t('Add box') : (box?.name ?? '…');
 
+  /*
+   * Whether there is anything to save: what the fields would send, against
+   * what the page last agreed with the server. Save and Discard are off while
+   * there is not.
+   */
+  const changed = useDirty({ name, address, label, token, clearToken }, [box]);
+
   return (
     <AppShell
+      scrollContent
       title={adding ? t('New box') : box?.name}
       user={shellUser(session)}
       onSignOut={onSignOut}
@@ -286,26 +309,6 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{called}</h1>
-          {/* Save beside the title, as on the other settings pages: the form is long and the details follow it. */}
-          {/* The local box has nothing of its own to save: its label is fixed and its settings are Admin Settings. */}
-          {loadError === null && !local && (adding || box !== null) && (
-            <div className={styles.headerActions}>
-              {/*
-                The title is on a wrapper, and the disabled button lets the
-                pointer through to it: a disabled control receives no mouse
-                events, so a title on it - or on a parent it covers - never shows.
-              */}
-              <span
-                className={styles.saveWrap}
-                title={missing.length > 0 ? tf('Fill in: {fields}', { fields: missing.join(', ') }) : undefined}
-                data-box-save-blocked={missing.length > 0 ? 'true' : undefined}
-              >
-                <button type="submit" form="box-form" className={styles.primaryButton} disabled={!complete || saving} data-box-save="">
-                  {saving ? t('Saving…') : adding ? t('Add box') : t('Save')}
-                </button>
-              </span>
-            </div>
-          )}
         </div>
         {box !== null && (
           <p className={styles.subtitle} data-box-kind={box.kind}>
@@ -648,6 +651,26 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
             )}
           </div>
         </section>
+      )}
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      {loadError === null && !local && (adding || box !== null) && (
+        <SaveBar>
+          <DiscardButton onDiscard={discard} disabled={saving || !changed} />
+          {/*
+            The title is on a wrapper, and the disabled button lets the
+            pointer through to it: a disabled control receives no mouse
+            events, so a title on it - or on a parent it covers - never shows.
+          */}
+          <span
+            className={styles.saveWrap}
+            title={missing.length > 0 ? tf('Fill in: {fields}', { fields: missing.join(', ') }) : undefined}
+            data-box-save-blocked={missing.length > 0 ? 'true' : undefined}
+          >
+            <button type="submit" form="box-form" className={styles.primaryButton} disabled={!complete || saving || !changed} data-box-save="">
+              {saving ? t('Saving…') : adding ? t('Add box') : t('Save')}
+            </button>
+          </span>
+        </SaveBar>
       )}
     </AppShell>
   );

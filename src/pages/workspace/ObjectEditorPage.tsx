@@ -13,6 +13,7 @@ import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import fileTextIcon from '../../assets/file-text.svg';
 import { AppShell } from '../../components/AppShell';
+import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
 import { ObjectForm, asProperty, asRow, typeOptionsOf } from '../../components/ObjectForm';
@@ -209,6 +210,14 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
    * An object is always one that exists - there is no create route to this page
    * - so a null baseline means still loading, and there is nothing to lose yet.
    */
+  /** Back to the object as it was loaded or last saved; nothing goes to the server. */
+  function discard() {
+    if (held === null) return;
+    apply(held);
+    setSaved(false);
+    setSaveError(null);
+  }
+
   const unsaved = useMemo(() => {
     if (held === null) return false;
     const sent = JSON.stringify(rows.map(asProperty));
@@ -242,6 +251,7 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
 
   return (
     <AppShell
+      scrollContent
       title={held?.name}
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
@@ -262,8 +272,8 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
           <div className={styles.titleGroup}>
             <h1 className={styles.pageTitle}>{held?.name ?? 'Object'}</h1>
           </div>
+          {/* Validating needs no edit, so it stays by the title with its verdict; Save comes up in the strip at the foot. */}
           <div className={styles.actions}>
-            {saved && saveError === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
             {/*
               Beside the button it is about. It used to sit in the footer at the
               far end of a row from "+ Add Property", a control it has nothing
@@ -282,14 +292,6 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
             />
             <button type="button" className={styles.secondaryButton} onClick={() => void handleValidate()}>
               {t('Validate')}
-            </button>
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={() => void handleSave()}
-              disabled={saving || held === null}
-            >
-              {saving ? t('Saving…') : t('Save Changes')}
             </button>
           </div>
         </div>
@@ -407,6 +409,19 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
         onLeave={guard.leave}
         onSaveAndLeave={guard.saveAndLeave}
       />
+      {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
+      <SaveBar>
+        {saved && saveError === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
+        <DiscardButton onDiscard={discard} disabled={saving || !unsaved} />
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={() => void handleSave()}
+          disabled={saving || held === null || !unsaved}
+        >
+          {saving ? t('Saving…') : t('Save Changes')}
+        </button>
+      </SaveBar>
     </AppShell>
   );
 }
