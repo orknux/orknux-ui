@@ -878,7 +878,6 @@ export const PL: Record<string, string> = {
   "Could not copy - select it and copy by hand": "Nie udało się skopiować — zaznacz i skopiuj ręcznie",
   "Copy the token": "Kopiuj token",
   "never used": "nigdy nieużyty",
-  "used {when}": "użyty {when}",
   "Revoke {name}": "Unieważnij {name}",
   "Could not load the tokens.": "Nie udało się wczytać tokenów.",
   "Could not revoke the token.": "Nie udało się unieważnić tokena.",
