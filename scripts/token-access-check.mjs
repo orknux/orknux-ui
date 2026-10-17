@@ -73,6 +73,12 @@ const look = await page.evaluate(() => {
   return { row: style(row), input: style(box) };
 });
 record(look.row.bg !== look.input.bg && look.row.border.split(' ')[1] === '0px', `a saved token does not look like the input (${JSON.stringify(look)})`);
+const space = await page.evaluate(() => {
+  const rows = document.querySelectorAll('[data-testid="access-token"]');
+  const box = document.querySelector('input[aria-label="Token name"]');
+  return Math.round(box.getBoundingClientRect().top - rows[rows.length - 1].getBoundingClientRect().bottom);
+});
+record(space >= 16, `and there is room between the list and the box under it (${space}px)`);
 await page.screenshot({ path: '/tmp/token-row.png', clip: await section.boundingBox() });
 
 /* Used as a script uses it: no cookie, just the token. */

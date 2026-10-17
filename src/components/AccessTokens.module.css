@@ -33,6 +33,11 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* Room between the list and the box that makes the next one, so the two read as separate things. */
+.list + .row {
+  margin-top: var(--space-12);
+}
+
 .name {
   flex: 1 1 0;
   min-width: 0;
