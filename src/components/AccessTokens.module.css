@@ -11,20 +11,26 @@
 }
 
 /* The issued tokens, grouped so the list reads apart from the create row below. */
+/*
+ * A list, not a stack of boxes. Each token sat in a box with the input's own
+ * background and border, so the saved ones read as fields to type into beside
+ * the one that is. Rows on the card's background, a line between them.
+ */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
 }
 
 .token {
   display: flex;
   align-items: baseline;
   gap: var(--space-8);
-  padding: var(--space-6) var(--space-8);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-4);
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.token:first-child {
+  border-top: 1px solid var(--color-border);
 }
 
 .name {

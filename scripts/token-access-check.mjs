@@ -64,6 +64,15 @@ const sizes = await row.evaluate((one) => {
 });
 record(sizes.when === sizes.name && sizes.revoke === sizes.name, `when it was used and Revoke are the name's size (${JSON.stringify(sizes)})`);
 record(sizes.access >= 12, `and the access tag is no smaller than 12px (${sizes.access})`);
+
+/* A saved token is a list row, not something to type into: it does not wear the input's box. */
+const look = await page.evaluate(() => {
+  const row = document.querySelector('[data-testid="access-token"]');
+  const box = document.querySelector('input[aria-label="Token name"]');
+  const style = (el) => { const c = getComputedStyle(el); return { bg: c.backgroundColor, border: c.borderTopWidth + ' ' + c.borderLeftWidth }; };
+  return { row: style(row), input: style(box) };
+});
+record(look.row.bg !== look.input.bg && look.row.border.split(' ')[1] === '0px', `a saved token does not look like the input (${JSON.stringify(look)})`);
 await page.screenshot({ path: '/tmp/token-row.png', clip: await section.boundingBox() });
 
 /* Used as a script uses it: no cookie, just the token. */
