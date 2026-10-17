@@ -51,12 +51,13 @@ record(restored.enabled === before.enabled, 'and it is left as it was found');
 // The heading sits centred on the row of pickers, not at the foot of it.
 const centred = await page.evaluate(() => {
   const heading = [...document.querySelectorAll('h2')].find((one) => /Tokens by person/.test(one.textContent ?? ''));
-  const filters = heading?.parentElement?.querySelector('[class*="filters"]');
-  if (!heading || !filters) return null;
+  // Against a picker's box, not the group: the labels over the boxes are not what the eye lines the heading up with.
+  const box = heading?.parentElement?.querySelector('[class*="filters"] select');
+  if (!heading || !box) return null;
   const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
-  return Math.round(mid(heading) - mid(filters));
+  return Math.round(mid(heading) - mid(box));
 });
-record(centred !== null && Math.abs(centred) <= 4, `the heading is centred on the pickers beside it (${centred}px off)`);
+record(centred !== null && Math.abs(centred) <= 2, `the heading is level with the picker boxes beside it (${centred}px off)`);
 
 const pickers = await page.locator('select').count();
 record(pickers >= 3, `period, workspace and source can be chosen (${pickers} pickers)`);
