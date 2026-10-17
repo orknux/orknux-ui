@@ -1707,6 +1707,8 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
+  "No box carries a label yet. Boxes are set up under Admin → Boxes.": "Żadne pudełko nie ma jeszcze etykiety. Pudełka konfiguruje się w Administracja → Pudełka.",
+  "box labels": "etykiety pudełek",
   "Hide the voice mode button": "Ukryj przycisk trybu głosowego",
   "Takes voice mode off this workspace’s chat bar. Off by default: the button is shown, and greyed out with the reason where a model is missing.": "Usuwa tryb głosowy z paska czatu tej przestrzeni roboczej. Domyślnie wyłączone: przycisk jest widoczny, a tam, gdzie brakuje modelu, wyszarzony z podaną przyczyną.",
   "Voice mode is not available": "Tryb głosowy jest niedostępny",

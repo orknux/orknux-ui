@@ -1,13 +1,12 @@
 /**
- * An agent's Boxes grant: labels chosen the way an issue's labels are, offered
- * from the labels boxes carry, and saved as the agent's boxLabels.
+ * An agent's Boxes grant: the labels boxes carry, as a list of ticks drawn the
+ * way Connections is, and saved as the agent's boxLabels.
  *
- * An agent starts with none. Typing narrows the labels in use to the ones that
- * match, a dashed suggestion under the field adds one, Enter adds what was typed,
- * and each chosen label is a chip that is removed by pressing it - the issue
- * page's chips, drawn the same. The box_ tools are rows on the Tools list that
- * read this grant: Hide while it holds no label, Always once it holds one, and
- * not pressable either way.
+ * An agent starts with none. Each label in use is a row with a checkbox;
+ * ticking it grants it. A label granted that no box carries any more stays on
+ * the list as a kept row, as a connection that has gone does. The box_ tools
+ * are rows on the Tools list that read this grant: Hide while it holds no
+ * label, Always once it holds one, and not pressable either way.
  *
  * Makes a scratch agent and a scratch box at an address under `.invalid` - the
  * box only so there is a label in use to be offered - and removes both,
@@ -18,7 +17,6 @@ import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mj
 const AGENT = 'boxGrantScratch_';
 const BOX = 'boxGrantScratchBox';
 const OFFERED = 'box-grant-check';
-const TYPED = 'box-grant-typed';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -72,20 +70,12 @@ const grant = page.locator('[data-box-grant]');
 const there = await grant.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
 record(there, 'the form has a Boxes grant');
 
-/* In a padded box like the grants around it, not loose on the panel. */
-const inset = await grant.evaluate((field) => {
-  const box = field.querySelector('[data-box-grant-box]');
-  const input = field.querySelector('input');
-  if (box === null || input === null) return null;
-  const outer = box.getBoundingClientRect();
-  const inner = input.getBoundingClientRect();
-  return { left: Math.round(inner.left - outer.left), bottom: Math.round(outer.bottom - inner.bottom), border: getComputedStyle(box).borderTopStyle };
-}).catch(() => null);
-record(
-  inset !== null && inset.border === 'solid' && inset.left >= 8 && inset.bottom >= 8,
-  `the labels sit in a bordered box with room inside it (${JSON.stringify(inset)})`,
-);
-record((await grant.locator('[data-label-chip]').count()) === 0, 'holding no label');
+/* The same list of ticks as Connections, one row per label a box carries - not a box to type a label into. */
+const row = grant.locator(`[data-grant-name="${OFFERED}"]`);
+record(await row.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false), `the label a box carries is a row (${OFFERED})`);
+record((await grant.locator('input[placeholder*="box label"]').count()) === 0, 'and there is no box to type a label into');
+const tick = row.locator('input[type="checkbox"]');
+record((await tick.count()) === 1 && !(await tick.isChecked()), 'it is a checkbox, unticked while the agent holds no label');
 
 /* A box tool reads the grant: Hide with no label, not pressable. */
 const boxTool = boxTools[0];
@@ -99,68 +89,23 @@ if (boxTool !== undefined) {
   );
 }
 
-/* Typing narrows the labels in use, offered under the field. */
-const field = grant.locator('input[type="text"]');
-await field.click();
-await field.pressSequentially('box-grant', { delay: 20 });
-const suggestion = grant.locator(`[data-label-suggestion="${OFFERED}"]`);
-const offered = await suggestion.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
-record(offered, `typing offers ${OFFERED}`);
-const fieldAt = await field.boundingBox().catch(() => null);
-const suggestionAt = await suggestion.boundingBox().catch(() => null);
-record(fieldAt !== null && suggestionAt !== null && suggestionAt.y >= fieldAt.y + fieldAt.height - 1, 'under the field');
-await field.fill('zzz-no-such-label');
-record((await grant.locator('[data-label-suggestion]').count()) === 0, 'and offers nothing that does not match');
-await field.fill('box-grant');
-
-/* Pressing the suggestion makes it a chip, and it is offered no more. */
-await suggestion.click();
-const chip = grant.locator(`[data-label-chip="${OFFERED}"]`);
-record(await chip.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false), 'pressing it makes it a chip');
-record((await grant.locator(`[data-label-suggestion="${OFFERED}"]`).count()) === 0, 'and it is offered no more');
-
-/* Enter adds what was typed, whether or not a box carries it yet. */
-await field.fill(TYPED);
-await field.press('Enter');
-const typedChip = grant.locator(`[data-label-chip="${TYPED}"]`);
-record(await typedChip.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false), 'Enter adds a label typed in full');
-const first = await chip.boundingBox().catch(() => null);
-const second = await typedChip.boundingBox().catch(() => null);
-record(
-  first !== null && second !== null && Math.abs(first.y - second.y) < 2 && second.x > first.x,
-  'the chips sit in a row, in the order they were chosen',
-);
-
-/* Drawn as the issue page draws a label: mono, small, a 4px corner. */
-const look = await chip.evaluate((one) => {
-  const style = getComputedStyle(one);
-  return { font: style.fontFamily, radius: style.borderTopLeftRadius, border: style.borderTopStyle };
-});
-record(/mono/i.test(look.font) && look.radius === '4px' && look.border === 'solid', `a chip is drawn as a label (${JSON.stringify(look)})`);
-
-/* The box tool follows the grant before anything is saved. */
+/* Ticking it grants it, and the box tool follows before anything is saved. */
+await tick.check();
+record(await tick.isChecked(), 'ticking the row grants the label');
 if (boxTool !== undefined) record((await toolState()) === 'always', `${boxTool} reads Always once a label is held`);
-
-/* Pressing a chip removes it. */
-await field.fill('scratch-removed');
-await field.press('Enter');
-await grant.locator('[data-label-chip="scratch-removed"]').click();
-record((await grant.locator('[data-label-chip="scratch-removed"]').count()) === 0, 'pressing a chip removes it');
 
 /* Saved, it is the agent's boxLabels. */
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2_000);
 const stored = (await graphql(`query ($id: ID!) { agent(id: $id) { boxLabels } }`, { id: agent.id })).agent.boxLabels;
-record(
-  stored.length === 2 && stored.includes(OFFERED) && stored.includes(TYPED),
-  `Save stores the labels chosen (${JSON.stringify(stored)})`,
-);
+record(stored.length === 1 && stored[0] === OFFERED, `Save stores the label ticked (${JSON.stringify(stored)})`);
 
-/* And the page opens on them again. */
+/* And the page opens on it again. */
 await page.reload({ waitUntil: 'domcontentloaded' });
 await drawn(page, "the agent's settings, again");
-await page.locator('[data-box-grant]').waitFor({ timeout: 20_000 }).catch(() => {});
-record((await page.locator('[data-box-grant] [data-label-chip]').count()) === 2, 'and they are drawn when the page opens again');
+const again = page.locator(`[data-box-grant] [data-grant-name="${OFFERED}"] input[type="checkbox"]`);
+await again.waitFor({ timeout: 20_000 }).catch(() => {});
+record(await again.isChecked().catch(() => false), 'and it is ticked when the page opens again');
 
 /* --------------------------------------------------------------- put back */
 

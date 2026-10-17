@@ -30,7 +30,6 @@ import type { Catalogue } from './Catalogue';
 import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from './DragSize';
 import { FieldHint } from './FieldHint';
 import { IconField } from './IconField';
-import { LabelPicker } from './LabelPicker';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { segments } from './searchMatches';
 import own from './AgentForm.module.css';
@@ -1104,20 +1103,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * waits for it: a label is a name, and one typed before any box carries it
    * is a grant that starts working the day one does.
    */
-  const [knownBoxLabels, setKnownBoxLabels] = useState<string[]>([]);
-  useEffect(() => {
-    let current = true;
-    fetchBoxLabels()
-      .then((labels) => {
-        if (current) setKnownBoxLabels(labels);
-      })
-      .catch(() => {
-        if (current) setKnownBoxLabels([]);
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
   const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [memoryCatalogs, setMemoryCatalogs] = useState<string[]>(agent.memoryCatalogs);
   /** Whose secrets it may hand a box command, and whose plain values it may read. */
@@ -1498,6 +1483,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * to and is drawn as `#id`, which is also how it translates back, so it can
    * still be revoked.
    */
+  // The labels boxes carry: a box is shared by the installation, so the list is the installation's, not the workspace's.
+  const boxCatalogue = useCatalogue<string>(t('box labels'), () => fetchBoxLabels(), []);
   const connectionCatalogue = useCatalogue<WorkspaceConnection>(
     t('connections'),
     () => fetchWorkspaceConnections(workspaceId),
@@ -2322,22 +2309,19 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           the agent is not otherwise offered - and the orkbox_ tools are rows in
           the list above that read it.
         */}
-        <div className={styles.field} data-box-grant="">
-          <span className={own.labelWithHint}>
-            <label className={styles.label} htmlFor={`${formId}-box-labels`}>{t('Boxes')}</label>
-            <FieldHint label={t('Boxes')}>
-              {t('The boxes this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that box allows. Boxes and their labels are set up under Admin → Boxes.')}
-            </FieldHint>
-          </span>
-          <div className={own.labelBox} data-box-grant-box="">
-            <LabelPicker
-              id={`${formId}-box-labels`}
-              labels={boxLabels}
-              known={knownBoxLabels}
-              onChange={setBoxLabels}
-              placeholder={t('Add a box label…')}
-            />
-          </div>
+        <div data-box-grant="">
+          <GrantList<string>
+            label={t('Boxes')}
+            what="boxes"
+            styles={styles}
+            catalogue={boxCatalogue}
+            empty={t('No box carries a label yet. Boxes are set up under Admin → Boxes.')}
+            hint={t('The boxes this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that box allows. Boxes and their labels are set up under Admin → Boxes.')}
+            keyOf={(label) => label}
+            nameOf={(label) => label}
+            granted={boxLabels}
+            onChange={setBoxLabels}
+          />
         </div>
 
 
