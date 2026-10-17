@@ -78,6 +78,16 @@ const ends = await section.evaluate((root) => {
   range.selectNodeContents(head);
   return [Math.round(range.getBoundingClientRect().right), Math.round(revoke.getBoundingClientRect().right)];
 });
+const band = await section.evaluate((root) => {
+  const th = root.querySelector('th');
+  const td = root.querySelector('td');
+  const c = getComputedStyle(th);
+  // What is behind the body: the first ancestor with a colour of its own - the card the table sits on.
+  let behind = td;
+  while (behind !== null && getComputedStyle(behind).backgroundColor === 'rgba(0, 0, 0, 0)') behind = behind.parentElement;
+  return { head: c.backgroundColor, body: behind === null ? '' : getComputedStyle(behind).backgroundColor, weight: c.fontWeight };
+});
+record(band.head !== band.body && band.head !== 'rgba(0, 0, 0, 0)' && Number(band.weight) >= 600, `the header is a band of its own (${JSON.stringify(band)})`);
 record(Math.abs(ends[0] - ends[1]) <= 2, `the Actions heading lines up with Revoke under it (${ends.join(' / ')})`);
 record(sizes.name === 13 && sizes.when === 12 && sizes.access >= 12 && sizes.revoke === 13, `the row reads as a role does - name 13px, details 12px (${JSON.stringify(sizes)})`);
 
