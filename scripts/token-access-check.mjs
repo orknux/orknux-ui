@@ -51,6 +51,21 @@ record(secret.startsWith('orkx_'), 'a token is made from the picker set to Read-
 const row = section.getByTestId('access-token').filter({ hasText: name });
 record((await row.locator('[data-token-access]').getAttribute('data-token-access')) === 'read', 'and it is listed as read-only');
 
+/* The row reads at the size of the name it belongs to, not at a footnote's. */
+const sizes = await row.evaluate((one) => {
+  const px = (el) => (el === null ? 0 : parseFloat(getComputedStyle(el).fontSize));
+  const parts = [...one.children];
+  return {
+    name: px(parts[0]),
+    access: px(one.querySelector('[data-token-access]')),
+    when: px(parts.find((el) => /used/.test(el.textContent ?? '')) ?? null),
+    revoke: px(one.querySelector('button')),
+  };
+});
+record(sizes.when === sizes.name && sizes.revoke === sizes.name, `when it was used and Revoke are the name's size (${JSON.stringify(sizes)})`);
+record(sizes.access >= 12, `and the access tag is no smaller than 12px (${sizes.access})`);
+await page.screenshot({ path: '/tmp/token-row.png', clip: await section.boundingBox() });
+
 /* Used as a script uses it: no cookie, just the token. */
 const asToken = async (query) => {
   const answer = await context.request.fetch(`${BASE}/graphql`, {
