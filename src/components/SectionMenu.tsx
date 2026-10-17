@@ -135,7 +135,13 @@ export function SectionMenu({ within }: SectionMenuProps) {
       const blocks = blocksOf(heading, headings);
       let any = false;
       blocks.forEach((block) => {
-        const hit = query === '' || (block.textContent ?? '').toLowerCase().includes(query) || (heading.textContent ?? '').toLowerCase().includes(query);
+        // What a block says, and what its controls are called underneath: a box named
+        // revisionRetentionDays answers to "retention" though its label says "kept for".
+        const named = [...block.querySelectorAll('[id], [name], [aria-label]')]
+          .map((one) => `${one.id} ${one.getAttribute('name') ?? ''} ${one.getAttribute('aria-label') ?? ''}`)
+          .join(' ');
+        const words = `${block.textContent ?? ''} ${named}`.toLowerCase();
+        const hit = query === '' || words.includes(query) || (heading.textContent ?? '').toLowerCase().includes(query);
         block.style.display = hit ? '' : 'none';
         if (hit) any = true;
       });
