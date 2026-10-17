@@ -14,6 +14,7 @@ import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
+import { FilterSelect } from '../../components/FilterSelect';
 import { ConnectionIcon } from '../../components/ConnectionIcon';
 import { Loader } from '../../components/Loader';
 import { ordered, useTableSort } from '../../components/tableSort';
@@ -120,19 +121,31 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
     );
   }, [servers, serverAsked]);
 
-  /** A connection is found by its name or by what kind it is - the label shown, or the type underneath. */
+  /** One kind of connection, or every kind: a core type, or a plugin's `pluginKey/name`. */
+  const [connectionType, setConnectionType] = useState('');
+  const kindOf = (held: WorkspaceConnection) => held.pluginType ?? held.type;
+
+  /** A connection is found by its name or by what kind it is - the label shown, or the type underneath - among those of the chosen kind. */
   const matchingConnections = useMemo(() => {
     const looking = connectionAsked.trim().toLowerCase();
     if (connections === null) return null;
-    if (looking === '') return connections;
-    return connections.filter(
+    const ofType = connectionType === '' ? connections : connections.filter((held) => kindOf(held) === connectionType);
+    if (looking === '') return ofType;
+    return ofType.filter(
       (held) =>
         held.name.toLowerCase().includes(looking) ||
         (held.description ?? '').toLowerCase().includes(looking) ||
         held.type.toLowerCase().includes(looking) ||
         connectionKindLabel(held, kinds).toLowerCase().includes(looking),
     );
-  }, [connections, connectionAsked, kinds]);
+  }, [connections, connectionAsked, connectionType, kinds]);
+
+  /* Only the kinds this workspace has, labelled as the rows label them. */
+  const connectionTypes = useMemo(() => {
+    const held = new Map<string, string>();
+    (connections ?? []).forEach((one) => held.set(kindOf(one), connectionKindLabel(one, kinds)));
+    return [...held.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [connections, kinds]);
 
   /** The slice of an already-filtered list that belongs on the page being shown. */
   function slice<T>(all: T[] | null, page: number, size: number): T[] | null {
@@ -344,6 +357,14 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             placeholder={t('Search connections...')}
             label={t('Search connections')}
           />
+          <FilterSelect
+            label={t('Type')}
+            value={connectionType}
+            onChange={setConnectionType}
+            all={t('All types')}
+            options={connectionTypes}
+            testId="connection-type-filter"
+          />
         </SearchRow>
 
         <div className={styles.tableHeader}>
@@ -418,7 +439,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
             </span>
             <span
               className={`${styles.colMeta} ${connection.status === 'CONNECTED' ? styles.type : styles.typeMuted}`}
-            >
+             data-connection-kind={connection.pluginType ?? connection.type}>
               {connectionKindLabel(connection, kinds)}
             </span>
             <span className={`${styles.colMeta} ${styles.status}`} title={connection.lastCheckMessage ?? undefined}>

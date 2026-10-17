@@ -1,0 +1,47 @@
+.filter {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.filter:focus-within {
+  border-color: var(--color-accent-brand);
+}
+
+.label {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/*
+ * The select is stretched under the chevron beside it, so pressing the arrow
+ * opens the menu, and shows no arrow of its own.
+ */
+.select {
+  padding: 0 var(--space-16) 0 0;
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+}
+
+.filter > img {
+  position: absolute;
+  right: var(--space-12);
+  pointer-events: none;
+}

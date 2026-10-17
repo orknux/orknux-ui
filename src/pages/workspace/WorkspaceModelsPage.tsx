@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import {
-  fetchModels,
-  modelKindLabel,
-  fetchProviders,
-  providerStatusLabel,
-  setModelEnabled,
-} from '../../api/models';
+import { fetchModels, fetchProviders, modelKindLabel, providerStatusLabel, providerTypeLabel, setModelEnabled } from '../../api/models';
 import type { Model, ModelProvider, ProviderStatus } from '../../api/models';
 import { createAgentForModel } from '../../api/agents';
 import type { SessionUser } from '../../api/session';
@@ -17,6 +11,7 @@ import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
+import { FilterSelect } from '../../components/FilterSelect';
 import { Loader } from '../../components/Loader';
 import { ModelDialog } from '../../components/ModelDialog';
 import { CompactPagination } from '../../components/CompactPagination';
@@ -54,7 +49,7 @@ function statusDot(status: ProviderStatus): string {
  * Two unions rather than one: a provider has an endpoint and a model has a kind,
  * and a single list of column names would offer each table the other's.
  */
-type ProviderColumn = 'NAME' | 'ENDPOINT' | 'STATUS';
+type ProviderColumn = 'NAME' | 'TYPE' | 'ENDPOINT' | 'STATUS';
 type ModelColumn = 'NAME' | 'PROVIDER' | 'KIND' | 'STATUS';
 
 export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageProps) {
@@ -105,17 +100,36 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
   );
   const [modelOrder, modelAscending, sortModels] = useTableSort<ModelColumn>('models', 'NAME');
 
-  /** A provider is found by its name or by where it points. */
+  /** One kind of provider, or every kind; one kind of model, or every kind. */
+  const [providerType, setProviderType] = useState('');
+  const [modelKind, setModelKind] = useState('');
+
+  /** A provider is found by its name or by where it points, among those of the chosen type. */
   const matchingProviders = useMemo(() => {
     const looking = providerAsked.trim().toLowerCase();
     if (providers === null) return null;
-    if (looking === '') return providers;
-    return providers.filter(
+    const ofType = providerType === '' ? providers : providers.filter((held) => held.type === providerType);
+    if (looking === '') return ofType;
+    return ofType.filter(
       (held) =>
         held.name.toLowerCase().includes(looking) ||
         held.endpoint.toLowerCase().includes(looking),
     );
-  }, [providers, providerAsked]);
+  }, [providers, providerAsked, providerType]);
+
+  /* Only the kinds this workspace has: a menu offering kinds nobody set up is a menu of empty answers. */
+  const providerTypes = useMemo(
+    () => [...new Set((providers ?? []).map((held) => held.type))]
+      .map((type) => ({ value: type, label: providerTypeLabel(type) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [providers],
+  );
+  const modelKinds = useMemo(
+    () => [...new Set((models ?? []).map((held) => held.kind))]
+      .map((kind) => ({ value: kind, label: modelKindLabel(kind) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [models],
+  );
 
   /**
    * A model is found by the name somebody gave it, by the id the provider knows
@@ -124,14 +138,15 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
   const matchingModels = useMemo(() => {
     const looking = modelAsked.trim().toLowerCase();
     if (models === null) return null;
-    if (looking === '') return models;
-    return models.filter(
+    const ofKind = modelKind === '' ? models : models.filter((held) => held.kind === modelKind);
+    if (looking === '') return ofKind;
+    return ofKind.filter(
       (held) =>
         held.name.toLowerCase().includes(looking) ||
         held.modelId.toLowerCase().includes(looking) ||
         held.providerName.toLowerCase().includes(looking),
     );
-  }, [models, modelAsked]);
+  }, [models, modelAsked, modelKind]);
 
   /** The slice of an already-filtered list that belongs on the page being shown. */
   function slice<T>(all: T[] | null, page: number, size: number): T[] | null {
@@ -142,6 +157,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
 
   /** What each column holds for a provider, for the order a heading asks for. */
   const providerKey = (held: ModelProvider) => {
+    if (providerOrder === 'TYPE') return providerTypeLabel(held.type);
     if (providerOrder === 'ENDPOINT') return held.endpoint;
     if (providerOrder === 'STATUS') return held.status;
     return held.name;
@@ -254,6 +270,14 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             placeholder={t('Search providers...')}
             label={t('Search providers')}
           />
+          <FilterSelect
+            label={t('Type')}
+            value={providerType}
+            onChange={setProviderType}
+            all={t('All types')}
+            options={providerTypes}
+            testId="provider-type-filter"
+          />
         </SearchRow>
 
         <div className={styles.tableHeader}>
@@ -265,6 +289,14 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             ascending={providerAscending}
             onSort={sortProviders}
             className={styles.colProvider}
+          />
+          <ColumnHeader
+            label={t('Type')}
+            order="TYPE"
+            current={providerOrder}
+            ascending={providerAscending}
+            onSort={sortProviders}
+            className={styles.colKind}
           />
           <ColumnHeader
             label={t('API Endpoint')}
@@ -330,6 +362,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
                 </span>
               ) : null}
             </span>
+            <span className={styles.colKind} data-provider-type={provider.type}>{providerTypeLabel(provider.type)}</span>
             <span className={`${styles.colGrow} ${styles.endpoint}`}>{provider.endpoint}</span>
             <span className={styles.colStatus}>
               <span
@@ -399,6 +432,14 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             placeholder={t('Search models...')}
             label={t('Search models')}
           />
+          <FilterSelect
+            label={t('Type')}
+            value={modelKind}
+            onChange={setModelKind}
+            all={t('All types')}
+            options={modelKinds}
+            testId="model-kind-filter"
+          />
         </SearchRow>
 
         <div className={styles.tableHeader}>
@@ -464,7 +505,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             <span className={`${styles.colProviderName} ${styles.providerCell}`}>{model.providerName}</span>
             {/* What it is for: a chat model and a transcription one are chosen in
                 different places, and the list is where that is checked. */}
-            <span className={`${styles.colKind} ${styles.providerCell}`}>{modelKindLabel(model.kind)}</span>
+            <span className={`${styles.colKind} ${styles.providerCell}`} data-model-kind={model.kind}>{modelKindLabel(model.kind)}</span>
             <span className={styles.colToggle}>
               <button
                 type="button"

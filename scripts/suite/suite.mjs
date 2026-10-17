@@ -283,6 +283,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'list-type-filters-check',
+    what: 'providers, models and connections are narrowed by type, and a provider row says its type',
+    needs: ['workspace'],
+    /*
+     * Each sieve offers only the types the workspace has; choosing one leaves
+     * rows of that type and only those, counted off what is drawn.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
