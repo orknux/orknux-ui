@@ -270,7 +270,8 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>
 
-          {loading && <p className={styles.notice}><Loader /></p>}
+          {/* Only before anything is drawn: a reload keeps the rows where they are rather than pushing them under a spinner. */}
+          {loading && triggers === null && <p className={styles.notice}><Loader /></p>}
           {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
           {!loading && error === null && triggers?.content.length === 0 && (
             <p className={styles.notice}>{t('No triggers yet.')}</p>

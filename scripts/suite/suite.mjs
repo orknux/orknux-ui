@@ -252,6 +252,17 @@ export const TESTS = [
      */
   },
   {
+    name: 'auto-refresh-steady-check',
+    what: 'a list that refreshes itself does not move while it does',
+    needs: ['workspace'],
+    /*
+     * The audit logs and the triggers list drew a spinner line above the rows
+     * on every reload, so with auto-refresh on the table jumped once a second.
+     * The reload is held for long enough to be seen, and the first row's top
+     * is sampled through it.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],

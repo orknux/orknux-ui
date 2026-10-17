@@ -237,7 +237,8 @@ export function WorkspaceAuditPage({ session, onSignOut }: WorkspaceAuditPagePro
         </div>
 
         <div className={styles.tableBody}>
-          {loading && <p className={styles.notice}><Loader /></p>}
+          {/* Only before anything is drawn: a reload keeps the rows where they are rather than pushing them under a spinner. */}
+          {loading && entries === null && <p className={styles.notice}><Loader /></p>}
           {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
           {!loading && error === null && entries?.content.length === 0 && (
             <p className={styles.notice}>{t('Nothing matches those filters.')}</p>
