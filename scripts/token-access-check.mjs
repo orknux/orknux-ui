@@ -26,6 +26,21 @@ record(await drawn(page, "the user's page"), "the user's page opens");
 const section = page.getByTestId('access-tokens');
 await section.waitFor({ timeout: 20_000 });
 
+/* The picker reads as one: the app's chevron beside it, and as tall as the name box it sits beside. */
+const drawnAs = await section.evaluate((root) => {
+  const picker = root.querySelector('[data-testid="token-access"]');
+  const box = root.querySelector('input[aria-label="Token name"]');
+  return {
+    chevron: picker?.parentElement?.querySelector('img') !== null,
+    native: getComputedStyle(picker).appearance,
+    picker: Math.round(picker.getBoundingClientRect().height),
+    box: Math.round(box.getBoundingClientRect().height),
+  };
+});
+record(drawnAs.chevron && drawnAs.native === 'none', `the picker carries the app's chevron, not the browser's arrow (${JSON.stringify(drawnAs)})`);
+record(Math.abs(drawnAs.picker - drawnAs.box) <= 1, `and is as tall as the name box beside it (${drawnAs.picker} / ${drawnAs.box})`);
+await page.screenshot({ path: '/tmp/token-access.png', clip: await section.boundingBox() });
+
 await section.getByLabel('Token name').fill(name);
 await section.getByTestId('token-access').selectOption('read');
 await section.getByRole('button', { name: 'Generate Token' }).click();

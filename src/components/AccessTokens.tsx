@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createUserToken, deleteUserToken, fetchMyTokens, fetchUserTokens } from '../api/users';
+import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import type { UserToken } from '../api/users';
 import { timeAgo } from '../api/tools';
 import { t, tf } from '../i18n';
@@ -118,16 +119,24 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
             if (event.key === 'Enter') void mint();
           }}
         />
-        <select
-          className={styles.accessPicker}
-          value={readOnly ? 'read' : 'write'}
-          aria-label={t('What the token may do')}
-          data-testid="token-access"
-          onChange={(event) => setReadOnly(event.target.value === 'read')}
-        >
-          <option value="write">{t('Read and write')}</option>
-          <option value="read">{t('Read-only')}</option>
-        </select>
+        {/*
+          Drawn as the page's own inputs are, with the chevron every select in
+          the app carries: the browser's bare select read as a label or a
+          button, nothing saying it opened.
+        */}
+        <span className={styles.accessWrap}>
+          <select
+            className={`${inputClassName} ${styles.accessPicker}`}
+            value={readOnly ? 'read' : 'write'}
+            aria-label={t('What the token may do')}
+            data-testid="token-access"
+            onChange={(event) => setReadOnly(event.target.value === 'read')}
+          >
+            <option value="write">{t('Read and write')}</option>
+            <option value="read">{t('Read-only')}</option>
+          </select>
+          <img className={styles.accessChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+        </span>
         <button
           type="button"
           className={buttonClassName}
