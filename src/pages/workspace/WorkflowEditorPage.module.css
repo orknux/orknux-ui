@@ -1651,15 +1651,22 @@ select.input {
   display: flex;
 }
 
-/* On the label's line, as large as the room above the name box allows. */
+/*
+ * On the label's line. The bin is drawn small inside its 32px box, so the box
+ * is laid out at 20px to fit the line and the glyph drawn half as large again
+ * over it - the drawing can spill where the box cannot.
+ */
 .shapeActionCol .shapeDelete {
   padding: 0;
   margin-top: -2px;
+  overflow: visible;
 }
 
 .shapeActionCol .shapeDelete svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  transform: scale(1.5);
 }
 
 .shapeDelete {
