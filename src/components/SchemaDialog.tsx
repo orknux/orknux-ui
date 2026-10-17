@@ -220,7 +220,13 @@ export function SchemaDialog({ placement = 'modal', open, onClose, onSubmit }: S
               )}
             </div>
             <div className={`${styles.inputWrapper} ${own.schemaWrapper}`} data-testid="schema-box">
-              <CodeEditor value={schema} onChange={setSchema} language="json" ariaLabel={t('JSON Schema')} />
+              {/*
+                Only while open: the dialog is mounted for the life of the page
+                it serves, and an editor in it loads Monaco and leaves Monaco's
+                live regions - two empty role="alert" elements - on a workflow
+                editor that never opened it.
+              */}
+              {open && <CodeEditor value={schema} onChange={setSchema} language="json" ariaLabel={t('JSON Schema')} />}
             </div>
           </div>
         </div>
