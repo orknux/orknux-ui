@@ -326,6 +326,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'add-menu-arrows-check',
+    what: "the editor's Add menu is walked with the arrow keys, and Enter adds the entry under focus",
+    needs: ['workspace'],
+  },
+  {
     name: 'object-shape-panel-inline-check',
     what: "an object node's Shape panel draws an object defined inside a property as the object's page does",
     needs: ['workspace'],

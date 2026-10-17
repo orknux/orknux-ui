@@ -4550,6 +4550,26 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     return () => window.removeEventListener('keydown', onKey, true);
   });
 
+  /**
+   * The arrows walk the open menu: Down and Up move between its entries and
+   * wrap at the ends, Home and End go to them, and Down from the button itself
+   * steps onto the first entry - so a menu opened with the mouse can still be
+   * finished from the keyboard. Enter and Space are the buttons' own.
+   */
+  const addMenuKeys = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = [...(addMenu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])];
+    if (items.length === 0) return;
+    event.preventDefault();
+    const at = items.findIndex((item) => item === document.activeElement);
+    const next =
+      event.key === 'Home' ? 0
+        : event.key === 'End' ? items.length - 1
+          : event.key === 'ArrowDown' ? (at + 1) % items.length
+            : at <= 0 ? items.length - 1 : at - 1;
+    items[next]?.focus();
+  }, []);
+
   /*
    * The first kind of node, once a keystroke has opened the list.
    *
@@ -4934,7 +4954,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
             back and still spells the six out at the one moment the spelling is
             worth anything, which is while somebody is choosing between them.
           */}
-          <div className={styles.addMenu} ref={addMenu}>
+          <div className={styles.addMenu} ref={addMenu} onKeyDown={addMenuKeys}>
             <button
               type="button"
               className={adding ? `${styles.iconButton} ${styles.iconButtonOn}` : styles.iconButton}
