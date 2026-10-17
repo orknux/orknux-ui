@@ -53,9 +53,11 @@ export interface UserToken {
   name: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /** Whether it may only read: every change, through the API or MCP, is refused it. */
+  readOnly: boolean;
 }
 
-const TOKEN_FIELDS = 'id name createdAt lastUsedAt';
+const TOKEN_FIELDS = 'id name createdAt lastUsedAt readOnly';
 
 export async function fetchUsers(search?: string): Promise<AppUser[]> {
   const data = await graphql<{ users: AppUser[] }>(
@@ -206,12 +208,16 @@ export async function fetchUserTokens(id: string): Promise<UserToken[]> {
 }
 
 /** The secret comes back exactly once: whatever shows it must not lose it. */
-export async function createUserToken(name: string, id?: string): Promise<{ token: UserToken; secret: string }> {
+export async function createUserToken(
+  name: string,
+  id?: string,
+  readOnly = false,
+): Promise<{ token: UserToken; secret: string }> {
   const data = await graphql<{ createUserToken: { token: UserToken; secret: string } }>(
-    `mutation ($id: ID, $name: String!) {
-       createUserToken(id: $id, name: $name) { secret token { ${TOKEN_FIELDS} } }
+    `mutation ($id: ID, $name: String!, $readOnly: Boolean) {
+       createUserToken(id: $id, name: $name, readOnly: $readOnly) { secret token { ${TOKEN_FIELDS} } }
      }`,
-    { id: id ?? null, name },
+    { id: id ?? null, name, readOnly },
   );
   return data.createUserToken;
 }

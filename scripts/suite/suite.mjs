@@ -1749,6 +1749,12 @@ export const TESTS = [
     /* Issue #630. Makes a workflow of three object nodes and removes it. */
   },
   {
+    name: 'token-access-check',
+    what: 'an access token is made read-only from its picker, listed so, and refused a mutation while a query answers',
+    needs: ['workspace'],
+    /* Makes a token and revokes it. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],

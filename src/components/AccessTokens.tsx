@@ -28,6 +28,8 @@ export interface AccessTokensProps {
 export function AccessTokens({ userId, inputClassName, buttonClassName }: AccessTokensProps) {
   const [tokens, setTokens] = useState<UserToken[] | null>(null);
   const [name, setName] = useState('');
+  /** What the next token may do: read, or read and write. Asked here because it cannot be changed once made. */
+  const [readOnly, setReadOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Shown once, and then never again by anybody. */
@@ -54,7 +56,7 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
     setBusy(true);
     setError(null);
     try {
-      const made = await createUserToken(name.trim(), userId);
+      const made = await createUserToken(name.trim(), userId, readOnly);
       setTokens((held) => [...(held ?? []), made.token]);
       setMinted(made.secret);
       setName('');
@@ -84,6 +86,12 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
           {tokens.map((token) => (
             <div key={token.id} className={styles.token} data-testid="access-token">
               <span className={styles.name}>{token.name}</span>
+              <span
+                className={token.readOnly ? `${styles.access} ${styles.accessRead}` : styles.access}
+                data-token-access={token.readOnly ? 'read' : 'write'}
+              >
+                {token.readOnly ? t('Read-only') : t('Read and write')}
+              </span>
               <span className={styles.when}>
                 {token.lastUsedAt === null ? t('never used') : tf('used {when}', { when: timeAgo(token.lastUsedAt) })}
               </span>
@@ -110,6 +118,16 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
             if (event.key === 'Enter') void mint();
           }}
         />
+        <select
+          className={styles.accessPicker}
+          value={readOnly ? 'read' : 'write'}
+          aria-label={t('What the token may do')}
+          data-testid="token-access"
+          onChange={(event) => setReadOnly(event.target.value === 'read')}
+        >
+          <option value="write">{t('Read and write')}</option>
+          <option value="read">{t('Read-only')}</option>
+        </select>
         <button
           type="button"
           className={buttonClassName}
