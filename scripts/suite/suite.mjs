@@ -232,7 +232,7 @@ export const TESTS = [
   },
   {
     name: 'heading-alignment-check',
-    what: 'a sortable heading starts where its column's cells start',
+    what: "a sortable heading starts where its column's cells start",
     needs: [],
     /*
      * The Roles table drew NAME centred over left-aligned names: a column whose
