@@ -60,10 +60,13 @@ try {
   const href = (await link.count()) === 1 ? await link.getAttribute('href') : null;
   record(href !== null && href.endsWith(`/workspace/${WORKSPACE}/settings#transcription-model`), `and links to where the first is chosen (${href})`);
 
-  // The note can be reached: moving onto the link keeps it open, and the link goes there.
-  await link.hover();
-  await page.waitForTimeout(150);
-  record((await note.count()) === 1, 'moving onto the link keeps the note open');
+  // The note can be reached the way a hand reaches it: the pointer travels up from the button, across the gap, onto the link.
+  const from = await off.boundingBox();
+  const to = await link.boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 25 });
+  await page.waitForTimeout(400);
+  record((await note.count()) === 1, 'moving the pointer up onto the link keeps the note open');
   await link.click();
   await page.waitForURL(/\/settings/, { timeout: 10_000 }).catch(() => undefined);
   record(page.url().includes(`/workspace/${WORKSPACE}/settings#transcription-model`), `the link opens workspace settings there (${page.url()})`);

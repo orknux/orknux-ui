@@ -1101,6 +1101,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [voiceKnown, setVoiceKnown] = useState(false);
   /** Whether the "why not" note under a voice button that cannot start is open. */
   const [voiceWhy, setVoiceWhy] = useState(false);
+  const voiceWhyClosing = useRef<number | null>(null);
   /** Whether the workspace shows when each message was sent. Issue #323. */
   const [showTimestamps, setShowTimestamps] = useState(false);
   /** Whether a chat timer sounds when it ends, where its agent chose nothing: the workspace's setting. */
@@ -3975,8 +3976,14 @@ ${named}`;
               {voiceKnown && !(hears && reads) && (
                 <span
                   className={styles.voiceUnavailable}
-                  onMouseEnter={() => setVoiceWhy(true)}
-                  onMouseLeave={() => setVoiceWhy(false)}
+                  onMouseEnter={() => {
+                    if (voiceWhyClosing.current !== null) window.clearTimeout(voiceWhyClosing.current);
+                    setVoiceWhy(true);
+                  }}
+                  // A moment's grace, so a pointer that slips off the edge on its way to the link can come back.
+                  onMouseLeave={() => {
+                    voiceWhyClosing.current = window.setTimeout(() => setVoiceWhy(false), 300);
+                  }}
                   onFocus={() => setVoiceWhy(true)}
                   onBlur={(event) => {
                     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setVoiceWhy(false);

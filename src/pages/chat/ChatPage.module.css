@@ -1336,6 +1336,16 @@ button.attachmentName {
   color: var(--color-accent-brand);
 }
 
+/* The gap between the note and its button, made part of the note: the pointer crossing it on the way to the link must not count as leaving. */
+.voiceWhy::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: var(--space-8);
+  content: '';
+}
+
 .voiceButton {
   display: flex;
   flex-shrink: 0;
