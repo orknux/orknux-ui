@@ -40,6 +40,7 @@ export interface AdminReportsPageProps {
 
 const PEOPLE_PER_PAGE = 25;
 const SESSIONS_PER_PAGE = 5;
+const SESSION_PAGE_SIZES = [5, 10, 25];
 
 /**
  * Admin > Reports: tokens by the person who prompted them.
@@ -323,14 +324,16 @@ function PersonRow({ person, open, onToggle }: { person: UsagePerson; open: bool
 /** One person's sessions, a page at a time, with their share of each. */
 function PersonSessions({ person, filter }: { person: string; filter: UsageFilter }) {
   const [page, setPage] = useState(1);
+  // Five to start, as asked; the size control every pager offers lets a person see more at once.
+  const [size, setSize] = useState(SESSIONS_PER_PAGE);
   const [held, setHeld] = useState<{ total: number; items: UsageSessionShare[] } | null>(null);
   const filterKey = JSON.stringify(filter);
 
   useEffect(() => {
-    fetchUsagePersonSessions(person, JSON.parse(filterKey) as UsageFilter, page - 1, SESSIONS_PER_PAGE)
+    fetchUsagePersonSessions(person, JSON.parse(filterKey) as UsageFilter, page - 1, size)
       .then(setHeld)
       .catch(() => setHeld({ total: 0, items: [] }));
-  }, [person, filterKey, page]);
+  }, [person, filterKey, page, size]);
 
   if (held === null) return <Loader />;
   return (
@@ -378,10 +381,15 @@ function PersonSessions({ person, filter }: { person: string; filter: UsageFilte
       {held.total > SESSIONS_PER_PAGE && (
         <CompactPagination
           page={page}
-          pageSize={SESSIONS_PER_PAGE}
+          pageSize={size}
           totalItems={held.total}
           unit={t('sessions')}
           onPageChange={setPage}
+          pageSizes={SESSION_PAGE_SIZES}
+          onPageSizeChange={(next) => {
+            setSize(next);
+            setPage(1);
+          }}
         />
       )}
     </div>

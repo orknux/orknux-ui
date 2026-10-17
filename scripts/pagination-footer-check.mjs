@@ -150,6 +150,15 @@ const LISTS = [
     beneath: 'providers',
   },
   {
+    file: 'AdminReportsPage.tsx',
+    path: '/admin/reports',
+    title: 'Reports',
+    unit: 'sessions',
+    sourceOnly: true,
+    // A person's sessions, opened under their row in the report rather than a table of its own.
+    column: null,
+  },
+  {
     file: 'WorkspacePluginsPage.tsx',
     path: '/plugins',
     title: 'Plugins',

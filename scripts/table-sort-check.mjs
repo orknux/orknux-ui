@@ -300,7 +300,8 @@ for (const list of [
 
   /** The first line of the first row of that table that has anything in it. */
   const topRow = async () => {
-    const said = await section.locator('[class*="_row_"]').allInnerTexts();
+    // Not the search row above the table: since the type filters it reads "Type" first, and never reorders.
+    const said = await section.locator('[class*="_row_"]:not(:has(input)):not(:has(select))').allInnerTexts();
     const kept = said.map((one) => one.trim()).filter((one) => one !== '');
     return { first: kept[0]?.split(String.fromCharCode(10))[0] ?? '', rows: kept.length };
   };
