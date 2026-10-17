@@ -302,6 +302,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'pager-alignment-check',
+    what: 'the line under a table starts where its first heading starts',
+    needs: ['workspace'],
+    /*
+     * The pager carried a smaller side padding than the table around it, so
+     * "Showing 1-6 of 6" sat ten pixels left of NAME and of the search box.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
