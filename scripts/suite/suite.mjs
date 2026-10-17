@@ -336,6 +336,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'object-dialog-actions-check',
+    what: "the Create Object panel's three buttons each keep their words on one line",
+    needs: ['workspace'],
+  },
+  {
     name: 'object-shape-panel-inline-check',
     what: "an object node's Shape panel draws an object defined inside a property as the object's page does",
     needs: ['workspace'],

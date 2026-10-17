@@ -85,9 +85,16 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-8);
+}
+
+/* A third offer beside Cancel and Create, kept to the left of them; the row wraps before a button's words do. */
+.lead {
+  display: flex;
+  margin-right: auto;
 }
 
 /* A delete offered inside an edit form sits away from the confirming pair. */
@@ -147,6 +154,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   padding: var(--space-8) var(--space-16);
   border-radius: var(--radius-6);
   font-weight: 600;
@@ -162,7 +170,8 @@
 
 .filled {
   background: var(--color-accent-brand);
-  border: 0;
+  /* A border it does not show, so it stands as tall as the bordered Cancel beside it. */
+  border: 1px solid transparent;
 }
 
 .destructive {
