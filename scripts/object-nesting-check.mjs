@@ -72,6 +72,15 @@ try {
   await page.getByTestId('from-schema').click();
   const dialog = page.getByTestId('schema-dialog');
   await dialog.waitFor({ timeout: 5_000 });
+  // The schema box stays inside its frame and the dialog; it ran out of both once.
+  const fit = await dialog.evaluate((one) => {
+    const box = one.querySelector('#schema-object-schema');
+    const frame = box?.parentElement;
+    if (!box || !frame) return null;
+    const b = box.getBoundingClientRect(); const f = frame.getBoundingClientRect(); const d = one.getBoundingClientRect();
+    return { inFrame: b.bottom <= f.bottom + 1 && b.right <= f.right + 1, inDialog: b.bottom <= d.bottom + 1, height: Math.round(b.height) };
+  });
+  record(fit !== null && fit.inFrame && fit.inDialog && fit.height >= 200, `the schema box fits its frame and the dialog (${JSON.stringify(fit)})`);
   await dialog.locator('#schema-object-name').fill(`zzSchema${stamp}`);
   await dialog.locator('#schema-object-schema').fill(JSON.stringify({
     type: 'object',

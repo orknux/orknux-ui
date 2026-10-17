@@ -1,0 +1,32 @@
+/*
+ * The schema box: the dialog's tall wrapper is a fixed 96px, sized for a
+ * sentence, and a textarea of twelve rows inside it ran out of the bottom and
+ * over the buttons. This wrapper grows with the box, and the box grows with
+ * the schema up to half the screen, scrolling past that.
+ */
+.schemaWrapper {
+  align-items: stretch;
+  height: auto;
+  padding: var(--space-10) var(--space-12);
+}
+
+.schema {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 240px;
+  max-height: 50vh;
+  padding: 0;
+  resize: vertical;
+  background: none;
+  border: 0;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.schema::placeholder {
+  color: var(--color-text-muted);
+}

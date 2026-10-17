@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import styles from './Dialog.module.css';
+import own from './SchemaDialog.module.css';
 import { t } from '../i18n';
 
 export interface SchemaDialogProps {
@@ -96,10 +97,10 @@ export function SchemaDialog({ open, onClose, onSubmit }: SchemaDialogProps) {
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="schema-object-schema">{t('JSON Schema')}</label>
-            <div className={`${styles.inputWrapper} ${styles.inputWrapperTall}`}>
+            <div className={`${styles.inputWrapper} ${own.schemaWrapper}`}>
               <textarea
                 id="schema-object-schema"
-                className={`${styles.textarea} ${styles.inputMono}`}
+                className={own.schema}
                 rows={12}
                 spellCheck={false}
                 placeholder={'{ "type": "object", "properties": { ... } }'}
