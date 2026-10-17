@@ -73,6 +73,40 @@ if (usageReport.total === 0) {
   record(lines >= 1 && lines <= 5, `opening a person lists their sessions, five at most (${lines})`);
   const bar = await sessions.locator('[class*="barFill"]').first().boundingBox();
   record(bar !== null && bar.height > 0, 'with a share bar drawn beside each');
+
+  /* ---- search over the person, order by a column, and the whole thing as a file ---- */
+
+  const people = (await table.getByTestId('usage-person').evaluateAll((all) => all.map((one) => one.getAttribute('data-person'))));
+  const firstName = (await table.getByTestId('usage-person').first().locator('[class*="personName"]').textContent())?.trim() ?? '';
+  await page.getByRole('searchbox', { name: 'Search people' }).fill(firstName);
+  await page.waitForFunction((name) => {
+    const rows = [...document.querySelectorAll('[data-testid="usage-person"]')];
+    return rows.length >= 1 && rows.every((row) => row.textContent?.includes(name));
+  }, firstName, { timeout: 10_000 });
+  const narrowed = await table.getByTestId('usage-person').count();
+  record(narrowed >= 1 && narrowed <= people.length, `typing a name keeps that person (${narrowed} of ${people.length})`);
+  await page.getByRole('searchbox', { name: 'Search people' }).fill('');
+  await page.waitForFunction((count) => document.querySelectorAll('[data-testid="usage-person"]').length === count, people.length);
+
+  await table.getByRole('button', { name: 'Person' }).click();
+  await page.waitForTimeout(500);
+  const byName = await table.getByTestId('usage-person').locator('[class*="personName"]').allInnerTexts();
+  const sorted = [...byName].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  record(JSON.stringify(byName) === JSON.stringify(sorted) || byName.length < 2, `pressing Person puts the rows by name (${byName.join(' < ')})`);
+  // Back to the usual order, so the next run starts where this one did.
+  await table.getByRole('button', { name: 'Input' }).click();
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { localStorage.removeItem('orknux.usage-report.sort-order'); localStorage.removeItem('orknux.usage-report.sort-ascending'); });
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 15_000 }),
+    page.getByTestId('usage-export').click(),
+  ]);
+  const saved = await download.path();
+  const text = saved === null ? '' : (await import('node:fs')).readFileSync(saved, 'utf8');
+  const csvLines = text.trim().split('\n');
+  record(csvLines[0]?.startsWith("person,source,id,") === true, `the export is CSV with a header (${csvLines[0]?.slice(0, 40)})`);
+  record(csvLines.length - 1 === usageReport.total, `and a line per person (${csvLines.length - 1} of ${usageReport.total})`);
 }
 
 await finish(browser);

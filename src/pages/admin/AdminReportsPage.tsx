@@ -9,8 +9,9 @@ import {
   fetchUsageTracking,
   setUsageTracking,
   shortTokens,
+  usageReportCsv,
 } from '../../api/usage';
-import type { PromptSource, UsageFilter, UsagePerson, UsageReport, UsageSessionShare, UsageTracking } from '../../api/usage';
+import type { PromptSource, UsageFilter, UsageOrder, UsagePerson, UsageReport, UsageSessionShare, UsageTracking } from '../../api/usage';
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
@@ -19,10 +20,14 @@ import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { Pagination } from '../../components/Pagination';
+import { SearchBox } from '../../components/SearchBox';
+import { useTableSort } from '../../components/tableSort';
+import { useSearch } from '../../components/useSearch';
 import { t, tf } from '../../i18n';
 import { shellUser } from '../../session/user';
 import { zoned } from '../../session/timeZone';
@@ -50,6 +55,13 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
   const [days, setDays] = useState(30);
   const [workspaceId, setWorkspaceId] = useState('');
   const [source, setSource] = useState<PromptSource | ''>('');
+  /** Over the person alone: who they are, not what they used. */
+  const [typed, setTyped, searching] = useSearch();
+  /* Tokens, biggest first, until a heading is pressed; the counts start biggest-first too. */
+  const [order, ascending, sortBy] = useTableSort<UsageOrder>('usage-report', 'TOKENS', false, [
+    'TOKENS', 'SESSIONS', 'INPUT', 'CACHED', 'OUTPUT', 'COST', 'LAST_ACTIVE',
+  ]);
+  const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [report, setReport] = useState<UsageReport | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -70,26 +82,46 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
     to: dayOf(new Date()),
     workspaceId: workspaceId || undefined,
     source: source || undefined,
+    search: searching.trim() || undefined,
   };
   const filterKey = JSON.stringify(filter);
 
   useEffect(() => {
     setPage(1);
     setOpen(null);
-  }, [days, workspaceId, source]);
+  }, [days, workspaceId, source, searching, order, ascending]);
 
   const load = useCallback(() => {
     setLoading(true);
-    fetchUsageReport(JSON.parse(filterKey) as UsageFilter, page - 1, PEOPLE_PER_PAGE)
+    fetchUsageReport(JSON.parse(filterKey) as UsageFilter, page - 1, PEOPLE_PER_PAGE, order, ascending)
       .then((held) => {
         setReport(held);
         setError(null);
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the report.')))
       .finally(() => setLoading(false));
-  }, [filterKey, page]);
+  }, [filterKey, page, order, ascending]);
 
   useEffect(load, [load]);
+
+  /** The report as the table shows it - every page, in this order - saved as a file. */
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      const csv = await usageReportCsv(filter, order, ascending);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      link.download = `usage-${filter.from ?? ''}-${filter.to ?? ''}.csv`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : t('Could not export the report.'));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function flip() {
     if (tracking === null) return;
@@ -161,7 +193,14 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
               <option value="ORKNUX">Orknux</option>
               <option value="NONE">{t('Unattributed')}</option>
             </Picker>
+            <button type="button" className={styles.export} onClick={() => void exportCsv()} disabled={exporting || report === null || report.total === 0} data-testid="usage-export">
+              {exporting ? t('Exporting…') : t('Export CSV')}
+            </button>
           </div>
+        </div>
+
+        <div className={styles.searchRow}>
+          <SearchBox value={typed} onChange={setTyped} placeholder={t('Search people...')} label={t('Search people')} />
         </div>
 
         {report !== null && (
@@ -192,14 +231,27 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
             <table className={styles.table} data-testid="usage-table">
               <thead>
                 <tr>
-                  <th>{t('Person')}</th>
-                  <th>{t('Source')}</th>
-                  <th className={styles.number}>{t('Sessions')}</th>
-                  <th className={styles.number}>{t('Input')}</th>
-                  <th className={styles.number}>{t('Cached')}</th>
-                  <th className={styles.number}>{t('Output')}</th>
-                  <th className={styles.number}>{t('Cost')}</th>
-                  <th className={styles.number}>{t('Last active')}</th>
+                  {([
+                    ['NAME', t('Person'), false],
+                    ['SOURCE', t('Source'), false],
+                    ['SESSIONS', t('Sessions'), true],
+                    ['INPUT', t('Input'), true],
+                    ['CACHED', t('Cached'), true],
+                    ['OUTPUT', t('Output'), true],
+                    ['COST', t('Cost'), true],
+                    ['LAST_ACTIVE', t('Last active'), true],
+                  ] as const).map(([column, label, numeric]) => (
+                    <th key={column} className={numeric ? styles.number : undefined}>
+                      <ColumnHeader
+                        label={label}
+                        order={column}
+                        current={order}
+                        ascending={ascending}
+                        onSort={sortBy}
+                        className={numeric ? styles.headRight : styles.headLeft}
+                      />
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>

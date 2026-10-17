@@ -366,3 +366,40 @@
 .sessionTable a:hover {
   text-decoration: underline;
 }
+
+/* ---- Search, between the heading row and the totals ---- */
+
+.searchRow {
+  display: flex;
+  width: 100%;
+}
+
+.export {
+  align-self: flex-end;
+  padding: var(--space-8) var(--space-12);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.export:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.export:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+/* A pressable heading keeps its column's side: names start left, numbers end right. */
+.headLeft {
+  justify-content: flex-start;
+}
+
+.headRight {
+  justify-content: flex-end;
+}
