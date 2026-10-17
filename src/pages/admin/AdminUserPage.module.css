@@ -217,3 +217,11 @@
   font-size: var(--text-sm);
   color: var(--color-accent-brand);
 }
+
+/* Beside the Save button, once a save has landed and until the next edit. */
+.savedInline {
+  align-self: center;
+  margin-right: var(--space-12);
+  font-size: var(--text-md);
+  color: var(--color-accent-brand);
+}

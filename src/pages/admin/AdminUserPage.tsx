@@ -73,6 +73,8 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /** The last save landed and nothing has changed since; the note beside the button. */
+  const [saved, setSaved] = useState(false);
   /** Whether they can sign in at all, which is not the same as existing. */
   const [hasPassword, setHasPassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -110,6 +112,9 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
     };
   }, [creating, userId]);
 
+  // Edited again, the note goes, so it never claims a change that has not been saved.
+  useEffect(() => setSaved(false), [displayName, chosen]);
+
   async function save() {
     if (saving) return;
     setSaving(true);
@@ -132,7 +137,9 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
           displayName: external ? undefined : displayName.trim() || undefined,
           roleIds: [...chosen],
         });
-        navigate('/admin/users');
+        // The page stays: a second change - a role after a name - is made from
+        // here, not from the row found again in the list.
+        setSaved(true);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the user.'));
@@ -223,6 +230,7 @@ export function AdminUserPage({ session, onSignOut }: AdminUserPageProps) {
               name and username are the provider's, and the address has its own
               button beside it.
             */}
+            {saved && error === null && <span className={styles.savedInline}>{t('Saved.')}</span>}
             <button
               type="button"
               className={styles.save}

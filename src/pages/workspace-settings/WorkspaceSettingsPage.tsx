@@ -222,8 +222,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               */}
               <div className={styles.field}>
                 <span className={styles.labelWithHint}>
-                  <span className={styles.label}>{t('Roles')}</span>
-                  <FieldHint label={t('Roles')}>
+                  <span className={styles.label}>{t('Allowed roles')}</span>
+                  <FieldHint label={t('Allowed roles')}>
                     {t('Whoever holds one of these can see the workspace. None assigned keeps it administrators-only. Administers adds this workspace’s settings, its issue observers and moving an issue in or out — here only, and nothing installation-wide.')}
                   </FieldHint>
                 </span>

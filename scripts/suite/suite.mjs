@@ -321,6 +321,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'user-save-stays-check',
+    what: "saving a user keeps the page open and says Saved, until the next edit",
+    needs: [],
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
