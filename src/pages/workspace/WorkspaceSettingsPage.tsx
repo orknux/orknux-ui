@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 
@@ -55,6 +55,9 @@ import { Loader } from '../../components/Loader';
 import { CHUNKING_DEFAULT } from '../../components/readAloud';
 import type { SpeechChunking } from '../../components/readAloud';
 import { VOICE_TURN_TAKING_DEFAULTS } from '../../components/VoiceMode';
+import { SectionMenu } from '../../components/SectionMenu';
+import menuStyles from '../../components/SectionMenu.module.css';
+import { WorkspaceMembers } from '../../components/WorkspaceMembers';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
@@ -923,6 +926,33 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     return null;
   }
 
+  /*
+   * Somebody who works here but does not administer it: the page says so and
+   * offers nothing, rather than a page of switches the server refuses one at
+   * a time. The sidebar leaves Settings out for them; this is for the address
+   * typed or kept.
+   */
+  if (workspace !== null && workspace.administered !== true) {
+    return (
+      <AppShell
+        user={shellUser(session)}
+        workspacePath={`/workspace/${workspaceId}`}
+        showAdmin={session.admin}
+        onSignOut={onSignOut}
+        sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
+      >
+        <section className={styles.card} data-testid="settings-refused">
+          <h1 className={styles.sectionHeading}>{t("Only this workspace's admins can open its settings")}</h1>
+          <p className={styles.error} role="alert">
+            {t('Ask one of them, or an installation admin, to make you a workspace admin.')}
+          </p>
+        </section>
+      </AppShell>
+    );
+  }
+
+  const sectionsRef = useRef<HTMLDivElement>(null);
+
   return (
     <AppShell
       user={shellUser(session)}
@@ -931,6 +961,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      <div className={menuStyles.withMenu}>
+      <SectionMenu within={sectionsRef} />
+      <div className={menuStyles.sections} ref={sectionsRef}>
       {/*
         The save in the header, where every other editor's is since #386: this
         page is long, and a button at the foot of it is one somebody scrolls
@@ -998,7 +1031,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         >
           <div className={styles.sectionTitle}>
             <span className={styles.labelWithHint}>
-              <h2 className={styles.sectionHeading}>{t('General')}</h2>
+              <h2 id="general" className={styles.sectionHeading}>{t('General')}</h2>
               {/*
                 Against the card rather than against a field: it is about what
                 this card does not decide, which is not a footnote to the name
@@ -1054,7 +1087,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         <section className={styles.card}>
           <div className={styles.sectionTitle}>
             <span className={styles.labelWithHint}>
-              <h2 className={styles.sectionHeading}>{t('Issues')}</h2>
+              <h2 id="issues" className={styles.sectionHeading}>{t('Issues')}</h2>
               <FieldHint label={t('Issues')}>
                 {t('A type is what an issue is - one of these, or none. Labels are what a workspace says about an issue and stay free text, as many at once as it likes. Renaming a type carries every issue on it; deleting one is refused while any issue still carries it, and the refusal says how many.')}
               </FieldHint>
@@ -1378,9 +1411,11 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         was saying so once per agent, again on every agent made afterwards, and
         could read the decision back only by opening every one of them.
       */}
+      {workspace?.administered === true && <WorkspaceMembers workspaceId={workspaceId} />}
+
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
-          <h2 className={styles.sectionHeading}>{t('Agents')}</h2>
+          <h2 id="agents" className={styles.sectionHeading}>{t('Agents')}</h2>
           <div className={styles.rule} />
         </div>
 
@@ -1798,7 +1833,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             it actually said, that a function's own timeout wins, is a fact
             about the box rather than about the card it sits on.
           */}
-          <h2 className={styles.sectionHeading}>{t('Functions')}</h2>
+          <h2 id="functions" className={styles.sectionHeading}>{t('Functions')}</h2>
           <div className={styles.rule} />
         </div>
 
@@ -1842,7 +1877,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       {hasChat && (
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
-          <h2 className={styles.sectionHeading}>{t('Chat')}</h2>
+          <h2 id="chat" className={styles.sectionHeading}>{t('Chat')}</h2>
           <div className={styles.rule} />
         </div>
 
@@ -2098,7 +2133,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
           <span className={styles.labelWithHint}>
-            <h2 className={styles.sectionHeading}>{t('Voice')}</h2>
+            <h2 id="voice" className={styles.sectionHeading}>{t('Voice')}</h2>
             {/*
               Against the card rather than a field: what an empty box means is
               true of all three and a footnote to none of them.
@@ -2330,7 +2365,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
           <span className={styles.labelWithHint}>
-            <h2 className={styles.sectionHeading}>{t('Chat Compaction')}</h2>
+            <h2 id="chat-compaction" className={styles.sectionHeading}>{t('Chat Compaction')}</h2>
             <FieldHint label={t('Chat Compaction')}>
               {t('A conversation that grows past its model’s window stops working, and the failure names a limit rather than what to do about it. Above the threshold here, everything but the last few turns is replaced by one summary of itself and the chat carries on. Those messages are gone — a copy kept beside them would be the same conversation with something added, which is the opposite of compacting. Leave the threshold empty and nothing here happens, which is where every workspace starts.')}
             </FieldHint>
@@ -2448,7 +2483,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       */}
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
-          <h2 className={styles.sectionHeading}>{t('Quick Chat')}</h2>
+          <h2 id="quick-chat" className={styles.sectionHeading}>{t('Quick Chat')}</h2>
           <div className={styles.rule} />
         </div>
 
@@ -2515,6 +2550,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         </div>
       </section>
 
+      </div>
+      </div>
     </AppShell>
   );
 }

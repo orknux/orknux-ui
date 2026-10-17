@@ -872,3 +872,41 @@ export async function fetchAuditUsers(): Promise<string[]> {
   const data = await graphql<{ auditUsers: string[] }>(AUDIT_USERS_QUERY, {});
   return data.auditUsers;
 }
+
+/** What somebody may do in one workspace: work in it, or also change its settings. */
+export type WorkspaceMemberRole = 'USER' | 'ADMIN';
+
+export interface WorkspaceMember {
+  username: string;
+  displayName: string;
+  userType: string;
+  /** The roles that open this workspace for them, by name. */
+  through: string[];
+  role: WorkspaceMemberRole;
+  /** An installation administrator: administers everywhere, and is not changed here. */
+  fixed: boolean;
+}
+
+const MEMBER_FIELDS = 'username displayName userType through role fixed';
+
+export async function fetchWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+  const data = await graphql<{ workspaceMembers: WorkspaceMember[] }>(
+    `query WorkspaceMembers($workspaceId: ID!) { workspaceMembers(workspaceId: $workspaceId) { ${MEMBER_FIELDS} } }`,
+    { workspaceId },
+  );
+  return data.workspaceMembers;
+}
+
+export async function setWorkspaceMemberRole(
+  workspaceId: string,
+  username: string,
+  role: WorkspaceMemberRole,
+): Promise<WorkspaceMember> {
+  const data = await graphql<{ setWorkspaceMemberRole: WorkspaceMember }>(
+    `mutation SetWorkspaceMemberRole($workspaceId: ID!, $username: String!, $role: WorkspaceRole!) {
+       setWorkspaceMemberRole(workspaceId: $workspaceId, username: $username, role: $role) { ${MEMBER_FIELDS} }
+     }`,
+    { workspaceId, username, role },
+  );
+  return data.setWorkspaceMemberRole;
+}

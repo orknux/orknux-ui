@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   fetchInstallationSettings,
@@ -84,6 +84,8 @@ import type { SessionUser } from '../../api/session';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { SectionMenu } from '../../components/SectionMenu';
+import menuStyles from '../../components/SectionMenu.module.css';
 import { AppShell } from '../../components/AppShell';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
@@ -564,13 +566,18 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
     }
   }
 
+  const sectionsRef = useRef<HTMLElement>(null);
+
   return (
     <AppShell
       user={shellUser(session)}
       onSignOut={onSignOut}
       sidebar={<AdminSidebar active="settings" />}
     >
-      <section className={styles.card}>
+      {/* The sections down the side, read off the headings below: eighteen of them, and the menu is how one is found. */}
+      <div className={menuStyles.withMenu}>
+      <SectionMenu within={sectionsRef} />
+      <section className={styles.card} ref={sectionsRef}>
         <header className={styles.header}>
           <div className={styles.titleBlock}>
             <h1 className={styles.title}>{t('Settings')}</h1>
@@ -2732,6 +2739,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
           </>
         )}
       </section>
+      </div>
     </AppShell>
   );
 }

@@ -373,6 +373,9 @@ const PL: Record<string, string> = {
   WorkspaceAdminRequired:
     'Ta czynność wymaga roli administrującej przestrzenią {name}. Móc widzieć przestrzeń roboczą ' +
     'to nie to samo co ją prowadzić, a rola administrująca inną przestrzenią nie administruje tą.',
+  WorkspaceMemberUnknown:
+    '{username} nie należy do tej przestrzeni roboczej. Członkostwo wynika z ról, w Admin > Role.',
+  WorkspaceMemberFixed: '{username} jest administratorem instalacji i administruje każdą przestrzenią roboczą.',
   WorkspaceAdminRoleNotAssigned:
     '{names} nie mogą administrować tą przestrzenią roboczą, nie będąc do niej przypisani. ' +
     'Dodaj je do ról, które ją otwierają, a potem oznacz jako administrujące.',

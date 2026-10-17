@@ -263,6 +263,26 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-members-check',
+    what: "workspace settings list the members, and a member is made a workspace admin from a picker and put back",
+    needs: ['workspace'],
+    /*
+     * Driven as an installation administrator, listed fixed. The server is
+     * asked after each change whether it agrees; the picker's colour is not
+     * evidence of a save.
+     */
+  },
+  {
+    name: 'settings-menu-check',
+    what: 'the two long settings pages have their sections down the side, read off their own headings',
+    needs: ['workspace'],
+    /*
+     * One entry per h2[id], in order; pressing one brings its heading to the
+     * top of the frame; the entry for the section under the reader's eye is
+     * marked current.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],

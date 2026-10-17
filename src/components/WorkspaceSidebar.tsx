@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import type { Workspace } from '../api/workspaces';
@@ -42,6 +42,8 @@ export function WorkspaceSidebar({ workspaceId, onWorkspacesLoaded }: WorkspaceS
   // here from the admin side.
   useEffect(() => rememberWorkspace(workspaceId), [workspaceId]);
 
+  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
+
   useEffect(() => {
     const known = cachedWorkspaces();
     // The page waits on this for the workspace's name, so a cached list has to
@@ -49,7 +51,10 @@ export function WorkspaceSidebar({ workspaceId, onWorkspacesLoaded }: WorkspaceS
     if (known !== null) onWorkspacesLoaded?.(known);
 
     loadWorkspaces(WORKSPACE_LIST_SIZE)
-      .then((list) => onWorkspacesLoaded?.(list))
+      .then((list) => {
+        setWorkspaces(list);
+        onWorkspacesLoaded?.(list);
+      })
       // A failed revalidation leaves the page with whatever the cache had, which
       // is almost certainly still right.
       .catch(() => undefined);
@@ -63,7 +68,15 @@ export function WorkspaceSidebar({ workspaceId, onWorkspacesLoaded }: WorkspaceS
     either page saying so.
   */
   const here = sectionAt(pathname);
-  const links = sectionLinks(here?.goTo.where ?? FALLBACK, `/workspace/${workspaceId}`);
+  /*
+   * Settings is offered only to somebody who administers this workspace. Read
+   * off the cached list rather than asked for, so the menu does not flicker;
+   * until the list is known the link is left out, since a link that leads to a
+   * refusal is worse than one that arrives a moment later.
+   */
+  const administered = (workspaces ?? cachedWorkspaces())?.find((one) => one.id === workspaceId)?.administered === true;
+  const links = sectionLinks(here?.goTo.where ?? FALLBACK, `/workspace/${workspaceId}`)
+    .filter((link) => link.access !== 'workspace-admin' || administered);
 
   return (
     <>

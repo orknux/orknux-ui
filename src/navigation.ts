@@ -40,7 +40,8 @@ import { t } from './i18n';
  * `admin` sends everyone else to their own home rather than to the login screen:
  * they are signed in, they simply may not have this.
  */
-export type Access = 'signed-in' | 'admin';
+/** `workspace-admin`: anybody signed in may reach it, and the page itself refuses those who do not administer the workspace. */
+export type Access = 'signed-in' | 'admin' | 'workspace-admin';
 
 /**
  * Which part of the product a page belongs to.
@@ -403,7 +404,7 @@ export const PAGES = [
   },
   {
     path: '/workspace/:workspaceId/settings',
-    access: 'signed-in',
+    access: 'workspace-admin',
     goTo: { label: t('Settings'), where: 'Workspace', icon: settingsIcon },
   },
 
@@ -814,6 +815,7 @@ export function whereAt(pathname: string): Where | undefined {
 export interface SectionLink {
   label: string;
   icon: string;
+  access: Access;
   /** With `:workspaceId` filled in — somewhere to actually go. */
   to: string;
   /** The pattern it was made from, so the current page can be recognised. */
@@ -836,6 +838,7 @@ export function sectionLinks(where: Where, workspacePath: string): SectionLink[]
           {
             label: page.goTo.label,
             icon: page.goTo.icon,
+            access: page.access,
             to: page.path.replace('/workspace/:workspaceId', workspacePath),
             path: page.path,
           },

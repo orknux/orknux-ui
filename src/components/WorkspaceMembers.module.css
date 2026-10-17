@@ -1,0 +1,133 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  padding: var(--space-20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.heading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.title {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+}
+
+.tableBox {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  letter-spacing: 0.55px;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-10) var(--space-12);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.table tbody tr:first-child td {
+  border-top: 0;
+}
+
+.roleHead {
+  width: 220px;
+}
+
+.person {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.detail,
+.through {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.fixed {
+  display: inline-block;
+  padding: 2px var(--space-10);
+  border: 1px solid var(--color-warning);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+  white-space: nowrap;
+}
+
+.pickerBox {
+  position: relative;
+  display: inline-flex;
+  width: 200px;
+}
+
+.picker {
+  width: 100%;
+  padding: var(--space-8) var(--space-32) var(--space-8) var(--space-10);
+  appearance: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.picker:focus {
+  border-color: var(--color-accent-brand);
+  outline: none;
+}
+
+.pickerAdmin {
+  border-color: var(--color-accent-brand);
+  color: var(--color-accent-brand);
+}
+
+.chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-10);
+  margin-top: -6px;
+  pointer-events: none;
+}
