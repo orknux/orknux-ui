@@ -4980,6 +4980,17 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
             back and still spells the six out at the one moment the spelling is
             worth anything, which is while somebody is choosing between them.
           */}
+          {/* First, and a mode rather than an act: lit while it is on, and a drag on empty canvas selects instead of panning. */}
+          <ToolButton
+            label={t('Rectangle select')}
+            shortcut={selectKey}
+            note={marquee ? t('On: a drag on the canvas selects what it touches; the middle button pans.') : t('Off: a drag on the canvas pans. Shift-drag selects at any time.')}
+            className={marquee ? styles.iconButtonOn : undefined}
+            pressed={marquee}
+            onClick={() => setMarquee((on) => !on)}
+          >
+            <img src={marqueeIcon} alt="" width={16} height={16} />
+          </ToolButton>
           <div className={styles.addMenu} ref={addMenu} onKeyDown={addMenuKeys}>
             <button
               type="button"
@@ -5093,17 +5104,6 @@ Change the keystroke in Preferences.`}
           </ToolButton>
           <ToolButton label={t('Redo')} shortcut={redoKey} onClick={() => redo()} disabled={steps.forward === 0}>
             <img src={redoIcon} alt="" width={16} height={16} />
-          </ToolButton>
-          {/* A mode rather than an act: lit while it is on, and a drag on empty canvas selects instead of panning. */}
-          <ToolButton
-            label={t('Rectangle select')}
-            shortcut={selectKey}
-            note={marquee ? t('On: a drag on the canvas selects what it touches; the middle button pans.') : t('Off: a drag on the canvas pans. Shift-drag selects at any time.')}
-            className={marquee ? styles.iconButtonOn : undefined}
-            pressed={marquee}
-            onClick={() => setMarquee((on) => !on)}
-          >
-            <img src={marqueeIcon} alt="" width={16} height={16} />
           </ToolButton>
           {/*
             The one that keeps its word.

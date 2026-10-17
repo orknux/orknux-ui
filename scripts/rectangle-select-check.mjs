@@ -1,7 +1,7 @@
 /**
  * Rectangle select on the workflow canvas.
  *
- * A button on the toolbar, beside Redo, switches a drag on empty canvas
+ * A button on the toolbar, left of Add, switches a drag on empty canvas
  * between panning and drawing a selection rectangle; its keystroke (S unless
  * rebound) does the same, and Preferences has the row to rebind it. With the
  * mode on, a rectangle drawn over two of three nodes selects those two.
@@ -36,12 +36,12 @@ try {
   await page.locator('.react-flow__node').nth(2).waitFor({ timeout: 20_000 });
   await page.waitForTimeout(1000);
 
-  // The button is on the toolbar, right after Redo, off by default.
-  const redo = await page.getByRole('button', { name: /^Redo/ }).boundingBox();
+  // The button is on the toolbar, right before Add, off by default.
+  const add = await page.getByRole('button', { name: /^Add node/ }).boundingBox();
   const button = await toggle().boundingBox();
   record(
-    redo !== null && button !== null && Math.abs(button.y - redo.y) < 2 && button.x > redo.x && button.x - (redo.x + redo.width) < 16,
-    `the switch is on the toolbar beside Redo (${button && redo ? `${Math.round(button.x - (redo.x + redo.width))}px after it` : 'missing'})`,
+    add !== null && button !== null && Math.abs(button.y - add.y) < 2 && button.x < add.x && add.x - (button.x + button.width) < 16,
+    `the switch is on the toolbar before Add (${button && add ? `${Math.round(add.x - (button.x + button.width))}px before it` : 'missing'})`,
   );
   record(!(await pressed()), 'it starts off');
 
