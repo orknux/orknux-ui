@@ -1631,8 +1631,14 @@ select.input {
   gap: var(--space-6);
 }
 
+/* Boxed like every other field in the row; it read as a word beside its label. */
 .shapeNameCol > input {
   flex: 1 0 0;
+  min-width: 0;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
 }
 
 .shapeActionCol {
