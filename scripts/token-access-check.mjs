@@ -64,12 +64,13 @@ const sizes = await row.evaluate((one) => {
   return {
     name: px(one.querySelector('[class*="_name_"]')),
     access: px(one.querySelector('[data-token-access]')),
-    when: px(parts.find((el) => /used/.test(el.textContent ?? '')) ?? null),
+    when: px(parts.find((el) => /never used|ago/.test(el.textContent ?? '')) ?? null),
     revoke: px(one.querySelector('button')),
   };
 });
 // Drawn as a user's roles are: the name at 13px, what is known of it at 12px beside it.
-record((await row.locator('[data-token-marker]').count()) === 1, 'each token is marked as a list item');
+const headers = (await section.locator('th').allInnerTexts()).map((one) => one.trim().toLowerCase());
+record(['name', 'access', 'created', 'last used'].every((one) => headers.includes(one)), `the tokens are a table with its columns named (${headers.join(', ')})`);
 record(sizes.name === 13 && sizes.when === 12 && sizes.access >= 12 && sizes.revoke === 13, `the row reads as a role does - name 13px, details 12px (${JSON.stringify(sizes)})`);
 
 /* A saved token is a list row, not something to type into: it does not wear the input's box. */

@@ -85,28 +85,43 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
         <p className={styles.note}>{t('No tokens yet.')}</p>
       ) : (
         <div className={styles.list}>
-          {tokens.map((token) => (
-            <div key={token.id} className={styles.token} data-testid="access-token">
-              {/* A bullet per line, so the tokens read as a list. */}
-              <span className={styles.marker} aria-hidden="true" data-token-marker="" />
-              <span className={styles.name}>{token.name}</span>
-              <span
-                className={token.readOnly ? `${styles.access} ${styles.accessRead}` : styles.access}
-                data-token-access={token.readOnly ? 'read' : 'write'}
-              >
-                {token.readOnly ? t('Read-only') : t('Read and write')}
-              </span>
-              <span className={styles.when}>
-                {token.lastUsedAt === null ? t('never used') : tf('used {when}', { when: timeAgo(token.lastUsedAt) })}
-              </span>
-              <button
-                type="button"
-                className={styles.textButton}
-                aria-label={tf('Revoke {name}', { name: token.name })}
-                onClick={() => void revoke(token)}
-              >{t('Revoke')}</button>
-            </div>
-          ))}
+          {/* A table: what each token is called, what it may do, and when it was made and last used. */}
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{t('Name')}</th>
+                <th>{t('Access')}</th>
+                <th>{t('Created')}</th>
+                <th>{t('Last used')}</th>
+                <th aria-label={t('Actions')} />
+              </tr>
+            </thead>
+            <tbody>
+              {tokens.map((token) => (
+                <tr key={token.id} data-testid="access-token">
+                  <td className={styles.name}>{token.name}</td>
+                  <td>
+                    <span
+                      className={token.readOnly ? `${styles.access} ${styles.accessRead}` : styles.access}
+                      data-token-access={token.readOnly ? 'read' : 'write'}
+                    >
+                      {token.readOnly ? t('Read-only') : t('Read and write')}
+                    </span>
+                  </td>
+                  <td className={styles.when}>{timeAgo(token.createdAt)}</td>
+                  <td className={styles.when}>{token.lastUsedAt === null ? t('never used') : timeAgo(token.lastUsedAt)}</td>
+                  <td className={styles.revoke}>
+                    <button
+                      type="button"
+                      className={styles.textButton}
+                      aria-label={tf('Revoke {name}', { name: token.name })}
+                      onClick={() => void revoke(token)}
+                    >{t('Revoke')}</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

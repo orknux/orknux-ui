@@ -12,32 +12,46 @@
 
 /* The issued tokens, grouped so the list reads apart from the create row below. */
 /*
- * The tokens as one group, drawn as a user's roles are: a bordered box holding
- * a line per token, the name in bold and what is known of it muted beside it.
- * Each token used to sit in a box of its own with the input's background and
+ * The tokens as a table in a bordered box, as a user's roles are boxed above
+ * them. Each token used to sit in a box with the input's own background and
  * border, so the saved ones read as fields to type into beside the one that is.
  */
 .list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding: var(--space-12);
+  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-6);
 }
 
-.token {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
+.table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.marker {
-  flex: none;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
+.table th {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  letter-spacing: 0.55px;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-8) var(--space-12);
+  border-top: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tbody tr:first-child td {
+  border-top: 0;
+}
+
+.revoke {
+  text-align: right;
 }
 
 /* Room between the list and the box that makes the next one, so the two read as separate things. */
@@ -46,7 +60,6 @@
 }
 
 .name {
-  min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 600;
   font-size: var(--text-md);
@@ -56,6 +69,7 @@
 .when {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 /* What a token may do, beside its name: read-only stands out, read and write is the ordinary case. */
@@ -95,7 +109,6 @@
 }
 
 .textButton {
-  margin-left: auto;
   padding: 0;
   background: none;
   border: 0;
