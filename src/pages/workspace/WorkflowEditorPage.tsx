@@ -478,7 +478,7 @@ const PANEL_SHAPE_STYLES: ObjectFormStyles = {
   actionCol: styles.shapeActionCol,
   delete: styles.shapeDelete,
   descriptionRow: styles.shapeField,
-  description: styles.input,
+  description: `${styles.input} ${styles.shapeDescription}`,
   footer: styles.shapeFooter,
   add: styles.parameterSync,
   nested: styles.shapeNested,

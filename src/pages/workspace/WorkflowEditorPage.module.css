@@ -1606,7 +1606,7 @@ select.input {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-6);
   padding: var(--space-8);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -1633,8 +1633,9 @@ select.input {
   gap: var(--space-4);
 }
 
-/* Boxed like every other field in the row; it read as a word beside its label. */
-.shapeNameCol > input {
+/* Boxed like every other field in the row; it read as a word beside its label. The description the same. */
+.shapeNameCol > input,
+.shapeDescription {
   flex: 1 0 0;
   min-width: 0;
   padding: var(--space-6) var(--space-8);

@@ -77,6 +77,18 @@ try {
     return { aboveBox: r.bottom <= b.top + 1, rightEdge: Math.round(c.right - r.right) };
   });
   record(corner !== null && corner.aboveBox && corner.rightEdge >= 0 && corner.rightEdge <= 16, `the remove is in the card's top corner (${JSON.stringify(corner)})`);
+  // The description is boxed like the name, and stands as far below Values as Values stands below Type.
+  const spaced = await page.evaluate(() => {
+    const card = document.getElementById('node-shape-name-1')?.closest('div[class*="shapeRow"]');
+    const description = document.getElementById('node-shape-description-1');
+    if (!card || !description) return null;
+    const values = document.getElementById('node-shape-values-1');
+    const desc = card.querySelector('label[for="node-shape-description-1"]');
+    const below = (label) => { const prev = label.parentElement?.previousElementSibling; return prev ? Math.round(label.getBoundingClientRect().top - prev.getBoundingClientRect().bottom) : null; };
+    if (!values || !desc) return null;
+    return { border: getComputedStyle(description).borderTopWidth, aboveValues: below(values), aboveDescription: below(desc) };
+  });
+  record(spaced !== null && spaced.border === '1px' && spaced.aboveValues !== null && spaced.aboveDescription === spaced.aboveValues, `the description is boxed and spaced like the fields above it (${JSON.stringify(spaced)})`);
   const picked = (await page.locator('#node-shape-type-1').textContent())?.trim() ?? '';
   record(picked === 'object', `the row that is an object defined in place says so (${picked})`);
   const nested = page.locator('#node-shape-1-name-0');
