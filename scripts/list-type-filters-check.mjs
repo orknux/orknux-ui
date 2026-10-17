@@ -15,13 +15,13 @@ const { browser, page } = await open({ viewport: { width: 1600, height: 1000 } }
 /** Choose each value of a sieve in turn and count the rows that remain, by a data attribute naming the row's type. */
 async function sieve(where, filterId, rowAttribute) {
   const filter = page.getByTestId(filterId);
-  if ((await filter.count()) === 0) {
-    console.log(`${where}: one type only, so no sieve - nothing to narrow`);
-    return;
-  }
+  const rows = await page.locator(`[${rowAttribute}]`).count();
+  // Drawn whenever the list has a row, a single type included: a filter that comes and goes with the data reads as missing.
+  record(rows === 0 || (await filter.count()) === 1, `${where}: the sieve is drawn (${rows} row(s))`);
+  if ((await filter.count()) === 0) return;
   const select = filter.locator('select');
   const values = (await select.locator('option').evaluateAll((all) => all.map((one) => one.value))).filter((one) => one !== '');
-  record(values.length >= 2, `${where}: the sieve offers the types the list has (${values.join(', ')})`);
+  record(values.length >= 1, `${where}: the sieve offers the types the list has (${values.join(', ')})`);
   for (const value of values) {
     await select.selectOption(value);
     await page.waitForTimeout(150);

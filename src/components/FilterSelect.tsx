@@ -24,11 +24,11 @@ export interface FilterSelectProps {
  *
  * Drawn as the audit log's filters are - the label muted, the value plain, the
  * chevron the app's own - so the three lists that take one read the same.
- * Nothing is drawn where there is only one value to choose, because a menu of
- * one is a label.
+ * Drawn whenever there is a value at all, one included: a filter that comes and
+ * goes with the data reads as missing, and one value still says what is there.
  */
 export function FilterSelect({ label, value, onChange, all, options, testId }: FilterSelectProps) {
-  if (options.length < 2) return null;
+  if (options.length === 0) return null;
   return (
     <label className={styles.filter} data-testid={testId}>
       <span className={styles.label}>{label}</span>
