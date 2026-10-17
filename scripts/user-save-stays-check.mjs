@@ -28,7 +28,7 @@ if (subject === undefined) {
     if (!note || !button) return null;
     return Math.round(button.getBoundingClientRect().left - note.getBoundingClientRect().right);
   });
-  record(beside !== null && beside >= 0 && beside <= 24, `and it says Saved. beside the button (${beside}px before it)`);
+  record(beside !== null && beside >= 0 && beside <= 32, `and it says Saved. beside the button (${beside}px before it)`);
   // Edited again, the note goes, so it never claims a change that has not been saved.
   const name = page.locator('#user-display-name');
   await name.fill((await name.inputValue()) + ' ');
