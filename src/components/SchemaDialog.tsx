@@ -59,7 +59,13 @@ export function readSchema(text: string): SchemaReading | null {
   }
   if (!isNode(root)) return { ok: false, says: t('A JSON Schema is a JSON object.') };
   if (!isObjectSchema(root)) {
-    return { ok: false, says: tf('The schema describes a {type}, not an object.', { type: typeOf(root) ?? t('value of no stated type') }) };
+    const type = typeOf(root);
+    return {
+      ok: false,
+      says: type === null
+        ? t('The schema says neither "type": "object" nor "properties", so there is nothing to read as one.')
+        : tf('The schema describes a {type}, not an object.', { type }),
+    };
   }
   if (!isNode(root.properties) || Object.keys(root.properties).length === 0) return { ok: false, says: t('The schema names no properties.') };
 
