@@ -173,7 +173,11 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
 
       <section className={styles.card}>
         <div className={styles.reportHead}>
-          <h2 className={styles.sectionHeading}>{t('Tokens by person')}</h2>
+          {/* The heading over the search box, as each picker's label sits over its box: two columns of the same shape. */}
+          <div className={styles.lead}>
+            <h2 className={styles.sectionHeading}>{t('Tokens by person')}</h2>
+            <SearchBox value={typed} onChange={setTyped} placeholder={t('Search people...')} label={t('Search people')} />
+          </div>
           <div className={styles.filters}>
             <Picker label={t('Period')} value={String(days)} onChange={(value) => setDays(Number(value))}>
               <option value={7}>{t('Last 7 days')}</option>
@@ -197,10 +201,6 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
               {exporting ? t('Exporting…') : t('Export CSV')}
             </button>
           </div>
-        </div>
-
-        <div className={styles.searchRow}>
-          <SearchBox value={typed} onChange={setTyped} placeholder={t('Search people...')} label={t('Search people')} />
         </div>
 
         {report !== null && (

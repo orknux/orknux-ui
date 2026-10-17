@@ -30,9 +30,21 @@
   color: var(--color-text-primary);
 }
 
-.reportHead > .sectionHeading {
+.lead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.lead > .sectionHeading {
   display: flex;
   align-items: center;
+  height: var(--label-height);
+}
+
+/* The search box as tall as a picker's box, whatever its own padding adds up to. */
+.lead > div {
+  box-sizing: border-box;
   height: var(--picker-height);
 }
 
@@ -80,15 +92,17 @@
 /* ---- The report ---- */
 
 /*
- * The heading level with the picker boxes beside it: the boxes have labels
- * over them, so the row's middle is not the boxes' middle. One height for the
- * boxes, the button and the heading, and the heading sits on the boxes' row.
+ * Two columns of one shape: on the left the heading over the search box, on
+ * the right each picker's label over its box. The heading's line is the
+ * labels' line and the search box is the boxes' height, so the row reads as
+ * one row of labels over one row of controls.
  */
 .reportHead {
   --picker-height: 38px;
+  --label-height: 16px;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-12);
 }
@@ -106,6 +120,9 @@
 }
 
 .pickerLabel {
+  display: flex;
+  align-items: center;
+  height: var(--label-height);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   letter-spacing: 0.55px;
@@ -382,11 +399,6 @@
 }
 
 /* ---- Search, between the heading row and the totals ---- */
-
-.searchRow {
-  display: flex;
-  width: 100%;
-}
 
 .export {
   align-self: flex-end;
