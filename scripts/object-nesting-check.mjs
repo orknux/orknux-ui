@@ -80,7 +80,9 @@ try {
     const b = box.getBoundingClientRect(); const f = frame.getBoundingClientRect(); const d = one.getBoundingClientRect();
     return { inFrame: b.bottom <= f.bottom + 1 && b.right <= f.right + 1, inDialog: b.bottom <= d.bottom + 1, height: Math.round(b.height) };
   });
-  record(fit !== null && fit.inFrame && fit.inDialog && fit.height >= 200, `the schema box fits its frame and the dialog (${JSON.stringify(fit)})`);
+  record(fit !== null && fit.inFrame && fit.inDialog && fit.height >= 300, `the schema box fits its frame and the dialog, and starts a good part of the screen tall (${JSON.stringify(fit)})`);
+  const stretchy = await dialog.getByTestId('schema-box').evaluate((one) => getComputedStyle(one).resize);
+  record(stretchy === 'vertical', `and drags taller from its corner (resize: ${stretchy})`);
   await dialog.locator('#schema-object-name').fill(`zzSchema${stamp}`);
   // Read as it is typed, on the label's line over the box: what is wrong is said there, and Create waits.
   const typeSchema = async (text) => {

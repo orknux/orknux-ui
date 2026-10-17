@@ -4,17 +4,24 @@
  * over the buttons. This wrapper grows with the box, and the box grows with
  * the schema up to half the screen, scrolling past that.
  */
+/*
+ * The box starts at a good part of the screen and drags taller from its
+ * corner, the way the plain textarea did: a schema of fifty lines is read in
+ * one piece or not at all. The editor follows the box it measures.
+ */
 .schemaWrapper {
   align-items: stretch;
-  height: auto;
+  height: clamp(300px, 45vh, 70vh);
+  min-height: 200px;
+  max-height: 85vh;
   padding: 0;
   overflow: hidden;
+  resize: vertical;
 }
 
-/* The editor measures its box; the box is this tall here, not the 420px a function's editor starts at. */
 .schemaWrapper > div {
-  min-height: 260px;
-  height: 260px;
+  height: 100%;
+  min-height: 0;
 }
 
 /* The label and, at the other end of its line, what the box reads as. */

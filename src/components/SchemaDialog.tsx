@@ -139,7 +139,7 @@ export function SchemaDialog({ placement = 'modal', open, onClose, onSubmit }: S
   return (
     <dialog
       ref={dialogRef}
-      className={`${styles.dialog} ${placement === 'panel' ? styles.dialogPanel : styles.dialogWide}`}
+      className={`${styles.dialog} ${placement === 'panel' ? styles.dialogPanel : styles.dialogWider}`}
       onCancel={onClose}
       onClose={onClose}
       onKeyDown={panelEscape(placement, onClose)}
