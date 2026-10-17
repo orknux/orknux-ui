@@ -9,6 +9,7 @@ import pencilIcon from '../../assets/pencil.svg';
 import plusIcon from '../../assets/plus.svg';
 import searchIcon from '../../assets/search.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
+import { unlessControl } from '../../components/rowOpens';
 import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { ordered, useTableSort } from '../../components/tableSort';
@@ -203,7 +204,7 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
                 key={user.id}
                 className={`${styles.row} ${styles.rowOpens}`}
                 data-testid="user-row"
-                onClick={() => navigate(`/admin/users/${user.id}`)}
+                onClick={unlessControl(() => navigate(`/admin/users/${user.id}`))}
               >
                 <span className={styles.colUser}>
                   <span className={styles.avatar} aria-hidden="true">

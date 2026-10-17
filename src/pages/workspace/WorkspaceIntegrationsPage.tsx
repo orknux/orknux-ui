@@ -13,6 +13,7 @@ import type { ConnectionStatus, McpServer, PluginConnectionType, WorkspaceConnec
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
+import { unlessControl } from '../../components/rowOpens';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { FilterSelect } from '../../components/FilterSelect';
 import { ConnectionIcon } from '../../components/ConnectionIcon';
@@ -293,7 +294,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
           <div
             key={server.id}
             className={`${styles.row} ${styles.rowOpens}`}
-            onClick={() => navigate(`/workspace/${workspaceId}/integrations/servers/${server.id}`)}
+            onClick={unlessControl(() => navigate(`/workspace/${workspaceId}/integrations/servers/${server.id}`))}
           >
             <Link
               className={`${styles.colName} ${styles.serverName} ${styles.openName}`}
@@ -415,7 +416,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
           <div
             key={connection.id}
             className={`${styles.row} ${styles.rowOpens}`}
-            onClick={() => navigate(`/workspace/${workspaceId}/integrations/connections/${connection.id}`)}
+            onClick={unlessControl(() => navigate(`/workspace/${workspaceId}/integrations/connections/${connection.id}`))}
           >
             <Link
               className={`${styles.colName} ${styles.openName}`}

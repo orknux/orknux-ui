@@ -21,6 +21,8 @@ const expected = await first.getByRole('link').first().getAttribute('href');
 await first.locator('[class*="colEmail"]').click();
 await page.waitForURL((url) => /\/admin\/users\/\d+$/.test(url.pathname), { timeout: 10_000 });
 record(page.url().endsWith(expected ?? '§'), `pressing the row's email cell opens the user (${new URL(page.url()).pathname})`);
+await page.goBack({ waitUntil: 'domcontentloaded' });
+record(new URL(page.url()).pathname === '/admin/users', `and one Back is back at the list (${new URL(page.url()).pathname})`);
 
 await page.goto(`${BASE}/admin/users`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'Users');
@@ -30,6 +32,15 @@ await name.focus();
 await page.keyboard.press('Enter');
 await page.waitForURL((url) => /\/admin\/users\/\d+$/.test(url.pathname), { timeout: 10_000 });
 record(true, 'and opens the user from the keyboard');
+// The name is a link inside a row that also opens: the two must not both push history.
+await page.goBack({ waitUntil: 'domcontentloaded' });
+record(new URL(page.url()).pathname === '/admin/users', `one Back from the name's link is back at the list, not a second copy of the page (${new URL(page.url()).pathname})`);
+await page.goto(`${BASE}/admin/users`, { waitUntil: 'domcontentloaded' });
+await drawn(page, 'Users');
+await rows.first().getByRole('link').first().click();
+await page.waitForURL((url) => /\/admin\/users\/\d+$/.test(url.pathname), { timeout: 10_000 });
+await page.goBack({ waitUntil: 'domcontentloaded' });
+record(new URL(page.url()).pathname === '/admin/users', `and the same with the mouse (${new URL(page.url()).pathname})`);
 
 await page.goto(`${BASE}/admin/users`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'Users');

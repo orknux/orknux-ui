@@ -10,6 +10,7 @@ import userPlusIcon from '../../assets/user-plus.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AppShell } from '../../components/AppShell';
+import { unlessControl } from '../../components/rowOpens';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { FilterSelect } from '../../components/FilterSelect';
 import { Loader } from '../../components/Loader';
@@ -332,7 +333,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
           <div
             key={provider.id}
             className={`${styles.row} ${styles.rowOpens}`}
-            onClick={() => navigate(`/workspace/${workspaceId}/models/providers/${provider.id}`)}
+            onClick={unlessControl(() => navigate(`/workspace/${workspaceId}/models/providers/${provider.id}`))}
           >
             <span className={`${styles.colProvider} ${styles.providerName}`}>
               <Link
@@ -497,7 +498,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
           <div
             key={model.id}
             className={`${styles.row} ${styles.rowOpens}`}
-            onClick={() => navigate(`/workspace/${workspaceId}/models/${model.id}`)}
+            onClick={unlessControl(() => navigate(`/workspace/${workspaceId}/models/${model.id}`))}
           >
             <Link className={`${styles.colModel} ${styles.openName}`} to={`/workspace/${workspaceId}/models/${model.id}`}>
               {model.name}
