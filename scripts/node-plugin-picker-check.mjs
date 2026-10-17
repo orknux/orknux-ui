@@ -71,6 +71,18 @@ try {
   const pluginRows = offered.filter((one) => /plugin (action|function)$/i.test(one));
   console.log(JSON.stringify(pluginRows.slice(0, 6)));
   record(pluginRows.length > 0, `the action picker lists plugin actions and functions (${pluginRows.length})`);
+
+  /* Quick filters: one chip per source, and one keeps the list to it. */
+  const chips = await page.locator('[data-source-filter]').allInnerTexts();
+  record(chips.includes('All') && chips.includes('Workspace') && chips.includes(KEY), `the action picker offers a filter per source (${chips.join(', ')})`);
+  await page.locator(`[data-source-filter="${KEY}"]`).click();
+  await page.waitForTimeout(300);
+  // Custom... stays pinned whatever the filter: making one is always on offer.
+  const filtered = (await rows()).filter((one) => !/^Custom/.test(one));
+  record(filtered.length === 2 && filtered.every((one) => one.includes(KEY)), `the plugin's filter keeps its two functions (${filtered.length})`);
+  await page.locator('[data-source-filter=""]').click();
+  await page.waitForTimeout(300);
+  record((await rows()).length === offered.length, 'and All puts the rest back');
   const post = page.locator('[role="option"]').filter({ has: page.getByText('zzNodePicker_shout', { exact: true }) }).first();
   await post.click();
   await page.waitForTimeout(1500);
@@ -85,6 +97,10 @@ try {
   const conditions = (await rows()).filter((one) => /plugin function$/i.test(one));
   console.log(JSON.stringify(conditions));
   record(conditions.some((one) => one.startsWith('zzNodePicker_isQuiet')), 'the condition picker lists a plugin function that answers yes or no');
+  await page.locator(`[data-source-filter="${KEY}"]`).click();
+  await page.waitForTimeout(300);
+  const onlyPlugin = (await rows()).filter((one) => !/^Custom/.test(one));
+  record(onlyPlugin.length === 1 && onlyPlugin[0].startsWith('zzNodePicker_isQuiet'), `the condition picker filters by plugin too (${onlyPlugin.length})`);
   record(!conditions.some((one) => one.startsWith('zzNodePicker_shout')), 'and not one that answers anything else');
   await page.locator('[role="option"]').filter({ has: page.getByText('zzNodePicker_isQuiet', { exact: true }) }).first().click();
   await page.waitForTimeout(1500);

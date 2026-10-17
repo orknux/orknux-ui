@@ -44,6 +44,11 @@ export interface DefinitionOption {
   label: string;
   /** A second line saying which one this is: a signature, a shape, a status. */
   hint?: string;
+  /**
+   * Where it comes from - the workspace, or a plugin by name - for the quick
+   * filters above the list. Drawn only where the options name two or more.
+   */
+  source?: string;
 }
 
 export interface DefinitionPickerProps {
@@ -133,6 +138,20 @@ export function DefinitionPicker({
 }: DefinitionPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  /** The source the quick filter keeps to, or null for all of them. */
+  const [only, setOnly] = useState<string | null>(null);
+  /*
+   * The sources the options name, in the order they first appear - the
+   * workspace's own first, since that is how the lists are built. A list from
+   * one source has nothing to filter by and draws no chips.
+   */
+  const sources = useMemo(() => {
+    const seen: string[] = [];
+    for (const option of options) {
+      if (option.source !== undefined && option.source !== '' && !seen.includes(option.source)) seen.push(option.source);
+    }
+    return seen.length > 1 ? seen : [];
+  }, [options]);
   /** Which row the arrows are on; -1 while there is no row to be on. */
   const [at, setAt] = useState(-1);
   const box = useRef<HTMLDivElement>(null);
@@ -140,12 +159,13 @@ export function DefinitionPicker({
 
   const matching = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    if (needle === '') return options;
-    return options.filter(
+    const kept = only === null || !sources.includes(only) ? options : options.filter((option) => option.source === only);
+    if (needle === '') return kept;
+    return kept.filter(
       (option) =>
         option.label.toLowerCase().includes(needle) || (option.hint ?? '').toLowerCase().includes(needle),
     );
-  }, [options, search]);
+  }, [options, search, only, sources]);
 
   /*
    * What the arrows walk, in the order it is drawn.
@@ -277,6 +297,28 @@ export function DefinitionPicker({
             aria-label={ariaLabel ?? searchPlaceholder}
             onChange={(event) => setSearch(event.target.value)}
           />
+
+          {sources.length > 0 && (
+            <div className={styles.filters} role="group" aria-label={t('Show only')}>
+              {[null, ...sources].map((source) => (
+                <button
+                  key={source ?? ''}
+                  type="button"
+                  className={only === source ? `${styles.filter} ${styles.filterOn}` : styles.filter}
+                  aria-pressed={only === source}
+                  data-source-filter={source ?? ''}
+                  // The search box keeps the keyboard; a chip is a click.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setOnly(source);
+                    setAt(-1);
+                  }}
+                >
+                  {source ?? t('All')}
+                </button>
+              ))}
+            </div>
+          )}
 
           {rows.length === 0 && (
             <p className={failure === null ? styles.notice : `${styles.notice} ${styles.noticeFailed}`}>

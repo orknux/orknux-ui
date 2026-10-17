@@ -2636,11 +2636,13 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         value: `${PLUGIN_ACTION}${held.pluginKey}/${held.name}`,
         label: held.label,
         hint: tf('{plugin} plugin action', { plugin: held.pluginName }),
+        source: held.pluginName,
       })),
       ...pluginFunctions.map((fn) => ({
         value: `${PLUGIN_FUNCTION}${fn.id}`,
         label: fn.name,
         hint: tf('{plugin} plugin function', { plugin: fn.plugin?.name ?? '' }),
+        source: fn.plugin?.name ?? '',
       })),
     ],
     [pluginActions, pluginFunctions],
@@ -2653,6 +2655,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           value: `${PLUGIN_FUNCTION}${fn.id}`,
           label: fn.name,
           hint: tf('{plugin} plugin function', { plugin: fn.plugin?.name ?? '' }),
+          source: fn.plugin?.name ?? '',
         })),
     [pluginFunctions],
   );
@@ -5698,6 +5701,7 @@ Change the keystroke in Preferences.`}
                           */
                           label: action.workflowId === null ? action.name : t('Custom'),
                           hint: action.workflowId === null ? undefined : action.name,
+                          source: t('Workspace'),
                         }))
                         .concat(pluginActionRows)}
                       create={{
@@ -5997,6 +6001,7 @@ Change the keystroke in Preferences.`}
                           // note on the action picker.
                           label: held.workflowId === null ? held.name : t('Custom'),
                           hint: held.workflowId === null ? undefined : held.name,
+                          source: t('Workspace'),
                         }))
                         .concat(pluginConditionRows)}
                       create={{
