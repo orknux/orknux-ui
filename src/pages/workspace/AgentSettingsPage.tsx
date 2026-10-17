@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { fetchAgent } from '../../api/agents';
@@ -7,6 +7,8 @@ import type { SessionUser } from '../../api/session';
 import { AgentForm } from '../../components/AgentForm';
 import type { AgentFormStyles } from '../../components/AgentForm';
 import { AppShell } from '../../components/AppShell';
+import { SectionMenu } from '../../components/SectionMenu';
+import menuStyles from '../../components/SectionMenu.module.css';
 import { BackLink } from '../../components/BackLink';
 import { DeleteAgentDialog } from '../../components/DeleteAgentDialog';
 import { Loader } from '../../components/Loader';
@@ -89,6 +91,8 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
       });
   }, [agentId]);
 
+  const sectionsRef = useRef<HTMLDivElement>(null);
+
   return (
     <AppShell
       title={agent?.name}
@@ -96,8 +100,13 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
       workspacePath={`/workspace/${workspaceId}`}
       showAdmin={session.admin}
       onSignOut={onSignOut}
+      scrollContent
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      {/* The form is one long card of fields, so the menu lists its fields, and the cards below it. */}
+      <div className={menuStyles.withMenu}>
+      <SectionMenu within={sectionsRef} entries="[data-menu-entry]" />
+      <div className={menuStyles.sections} ref={sectionsRef}>
       <header className={styles.headerBlock}>
         <p className={styles.breadcrumbs}>
           <BackLink to={`/workspace/${workspaceId}/agents`} label={t('Agents')} />
@@ -148,7 +157,7 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
             left holding the version before it would put that back on its next
             save.
           */}
-          <section className={styles.card}>
+          <section className={styles.card} id="agent-history" data-menu-entry={t('History')}>
             <RevisionHistory
               kind="AGENT"
               componentId={agentId}
@@ -170,11 +179,11 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
             delete it - which is the one place somebody needs to know, and the
             place they used to find out by being refused.
           */}
-          <section className={styles.card}>
+          <section className={styles.card} id="agent-used-by" data-menu-entry={t('Used by')}>
             <UsedBy kind="AGENT" componentId={agentId} />
           </section>
 
-          <section className={`${styles.card} ${styles.dangerCard}`}>
+          <section className={`${styles.card} ${styles.dangerCard}`} id="agent-danger" data-menu-entry={t('Danger Zone')}>
             <h2 className={styles.dangerHeading}>{t('Danger Zone')}</h2>
             <div className={styles.dangerRow}>
               <div className={styles.dangerText}>
@@ -188,6 +197,9 @@ export function AgentSettingsPage({ session, onSignOut }: AgentSettingsPageProps
           </section>
         </>
       )}
+
+      </div>
+      </div>
 
       <DeleteAgentDialog
         agent={confirmingDelete ? agent : null}

@@ -717,7 +717,7 @@ function GrantList<Item>({
   const countable = items.filter(counted).length;
 
   return (
-    <div className={styles.field} data-grants={what}>
+    <div className={styles.field} data-grants={what} id={`agent-grants-${what.replace(/\s+/g, '-')}`} data-menu-entry={label}>
       <span className={own.grantHead}>
         <span className={own.labelWithHint}>
           <span className={styles.label}>{label}</span>
@@ -1671,7 +1671,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       {heading}
 
       <div className={styles.fields}>
-        <div className={styles.field}>
+        <div className={styles.field} id="agent-general" data-menu-entry={t('General')}>
           <label className={styles.label} htmlFor="agent-name">{t('Agent Name')}</label>
           <div className={styles.inputWrapper}>
             <input
@@ -1705,7 +1705,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           hint={t("Nodes drawn from this agent start with it; each node can change its own.")}
         />
 
-        <div className={styles.field}>
+        <div className={styles.field} id="agent-prompt" data-menu-entry={t('System Prompt')}>
           <button
             type="button"
             className={own.promptToggle}
@@ -1736,7 +1736,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           )}
         </div>
 
-        <div className={styles.field}>
+        <div className={styles.field} id="agent-model-field" data-menu-entry={t('Model')}>
           {/*
             The way out to the model this agent answers on - issue #251, and the
             page the refusal under the slider below sends people to when a model
@@ -1816,7 +1816,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           moment a grant list below grew an empty-state sentence of its own, and
           the check then read the figures before they had arrived.
         */}
-        <div className={styles.field} data-check="session-memory">
+        <div className={styles.field} id="agent-memory" data-menu-entry={t('Session Memory')} data-check="session-memory">
           <span className={own.labelWithHint}>
             <label className={styles.label} htmlFor="agent-memory-share">
               {t('Session Memory')}
@@ -1933,7 +1933,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           came back instead was "kept looking things up without reaching an
           answer" with everything it had gathered thrown away.
         */}
-        <div className={styles.field}>
+        <div className={styles.field} id="agent-rounds" data-menu-entry={t('Tool Rounds')}>
           <span className={own.labelWithHint}>
             <label className={styles.label} htmlFor="agent-max-rounds">
               {t('Tool Rounds')}
@@ -2153,7 +2153,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           whether the number they typed is one this agent can actually work
           under.
         */}
-        <div className={styles.field}>
+        <div className={styles.field} id="agent-tools-at-once" data-menu-entry={t('Tools carried at once')}>
           <span className={own.labelWithHint}>
             <label className={styles.label} htmlFor="agent-max-tools">
               {t('Tools carried at once')}
@@ -2269,7 +2269,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           are addresses somebody registered, and this is the application the
           agent is already inside. It never appears in that list.
         */}
-        <div className={styles.field}>
+        <div className={styles.field} id="agent-orknux" data-menu-entry={t('Orknux')}>
           <span className={styles.label}>Orknux</span>
           {/*
             The (?) sits on the row and not on the heading above it, because the

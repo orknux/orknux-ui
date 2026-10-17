@@ -8,6 +8,13 @@ import { t } from '../i18n';
 export interface SectionMenuProps {
   /** The element whose `h2[id]` headings are the sections. */
   within: RefObject<HTMLElement | null>;
+  /**
+   * Where the sections are not headings: a selector for elements carrying an
+   * `id` and their menu label in `data-menu-entry`. A form drawn as one card -
+   * an agent's - has fields, not sections, and each named field is then an
+   * entry and its own block for the search.
+   */
+  entries?: string;
 }
 
 interface Entry {
@@ -64,7 +71,8 @@ function blocksOf(heading: HTMLElement, headings: HTMLElement[]): HTMLElement[] 
   return [...card.children].filter((one): one is HTMLElement => one instanceof HTMLElement && !one.contains(heading));
 }
 
-export function SectionMenu({ within }: SectionMenuProps) {
+export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
+  const which = selector ?? 'h2[id]';
   const [entries, setEntries] = useState<Entry[]>([]);
   const [current, setCurrent] = useState<string | null>(null);
   /** What is typed into the menu's search: a setting is kept where its words match, a section where any setting is. */
@@ -76,11 +84,11 @@ export function SectionMenu({ within }: SectionMenuProps) {
     if (root === null) return undefined;
 
     const scan = () => {
-      const headings = [...root.querySelectorAll<HTMLHeadingElement>('h2[id]')];
+      const headings = [...root.querySelectorAll<HTMLElement>(which)].filter((one) => one.id !== '');
       headings.forEach((heading) => {
         heading.style.scrollMarginTop = `${HEADING_GAP_PX}px`;
       });
-      const found = headings.map((heading) => ({ id: heading.id, label: labelOf(heading) }));
+      const found = headings.map((heading) => ({ id: heading.id, label: heading.dataset.menuEntry ?? labelOf(heading) }));
       setEntries((held) => (sameEntries(held, found) ? held : found));
     };
     scan();
@@ -88,13 +96,13 @@ export function SectionMenu({ within }: SectionMenuProps) {
     const watcher = new MutationObserver(scan);
     watcher.observe(root, { childList: true, subtree: true });
     return () => watcher.disconnect();
-  }, [within]);
+  }, [within, which]);
 
   useEffect(() => {
     const root = within.current;
     if (root === null || entries.length === 0) return undefined;
     const headings = entries
-      .map((entry) => root.querySelector<HTMLElement>(`h2[id="${CSS.escape(entry.id)}"]`))
+      .map((entry) => root.querySelector<HTMLElement>(`[id="${CSS.escape(entry.id)}"]`))
       .filter((one): one is HTMLElement => one !== null);
     /*
      * The current section is the last heading above the clearance line - the
@@ -128,10 +136,21 @@ export function SectionMenu({ within }: SectionMenuProps) {
   useEffect(() => {
     const root = within.current;
     if (root === null) return undefined;
-    const headings = [...root.querySelectorAll<HTMLElement>('h2[id]')];
+    const headings = [...root.querySelectorAll<HTMLElement>(which)].filter((one) => one.id !== '');
     const query = looking.trim().toLowerCase();
     const kept = new Set<string>();
+    // An entry that is a field rather than a heading is the whole of its own block.
+    const asFields = selector !== undefined;
     headings.forEach((heading) => {
+      if (asFields) {
+        const named = [...heading.querySelectorAll('[id], [name], [aria-label]')]
+          .map((one) => `${one.id} ${one.getAttribute('name') ?? ''} ${one.getAttribute('aria-label') ?? ''}`)
+          .join(' ');
+        const hit = query === '' || `${heading.dataset.menuEntry ?? ''} ${heading.textContent ?? ''} ${named}`.toLowerCase().includes(query);
+        heading.style.display = hit ? '' : 'none';
+        if (hit) kept.add(heading.id);
+        return;
+      }
       const blocks = blocksOf(heading, headings);
       let any = false;
       blocks.forEach((block) => {
@@ -154,13 +173,17 @@ export function SectionMenu({ within }: SectionMenuProps) {
     setMatching(query === '' ? null : kept);
     return () => {
       headings.forEach((heading) => {
+        if (asFields) {
+          heading.style.display = '';
+          return;
+        }
         blocksOf(heading, headings).forEach((block) => { block.style.display = ''; });
         heading.style.display = '';
         const card = heading.closest<HTMLElement>('section, form');
         if (card !== null) card.style.display = '';
       });
     };
-  }, [within, looking, entries]);
+  }, [within, looking, entries, which, selector]);
 
   if (entries.length < 2) return null;
   const shown = matching === null ? entries : entries.filter((entry) => matching.has(entry.id));
@@ -188,7 +211,7 @@ export function SectionMenu({ within }: SectionMenuProps) {
           aria-current={entry.id === current ? 'location' : undefined}
           onClick={(event) => {
             event.preventDefault();
-            within.current?.querySelector<HTMLElement>(`h2[id="${CSS.escape(entry.id)}"]`)?.scrollIntoView({ block: 'start' });
+            within.current?.querySelector<HTMLElement>(`[id="${CSS.escape(entry.id)}"]`)?.scrollIntoView({ block: 'start' });
             history.replaceState(null, '', `#${entry.id}`);
           }}
         >

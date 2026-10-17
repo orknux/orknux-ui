@@ -326,6 +326,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'agent-settings-menu-check',
+    what: "an agent's settings have a menu of the form's fields and cards, that scrolls to them and searches them",
+    needs: ['workspace'],
+  },
+  {
     name: 'voice-unavailable-check',
     what: 'voice mode stays on the chat bar without a speech model, drawn off, its note naming the missing model and linking to settings',
     needs: ['workspace'],
