@@ -63,7 +63,7 @@ export function readSchema(text: string): SchemaReading | null {
     return {
       ok: false,
       says: type === null
-        ? t('The schema says neither "type": "object" nor "properties", so there is nothing to read as one.')
+        ? t('Not a JSON Schema: nothing at the root says "type": "object" or lists "properties". A payload is not its schema.')
         : tf('The schema describes a {type}, not an object.', { type }),
     };
   }

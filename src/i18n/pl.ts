@@ -1702,7 +1702,7 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
-  "The schema says neither \"type\": \"object\" nor \"properties\", so there is nothing to read as one.": "Schemat nie mówi ani \"type\": \"object\", ani \"properties\", więc nie ma czego czytać jako obiektu.",
+  "Not a JSON Schema: nothing at the root says \"type\": \"object\" or lists \"properties\". A payload is not its schema.": "To nie JSON Schema: nic w korzeniu nie mówi \"type\": \"object\" ani nie wymienia \"properties\". Ładunek to nie jego schemat.",
   "written with underscores: {keys}": "zapisane z podkreśleniami: {keys}",
   "Valid": "Poprawny",
   "Invalid": "Niepoprawny",
