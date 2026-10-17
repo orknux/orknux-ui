@@ -194,13 +194,25 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
 
           {!loading &&
             arranged?.map((user) => (
-              <div key={user.id} className={styles.row}>
+              // The whole row opens the user, as a provider's or a connection's
+              // row does: the pencil at the far right is a small target for the
+              // only thing anybody wants from a row. The name is a real link, so
+              // the row is reachable by keyboard; the click on the row is a wider
+              // target for the mouse and nothing more.
+              <div
+                key={user.id}
+                className={`${styles.row} ${styles.rowOpens}`}
+                data-testid="user-row"
+                onClick={() => navigate(`/admin/users/${user.id}`)}
+              >
                 <span className={styles.colUser}>
                   <span className={styles.avatar} aria-hidden="true">
                     {initialsOf(user.displayName)}
                   </span>
                   <span className={styles.names}>
-                    <span className={styles.displayName}>{user.displayName}</span>
+                    <Link className={`${styles.displayName} ${styles.openName}`} to={`/admin/users/${user.id}`}>
+                      {user.displayName}
+                    </Link>
                     {user.displayName !== user.username && (
                       <span className={styles.username}>{user.username}</span>
                     )}
@@ -227,14 +239,17 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
                     else - everything else about them is the provider's, and an
                     edit here would lose at their next sign-in.
                   */}
-                  <Link
-                    className={styles.edit}
-                    to={`/admin/users/${user.id}`}
-                    aria-label={user.editable ? `Edit ${user.displayName}` : `Edit ${user.displayName}'s email`}
-                    title={user.editable ? 'Edit' : t('Edit email')}
-                  >
-                    <img src={pencilIcon} alt="" width={14} height={14} />
-                  </Link>
+                  {/* In its own span so a press on the pencil opens the page once, not twice. */}
+                  <span onClick={(event) => event.stopPropagation()}>
+                    <Link
+                      className={styles.edit}
+                      to={`/admin/users/${user.id}`}
+                      aria-label={user.editable ? `Edit ${user.displayName}` : `Edit ${user.displayName}'s email`}
+                      title={user.editable ? 'Edit' : t('Edit email')}
+                    >
+                      <img src={pencilIcon} alt="" width={14} height={14} />
+                    </Link>
+                  </span>
                 </span>
               </div>
             ))}

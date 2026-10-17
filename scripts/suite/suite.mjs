@@ -316,6 +316,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'user-row-opens-check',
+    what: "a row of the Users list opens the user, from anywhere on it, and the pencil opens it once",
+    needs: [],
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],

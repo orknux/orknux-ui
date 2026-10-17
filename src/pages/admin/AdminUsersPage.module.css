@@ -214,3 +214,21 @@
   color: var(--color-text-muted);
   text-align: center;
 }
+
+/* The row opens the user, so it answers to the pointer; the name is the link that says so. */
+.rowOpens {
+  cursor: pointer;
+}
+
+.rowOpens:hover {
+  background: var(--color-surface-raised);
+}
+
+.openName {
+  color: var(--color-accent-brand);
+  text-decoration: underline;
+}
+
+.openName:hover {
+  color: var(--color-text-primary);
+}
