@@ -57,6 +57,15 @@ try {
   const name = page.locator('#node-shape-name-1');
   await name.waitFor({ timeout: 20_000 });
   record((await name.inputValue()) === 'customer', 'the shape’s rows are drawn in the panel');
+  // The name is labelled over its box, as the type and the values under it are - not beside it at the box's foot.
+  const stacked = await page.evaluate(() => {
+    const box = document.getElementById('node-shape-name-1');
+    const label = box?.parentElement?.querySelector('label');
+    if (!box || !label) return null;
+    const b = box.getBoundingClientRect(); const l = label.getBoundingClientRect();
+    return { left: Math.round(l.left - b.left), above: l.bottom <= b.top + 1 };
+  });
+  record(stacked !== null && Math.abs(stacked.left) <= 1 && stacked.above, `the name's label stands over its box, flush left (${JSON.stringify(stacked)})`);
 
   const picked = (await page.locator('#node-shape-type-1').textContent())?.trim() ?? '';
   record(picked === 'object', `the row that is an object defined in place says so (${picked})`);
