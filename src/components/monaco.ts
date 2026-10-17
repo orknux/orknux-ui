@@ -9,6 +9,7 @@ import { typescript } from 'monaco-editor';
  */
 import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import tsWorker from 'monaco-editor/language/typescript/ts.worker.js?worker';
+import jsonWorker from 'monaco-editor/language/json/json.worker.js?worker';
 
 import { currentTheme } from '../session/theme';
 import { t } from '../i18n';
@@ -33,6 +34,8 @@ declare global {
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
     if (label === 'typescript' || label === 'javascript') return new tsWorker();
+    // JSON for a pasted schema: its worker is what says where the comma is missing.
+    if (label === 'json') return new jsonWorker();
     return new editorWorker();
   },
 };

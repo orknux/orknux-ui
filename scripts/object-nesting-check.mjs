@@ -74,15 +74,38 @@ try {
   await dialog.waitFor({ timeout: 5_000 });
   // The schema box stays inside its frame and the dialog; it ran out of both once.
   const fit = await dialog.evaluate((one) => {
-    const box = one.querySelector('#schema-object-schema');
-    const frame = box?.parentElement;
+    const frame = one.querySelector('[data-testid="schema-box"]');
+    const box = frame?.firstElementChild;
     if (!box || !frame) return null;
     const b = box.getBoundingClientRect(); const f = frame.getBoundingClientRect(); const d = one.getBoundingClientRect();
     return { inFrame: b.bottom <= f.bottom + 1 && b.right <= f.right + 1, inDialog: b.bottom <= d.bottom + 1, height: Math.round(b.height) };
   });
   record(fit !== null && fit.inFrame && fit.inDialog && fit.height >= 200, `the schema box fits its frame and the dialog (${JSON.stringify(fit)})`);
   await dialog.locator('#schema-object-name').fill(`zzSchema${stamp}`);
-  await dialog.locator('#schema-object-schema').fill(JSON.stringify({
+  // Read as it is typed, on the label's line over the box: what is wrong is said there, and Create waits.
+  const typeSchema = async (text) => {
+    await dialog.getByTestId('schema-box').click();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.press('Delete');
+    // Typed into the editor rather than set: an editor that completes brackets gets the text one key at a time.
+    await page.keyboard.insertText(text);
+  };
+  const createButton = dialog.getByRole('button', { name: 'Create Object' });
+  const readingOf = async () => (await dialog.getByTestId('schema-reading').textContent()) ?? '';
+  await typeSchema('{ "type": "string" }');
+  await dialog.getByTestId('schema-reading').waitFor({ timeout: 5_000 });
+  record(/not an object/.test(await readingOf()), 'a schema of a string is said not to be an object');
+  record(await createButton.isDisabled(), 'and Create waits');
+  const above = await dialog.evaluate((one) => {
+    const note = one.querySelector('[data-testid="schema-reading"]');
+    const box = one.querySelector('[data-testid="schema-box"]');
+    return note && box ? note.getBoundingClientRect().bottom <= box.getBoundingClientRect().top : false;
+  });
+  record(above, 'and it is said above the box, not under it');
+  await typeSchema('{ "type": "object", "properties": { "a": ');
+  await page.waitForTimeout(150);
+  record(/Not JSON/.test(await readingOf()), 'half-typed JSON is said not to be JSON');
+  await typeSchema(JSON.stringify({
     type: 'object',
     properties: {
       id: { type: 'integer', description: 'The order number' },
@@ -91,7 +114,9 @@ try {
     },
     definitions: { Customer: { type: 'object', properties: { name: { type: 'string' } } } },
   }));
-  await dialog.getByRole('button', { name: 'Create Object' }).click();
+  await page.waitForTimeout(150);
+  record(/3 properties .*2 defined in place .*1 arrays/.test(await readingOf()), `a readable schema is counted (${await readingOf()})`);
+  await createButton.click();
   await page.waitForURL(/\/objects\/\d+$/, { timeout: 10_000 });
   const schemaId = page.url().split('/').pop();
   made.push(schemaId);

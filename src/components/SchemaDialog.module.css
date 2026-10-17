@@ -7,26 +7,41 @@
 .schemaWrapper {
   align-items: stretch;
   height: auto;
-  padding: var(--space-10) var(--space-12);
-}
-
-.schema {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 240px;
-  max-height: 50vh;
   padding: 0;
-  resize: vertical;
-  background: none;
-  border: 0;
-  outline: none;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--color-text-primary);
+  overflow: hidden;
 }
 
-.schema::placeholder {
+/* The editor measures its box; the box is this tall here, not the 420px a function's editor starts at. */
+.schemaWrapper > div {
+  min-height: 260px;
+  height: 260px;
+}
+
+/* The label and, at the other end of its line, what the box reads as. */
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+/* The label keeps its line; it is the reading beside it that gives way. */
+.labelRow > span:first-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+.reading,
+.readingBad {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--color-text-muted);
+}
+
+.readingBad {
+  color: var(--color-danger);
 }

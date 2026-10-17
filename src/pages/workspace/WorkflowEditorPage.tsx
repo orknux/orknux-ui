@@ -64,7 +64,7 @@ import { fetchWorkspaceFunctions } from '../../api/functions';
 import type { WorkspaceFunction } from '../../api/functions';
 import { fetchWorkspaceConnections } from '../../api/integrations';
 import type { WorkspaceConnection } from '../../api/integrations';
-import { createObject, fetchObject, fetchWorkspaceObjects, updateObject } from '../../api/objects';
+import { createObject, createObjectFromSchema, fetchObject, fetchWorkspaceObjects, updateObject } from '../../api/objects';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import { fetchImageSizePresets } from '../../api/imagePresets';
@@ -103,7 +103,9 @@ import { RetryPolicyFields } from './RetryPolicyFields';
 import { DecisionNodeFields, UNSURE_HANDLE, decisionNote, decisionWays, optionHandle, optionOf, wayLabel } from './DecisionNodeFields';
 import type { DecisionQuestion } from '../../api/graph';
 import { CreateAgentDialog } from '../../components/CreateAgentDialog';
+import dialogStyles from '../../components/Dialog.module.css';
 import { NameDialog } from '../../components/NameDialog';
+import { SchemaDialog } from '../../components/SchemaDialog';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
 import { TriggerForm } from '../../components/TriggerForm';
 import { FieldPicker } from '../../components/FieldPicker';
@@ -2166,6 +2168,25 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * while making one - what an existing definition belongs to was decided
    * where it was made.
    */
+  const [buildingSchema, setBuildingSchema] = useState(false);
+
+  /**
+   * An object made from the panel, however it was made, lands in the field
+   * whose panel asked: an agent's New is beside its Answer Shape, an object
+   * node's beside its Shape.
+   */
+  function adoptObject(made: WorkflowObject) {
+    setObjects((all) => withDefinition(all, made));
+    setDraft((current) =>
+      current === null
+        ? current
+        : current.kind === 'AGENT'
+          ? { ...current, outputObjectId: made.id }
+          : { ...current, objectId: made.id },
+    );
+    setBuilding(null);
+  }
+
   const [building, setBuilding] = useState<
     { kind: NodeKind; id: string | null; owned?: boolean } | null
   >(null);
@@ -7353,18 +7374,31 @@ Change the keystroke in Preferences.`}
         submitLabel={t("Create Object")}
         onClose={() => setBuilding(null)}
         onSubmit={async (name, description) => {
-          const made = await createObject(workspaceId, { name, description: description || undefined });
-          setObjects((all) => withDefinition(all, made));
-          // Which field it lands in is which panel asked: an agent's New is
-          // beside its Answer Shape, an object node's beside its Shape.
-          setDraft((current) =>
-            current === null
-              ? current
-              : current.kind === 'AGENT'
-                ? { ...current, outputObjectId: made.id }
-                : { ...current, objectId: made.id },
-          );
-          setBuilding(null);
+          adoptObject(await createObject(workspaceId, { name, description: description || undefined }));
+        }}
+        extra={
+          <button
+            type="button"
+            className={dialogStyles.ghost}
+            onClick={() => {
+              setBuilding(null);
+              setBuildingSchema(true);
+            }}
+            data-testid="node-object-from-schema"
+          >
+            {t('From JSON Schema…')}
+          </button>
+        }
+      />
+
+      {/* The same object, read off a pasted JSON Schema, from the same panel. */}
+      <SchemaDialog
+        placement="panel"
+        open={buildingSchema}
+        onClose={() => setBuildingSchema(false)}
+        onSubmit={async (name, description, schema) => {
+          adoptObject(await createObjectFromSchema(workspaceId, name, description || null, schema));
+          setBuildingSchema(false);
         }}
       />
 

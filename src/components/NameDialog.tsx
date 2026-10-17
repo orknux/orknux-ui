@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { FormEvent } from 'react';
 
 import { DrawerEdge } from './DrawerWidth';
@@ -26,6 +27,8 @@ export interface NameDialogProps {
   onClose: () => void;
   /** Throwing shows the reason in the dialog and leaves it open. */
   onSubmit: (name: string, description: string) => Promise<void>;
+  /** Another way to make the thing, offered at the foot beside Cancel: a button that opens its own dialog. */
+  extra?: ReactNode;
 }
 
 /**
@@ -44,7 +47,7 @@ export function NameDialog({
   descriptionPlaceholder,
   submitLabel,
   onClose,
-  onSubmit, placement = 'modal' }: NameDialogProps) {
+  onSubmit, placement = 'modal', extra }: NameDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [name, setName] = useState('');
@@ -136,6 +139,7 @@ export function NameDialog({
         )}
 
         <div className={styles.actions}>
+          {extra}
           <button type="button" className={styles.ghost} onClick={onClose} disabled={submitting}>
             {t('Cancel')}
           </button>

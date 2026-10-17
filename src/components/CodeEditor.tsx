@@ -63,7 +63,7 @@ export interface CodeEditorProps {
   onChange: (value: string) => void;
   /** Line and column, 1-based, for whatever shows the caret position. */
   onCaretChange?: (line: number, column: number) => void;
-  language?: 'javascript' | 'typescript';
+  language?: 'javascript' | 'typescript' | 'json';
   readOnly?: boolean;
   ariaLabel?: string;
 }
