@@ -205,6 +205,13 @@ await page.click('.react-flow__node');
 await page.waitForSelector('#node-field-type-0', { timeout: 20_000 });
 record((await says()) === 'object' && (await page.locator('#node-field-0-shape-name-0').inputValue()) === 'street', 'reopened, the field and its own field are drawn again');
 
+// A single object defined in place shows its own field on the node, by its dotted name.
+await page.locator('button[aria-pressed]', { hasText: 'Single' }).first().click();
+await page.getByRole('button', { name: /^Save/ }).first().click();
+await page.waitForTimeout(2500);
+const chips = await page.locator('.react-flow__node').first().locator('[class*="portChipOut"]').allTextContents();
+record(chips.some((chip) => /(^|\.)count$/.test(chip)) && chips.some((chip) => /(^|\.)count\.street$/.test(chip)), `the node shows the field and the field inside it (${chips.join(', ')})`);
+
 /* ------------------------------------------------------------------- tidy up */
 
 await clean();
