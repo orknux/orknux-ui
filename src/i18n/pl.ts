@@ -1703,6 +1703,7 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
+  "{count} nodes selected - drag one to move them together, Delete removes them all.": "Zaznaczono węzły: {count} - przeciągnij jeden, aby przesunąć je razem; Delete usuwa wszystkie.",
   "whole object": "cały obiekt",
   "Show only": "Pokaż tylko",
   "{plugin} plugin action": "Akcja wtyczki {plugin}",

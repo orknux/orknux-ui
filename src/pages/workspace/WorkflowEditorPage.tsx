@@ -3237,6 +3237,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   // Clicking on the canvas is React Flow's business, but a node we have just added
   // is not in its store yet, so the key is tracked here and its selection wins.
   const flowSelectedKey = useMemo(() => nodes.find((node) => node.selected)?.id ?? null, [nodes]);
+  /** How many nodes are selected; more than one is said above the panel, which edits one. */
+  const selectedCount = useMemo(() => nodes.filter((node) => node.selected).length, [nodes]);
 
   useEffect(() => {
     if (flowSelectedKey !== null) setSelectedKey(flowSelectedKey);
@@ -5156,8 +5158,17 @@ Change the keystroke in Preferences.`}
               edgeTypes={edgeTypes}
               onNodesChange={(changes) => {
                 onNodesChange(changes);
-                if (changes.some((change) => change.type === 'position')) setSaved(false);
+                if (changes.some((change) => change.type === 'position' || change.type === 'remove')) setSaved(false);
               }}
+              /*
+               * Shift+click adds a node to the selection, as it does in most
+               * drawing tools; Ctrl and Cmd still do, which is React Flow's own
+               * default. A selection moves together when one of it is dragged,
+               * and Backspace or Delete removes all of it. Issue #630.
+               */
+              multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
+              // Delete as well as Backspace: React Flow listens for Backspace alone, so Delete did nothing.
+              deleteKeyCode={['Backspace', 'Delete']}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onReconnect={onReconnect}
@@ -5229,6 +5240,14 @@ Change the keystroke in Preferences.`}
             <PanelClose onClose={() => showPanel(false)} />
           </div>
           <hr className={styles.panelDivider} />
+
+          {selectedCount > 1 && (
+            <p className={styles.selectionNote} data-selection-count={selectedCount} role="status">
+              {tf('{count} nodes selected - drag one to move them together, Delete removes them all.', {
+                count: selectedCount,
+              })}
+            </p>
+          )}
 
           {problems.length > 0 && (
             <section className={styles.problems}>

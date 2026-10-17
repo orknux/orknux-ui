@@ -1743,6 +1743,12 @@ export const TESTS = [
     /* Makes a shape, a function, an action and a workflow, and removes them. */
   },
   {
+    name: 'node-multi-select-check',
+    what: 'Shift+click selects several nodes, which move together and are removed together',
+    needs: ['workspace'],
+    /* Issue #630. Makes a workflow of three object nodes and removes it. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],
