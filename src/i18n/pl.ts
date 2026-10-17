@@ -1707,6 +1707,8 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
+  "Hide the voice mode button": "Ukryj przycisk trybu głosowego",
+  "Takes voice mode off this workspace’s chat bar. Off by default: the button is shown, and greyed out with the reason where a model is missing.": "Usuwa tryb głosowy z paska czatu tej przestrzeni roboczej. Domyślnie wyłączone: przycisk jest widoczny, a tam, gdzie brakuje modelu, wyszarzony z podaną przyczyną.",
   "Voice mode is not available": "Tryb głosowy jest niedostępny",
   "Voice mode needs a transcription model and a speech model, and this workspace has neither.": "Tryb głosowy potrzebuje modelu transkrypcji i modelu mowy, a ta przestrzeń robocza nie ma żadnego z nich.",
   "Voice mode needs a transcription model to hear you, and this workspace has none.": "Tryb głosowy potrzebuje modelu transkrypcji, żeby cię usłyszeć, a ta przestrzeń robocza go nie ma.",

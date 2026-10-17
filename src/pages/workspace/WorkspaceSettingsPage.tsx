@@ -37,6 +37,7 @@ import {
   setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
   setWorkspaceChatTimestamps,
+  setWorkspaceVoiceButtonHidden,
   setWorkspaceWidgetTimerSound,
   setWorkspaceSessionCostShown,
   setWorkspaceQuickChatWrites,
@@ -421,6 +422,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [quickChatWrites, setQuickChatWrites] = useState(false);
   /** Whether chats in this workspace show when each message was sent. Issue #323. */
   const [chatTimestamps, setChatTimestamps] = useState(false);
+  const [voiceHidden, setVoiceHidden] = useState(false);
   const [timerSound, setTimerSound] = useState(true);
   const [sessionCost, setSessionCost] = useState(true);
 
@@ -532,6 +534,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setQuickChat(found?.quickChatModelId ?? '');
         setQuickChatWrites(found?.quickChatMayWrite ?? false);
         setChatTimestamps(found?.chatShowTimestamps ?? false);
+        setVoiceHidden(found?.voiceButtonHidden ?? false);
         setTimerSound(found?.widgetTimerSound ?? true);
         setSessionCost(found?.sessionCostShown ?? true);
         setCompactAfter(found?.compactAfterTokens == null ? '' : String(found.compactAfterTokens));
@@ -754,6 +757,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('chatTimestamps')) {
         latest = await setWorkspaceChatTimestamps(workspaceId, chatTimestamps);
       }
+      if (touched.has('voiceHidden')) {
+        latest = await setWorkspaceVoiceButtonHidden(workspaceId, voiceHidden);
+      }
       if (touched.has('timerSound')) {
         latest = await setWorkspaceWidgetTimerSound(workspaceId, timerSound);
       }
@@ -845,6 +851,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setQuickChat(held.quickChatModelId ?? '');
     setQuickChatWrites(held.quickChatMayWrite);
     setChatTimestamps(held.chatShowTimestamps);
+    setVoiceHidden(held.voiceButtonHidden);
     setTimerSound(held.widgetTimerSound);
     setSessionCost(held.sessionCostShown);
     setPause(inBox(held.voicePauseEndsTurnMs, A_SECOND));
@@ -2166,6 +2173,21 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.rule} />
+        </div>
+
+        <div className={styles.checkRowWithHint}>
+          <label className={styles.checkRow}>
+            <input
+              id="voice-button-hidden"
+              type="checkbox"
+              checked={voiceHidden}
+              onChange={(event) => { touch('voiceHidden'); setVoiceHidden(event.target.checked); }}
+            />
+            <span>{t('Hide the voice mode button')}</span>
+          </label>
+          <FieldHint label={t('Hide the voice mode button')}>
+            {t('Takes voice mode off this workspace’s chat bar. Off by default: the button is shown, and greyed out with the reason where a model is missing.')}
+          </FieldHint>
         </div>
 
         <div className={styles.field}>

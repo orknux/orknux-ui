@@ -200,6 +200,8 @@ export interface Workspace {
   voiceSpeechChunking: SpeechChunking;
   /** Whether this workspace's chats show when each message was sent. */
   chatShowTimestamps: boolean;
+  /** Whether this workspace's chats hide the voice mode button. */
+  voiceButtonHidden: boolean;
   /** Whether a chat timer sounds when it ends, unless the agent chose otherwise for it. */
   widgetTimerSound: boolean;
   /** Whether a session page shows what the session has cost. */
@@ -213,7 +215,7 @@ const WORKSPACE_FIELDS =
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
-  'voiceSpeechChunking chatShowTimestamps widgetTimerSound sessionCostShown';
+  'voiceSpeechChunking chatShowTimestamps voiceButtonHidden widgetTimerSound sessionCostShown';
 
 /** Just enough of a role to name it where a workspace lists what opens it. */
 export interface WorkspaceRole {
@@ -360,6 +362,17 @@ export async function setWorkspaceChatTimestamps(
     { workspaceId, shown },
   );
   return data.setWorkspaceChatTimestamps;
+}
+
+/** Whether this workspace's chats hide the voice mode button. */
+export async function setWorkspaceVoiceButtonHidden(workspaceId: string, hidden: boolean): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceVoiceButtonHidden: Workspace }>(
+    `mutation SetWorkspaceVoiceButtonHidden($workspaceId: ID!, $hidden: Boolean!) {
+       setWorkspaceVoiceButtonHidden(workspaceId: $workspaceId, hidden: $hidden) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, hidden },
+  );
+  return data.setWorkspaceVoiceButtonHidden;
 }
 
 /** Whether this workspace's session pages show what a session has cost. */

@@ -1099,6 +1099,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [reads, setReads] = useState(false);
   /** Whether the workspace has answered at all, so voice mode is not called unavailable while it is being asked. */
   const [voiceKnown, setVoiceKnown] = useState(false);
+  /** Whether the workspace chose to take voice mode off its chat bar. */
+  const [voiceHidden, setVoiceHidden] = useState(false);
   /** Whether the "why not" note under a voice button that cannot start is open. */
   const [voiceWhy, setVoiceWhy] = useState(false);
   const voiceWhyClosing = useRef<number | null>(null);
@@ -1179,6 +1181,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         if (abandoned) return;
         setHears(held?.transcriptionModelId != null);
         setReads(held?.speechModelId != null);
+        setVoiceHidden(held?.voiceButtonHidden ?? false);
         setVoiceKnown(true);
         setShowTimestamps(held?.chatShowTimestamps ?? false);
         setTimerSound(held?.widgetTimerSound ?? true);
@@ -3973,7 +3976,7 @@ ${named}`;
                 start it is drawn off, and its note says which model is missing
                 and where it is chosen.
               */}
-              {voiceKnown && !(hears && reads) && (
+              {voiceKnown && !voiceHidden && !(hears && reads) && (
                 <span
                   className={styles.voiceUnavailable}
                   onMouseEnter={() => {
@@ -4018,7 +4021,7 @@ ${named}`;
                   )}
                 </span>
               )}
-              {hears && reads && (
+              {!voiceHidden && hears && reads && (
                 <>
                   {/*
                     Voice mode, next to the microphone it is easily confused

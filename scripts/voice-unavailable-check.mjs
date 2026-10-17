@@ -13,6 +13,8 @@ import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
 const PREFIX = 'zz voice unavailable';
+// Whether the workspace, as the page reads it, has chosen to hide the button - flipped for the last half.
+let hideVoice = false;
 
 const sweep = async () => {
   const { workspaceChats } = await graphql(
@@ -40,6 +42,7 @@ try {
       if (node === null || typeof node !== 'object') return;
       if ('speechModelId' in node) node.speechModelId = null;
       if ('transcriptionModelId' in node) node.transcriptionModelId = null;
+      if ('voiceButtonHidden' in node) node.voiceButtonHidden = hideVoice;
       Object.values(node).forEach(strip);
     };
     strip(body);
@@ -70,6 +73,15 @@ try {
   await link.click();
   await page.waitForURL(/\/settings/, { timeout: 10_000 }).catch(() => undefined);
   record(page.url().includes(`/workspace/${WORKSPACE}/settings#transcription-model`), `the link opens workspace settings there (${page.url()})`);
+
+  // A workspace that chose to hide it gets no button at all, drawn off or otherwise.
+  hideVoice = true;
+  await page.goBack({ waitUntil: 'domcontentloaded' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByPlaceholder(/Type a message/).waitFor({ timeout: 20_000 });
+  await page.waitForTimeout(1500);
+  const left = await page.getByTestId('voice-unavailable').count() + await page.getByRole('button', { name: 'Enter voice mode' }).count();
+  record(left === 0, `a workspace that hides it shows no voice button (${left})`);
 } finally {
   await sweep();
 }
