@@ -15,6 +15,8 @@ export interface ObjectProperty {
   description: string | null;
   /** Ready to show: `string`, `ApiResponse`, `array<FileObject>`. */
   display: string;
+  /** The fields of an object defined in place; null where it points at a named one or holds a scalar. */
+  properties?: ObjectProperty[] | null;
 }
 
 export interface WorkflowObject {
@@ -40,6 +42,8 @@ export interface ObjectPropertyInput {
   elementKind?: PropertyKind | null;
   /** At most 500 characters; blank says nothing, which is not the same as a guess. */
   description?: string | null;
+  /** The fields of an object defined here, for an OBJECT naming no refObjectId or an ARRAY of such. */
+  properties?: ObjectPropertyInput[] | null;
 }
 
 /** How much a field may say about itself, which the server refuses past. */
@@ -51,9 +55,17 @@ export interface ObjectValidation {
   message: string;
 }
 
+/* One property's fields, and the same again for the fields of an object defined inside it - as deep as the server reads. */
+const PROPERTY_FIELDS = 'name kind refObjectId elementKind description display';
+const INLINE_DEPTH = 8;
+const PROPERTY_TREE = Array.from({ length: INLINE_DEPTH }).reduce<string>(
+  (inner) => `${PROPERTY_FIELDS} properties { ${inner} }`,
+  PROPERTY_FIELDS,
+);
+
 const OBJECT_FIELDS = `
   id workspaceId pluginId name description propertyCount createdAt createdBy lastModifiedAt lastModifiedBy
-  properties { name kind refObjectId elementKind description display }
+  properties { ${PROPERTY_TREE} }
 `;
 
 /**
@@ -178,3 +190,19 @@ export const PROPERTY_KIND_LABEL: Record<PropertyKind, string> = {
  * opens the editor - so a form can make one without leaving the field.
  */
 export const NEW_OBJECT = 'new';
+
+/** An object read off a JSON Schema the person pasted; the server says what it kept. */
+export async function createObjectFromSchema(
+  workspaceId: string,
+  name: string,
+  description: string | null,
+  schema: string,
+): Promise<WorkflowObject> {
+  const data = await graphql<{ createObjectFromSchema: WorkflowObject }>(
+    `mutation CreateObjectFromSchema($workspaceId: ID!, $name: String!, $description: String, $schema: String!) {
+       createObjectFromSchema(workspaceId: $workspaceId, name: $name, description: $description, schema: $schema) { ${OBJECT_FIELDS} }
+     }`,
+    { workspaceId, name, description, schema },
+  );
+  return data.createObjectFromSchema;
+}

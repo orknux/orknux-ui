@@ -1157,3 +1157,17 @@
 .shortcutLink:hover {
   text-decoration: underline;
 }
+
+/* The fields of an object defined inside a row: set in, with a rule down the side saying which row they belong to. */
+.propertyNested {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-left: var(--space-16);
+  padding-left: var(--space-16);
+  border-left: 2px solid var(--color-border);
+}
+
+.propertyNested .propertyRow:last-of-type {
+  border-bottom: 0;
+}

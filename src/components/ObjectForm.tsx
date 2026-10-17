@@ -22,7 +22,12 @@ export interface Row {
   many: boolean;
   /** What the field means, for whoever - or whatever - reads it. */
   description: string;
+  /** The rows of an object defined here, for a row whose type is the bare `OBJECT`. */
+  children?: Row[];
 }
+
+/** The type a row has when it is an object defined in place rather than a named one. */
+export const INLINE_OBJECT = 'OBJECT';
 
 /**
  * What a type says, as the three parts anything storing one keeps.
@@ -38,6 +43,8 @@ export function kindsOf(type: string, many: boolean): {
   refObjectId?: string;
 } {
   const [kind, refObjectId] = type.split(':');
+  // An object defined in place: no reference, and its fields travel beside it.
+  if (type === INLINE_OBJECT) return many ? { kind: 'ARRAY', elementKind: 'OBJECT' } : { kind: 'OBJECT' };
   if (many) {
     return kind === 'OBJECT'
       ? { kind: 'ARRAY', refObjectId }
@@ -52,7 +59,9 @@ export function typeOf(held: {
   kind?: PropertyKind | null;
   elementKind?: PropertyKind | null;
   refObjectId?: string | null;
+  properties?: unknown[] | null;
 }): { type: string; many: boolean } {
+  if (held.properties != null && held.refObjectId == null) return { type: INLINE_OBJECT, many: held.kind === 'ARRAY' };
   if (held.kind === 'ARRAY') {
     return {
       type: held.refObjectId != null ? `OBJECT:${held.refObjectId}` : `${held.elementKind ?? 'STRING'}`,
@@ -70,6 +79,7 @@ export function asProperty(row: Row): ObjectPropertyInput {
     name: row.name,
     ...kindsOf(row.type, row.many),
     description: description === '' ? null : description,
+    ...(row.type === INLINE_OBJECT ? { properties: (row.children ?? []).map(asProperty) } : {}),
   };
 }
 
@@ -81,7 +91,9 @@ export function asProperty(row: Row): ObjectPropertyInput {
  * nothing is lost, because the two halves were always in the row anyway.
  */
 export function asRow(property: WorkflowObject['properties'][number]): Row {
-  return { name: property.name, ...typeOf(property), description: property.description ?? '' };
+  const row: Row = { name: property.name, ...typeOf(property), description: property.description ?? '' };
+  if (row.type === INLINE_OBJECT) row.children = (property.properties ?? []).map(asRow);
+  return row;
 }
 
 /** A row to start from: a string, singular, waiting for a name. */
@@ -98,11 +110,17 @@ export const EMPTY_ROW: Row = { name: '', type: 'STRING', many: false, descripti
  * Here rather than in either caller: both surfaces offer the same types, and two
  * lists of what a field may be is one list too many.
  */
-export function typeOptionsOf(others: WorkflowObject[]): DefinitionOption[] {
+export function typeOptionsOf(others: WorkflowObject[], inline = false): DefinitionOption[] {
   return [
     { value: 'STRING', label: 'string' },
     { value: 'NUMBER', label: 'number' },
     { value: 'BOOLEAN', label: 'boolean' },
+    /*
+     * An object defined here, with fields of its own, offered only where the
+     * fields can be drawn: the object editor. A node's own field has nowhere to
+     * keep them, so there the list stops at the named shapes.
+     */
+    ...(inline ? [{ value: INLINE_OBJECT, label: 'object', hint: t('fields of its own, defined here') }] : []),
     ...others.map((other) => ({
       value: `OBJECT:${other.id}`,
       label: other.name,
@@ -142,6 +160,8 @@ export interface ObjectFormStyles {
   description: string;
   footer: string;
   add: string;
+  /** The rows of an object defined inside a row, set in from it. */
+  nested: string;
 }
 
 export interface ObjectFormProps {
@@ -159,6 +179,8 @@ export interface ObjectFormProps {
    * pointing at `property-name-0` point at the same box.
    */
   idPrefix?: string;
+  /** Whether a row may be an object defined in place, with rows of its own under it. */
+  inline?: boolean;
 }
 
 /**
@@ -170,7 +192,7 @@ export interface ObjectFormProps {
  * against what was loaded, and the workflow panel holds it to know when to
  * write, so a copy in here would be a third version of the same answer.
  */
-export function ObjectForm({ rows, onChange, typeOptions, styles, idPrefix = 'property' }: ObjectFormProps) {
+export function ObjectForm({ rows, onChange, typeOptions, styles, idPrefix = 'property', inline = false }: ObjectFormProps) {
   const edit = (index: number, change: Partial<Row>) =>
     onChange(rows.map((row, at) => (at === index ? { ...row, ...change } : row)));
 
@@ -290,6 +312,22 @@ export function ObjectForm({ rows, onChange, typeOptions, styles, idPrefix = 'pr
                 onChange={(event) => edit(index, { description: event.target.value })}
               />
             </div>
+            {/*
+              The fields of an object defined here, set in under the row that
+              is it - the same editor again, so a field of theirs may be one too.
+            */}
+            {inline && row.type === INLINE_OBJECT && (
+              <div className={styles.nested} data-testid="inline-object">
+                <ObjectForm
+                  rows={row.children ?? []}
+                  onChange={(children) => edit(index, { children })}
+                  typeOptions={typeOptions}
+                  styles={styles}
+                  idPrefix={`${idPrefix}-${index}`}
+                  inline
+                />
+              </div>
+            )}
           </div>
         );
       })}

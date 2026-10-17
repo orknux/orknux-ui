@@ -60,6 +60,7 @@ const FORM_STYLES: ObjectFormStyles = {
   description: styles.propertyDescription,
   footer: styles.editorFooter,
   add: styles.addProperty,
+  nested: styles.propertyNested,
 };
 
 /**
@@ -131,7 +132,7 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
   }, [workspaceId]);
 
   /** What a field can be one of; the same list the workflow panel offers. */
-  const typeOptions = useMemo(() => typeOptionsOf(others), [others]);
+  const typeOptions = useMemo(() => typeOptionsOf(others, true), [others]);
 
   /** Anything the editor changed: unsaved, and the last check no longer applies. */
   function edited(changed: Row[]) {
@@ -323,6 +324,7 @@ export function ObjectEditorPage({ session, onSignOut }: ObjectEditorPageProps) 
                 onChange={edited}
                 typeOptions={typeOptions}
                 styles={FORM_STYLES}
+                inline
               />
             </section>
 

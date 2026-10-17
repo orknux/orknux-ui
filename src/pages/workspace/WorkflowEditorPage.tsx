@@ -479,6 +479,7 @@ const PANEL_SHAPE_STYLES: ObjectFormStyles = {
   description: styles.input,
   footer: styles.shapeFooter,
   add: styles.parameterSync,
+  nested: styles.shapeNested,
 };
 
 /**

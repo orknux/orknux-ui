@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
-import { createObject, fetchPluginObjects, fetchWorkspaceObjects } from '../../api/objects';
+import { createObject, createObjectFromSchema, fetchPluginObjects, fetchWorkspaceObjects } from '../../api/objects';
 import type { ObjectOrder, WorkflowObject } from '../../api/objects';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -20,6 +20,7 @@ import {
 } from '../../components/ComponentTransfer';
 import { Loader } from '../../components/Loader';
 import { NameDialog } from '../../components/NameDialog';
+import { SchemaDialog } from '../../components/SchemaDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
@@ -59,6 +60,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
   useEffect(() => setPage(1), [asked]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [fromSchema, setFromSchema] = useState(false);
   /**
    * The shapes the loaded plugins export, read once.
    *
@@ -143,6 +145,9 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
         </div>
         <div className={transferStyles.headerActions}>
           <ImportComponentsButton workspaceId={workspaceId} onImported={load} />
+          <button type="button" className={transferStyles.importButton} onClick={() => setFromSchema(true)} data-testid="from-schema">
+            {t('From JSON Schema')}
+          </button>
           <UseTemplateButton workspaceId={workspaceId} kind="OBJECT" onImported={load} />
           <button type="button" className={styles.createButton} onClick={() => setCreating(true)}>{t('+ Create Object')}</button>
         </div>
@@ -350,6 +355,15 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           />
         )}
       </section>
+
+      <SchemaDialog
+        open={fromSchema}
+        onClose={() => setFromSchema(false)}
+        onSubmit={async (name, description, schema) => {
+          const created = await createObjectFromSchema(workspaceId, name, description || null, schema);
+          navigate(`/workspace/${workspaceId}/objects/${created.id}`);
+        }}
+      />
 
       <NameDialog
         open={creating}

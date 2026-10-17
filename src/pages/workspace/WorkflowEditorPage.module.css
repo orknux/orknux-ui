@@ -1811,3 +1811,10 @@ select.input {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
+
+/* Named for the shared editor; the panel's rows never hold an object defined in place, so it is not drawn here. */
+.shapeNested {
+  margin-left: var(--space-8);
+  padding-left: var(--space-8);
+  border-left: 2px solid var(--color-border);
+}

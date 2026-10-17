@@ -66,6 +66,11 @@ function field(property: ObjectProperty): string {
 
 /** What one property is, in TypeScript. */
 function typeOf(property: ObjectProperty, names: Map<string, string>): string {
+  // An object defined in place is written out where it stands.
+  if (property.properties != null && property.refObjectId == null) {
+    const literal = inlineLiteral(property.properties, names);
+    return property.kind === 'ARRAY' ? `${literal}[]` : literal;
+  }
   if (property.kind === 'ARRAY') {
     // An array of objects points at one; an array of scalars says which scalar.
     if (property.refObjectId != null) return `${referenced(property.refObjectId, names)}[]`;
@@ -86,6 +91,13 @@ function typeOf(property: ObjectProperty, names: Map<string, string>): string {
 function referenced(objectId: string | null | undefined, names: Map<string, string>): string {
   const name = objectId == null ? undefined : names.get(objectId);
   return name !== undefined && IDENTIFIER.test(name) ? name : 'Record<string, unknown>';
+}
+
+/** `{ city: string; zip: string }`, with a field's sentence as a comment before it. */
+function inlineLiteral(fields: ObjectProperty[], names: Map<string, string>): string {
+  if (fields.length === 0) return 'Record<string, unknown>';
+  const parts = fields.map((one) => `${described(one).map((line) => line.trim()).join(' ')}${field(one)}: ${typeOf(one, names)}`.trim());
+  return `{ ${parts.join('; ')} }`;
 }
 
 function scalar(kind: PropertyKind): string {

@@ -292,6 +292,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'object-nesting-check',
+    what: 'an object defined inside a property is drawn as rows inside the row, an object is made from a JSON Schema, and the depth is a setting',
+    needs: ['workspace'],
+    /*
+     * The editor is asked what it draws and the server what it holds after a
+     * save; rows on screen prove nothing about what was stored. Makes two
+     * objects under names of its own and removes them.
+     */
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],

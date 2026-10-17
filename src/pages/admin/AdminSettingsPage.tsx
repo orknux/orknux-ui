@@ -46,6 +46,7 @@ import {
   setExecutionRetentionDays,
   setMetricsAnonymous,
   setChatMaxRounds,
+  setObjectMaxDepth,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
   setReleaseBootAttempts,
@@ -135,6 +136,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
   const [pluginWait, setPluginWait] = useState('');
   /** The installation's ceiling on tool rounds; an agent may carry its own. */
   const [rounds, setRounds] = useState('');
+  const [objectDepth, setObjectDepth] = useState('');
   /** How long one note to self may be, as typed. */
   const [noteLength, setNoteLength] = useState('');
   /** How many notes to self one conversation keeps, as typed. */
@@ -292,6 +294,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         setPluginSource(String(held.pluginMaxSourceKb));
         setPluginWait(String(held.pluginTimeoutSeconds));
         setRounds(String(held.chatMaxRounds));
+        setObjectDepth(String(held.objectMaxDepth));
         setNoteLength(String(held.noteMaxCharacters));
         setNoteCount(String(held.noteMaxCount));
         setValueSize(String(held.sessionValueMaxMb));
@@ -367,6 +370,7 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
         { typed: sweep, held: settings.taskSweepMinutes, write: setTaskSweepMinutes },
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
+        { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
         { typed: valueSize, held: settings.sessionValueMaxMb, write: setSessionValueMaxMb },
@@ -2542,6 +2546,40 @@ export function AdminSettingsPage({ session, onSignOut }: AdminSettingsPageProps
 
             {/* The server's log levels, without a restart. Issue #591. */}
             <LogLevelsSection onPending={takeLogPending} />
+
+            <h2 id="objects" className={styles.sectionHeading}>{t('Objects')}</h2>
+
+            {/*
+              How deep a shape may go. One number for the editor, the JSON
+              Schema reader, the describers and the webhook's matcher: a shape
+              the editor lets somebody draw and the checker stops short of is
+              a shape half held.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Object Depth')}</p>
+                  <FieldHint label={t('Object Depth')}>
+                    {t('How deep an object may nest - an object defined inside an object inside an object - and how deep a value is checked against one. The same number bounds what a pasted JSON Schema is read to. Between 1 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="object-max-depth"
+                  name="objectMaxDepth"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={objectDepth}
+                  onChange={(event) => setObjectDepth(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Object Depth')}
+                />
+                <span className={styles.retentionUnit}>{t('levels')}</span>
+              </div>
+            </div>
 
             <h2 id="plugins" className={styles.sectionHeading}>{t('Plugins')}</h2>
 

@@ -81,6 +81,9 @@ export interface InstallationSettings {
    * is what the rest of them follow.
    */
   chatMaxRounds: number;
+  /** How deep an object's shape may go; Admin > Settings. */
+  objectMaxDepth: number;
+  objectMaxDepthConfigured: number;
   /** What a fresh installation allows, before anybody changed it. */
   chatMaxRoundsConfigured: number;
   /**
@@ -330,7 +333,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured objectMaxDepth objectMaxDepthConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -472,6 +475,16 @@ export async function setPluginTimeoutSeconds(seconds: number): Promise<Installa
  * its own. Eight was written into the code, and an agent holding twenty tools
  * spent them listing and loading before the work began.
  */
+export async function setObjectMaxDepth(depth: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setObjectMaxDepth: InstallationSettings }>(
+    `mutation SetObjectMaxDepth($depth: Int!) {
+       setObjectMaxDepth(depth: $depth) { ${FIELDS} }
+     }`,
+    { depth },
+  );
+  return data.setObjectMaxDepth;
+}
+
 export async function setChatMaxRounds(rounds: number): Promise<InstallationSettings> {
   const data = await graphql<{ setChatMaxRounds: InstallationSettings }>(
     `mutation SetChatMaxRounds($rounds: Int!) {
