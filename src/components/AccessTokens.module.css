@@ -12,25 +12,24 @@
 
 /* The issued tokens, grouped so the list reads apart from the create row below. */
 /*
- * A list, not a stack of boxes. Each token sat in a box with the input's own
- * background and border, so the saved ones read as fields to type into beside
- * the one that is. Rows on the card's background, a line between them.
+ * The tokens as one group, drawn as a user's roles are: a bordered box holding
+ * a line per token, the name in bold and what is known of it muted beside it.
+ * Each token used to sit in a box of its own with the input's background and
+ * border, so the saved ones read as fields to type into beside the one that is.
  */
 .list {
   display: flex;
   flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
 }
 
 .token {
   display: flex;
   align-items: baseline;
   gap: var(--space-8);
-  padding: var(--space-8) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.token:first-child {
-  border-top: 1px solid var(--color-border);
 }
 
 /* Room between the list and the box that makes the next one, so the two read as separate things. */
@@ -39,14 +38,15 @@
 }
 
 .name {
-  flex: 1 1 0;
   min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
   font-size: var(--text-md);
   color: var(--color-text-primary);
 }
 
 .when {
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -87,6 +87,7 @@
 }
 
 .textButton {
+  margin-left: auto;
   padding: 0;
   background: none;
   border: 0;
@@ -127,6 +128,34 @@
   background: var(--color-accent-brand-soft);
   border: 1px solid var(--color-accent-brand);
   border-radius: var(--radius-6);
+}
+
+.secretTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.secretClose {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.secretClose:hover,
+.secretClose:focus-visible {
+  background: var(--color-surface-raised);
+  opacity: 1;
 }
 
 .secretHead {

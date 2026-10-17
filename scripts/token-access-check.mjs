@@ -62,8 +62,8 @@ const sizes = await row.evaluate((one) => {
     revoke: px(one.querySelector('button')),
   };
 });
-record(sizes.when === sizes.name && sizes.revoke === sizes.name, `when it was used and Revoke are the name's size (${JSON.stringify(sizes)})`);
-record(sizes.access >= 12, `and the access tag is no smaller than 12px (${sizes.access})`);
+// Drawn as a user's roles are: the name at 13px, what is known of it at 12px beside it.
+record(sizes.name === 13 && sizes.when === 12 && sizes.access >= 12 && sizes.revoke === 13, `the row reads as a role does - name 13px, details 12px (${JSON.stringify(sizes)})`);
 
 /* A saved token is a list row, not something to type into: it does not wear the input's box. */
 const look = await page.evaluate(() => {
@@ -81,6 +81,15 @@ const space = await page.evaluate(() => {
 record(space >= 16, `and there is room between the list and the box under it (${space}px)`);
 await page.screenshot({ path: '/tmp/token-row.png', clip: await section.boundingBox() });
 
+/* Closed once copied, and the secret goes with it. */
+const notice = page.getByTestId('token-secret');
+const closer = notice.getByTestId('token-dismiss');
+const placed = await Promise.all([notice.boundingBox(), closer.boundingBox()]);
+record(
+  placed[1] !== null && placed[1].x + placed[1].width > placed[0].x + placed[0].width - 40 && placed[1].y < placed[0].y + 30,
+  "the secret can be dismissed from the notice's corner",
+);
+
 /* Used as a script uses it: no cookie, just the token. */
 const asToken = async (query) => {
   const answer = await context.request.fetch(`${BASE}/graphql`, {
@@ -94,6 +103,9 @@ const read = await asToken('{ myTokens { name } }');
 record(read.errors === undefined, `a query answers (${JSON.stringify(read).slice(0, 80)})`);
 const wrote = await asToken('mutation { createUserToken(name: "should not exist") { secret } }');
 record(wrote.errors?.[0]?.extensions?.code === 'TokenReadOnly', `a mutation is refused (${JSON.stringify(wrote).slice(0, 120)})`);
+
+await closer.click();
+record(await notice.waitFor({ state: 'detached', timeout: 5_000 }).then(() => true).catch(() => false), 'dismissing takes the secret off the page');
 
 await row.getByRole('button', { name: 'Revoke' }).click();
 record(await row.waitFor({ state: 'detached', timeout: 10_000 }).then(() => true).catch(() => false), 'and it is revoked');

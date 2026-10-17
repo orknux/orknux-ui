@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createUserToken, deleteUserToken, fetchMyTokens, fetchUserTokens } from '../api/users';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
+import closeIcon from '../assets/x.svg';
 import type { UserToken } from '../api/users';
 import { timeAgo } from '../api/tools';
 import { t, tf } from '../i18n';
@@ -154,7 +155,20 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
       {/* The one time it is ever on screen. */}
       {minted !== null && (
         <div className={styles.secret} data-testid="token-secret">
-          <p className={styles.secretHead}>{t('Copy it now - it is not shown again.')}</p>
+          <div className={styles.secretTop}>
+            <p className={styles.secretHead}>{t('Copy it now - it is not shown again.')}</p>
+            {/* Closed once copied; the secret is gone from the page with it, as the notice says. */}
+            <button
+              type="button"
+              className={styles.secretClose}
+              aria-label={t('Dismiss')}
+              title={t('Dismiss')}
+              data-testid="token-dismiss"
+              onClick={() => setMinted(null)}
+            >
+              <img src={closeIcon} alt="" width={14} height={14} />
+            </button>
+          </div>
           <div className={styles.secretRow}>
             <code className={styles.secretValue}>{minted}</code>
             <CopyButton text={minted} label={t('Copy the token')} testId="token-copy" />
