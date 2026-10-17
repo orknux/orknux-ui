@@ -1651,14 +1651,15 @@ select.input {
   display: flex;
 }
 
-/* Sized to the label's line it sits on. */
+/* On the label's line, as large as the room above the name box allows. */
 .shapeActionCol .shapeDelete {
   padding: 0;
+  margin-top: -2px;
 }
 
 .shapeActionCol .shapeDelete svg {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
 }
 
 .shapeDelete {
