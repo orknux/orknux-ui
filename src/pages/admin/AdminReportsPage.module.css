@@ -76,7 +76,8 @@
 .reportHead {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  /* The heading centred on the pickers beside it, not sat on their baseline under their labels. */
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-12);
 }
