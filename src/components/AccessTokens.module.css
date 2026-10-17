@@ -50,7 +50,9 @@
   border-top: 0;
 }
 
-.revoke {
+/* The heading over Revoke lines up with it, at the right; the table's own th rule would leave it left. */
+.table th.revoke,
+.table td.revoke {
   text-align: right;
 }
 

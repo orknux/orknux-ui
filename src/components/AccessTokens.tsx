@@ -93,7 +93,7 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
                 <th>{t('Access')}</th>
                 <th>{t('Created')}</th>
                 <th>{t('Last used')}</th>
-                <th aria-label={t('Actions')} />
+                <th className={styles.revoke}>{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>

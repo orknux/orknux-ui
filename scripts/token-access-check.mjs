@@ -70,7 +70,15 @@ const sizes = await row.evaluate((one) => {
 });
 // Drawn as a user's roles are: the name at 13px, what is known of it at 12px beside it.
 const headers = (await section.locator('th').allInnerTexts()).map((one) => one.trim().toLowerCase());
-record(['name', 'access', 'created', 'last used'].every((one) => headers.includes(one)), `the tokens are a table with its columns named (${headers.join(', ')})`);
+record(['name', 'access', 'created', 'last used', 'actions'].every((one) => headers.includes(one)), `the tokens are a table with its columns named (${headers.join(', ')})`);
+const ends = await section.evaluate((root) => {
+  const head = [...root.querySelectorAll('th')].find((one) => /actions/i.test(one.textContent ?? ''));
+  const revoke = root.querySelector('[data-testid="access-token"] button');
+  const range = document.createRange();
+  range.selectNodeContents(head);
+  return [Math.round(range.getBoundingClientRect().right), Math.round(revoke.getBoundingClientRect().right)];
+});
+record(Math.abs(ends[0] - ends[1]) <= 2, `the Actions heading lines up with Revoke under it (${ends.join(' / ')})`);
 record(sizes.name === 13 && sizes.when === 12 && sizes.access >= 12 && sizes.revoke === 13, `the row reads as a role does - name 13px, details 12px (${JSON.stringify(sizes)})`);
 
 /* A saved token is a list row, not something to type into: it does not wear the input's box. */
