@@ -33,7 +33,7 @@
 .lead {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-12);
 }
 
 .lead > .sectionHeading {
@@ -126,7 +126,7 @@
 .picker {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-12);
 }
 
 .pickerLabel {
