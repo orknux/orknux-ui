@@ -179,6 +179,31 @@
   color: var(--color-text-muted);
 }
 
+/* The row that hands on a whole object, set apart from the object's own fields. */
+.optionWhole .optionField {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.wholeTag {
+  margin-left: auto;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--color-accent-brand);
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  color: var(--color-accent-brand);
+  white-space: nowrap;
+}
+
+/* One of the object's fields, drawn under it as a part of it. */
+.optionPart {
+  padding-left: var(--space-20);
+}
+
+.optionParent {
+  color: var(--color-text-muted);
+}
+
 .note {
   margin: 0;
   padding: var(--space-8);

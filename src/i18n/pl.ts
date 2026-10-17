@@ -1703,6 +1703,7 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
+  "whole object": "cały obiekt",
   "Show only": "Pokaż tylko",
   "{plugin} plugin action": "Akcja wtyczki {plugin}",
   "{plugin} plugin function": "Funkcja wtyczki {plugin}",

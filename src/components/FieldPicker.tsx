@@ -277,6 +277,19 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
                   </p>
                   {group.map((option) => {
                     const index = flat.indexOf(option);
+                    /*
+                     * The whole object, set apart from its own fields. Listed
+                     * first and in the same type as `x.intentType` beneath it,
+                     * the row that hands on all of it was easy to scroll past -
+                     * so it says so, and its fields are drawn under it with the
+                     * object's name dimmed, as parts of it.
+                     */
+                    const whole = group.some(
+                      (other) => other !== option && other.field.startsWith(`${option.field}.`),
+                    );
+                    const parent = group.find(
+                      (other) => other !== option && option.field.startsWith(`${other.field}.`),
+                    );
                     return (
                       <button
                         key={option.expression}
@@ -292,6 +305,8 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
                           styles.option,
                           option.expression === value ? styles.optionChosen : '',
                           index === active ? styles.optionActive : '',
+                          whole ? styles.optionWhole : '',
+                          parent !== undefined ? styles.optionPart : '',
                         ]
                           .filter((name) => name !== '')
                           .join(' ')}
@@ -309,7 +324,21 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => pick(option)}
                       >
-                        <span className={styles.optionField}>{option.field}</span>
+                        <span className={styles.optionField}>
+                          {parent === undefined ? (
+                            option.field
+                          ) : (
+                            <>
+                              <span className={styles.optionParent}>{parent.field}.</span>
+                              {option.field.slice(parent.field.length + 1)}
+                            </>
+                          )}
+                        </span>
+                        {whole && (
+                          <span className={styles.wholeTag} data-field-whole="">
+                            {t('whole object')}
+                          </span>
+                        )}
                         {option.type !== undefined && <span className={styles.optionType}>{option.type}</span>}
                       </button>
                     );

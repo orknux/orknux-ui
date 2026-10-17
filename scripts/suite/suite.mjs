@@ -1737,6 +1737,12 @@ export const TESTS = [
     /* Loads a plugin of its own and unloads it; makes a workflow, whose own definitions go with it. */
   },
   {
+    name: 'field-whole-object-check',
+    what: 'the field picker marks the row that hands on a whole object, and draws its fields under it',
+    needs: ['workspace'],
+    /* Makes a shape, a function, an action and a workflow, and removes them. */
+  },
+  {
     name: 'used-by-check',
     what: 'where a component is used: both states of the panel, and a row followed to the end',
     needs: ['workspace'],
