@@ -20,7 +20,7 @@ export interface SchemaDialogProps {
 /** What the box holds, read the way the server will read it - so the person hears before pressing Create. */
 export type SchemaReading =
   | { ok: false; says: string }
-  | { ok: true; properties: number; nested: number; arrays: number; leftBehind: string[] };
+  | { ok: true; properties: number; nested: number; arrays: number; leftBehind: string[]; renamed: string[] };
 
 /** The keywords a schema may carry that nothing here can hold a value to. */
 const LEFT_BEHIND = ['required', 'enum', 'const', 'format', 'pattern', 'minimum', 'maximum', 'minLength', 'maxLength', 'minItems', 'maxItems', 'oneOf', 'anyOf', 'allOf', 'additionalProperties', 'default'];
@@ -34,7 +34,7 @@ const typeOf = (node: Node): string | null => {
   return null;
 };
 const isObjectSchema = (node: Node): boolean => typeOf(node) === 'object' || isNode(node.properties);
-/** What a property may be called: what can be written after a dot, which is how a property is read. The server holds the same line. */
+/** What a property may be called: what can be written after a dot, which is how a property is read. The server writes the rest with underscores. */
 const USABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** `{"$ref": "#/definitions/Address"}` read as the definition, as the server reads it; anything else as it is. */
@@ -66,7 +66,7 @@ export function readSchema(text: string): SchemaReading | null {
   const top = root;
   let nested = 0;
   let arrays = 0;
-  let unusable: string | null = null;
+  const renamed: string[] = [];
   const leftBehind = new Set<string>();
   const walk = (raw: unknown, depth: number) => {
     const node = resolve(raw, top);
@@ -74,7 +74,7 @@ export function readSchema(text: string): SchemaReading | null {
     LEFT_BEHIND.forEach((keyword) => { if (keyword in node) leftBehind.add(keyword); });
     if (isNode(node.properties)) {
       Object.entries(node.properties).forEach(([key, raw]) => {
-        if (unusable === null && !USABLE_NAME.test(key)) unusable = key;
+        if (!USABLE_NAME.test(key)) renamed.push(key);
         const child = resolve(raw, top);
         if (!isNode(child)) return;
         if (isObjectSchema(child)) nested += 1;
@@ -89,10 +89,7 @@ export function readSchema(text: string): SchemaReading | null {
     }
   };
   walk(top, 0);
-  if (unusable !== null) {
-    return { ok: false, says: tf('{name} is not a usable property name: letters, digits and _ only, as a reference reads it after a dot.', { name: unusable }) };
-  }
-  return { ok: true, properties: Object.keys(root.properties).length, nested, arrays, leftBehind: [...leftBehind] };
+  return { ok: true, properties: Object.keys(root.properties).length, nested, arrays, leftBehind: [...leftBehind], renamed };
 }
 
 /**
@@ -207,6 +204,7 @@ export function SchemaDialog({ placement = 'modal', open, onClose, onSubmit }: S
                         reading.nested > 0 ? tf('{count} defined in place', { count: reading.nested }) : null,
                         reading.arrays > 0 ? tf('{count} arrays', { count: reading.arrays }) : null,
                         reading.leftBehind.length > 0 ? tf('left behind: {keywords}', { keywords: reading.leftBehind.join(', ') }) : null,
+                        reading.renamed.length > 0 ? tf('written with underscores: {keys}', { keys: reading.renamed.join(', ') }) : null,
                       ].filter((part) => part !== null).join(' · ')
                     : reading.says}
                 >

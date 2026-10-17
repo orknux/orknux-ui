@@ -1702,7 +1702,7 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
-  "{name} is not a usable property name: letters, digits and _ only, as a reference reads it after a dot.": "{name} nie jest użyteczną nazwą właściwości: tylko litery, cyfry i _, tak jak odwołanie czyta ją po kropce.",
+  "written with underscores: {keys}": "zapisane z podkreśleniami: {keys}",
   "Valid": "Poprawny",
   "Invalid": "Niepoprawny",
   "Search settings…": "Szukaj ustawień…",

@@ -111,7 +111,7 @@ try {
   record(above, 'and it is said above the box, not under it');
   await typeSchema('{ "type": "object", "properties": { "issue-related-events": { "type": "string" } } }');
   await page.waitForTimeout(150);
-  record(!(await verdictOf()).valid && /issue-related-events is not a usable property name/.test(await readingOf()), 'a key no reference could follow reads Invalid, naming the key');
+  record((await verdictOf()).valid && /underscores: issue-related-events/.test(await readingOf()), 'a key no reference could follow reads Valid, and the hover says it is written with underscores');
   await typeSchema('{ "type": "object", "properties": { "a": ');
   await page.waitForTimeout(150);
   record(/Not JSON/.test(await readingOf()), 'half-typed JSON is said not to be JSON');
