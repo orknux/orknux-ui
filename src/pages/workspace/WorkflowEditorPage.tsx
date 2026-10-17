@@ -71,8 +71,8 @@ import type { Model } from '../../api/models';
 import { fetchImageSizePresets } from '../../api/imagePresets';
 import type { ImageSizePreset } from '../../api/imagePresets';
 import { ImageSizePresetsDialog } from '../../components/ImageSizePresetsDialog';
-import type { WorkflowObject } from '../../api/objects';
-import { ObjectForm, asProperty, asRow, kindsOf, typeOf, typeOptionsOf } from '../../components/ObjectForm';
+import type { ObjectPropertyInput, WorkflowObject } from '../../api/objects';
+import { INLINE_OBJECT, ObjectForm, asProperty, asRow, kindsOf, typeOf, typeOptionsOf } from '../../components/ObjectForm';
 import type { ObjectFormStyles, Row } from '../../components/ObjectForm';
 import { fetchWorkflowOwnedTriggers, fetchWorkspaceTriggers } from '../../api/triggers';
 import type { Trigger } from '../../api/triggers';
@@ -3164,6 +3164,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * unpacks a property with, so a field named on a node and a property named on
    * a shape are stored the same way.
    */
+  /** The fields of a node field that is an object defined in place, as the nested form hands them back. */
+  function setFieldProperties(index: number, properties: ObjectPropertyInput[]) {
+    setDraft((held) =>
+      held === null
+        ? held
+        : { ...held, mappings: held.mappings.map((mapping, at) => (at === index ? { ...mapping, fieldProperties: properties } : mapping)) },
+    );
+  }
+
   function setFieldType(index: number, type: string, many: boolean) {
     const kinds = kindsOf(type, many);
     setDraft((held) =>
@@ -3178,6 +3187,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
                     fieldKind: kinds.kind,
                     fieldElementKind: kinds.elementKind ?? null,
                     fieldRefObjectId: kinds.refObjectId ?? null,
+                    // Fields of its own only while it is an object defined in place; kept across a Single/List switch.
+                    fieldProperties: type === INLINE_OBJECT ? (mapping.fieldProperties ?? []) : null,
                   }
                 : mapping,
             ),
@@ -3188,14 +3199,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   /** What a property here may be one of; the same list the object's page offers. */
   // The same list the object's own page offers, `object` included: this panel edits the saved shape itself.
   const shapeTypes = useMemo(() => typeOptionsOf(objects, true), [objects]);
-  /*
-   * Without `object` for a field of the node's own. A node field is a kind, an
-   * element kind and a reference, with nowhere to keep fields of its own - so
-   * an object defined in place is not a thing it can be, and offered one it
-   * chose nothing: the stored answer matched no option and read as unselected.
-   * A Custom shape that needs an object inside is a saved shape.
-   */
-  const fieldTypes = useMemo(() => typeOptionsOf(objects), [objects]);
 
   const shapeEdited = useMemo(() => {
     if (shape === null) return false;
@@ -6726,15 +6729,16 @@ Change the keystroke in Preferences.`}
                                 before this was.
                               */}
                               {draft.kind === 'OBJECT' && draft.objectId === null && (
-                                <span className={styles.fieldType}>
+                                <div className={styles.fieldType}>
                                   <DefinitionPicker
                                     id={`node-field-type-${index}`}
                                     value={typeOf({
                                       kind: mapping.fieldKind,
                                       elementKind: mapping.fieldElementKind,
                                       refObjectId: mapping.fieldRefObjectId,
+                                      properties: mapping.fieldProperties,
                                     }).type}
-                                    options={fieldTypes}
+                                    options={shapeTypes}
                                     onChoose={(chosen) =>
                                       setFieldType(index, chosen, fieldIsMany(mapping))
                                     }
@@ -6764,6 +6768,7 @@ Change the keystroke in Preferences.`}
                                               kind: mapping.fieldKind,
                                               elementKind: mapping.fieldElementKind,
                                               refObjectId: mapping.fieldRefObjectId,
+                                              properties: mapping.fieldProperties,
                                             }).type,
                                             many,
                                           )
@@ -6773,7 +6778,22 @@ Change the keystroke in Preferences.`}
                                       </button>
                                     ))}
                                   </span>
-                                </span>
+                                  {/*
+                                    An object defined in place: its fields, drawn
+                                    with the form a saved shape's are, and stored
+                                    beside the field rather than in the shape list.
+                                  */}
+                                  {mapping.fieldProperties != null && mapping.fieldRefObjectId == null && (
+                                    <ObjectForm
+                                      rows={mapping.fieldProperties.map(asRow)}
+                                      onChange={(rows) => setFieldProperties(index, rows.map(asProperty))}
+                                      typeOptions={shapeTypes}
+                                      styles={PANEL_SHAPE_STYLES}
+                                      idPrefix={`node-field-${index}-shape`}
+                                      inline
+                                    />
+                                  )}
+                                </div>
                               )}
                               {/*
                                 Written, or read from somewhere. The switch is
@@ -7466,7 +7486,7 @@ Change the keystroke in Preferences.`}
         extra={
           <button
             type="button"
-            className={dialogStyles.ghost}
+            className={dialogStyles.linkButton}
             onClick={() => {
               setBuilding(null);
               setBuildingSchema(true);

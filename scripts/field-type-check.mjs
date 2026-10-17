@@ -126,13 +126,9 @@ record(
 
 await page.click('#node-field-type-0');
 await page.waitForSelector('[role="option"]', { timeout: 10_000 });
-/*
- * No `object` on offer: a node field has nowhere to keep fields of its own, so
- * an object defined in place is not a thing it can be - and offered one it
- * chose nothing, the stored answer matching no option.
- */
-const bare = await page.locator('[role="option"]').filter({ hasText: /^object$/ }).count();
-record(bare === 0, `a field of the node's own is not offered an object defined in place (${bare})`);
+// `object` is on offer: a field of the node's own may be an object defined in place, its fields kept beside it.
+const bare = await page.locator('[role="option"]').filter({ hasText: 'fields of its own, defined here' }).count();
+record(bare === 1, `a field of the node's own is offered an object defined in place (${bare})`);
 await page.locator('[role="option"]', { hasText: 'number' }).first().click();
 await page.waitForTimeout(400);
 record((await says()) === 'number', `the type chosen is the one shown (${JSON.stringify(await says())})`);
@@ -169,6 +165,35 @@ const asList = await stored();
 console.log(`as a list: ${JSON.stringify(asList)}`);
 record(asList?.fieldKind === 'ARRAY', 'a list of them is stored as an array');
 record(asList?.fieldElementKind === 'NUMBER', 'and what the list holds is kept beside it');
+
+/* ---- an object defined in place: its fields drawn under the type, and stored beside the field ---- */
+
+await page.click('#node-field-type-0');
+await page.waitForSelector('[role="option"]', { timeout: 10_000 });
+await page.locator('[role="option"]').filter({ hasText: 'fields of its own, defined here' }).first().click();
+await page.waitForTimeout(300);
+record((await says()) === 'object', `object defined in place is the type shown (${JSON.stringify(await says())})`);
+await page.locator('button', { hasText: '+ Add Property' }).last().click();
+const street = page.locator('#node-field-0-shape-name-0');
+await street.waitFor({ timeout: 5_000 });
+await street.fill('street');
+await page.getByRole('button', { name: /^Save/ }).first().click();
+await page.waitForTimeout(2500);
+const { workflowGraph: withFields } = await graphql(
+  `query($w: ID!, $f: ID!) { workflowGraph(workspaceId: $w, workflowId: $f) { nodes { key mappings { name fieldKind fieldRefObjectId fieldProperties { name kind } } } } }`,
+  { w: WORKSPACE, f: WORKFLOW },
+);
+const inline = withFields.nodes.find((one) => one.key === 'held')?.mappings?.[0] ?? null;
+console.log(`inline: ${JSON.stringify(inline)}`);
+record(inline?.fieldKind === 'ARRAY' && inline?.fieldRefObjectId === null, 'the field stays a list, of objects defined in place');
+record(inline?.fieldProperties?.length === 1 && inline.fieldProperties[0].name === 'street' && inline.fieldProperties[0].kind === 'STRING', 'and the server holds the field it was given');
+
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.react-flow__node', { timeout: 30_000 });
+await page.waitForTimeout(1000);
+await page.click('.react-flow__node');
+await page.waitForSelector('#node-field-type-0', { timeout: 20_000 });
+record((await says()) === 'object' && (await page.locator('#node-field-0-shape-name-0').inputValue()) === 'street', 'reopened, the field and its own field are drawn again');
 
 /* ------------------------------------------------------------------- tidy up */
 

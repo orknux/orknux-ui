@@ -1,5 +1,5 @@
 import { graphql } from './client';
-import type { PropertyKind } from './objects';
+import type { ObjectPropertyInput, PropertyKind } from './objects';
 import { t } from '../i18n';
 
 export type WorkflowStatus = 'DRAFT' | 'PUBLISHED';
@@ -192,6 +192,12 @@ export interface NodeMapping {
   fieldElementKind?: PropertyKind | null;
   /** The object it points at, where it is one of those or a list of them. */
   fieldRefObjectId?: string | null;
+  /**
+   * The fields of an object defined in place, where the kind is OBJECT or
+   * ARRAY and nothing is pointed at. Read in the input's shape, without a
+   * `display`, because what is read is sent straight back on save.
+   */
+  fieldProperties?: ObjectPropertyInput[] | null;
 }
 
 /** How much a problem matters: an error is refused on save, a warning is advice. */
@@ -258,6 +264,10 @@ export interface WorkflowGraph {
   problems: GraphProblem[];
 }
 
+/* A node field's own fields, in the input's shape, as deep as the server reads. */
+const FIELD_FIELDS = 'name kind refObjectId elementKind description';
+const FIELD_TREE = Array.from({ length: 8 }).reduce<string>((inner) => `${FIELD_FIELDS} properties { ${inner} }`, FIELD_FIELDS);
+
 const GRAPH_FIELDS = `
   workflowId
   name
@@ -271,7 +281,7 @@ const GRAPH_FIELDS = `
     decisionQuestions { key kind instructions options { name description } }
     yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds
     retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds enabled x y
-    mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId }
+    mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId fieldProperties { ${FIELD_TREE} } }
     inputs { name type display }
     outputs { name type display }
   }

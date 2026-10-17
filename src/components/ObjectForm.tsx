@@ -90,7 +90,7 @@ export function asProperty(row: Row): ObjectPropertyInput {
  * chosen, which is the same property said the new way - nothing is migrated and
  * nothing is lost, because the two halves were always in the row anyway.
  */
-export function asRow(property: WorkflowObject['properties'][number]): Row {
+export function asRow(property: ObjectPropertyInput): Row {
   const row: Row = { name: property.name, ...typeOf(property), description: property.description ?? '' };
   if (row.type === INLINE_OBJECT) row.children = (property.properties ?? []).map(asRow);
   return row;
