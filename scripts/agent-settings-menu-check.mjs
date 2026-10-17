@@ -45,6 +45,18 @@ try {
   const current = (await menu.locator('a[aria-current="location"]').textContent().catch(() => ''))?.trim();
   record(current === 'Boxes', `and marks Boxes as where the reader is (${current})`);
 
+  // An entry near the foot of the page, which the frame cannot scroll up to the top, is still the one marked once pressed.
+  await menu.locator('a', { hasText: /^Used by$/ }).click();
+  await page.waitForTimeout(600);
+  const marked = (await menu.locator('a[aria-current="location"]').textContent().catch(() => ''))?.trim();
+  record(marked === 'Used by', `pressing Used by near the foot marks Used by (${marked})`);
+  // And scrolling by hand lets go of it.
+  await page.mouse.move(700, 400);
+  await page.mouse.wheel(0, -3000);
+  await page.waitForTimeout(600);
+  const after = (await menu.locator('a[aria-current="location"]').textContent().catch(() => ''))?.trim();
+  record(after !== 'Used by', `scrolling back up by hand moves the mark again (${after})`);
+
   // The search narrows the page to the fields that match, and the menu with it.
   await page.getByTestId('settings-search').fill('box');
   await page.waitForTimeout(300);

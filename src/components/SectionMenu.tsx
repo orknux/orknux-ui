@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import searchIcon from '../assets/search.svg';
 import type { RefObject } from 'react';
 
@@ -78,6 +78,13 @@ export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
   /** What is typed into the menu's search: a setting is kept where its words match, a section where any setting is. */
   const [looking, setLooking] = useState('');
   const [matching, setMatching] = useState<Set<string> | null>(null);
+  /*
+   * The entry last pressed, held as current while it is in view. Near the
+   * foot of a page the frame cannot scroll a section up to the line, so the
+   * one pressed never became current and the mark stayed on whatever had
+   * last reached the top. Let go of the moment the reader scrolls themselves.
+   */
+  const pressed = useRef<string | null>(null);
 
   useEffect(() => {
     const root = within.current;
@@ -112,19 +119,39 @@ export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
      */
     const scroller = scrollerOf(root);
     const mark = () => {
-      const line = (scroller?.getBoundingClientRect().top ?? 0) + HEADING_GAP_PX + 8;
+      const top = scroller?.getBoundingClientRect().top ?? 0;
+      const bottom = scroller?.getBoundingClientRect().bottom ?? window.innerHeight;
+      const line = top + HEADING_GAP_PX + 8;
+      const held = pressed.current === null ? null : headings.find((one) => one.id === pressed.current) ?? null;
+      if (held !== null) {
+        const at = held.getBoundingClientRect().top;
+        if (at >= top - 1 && at < bottom) {
+          setCurrent(held.id);
+          return;
+        }
+      }
       let chosen: string | null = headings[0]?.id ?? null;
       for (const heading of headings) {
         if (heading.getBoundingClientRect().top <= line) chosen = heading.id;
       }
       setCurrent(chosen);
     };
+    const letGo = () => {
+      pressed.current = null;
+    };
     mark();
     window.addEventListener('scroll', mark, { passive: true, capture: true });
     window.addEventListener('resize', mark);
+    // What the reader does to scroll, as against the scroll a pressed entry asked for.
+    window.addEventListener('wheel', letGo, { passive: true });
+    window.addEventListener('touchmove', letGo, { passive: true });
+    window.addEventListener('keydown', letGo);
     return () => {
       window.removeEventListener('scroll', mark, { capture: true });
       window.removeEventListener('resize', mark);
+      window.removeEventListener('wheel', letGo);
+      window.removeEventListener('touchmove', letGo);
+      window.removeEventListener('keydown', letGo);
     };
   }, [within, entries]);
 
@@ -211,6 +238,8 @@ export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
           aria-current={entry.id === current ? 'location' : undefined}
           onClick={(event) => {
             event.preventDefault();
+            pressed.current = entry.id;
+            setCurrent(entry.id);
             within.current?.querySelector<HTMLElement>(`[id="${CSS.escape(entry.id)}"]`)?.scrollIntoView({ block: 'start' });
             history.replaceState(null, '', `#${entry.id}`);
           }}
