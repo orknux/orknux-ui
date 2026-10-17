@@ -209,8 +209,16 @@ record((await says()) === 'object' && (await page.locator('#node-field-0-shape-n
 await page.locator('button[aria-pressed]', { hasText: 'Single' }).first().click();
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2500);
-const chips = await page.locator('.react-flow__node').first().locator('[class*="portChipOut"]').allTextContents();
-record(chips.some((chip) => /(^|\.)count$/.test(chip)) && chips.some((chip) => /(^|\.)count\.street$/.test(chip)), `the node shows the field and the field inside it (${chips.join(', ')})`);
+// Folded under it: the field is drawn, the one inside it only once it is unfolded, as `street` set in beneath it.
+const drawnNode = page.locator('.react-flow__node').first();
+const parent = drawnNode.locator('[data-port$="count"]').first();
+const inside = drawnNode.locator('[data-port$="count.street"]');
+const folded = (await parent.count()) === 1 && (await inside.count()) === 0;
+await parent.getByRole('button', { name: /^Unfold/ }).click();
+await page.waitForTimeout(200);
+const shown = (await inside.count()) === 1 ? (await inside.textContent())?.trim() : null;
+const indent = shown === null ? null : Math.round((await inside.boundingBox()).x - (await parent.boundingBox()).x);
+record(folded && shown === 'street' && indent !== null && indent > 4, `the node folds the field inside an object under it, and unfolds it set in (${JSON.stringify({ folded, shown, indent })})`);
 
 /* ------------------------------------------------------------------- tidy up */
 

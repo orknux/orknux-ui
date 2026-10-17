@@ -633,6 +633,40 @@
   color: var(--color-accent-brand);
 }
 
+/* A field and, when it is unfolded, the fields inside it, set in under it on a rule. */
+.portBranch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.portNested {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-left: var(--space-6);
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--color-border);
+}
+
+.portFold {
+  margin-right: 3px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* How many fields a folded one holds. */
+.portCount {
+  margin-left: 4px;
+  color: var(--color-text-muted);
+}
+
 /*
  * The two dots were the same dot, so which end of a node you were looking at
  * was something to work out from where it sat - and on a turned node, where

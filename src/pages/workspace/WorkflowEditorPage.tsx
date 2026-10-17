@@ -1578,6 +1578,83 @@ function WaysOut({
   );
 }
 
+/** What a node gives, as a tree: `customer.name` is `name` under `customer`. */
+interface PortBranch {
+  port: { name: string; display: string };
+  label: string;
+  children: PortBranch[];
+}
+
+/** The dotted names, nested under the field each one is inside of; the server lists a parent before its fields. */
+function portTree(ports: { name: string; display: string }[]): PortBranch[] {
+  const byName = new Map<string, PortBranch>();
+  const roots: PortBranch[] = [];
+  ports.forEach((port) => {
+    const branch: PortBranch = { port, label: port.name, children: [] };
+    byName.set(port.name, branch);
+    const cut = port.name.lastIndexOf('.');
+    const parent = cut > 0 ? byName.get(port.name.slice(0, cut)) : undefined;
+    if (parent === undefined) {
+      roots.push(branch);
+    } else {
+      branch.label = port.name.slice(cut + 1);
+      parent.children.push(branch);
+    }
+  });
+  return roots;
+}
+
+/**
+ * The fields a node gives, an object's own fields folded under it.
+ *
+ * A pasted Jira payload is a hundred and fifty of them, which drawn flat made
+ * the node a page tall. Folded by default, opened one level at a time; the
+ * node's own output name, where it has one, starts open, because its fields
+ * are what used to be drawn under it.
+ */
+function PortTree({ branches, openFirst }: { branches: PortBranch[]; openFirst: string | null }) {
+  const [open, setOpen] = useState<Set<string>>(() => new Set(openFirst === null ? [] : [openFirst]));
+  const toggle = (name: string) =>
+    setOpen((held) => {
+      const next = new Set(held);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  const draw = (branch: PortBranch): ReactNode => {
+    const folds = branch.children.length > 0;
+    const isOpen = folds && open.has(branch.port.name);
+    return (
+      <span className={styles.portBranch} key={branch.port.name}>
+        <span
+          className={`${styles.portChip} ${styles.portChipOut}`}
+          title={`Gives ${branch.port.display}`}
+          data-port={branch.port.name}
+        >
+          {folds && (
+            <button
+              type="button"
+              className={`${styles.portFold} nodrag`}
+              aria-expanded={isOpen}
+              aria-label={`${isOpen ? 'Fold' : 'Unfold'} ${branch.port.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggle(branch.port.name);
+              }}
+            >
+              {isOpen ? '▾' : '▸'}
+            </button>
+          )}
+          {branch.label}
+          {folds && !isOpen && <span className={styles.portCount}>{branch.children.length}</span>}
+        </span>
+        {isOpen && <span className={styles.portNested}>{branch.children.map(draw)}</span>}
+      </span>
+    );
+  };
+  return <>{branches.map(draw)}</>;
+}
+
 function GraphNodeView({ data, selected }: NodeProps) {
   const node = data as NodeData;
   /*
@@ -1727,15 +1804,7 @@ function GraphNodeView({ data, selected }: NodeProps) {
                   ↑
                 </span>
                 <span className={styles.portChips}>
-                  {node.outputs?.map((port) => (
-                    <span
-                      className={`${styles.portChip} ${styles.portChipOut}`}
-                      key={`out-${port.name}`}
-                      title={`Gives ${port.display}`}
-                    >
-                      {port.name}
-                    </span>
-                  ))}
+                  <PortTree branches={portTree(node.outputs ?? [])} openFirst={node.outputName} />
                 </span>
               </div>
             )}
