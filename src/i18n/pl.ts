@@ -1729,7 +1729,6 @@ export const PL: Record<string, string> = {
   "Search people...": "Szukaj osób...",
   "Search people": "Szukaj osób",
   "Could not export the report.": "Nie udało się wyeksportować raportu.",
-  "fields of its own, defined here": "z własnymi polami, zdefiniowany tutaj",
   "From JSON Schema": "Z JSON Schema",
   "Object from JSON Schema": "Obiekt z JSON Schema",
   "JSON Schema": "JSON Schema",

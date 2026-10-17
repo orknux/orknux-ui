@@ -115,12 +115,8 @@ export function typeOptionsOf(others: WorkflowObject[], inline = false): Definit
     { value: 'STRING', label: 'string' },
     { value: 'NUMBER', label: 'number' },
     { value: 'BOOLEAN', label: 'boolean' },
-    /*
-     * An object defined here, with fields of its own, offered only where the
-     * fields can be drawn: the object editor. A node's own field has nowhere to
-     * keep them, so there the list stops at the named shapes.
-     */
-    ...(inline ? [{ value: INLINE_OBJECT, label: 'object', hint: t('fields of its own, defined here') }] : []),
+    // An object defined here, with fields of its own, offered wherever the fields can be drawn under the row.
+    ...(inline ? [{ value: INLINE_OBJECT, label: 'object' }] : []),
     ...others.map((other) => ({
       value: `OBJECT:${other.id}`,
       label: other.name,

@@ -127,7 +127,7 @@ record(
 await page.click('#node-field-type-0');
 await page.waitForSelector('[role="option"]', { timeout: 10_000 });
 // `object` is on offer: a field of the node's own may be an object defined in place, its fields kept beside it.
-const bare = await page.locator('[role="option"]').filter({ hasText: 'fields of its own, defined here' }).count();
+const bare = await page.locator('[role="option"]').filter({ hasText: /^object$/ }).count();
 record(bare === 1, `a field of the node's own is offered an object defined in place (${bare})`);
 await page.locator('[role="option"]', { hasText: 'number' }).first().click();
 await page.waitForTimeout(400);
@@ -170,7 +170,7 @@ record(asList?.fieldElementKind === 'NUMBER', 'and what the list holds is kept b
 
 await page.click('#node-field-type-0');
 await page.waitForSelector('[role="option"]', { timeout: 10_000 });
-await page.locator('[role="option"]').filter({ hasText: 'fields of its own, defined here' }).first().click();
+await page.locator('[role="option"]').filter({ hasText: /^object$/ }).first().click();
 await page.waitForTimeout(300);
 record((await says()) === 'object', `object defined in place is the type shown (${JSON.stringify(await says())})`);
 await page.locator('button', { hasText: '+ Add Property' }).last().click();
