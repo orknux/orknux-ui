@@ -224,11 +224,13 @@
   background: var(--color-surface-raised);
 }
 
+/* A link for the keyboard, drawn as the name it was: the row's hover says it opens. */
 .openName {
-  color: var(--color-accent-brand);
-  text-decoration: underline;
+  color: inherit;
+  text-decoration: none;
 }
 
-.openName:hover {
-  color: var(--color-text-primary);
+.openName:hover,
+.openName:focus-visible {
+  text-decoration: underline;
 }
