@@ -202,19 +202,20 @@ const LONGEST_TURN_MS = 600_000;
 /**
  * How long somebody keeps talking over the answer before it stops. Issue #342.
  *
- * Half a second, and it is a hold rather than a level on purpose. What has to be
+ * A second, and it is a hold rather than a level on purpose. What has to be
  * kept out is not a quiet voice but a short noise - a cough, a door, or this
  * application's own voice getting past the echo cancellation - and all three are
  * brief where somebody interrupting keeps going. A level cannot tell them apart;
  * a duration can.
  *
- * Erring long. The cost of waiting half a second is half a second of the answer
- * somebody has already decided against; the cost of firing early is an answer
- * that stops at every noise in the room, which is loud, constant and in the
- * middle of every reply. A workspace can move it, and can set it to zero where
- * the room or the microphone makes even this unusable.
+ * Erring long. The cost of waiting a second is a second of the answer somebody
+ * has already decided against; the cost of firing early is an answer that
+ * stops at every noise in the room, which is loud, constant and in the middle
+ * of every reply. It was half a second, and half a second still let a word
+ * said to somebody else in the room through. A workspace can move it, and can
+ * set it to zero where the room or the microphone makes even this unusable.
  */
-const BARGE_IN_MS = 500;
+const BARGE_IN_MS = 1000;
 
 /**
  * The three above, in the units a workspace states a decision about them in.
