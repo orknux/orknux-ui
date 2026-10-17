@@ -4364,6 +4364,22 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [selectKey]);
+
+  /*
+   * Escape lets go of the selection. React Flow has no key for that: a
+   * selection was dropped by clicking empty canvas, which with the rectangle
+   * mode on starts another. In the bubbling phase and after the others, so an
+   * Escape that closed the Add menu or a builder does not also deselect.
+   */
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || typingText(event.target) || adding || building !== null) return;
+      setNodes((held) => (held.some((node) => node.selected) ? held.map((node) => (node.selected ? { ...node, selected: false } : node)) : held));
+      setEdges((held) => (held.some((edge) => edge.selected) ? held.map((edge) => (edge.selected ? { ...edge, selected: false } : edge)) : held));
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [adding, building, setNodes, setEdges]);
   const publishKey = usePublishShortcut();
 
   /** Read by the keyboard handler, which must not start a second save. */

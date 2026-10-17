@@ -73,6 +73,11 @@ try {
   await rectangle();
   record((await selectedCount()) === 2, `on, a rectangle over First and half of Second selects both and not Third (${await selectedCount()})`);
 
+  // Escape lets the selection go, and leaves the mode on.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  record((await selectedCount()) === 0 && (await pressed()), `Escape deselects and leaves the mode on (${await selectedCount()} selected)`);
+
   // The keystroke switches it off and on again.
   await page.mouse.click(first.x - 60, first.y + first.height + 120);
   await page.keyboard.press('s');
