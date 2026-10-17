@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { cachedWorkspaces } from '../../session/workspaces';
 import type { FormEvent, KeyboardEvent } from 'react';
 
 import {
@@ -1096,6 +1097,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [hears, setHears] = useState(false);
   /** Whether a speech model is set, which is what puts a speaker under an answer. */
   const [reads, setReads] = useState(false);
+  /** Whether the workspace has answered at all, so voice mode is not called unavailable while it is being asked. */
+  const [voiceKnown, setVoiceKnown] = useState(false);
+  /** Whether the "why not" note under a voice button that cannot start is open. */
+  const [voiceWhy, setVoiceWhy] = useState(false);
   /** Whether the workspace shows when each message was sent. Issue #323. */
   const [showTimestamps, setShowTimestamps] = useState(false);
   /** Whether a chat timer sounds when it ends, where its agent chose nothing: the workspace's setting. */
@@ -1173,6 +1178,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         if (abandoned) return;
         setHears(held?.transcriptionModelId != null);
         setReads(held?.speechModelId != null);
+        setVoiceKnown(true);
         setShowTimestamps(held?.chatShowTimestamps ?? false);
         setTimerSound(held?.widgetTimerSound ?? true);
         setWorkspaceMarker(held === null ? null : (held.commandMarker ?? held.commandMarkerDefault));
@@ -3958,6 +3964,52 @@ ${named}`;
                 >
                   <img src={micIcon} alt="" width={16} height={16} />
                 </button>
+              )}
+              {/*
+                Voice mode is always on the bar: it is too much of the product
+                to vanish where a model is missing, and a button that is simply
+                not there reads as a product without voice. Where it cannot
+                start it is drawn off, and its note says which model is missing
+                and where it is chosen.
+              */}
+              {voiceKnown && !(hears && reads) && (
+                <span
+                  className={styles.voiceUnavailable}
+                  onMouseEnter={() => setVoiceWhy(true)}
+                  onMouseLeave={() => setVoiceWhy(false)}
+                  onFocus={() => setVoiceWhy(true)}
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setVoiceWhy(false);
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`${styles.voiceButton} ${styles.voiceButtonOff}`}
+                    aria-disabled="true"
+                    aria-label={t('Voice mode is not available')}
+                    aria-describedby="voice-why"
+                    data-testid="voice-unavailable"
+                    onClick={() => setVoiceWhy((open) => !open)}
+                  >
+                    <img src={audioLinesIcon} alt="" width={16} height={16} data-keeps-colour />
+                  </button>
+                  {voiceWhy && (
+                    <span className={styles.voiceWhy} role="tooltip" id="voice-why">
+                      {!hears && !reads
+                        ? t('Voice mode needs a transcription model and a speech model, and this workspace has neither.')
+                        : !hears
+                          ? t('Voice mode needs a transcription model to hear you, and this workspace has none.')
+                          : t('Voice mode needs a speech model to answer aloud, and this workspace has none.')}{' '}
+                      {cachedWorkspaces()?.find((one) => one.id === workspaceId)?.administered === true ? (
+                        <Link to={`/workspace/${workspaceId}/settings#${hears ? 'speech-model' : 'transcription-model'}`}>
+                          {t('Choose one in workspace settings')}
+                        </Link>
+                      ) : (
+                        t('A workspace admin chooses them in workspace settings.')
+                      )}
+                    </span>
+                  )}
+                </span>
               )}
               {hears && reads && (
                 <>

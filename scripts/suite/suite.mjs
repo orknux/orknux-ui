@@ -326,6 +326,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'voice-unavailable-check',
+    what: 'voice mode stays on the chat bar without a speech model, drawn off, its note naming the missing model and linking to settings',
+    needs: ['workspace'],
+  },
+  {
     name: 'rectangle-select-check',
     what: "the canvas's corner button and its keystroke switch a drag between panning and selecting what a rectangle touches",
     needs: ['workspace'],

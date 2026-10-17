@@ -1305,6 +1305,37 @@ button.attachmentName {
  * else, and it is the whole reason the loudspeaker up in the title bar was
  * read as "play this" rather than "talk to it".
  */
+/* Voice mode where the workspace cannot run it: the button drawn off, its reason in a note above it. */
+.voiceUnavailable {
+  position: relative;
+  display: flex;
+}
+
+.voiceButtonOff {
+  opacity: 0.4;
+  cursor: help;
+}
+
+.voiceWhy {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-8));
+  z-index: 5;
+  width: 280px;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.voiceWhy a {
+  color: var(--color-accent-brand);
+}
+
 .voiceButton {
   display: flex;
   flex-shrink: 0;

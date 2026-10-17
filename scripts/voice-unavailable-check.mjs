@@ -1,0 +1,74 @@
+/**
+ * Voice mode is always on the chat's bar. Where the workspace has no speech or
+ * no transcription model it is drawn off, and hovering it says which model is
+ * missing and links to where it is chosen. Checked with neither, the case a new
+ * workspace is in.
+ *
+ * It used to vanish instead, and a button that is simply not there reads as a
+ * product without voice. The workspace's answer is rewritten in the browser to
+ * say it has neither model, so the check changes nothing on the server; it
+ * makes one chat under a name of its own and deletes it again.
+ */
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+
+const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
+const PREFIX = 'zz voice unavailable';
+
+const sweep = async () => {
+  const { workspaceChats } = await graphql(
+    `query($w: ID!) { workspaceChats(workspaceId: $w, size: 200) { content { id title } } }`,
+    { w: WORKSPACE },
+  ).catch(() => ({ workspaceChats: { content: [] } }));
+  for (const old of workspaceChats.content.filter((one) => (one.title ?? '').startsWith(PREFIX))) {
+    await graphql(`mutation($id: ID!) { deleteChat(id: $id) }`, { id: old.id }).catch(() => undefined);
+  }
+};
+
+try {
+  const started = await graphql(`mutation($input: StartChatInput!) { startChat(input: $input) { id } }`, {
+    input: { workspaceId: WORKSPACE, title: `${PREFIX} ${Date.now()}` },
+  });
+
+  // The workspace, as this page reads it, with neither model - whatever the server holds.
+  await page.route('**/graphql', async (route) => {
+    const sent = route.request().postData() ?? '';
+    if (!sent.includes('speechModelId')) return route.continue();
+    const answered = await route.fetch();
+    const body = await answered.json();
+    const strip = (node) => {
+      if (Array.isArray(node)) return node.forEach(strip);
+      if (node === null || typeof node !== 'object') return;
+      if ('speechModelId' in node) node.speechModelId = null;
+      if ('transcriptionModelId' in node) node.transcriptionModelId = null;
+      Object.values(node).forEach(strip);
+    };
+    strip(body);
+    return route.fulfill({ response: answered, json: body });
+  });
+
+  await page.goto(`${BASE}/chat/${started.startChat.id}`, { waitUntil: 'domcontentloaded' });
+  const off = page.getByTestId('voice-unavailable');
+  const shown = await off.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
+  record(shown && (await off.getAttribute('aria-disabled')) === 'true', 'with no voice models, voice mode is still on the bar, drawn off');
+
+  await off.hover();
+  const note = page.locator('#voice-why');
+  await note.waitFor({ timeout: 5_000 }).catch(() => undefined);
+  const says = (await note.textContent().catch(() => '')) ?? '';
+  record(/transcription model and a speech model/.test(says), `hovering it names both missing models (${says.trim()})`);
+  const link = note.locator('a');
+  const href = (await link.count()) === 1 ? await link.getAttribute('href') : null;
+  record(href !== null && href.endsWith(`/workspace/${WORKSPACE}/settings#transcription-model`), `and links to where the first is chosen (${href})`);
+
+  // The note can be reached: moving onto the link keeps it open, and the link goes there.
+  await link.hover();
+  await page.waitForTimeout(150);
+  record((await note.count()) === 1, 'moving onto the link keeps the note open');
+  await link.click();
+  await page.waitForURL(/\/settings/, { timeout: 10_000 }).catch(() => undefined);
+  record(page.url().includes(`/workspace/${WORKSPACE}/settings#transcription-model`), `the link opens workspace settings there (${page.url()})`);
+} finally {
+  await sweep();
+}
+
+await finish(browser);
