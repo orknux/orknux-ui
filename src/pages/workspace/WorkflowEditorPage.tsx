@@ -2629,7 +2629,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * then the plugin's entry - three choices for what is one: "this node does
    * Jira's comment". Picking one makes that Custom definition here.
    */
-  const pluginFunctions = useMemo(() => functions.filter((fn) => fn.scope === 'PLUGIN'), [functions]);
+  // A switched-off plugin's functions run nowhere, so they are not offered.
+  const pluginFunctions = useMemo(
+    () => functions.filter((fn) => fn.scope === 'PLUGIN' && fn.plugin?.enabled !== false),
+    [functions],
+  );
   const pluginActionRows = useMemo(
     () => [
       ...pluginActions.map((held) => ({

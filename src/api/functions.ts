@@ -73,6 +73,8 @@ export type FunctionScope = 'WORKSPACE' | 'PLUGIN';
 export interface FunctionPlugin {
   id: string;
   name: string;
+  /** Whether the plugin is switched on; a picker offers nothing of one that is not. */
+  enabled: boolean;
 }
 
 export interface WorkspaceFunction {
@@ -144,7 +146,7 @@ export interface FunctionValidation {
  * the first save turns that reading into the truth.
  */
 const FUNCTION_FIELDS =
-  `id workspaceId scope editable plugin { id name } name description source typescript returnType
+  `id workspaceId scope editable plugin { id name enabled } name description source typescript returnType
    returnObjectId returnObjectName params { name type objectId objectName }
    externals { variableId name type }
    imports { functionId name function { name description signature returnType returnObjectName } }

@@ -138,8 +138,8 @@ export function DefinitionPicker({
 }: DefinitionPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  /** The source the quick filter keeps to, or null for all of them. */
-  const [only, setOnly] = useState<string | null>(null);
+  /** The sources the quick filters keep to; none chosen is all of them. Several may be on at once. */
+  const [only, setOnly] = useState<string[]>([]);
   /*
    * The sources the options name, in the order they first appear - the
    * workspace's own first, since that is how the lists are built. A list from
@@ -159,7 +159,8 @@ export function DefinitionPicker({
 
   const matching = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const kept = only === null || !sources.includes(only) ? options : options.filter((option) => option.source === only);
+    const chosen = only.filter((source) => sources.includes(source));
+    const kept = chosen.length === 0 ? options : options.filter((option) => chosen.includes(option.source ?? ''));
     if (needle === '') return kept;
     return kept.filter(
       (option) =>
@@ -300,23 +301,29 @@ export function DefinitionPicker({
 
           {sources.length > 0 && (
             <div className={styles.filters} role="group" aria-label={t('Show only')}>
-              {[null, ...sources].map((source) => (
-                <button
-                  key={source ?? ''}
-                  type="button"
-                  className={only === source ? `${styles.filter} ${styles.filterOn}` : styles.filter}
-                  aria-pressed={only === source}
-                  data-source-filter={source ?? ''}
-                  // The search box keeps the keyboard; a chip is a click.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    setOnly(source);
-                    setAt(-1);
-                  }}
-                >
-                  {source ?? t('All')}
-                </button>
-              ))}
+              {[null, ...sources].map((source) => {
+                // All is on while nothing is chosen; each other chip turns itself on and off.
+                const on = source === null ? only.length === 0 : only.includes(source);
+                return (
+                  <button
+                    key={source ?? ''}
+                    type="button"
+                    className={on ? `${styles.filter} ${styles.filterOn}` : styles.filter}
+                    aria-pressed={on}
+                    data-source-filter={source ?? ''}
+                    // The search box keeps the keyboard; a chip is a click.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setOnly((held) =>
+                        source === null ? [] : held.includes(source) ? held.filter((one) => one !== source) : [...held, source],
+                      );
+                      setAt(-1);
+                    }}
+                  >
+                    {source ?? t('All')}
+                  </button>
+                );
+              })}
             </div>
           )}
 

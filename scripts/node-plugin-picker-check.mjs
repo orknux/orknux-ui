@@ -80,6 +80,11 @@ try {
   // Custom... stays pinned whatever the filter: making one is always on offer.
   const filtered = (await rows()).filter((one) => !/^Custom/.test(one));
   record(filtered.length === 2 && filtered.every((one) => one.includes(KEY)), `the plugin's filter keeps its two functions (${filtered.length})`);
+  /* Several at once: the workspace's own as well. */
+  await page.locator('[data-source-filter="Workspace"]').click();
+  await page.waitForTimeout(300);
+  const both = (await rows()).filter((one) => !/^Custom/.test(one));
+  record(both.length > 2 && both.some((one) => one.includes(KEY)), `two filters on keep both sources (${both.length})`);
   await page.locator('[data-source-filter=""]').click();
   await page.waitForTimeout(300);
   record((await rows()).length === offered.length, 'and All puts the rest back');
@@ -113,6 +118,18 @@ try {
     `picking it makes the node's own function condition (${JSON.stringify(workflowOwnedConditions)})`,
   );
 } finally {
+  /*
+   * The workflow's own definitions first: a removed workflow keeps them, and
+   * a plugin whose functions they call refuses to be unloaded.
+   */
+  if (workflowId !== null) {
+    const owned = await graphql(
+      `query($w: ID!, $f: ID!) { workflowOwnedActions(workspaceId: $w, workflowId: $f) { id } workflowOwnedConditions(workspaceId: $w, workflowId: $f) { id } }`,
+      { w: WORKSPACE, f: workflowId },
+    ).catch(() => ({ workflowOwnedActions: [], workflowOwnedConditions: [] }));
+    for (const one of owned.workflowOwnedActions) await graphql(`mutation($id: ID!) { deleteAction(id: $id) }`, { id: one.id }).catch(() => undefined);
+    for (const one of owned.workflowOwnedConditions) await graphql(`mutation($id: ID!) { deleteCondition(id: $id) }`, { id: one.id }).catch(() => undefined);
+  }
   await unload();
   const { workspaceWorkflows } = await graphql(
     `query($w: ID!) { workspaceWorkflows(workspaceId: $w, size: 500) { content { id name } } }`,
