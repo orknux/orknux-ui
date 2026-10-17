@@ -1653,8 +1653,8 @@ select.input {
 
 /*
  * On the label's line. The bin is drawn small inside its 32px box, so the box
- * is laid out at 20px to fit the line and the glyph drawn half as large again
- * over it - the drawing can spill where the box cannot.
+ * is laid out at 20px to fit the line and the glyph drawn a fifth larger over
+ * it - the drawing can spill where the box cannot.
  */
 .shapeActionCol .shapeDelete {
   padding: 0;
@@ -1666,7 +1666,7 @@ select.input {
   width: 20px;
   height: 20px;
   overflow: visible;
-  transform: scale(1.5);
+  transform: scale(1.2);
 }
 
 .shapeDelete {
