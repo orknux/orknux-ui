@@ -90,10 +90,10 @@
   gap: var(--space-8);
 }
 
-/* A third way in, a button on a line of its own above the confirming pair. */
+/* A third way in, a button on a line of its own above the confirming pair, flush with their right edge. */
 .lead {
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 /* A delete offered inside an edit form sits away from the confirming pair. */

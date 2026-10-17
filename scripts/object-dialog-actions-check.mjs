@@ -40,6 +40,7 @@ try {
   const [a, b, c] = boxes;
   record(a !== null && b !== null && c !== null && Math.abs(a.height - b.height) < 2 && Math.abs(b.height - c.height) < 2 && b.height <= 48, `each is a button of the same height, on one line (${boxes.map((box) => Math.round(box?.height ?? 0)).join(', ')} px tall)`);
   record(a !== null && b !== null && c !== null && a.y + a.height <= b.y && Math.abs(b.y - c.y) < 2 && b.x + b.width <= c.x, 'From JSON Schema… stands above Cancel and Create Object, which stand side by side');
+  record(a !== null && c !== null && Math.abs(a.x + a.width - (c.x + c.width)) < 2, `and flush with their right edge (${a && c ? Math.round(a.x + a.width - (c.x + c.width)) : '?'}px off)`);
 } finally {
   const { workspaceWorkflows } = await graphql(
     `query($w: ID!) { workspaceWorkflows(workspaceId: $w, size: 200) { content { id name } } }`,
