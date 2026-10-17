@@ -33,7 +33,7 @@
 .lead {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-8);
 }
 
 .lead > .sectionHeading {
@@ -113,10 +113,11 @@
   gap: var(--space-8);
 }
 
+/* The same breath between a label and its box on both sides, so the two columns stay one shape. */
 .picker {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-8);
 }
 
 .pickerLabel {
