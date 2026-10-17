@@ -6784,16 +6784,24 @@ Change the keystroke in Preferences.`}
                                     beside the field rather than in the shape list.
                                   */}
                                   {mapping.fieldProperties != null && mapping.fieldRefObjectId == null && (
-                                    <ObjectForm
-                                      rows={mapping.fieldProperties.map(asRow)}
-                                      onChange={(rows) => setFieldProperties(index, rows.map(asProperty))}
-                                      typeOptions={shapeTypes}
-                                      styles={PANEL_SHAPE_STYLES}
-                                      idPrefix={`node-field-${index}-shape`}
-                                      inline
-                                    />
+                                    <div className={styles.fieldShape} data-testid={`node-field-${index}-shape`}>
+                                      <ObjectForm
+                                        rows={mapping.fieldProperties.map(asRow)}
+                                        onChange={(rows) => setFieldProperties(index, rows.map(asProperty))}
+                                        typeOptions={shapeTypes}
+                                        styles={PANEL_SHAPE_STYLES}
+                                        idPrefix={`node-field-${index}-shape`}
+                                        inline
+                                      />
+                                    </div>
                                   )}
                                 </div>
+                              )}
+                              {/* Named where a type sits above it, so the value is not read as one more line of the shape. */}
+                              {draft.kind === 'OBJECT' && draft.objectId === null && (
+                                <span className={`${styles.label} ${styles.fieldValueLabel}`} id={`node-field-value-${index}`}>
+                                  {t('Value')}
+                                </span>
                               )}
                               {/*
                                 Written, or read from somewhere. The switch is

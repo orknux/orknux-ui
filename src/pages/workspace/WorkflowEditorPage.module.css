@@ -1696,6 +1696,16 @@ select.input {
   gap: var(--space-4);
 }
 
+/* An object defined in place: its rows stand clear of the Single/List switch above them. */
+.fieldShape {
+  margin-top: var(--space-8);
+}
+
+/* The value's own label, clear of the type and any rows above it. */
+.fieldValueLabel {
+  margin-top: var(--space-12);
+}
+
 .shapeFooter {
   display: flex;
   justify-content: space-between;

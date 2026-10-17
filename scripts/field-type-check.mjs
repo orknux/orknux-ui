@@ -173,6 +173,16 @@ await page.waitForSelector('[role="option"]', { timeout: 10_000 });
 await page.locator('[role="option"]').filter({ hasText: /^object$/ }).first().click();
 await page.waitForTimeout(300);
 record((await says()) === 'object', `object defined in place is the type shown (${JSON.stringify(await says())})`);
+// Its rows stand clear of the Single/List switch, and the value is labelled, clear of the rows.
+const spacing = await page.evaluate(() => {
+  const shape = document.querySelector('[data-testid="node-field-0-shape"]');
+  const holds = shape?.previousElementSibling;
+  const label = document.getElementById('node-field-value-0');
+  if (!shape || !holds || !label) return null;
+  const s = shape.getBoundingClientRect(); const h = holds.getBoundingClientRect(); const l = label.getBoundingClientRect();
+  return { belowSwitch: Math.round(s.top - h.bottom), labelBelowRows: Math.round(l.top - s.bottom), text: label.textContent?.trim() };
+});
+record(spacing !== null && spacing.belowSwitch >= 8 && spacing.labelBelowRows >= 12 && spacing.text === 'Value', `the rows sit clear of the switch, and Value is labelled clear of them (${JSON.stringify(spacing)})`);
 await page.locator('button', { hasText: '+ Add Property' }).last().click();
 const street = page.locator('#node-field-0-shape-name-0');
 await street.waitFor({ timeout: 5_000 });
