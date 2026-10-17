@@ -42,10 +42,19 @@
   height: var(--label-height);
 }
 
-/* The search box as tall as a picker's box, whatever its own padding adds up to. */
+/*
+ * The search box as tall as a picker's box, and no roomier inside than one:
+ * the height is the row's, so the box's own padding only pushes the text in.
+ */
 .lead > div {
   box-sizing: border-box;
   height: var(--picker-height);
+  padding: 0 var(--space-10);
+  gap: var(--space-6);
+}
+
+.lead input {
+  font-size: var(--text-sm);
 }
 
 /* ---- The switch ---- */
