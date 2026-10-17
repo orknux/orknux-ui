@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import searchIcon from '../assets/search.svg';
 import type { RefObject } from 'react';
 
 import styles from './SectionMenu.module.css';
@@ -41,9 +42,34 @@ function scrollerOf(element: HTMLElement): HTMLElement | null {
  * remembering a second list. Pressing one scrolls to it; the one in view is
  * marked as the page scrolls.
  */
+/**
+ * The blocks a section is made of, for the search: on a page whose headings
+ * are siblings inside one card, what follows a heading up to the next; on a
+ * page of one card per section, the card's children besides the title.
+ */
+function blocksOf(heading: HTMLElement, headings: HTMLElement[]): HTMLElement[] {
+  const parent = heading.parentElement;
+  if (parent === null) return [];
+  const siblings = headings.filter((one) => one.parentElement === parent).length > 1;
+  if (siblings) {
+    const held: HTMLElement[] = [];
+    let next = heading.nextElementSibling;
+    while (next !== null && !(next instanceof HTMLHeadingElement && next.id !== '')) {
+      if (next instanceof HTMLElement) held.push(next);
+      next = next.nextElementSibling;
+    }
+    return held;
+  }
+  const card = heading.closest<HTMLElement>('section, form') ?? parent;
+  return [...card.children].filter((one): one is HTMLElement => one instanceof HTMLElement && !one.contains(heading));
+}
+
 export function SectionMenu({ within }: SectionMenuProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [current, setCurrent] = useState<string | null>(null);
+  /** What is typed into the menu's search: a setting is kept where its words match, a section where any setting is. */
+  const [looking, setLooking] = useState('');
+  const [matching, setMatching] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     const root = within.current;
@@ -94,11 +120,61 @@ export function SectionMenu({ within }: SectionMenuProps) {
     };
   }, [within, entries]);
 
+  /*
+   * The search hides what does not match and shows it again when the box is
+   * cleared: a block is kept where its own words hold what was typed, a
+   * heading where any of its blocks is, and the menu lists what is left.
+   */
+  useEffect(() => {
+    const root = within.current;
+    if (root === null) return undefined;
+    const headings = [...root.querySelectorAll<HTMLElement>('h2[id]')];
+    const query = looking.trim().toLowerCase();
+    const kept = new Set<string>();
+    headings.forEach((heading) => {
+      const blocks = blocksOf(heading, headings);
+      let any = false;
+      blocks.forEach((block) => {
+        const hit = query === '' || (block.textContent ?? '').toLowerCase().includes(query) || (heading.textContent ?? '').toLowerCase().includes(query);
+        block.style.display = hit ? '' : 'none';
+        if (hit) any = true;
+      });
+      const title = heading.closest<HTMLElement>('section, form') === heading.parentElement?.closest('section, form') && blocks.length > 0 && headings.filter((one) => one.parentElement === heading.parentElement).length > 1
+        ? heading
+        : (heading.closest<HTMLElement>('section, form') ?? heading);
+      title.style.display = any || query === '' ? '' : 'none';
+      if (any || query === '') kept.add(heading.id);
+    });
+    setMatching(query === '' ? null : kept);
+    return () => {
+      headings.forEach((heading) => {
+        blocksOf(heading, headings).forEach((block) => { block.style.display = ''; });
+        heading.style.display = '';
+        const card = heading.closest<HTMLElement>('section, form');
+        if (card !== null) card.style.display = '';
+      });
+    };
+  }, [within, looking, entries]);
+
   if (entries.length < 2) return null;
+  const shown = matching === null ? entries : entries.filter((entry) => matching.has(entry.id));
 
   return (
     <nav className={styles.menu} aria-label={t('Sections')} data-testid="section-menu">
-      {entries.map((entry) => (
+      <label className={styles.search}>
+        <img src={searchIcon} alt="" width={14} height={14} />
+        <input
+          type="search"
+          className={styles.searchInput}
+          value={looking}
+          onChange={(event) => setLooking(event.target.value)}
+          placeholder={t('Search settings…')}
+          aria-label={t('Search settings')}
+          data-testid="settings-search"
+        />
+      </label>
+      {matching !== null && shown.length === 0 && <span className={styles.nothing}>{t('No setting matches.')}</span>}
+      {shown.map((entry) => (
         <a
           key={entry.id}
           href={`#${entry.id}`}

@@ -63,3 +63,40 @@
     width: 100%;
   }
 }
+
+/* The search over the settings, at the top of the menu: what is typed narrows the page and the menu with it. */
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+}
+
+.search:focus-within {
+  border-color: var(--color-accent-brand);
+}
+
+.searchInput {
+  flex: 1 1 0;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.nothing {
+  padding: var(--space-6) var(--space-10);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

@@ -62,6 +62,28 @@ for (const [where, path, settle] of [
   });
   record(frame.pageScrolled === 0 && frame.mainScrolled > 0, `${where}: the settings scroll in their own frame, not the page (page ${frame.pageScrolled}, knobs ${frame.mainScrolled})`);
   record(frame.logoTop >= 0 && frame.logoTop < 60, `${where}: the logo is still at the top (${Math.round(frame.logoTop)}px)`);
+
+  // The search at the top of the menu narrows the page and the menu with it, and clearing it brings everything back.
+  const [word, elsewhere] = where === 'admin settings' ? ['depth', '#chat-max-rounds'] : ['voice', '#general'];
+  const all = agreement.entries.length;
+  await page.getByTestId('settings-search').fill(word);
+  await page.waitForTimeout(200);
+  const narrowed = await page.evaluate((other) => {
+    const entries = [...document.querySelectorAll('[data-testid="section-menu"] a')].length;
+    const away = document.querySelector(other);
+    const section = away?.closest('section, form');
+    const hidden = (el) => el !== null && getComputedStyle(el).display === 'none';
+    return { entries, elsewhereHidden: hidden(away) || hidden(section) || (away !== null && away.getClientRects().length === 0) };
+  }, elsewhere);
+  record(narrowed.entries >= 1 && narrowed.entries < all, `${where}: typing "${word}" narrows the menu (${narrowed.entries} of ${all})`);
+  record(narrowed.elsewhereHidden, `${where}: and a setting elsewhere is out of sight`);
+  await page.getByTestId('settings-search').fill('');
+  await page.waitForTimeout(200);
+  const restored = await page.evaluate((other) => ({
+    entries: [...document.querySelectorAll('[data-testid="section-menu"] a')].length,
+    back: (document.querySelector(other)?.getClientRects().length ?? 0) > 0,
+  }), elsewhere);
+  record(restored.entries === all && restored.back, `${where}: clearing it brings everything back (${restored.entries})`);
 }
 
 await finish(browser);
