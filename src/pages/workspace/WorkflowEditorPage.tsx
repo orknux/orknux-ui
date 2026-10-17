@@ -3180,7 +3180,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   /** What a property here may be one of; the same list the object's page offers. */
-  const shapeTypes = useMemo(() => typeOptionsOf(objects), [objects]);
+  // The same list the object's own page offers, `object` included: this panel edits the saved shape itself.
+  const shapeTypes = useMemo(() => typeOptionsOf(objects, true), [objects]);
 
   const shapeEdited = useMemo(() => {
     if (shape === null) return false;
@@ -5979,6 +5980,7 @@ Change the keystroke in Preferences.`}
                           typeOptions={shapeTypes}
                           styles={PANEL_SHAPE_STYLES}
                           idPrefix="node-shape"
+                          inline
                         />
                         {shapeError !== null && <p className={styles.error}>{shapeError}</p>}
                         {shapeEdited && (

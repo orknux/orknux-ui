@@ -326,6 +326,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'object-shape-panel-inline-check',
+    what: "an object node's Shape panel draws an object defined inside a property as the object's page does",
+    needs: ['workspace'],
+  },
+  {
     name: 'table-sort-check',
     what: 'a table is put in the order of whichever column somebody presses',
     needs: ['workspace'],
