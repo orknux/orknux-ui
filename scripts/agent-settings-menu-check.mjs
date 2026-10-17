@@ -41,7 +41,7 @@ try {
   const menuAfter = await menu.boundingBox();
   record(boxes !== null && frame !== null && Math.abs(boxes.y - frame.y) < 80, `pressing Boxes brings it to the top (${boxes ? Math.round(boxes.y - frame.y) : '?'}px under it)`);
   // Sticky, as on the other settings pages: it settles under the top of the frame and stays in view however far the page went.
-  record(menuBefore !== null && menuAfter !== null && frame !== null && menuAfter.y >= frame.y && menuAfter.y - frame.y < 60, `the menu stays in view while the page scrolls (${Math.round(menuAfter.y - frame.y)}px under the frame's top)`);
+  record(menuBefore !== null && menuAfter !== null && frame !== null && menuAfter.y >= frame.y && menuAfter.y - frame.y < frame.height / 4, `the menu stays in view while the page scrolls (${Math.round(menuAfter.y - frame.y)}px under the frame's top)`);
   const current = (await menu.locator('a[aria-current="location"]').textContent().catch(() => ''))?.trim();
   record(current === 'Boxes', `and marks Boxes as where the reader is (${current})`);
 

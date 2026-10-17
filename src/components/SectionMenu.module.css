@@ -34,9 +34,8 @@
   font-size: var(--text-md);
   color: var(--color-text-secondary);
   text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Wrapped rather than cut: "Kopie przestrzeni roboczych" is wider than the column, and an ellipsis hides the half that says which. */
+  overflow-wrap: anywhere;
 }
 
 .entry:hover {

@@ -85,6 +85,8 @@ export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
    * last reached the top. Let go of the moment the reader scrolls themselves.
    */
   const pressed = useRef<string | null>(null);
+  /** Whether the address's #section has been honoured; once, so later scrolling is the reader's own. */
+  const arrived = useRef(false);
 
   useEffect(() => {
     const root = within.current;
@@ -104,6 +106,24 @@ export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
     watcher.observe(root, { childList: true, subtree: true });
     return () => watcher.disconnect();
   }, [within, which]);
+
+  /*
+   * An address naming a section - Go to's rows, a link from elsewhere - lands
+   * on it. The browser's own jump happened before the section existed, and
+   * looks at the window while the page scrolls in its frame; so once the
+   * entries have arrived the named one is brought up here, and marked.
+   */
+  useEffect(() => {
+    if (arrived.current || entries.length === 0) return;
+    const wanted = decodeURIComponent(window.location.hash.slice(1));
+    if (wanted === '') return;
+    const target = within.current?.querySelector<HTMLElement>(`[id="${CSS.escape(wanted)}"]`);
+    if (target === null || target === undefined) return;
+    arrived.current = true;
+    pressed.current = wanted;
+    setCurrent(wanted);
+    target.scrollIntoView({ block: 'start' });
+  }, [within, entries]);
 
   useEffect(() => {
     const root = within.current;
