@@ -41,6 +41,22 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
     >
       <span className={styles.badge}>{t('Question')}</span>
       <p className={styles.question}>{request.question}</p>
+      {/*
+        What it is about, one line each - the tools an agent asks for, with what
+        sort of tool each is and what it does - so the person sees exactly what
+        Accept would give before giving it.
+      */}
+      {request.items.length > 0 && (
+        <ul className={styles.items} data-interaction-items="">
+          {request.items.map((item) => (
+            <li key={item.name} className={styles.item} data-interaction-item={item.name}>
+              <span className={styles.itemName}>{item.name}</span>
+              {item.kind !== null && <span className={styles.itemKind}>{item.kind}</span>}
+              {item.description !== null && <span className={styles.itemDescription}>{item.description}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       {open ? (
         <div className={styles.options}>
           {request.options.map((option) => (

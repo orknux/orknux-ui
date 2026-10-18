@@ -293,6 +293,8 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by the boxes — switch it there.');
     case 'VARIABLE_CATALOGS':
       return t('Granted by the secret and variable catalogs — switch it there.');
+    case 'MAY_ASK_FOR_TOOLS':
+      return t('Granted by May ask for more tools — switch it there.');
     default:
       return null;
   }
@@ -1106,6 +1108,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const [mcpServers, setMcpServers] = useState<string[]>(agent.mcpServers);
   /** Whether it may ask orknux about orknux; the built-in server. */
   const [orknuxAccess, setOrknuxAccess] = useState(agent.orknuxAccess);
+  const [mayAskForTools, setMayAskForTools] = useState(agent.mayAskForTools);
   /** Which boxes it may open a session on, by label. Every agent starts with none. */
   const [boxLabels, setBoxLabels] = useState<string[]>(agent.boxLabels ?? []);
   /**
@@ -1429,6 +1432,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return boxLabels.length > 0;
       case 'VARIABLE_CATALOGS':
         return secretCatalogs.length > 0 || variableCatalogs.length > 0;
+      case 'MAY_ASK_FOR_TOOLS':
+        return mayAskForTools;
       default:
         return false;
     }
@@ -1625,6 +1630,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     modelId: modelId === '' ? null : modelId,
     mcpServers,
     orknuxAccess,
+    mayAskForTools,
     boxLabels,
     memoryCatalogs,
     secretCatalogs,
@@ -1663,6 +1669,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       const updated = await updateAgent(agent.id, sent);
       setMcpServers(updated.mcpServers);
       setOrknuxAccess(updated.orknuxAccess);
+      setMayAskForTools(updated.mayAskForTools);
       setBoxLabels(updated.boxLabels ?? []);
       setMemoryCatalogs(updated.memoryCatalogs);
       setSecretCatalogs(updated.secretCatalogs ?? []);
@@ -2336,6 +2343,25 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             </label>
             <FieldHint label="Orknux">
               {t('Its workspace’s workflows, runs and agents — and it can start a workflow, which really runs it. An agent that starts a workflow which asks an agent is a loop nothing here breaks.')}
+            </FieldHint>
+          </div>
+          {/*
+            Whether it may ask the person for what it lacks. On, it can list the
+            tools it could be given and ask for some in the conversation, where a
+            person accepts or refuses; off, it cannot even ask.
+          */}
+          <div className={own.checkRow}>
+            <label className={own.grantToggle}>
+              <input
+                type="checkbox"
+                checked={mayAskForTools}
+                onChange={(event) => setMayAskForTools(event.target.checked)}
+                data-testid="agent-may-ask-for-tools"
+              />
+              <span>{t('May ask for more tools')}</span>
+            </label>
+            <FieldHint label={t('May ask for more tools')}>
+              {t('It can list the tools it could be given and ask for some in the conversation. Nothing is granted until a person accepts; accepted, the tools are its for good. Off, it cannot ask.')}
             </FieldHint>
           </div>
         </div>

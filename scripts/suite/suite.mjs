@@ -3937,6 +3937,12 @@ export const TESTS = [
     // Drawn through an issue description it files and deletes again.
   },
   {
+    name: 'tool-grant-request-check',
+    what: 'an agent asking for tools shows each one asked for, with its kind and what it does, over Accept and Refuse; and a new agent may ask',
+    needs: ['workspace'],
+    // The question is canned on its way to the chat page; the agent and the chat are made and removed.
+  },
+  {
     name: 'model-offered-fill-check',
     what: "picking a model a llama.cpp server offers fills its context window and zero prices, and leaves typed fields alone",
     needs: ['workspace'],

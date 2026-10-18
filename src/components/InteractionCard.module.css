@@ -33,6 +33,42 @@
   overflow-wrap: anywhere;
 }
 
+/* What a request is about, one line each: the name, its kind, what it does. */
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-8);
+  font-size: var(--text-sm);
+  min-width: 0;
+}
+
+.itemName {
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.itemKind {
+  font-size: var(--text-2xs);
+  color: var(--color-text-secondary);
+}
+
+.itemDescription {
+  flex-basis: 100%;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
 .options {
   display: flex;
   flex-wrap: wrap;

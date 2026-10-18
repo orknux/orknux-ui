@@ -25,6 +25,8 @@ export interface Agent {
    * already inside.
    */
   orknuxAccess: boolean;
+  /** Whether it may ask the person for tools it was not granted; on by default. */
+  mayAskForTools: boolean;
   /** Memory catalogs this agent may read, by name. */
   memoryCatalogs: string[];
   /** Variable catalogs whose secrets it may hand a box command, by name; never read, masked where shown. */
@@ -150,7 +152,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
@@ -168,7 +170,8 @@ export type BuiltInToolGovernance =
   | 'ORKNUX_ACCESS'
   | 'HTTP_TOOLS'
   | 'BOX_ACCESS'
-  | 'VARIABLE_CATALOGS';
+  | 'VARIABLE_CATALOGS'
+  | 'MAY_ASK_FOR_TOOLS';
 
 /** One of the tools the server brings itself, and what switches it. */
 export interface BuiltInTool {
@@ -335,6 +338,8 @@ export async function updateAgent(
     mcpServers?: string[];
     /** Whether it may ask orknux about orknux; left out, the grant is unchanged. */
     orknuxAccess?: boolean;
+    /** Whether it may ask the person for tools it was not granted; left out, unchanged. */
+    mayAskForTools?: boolean;
     memoryCatalogs?: string[];
     /** Variable catalogs whose secrets it may use; left out, the grant is unchanged. */
     secretCatalogs?: string[];
