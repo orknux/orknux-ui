@@ -154,7 +154,7 @@
 .name {
   overflow: hidden;
   font-weight: 600;
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   color: var(--color-text-primary);
   text-decoration: none;
   text-overflow: ellipsis;

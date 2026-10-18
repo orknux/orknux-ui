@@ -4010,6 +4010,11 @@ export const TESTS = [
     // The desktop half is canned, so nothing restarts.
   },
   {
+    name: 'table-cell-font-check',
+    what: "a table row's cells share one font size: monospace at that size or one step smaller, a chip no larger",
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

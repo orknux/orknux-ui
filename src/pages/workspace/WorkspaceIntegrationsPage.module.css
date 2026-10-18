@@ -144,7 +144,7 @@
 .connectionName {
   overflow: hidden;
   font-weight: 600;
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -174,13 +174,13 @@
 }
 
 .type {
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
 
 /* A connection with no credentials reads back in muted text. */
 .typeMuted {
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   color: var(--color-text-muted);
 }
 

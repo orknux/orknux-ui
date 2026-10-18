@@ -216,7 +216,7 @@
 .name {
   overflow: hidden;
   font-weight: 600;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;

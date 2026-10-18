@@ -144,7 +144,7 @@
 .displayName {
   overflow: hidden;
   font-weight: 600;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   color: var(--color-text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;

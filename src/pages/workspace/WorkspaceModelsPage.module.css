@@ -102,6 +102,8 @@
 .row {
   padding: var(--space-14) var(--space-24);
   border-bottom: 1px solid var(--color-border);
+  /* The body size, once: a cell that sets none - the type - inherited the page's 16px. */
+  font-size: var(--text-base);
 }
 
 .row:last-child {
@@ -261,7 +263,7 @@
 }
 
 .toggleLabel {
-  font-size: var(--text-md);
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
 }
 

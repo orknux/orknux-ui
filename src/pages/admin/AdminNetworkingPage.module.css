@@ -85,6 +85,8 @@
 .row {
   padding: var(--space-14) var(--space-16);
   border-bottom: 1px solid var(--color-border);
+  /* The body size, once: a cell that sets none - a certificate's expiry - inherited the page's 16px. */
+  font-size: var(--text-base);
 }
 
 /*
@@ -136,7 +138,7 @@
 
 .position {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--color-text-muted);
 }
 
@@ -187,7 +189,7 @@
 .proxy {
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
