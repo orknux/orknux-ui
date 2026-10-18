@@ -389,6 +389,10 @@ export interface ChatStreamHandlers {
   onPersonRead?: (text: string) => void;
   /** The chat could not be named by its model, and why - said for a moment, it is not part of the answer. */
   onTitleFailed?: (reason: string) => void;
+  /** The chat's model is being asked for a title, which takes a moment after the answer. */
+  onTitling?: () => void;
+  /** The chat is named, and what it is called. */
+  onTitled?: (title: string) => void;
   /**
    * How far the model has got writing: the tool whose call it is spelling out,
    * or null for its answer, and how many characters have arrived. About once a
@@ -723,6 +727,7 @@ async function read(
       outputTokens?: number;
       cost?: number | null;
       reason?: string;
+      title?: string;
       markdown?: string;
       id?: string;
       filename?: string;
@@ -767,6 +772,8 @@ async function read(
     else if (frame.event === 'said' && payload.text !== undefined) handlers.onSaid?.(payload.text);
     else if (frame.event === 'personRead' && payload.text !== undefined) handlers.onPersonRead?.(payload.text);
     else if (frame.event === 'titleFailed' && payload.reason !== undefined) handlers.onTitleFailed?.(String(payload.reason));
+    else if (frame.event === 'titling') handlers.onTitling?.();
+    else if (frame.event === 'titled' && payload.title !== undefined) handlers.onTitled?.(String(payload.title));
     else if (frame.event === 'session' && payload.id !== undefined) handlers.onSession?.(String(payload.id));
     else if (frame.event === 'reading' && payload.total !== undefined) {
       handlers.onWriting?.({

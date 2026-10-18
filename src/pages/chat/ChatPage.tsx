@@ -242,6 +242,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [attachmentsAllowed, setAttachmentsAllowed] = useState(false);
   /** Whether files are being dragged over the chat, which then says it will take them. */
   const [dropping, setDropping] = useState(false);
+  /** The chat whose model is being asked for a title, while it is. */
+  const [naming, setNaming] = useState<string | null>(null);
   /** The chats whose messages match, as the server last answered. */
   const [mentioning, setMentioning] = useState<string[]>([]);
   const [pinnedOpen, setPinnedOpen] = useState(true);
@@ -1680,7 +1682,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1758,8 +1760,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        */
       /* Said for a moment and gone: naming failing is worth knowing, not worth a line in the chat. */
       onTitleFailed: (reason) => {
+        setNaming(null);
         setPassing(tf('Could not name this chat: {reason}', { reason }));
         window.setTimeout(() => setPassing(null), PASSING_MS);
+      },
+      /* Naming takes a moment after the answer, and the bar said nothing while it did. */
+      onTitling: () => setNaming(openChat.current),
+      /* The name, as soon as it is known - on the bar and in the list, not at the next reload of either. */
+      onTitled: (title) => {
+        const chat = openChat.current;
+        setNaming(null);
+        if (chat === null) return;
+        setSessions((held) => held?.map((entry) => (entry.id === chat ? { ...entry, title } : entry)) ?? held);
       },
       /* The chat's session exists from its first turn's start: the header's link to it shows then, not after a reload. */
       onSession: (id) => {
@@ -2957,6 +2969,12 @@ ${named}`;
           */}
           <header className={styles.titleBar}>
             <h1 className={styles.chatTitle}>{current.title}</h1>
+            {naming === current.id && (
+              <span className={styles.naming} role="status" data-testid="chat-naming">
+                <span className={styles.namingDot} aria-hidden="true" />
+                {t('Naming this chat…')}
+              </span>
+            )}
             <div className={styles.titleRight}>
             <div className={styles.modelBar} ref={pickerRef}>
               <button

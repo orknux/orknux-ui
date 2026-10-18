@@ -3977,6 +3977,12 @@ export const TESTS = [
     // The list's counts are rewritten in the browser; the server half is ChatUnreadTest.
   },
   {
+    name: 'chat-naming-check',
+    what: 'the title bar says a chat is being named, and shows the name the moment it is known',
+    needs: ['workspace'],
+    // The stream is answered here, so no model is asked.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

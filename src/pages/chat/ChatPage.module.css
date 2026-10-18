@@ -1952,3 +1952,31 @@ button.attachmentName {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/* Beside the title while the chat's model is asked for one: a dot that breathes, and the words. */
+.naming {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-left: var(--space-12);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.namingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: naming-breathe 1.2s ease-in-out infinite;
+}
+
+@keyframes naming-breathe {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .namingDot { animation: none; }
+}
