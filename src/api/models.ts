@@ -162,6 +162,10 @@ export interface Model {
 export interface DiscoveredModel {
   modelId: string;
   added: boolean;
+  /** The context the provider runs it with, where its listing says (llama.cpp does); null otherwise. */
+  contextWindow: number | null;
+  /** A llama.cpp server's own model, which costs nothing per token. */
+  selfHosted: boolean;
 }
 
 export interface ModelUsageDay {
@@ -265,7 +269,7 @@ export async function fetchModel(id: string): Promise<Model | null> {
  */
 export async function fetchDiscoveredModels(providerId: string): Promise<DiscoveredModel[]> {
   const data = await graphql<{ discoveredModels: DiscoveredModel[] }>(
-    `query DiscoveredModels($providerId: ID!) { discoveredModels(providerId: $providerId) { modelId added } }`,
+    `query DiscoveredModels($providerId: ID!) { discoveredModels(providerId: $providerId) { modelId added contextWindow selfHosted } }`,
     { providerId },
   );
   return data.discoveredModels;

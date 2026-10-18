@@ -183,6 +183,22 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
     if (name.trim() === '') setName(suggestName(picked));
   }
 
+  /*
+   * What the provider said about the model whose id is in the box - picked or
+   * typed - fills what nobody has typed: the context a llama.cpp server runs
+   * it with, and nothing per token for a model the server is itself. A field
+   * somebody filled is theirs and is left alone.
+   */
+  useEffect(() => {
+    const known = offered?.find((candidate) => candidate.modelId === modelId.trim());
+    if (known === undefined) return;
+    if (known.contextWindow !== null) setContextWindow((was) => (was.trim() === '' ? String(known.contextWindow) : was));
+    if (known.selfHosted) {
+      setInputCost((was) => (was.trim() === '' ? '0' : was));
+      setOutputCost((was) => (was.trim() === '' ? '0' : was));
+    }
+  }, [modelId, offered]);
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog === null) return;

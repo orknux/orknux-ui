@@ -3931,6 +3931,12 @@ export const TESTS = [
     // Drawn through an issue description it files and deletes again.
   },
   {
+    name: 'model-offered-fill-check',
+    what: "picking a model a llama.cpp server offers fills its context window and zero prices, and leaves typed fields alone",
+    needs: ['workspace'],
+    // The provider's listing is canned, so any provider will do and nothing is added.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],
