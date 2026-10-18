@@ -1423,6 +1423,7 @@ export const PL: Record<string, string> = {
   "Publish template": "Opublikuj szablon",
   "Use template": "Użyj szablonu",
   "Test Connection": "Sprawdź połączenie",
+  "Connected": "Połączono",
   // A Slack connection's socket, on its page (#592).
   "Reconnect": "Połącz ponownie",
   "Reconnecting…": "Łączę ponownie…",

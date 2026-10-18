@@ -90,6 +90,27 @@
   gap: var(--space-8);
 }
 
+/* A button that is not part of the confirming pair, held at the row's other end. */
+.actionsAside {
+  margin-right: auto;
+}
+
+/* What a Test found, one line over the buttons. */
+.testPassed,
+.testFailed {
+  margin: 0;
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+
+.testPassed {
+  color: var(--color-success);
+}
+
+.testFailed {
+  color: var(--color-danger);
+}
+
 /* A third way in, a button on a line of its own above the confirming pair, flush with their right edge. */
 .lead {
   display: flex;

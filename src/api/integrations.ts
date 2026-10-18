@@ -370,6 +370,26 @@ export async function fetchWorkspaceConnection(id: string): Promise<WorkspaceCon
   return data.workspaceConnection;
 }
 
+const TEST_NEW_CONNECTION_MUTATION = `
+  mutation TestNewWorkspaceConnection($input: CreateWorkspaceConnectionInput!) {
+    testNewWorkspaceConnection(input: $input) { status message }
+  }
+`;
+
+/** What testing a connection not yet added found. */
+export interface ConnectionDraftCheck {
+  status: 'CONNECTED' | 'FAILED';
+  message: string;
+}
+
+/** The Add dialog's Test: the connection as typed, checked by the server, and nothing stored. */
+export async function testNewWorkspaceConnection(input: NewWorkspaceConnectionInput): Promise<ConnectionDraftCheck> {
+  const data = await graphql<{ testNewWorkspaceConnection: ConnectionDraftCheck }>(TEST_NEW_CONNECTION_MUTATION, { input });
+  return data.testNewWorkspaceConnection;
+}
+
+export type NewWorkspaceConnectionInput = Parameters<typeof createWorkspaceConnection>[0];
+
 export async function createWorkspaceConnection(input: {
   workspaceId: string;
   name: string;

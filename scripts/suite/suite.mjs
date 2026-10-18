@@ -3919,6 +3919,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'connection-draft-test-check',
+    what: "the Add Connection dialog tests what is typed before adding it, and a plugin's guide reads as one document, unscrolled",
+    needs: ['workspace'],
+    // Canned kinds and a captured test mutation, so nothing reaches the database.
+  },
+  {
     name: 'plugin-connection-kind-check',
     what: "a plugin's connection kinds: offered by label in the dialog and on the page, worn by a row in the list, and the only thing the plugin's own picker offers",
     needs: ['workspace'],

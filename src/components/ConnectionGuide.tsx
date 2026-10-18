@@ -29,7 +29,7 @@ export function ConnectionGuide({ kind, open = false }: ConnectionGuideProps) {
     <details className={styles.guide} open={open} data-testid="connection-guide">
       <summary className={styles.summary}>{tf('Setting up {kind}', { kind: kind.label })}</summary>
       <div className={styles.body}>
-        <Markdown>{guide}</Markdown>
+        <Markdown lineBreaks={false}>{guide}</Markdown>
       </div>
     </details>
   );

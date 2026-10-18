@@ -104,6 +104,12 @@ export interface MarkdownProps {
    * their own.
    */
   pictureLinks?: boolean;
+  /**
+   * Whether a single newline is a line break, as in a chat. Off for a document
+   * somebody wrapped by hand - a plugin's setup guide - where it is only where
+   * their editor ran out of width.
+   */
+  lineBreaks?: boolean;
 }
 
 /**
@@ -235,6 +241,7 @@ export function Markdown({
   issuesIn,
   zoomImages = false,
   pictureLinks = false,
+  lineBreaks = true,
 }: MarkdownProps) {
   /** Which picture is open over the page, or null while none is. */
   const [zoomed, setZoomed] = useState<Picture | null>(null);
@@ -297,7 +304,7 @@ export function Markdown({
   return (
     <div className={styles.markdown}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={lineBreaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         rehypePlugins={rehypePlugins}
         components={{
           /*

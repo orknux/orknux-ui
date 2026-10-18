@@ -4,6 +4,9 @@ import type { FormEvent } from 'react';
 import {
   authTypeLabel,
   createWorkspaceConnection,
+  testNewWorkspaceConnection,
+  type ConnectionDraftCheck,
+  type NewWorkspaceConnectionInput,
   fetchPluginConnectionTypes,
   pluginKindOptionLabel,
 } from '../api/integrations';
@@ -108,6 +111,9 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
   const [headers, setHeaders] = useState<HttpHeader[]>([{ name: '', value: '' }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  /** What the last Test found, cleared when what it tested changes. */
+  const [tested, setTested] = useState<ConnectionDraftCheck | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -129,6 +135,8 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
       setHeaders([{ name: '', value: '' }]);
       setError(null);
       setSubmitting(false);
+      setTesting(false);
+      setTested(null);
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -210,22 +218,24 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!complete || submitting) return;
+  // A result stays only while it describes what is on the form.
+  useEffect(() => {
+    setTested(null);
+  }, [choice, url, authType, headers, smtpPort, smtpSecurity, smtpUsername]);
 
+  /** Whether there is enough to ask about: a kind, and where it is. The name is not needed to test. */
+  const testable = type !== '' && !secret.unchosen && (slack ? secret.answered : url.trim() !== '');
+
+  /** The form as the server takes it, for adding and for testing alike. */
+  function drafted(): NewWorkspaceConnectionInput {
     const sendingSecret = secret.sending;
     const sendingAppToken = appToken.sending;
     const sendingUserToken = userToken.sending;
-
-    setSubmitting(true);
-    setError(null);
-    try {
-      const created = await createWorkspaceConnection({
+    return {
         workspaceId,
         name: name.trim(),
         description: description.trim() || undefined,
-        type,
+        type: type as ConnectionType,
         // The label, where a plugin's kind was chosen: the rest of what is sent
         // is exactly what a plain HTTP endpoint sends.
         pluginType: pluginKind?.id,
@@ -260,7 +270,31 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
         smtpFrom: mail ? smtpFrom.trim() : undefined,
         smtpSecurity: mail ? smtpSecurity : undefined,
         headers: slack || mail ? [] : headers.filter((header) => header.name.trim() !== ''),
-      });
+    };
+  }
+
+  async function handleTest() {
+    if (!testable || testing) return;
+    setTesting(true);
+    setError(null);
+    setTested(null);
+    try {
+      setTested(await testNewWorkspaceConnection(drafted()));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not test the connection.'));
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!complete || submitting) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const created = await createWorkspaceConnection(drafted());
       onCreated(created);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not add the connection.'));
@@ -590,7 +624,26 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
           </p>
         )}
 
+        {tested !== null && (
+          <p
+            className={tested.status === 'CONNECTED' ? styles.testPassed : styles.testFailed}
+            role="status"
+            data-testid="connection-draft-check"
+          >
+            {tested.status === 'CONNECTED' ? t('Connected') : t('Failed')}: {tested.message}
+          </p>
+        )}
+
         <div className={styles.actions}>
+          {/* Asks before adding: whether what is typed reaches the service, and - for a plugin's kind - whether it is that service. */}
+          <button
+            type="button"
+            className={`${styles.ghost} ${styles.actionsAside}`}
+            onClick={handleTest}
+            disabled={!testable || testing || submitting}
+          >
+            {testing ? t('Testing…') : t('Test Connection')}
+          </button>
           <button type="button" className={styles.ghost} onClick={onClose} disabled={submitting}>
             {t('Cancel')}
           </button>
