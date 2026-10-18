@@ -22,7 +22,6 @@ import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
 import lassoIcon from '../../assets/select-lasso.svg';
 import rectangleIcon from '../../assets/select-rectangle.svg';
-import magicIcon from '../../assets/wand-sparkles.svg';
 import undoIcon from '../../assets/undo.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
@@ -691,7 +690,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         <div className={styles.toolbarRight}>
           {/* Selecting part of the picture to change: its own group, in the colour the product gives what is magic. */}
           <div className={styles.magic} role="group" aria-label={t('Magic edit')} data-testid="magic-edit">
-            <img src={magicIcon} alt="" width={14} height={14} className={styles.magicMark} />
+            {/* Words, not an icon: an icon in a row of tools reads as one more tool. */}
+            <span className={styles.magicMark} aria-hidden="true">{t('Magic')}</span>
             <button
               type="button"
               className={`${styles.tool} ${tool === 'rectangle' ? styles.toolOn : ''}`}

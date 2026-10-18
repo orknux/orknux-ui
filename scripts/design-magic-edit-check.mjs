@@ -79,6 +79,10 @@ const border = await group.evaluate((one) => getComputedStyle(one).borderTopColo
 record(groupBox !== null && zoomBox !== null && groupBox.x + groupBox.width <= zoomBox.x && /rgb\((192, 132, 252|126, 34, 206)\)/.test(border),
   `Magic edit sits left of the zoom, in violet (${JSON.stringify({ groupBox, zoomBox, border })})`);
 record((await page.getByTestId('magic-rectangle').count()) === 1 && (await page.getByTestId('magic-lasso').count()) === 1, 'with a rectangle and a lasso');
+const controls = await group.evaluate((one) => [...one.children].map((child) => child.tagName));
+const label = (await group.innerText().catch(() => '')).trim().toLowerCase();
+record(JSON.stringify(controls) === JSON.stringify(['SPAN', 'BUTTON', 'BUTTON']) && label === 'magic',
+  `named by a word rather than an icon that looks like a third tool (${JSON.stringify({ controls, label })})`);
 
 // Rectangle: drag across the middle of the picture.
 await page.getByTestId('magic-rectangle').click();

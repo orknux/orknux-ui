@@ -37,6 +37,7 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Magic": "Magia",
   "Magic edit": "Magiczna edycja",
   "Magic rectangle select": "Magiczne zaznaczenie prostokątem",
   "Magic lasso select": "Magiczne zaznaczenie lassem",
