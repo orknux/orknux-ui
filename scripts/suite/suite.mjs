@@ -1519,8 +1519,15 @@ export const TESTS = [
   },
 
   {
+    name: 'design-images-check',
+    what: "Design sits in the top bar's alphabet, and a picture on Artifacts opens in it",
+    needs: ['workspace'],
+    /* Answers the artifact list with one picture of its own. */
+  },
+
+  {
     name: 'chat-session-link-check',
-    what: 'a chat links to the session it is answered in, from its header',
+    what: 'a chat links to the session it is answered in, once, from its header',
     needs: ['workspace'],
     /*
      * Passes the real chat list through with a session id stamped on each chat,

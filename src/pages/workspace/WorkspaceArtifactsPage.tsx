@@ -6,6 +6,7 @@ import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from 
 import type { Artifact } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import downloadIcon from '../../assets/download.svg';
+import paletteIcon from '../../assets/palette.svg';
 import { timeAgo } from '../../api/tools';
 import { AppShell } from '../../components/AppShell';
 import { CompactPagination } from '../../components/CompactPagination';
@@ -402,6 +403,18 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                     their padding was set. As a pair of squares they are
                     obviously the two things you can do to the file.
                   */}
+                  {/* A picture has a page of its own in Design, where it is worked on. */}
+                  {drawable(artifact.contentType) && (
+                    <Link
+                      className={styles.action}
+                      to={`/workspace/${workspaceId}/design/images/${artifact.id}`}
+                      aria-label={`Open ${artifact.filename} in Design`}
+                      title={t('Open in Design')}
+                      data-open-in-design=""
+                    >
+                      <img src={paletteIcon} alt="" width={14} height={14} />
+                    </Link>
+                  )}
                   <a
                     className={styles.action}
                     href={artifact.url}

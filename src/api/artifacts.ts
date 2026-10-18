@@ -48,8 +48,8 @@ const ARTIFACT_FIELDS = `
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
-  query WorkspaceArtifacts($workspaceId: ID!, $page: Int!, $size: Int!, $search: String) {
-    workspaceArtifacts(workspaceId: $workspaceId, page: $page, size: $size, search: $search) {
+  query WorkspaceArtifacts($workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $drawn: Boolean) {
+    workspaceArtifacts(workspaceId: $workspaceId, page: $page, size: $size, search: $search, drawn: $drawn) {
       content { ${ARTIFACT_FIELDS} }
       page
       size
@@ -93,12 +93,15 @@ export async function fetchWorkspaceArtifacts(
   page = 0,
   size = 24,
   search = '',
+  /** Only what an image model drew - Design's Images page. */
+  drawn = false,
 ): Promise<PageOf<Artifact>> {
   const data = await graphql<{ workspaceArtifacts: PageOf<Artifact> }>(WORKSPACE_ARTIFACTS_QUERY, {
     workspaceId,
     page,
     size,
     search: search.trim() === '' ? null : search.trim(),
+    drawn,
   });
   return data.workspaceArtifacts;
 }

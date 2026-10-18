@@ -52,10 +52,10 @@ export type Access = 'signed-in' | 'admin' | 'workspace-admin';
  * page appears under in Quick actions. A page states this once, here, and everything
  * else is read off it.
  *
- * The first four are the links across the top, in that order. `Docs`, `Admin`
+ * The first five are the links across the top, in that order. `Docs`, `Admin`
  * and `You` are reached from the corner instead, and light nothing in the bar.
  */
-export type Where = 'AI' | 'Flow' | 'Workspace' | 'Chat' | 'Docs' | 'Admin' | 'You';
+export type Where = 'AI' | 'Chat' | 'Design' | 'Flow' | 'Workspace' | 'Docs' | 'Admin' | 'You';
 
 /**
  * The links across the top, in the order they are drawn.
@@ -71,7 +71,10 @@ export type Where = 'AI' | 'Flow' | 'Workspace' | 'Chat' | 'Docs' | 'Admin' | 'Y
  * one was the one that meant less. The pages it holds are unchanged, and so are
  * their addresses.
  */
-export const TOP_SECTIONS = ['AI', 'Flow', 'Workspace', 'Chat'] as const;
+/*
+ * In the alphabet's order, so a section added later has one obvious place.
+ */
+export const TOP_SECTIONS = ['AI', 'Chat', 'Design', 'Flow', 'Workspace'] as const;
 
 export type TopSection = (typeof TOP_SECTIONS)[number];
 
@@ -82,7 +85,7 @@ export type TopSection = (typeof TOP_SECTIONS)[number];
  * than `t(name)`, for one reason each. A record would be built when this module
  * loads and `t` would be read once; every list in this file is that already,
  * which is why changing language reloads the page - but a function costs
- * nothing and does not rely on it. And the four written out are four call sites
+ * nothing and does not rely on it. And the five written out are five call sites
  * `catalogue-check` can see, so a section renamed here is a catalogue entry
  * that fails rather than a word that quietly falls back to English.
  *
@@ -93,6 +96,8 @@ export function sectionLabel(name: TopSection): string {
   switch (name) {
     case 'AI':
       return t('AI');
+    case 'Design':
+      return t('Design');
     case 'Flow':
       return t('Flow');
     case 'Workspace':
@@ -334,6 +339,15 @@ export const PAGES = [
     access: 'signed-in',
     goTo: { label: t('Objects'), where: 'Flow', icon: boxIcon, also: 'shapes data' },
   },
+
+  // ---- Design: what a model drew, and drawing more ----
+  {
+    path: '/workspace/:workspaceId/design/images',
+    access: 'signed-in',
+    goTo: { label: t('Images'), where: 'Design', icon: imageIcon, also: 'pictures generated drawn design' },
+  },
+  /* The same page, opened at one image - where "Open in Design" lands. */
+  { path: '/workspace/:workspaceId/design/images/:artifactId', access: 'signed-in', goTo: false },
 
   // ---- Workspace: what the whole of it is set up with ----
   {

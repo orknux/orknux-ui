@@ -3,7 +3,8 @@
  *
  * The session is where a chat's turn can be read whole - every tool call, the
  * thinking, the boxes and the to-do list - and somebody wanting it had to find
- * it in the Sessions list by id. The header carries a link to it now.
+ * it in the Sessions list by id. The header carries a link to it now - one: a
+ * speech bubble beside the transcript's mark went to the same page, so there were two.
  *
  * The chat list is passed through with a session id put on every chat, so the
  * check does not depend on the installation holding a chat that has one.
@@ -35,5 +36,7 @@ record(href === `/workspace/${WORKSPACE}/sessions/${SESSION}`, `the chat's heade
 record((await link.getAttribute('target').catch(() => null)) === '_blank', 'in a new tab, like the agent link beside it');
 const box = await link.boundingBox().catch(() => null);
 record(box !== null && box.width > 0 && box.height > 0, `and it is drawn (${JSON.stringify(box)})`);
+const ways = await page.locator(`a[href="/workspace/${WORKSPACE}/sessions/${SESSION}"]`).count();
+record(ways === 1, `and only once (${ways})`);
 
 await finish(browser);

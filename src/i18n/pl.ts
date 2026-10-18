@@ -37,6 +37,15 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Design": "Projekt",
+  "Open in Design": "Otwórz w Projekcie",
+  "Every picture a model drew in this workspace.": "Każdy obraz narysowany w tym obszarze roboczym przez model.",
+  "Search images...": "Szukaj obrazów...",
+  "Search images": "Szukaj obrazów",
+  "Nothing yet. An image node or a task that draws fills this.": "Jeszcze nic. Wypełni to węzeł obrazu albo zadanie, które rysuje.",
+  "No image matches what you typed.": "Żaden obraz nie pasuje do wpisanego tekstu.",
+  "Could not load the images.": "Nie udało się wczytać obrazów.",
+  "images": "obrazów",
   "Docs": "Dokumentacja",
   "Admin": "Administracja",
   "Doctor": "Diagnostyka",
@@ -1479,7 +1488,6 @@ export const PL: Record<string, string> = {
   "Refresh Stats": "Odśwież statystyki",
   "Save & Leave": "Zapisz i wyjdź",
   "Save Changes": "Zapisz zmiany",
-  "Save Credentials": "Zapisz poświadczenia",
   "Discard Changes": "Odrzuć zmiany",
   "Discard changes": "Odrzuć zmiany",
   "Select a node to copy it.": "Wybierz węzeł, aby go skopiować.",
@@ -1534,7 +1542,6 @@ export const PL: Record<string, string> = {
   "Writing": "Pisze",
   "Writing the answer…": "Pisze odpowiedź…",
   "Writing {tool}…": "Pisze {tool}…",
-  "Open this chat’s session": "Otwórz sesję tego czatu",
   "Read by the agent": "Przeczytane przez agenta",
   "Queued - the agent reads it at its next step": "W kolejce - agent przeczyta to przy następnym kroku",
   "Could not send that.": "Nie udało się tego wysłać.",
@@ -2337,7 +2344,6 @@ export const PL: Record<string, string> = {
   // --- an example of a name -------------------------------------------------------
   "e.g. BuildFinished": "np. BuildFinished",
 
-  "Showing {first}-{last} of {total}": "Pokazano {first}-{last} z {total}",
   "Showing {first}-{last} of {total} {unit}": "Pokazano {first}-{last} z {total}",
 
   // --- what a task is allowed, and who allowed it -----------------------------------
@@ -2673,7 +2679,6 @@ export const PL: Record<string, string> = {
   "Plain values it may read and hand a box command; nothing is masked.": "Zwykłe wartości, które może odczytać i przekazać poleceniu w skrzynce; nic nie jest maskowane.",
   "Boxes": "Skrzynki",
   "Box": "Skrzynka",
-  "Add a box label…": "Dodaj etykietę skrzynki…",
   "Could not load the boxes.": "Nie udało się wczytać skrzynek.",
   "A box is a sandbox an agent opens a session in, with a filesystem and commands. The local box runs inside this server and is switched in Admin Settings; a remote box is another Orkbox reached by its address and API token. An agent is granted boxes by label on its page.": "Skrzynka to piaskownica, w której agent otwiera sesję, z systemem plików i poleceniami. Lokalna skrzynka działa wewnątrz tego serwera i włącza się ją w ustawieniach administracyjnych; skrzynka zdalna to inny Orkbox, osiągany pod swoim adresem z tokenem API. Agent dostaje skrzynki po etykiecie, na swojej stronie.",
   "Sandboxes agents can run commands in.": "Piaskownice, w których agenci mogą uruchamiać polecenia.",
