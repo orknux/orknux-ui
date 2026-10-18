@@ -41,17 +41,46 @@
   }
 }
 
-.focus {
-  position: relative;
-  /* Clear of Edit and close: their row, and a gap under it before the picture. */
-  padding-top: calc(var(--space-8) + 40px + var(--space-16));
+/* Its status on the left, what can be done with it on the right; the picture below. */
+.focusBar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-16);
+}
+
+.focusStatus {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-height: 40px;
+}
+
+.focusActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.focusRemove {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.focusRemove:hover {
+  color: var(--color-danger);
+  background: var(--color-surface-hover);
 }
 
 /* Back to the gallery, in the corner of what is open. */
 .focusClose {
-  position: absolute;
-  top: var(--space-8);
-  right: var(--space-8);
   width: 40px;
   height: 40px;
   border: 1px solid var(--color-border);
@@ -69,14 +98,11 @@
 }
 
 .focusPrompt {
-  padding-right: 48px;
+  overflow-wrap: anywhere;
 }
 
-/* In the top corner, left of the close button and as tall as it. */
+/* As tall as the buttons beside it. */
 .focusEdit {
-  position: absolute;
-  top: var(--space-8);
-  right: calc(var(--space-8) + 40px + var(--space-16));
   height: 40px;
 }
 

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { dismissDesignImageJob, fetchDesignImageQueue, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
+import { deleteArtifact, dismissDesignImageJob, fetchDesignImageQueue, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { AppShell } from '../../components/AppShell';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { TrashIcon } from '../../components/TrashIcon';
 import { Loader } from '../../components/Loader';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -173,6 +175,8 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
   }, [open?.id]);
 
   const drawnWith = open?.drawnWith ?? null;
+  /** The picture a remove has been asked about, held until it is confirmed. */
+  const [removing, setRemoving] = useState<Artifact | null>(null);
 
   return (
     <AppShell
@@ -310,8 +314,35 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       </section>
       {open !== null && (
         <section className={styles.focus} data-design-image={open.id}>
-          <img src={open.url} alt={open.prompt} className={styles.focusImage} />
-          <div className={styles.focusFacts}>
+          {/*
+            Its status across the top, and what can be done with it in the
+            corner - so the picture underneath has nothing drawn over it, and
+            what it was drawn with reads under it.
+          */}
+          <div className={styles.focusBar}>
+          <div className={styles.focusStatus}>
+            {open.draft && <span className={styles.draftBadgeInline}>{t('Draft')}</span>}
+          </div>
+          <div className={styles.focusActions}>
+            <button
+              type="button"
+              className={styles.focusRemove}
+              onClick={() => setRemoving(open)}
+              aria-label={t('Remove this picture')}
+              title={t('Remove this picture')}
+              data-testid="design-image-remove"
+            >
+              <TrashIcon />
+            </button>
+            <button
+              type="button"
+              className={`${table.createButton} ${styles.focusEdit}`}
+              onClick={() => navigate(`/workspace/${workspaceId}/design/images/${open.id}/edit`)}
+              title={t('Open in editor')}
+              data-testid="design-image-edit"
+            >
+              {t('Edit')}
+            </button>
             <button
               type="button"
               className={styles.focusClose}
@@ -322,21 +353,15 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             >
               ×
             </button>
-            {/* Beside the close button, in the corner: the two ways out of looking at a picture. */}
-            <button
-              type="button"
-              className={`${table.createButton} ${styles.focusEdit}`}
-              onClick={() => navigate(`/workspace/${workspaceId}/design/images/${open.id}/edit`)}
-              title={t('Open in editor')}
-              data-testid="design-image-edit"
-            >
-              {t('Edit')}
-            </button>
-            <p className={styles.focusPrompt}>
-              {open.draft && <span className={styles.draftBadgeInline}>{t('Draft')}</span>}
-              {open.prompt}
-            </p>
+          </div>
+          </div>
+          <img src={open.url} alt={open.prompt} className={styles.focusImage} />
+          <div className={styles.focusFacts}>
             <dl className={styles.drawnWith}>
+              <dt>{t('Prompt')}</dt>
+              <dd className={styles.focusPrompt}>
+                {open.prompt}
+              </dd>
               <dt>{t('From')}</dt>
               <dd>
                 {open.kind === 'DESIGN' || open.sourcePath === '' ? (
@@ -378,6 +403,20 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
 
       </div>
 
+      <ConfirmDialog
+        subject={removing?.filename ?? null}
+        kind="remove"
+        detail={removing === null ? undefined : <span>{t('The file is deleted from disk as well as from this list.')}</span>}
+        onClose={() => setRemoving(null)}
+        onConfirm={async () => {
+          if (removing === null) return;
+          await deleteArtifact(removing.id);
+          setRemoving(null);
+          setImages((held) => held?.filter((one) => one.id !== removing.id) ?? held);
+          setTotal((count) => Math.max(0, count - 1));
+          back();
+        }}
+      />
     </AppShell>
   );
 }

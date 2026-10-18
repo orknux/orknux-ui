@@ -305,4 +305,24 @@ const opened = {
 record(opened.url.endsWith(`/design/images/new?job=${WAITING.id}`) && opened.prompt === WAITING.prompt && opened.waits === 'Queued, 1 ahead…',
   `a queued picture opens in the editor, waiting there (${JSON.stringify(opened)})`);
 
+// Remove, left of Edit, deletes the picture once confirmed and goes back to the gallery.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${DRAWN.id}`, { waitUntil: 'domcontentloaded' });
+const remove = page.getByTestId('design-image-remove');
+await remove.waitFor({ timeout: 15_000 }).catch(() => undefined);
+const removeBox = await remove.boundingBox().catch(() => null);
+const editAt = await page.getByTestId('design-image-edit').boundingBox().catch(() => null);
+record(removeBox !== null && editAt !== null && removeBox.x + removeBox.width <= editAt.x && Math.abs(removeBox.y - editAt.y) < 2,
+  `Remove stands left of Edit (${JSON.stringify({ removeBox, editAt })})`);
+const factsAt = await page.locator(`[data-design-image="${DRAWN.id}"] dl`).boundingBox().catch(() => null);
+const pictureAt = await page.locator(`[data-design-image="${DRAWN.id}"] > img`).boundingBox().catch(() => null);
+const promptRow = await page.locator(`[data-design-image="${DRAWN.id}"] dt`).first().innerText().catch(() => '');
+const statusAt = await page.locator(`[data-design-image="${DRAWN.id}"] [class*="focusStatus"]`).boundingBox().catch(() => null);
+const statusText = (await page.locator(`[data-design-image="${DRAWN.id}"] [class*="focusStatus"]`).innerText().catch(() => '')).trim().toLowerCase();
+record(statusAt !== null && pictureAt !== null && factsAt !== null && statusAt.y < pictureAt.y && factsAt.y > pictureAt.y && promptRow === 'Prompt' && statusText === 'draft',
+  `its status above it, what it was drawn with under it, the prompt first and labelled (${JSON.stringify({ statusText, promptRow, status: statusAt?.y, picture: pictureAt?.y, facts: factsAt?.y })})`);
+await remove.click().catch(() => undefined);
+await page.getByRole('dialog').getByRole('button', { name: /^(Remove|Delete)$/ }).click({ timeout: 5_000 }).catch(() => undefined);
+await page.waitForURL(new RegExp(`/design/images$`), { timeout: 5_000 }).catch(() => undefined);
+record(deleted.includes(DRAWN.id) && page.url().endsWith('/design/images'), `and once confirmed deletes it and goes back (${JSON.stringify({ deleted, url: page.url() })})`);
+
 await finish(browser);

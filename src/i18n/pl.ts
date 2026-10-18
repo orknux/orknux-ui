@@ -37,6 +37,7 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Remove this picture": "Usuń ten obraz",
   "Draft": "Szkic",
   "Queued": "W kolejce",
   "Not drawn": "Nienarysowany",
