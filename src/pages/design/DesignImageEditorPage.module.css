@@ -277,3 +277,84 @@ button.toolbarTitle:hover {
     border-top: 1px solid var(--color-border);
   }
 }
+
+/* Magic edit: its own group, outlined and glowing in violet. */
+.magic {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 2px var(--space-6);
+  border: 1px solid var(--color-violet);
+  border-radius: var(--radius-8);
+  background: var(--color-violet-soft);
+  box-shadow: 0 0 10px var(--color-violet-soft), inset 0 0 6px var(--color-violet-soft);
+}
+
+.magicMark {
+  opacity: 0.85;
+}
+
+.toolOn {
+  background: var(--color-violet-soft);
+  border-color: var(--color-violet);
+  box-shadow: 0 0 8px var(--color-violet);
+}
+
+/* Laid exactly over the picture: what a selection is drawn on. */
+.selectLayer {
+  position: absolute;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.selectLayerOn {
+  cursor: crosshair;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.selected {
+  fill: var(--color-violet-soft);
+  stroke: var(--color-violet);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 4px var(--color-violet));
+  animation: marching 600ms linear infinite;
+}
+
+@keyframes marching {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* What to change, by the pointer that finished the selection. */
+.ask {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 300px;
+  padding: var(--space-12);
+  border: 1px solid var(--color-violet);
+  border-radius: var(--radius-8);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-menu), 0 0 14px var(--color-violet-soft);
+}
+
+.askPrompt {
+  min-height: 72px;
+}
+
+.askActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.askChange {
+  background: var(--color-violet);
+  border-color: var(--color-violet);
+}

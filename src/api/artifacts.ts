@@ -195,11 +195,13 @@ export interface DesignImageJob {
   ahead: number | null;
   /** What it will be called: the name given, or its prompt's first words. */
   name: string;
+  /** The picture an edit changes; null for one drawn from nothing. */
+  sourceId: string | null;
   /** The picture, once DRAWN. */
   image: Artifact | null;
 }
 
-const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead name image { ${ARTIFACT_FIELDS} }`;
+const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead name sourceId image { ${ARTIFACT_FIELDS} }`;
 
 /** Queues a picture and answers at once; a refusal of what could never be drawn throws with its reason. */
 export async function queueDesignImage(input: DrawDesignImageInput): Promise<DesignImageJob> {
@@ -246,4 +248,25 @@ export async function renameDesignImage(workspaceId: string, id: string, name: s
     { workspaceId, id, name },
   );
   return data.renameDesignImage;
+}
+
+/** A change to part of a picture, asked of an image model's `/images/edits`. */
+export interface EditDesignImageInput {
+  workspaceId: string;
+  /** The picture to change, by its artifact id. */
+  imageId: string;
+  modelId: string;
+  prompt: string;
+  /** A PNG the picture's size, as a data URL, transparent where the change goes. */
+  mask: string;
+  name?: string | null;
+}
+
+/** Queues the change and answers at once; the result is a new picture, the one changed stays. */
+export async function queueDesignImageEdit(input: EditDesignImageInput): Promise<DesignImageJob> {
+  const data = await graphql<{ queueDesignImageEdit: DesignImageJob }>(
+    `mutation QueueDesignImageEdit($input: EditDesignImageInput!) { queueDesignImageEdit(input: $input) { ${JOB_FIELDS} } }`,
+    { input },
+  );
+  return data.queueDesignImageEdit;
 }

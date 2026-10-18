@@ -1,0 +1,158 @@
+/**
+ * Magic edit: select part of a picture, say what to change, and it is asked of
+ * the image model's edit endpoint.
+ *
+ * The editor's toolbar carries a Magic edit group, in violet, left of the zoom:
+ * a rectangle and a lasso. Dragging either over the picture draws the selection
+ * and, where the pointer lets go, opens a small form - what to change, which
+ * model, and Change. Change queues an edit with the picture, the model and a
+ * mask the picture's size that is transparent inside the selection.
+ *
+ * The picture, the models and the queue are answered here, so the check needs
+ * no image model of the installation's.
+ */
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+
+const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
+
+// A 400 by 300 grey picture, made in the page so its size is known.
+const PICTURE_SIZE = { width: 400, height: 300 };
+const PICTURE = {
+  id: 'DESIGN-901', kind: 'DESIGN', source: 'Design', sourcePath: 'design/images/DESIGN-901', prompt: 'zz magic: a grey field',
+  filename: 'grey.png', contentType: 'image/png', sizeBytes: 1, url: '', previewUrl: null, drawnAt: new Date().toISOString(),
+  name: 'Grey field', drawnWith: { modelId: '9191', model: 'Drawer', size: null, quality: null, style: null, drawnBy: 'alice' },
+};
+const MODELS = [
+  { id: '9191', providerId: '1', workspaceId: WORKSPACE, providerName: 'Stub', name: 'Drawer', modelId: 'stub', kind: 'IMAGE', contextWindow: null, maxOutput: null, parallelToolCalls: null },
+  { id: '9292', providerId: '1', workspaceId: WORKSPACE, providerName: 'Stub', name: 'Editor', modelId: 'edit', kind: 'IMAGE', contextWindow: null, maxOutput: null, parallelToolCalls: null },
+];
+const edits = [];
+
+// The picture's bytes, drawn by the page itself.
+const dataUrl = await page.evaluate(({ width, height }) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const pen = canvas.getContext('2d');
+  pen.fillStyle = '#888';
+  pen.fillRect(0, 0, width, height);
+  return canvas.toDataURL('image/png');
+}, PICTURE_SIZE);
+PICTURE.url = dataUrl;
+
+await page.route('**/graphql', async (route) => {
+  const body = route.request().postDataJSON() ?? {};
+  const query = body.query ?? '';
+  if (query.includes('workspaceArtifact(')) return route.fulfill({ json: { data: { workspaceArtifact: PICTURE } } });
+  if (query.includes('workspaceModels') || query.includes('models(')) {
+    const answered = await route.fetch().catch(() => null);
+    const json = answered === null ? null : await answered.json().catch(() => null);
+    const list = Object.values(json?.data ?? {}).find(Array.isArray);
+    if (Array.isArray(list)) list.push(...MODELS);
+    return json === null ? route.continue() : route.fulfill({ json });
+  }
+  if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
+  if (query.includes('queueDesignImageEdit')) {
+    edits.push(body.variables?.input);
+    return route.fulfill({
+      json: { data: { queueDesignImageEdit: {
+        id: '77', status: 'QUEUED', prompt: body.variables.input.prompt, modelId: body.variables.input.modelId, model: 'Editor',
+        size: null, quality: null, style: null, requestedBy: 'alice', requestedAt: new Date().toISOString(), startedAt: null,
+        reason: null, ahead: 0, name: 'Grey field', sourceId: PICTURE.id, image: null,
+      } } },
+    });
+  }
+  if (query.includes('designImageJob(')) return route.fulfill({ json: { data: { designImageJob: null } } });
+  return route.continue();
+});
+
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
+const picture = page.getByTestId('editor-picture');
+await picture.waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(800);
+
+// The group: violet, left of the zoom, with the two tools.
+const group = page.getByTestId('magic-edit');
+const groupBox = await group.boundingBox().catch(() => null);
+const zoomBox = await page.getByTestId('editor-zoom-out').boundingBox().catch(() => null);
+const border = await group.evaluate((one) => getComputedStyle(one).borderTopColor).catch(() => '');
+record(groupBox !== null && zoomBox !== null && groupBox.x + groupBox.width <= zoomBox.x && /rgb\((192, 132, 252|126, 34, 206)\)/.test(border),
+  `Magic edit sits left of the zoom, in violet (${JSON.stringify({ groupBox, zoomBox, border })})`);
+record((await page.getByTestId('magic-rectangle').count()) === 1 && (await page.getByTestId('magic-lasso').count()) === 1, 'with a rectangle and a lasso');
+
+// Rectangle: drag across the middle of the picture.
+await page.getByTestId('magic-rectangle').click();
+const box = await picture.boundingBox();
+const from = { x: box.x + box.width * 0.25, y: box.y + box.height * 0.25 };
+const to = { x: box.x + box.width * 0.75, y: box.y + box.height * 0.75 };
+await page.mouse.move(from.x, from.y);
+await page.mouse.down();
+await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+await page.mouse.move(to.x, to.y, { steps: 4 });
+await page.mouse.up();
+const selected = await page.getByTestId('magic-selection').boundingBox().catch(() => null);
+// The box measured includes the outline's glow, a few pixels each side.
+record(selected !== null && Math.abs(selected.x - from.x) < 8 && Math.abs(selected.width - (to.x - from.x)) < 16,
+  `the rectangle is drawn where it was dragged (${JSON.stringify({ selected, from, to })})`);
+
+const ask = page.getByTestId('magic-ask');
+await ask.waitFor({ timeout: 3_000 }).catch(() => undefined);
+const askBox = await ask.boundingBox().catch(() => null);
+record(askBox !== null && Math.abs(askBox.x - (to.x + 12)) < 30 && Math.abs(askBox.y - (to.y + 12)) < 30,
+  `and a form opens by the pointer (${JSON.stringify({ askBox, pointer: to })})`);
+const inside = {
+  prompt: await ask.getByTestId('magic-prompt').count(),
+  model: await ask.getByTestId('magic-model').count(),
+  change: (await ask.getByTestId('magic-change').innerText().catch(() => '')).trim(),
+  focused: await page.evaluate(() => document.activeElement?.getAttribute('data-testid')),
+};
+record(inside.prompt === 1 && inside.model === 1 && inside.change === 'Change' && inside.focused === 'magic-prompt',
+  `asking what to change, with which model, and Change (${JSON.stringify(inside)})`);
+
+await ask.getByTestId('magic-model').selectOption('9292');
+await ask.getByTestId('magic-prompt').fill('a red barn');
+await ask.getByTestId('magic-change').click();
+await page.waitForTimeout(600);
+const sent = edits[0] ?? {};
+record(sent.imageId === PICTURE.id && sent.modelId === '9292' && sent.prompt === 'a red barn' && String(sent.mask).startsWith('data:image/png;base64,'),
+  `Change asks the chosen model to change that picture, with a mask (${JSON.stringify({ ...sent, mask: String(sent.mask).slice(0, 30) })})`);
+
+// The mask: the picture's size, transparent inside the selection and opaque outside it.
+const mask = await page.evaluate(async (url) => {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const pen = canvas.getContext('2d');
+  pen.drawImage(image, 0, 0);
+  const alpha = (x, y) => pen.getImageData(x, y, 1, 1).data[3];
+  return { width: image.width, height: image.height, middle: alpha(200, 150), corner: alpha(10, 10) };
+}, sent.mask);
+record(mask.width === PICTURE_SIZE.width && mask.height === PICTURE_SIZE.height && mask.middle === 0 && mask.corner === 255,
+  `the mask is the picture's size, transparent inside the selection (${JSON.stringify(mask)})`);
+record((await page.getByTestId('editor-drawing').count()) === 1, 'and the change is on the canvas, waiting to be drawn');
+
+// Lasso: a loop drawn freehand, on the picture opened again.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
+await picture.waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(800);
+await page.getByTestId('magic-lasso').click();
+const again = await picture.boundingBox();
+const centre = { x: again.x + again.width / 2, y: again.y + again.height / 2 };
+const radius = Math.min(again.width, again.height) / 4;
+await page.mouse.move(centre.x + radius, centre.y);
+await page.mouse.down();
+for (let step = 1; step <= 24; step += 1) {
+  const angle = (step / 24) * Math.PI * 2;
+  await page.mouse.move(centre.x + radius * Math.cos(angle), centre.y + radius * Math.sin(angle));
+}
+await page.mouse.up();
+const loop = await page.getByTestId('magic-selection').getAttribute('points').catch(() => '');
+record((loop ?? '').split(' ').length >= 20 && (await page.getByTestId('magic-ask').count()) === 1,
+  `the lasso follows the pointer and asks what to change (${(loop ?? '').split(' ').length} points)`);
+await page.keyboard.press('Escape');
+record((await page.getByTestId('magic-ask').count()) === 0 && (await page.getByTestId('magic-selection').count()) === 0, 'and Escape lets the selection go');
+
+await finish(browser);

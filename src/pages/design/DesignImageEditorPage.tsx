@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent, WheelEvent } from 'react';
+import type { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -7,6 +7,7 @@ import {
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   queueDesignImage,
+  queueDesignImageEdit,
   renameDesignImage,
 } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
@@ -19,6 +20,9 @@ import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
+import lassoIcon from '../../assets/select-lasso.svg';
+import rectangleIcon from '../../assets/select-rectangle.svg';
+import magicIcon from '../../assets/wand-sparkles.svg';
 import undoIcon from '../../assets/undo.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
@@ -44,6 +48,12 @@ type Made = { job: DesignImageJob };
 /** What the canvas holds: a picture, a request on its way, or nothing yet. */
 type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: string } | null;
 
+/** A point on the picture, in its own pixels. */
+type Point = { x: number; y: number };
+
+/** Which way of selecting part of the picture is in hand. */
+type MagicTool = 'rectangle' | 'lasso';
+
 /** One step undo goes back to: what the panel held and what was on the canvas. */
 type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null };
 
@@ -55,6 +65,28 @@ const ASK_EVERY_MS = 1500;
 const ZOOM_STEP = 1.25;
 const ZOOM_LEAST = 0.05;
 const ZOOM_MOST = 8;
+/** A selection smaller than this many pixels across is a slip of the hand, not a selection. */
+const SMALLEST_SELECTION = 4;
+
+/**
+ * The selection as a mask the picture's size: opaque everywhere, transparent
+ * inside the selection - where the standard edit interface puts the change.
+ */
+function maskOf(points: Point[], width: number, height: number): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const pen = canvas.getContext('2d');
+  if (pen === null) return '';
+  pen.fillStyle = '#000';
+  pen.fillRect(0, 0, width, height);
+  pen.globalCompositeOperation = 'destination-out';
+  pen.beginPath();
+  points.forEach((point, index) => (index === 0 ? pen.moveTo(point.x, point.y) : pen.lineTo(point.x, point.y)));
+  pen.closePath();
+  pen.fill();
+  return canvas.toDataURL('image/png');
+}
 
 /**
  * Where a picture is made and worked on: the canvas, and beside it what the
@@ -282,12 +314,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut });
-  keys.current = { undo, redo, zoomIn, zoomOut };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {} });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {} };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
     const pressed = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        keys.current.forget();
+        return;
+      }
       const typing = event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement;
       if (matches(event, zoomInKey) || ((event.ctrlKey || event.metaKey) && event.code === 'NumpadAdd')) {
         event.preventDefault();
@@ -308,6 +344,150 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     document.addEventListener('keydown', pressed);
     return () => document.removeEventListener('keydown', pressed);
   }, [undoKey, redoKey, zoomInKey, zoomOutKey]);
+
+  // -- Magic edit ---------------------------------------------------------
+
+  /*
+   * Select part of the picture with a rectangle or a lasso, say what to change
+   * there, and the image model's edit endpoint redraws only that: the result is
+   * a new picture, queued like any other, and the one changed stays as it was.
+   */
+  const [tool, setTool] = useState<MagicTool | null>(null);
+  /** The selection being drawn, and the finished one, in the picture's own pixels. */
+  const [selecting, setSelecting] = useState<Point[] | null>(null);
+  const [selection, setSelection] = useState<Point[] | null>(null);
+  /** Where on the canvas the change is asked for: next to where the pointer let go. */
+  const [askAt, setAskAt] = useState<{ x: number; y: number } | null>(null);
+  const [change, setChange] = useState('');
+  const [editModelId, setEditModelId] = useState('');
+  const [changing, setChanging] = useState(false);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  /** Where the picture is drawn on the canvas, which the selection layer is laid over. */
+  const [frame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+
+  // The model a change is asked of: the panel's own, until one is chosen here.
+  useEffect(() => {
+    if (editModelId === '' && modelId !== '') setEditModelId(modelId);
+  }, [modelId, editModelId]);
+
+  const measure = () => {
+    const shownPicture = pictureRef.current;
+    const area = canvasRef.current;
+    if (shownPicture === null || area === null) {
+      setFrame(null);
+      return;
+    }
+    const box = shownPicture.getBoundingClientRect();
+    const around = area.getBoundingClientRect();
+    setFrame({ left: box.left - around.left, top: box.top - around.top, width: box.width, height: box.height });
+  };
+  useEffect(() => {
+    measure();
+    const area = canvasRef.current;
+    if (area === null) return;
+    const watcher = new ResizeObserver(measure);
+    watcher.observe(area);
+    window.addEventListener('resize', measure);
+    return () => {
+      watcher.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [picture?.id, zoom]);
+
+  /** A selection is about the picture it was drawn on; another picture starts afresh. */
+  const forget = () => {
+    setSelecting(null);
+    setSelection(null);
+    setAskAt(null);
+  };
+  useEffect(forget, [picture?.id]);
+
+  /** The pointer, in the picture's own pixels. */
+  const onPicture = (event: ReactPointerEvent): Point | null => {
+    const shownPicture = pictureRef.current;
+    if (shownPicture === null) return null;
+    const box = shownPicture.getBoundingClientRect();
+    const x = ((event.clientX - box.left) / box.width) * shownPicture.naturalWidth;
+    const y = ((event.clientY - box.top) / box.height) * shownPicture.naturalHeight;
+    return {
+      x: Math.min(shownPicture.naturalWidth, Math.max(0, x)),
+      y: Math.min(shownPicture.naturalHeight, Math.max(0, y)),
+    };
+  };
+
+  const startSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (tool === null || event.button !== 0) return;
+    const at = onPicture(event);
+    if (at === null) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelection(null);
+    setAskAt(null);
+    setSelecting([at]);
+  };
+  const keepSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (selecting === null) return;
+    const at = onPicture(event);
+    if (at === null) return;
+    if (tool === 'rectangle') setSelecting([selecting[0], at]);
+    else setSelecting([...selecting, at]);
+  };
+  const finishSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (selecting === null) return;
+    const drawn = selecting;
+    setSelecting(null);
+    const outline =
+      tool === 'rectangle' && drawn.length === 2
+        ? [drawn[0], { x: drawn[1].x, y: drawn[0].y }, drawn[1], { x: drawn[0].x, y: drawn[1].y }]
+        : drawn;
+    const xs = outline.map((point) => point.x);
+    const ys = outline.map((point) => point.y);
+    if (outline.length < 3 || Math.max(...xs) - Math.min(...xs) < SMALLEST_SELECTION || Math.max(...ys) - Math.min(...ys) < SMALLEST_SELECTION) return;
+    setSelection(outline);
+    const around = canvasRef.current?.getBoundingClientRect();
+    if (around === undefined) return;
+    setAskAt({ x: event.clientX - around.left, y: event.clientY - around.top });
+  };
+
+  async function changeSelection(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const shownPicture = pictureRef.current;
+    if (picture === null || selection === null || shownPicture === null || change.trim() === '' || editModelId === '' || changing) return;
+    setChanging(true);
+    setError(null);
+    try {
+      const queued = await queueDesignImageEdit({
+        workspaceId,
+        imageId: picture.id,
+        modelId: editModelId,
+        prompt: change.trim(),
+        mask: maskOf(selection, shownPicture.naturalWidth, shownPicture.naturalHeight),
+      });
+      remember();
+      setMade((held) => [{ job: queued }, ...held]);
+      setChange('');
+      forget();
+      show({ kind: 'job', jobId: queued.id });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not ask for the change.'));
+    } finally {
+      setChanging(false);
+    }
+  }
+
+  /** The selection's outline as the layer over the picture draws it. */
+  const outlineOf = (points: Point[]) => {
+    const shownPicture = pictureRef.current;
+    if (shownPicture === null || frame === null) return '';
+    const sx = frame.width / shownPicture.naturalWidth;
+    const sy = frame.height / shownPicture.naturalHeight;
+    const corners =
+      tool === 'rectangle' && points.length === 2
+        ? [points[0], { x: points[1].x, y: points[0].y }, points[1], { x: points[0].x, y: points[1].y }]
+        : points;
+    return corners.map((point) => `${point.x * sx},${point.y * sy}`).join(' ');
+  };
+
+  keys.current.forget = forget;
 
   // -- Generate, save, discard -------------------------------------------
 
@@ -509,6 +689,41 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           </button>
         )}
         <div className={styles.toolbarRight}>
+          {/* Selecting part of the picture to change: its own group, in the colour the product gives what is magic. */}
+          <div className={styles.magic} role="group" aria-label={t('Magic edit')} data-testid="magic-edit">
+            <img src={magicIcon} alt="" width={14} height={14} className={styles.magicMark} />
+            <button
+              type="button"
+              className={`${styles.tool} ${tool === 'rectangle' ? styles.toolOn : ''}`}
+              onClick={() => {
+                forget();
+                setTool((held) => (held === 'rectangle' ? null : 'rectangle'));
+              }}
+              disabled={picture === null}
+              aria-pressed={tool === 'rectangle'}
+              title={t('Magic rectangle select')}
+              aria-label={t('Magic rectangle select')}
+              data-testid="magic-rectangle"
+            >
+              <img src={rectangleIcon} alt="" width={16} height={16} />
+            </button>
+            <button
+              type="button"
+              className={`${styles.tool} ${tool === 'lasso' ? styles.toolOn : ''}`}
+              onClick={() => {
+                forget();
+                setTool((held) => (held === 'lasso' ? null : 'lasso'));
+              }}
+              disabled={picture === null}
+              aria-pressed={tool === 'lasso'}
+              title={t('Magic lasso select')}
+              aria-label={t('Magic lasso select')}
+              data-testid="magic-lasso"
+            >
+              <img src={lassoIcon} alt="" width={16} height={16} />
+            </button>
+          </div>
+          <span className={styles.toolbarGap} aria-hidden="true" />
           <button
             type="button"
             className={styles.tool}
@@ -575,8 +790,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       </div>
 
       <div className={styles.editor}>
-        <div className={styles.canvas} data-testid="editor-canvas" onWheel={onWheel}>
-          <div className={`${styles.stage} ${zoom === null ? '' : styles.stageZoomed}`}>
+        <div className={styles.canvas} data-testid="editor-canvas" onWheel={onWheel} ref={canvasRef}>
+          <div className={`${styles.stage} ${zoom === null ? '' : styles.stageZoomed}`} onScroll={measure}>
             {job !== null && job.status !== 'DRAWN' ? (
               job.status === 'FAILED' ? (
                 <p className={styles.failed} role="alert" data-testid="editor-failed">
@@ -609,10 +824,79 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     ? undefined
                     : { width: `${pictureRef.current.naturalWidth * zoom}px`, height: `${pictureRef.current.naturalHeight * zoom}px` }
                 }
+                onLoad={measure}
                 data-testid="editor-picture"
               />
             )}
           </div>
+          {picture !== null && frame !== null && (tool !== null || selection !== null) && (
+            <svg
+              className={`${styles.selectLayer} ${tool !== null ? styles.selectLayerOn : ''}`}
+              style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}
+              onPointerDown={startSelecting}
+              onPointerMove={keepSelecting}
+              onPointerUp={finishSelecting}
+              data-testid="magic-layer"
+            >
+              {(selecting ?? selection) !== null && (
+                <polygon className={styles.selected} points={outlineOf(selecting ?? selection ?? [])} data-testid="magic-selection" />
+              )}
+            </svg>
+          )}
+          {selection !== null && askAt !== null && (
+            <form
+              className={styles.ask}
+              style={{
+                left: Math.max(8, Math.min(askAt.x + 12, (canvasRef.current?.clientWidth ?? 0) - 320)),
+                top: Math.max(8, Math.min(askAt.y + 12, (canvasRef.current?.clientHeight ?? 0) - 220)),
+              }}
+              onSubmit={changeSelection}
+              data-testid="magic-ask"
+            >
+              <textarea
+                className={`${form.input} ${form.textarea} ${styles.askPrompt}`}
+                value={change}
+                onChange={(event) => setChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                placeholder={t('What to change here')}
+                aria-label={t('What to change here')}
+                autoFocus
+                data-testid="magic-prompt"
+              />
+              <select
+                className={`${form.input} ${form.select}`}
+                value={editModelId}
+                onChange={(event) => setEditModelId(event.target.value)}
+                aria-label={t('Edit model')}
+                title={t('Edit model')}
+                data-testid="magic-model"
+              >
+                {(models ?? []).map((one) => (
+                  <option key={one.id} value={one.id}>
+                    {one.name} · {one.providerName}
+                  </option>
+                ))}
+              </select>
+              <div className={styles.askActions}>
+                <button type="button" className={form.ghost} onClick={forget}>
+                  {t('Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className={`${form.filled} ${styles.askChange}`}
+                  disabled={change.trim() === '' || editModelId === '' || changing}
+                  data-testid="magic-change"
+                >
+                  {t('Change')}
+                </button>
+              </div>
+            </form>
+          )}
           {made.length > 0 && (
             <div className={styles.strip} aria-label={t('Asked for here')}>
               {made.map(({ job: one }) => {

@@ -1519,6 +1519,13 @@ export const TESTS = [
   },
 
   {
+    name: 'design-magic-edit-check',
+    what: 'the image editor selects part of a picture by rectangle or lasso and asks the edit model to change it',
+    needs: ['workspace'],
+    /* Answers the picture, the models and the queue itself. */
+  },
+
+  {
     name: 'design-images-check',
     what: "Design sits in the top bar's alphabet, and a picture on Artifacts opens in it",
     needs: ['workspace'],
