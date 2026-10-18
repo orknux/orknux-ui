@@ -1063,12 +1063,26 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                         : providerStatusLabel(provider.status))}
                   </span>
                 </>
+              ) : saved ? (
+                <span className={styles.statusConnected}>{t('Saved.')}</span>
               ) : (
-                saved && <span className={styles.statusConnected}>{t('Saved.')}</span>
+                // Before any check the line still stands, so Test has its place on it.
+                <>
+                  <span className={`${styles.dot} ${styles.dotIdle}`} aria-hidden="true" />
+                  <span className={styles.statusIdle}>{t('Not checked')}</span>
+                </>
               )}
             </div>
-            {/* Test and Save are in the strip floating at the foot of the window;
-                the status above stays here, beside what it reports on. */}
+            {/* Test on the line that says what it found; Save is in the strip at the foot of the window. */}
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => void handleTest()}
+              disabled={testing || name.trim() === '' || endpoint.trim() === ''}
+              data-status-action=""
+            >
+              {testing ? 'Checking…' : t('Test Connection')}
+            </button>
           </div>
         </form>
       )}
@@ -1092,18 +1106,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
       </section>
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
       {loadError === null && (adding || provider !== null) && (
-        <SaveBar
-          lead={
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() => void handleTest()}
-              disabled={testing || name.trim() === '' || endpoint.trim() === ''}
-            >
-              {testing ? 'Checking…' : t('Test Connection')}
-            </button>
-          }
-        >
+        <SaveBar>
           <DiscardButton onDiscard={discard} disabled={saving || !changed} />
           <button type="submit" form={formId} className={styles.primaryButton} disabled={saving || !changed}>
             {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}

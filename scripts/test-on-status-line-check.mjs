@@ -1,7 +1,9 @@
 /**
- * A page's Test Connection (or Check) is in the save strip at the foot, at its
- * left end, as a dialog's Test is at the left of its action row - not in the
- * page's header, and not in a row of its own halfway down the form.
+ * A page's Test Connection (or Check) is on the status line under the form -
+ * the line that says what the last check found - at its end, beside that
+ * status. Not in the save strip at the foot, which is for Save and Discard,
+ * and not in the page's header. Before any check the line still stands, with a
+ * neutral status, so the button has its place.
  *
  * And on Add Provider, Test leaves what was typed where it was. It saves the
  * provider to have something to check, and then filled the form from the
@@ -43,20 +45,40 @@ await page.route('**/graphql', async (route) => {
 
 const TEST = /^(Test Connection|Test connection|Check|Checking…|Testing…)$/;
 
-/** Where Test is on the page now: in the strip's lead, left of Discard, and nowhere in the page itself. */
+/**
+ * Where Test is now: one in the page and none in the save strip; on the same
+ * line as status text - a piece of text beside it, centred with it - and below
+ * every field of the form before it.
+ */
 const placed = async (what) => {
-  const lead = page.locator('[data-save-bar-lead]').getByRole('button', { name: TEST });
-  await lead.first().waitFor({ timeout: 20_000 }).catch(() => undefined);
-  const inStrip = await lead.count();
-  const inPage = await page.locator('main').getByRole('button', { name: TEST }).count();
-  const testBox = inStrip > 0 ? await lead.first().boundingBox() : null;
-  const discard = await page.getByTestId('save-bar-discard').boundingBox().catch(() => null);
+  const button = page.locator('main').getByRole('button', { name: TEST });
+  await button.first().waitFor({ timeout: 20_000 }).catch(() => undefined);
+  const inPage = await button.count();
+  const inStrip = await page.getByTestId('save-bar').getByRole('button', { name: TEST }).count();
+  const line = inPage === 0 ? null : await button.first().evaluate((element) => {
+    const own = element.getBoundingClientRect();
+    const middle = own.top + own.height / 2;
+    // The nearest ancestor holding text besides the button: the status line.
+    let row = element.parentElement;
+    while (row !== null && (row.innerText ?? '').replace(element.innerText, '').trim() === '') row = row.parentElement;
+    const texts = row === null ? [] : [...row.querySelectorAll('span, p')]
+      .filter((one) => !element.contains(one) && one.children.length === 0 && (one.innerText ?? '').trim() !== '');
+    const beside = texts.find((one) => {
+      const box = one.getBoundingClientRect();
+      return Math.abs(box.top + box.height / 2 - middle) < 10;
+    });
+    const fields = [...document.querySelectorAll('main input:not([type=hidden]), main select, main textarea')]
+      .filter((field) => field.getBoundingClientRect().height > 0
+        && (field.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const below = fields.every((field) => field.getBoundingClientRect().bottom <= own.top + 1);
+    return { status: beside ? beside.innerText.trim().slice(0, 40) : null, below };
+  });
   record(
-    inStrip === 1 && inPage === 0 && testBox !== null && discard !== null && testBox.x + testBox.width <= discard.x,
-    `${what}: Test is in the save strip, left of Discard, and not in the page (${inStrip} in the strip, ${inPage} in the page)`,
+    inPage === 1 && inStrip === 0 && line !== null && line.status !== null && line.below,
+    `${what}: Test is on the status line under the form, beside "${line?.status ?? ''}", not in the save strip (${inPage} in the page, ${inStrip} in the strip${line?.below === false ? ', not below the form' : ''})`,
   );
   // Wherever it is, so the rest of the check still runs on a page that has it elsewhere.
-  return inStrip > 0 ? lead.first() : page.getByRole('button', { name: TEST }).first();
+  return inPage > 0 ? button.first() : page.getByRole('button', { name: TEST }).first();
 };
 
 const pressed = async (what, button, mutation) => {

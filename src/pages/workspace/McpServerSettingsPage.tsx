@@ -383,6 +383,15 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
               <span className={styles.statusDetail} title={check?.detail ?? undefined}>
                 {check?.detail ?? t('Ask the server whether it answers, and what it offers.')}
               </span>
+              <button
+                type="button"
+                className={`${styles.testButton} ${styles.statusAction}`}
+                onClick={() => void handleCheck()}
+                disabled={checking}
+                data-status-action=""
+              >
+                {checking ? t('Checking…') : t('Check')}
+              </button>
             </div>
 
             {saveError !== null && (
@@ -390,13 +399,7 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
                 {saveError}
               </p>
             )}
-            {/*
-              Check and Save are in the strip floating at the foot of the window,
-              in view wherever the form is scrolled to. They stay side by side there,
-              Check first: one asks the server whether these details work and the
-              other keeps them, and anybody setting a server up does both in the
-              same breath. Issue #386.
-            */}
+            {/* Check is on the status line above, beside what it found; Save is in the strip at the foot of the window. */}
           </form>
 
           {/*
@@ -430,13 +433,7 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
       )}
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
       {server !== null && (
-        <SaveBar
-          lead={
-            <button type="button" className={styles.testButton} onClick={() => void handleCheck()} disabled={checking}>
-              {checking ? t('Checking…') : t('Check')}
-            </button>
-          }
-        >
+        <SaveBar>
           {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
           <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
           <button

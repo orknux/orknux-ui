@@ -1027,6 +1027,16 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               {connection?.lastCheckMessage != null && (
                 <span className={styles.statusDetail}>{connection.lastCheckMessage}</span>
               )}
+              {/* Test on the line that says what it found; Save is in the strip at the foot of the window. */}
+              <button
+                type="button"
+                className={`${styles.testButton} ${styles.statusAction}`}
+                onClick={handleTest}
+                disabled={testing}
+                data-status-action=""
+              >
+                {testing ? 'Checking…' : t('Test Connection')}
+              </button>
             </div>
 
             {/*
@@ -1104,13 +1114,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
             </div>
           </section>
           {/* Floating at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
-          <SaveBar
-            lead={
-              <button type="button" className={styles.testButton} onClick={handleTest} disabled={testing}>
-                {testing ? 'Checking…' : t('Test Connection')}
-              </button>
-            }
-          >
+          <SaveBar>
             {nameError !== null && <p className={styles.savedNote}>{nameError}</p>}
             {saveError === null && nameError === null && (saved || namedSaved) && <p className={styles.savedNote}>{t('Saved.')}</p>}
             <DiscardButton onDiscard={onDiscard} disabled={saving || savingName || !changed} />

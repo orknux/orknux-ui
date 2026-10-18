@@ -14,12 +14,6 @@ export interface SaveBarProps {
    * the bar's row is that element.
    */
   slot?: Ref<HTMLDivElement>;
-  /**
-   * What sits at the strip's left end, apart from Save and Discard: a page's
-   * Test Connection or Check, with what it found beside it. The dialogs keep
-   * their Test at the left of their action row, and a page's strip is that row.
-   */
-  lead?: ReactNode;
 }
 
 interface Placement {
@@ -57,7 +51,7 @@ interface Placement {
 /** The least room between Save and the window's right edge, in pixels. */
 const MIN_SIDE = 24;
 
-export function SaveBar({ children, slot, lead }: SaveBarProps) {
+export function SaveBar({ children, slot }: SaveBarProps) {
   const spacer = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<Placement | null>(null);
@@ -129,11 +123,6 @@ export function SaveBar({ children, slot, lead }: SaveBarProps) {
       />
       {createPortal(
         <div ref={bar} className={styles.bar} data-testid="save-bar" style={style}>
-          {lead !== undefined && lead !== null && lead !== false && (
-            <div className={styles.lead} data-save-bar-lead="">
-              {lead}
-            </div>
-          )}
           <div className={styles.row} ref={slot}>
             {children}
           </div>

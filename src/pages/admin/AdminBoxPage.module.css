@@ -263,6 +263,11 @@
   color: var(--color-danger);
 }
 
+/* Before any test: the line stands, so Test has its place on it. */
+.statusIdle {
+  color: var(--color-text-muted);
+}
+
 
 .buttons {
   display: flex;

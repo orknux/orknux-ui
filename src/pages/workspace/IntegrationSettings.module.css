@@ -287,6 +287,11 @@
   cursor: not-allowed;
 }
 
+/* Test or Check at the end of the status line it updates, however short the status is. */
+.statusAction {
+  margin-left: auto;
+}
+
 /* ---- Actions ---- */
 
 .actionRow {

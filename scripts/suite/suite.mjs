@@ -326,8 +326,8 @@ export const TESTS = [
     needs: [],
   },
   {
-    name: 'save-bar-test-check',
-    what: "a page's Test Connection or Check sits at the left of the save strip, not in the page; and Test on Add Provider keeps the typed key and Create",
+    name: 'test-on-status-line-check',
+    what: "a page's Test Connection or Check is on the status line under the form, not in the save strip; and Test on Add Provider keeps the typed key and Create",
     needs: ['workspace'],
     // Every Test but Add Provider's is captured; Add Provider's real row is removed by Discard and swept by name.
   },
