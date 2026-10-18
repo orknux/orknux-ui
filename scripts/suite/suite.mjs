@@ -3943,6 +3943,12 @@ export const TESTS = [
     // The provider's listing is canned, so any provider will do and nothing is added.
   },
   {
+    name: 'chat-drop-attach-check',
+    what: 'a file dropped on the chat is attached, and the page stays the chat',
+    needs: ['workspace'],
+    // The upload is answered here and attachments are said to be allowed, so nothing is stored.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],
