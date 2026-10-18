@@ -426,7 +426,8 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                 placeholder={mail ? 'smtp.example.com' : (pluginKind?.defaultUrl ?? pluginKind?.urlPlaceholder ?? 'https://')}
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
-                required
+                // Not where the kind has an address of its own: left empty, the server fills that in.
+                required={!defaulted}
               />
             </div>
           </div>

@@ -126,6 +126,11 @@
   color: var(--color-text-muted);
 }
 
+/* A heading is one line; a column too narrow for its heading is widened, not wrapped. */
+.tableHeader > * {
+  white-space: nowrap;
+}
+
 .row {
   border-top: 1px solid var(--color-border);
 }
@@ -179,7 +184,8 @@
 }
 
 .colNumber {
-  flex: 0 0 80px;
+  /* Wide enough for "Agent check" on one line, which at 80px broke in two. */
+  flex: 0 0 104px;
 }
 
 .colWhen {

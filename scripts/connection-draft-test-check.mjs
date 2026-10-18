@@ -159,5 +159,8 @@ record(await test.isEnabled(), 'with the URL left empty, Test can be pressed');
 await test.click();
 await page.waitForTimeout(300);
 record(sent.at(-1)?.pluginType === 'cards/local' && sent.at(-1)?.url === '', `and sends it empty, for the server to fill (${JSON.stringify(sent.at(-1))})`);
+// The browser must not refuse the empty box either: Add is a form submit, and a required field stops it before any code runs.
+const valid = await dialog.locator('#workspace-connection-url').evaluate((input) => input.checkValidity());
+record(valid, 'the empty URL passes the form validation, so Add Connection is not stopped by the browser');
 
 await finish(browser);

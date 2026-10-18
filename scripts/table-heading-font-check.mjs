@@ -45,7 +45,12 @@ const readHeadings = () => page.evaluate(() => {
       const drawn = cell.querySelector('button') ?? cell;
       const style = getComputedStyle(drawn);
       const sort = cell.getAttribute('aria-sort');
+      // How many lines the words take: the distinct tops of the rectangles a range over them draws.
+      const range = document.createRange();
+      range.selectNodeContents(drawn);
+      const lines = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
       return {
+        lines,
         label: cell.innerText.trim().replace(/\s+/g, ' ').slice(0, 30),
         font: [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.textTransform].join(' | '),
         colour: style.color,
@@ -66,6 +71,8 @@ const visit = async (path) => {
 };
 
 let tables = 0;
+/** Headings whose words broke onto a second line: a column too narrow for its own name. */
+const wrapped = [];
 for (const path of PAGES) {
   await visit(path);
   const rows = await readHeadings();
@@ -75,6 +82,7 @@ for (const path of PAGES) {
     const odd = headings.filter((one) => one.font !== first.font);
     const off = headings.filter((one) => one.colour !== first.colour);
     const where = headings.map((one) => one.label).join(', ');
+    for (const one of headings) if (one.lines > 1) wrapped.push([path, one.label]);
     record(
       odd.length === 0,
       `${path} [${where}]: one heading font${odd.length ? ` - ${odd.map((one) => `${one.label} is ${one.font}`).join('; ')} vs ${first.label} ${first.font}` : ''}`,
@@ -85,6 +93,8 @@ for (const path of PAGES) {
     );
   }
 }
+for (const [path, label] of wrapped) record(false, `${path}: the heading ${label} breaks onto a second line`);
+record(wrapped.length === 0, `every heading is one line (${wrapped.length} wrap)`);
 record(tables >= 15, `headings were found on the list pages (${tables} header rows)`);
 
 await finish(browser);

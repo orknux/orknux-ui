@@ -274,7 +274,8 @@
 .colOpened,
 .colSpoken {
   flex-shrink: 0;
-  width: 150px;
+  /* Room for "Last spoken in" and its sort arrow on one line; at 150px it broke in two. */
+  width: 170px;
 }
 
 /*
