@@ -426,3 +426,14 @@ button.toolbarTitle:hover {
 .changingMark {
   color: var(--color-text-secondary);
 }
+
+/* The picture shown carries changes not saved yet. */
+.unsavedMark {
+  flex-shrink: 0;
+  padding: 1px var(--space-6);
+  border: 1px solid var(--color-violet);
+  border-radius: var(--radius-full);
+  color: var(--color-violet);
+  font-size: 11px;
+  white-space: nowrap;
+}

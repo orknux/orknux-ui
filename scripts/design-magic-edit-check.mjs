@@ -20,13 +20,17 @@ const PICTURE_SIZE = { width: 400, height: 300 };
 const PICTURE = {
   id: 'DESIGN-901', kind: 'DESIGN', source: 'Design', sourcePath: 'design/images/DESIGN-901', prompt: 'zz magic: a grey field',
   filename: 'grey.png', contentType: 'image/png', sizeBytes: 1, url: '', previewUrl: null, drawnAt: new Date().toISOString(),
-  name: 'Grey field', drawnWith: { modelId: '9191', model: 'Drawer', size: null, quality: null, style: null, drawnBy: 'alice' },
+  name: 'Grey field', versionOf: null, drawnWith: { modelId: '9191', model: 'Drawer', size: null, quality: null, style: null, drawnBy: 'alice' },
 };
 const MODELS = [
   { id: '9191', providerId: '1', workspaceId: WORKSPACE, providerName: 'Stub', name: 'Drawer', modelId: 'stub', kind: 'IMAGE', contextWindow: null, maxOutput: null, parallelToolCalls: null },
   { id: '9292', providerId: '1', workspaceId: WORKSPACE, providerName: 'Stub', name: 'Editor', modelId: 'edit', kind: 'IMAGE', contextWindow: null, maxOutput: null, parallelToolCalls: null },
 ];
 const edits = [];
+const versionCalls = [];
+/** Whether the change asked for is drawn yet: answered as drawn once the check has looked at the waiting. */
+let drawnNow = false;
+const VERSION = () => ({ ...PICTURE, id: `DESIGN-${902 + edits.length}`, versionOf: PICTURE.id });
 
 // The picture's bytes, drawn by the page itself.
 const dataUrl = await page.evaluate(({ width, height }) => {
@@ -62,7 +66,22 @@ await page.route('**/graphql', async (route) => {
       } } },
     });
   }
-  if (query.includes('designImageJob(')) return route.fulfill({ json: { data: { designImageJob: null } } });
+  if (query.includes('designImageJob(')) {
+    if (!drawnNow) return route.fulfill({ json: { data: { designImageJob: null } } });
+    return route.fulfill({ json: { data: { designImageJob: {
+      id: body.variables?.id, status: 'DRAWN', prompt: 'a red barn', modelId: '9292', model: 'Editor', size: null, quality: null, style: null,
+      requestedBy: 'alice', requestedAt: new Date().toISOString(), startedAt: null, reason: null, ahead: null, name: 'Grey field',
+      sourceId: PICTURE.id, image: VERSION(),
+    } } } });
+  }
+  if (query.includes('saveDesignImageVersion')) {
+    versionCalls.push(['save', body.variables?.id]);
+    return route.fulfill({ json: { data: { saveDesignImageVersion: PICTURE } } });
+  }
+  if (query.includes('discardDesignImageVersions')) {
+    versionCalls.push(['discard', body.variables?.id]);
+    return route.fulfill({ json: { data: { discardDesignImageVersions: true } } });
+  }
   return route.continue();
 });
 
@@ -154,6 +173,34 @@ const frameBox = await changing.boundingBox().catch(() => null);
 const markBox = await page.getByTestId('editor-drawing').boundingBox().catch(() => null);
 record(kept.picture === 1 && kept.selection === 1 && /breathing/.test(kept.animated) && frameBox !== null && markBox !== null && markBox.y >= frameBox.y + frameBox.height,
   `while it is drawn the picture stays, the selection highlighted and alive, and Drawing under it (${JSON.stringify({ ...kept, frameBox, markBox })})`);
+
+// Drawn: the change is a version of the picture, not a picture of its own - marked unsaved, with Save on.
+drawnNow = true;
+await page.getByTestId('editor-unsaved').waitFor({ timeout: 8_000 }).catch(() => undefined);
+record((await page.getByTestId('editor-unsaved').count()) === 1 && (await page.getByTestId('editor-save').isEnabled()),
+  'the drawn change is shown as unsaved, and Save lights');
+await page.getByTestId('editor-save').click().catch(() => undefined);
+await page.waitForTimeout(600);
+record(versionCalls.some(([what, id]) => what === 'save' && id === 'DESIGN-903') && (await page.getByTestId('editor-unsaved').count()) === 0
+  && page.url().endsWith(`/design/images/${PICTURE.id}/edit`),
+  `Save writes it over the picture itself (${JSON.stringify({ versionCalls, url: page.url() })})`);
+
+// Another round, thrown away: Discard goes back to the picture as it was saved. The rectangle is still in hand.
+if ((await page.getByTestId('magic-rectangle').getAttribute('aria-pressed')) !== 'true') await page.getByTestId('magic-rectangle').click();
+const boxAgain = await picture.boundingBox();
+await page.mouse.move(boxAgain.x + 20, boxAgain.y + 20);
+await page.mouse.down();
+await page.mouse.move(boxAgain.x + 120, boxAgain.y + 120, { steps: 5 });
+await page.mouse.up();
+await page.getByTestId('magic-prompt').fill('a blue barn');
+await page.getByTestId('magic-change').click();
+await page.getByTestId('editor-unsaved').waitFor({ timeout: 8_000 }).catch(() => undefined);
+await page.getByTestId('editor-discard').click().catch(() => undefined);
+await page.waitForTimeout(600);
+record(versionCalls.some(([what, id]) => what === 'discard' && id === PICTURE.id) && (await page.getByTestId('editor-unsaved').count()) === 0
+  && page.url().endsWith(`/design/images/${PICTURE.id}/edit`),
+  `Discard throws the change away and goes back to the picture (${JSON.stringify({ versionCalls, url: page.url() })})`);
+drawnNow = false;
 
 // The tools by their shortcuts, chosen in Preferences - M and L unless changed.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });

@@ -56,11 +56,13 @@ export interface Artifact {
   drawnWith: ArtifactDrawing | null;
   /** What a picture drawn in Design is called; null for anything else, which goes by its prompt. */
   name: string | null;
+  /** The picture this is an unsaved version of, in the image editor; null for a picture of its own. */
+  versionOf: string | null;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
-  drawnWith { modelId model size quality style drawnBy } name
+  drawnWith { modelId model size quality style drawnBy } name versionOf
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
@@ -269,4 +271,22 @@ export async function queueDesignImageEdit(input: EditDesignImageInput): Promise
     { input },
   );
   return data.queueDesignImageEdit;
+}
+
+/** Saves an unsaved version over the picture it is a version of, and throws the picture's other versions away. */
+export async function saveDesignImageVersion(workspaceId: string, id: string): Promise<Artifact> {
+  const data = await graphql<{ saveDesignImageVersion: Artifact }>(
+    `mutation SaveDesignImageVersion($workspaceId: ID!, $id: ID!) { saveDesignImageVersion(workspaceId: $workspaceId, id: $id) { ${ARTIFACT_FIELDS} } }`,
+    { workspaceId, id },
+  );
+  return data.saveDesignImageVersion;
+}
+
+/** Throws away every unsaved version of a picture. */
+export async function discardDesignImageVersions(workspaceId: string, id: string): Promise<boolean> {
+  const data = await graphql<{ discardDesignImageVersions: boolean }>(
+    `mutation DiscardDesignImageVersions($workspaceId: ID!, $id: ID!) { discardDesignImageVersions(workspaceId: $workspaceId, id: $id) }`,
+    { workspaceId, id },
+  );
+  return data.discardDesignImageVersions;
 }

@@ -37,6 +37,7 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Unsaved changes": "Niezapisane zmiany",
   "Magic Rectangle Select Shortcut": "Skrót magicznego zaznaczenia prostokątem",
   "Magic Lasso Select Shortcut": "Skrót magicznego zaznaczenia lassem",
   "Picks the image editor's rectangle select, or puts it down. A single key is fine: it is heard only in the image editor, never while typing.": "Wybiera zaznaczenie prostokątem w edytorze obrazów albo je odkłada. Wystarczy jeden klawisz: działa tylko w edytorze obrazów, nigdy podczas pisania.",

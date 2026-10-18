@@ -3,12 +3,14 @@ import type { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'r
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
+  discardDesignImageVersions,
   dismissDesignImageJob,
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   queueDesignImage,
   queueDesignImageEdit,
   renameDesignImage,
+  saveDesignImageVersion,
 } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
 import { fetchImageModelParameters } from '../../api/graph';
@@ -163,7 +165,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   // The picture opened, and what it was drawn from.
   useEffect(() => {
     if (artifactId === undefined || workspaceId === '') return;
-    if (picture?.id === artifactId) return;
+    // Already shown - itself, or a version of it the address stands for.
+    if (picture?.id === artifactId || picture?.versionOf === artifactId) return;
     let left = false;
     fetchWorkspaceArtifact(workspaceId, artifactId)
       .then((found) => {
@@ -259,7 +262,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             if (now.status === 'DRAWN' && now.image !== null) {
               setShown((held) => {
                 if (held?.kind !== 'job' || held.jobId !== id) return held;
-                navigate(`/workspace/${workspaceId}/design/images/${now.image?.id}/edit`, { replace: true });
+                navigate(`/workspace/${workspaceId}/design/images/${now.image?.versionOf ?? now.image?.id}/edit`, { replace: true });
                 return { kind: 'picture', picture: now.image as Artifact };
               });
             }
@@ -292,9 +295,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setShown(next);
     setPendingName(null);
     // The zoom stays: an edit's result is looked at where the change was looked at. Fit is the way back.
+    // A request still on its way keeps the address where it is; its picture moves it when it comes.
+    if (next?.kind === 'job') return;
     const path =
       next?.kind === 'picture'
-        ? `/workspace/${workspaceId}/design/images/${next.picture.id}/edit`
+        ? // A version is shown at the picture it is a version of: Save then moves nothing, and the leave guard's history holds.
+          `/workspace/${workspaceId}/design/images/${next.picture.versionOf ?? next.picture.id}/edit`
         : `/workspace/${workspaceId}/design/images/new`;
     navigate(path, { replace: true });
   };
@@ -566,15 +572,28 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }
 
   /** Writes what is held: a new name. Answers whether it was written, for the leave guard. */
+  /**
+   * Writes what is held: changes made here saved over the picture, and a new
+   * name. Answers whether it was written, for the leave guard.
+   */
   async function save(): Promise<boolean> {
-    if (picture === null || pendingName === null || busy) return pendingName === null;
+    if (picture === null || busy) return !unsaved;
+    if (picture.versionOf == null && pendingName === null) return true;
     setBusy(true);
     setError(null);
     try {
-      const kept = await renameDesignImage(workspaceId, picture.id, pendingName);
+      let kept = picture;
+      if (picture.versionOf != null) {
+        const of = picture.versionOf;
+        kept = await saveDesignImageVersion(workspaceId, picture.id);
+        // The versions are gone; what they were is now the picture.
+        setMade((held) => held.filter((one) => one.job.image?.versionOf !== of));
+        setPast([]);
+        setFuture([]);
+      }
+      if (pendingName !== null) kept = await renameDesignImage(workspaceId, kept.id, pendingName);
       setPendingName(null);
       setShown({ kind: 'picture', picture: kept });
-      setMade((held) => held.map((one) => (one.job.image?.id === kept.id ? { job: { ...one.job, image: kept } } : one)));
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the picture.'));
@@ -584,11 +603,34 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
   }
 
+  /** The changes made here thrown away, back to the picture as it was saved. */
+  async function dropVersions(): Promise<void> {
+    const of = picture?.versionOf ?? null;
+    if (of === null) return;
+    await discardDesignImageVersions(workspaceId, of);
+    setMade((held) => held.filter((one) => one.job.image?.versionOf !== of));
+    setPast([]);
+    setFuture([]);
+    const original = await fetchWorkspaceArtifact(workspaceId, of).catch(() => null);
+    show(original === null ? null : { kind: 'picture', picture: original });
+  }
+
   /** A rename not saved let go, or a request still waiting taken off; the canvas moves to the one before. */
   async function discard() {
     if (busy) return;
     if (pendingName !== null) {
       setPendingName(null);
+      return;
+    }
+    if (picture?.versionOf != null) {
+      setBusy(true);
+      try {
+        await dropVersions();
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : t('Could not discard it.'));
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     const dropping = job !== null && (job.status === 'QUEUED' || job.status === 'FAILED') ? job.id : null;
@@ -641,7 +683,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }
 
   /** Something on the page that Save would write and leaving would lose. */
-  const unsaved = picture !== null && pendingName !== null;
+  const unsaved = picture !== null && (pendingName !== null || picture.versionOf != null);
   const canSave = unsaved;
   const guard = useLeaveGuard({ unsaved, backTo: `/workspace/${workspaceId}/design/images`, save });
   const canDiscard = canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
@@ -722,6 +764,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <span className={styles.toolbarTitle} title={picture?.prompt ?? job?.prompt} data-testid="editor-name">
             {picture !== null ? picture.prompt : (job?.name ?? job?.prompt)}
           </span>
+        )}
+        {picture?.versionOf != null && (
+          <span className={styles.unsavedMark} data-testid="editor-unsaved">{t('Unsaved changes')}</span>
         )}
         {/* Said as a control and not only as a title that happens to be clickable. */}
         {naming === null && (picture === null ? job === null : picture.name !== null) && (
@@ -1169,7 +1214,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         subject={guard.asking ? (pendingName ?? picture?.name ?? t('This picture')) : null}
         creating={false}
         onStay={guard.stay}
-        onLeave={guard.leave}
+        onLeave={() => {
+          // Left without saving: the changes made here go with it rather than lingering unseen.
+          void dropVersions().catch(() => undefined);
+          guard.leave();
+        }}
         onSaveAndLeave={guard.saveAndLeave}
       />
     </AppShell>
