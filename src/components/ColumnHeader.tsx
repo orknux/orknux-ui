@@ -45,13 +45,13 @@ export function ColumnHeader<Order extends string>({
   className,
 }: ColumnHeaderProps<Order>) {
   if (order === undefined || onSort === undefined) {
-    return <span className={className}>{label}</span>;
+    return <span className={`${className} ${styles.heading}`}>{label}</span>;
   }
 
   const sorted = current === order;
   return (
     <span
-      className={`${className} ${styles.head}`}
+      className={`${className} ${styles.heading} ${styles.head}`}
       aria-sort={sorted ? (ascending ? 'ascending' : 'descending') : 'none'}
     >
       {/*

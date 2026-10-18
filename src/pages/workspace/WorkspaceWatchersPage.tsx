@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ColumnHeader } from '../../components/ColumnHeader';
 
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -168,20 +169,20 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
 
       <section className={styles.card}>
         <div className={styles.tableHeader}>
-          <span className={styles.colSession}>{t('Session')}</span>
-          <span className={styles.colDescription}>{t('Description')}</span>
-          <span className={styles.colCall}>{t('Tool call')}</span>
-          <span className={styles.colCondition}>{t('Condition')}</span>
-          <span className={styles.colNumber}>{t('Interval')}</span>
+          <ColumnHeader label={t('Session')} className={styles.colSession} />
+          <ColumnHeader label={t('Description')} className={styles.colDescription} />
+          <ColumnHeader label={t('Tool call')} className={styles.colCall} />
+          <ColumnHeader label={t('Condition')} className={styles.colCondition} />
+          <ColumnHeader label={t('Interval')} className={styles.colNumber} />
           <span className={styles.colNumber} title={t('How often the agent looks at the result itself')}>{t('Agent check')}</span>
-          <span className={styles.colNumber}>{t('Timeout')}</span>
-          <span className={styles.colWhen}>{t('Set')}</span>
-          <span className={styles.colWhen}>{t('Last check')}</span>
-          {!finished && <span className={styles.colWhen}>{t('Next check')}</span>}
+          <ColumnHeader label={t('Timeout')} className={styles.colNumber} />
+          <ColumnHeader label={t('Set')} className={styles.colWhen} />
+          <ColumnHeader label={t('Last check')} className={styles.colWhen} />
+          {!finished && <ColumnHeader label={t('Next check')} className={styles.colWhen} />}
           {finished ? (
             <>
-              <span className={styles.colWhen}>{t('Finished')}</span>
-              <span className={styles.colOutcome}>{t('Outcome')}</span>
+              <ColumnHeader label={t('Finished')} className={styles.colWhen} />
+              <ColumnHeader label={t('Outcome')} className={styles.colOutcome} />
             </>
           ) : (
             <span className={styles.colAction} />

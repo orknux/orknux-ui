@@ -1037,7 +1037,8 @@ function VariableTable({
             onSort={onSort}
             className={table.colName}
           />
-          <span className={table.colValue}>{t('Value')}</span>
+          {/* Not an order the list keeps, but a heading all the same: drawn in the row's font, not the value column's. */}
+          <ColumnHeader label={t('Value')} className={table.colValue} />
           <ColumnHeader
             label={t('Description')}
             order="DESCRIPTION"

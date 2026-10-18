@@ -3919,6 +3919,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'table-heading-font-check',
+    what: "every heading of every list page's table is drawn in one font and one colour, the sorted column's included",
+    needs: ['workspace'],
+    // Reads what is drawn on some thirty pages; it changes nothing.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

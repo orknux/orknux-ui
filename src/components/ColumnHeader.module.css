@@ -6,6 +6,22 @@
  * that lays its columns out in grid fractions and one that uses flex basis both
  * get the same control without either learning about the other.
  */
+/*
+ * Drawn in the header row's font, whatever the column's class says. A heading
+ * wears its column's class for the width and alignment, and a column whose
+ * cells are set larger or brighter - Boxes' TYPE, Models' STATUS - passed that
+ * to its heading, which then stood out of the row it was in. Doubled to outrank
+ * the column's class whichever stylesheet loads last.
+ */
+.heading.heading {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
 .head {
   display: flex;
   align-items: center;
@@ -50,9 +66,13 @@
   color: var(--color-text-primary);
 }
 
-/* The column the list is actually in the order of, so it reads as the live one. */
+/*
+ * The column the list is in the order of looks like every other heading: the
+ * arrow beside it is what says so. Brighter, it read as a heading of a
+ * different kind - the Audit Log's TIMESTAMP stood out of ACTION and USER.
+ */
 .pressOn {
-  color: var(--color-text-primary);
+  color: inherit;
 }
 
 /*
