@@ -3937,6 +3937,11 @@ export const TESTS = [
     // The dependants are canned, so the check needs no fixture of its own.
   },
   {
+    name: 'agent-add-model-check',
+    what: "the agent form's Model picker links to the Models page in a new tab, with Add Model open",
+    needs: ['workspace'],
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],
