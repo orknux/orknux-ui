@@ -220,6 +220,11 @@
   cursor: pointer;
 }
 
+/* What the Draft badge is placed against: its own card, not the page. */
+.thumbHolder {
+  position: relative;
+}
+
 /* A picture drawn in the editor and not kept yet. */
 .draftBadge {
   position: absolute;

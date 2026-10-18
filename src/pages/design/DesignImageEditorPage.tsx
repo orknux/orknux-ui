@@ -19,6 +19,7 @@ import type { ImageSizePreset } from '../../api/imagePresets';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
+import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
 import undoIcon from '../../assets/undo.svg';
 import { AppShell } from '../../components/AppShell';
@@ -44,7 +45,7 @@ type Made = { job: DesignImageJob };
 type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: string } | null;
 
 /** One step undo goes back to: what the panel held and what was on the canvas. */
-type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown };
+type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null };
 
 /** How long typing in the prompt pauses before it counts as one step to undo. */
 const TYPING_SETTLES_MS = 700;
@@ -216,7 +217,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   // -- Undo and redo ------------------------------------------------------
 
-  const now = (): Snapshot => ({ prompt, modelId, asked, shown });
+  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName });
   const settleTyping = () => {
     window.clearTimeout(typingTimer.current);
     const from = typingFrom.current;
@@ -234,6 +235,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   };
   const show = (next: Shown) => {
     setShown(next);
+    setPendingName(null);
     setZoom(null);
     const path =
       next?.kind === 'picture'
@@ -248,6 +250,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setModelId(to.modelId);
     setAsked(to.asked);
     show(to.shown);
+    setPendingName(to.pendingName);
   };
   const undo = () => {
     settleTyping();
@@ -321,8 +324,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         size: asked.size || null,
         quality: asked.quality || null,
         style: asked.style || null,
+        name: newName || null,
       });
       remember();
+      setNewName('');
       setMade((held) => [{ job: queued }, ...held]);
       show({ kind: 'job', jobId: queued.id });
     } catch (cause) {
@@ -332,12 +337,17 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
   }
 
+  /** Writes what is held: a new name, and the draft kept. */
   async function save() {
-    if (picture === null || !picture.draft || busy) return;
+    if (picture === null || (!picture.draft && pendingName === null) || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const kept = await saveDesignImage(workspaceId, picture.id);
+      if (pendingName !== null) await renameDesignImage(workspaceId, picture.id, pendingName);
+      setPendingName(null);
+      const kept = picture.draft
+        ? await saveDesignImage(workspaceId, picture.id)
+        : ((await fetchWorkspaceArtifact(workspaceId, picture.id)) ?? picture);
       setShown({ kind: 'picture', picture: kept });
       setMade((held) => held.map((one) => (one.job.image?.id === kept.id ? { job: { ...one.job, image: kept } } : one)));
     } catch (cause) {
@@ -350,6 +360,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** A draft deleted, or a request still waiting taken off; the canvas moves to the one before. */
   async function discard() {
     if (busy) return;
+    // A rename not saved is what goes first; the picture itself only when nothing else is held.
+    if (pendingName !== null) {
+      setPendingName(null);
+      return;
+    }
     const leaving = picture !== null && picture.draft ? picture.id : null;
     const dropping = job !== null && (job.status === 'QUEUED' || job.status === 'FAILED') ? job.id : null;
     if (leaving === null && dropping === null) return;
@@ -380,22 +395,29 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   /** The name being typed over the title, or null while it is only shown. */
   const [naming, setNaming] = useState<string | null>(null);
-  async function rename() {
-    if (picture === null || naming === null) return;
+  /** The name a new picture is given before it is drawn; empty leaves it to the prompt. */
+  const [newName, setNewName] = useState('');
+  /** A new name for the picture shown, written only by Save. */
+  const [pendingName, setPendingName] = useState<string | null>(null);
+  function rename() {
+    if (naming === null) return;
+    // Nothing drawn yet: the name goes with the next Generate.
+    if (picture === null) {
+      setNewName(naming.trim());
+      setNaming(null);
+      return;
+    }
     const called = naming.trim();
     setNaming(null);
-    if (called === '' || called === picture.name) return;
-    try {
-      const renamed = await renameDesignImage(workspaceId, picture.id, called);
-      setShown({ kind: 'picture', picture: renamed });
-      setMade((held) => held.map((one) => (one.job.image?.id === renamed.id ? { job: { ...one.job, image: renamed } } : one)));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('Could not rename the picture.'));
-    }
+    // Held until Save, like every other change on a page that saves - and a step undo goes back over.
+    const next = called === '' || called === picture.name ? null : called;
+    if (next === pendingName) return;
+    remember();
+    setPendingName(next);
   }
 
-  const canSave = picture !== null && picture.draft;
-  const canDiscard = canSave || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
+  const canSave = picture !== null && (picture.draft || pendingName !== null);
+  const canDiscard = canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
 
   const [width = '', height = ''] = asked.size.split('x');
   const sizeOf = (w: string, h: string) => (w === '' && h === '' ? '' : `${w}x${h}`);
@@ -436,12 +458,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             className={styles.titleInput}
             value={naming}
             onChange={(event) => setNaming(event.target.value)}
-            onBlur={() => void rename()}
+            onBlur={rename}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') void rename();
+              if (event.key === 'Enter') rename();
               if (event.key === 'Escape') setNaming(null);
             }}
             aria-label={t('Name')}
+            placeholder={picture === null ? t('Named after the prompt if left empty') : undefined}
             autoFocus
             data-testid="editor-name-input"
           />
@@ -449,16 +472,39 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <button
             type="button"
             className={styles.toolbarTitle}
-            onClick={() => setNaming(picture.name ?? '')}
-            title={`${picture.name} - ${t('click to rename')}`}
+            onClick={() => setNaming(pendingName ?? picture.name ?? '')}
+            title={`${pendingName ?? picture.name} - ${t('click to rename')}`}
             data-testid="editor-name"
           >
-            {picture.name}
+            {pendingName ?? picture.name}
+          </button>
+        ) : picture === null && job === null ? (
+          <button
+            type="button"
+            className={styles.toolbarTitle}
+            onClick={() => setNaming(newName)}
+            title={t('Click to name the picture before it is drawn')}
+            data-testid="editor-name"
+          >
+            {newName || t('New image')}
           </button>
         ) : (
-          <span className={styles.toolbarTitle} title={picture?.prompt} data-testid="editor-name">
-            {picture !== null ? picture.prompt : job !== null ? job.prompt : t('New image')}
+          <span className={styles.toolbarTitle} title={picture?.prompt ?? job?.prompt} data-testid="editor-name">
+            {picture !== null ? picture.prompt : (job?.name ?? job?.prompt)}
           </span>
+        )}
+        {/* Said as a control and not only as a title that happens to be clickable. */}
+        {naming === null && (picture === null ? job === null : picture.name !== null) && (
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={() => setNaming(picture === null ? newName : (pendingName ?? picture.name ?? ''))}
+            title={picture === null ? t('Name the picture') : t('Rename the picture')}
+            aria-label={picture === null ? t('Name the picture') : t('Rename the picture')}
+            data-testid="editor-rename"
+          >
+            <img src={pencilIcon} alt="" width={14} height={14} />
+          </button>
         )}
         {picture?.draft === true && <span className={styles.draftMark}>{t('Draft')}</span>}
         <div className={styles.toolbarRight}>
@@ -522,7 +568,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             {t('Discard')}
           </button>
           <button type="button" className={form.filled} onClick={save} disabled={!canSave || busy} data-testid="editor-save">
-            {picture !== null && !picture.draft ? t('Saved') : t('Save')}
+            {picture !== null && !picture.draft && pendingName === null ? t('Saved') : t('Save')}
           </button>
         </div>
       </div>

@@ -172,6 +172,8 @@ export interface DrawDesignImageInput {
   size: string | null;
   quality: string | null;
   style: string | null;
+  /** What to call it; empty names it after its prompt's first words. */
+  name?: string | null;
 }
 
 export type DesignImageJobStatus = 'QUEUED' | 'DRAWING' | 'DRAWN' | 'FAILED';
@@ -193,11 +195,13 @@ export interface DesignImageJob {
   reason: string | null;
   /** How many queued pictures are drawn before this one; null unless QUEUED. */
   ahead: number | null;
+  /** What it will be called: the name given, or its prompt's first words. */
+  name: string;
   /** The picture, once DRAWN. */
   image: Artifact | null;
 }
 
-const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead image { ${ARTIFACT_FIELDS} }`;
+const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead name image { ${ARTIFACT_FIELDS} }`;
 
 /** Queues a picture and answers at once; a refusal of what could never be drawn throws with its reason. */
 export async function queueDesignImage(input: DrawDesignImageInput): Promise<DesignImageJob> {

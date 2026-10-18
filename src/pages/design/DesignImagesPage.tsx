@@ -286,7 +286,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
               >
                 <button
                   type="button"
-                  className={gallery.thumb}
+                  className={`${gallery.thumb} ${styles.thumbHolder}`}
                   onClick={() => navigate(`/workspace/${workspaceId}/design/images/${image.id}`)}
                   aria-label={image.prompt}
                   aria-pressed={image.id === artifactId}

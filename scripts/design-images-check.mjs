@@ -193,6 +193,14 @@ record((await tile.count()) === 1 && (await tile.innerText()).includes('Queued')
   `a queued picture is in the gallery, marked as queued (${(await tile.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
 const drafts = await page.getByTestId('design-gallery').locator('figure', { hasText: 'Draft' }).count();
 record(drafts === 1, `and a draft is marked as one (${drafts})`);
+const badgeIn = await page.getByTestId('design-gallery').locator('figure', { hasText: 'Draft' }).first().evaluate((card) => {
+  const badge = [...card.querySelectorAll('span')].find((one) => one.textContent?.trim().toLowerCase() === 'draft');
+  if (badge === undefined) return false;
+  const b = badge.getBoundingClientRect();
+  const c = card.getBoundingClientRect();
+  return b.left >= c.left && b.right <= c.right && b.top >= c.top && b.bottom <= c.bottom;
+}).catch(() => false);
+record(badgeIn, 'and the badge sits on its own card');
 
 // "+ New image", in the header's right corner, goes to the editor rather than a dialog.
 const button = page.getByTestId('new-image');
@@ -213,6 +221,11 @@ await page.getByTestId('image-quality').waitFor({ timeout: 5_000 }).catch(() => 
 const fields = await page.getByTestId('editor-panel').locator('label').allInnerTexts();
 record(['Prompt', 'Model', 'Quality'].every((one) => fields.includes(one)), `the panel asks for the prompt, the model and its parameters (${fields.join(', ')})`);
 
+// Named before it is drawn, in the top bar; the name goes with the request.
+await page.getByTestId('editor-name').click().catch(() => undefined);
+await page.getByTestId('editor-name-input').fill('Harbour at dusk');
+await page.getByTestId('editor-name-input').press('Enter');
+record((await page.getByTestId('editor-name').innerText().catch(() => '')).trim() === 'Harbour at dusk', 'a new picture is named in the top bar before it is drawn');
 await page.locator('#image-prompt').fill('zz a drawn lighthouse');
 await page.locator('#image-quality').selectOption('hd').catch(() => undefined);
 await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefined);
@@ -231,21 +244,11 @@ record(early.marks === 1 && early.text === 'Drawing…' && early.side >= 64 && l
   `while drawing, one large mark and "Drawing…" from the start to the end (${JSON.stringify({ early, late })})`);
 await page.waitForURL(new RegExp(`/design/images/${DRAWN.id}/edit$`), { timeout: 10_000 }).catch(() => undefined);
 const sent = drawRequests[0] ?? {};
-record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null,
+record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null && sent.name === 'Harbour at dusk',
   `the picture is queued for the model chosen with what was asked (${JSON.stringify(sent)})`);
 record((await page.getByTestId('editor-picture').count()) === 1, 'and is on the canvas the moment it is drawn');
 const marked = await page.locator('[class*="draftMark"]').innerText().catch(() => '');
 record(marked.toLowerCase().includes('draft') && (await page.getByTestId('editor-save').isEnabled()), `as a draft, with Save on (${marked})`);
-
-// The top bar says what the picture is called, and clicking it renames it.
-const named = page.getByTestId('editor-name');
-record((await named.innerText().catch(() => '')).trim() === DRAWN.name, `the top bar shows the picture's name (${await named.innerText().catch(() => '')})`);
-await named.click().catch(() => undefined);
-await page.getByTestId('editor-name-input').fill('Harbour light');
-await page.getByTestId('editor-name-input').press('Enter');
-await page.waitForTimeout(400);
-record(renamed.includes('Harbour light') && (await page.getByTestId('editor-name').innerText().catch(() => '')).trim() === 'Harbour light',
-  `and clicking it renames it (${JSON.stringify(renamed)})`);
 
 // Zoom: the button, then the shortcuts chosen in Preferences - Ctrl+= and Ctrl+- unless changed.
 const widthNow = async () => Math.round((await page.getByTestId('editor-picture').boundingBox().catch(() => null))?.width ?? 0);
@@ -279,11 +282,29 @@ await page.waitForTimeout(400);
 record(page.url().endsWith(`/design/images/${DRAWN.id}/edit`) && (await page.locator('#image-quality').inputValue().catch(() => null)) === 'hd',
   `redo puts both back (${page.url()})`);
 
+// The top bar says what the picture is called, and clicking it renames it.
+const named = page.getByTestId('editor-name');
+record((await named.innerText().catch(() => '')).trim() === DRAWN.name, `the top bar shows the picture's name (${await named.innerText().catch(() => '')})`);
+record((await page.getByTestId('editor-rename').count()) === 1, 'beside it a pencil that says it can be renamed');
+await page.getByTestId('editor-rename').click().catch(() => undefined);
+await page.getByTestId('editor-name-input').fill('Harbour light');
+await page.getByTestId('editor-name-input').press('Enter');
+await page.waitForTimeout(400);
+record(renamed.length === 0 && (await page.getByTestId('editor-name').innerText().catch(() => '')).trim() === 'Harbour light',
+  `a rename is held until Save (${JSON.stringify(renamed)})`);
+await page.locator('body').click({ position: { x: 5, y: 300 } }).catch(() => undefined);
+await page.keyboard.press('Control+z');
+const unnamed = (await page.getByTestId('editor-name').innerText().catch(() => '')).trim();
+await page.keyboard.press('Control+Shift+z');
+const renamedAgain = (await page.getByTestId('editor-name').innerText().catch(() => '')).trim();
+record(unnamed === DRAWN.name && renamedAgain === 'Harbour light', `and undone and redone like any change (${JSON.stringify({ unnamed, renamedAgain })})`);
+
+
 // Save keeps the draft.
 await page.getByTestId('editor-save').click().catch(() => undefined);
 await page.waitForTimeout(500);
-record(saved.includes(DRAWN.id) && (await page.getByTestId('editor-save').innerText()) === 'Saved' && !(await page.getByTestId('editor-save').isEnabled()),
-  `Save keeps the draft (${JSON.stringify(saved)})`);
+record(saved.includes(DRAWN.id) && renamed.includes('Harbour light') && (await page.getByTestId('editor-save').innerText()) === 'Saved' && !(await page.getByTestId('editor-save').isEnabled()),
+  `Save keeps the draft and writes the name (${JSON.stringify({ saved, renamed })})`);
 
 // Discard throws a second try away and goes back to the one before.
 await page.locator('#image-prompt').fill('zz a second lighthouse');
