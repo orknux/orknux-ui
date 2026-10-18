@@ -10,8 +10,12 @@ import { FieldHint } from './FieldHint';
 import styles from './NotificationBell.module.css';
 import { t } from '../i18n';
 
-/** How often the count is asked for while somebody has the page open. */
-const ASK_EVERY_MS = 60_000;
+/**
+ * How often the count is asked for while somebody has the page open. The
+ * chat list asks for its unread counts on the same beat, so the two corners
+ * that say "something new" never disagree for long.
+ */
+export const ASK_EVERY_MS = 60_000;
 
 /** What each kind reads as, in the words somebody would use about it. */
 const SAYS: Record<Notification['kind'], string> = {

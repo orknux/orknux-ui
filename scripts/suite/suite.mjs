@@ -3994,6 +3994,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-unread-refresh-check',
+    what: "an unread count shows without a reload when the window is come back to, and the open chat stays open",
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

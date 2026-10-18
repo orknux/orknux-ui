@@ -51,6 +51,7 @@ import {
 import type { Attachment } from '../../api/attachments';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { CallLine } from '../../components/CallLine';
+import { ASK_EVERY_MS } from '../../components/NotificationBell';
 import { InteractionCard, placeRequests } from '../../components/InteractionCard';
 import { fetchSessionRequests, type InteractionRequest } from '../../api/interactions';
 import { Thinking } from '../../components/Thinking';
@@ -647,6 +648,33 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     setSessions((held) => held?.map((entry) => (entry.id === currentId && entry.unreadCount !== 0 ? { ...entry, unreadCount: 0 } : entry)) ?? held);
     void markChatRead(currentId).catch(() => undefined);
   }, [currentId, currentUnread]);
+
+  /*
+   * The list again - counts and names only, never which chat is open - on the
+   * bell's beat and whenever the window is come back to. An answer finished in
+   * a chat somebody left, or a reminder an agent set, had no way to show its
+   * count until something else reloaded the list.
+   */
+  useEffect(() => {
+    if (workspaceId === null) return undefined;
+    const asked = workspaceId;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchChatSessions(asked)
+        .then((loaded) => {
+          if (wanted.current === asked) setSessions(loaded);
+        })
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(refresh, ASK_EVERY_MS);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [workspaceId]);
 
   const loadSessions = useCallback(
     async (select?: string) => {
