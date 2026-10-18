@@ -4020,6 +4020,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-unread-on-finish-check',
+    what: 'an answer that finishes in a chat somebody has left shows its count at once, with nobody refocusing the window',
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

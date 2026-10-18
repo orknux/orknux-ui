@@ -673,6 +673,21 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * a chat somebody left, or a reminder an agent set, had no way to show its
    * count until something else reloaded the list.
    */
+  /**
+   * The list again, counts and names only; never which chat is open. The
+   * workspace from the ref rather than this render: a chat's watch outlives the
+   * render that started it, which may be from before the workspace was known.
+   */
+  function refreshCounts() {
+    const asked = wanted.current;
+    if (asked === null) return;
+    fetchChatSessions(asked)
+      .then((loaded) => {
+        if (wanted.current === asked) setSessions(loaded);
+      })
+      .catch(() => undefined);
+  }
+
   useEffect(() => {
     if (workspaceId === null) return undefined;
     const asked = workspaceId;
@@ -859,6 +874,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         }
       })
       .catch(() => undefined);
+    const left = currentId;
     return () => {
       live = false;
       following.abort();
@@ -872,12 +888,37 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         asking.current.abort();
         asking.current = null;
         setSending(false);
+        if (left !== null) watchLeft(left);
       }
     };
     // `followAnswer` is a plain function of this render; what it reads is
     // refs and setters, so the one made by the render that opened the chat is
     // as good as any later one.
   }, [currentId]);
+
+  /*
+   * An answer still being written in a chat somebody has just left: followed
+   * quietly, drawing nothing, so the counts are read the moment it ends. The
+   * page stops reading a chat it leaves, and until this an answer finished
+   * there showed its count only at the list's next once-a-minute read - so
+   * somebody waiting in the window saw nothing come.
+   */
+  function watchLeft(id: string) {
+    const quiet = () => undefined;
+    const watching = new AbortController();
+    const unmounting = () => watching.abort();
+    window.addEventListener('pagehide', unmounting, { once: true });
+    followChat(
+      id,
+      { onChunk: quiet, onThinking: quiet, onDrew: quiet, onCall: quiet, onCalled: quiet, onDone: quiet, onError: quiet },
+      watching.signal,
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        window.removeEventListener('pagehide', unmounting);
+        if (!watching.signal.aborted) refreshCounts();
+      });
+  }
 
   /*
    * Clicking away closes it, the way every other menu here behaves.
