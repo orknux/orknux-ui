@@ -1,18 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import type { PageOf } from '../../api/client';
 import { fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
 import type { Artifact } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { AppShell } from '../../components/AppShell';
-import { CompactPagination } from '../../components/CompactPagination';
 import { Loader } from '../../components/Loader';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
-import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
-import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import table from '../workspace/CatalogueTable.module.css';
 import gallery from '../workspace/WorkspaceArtifactsPage.module.css';
@@ -24,13 +20,18 @@ export interface DesignImagesPageProps {
   onSignOut?: () => void;
 }
 
+/** How many pictures one read brings; the next comes as the end of the gallery scrolls into view. */
+const BATCH = 48;
+
 /**
- * Every picture a model drew in this workspace, and the one being looked at.
+ * Every picture a model drew in this workspace, the one being looked at, and
+ * drawing another.
  *
- * The first piece of Design: the gallery, and an image opened above it - which
- * is where "Open in Design" on the Artifacts page lands. What it was made with,
- * generating a new one and editing a region come next, as the mockup settles
- * them; the Artifacts page keeps listing everything, files included.
+ * A gallery that fills the width and grows as it is scrolled, not a page of ten
+ * with a pager under it: pictures are found by looking along them, and a pager
+ * on a wide screen was one row. The one opened - from here, or by "Open in
+ * Design" on Artifacts - stands above it with what it was drawn from, and goes
+ * back to the gallery by its close button or Escape.
  *
  * Only what was drawn (`drawn: true`): a file an agent saved may be a picture,
  * and nothing says a model made it. One opened by address is shown whatever it
@@ -39,37 +40,79 @@ export interface DesignImagesPageProps {
 export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) {
   const { workspaceId = '', artifactId } = useParams();
   const navigate = useNavigate();
-  const [images, setImages] = useState<PageOf<Artifact> | null>(null);
+  const [images, setImages] = useState<Artifact[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = usePageWithin(workspaceId);
-  const [pageSize, setPageSize] = usePageSize('design-images');
   const [hunting, setHunting] = useState('');
   const [asked, setAsked] = useState('');
-  /** The one the address names, when the page in view does not hold it. */
+  /** The one the address names, when the pictures read so far do not hold it. */
   const [addressed, setAddressed] = useState<Artifact | null>(null);
+  const end = useRef<HTMLDivElement | null>(null);
+  /** Which list a read belongs to, so a late answer to an old search is dropped. */
+  const reading = useRef(0);
 
   useEffect(() => {
     const waiting = setTimeout(() => setAsked(hunting), 300);
     return () => clearTimeout(waiting);
   }, [hunting]);
-  useEffect(() => setPage(1), [asked]);
 
-  const load = useCallback(() => {
-    if (workspaceId === '') return;
-    setError(null);
-    fetchWorkspaceArtifacts(workspaceId, page - 1, pageSize, asked, true)
-      .then(setImages)
-      .catch((cause: unknown) => {
-        setImages(null);
-        setError(cause instanceof Error ? cause.message : t('Could not load the images.'));
-      });
-  }, [workspaceId, page, pageSize, asked]);
+  const readFrom = useCallback(
+    (from: number) => {
+      if (workspaceId === '') return;
+      const which = ++reading.current;
+      setLoading(true);
+      setError(null);
+      fetchWorkspaceArtifacts(workspaceId, Math.floor(from / BATCH), BATCH, asked, true)
+        .then((page) => {
+          if (which !== reading.current) return;
+          setImages((held) => (from === 0 || held === null ? page.content : [...held, ...page.content]));
+          setTotal(page.totalElements);
+        })
+        .catch((cause: unknown) => {
+          if (which !== reading.current) return;
+          setError(cause instanceof Error ? cause.message : t('Could not load the images.'));
+        })
+        .finally(() => {
+          if (which === reading.current) setLoading(false);
+        });
+    },
+    [workspaceId, asked],
+  );
 
-  useEffect(load, [load]);
+  // A new search, or another workspace, is a new list from its start.
+  useEffect(() => {
+    setImages(null);
+    readFrom(0);
+  }, [readFrom]);
+
+  /*
+   * The next batch when the end of the gallery comes near the bottom of the
+   * window - asked on every scroll and after every render, because the end
+   * also moves without a scroll: closing the picture above lifts the gallery
+   * by its whole height. An IntersectionObserver missed exactly that.
+   */
+  const more = images !== null && images.length < total;
+  const nearEnd = useRef(() => {});
+  nearEnd.current = () => {
+    const mark = end.current;
+    if (mark === null || !more || loading) return;
+    if (mark.getBoundingClientRect().top < window.innerHeight + 400) readFrom(images?.length ?? 0);
+  };
+  useEffect(() => nearEnd.current());
+  useEffect(() => {
+    const scrolled = () => nearEnd.current();
+    window.addEventListener('scroll', scrolled, { passive: true });
+    window.addEventListener('resize', scrolled);
+    return () => {
+      window.removeEventListener('scroll', scrolled);
+      window.removeEventListener('resize', scrolled);
+    };
+  }, []);
 
   useEffect(() => {
     if (artifactId === undefined || workspaceId === '') return;
-    if (images?.content.some((one) => one.id === artifactId) === true) return;
+    if (images?.some((one) => one.id === artifactId) === true) return;
     if (addressed?.id === artifactId) return;
     let left = false;
     void fetchWorkspaceArtifact(workspaceId, artifactId)
@@ -87,7 +130,19 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
   const open =
     artifactId === undefined
       ? null
-      : (images?.content.find((one) => one.id === artifactId) ?? (addressed?.id === artifactId ? addressed : null));
+      : (images?.find((one) => one.id === artifactId) ?? (addressed?.id === artifactId ? addressed : null));
+
+  const back = () => navigate(`/workspace/${workspaceId}/design/images`);
+  useEffect(() => {
+    if (open === null) return;
+    const pressed = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') back();
+    };
+    document.addEventListener('keydown', pressed);
+    return () => document.removeEventListener('keydown', pressed);
+  }, [open?.id]);
+
+  const drawnWith = open?.drawnWith ?? null;
 
   return (
     <AppShell
@@ -102,24 +157,75 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           <h1 className={table.title}>{t('Images')}</h1>
           <p className={table.subtitle}>{t('Every picture a model drew in this workspace.')}</p>
         </div>
+        <button
+          type="button"
+          className={table.createButton}
+          onClick={() => navigate(`/workspace/${workspaceId}/design/images/new`)}
+          data-testid="new-image"
+        >
+          {t('+ New image')}
+        </button>
       </header>
 
       {open !== null && (
         <section className={styles.focus} data-design-image={open.id}>
           <img src={open.url} alt={open.prompt} className={styles.focusImage} />
           <div className={styles.focusFacts}>
+            <button
+              type="button"
+              className={styles.focusClose}
+              onClick={back}
+              aria-label={t('Back to the gallery')}
+              title={t('Back to the gallery')}
+              data-testid="design-image-close"
+            >
+              ×
+            </button>
             <p className={styles.focusPrompt}>{open.prompt}</p>
-            <p className={gallery.facts}>
-              {open.sourcePath === '' ? (
-                <span>{open.source}</span>
-              ) : (
-                <Link className={gallery.runLink} to={`/workspace/${workspaceId}/${open.sourcePath}`}>
-                  {open.source}
-                </Link>
+            <button
+              type="button"
+              className={table.createButton}
+              onClick={() => navigate(`/workspace/${workspaceId}/design/images/${open.id}/edit`)}
+              data-testid="design-image-edit"
+            >
+              {t('Open in editor')}
+            </button>
+            <dl className={styles.drawnWith}>
+              <dt>{t('From')}</dt>
+              <dd>
+                {open.kind === 'DESIGN' || open.sourcePath === '' ? (
+                  open.source
+                ) : (
+                  <Link className={gallery.runLink} to={`/workspace/${workspaceId}/${open.sourcePath}`}>
+                    {open.source}
+                  </Link>
+                )}
+              </dd>
+              {drawnWith !== null && (
+                <>
+                  <dt>{t('Model')}</dt>
+                  <dd>{drawnWith.model}</dd>
+                  <dt>{t('Size')}</dt>
+                  <dd>{drawnWith.size ?? t('Model default')}</dd>
+                  {drawnWith.quality !== null && (
+                    <>
+                      <dt>{t('Quality')}</dt>
+                      <dd>{drawnWith.quality}</dd>
+                    </>
+                  )}
+                  {drawnWith.style !== null && (
+                    <>
+                      <dt>{t('Style')}</dt>
+                      <dd>{drawnWith.style}</dd>
+                    </>
+                  )}
+                  <dt>{t('Drawn by')}</dt>
+                  <dd>{drawnWith.drawnBy}</dd>
+                </>
               )}
-              <span className={gallery.dot}>·</span>
-              {timeAgo(open.drawnAt)}
-            </p>
+              <dt>{t('When')}</dt>
+              <dd>{timeAgo(open.drawnAt)}</dd>
+            </dl>
           </div>
         </section>
       )}
@@ -140,16 +246,16 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             <Loader />
           </p>
         )}
-        {images?.content.length === 0 && (
+        {images?.length === 0 && (
           <p className={table.notice}>
             {asked === ''
               ? t('Nothing yet. An image node or a task that draws fills this.')
               : t('No image matches what you typed.')}
           </p>
         )}
-        {images !== null && images.content.length > 0 && (
-          <div className={gallery.gallery}>
-            {images.content.map((image) => (
+        {images !== null && images.length > 0 && (
+          <div className={gallery.gallery} data-testid="design-gallery">
+            {images.map((image) => (
               <figure
                 key={image.id}
                 className={`${gallery.card} ${image.id === artifactId ? styles.chosen : ''}`}
@@ -177,18 +283,11 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             ))}
           </div>
         )}
-        {images !== null && images.totalElements > 0 && (
-          <CompactPagination
-            page={page}
-            pageSize={pageSize}
-            totalItems={images.totalElements}
-            unit={t('images')}
-            onPageChange={setPage}
-            pageSizes={PAGE_SIZES}
-            onPageSizeChange={setPageSize}
-          />
-        )}
+        <div ref={end} className={styles.end}>
+          {loading && images !== null && <Loader />}
+        </div>
       </section>
+
     </AppShell>
   );
 }

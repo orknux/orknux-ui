@@ -34,6 +34,7 @@ import { DocsPage } from './pages/docs/DocsPage';
 import { ExecutionDetailPage } from './pages/workspace/ExecutionDetailPage';
 import { WorkspaceArtifactsPage } from './pages/workspace/WorkspaceArtifactsPage';
 import { DesignImagesPage } from './pages/design/DesignImagesPage';
+import { DesignImageEditorPage } from './pages/design/DesignImageEditorPage';
 import { ExecutionsPage } from './pages/workspace/ExecutionsPage';
 import { FunctionEditorPage } from './pages/workspace/FunctionEditorPage';
 import { McpServerSettingsPage } from './pages/workspace/McpServerSettingsPage';
@@ -101,6 +102,8 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/artifacts': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/images/new': (session, onSignOut) => <DesignImageEditorPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/images/:artifactId/edit': (session, onSignOut) => <DesignImageEditorPage session={session} onSignOut={onSignOut} />,
   /*
    * The same page, opened at one artifact.
    *

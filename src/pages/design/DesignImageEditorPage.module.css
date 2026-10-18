@@ -1,0 +1,176 @@
+/* The bar along the top, as the workflow editor's. */
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-16);
+  height: 40px;
+  padding: 0 var(--space-24);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.back {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.back:hover {
+  color: var(--color-text-primary);
+}
+
+.toolbarTitle {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.toolbarRight {
+  display: flex;
+  gap: var(--space-4);
+  margin-left: auto;
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-6);
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.tool:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* The canvas, and the panel down its right. */
+.editor {
+  display: flex;
+  flex: 1 0 0;
+  min-height: 0;
+}
+
+.canvas {
+  position: relative;
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--space-24);
+  background:
+    repeating-conic-gradient(var(--color-surface) 0% 25%, var(--color-bg) 0% 50%) 50% / 24px 24px;
+}
+
+.picture {
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-card);
+}
+
+.empty {
+  color: var(--color-text-muted);
+}
+
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--color-text-secondary);
+}
+
+/* What was drawn on this page, along the canvas's foot. */
+.strip {
+  display: flex;
+  gap: var(--space-8);
+  max-width: 100%;
+  margin-top: var(--space-16);
+  overflow-x: auto;
+}
+
+.stripItem {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  overflow: hidden;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.stripItem img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stripChosen {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.panel {
+  display: flex;
+  flex: 0 0 340px;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-16);
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+}
+
+.prompt {
+  min-height: 160px;
+}
+
+.sides {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.sides > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.generate {
+  align-self: stretch;
+}
+
+@media (max-width: 800px) {
+  .editor {
+    flex-direction: column;
+  }
+
+  .panel {
+    flex-basis: auto;
+    border-left: 0;
+    border-top: 1px solid var(--color-border);
+  }
+}

@@ -8,7 +8,18 @@ import type { PageOf } from './client';
  * working a task. SAVED is not drawn at all: a file an agent made and decided
  * was worth keeping.
  */
-export type ArtifactKind = 'IMAGE' | 'TASK' | 'SAVED';
+export type ArtifactKind = 'IMAGE' | 'TASK' | 'SAVED' | 'DESIGN';
+
+/** The model a picture was drawn with, what it was asked for beyond the prompt, and who asked. */
+export interface ArtifactDrawing {
+  /** Null once that model is removed; `model` still names it. */
+  modelId: string | null;
+  model: string;
+  size: string | null;
+  quality: string | null;
+  style: string | null;
+  drawnBy: string;
+}
 
 /**
  * One thing a run produced.
@@ -41,10 +52,13 @@ export interface Artifact {
    */
   previewUrl: string | null;
   drawnAt: string;
+  /** Where it was kept - a picture drawn in Design; null elsewhere. */
+  drawnWith: ArtifactDrawing | null;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
+  drawnWith { modelId model size quality style drawnBy }
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
@@ -144,4 +158,23 @@ export async function fetchSavedArtifactBytes(id: string): Promise<ArrayBuffer> 
   const answer = await fetch(savedArtifactUrl(id), { credentials: 'same-origin' });
   if (!answer.ok) throw new Error(`Artifact ${id} answered ${answer.status}`);
   return answer.arrayBuffer();
+}
+
+/** What a picture is to be drawn from on Design's Images page. */
+export interface DrawDesignImageInput {
+  workspaceId: string;
+  modelId: string;
+  prompt: string;
+  size: string | null;
+  quality: string | null;
+  style: string | null;
+}
+
+/** Draws with the image model chosen and keeps the picture; a refusal throws with its reason. */
+export async function drawDesignImage(input: DrawDesignImageInput): Promise<Artifact> {
+  const data = await graphql<{ drawDesignImage: Artifact }>(
+    `mutation DrawDesignImage($input: DrawDesignImageInput!) { drawDesignImage(input: $input) { ${ARTIFACT_FIELDS} } }`,
+    { input },
+  );
+  return data.drawDesignImage;
 }

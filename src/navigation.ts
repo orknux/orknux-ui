@@ -348,6 +348,13 @@ export const PAGES = [
   },
   /* The same page, opened at one image - where "Open in Design" lands. */
   { path: '/workspace/:workspaceId/design/images/:artifactId', access: 'signed-in', goTo: false },
+  /*
+   * The image editor: a new picture, or one already drawn opened with what it
+   * was drawn from. Reached from Images rather than typed, as a workflow's
+   * editor is reached from Workflows.
+   */
+  { path: '/workspace/:workspaceId/design/images/new', access: 'signed-in', goTo: false },
+  { path: '/workspace/:workspaceId/design/images/:artifactId/edit', access: 'signed-in', goTo: false },
 
   // ---- Workspace: what the whole of it is set up with ----
   {

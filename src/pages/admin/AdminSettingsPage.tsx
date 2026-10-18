@@ -27,6 +27,7 @@ import {
   setMaxToolCallsAtOnce,
   setLongestStoredValue,
   setDrawingScale,
+  setImageMaxPrompt,
   setSessionCompactAfterTokens,
   setSessionCompactionKeepTurns,
   setSessionCompactionSummaryTokens,
@@ -184,6 +185,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [storedValue, setStoredValue] = useState('');
   const [drawScale, setDrawScale] = useState('');
+  const [imagePrompt, setImagePrompt] = useState('');
   const [compactAfter, setCompactAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
@@ -322,6 +324,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setCallsAtOnce(String(held.maxToolCallsAtOnce));
         setStoredValue(String(held.longestStoredValue));
         setDrawScale(String(held.drawingScale));
+        setImagePrompt(String(held.imageMaxPrompt));
         setCompactAfter(String(held.sessionCompactAfterTokens));
         setCompactKeep(String(held.sessionCompactionKeepTurns));
         setCompactSummary(String(held.sessionCompactionSummaryTokens));
@@ -404,6 +407,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: callsAtOnce, held: settings.maxToolCallsAtOnce, write: setMaxToolCallsAtOnce },
         { typed: storedValue, held: settings.longestStoredValue, write: setLongestStoredValue },
         { typed: drawScale, held: settings.drawingScale, write: setDrawingScale },
+        { typed: imagePrompt, held: settings.imageMaxPrompt, write: setImageMaxPrompt },
         {
           typed: compactAfter,
           held: settings.sessionCompactAfterTokens,
@@ -2135,6 +2139,32 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Drawn picture size')}
                 />
                 <span className={styles.retentionUnit}>{t('times')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Longest image prompt')}</p>
+                  <FieldHint label={t('Longest image prompt')}>
+                    {t('The longest description a picture is drawn from - in Design, a chat, a task and a workflow. Image models cap the prompt themselves; past this it is refused in words rather than by the provider. Between 100 and 32000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="image-max-prompt"
+                  name="imageMaxPrompt"
+                  className={styles.input}
+                  type="number"
+                  min={100}
+                  max={32000}
+                  value={imagePrompt}
+                  onChange={(event) => setImagePrompt(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Longest image prompt')}
+                />
+                <span className={styles.retentionUnit}>{t('characters')}</span>
               </div>
             </div>
 

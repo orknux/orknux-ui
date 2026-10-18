@@ -40,3 +40,58 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.focus {
+  position: relative;
+}
+
+/* Back to the gallery, in the corner of what is open. */
+.focusClose {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.focusClose:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.focusPrompt {
+  padding-right: 36px;
+}
+
+/* What it was drawn with: a label and its value, row by row. */
+.drawnWith {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-4) var(--space-12);
+  margin: 0;
+  font-size: 13px;
+}
+
+.drawnWith dt {
+  color: var(--color-text-muted);
+}
+
+.drawnWith dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Where the next batch is asked for, and the spinner while it comes. */
+.end {
+  display: flex;
+  justify-content: center;
+  min-height: 1px;
+  padding: var(--space-8) 0;
+}
