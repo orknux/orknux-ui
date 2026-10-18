@@ -16,6 +16,7 @@ const ZOOM_IN_KEY = 'orknux.zoomInShortcut';
 const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
 const MAGIC_RECTANGLE_KEY = 'orknux.magicRectangleShortcut';
 const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
+const MAGIC_ALL_KEY = 'orknux.magicAllShortcut';
 
 /** What opens the palette when nothing has been chosen. */
 export const DEFAULT_SHORTCUT = 'Ctrl+Q';
@@ -164,6 +165,8 @@ export const DEFAULT_ZOOM_OUT_SHORTCUT = 'Ctrl+-';
  */
 export const DEFAULT_MAGIC_RECTANGLE_SHORTCUT = 'M';
 export const DEFAULT_MAGIC_LASSO_SHORTCUT = 'L';
+/** Magic edit over the whole picture: select all, as everywhere else. */
+export const DEFAULT_MAGIC_ALL_SHORTCUT = 'Ctrl+A';
 
 /**
  * Which keystroke opens the command palette, written the way it is shown:
@@ -238,6 +241,7 @@ const zoomingIn = remembered(ZOOM_IN_KEY, DEFAULT_ZOOM_IN_SHORTCUT);
 const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
 const magicRectangle = remembered(MAGIC_RECTANGLE_KEY, DEFAULT_MAGIC_RECTANGLE_SHORTCUT);
 const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
+const magicAll = remembered(MAGIC_ALL_KEY, DEFAULT_MAGIC_ALL_SHORTCUT);
 
 export function paletteShortcut(): Shortcut {
   return palette.get();
@@ -429,6 +433,18 @@ export function setMagicLassoShortcut(next: Shortcut): void {
 
 export function useMagicLassoShortcut(): Shortcut {
   return magicLasso.use();
+}
+
+export function magicAllShortcut(): Shortcut {
+  return magicAll.get();
+}
+
+export function setMagicAllShortcut(next: Shortcut): void {
+  magicAll.set(next);
+}
+
+export function useMagicAllShortcut(): Shortcut {
+  return magicAll.use();
 }
 
 /** One key, named as somebody would read it rather than as the browser sends it. */

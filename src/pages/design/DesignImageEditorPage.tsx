@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   discardDesignImageVersions,
@@ -22,6 +22,7 @@ import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
+import selectAllIcon from '../../assets/select-all.svg';
 import lassoIcon from '../../assets/select-lasso.svg';
 import rectangleIcon from '../../assets/select-rectangle.svg';
 import undoIcon from '../../assets/undo.svg';
@@ -31,6 +32,7 @@ import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import {
   matches,
+  useMagicAllShortcut,
   useMagicLassoShortcut,
   useMagicRectangleShortcut,
   useRedoShortcut,
@@ -150,6 +152,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomOutKey = useZoomOutShortcut();
   const rectangleKey = useMagicRectangleShortcut();
   const lassoKey = useMagicLassoShortcut();
+  const allKey = useMagicAllShortcut();
+  const location = useLocation();
+  /** Where to go once the leave guard has let go of its history - a copy just saved. */
+  const goingTo = useRef<string | null>(null);
 
   const picture = shown?.kind === 'picture' ? shown.picture : null;
   const job = shown?.kind === 'job' ? (made.find((one) => one.job.id === shown.jobId)?.job ?? null) : null;
@@ -343,8 +349,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {} });
-  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {} };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {} });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {} };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
@@ -368,6 +374,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       } else if (matches(event, lassoKey)) {
         event.preventDefault();
         keys.current.pick('lasso');
+      } else if (matches(event, allKey)) {
+        event.preventDefault();
+        keys.current.all();
       } else if (matches(event, undoKey)) {
         event.preventDefault();
         keys.current.undo();
@@ -378,7 +387,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     };
     document.addEventListener('keydown', pressed);
     return () => document.removeEventListener('keydown', pressed);
-  }, [undoKey, redoKey, zoomInKey, zoomOutKey, rectangleKey, lassoKey]);
+  }, [undoKey, redoKey, zoomInKey, zoomOutKey, rectangleKey, lassoKey, allKey]);
 
   // -- Magic edit ---------------------------------------------------------
 
@@ -536,6 +545,17 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   };
 
   keys.current.forget = forget;
+  /** The whole picture selected, and what to change asked over its middle. */
+  const selectAll = () => {
+    const shownPicture = pictureRef.current;
+    if (picture === null || shownPicture === null || frame === null) return;
+    const width = shownPicture.naturalWidth;
+    const height = shownPicture.naturalHeight;
+    setSelecting(null);
+    setSelection([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]);
+    setAskAt({ x: frame.left + frame.width / 2 - 150, y: frame.top + frame.height / 2 - 100 });
+  };
+  keys.current.all = selectAll;
   /** A tool picked by its shortcut, or put down by it again; nothing without a picture to select on. */
   keys.current.pick = (which: MagicTool) => {
     if (picture === null) return;
@@ -598,6 +618,33 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the picture.'));
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * The changes made here saved as a picture of its own, and the picture they
+   * were made to left as it was saved - its unsaved changes thrown away. The
+   * editor then goes on with the copy.
+   */
+  async function saveAsCopy(): Promise<void> {
+    if (picture === null || picture.versionOf == null || busy) return;
+    const of = picture.versionOf;
+    setBusy(true);
+    setError(null);
+    try {
+      let copy = await saveDesignImageVersion(workspaceId, picture.id, true);
+      if (pendingName !== null) copy = await renameDesignImage(workspaceId, copy.id, pendingName);
+      setPendingName(null);
+      setMade((held) => held.filter((one) => one.job.image?.versionOf !== of));
+      setPast([]);
+      setFuture([]);
+      // Moved to once the leave guard has stepped off its spare history entry, or that step lands back on the original.
+      goingTo.current = `/workspace/${workspaceId}/design/images/${copy.id}/edit`;
+      setShown({ kind: 'picture', picture: copy });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not save the picture.'));
     } finally {
       setBusy(false);
     }
@@ -684,6 +731,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   /** Something on the page that Save would write and leaving would lose. */
   const unsaved = picture !== null && (pendingName !== null || picture.versionOf != null);
+  useEffect(() => {
+    const to = goingTo.current;
+    if (to === null || unsaved) return;
+    if ((location.state as Record<string, unknown> | null)?.orknuxUnsavedWork === true) return;
+    goingTo.current = null;
+    navigate(to, { replace: true });
+  }, [location.key, unsaved]);
   const canSave = unsaved;
   const guard = useLeaveGuard({ unsaved, backTo: `/workspace/${workspaceId}/design/images`, save });
   const canDiscard = canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
@@ -816,6 +870,17 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             >
               <img src={lassoIcon} alt="" width={16} height={16} />
             </button>
+            <button
+              type="button"
+              className={styles.tool}
+              onClick={selectAll}
+              disabled={picture === null}
+              title={`${t('Magic select all')} (${allKey})`}
+              aria-label={t('Magic select all')}
+              data-testid="magic-all"
+            >
+              <img src={selectAllIcon} alt="" width={16} height={16} />
+            </button>
           </div>
           <span className={styles.toolbarGap} aria-hidden="true" />
           <button
@@ -876,6 +941,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <span className={styles.toolbarGap} aria-hidden="true" />
           <button type="button" className={form.ghost} onClick={discard} disabled={!canDiscard || busy} data-testid="editor-discard">
             {t('Discard')}
+          </button>
+          <button
+            type="button"
+            className={form.ghost}
+            onClick={() => void saveAsCopy()}
+            disabled={picture?.versionOf == null || busy}
+            title={t('Saves the changes as a new picture and leaves this one as it was')}
+            data-testid="editor-save-copy"
+          >
+            {t('Save as copy')}
           </button>
           <button type="button" className={form.filled} onClick={save} disabled={!canSave || busy} data-testid="editor-save">
             {t('Save')}

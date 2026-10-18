@@ -212,7 +212,12 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       )}
 
       <div className={open !== null ? styles.split : undefined}>
-      <section className={`${table.card} ${open !== null ? styles.side : ''}`}>
+      <section
+        className={`${table.card} ${open !== null ? styles.side : ''}`}
+        // Its own scroll, with a picture open: the end of the gallery comes into view by it too.
+        onScroll={() => nearEnd.current()}
+        data-testid="design-gallery-column"
+      >
         {images === null && error === null && (
           <p className={table.notice}>
             <Loader />

@@ -157,6 +157,16 @@
   grid-row: 1;
   grid-column: 1;
   min-width: 0;
+  /*
+   * Scrolled on its own, a window tall, while the search above and the
+   * picture beside it stay where they are: looking along the gallery should
+   * not carry the picture being looked at out of view.
+   */
+  position: sticky;
+  top: var(--space-16);
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .side > div[data-testid='design-gallery'] {

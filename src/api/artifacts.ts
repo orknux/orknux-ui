@@ -274,10 +274,10 @@ export async function queueDesignImageEdit(input: EditDesignImageInput): Promise
 }
 
 /** Saves an unsaved version over the picture it is a version of, and throws the picture's other versions away. */
-export async function saveDesignImageVersion(workspaceId: string, id: string): Promise<Artifact> {
+export async function saveDesignImageVersion(workspaceId: string, id: string, asCopy = false): Promise<Artifact> {
   const data = await graphql<{ saveDesignImageVersion: Artifact }>(
-    `mutation SaveDesignImageVersion($workspaceId: ID!, $id: ID!) { saveDesignImageVersion(workspaceId: $workspaceId, id: $id) { ${ARTIFACT_FIELDS} } }`,
-    { workspaceId, id },
+    `mutation SaveDesignImageVersion($workspaceId: ID!, $id: ID!, $asCopy: Boolean) { saveDesignImageVersion(workspaceId: $workspaceId, id: $id, asCopy: $asCopy) { ${ARTIFACT_FIELDS} } }`,
+    { workspaceId, id, asCopy },
   );
   return data.saveDesignImageVersion;
 }

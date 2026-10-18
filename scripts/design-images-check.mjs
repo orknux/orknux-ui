@@ -155,6 +155,20 @@ const editText = (await page.getByTestId('design-image-edit').innerText().catch(
 const pictureTop = (await shown.locator('img').boundingBox().catch(() => null))?.y ?? 0;
 record(closeBox !== null && pictureTop - (closeBox.y + closeBox.height) >= 14,
   `the picture starts clear below the buttons (${Math.round(pictureTop - ((closeBox?.y ?? 0) + (closeBox?.height ?? 0)))}px)`);
+// The gallery scrolls on its own: scrolled, the search and the picture stay where they are.
+const column = page.getByTestId('design-gallery-column');
+const searchBefore = (await page.getByPlaceholder('Search images...').boundingBox().catch(() => null))?.y ?? -1;
+const focusBefore = (await shown.boundingBox().catch(() => null))?.y ?? -1;
+const scrolled = await column.evaluate((one) => {
+  one.scrollTop = 600;
+  return { top: one.scrollTop, scrollable: one.scrollHeight > one.clientHeight };
+}).catch(() => ({ top: 0, scrollable: false }));
+await page.waitForTimeout(300);
+const searchAfter = (await page.getByPlaceholder('Search images...').boundingBox().catch(() => null))?.y ?? -2;
+const focusAfter = (await shown.boundingBox().catch(() => null))?.y ?? -2;
+record(scrolled.scrollable && scrolled.top > 0 && Math.abs(searchAfter - searchBefore) < 1 && Math.abs(focusAfter - focusBefore) < 1,
+  `the gallery scrolls on its own, the search and the picture staying put (${JSON.stringify({ scrolled, searchBefore, searchAfter, focusBefore, focusAfter })})`);
+await column.evaluate((one) => { one.scrollTop = 0; }).catch(() => undefined);
 record(closeBox !== null && closeBox.width >= 36 && editBox !== null && editBox.width < 120 && editText === 'Edit'
   && Math.abs(editBox.y - closeBox.y) < 2 && editBox.x + editBox.width <= closeBox.x && closeBox.x - (editBox.x + editBox.width) >= 14 && closeBox.x - (editBox.x + editBox.width) < 24,
   `a large close button, and Edit just left of it in the corner (${JSON.stringify({ closeBox, editBox, editText })})`);

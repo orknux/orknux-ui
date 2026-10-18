@@ -75,8 +75,9 @@ await page.route('**/graphql', async (route) => {
     } } } });
   }
   if (query.includes('saveDesignImageVersion')) {
-    versionCalls.push(['save', body.variables?.id]);
-    return route.fulfill({ json: { data: { saveDesignImageVersion: PICTURE } } });
+    const copy = body.variables?.asCopy === true;
+    versionCalls.push([copy ? 'copy' : 'save', body.variables?.id]);
+    return route.fulfill({ json: { data: { saveDesignImageVersion: copy ? { ...PICTURE, id: 'DESIGN-950', name: 'Grey field (copy)' } : PICTURE } } });
   }
   if (query.includes('discardDesignImageVersions')) {
     versionCalls.push(['discard', body.variables?.id]);
@@ -100,7 +101,7 @@ record(groupBox !== null && zoomBox !== null && groupBox.x + groupBox.width <= z
 record((await page.getByTestId('magic-rectangle').count()) === 1 && (await page.getByTestId('magic-lasso').count()) === 1, 'with a rectangle and a lasso');
 const controls = await group.evaluate((one) => [...one.children].map((child) => child.tagName));
 const label = (await group.innerText().catch(() => '')).trim().toLowerCase();
-record(JSON.stringify(controls) === JSON.stringify(['SPAN', 'BUTTON', 'BUTTON']) && label === 'magic',
+record(JSON.stringify(controls) === JSON.stringify(['SPAN', 'BUTTON', 'BUTTON', 'BUTTON']) && label === 'magic',
   `named by a word rather than an icon that looks like a third tool (${JSON.stringify({ controls, label })})`);
 
 // Rectangle: drag across the middle of the picture.
@@ -200,7 +201,35 @@ await page.waitForTimeout(600);
 record(versionCalls.some(([what, id]) => what === 'discard' && id === PICTURE.id) && (await page.getByTestId('editor-unsaved').count()) === 0
   && page.url().endsWith(`/design/images/${PICTURE.id}/edit`),
   `Discard throws the change away and goes back to the picture (${JSON.stringify({ versionCalls, url: page.url() })})`);
+// Another round, saved as a copy: a new picture, and the editor goes on with it.
+await page.mouse.move(boxAgain.x + 20, boxAgain.y + 20);
+await page.mouse.down();
+await page.mouse.move(boxAgain.x + 120, boxAgain.y + 120, { steps: 5 });
+await page.mouse.up();
+await page.getByTestId('magic-prompt').fill('a green barn');
+await page.getByTestId('magic-change').click();
+await page.getByTestId('editor-unsaved').waitFor({ timeout: 8_000 }).catch(() => undefined);
+await page.getByTestId('editor-save-copy').click().catch(() => undefined);
+await page.waitForURL(/DESIGN-950\/edit$/, { timeout: 5_000 }).catch(() => undefined);
+record(versionCalls.some(([what]) => what === 'copy') && page.url().endsWith('/design/images/DESIGN-950/edit')
+  && (await page.getByTestId('editor-unsaved').count()) === 0,
+  `Save as copy makes a new picture and goes on with it (${JSON.stringify({ versionCalls, url: page.url() })})`);
 drawnNow = false;
+
+// Select all: the whole picture selected, and what to change asked.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
+await picture.waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(800);
+await page.getByTestId('magic-all').click().catch(() => undefined);
+const whole = await page.getByTestId('magic-selection').boundingBox().catch(() => null);
+const pictureNow = await picture.boundingBox().catch(() => null);
+record(whole !== null && pictureNow !== null && Math.abs(whole.width - pictureNow.width) < 16 && (await page.getByTestId('magic-ask').count()) === 1,
+  `Select all selects the whole picture and asks what to change (${JSON.stringify({ whole, pictureNow })})`);
+await page.keyboard.press('Escape');
+await page.locator('body').click({ position: { x: 5, y: 500 } }).catch(() => undefined);
+await page.keyboard.press('Control+a');
+record((await page.getByTestId('magic-ask').count()) === 1, 'and Ctrl+A does the same');
+await page.keyboard.press('Escape');
 
 // The tools by their shortcuts, chosen in Preferences - M and L unless changed.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
