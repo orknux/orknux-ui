@@ -78,6 +78,8 @@ await page.route('**/graphql', async (route) => {
   }
   if (query.includes('drawDesignImage')) {
     drawRequests.push(body.variables?.input);
+    // Long enough to be seen drawing, and past the moment a quiet loader would appear.
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
     return route.fulfill({ json: { data: { drawDesignImage: DRAWN } } });
   }
   return route.continue();
@@ -156,6 +158,18 @@ record(['Prompt', 'Model', 'Quality'].every((one) => fields.includes(one)), `the
 await page.locator('#image-prompt').fill('zz a drawn lighthouse');
 await page.locator('#image-quality').selectOption('hd').catch(() => undefined);
 await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefined);
+// While it draws: one Orknux mark and the word Drawing, at once, and nothing that turns up later beside it.
+const waiting = page.getByTestId('editor-drawing');
+await waiting.waitFor({ timeout: 3_000 }).catch(() => undefined);
+const early = {
+  marks: await waiting.locator('svg').count(),
+  text: (await waiting.innerText().catch(() => '')).trim(),
+  side: Math.round((await waiting.locator('svg').first().boundingBox().catch(() => null))?.width ?? 0),
+};
+await page.waitForTimeout(3_500);
+const late = { marks: await waiting.locator('svg').count(), text: (await waiting.innerText().catch(() => '')).trim() };
+record(early.marks === 1 && early.text === 'Drawing…' && early.side >= 64 && late.marks === 1 && late.text === 'Drawing…',
+  `while drawing, one large mark and "Drawing…" from the start to the end (${JSON.stringify({ early, late })})`);
 await page.waitForURL(new RegExp(`/design/images/${DRAWN.id}/edit$`), { timeout: 10_000 }).catch(() => undefined);
 const sent = drawRequests[0] ?? {};
 record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null,

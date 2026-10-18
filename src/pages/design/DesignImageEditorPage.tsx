@@ -281,9 +281,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       <div className={styles.editor}>
         <div className={styles.canvas} data-testid="editor-canvas">
           {drawing ? (
-            <div className={styles.waiting}>
-              <Loader />
-              <span>{t('Drawing…')}</span>
+            // One mark from the first moment, saying what it is waiting for: a drawing is never quick enough to hide it.
+            <div className={styles.waiting} data-testid="editor-drawing">
+              <Loader label={t('Drawing…')} delay={0} size={72} />
             </div>
           ) : shown === null ? (
             <p className={styles.empty}>{t('Describe a picture on the right and generate it.')}</p>

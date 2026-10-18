@@ -97,9 +97,15 @@
 .waiting {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
   color: var(--color-text-secondary);
 }
+
+/* The word grows with the mark beside it. */
+.waiting [role='status'] {
+  gap: var(--space-16);
+  font-size: 20px;
+}
+
 
 /* What was drawn on this page, along the canvas's foot. */
 .strip {
