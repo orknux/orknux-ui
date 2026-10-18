@@ -4,7 +4,8 @@
  * The model page had no Used by, so the one question worth asking before
  * removing a model - which agents think with it - had no answer short of
  * opening every agent. It now lists the agents, the workspace settings and the
- * workflows that use it, and removing one still in use is refused.
+ * workflows that use it, and removing one still in use is refused - as is
+ * removing the provider it is reached through.
  *
  * Makes a provider, a model and an agent under names of its own, and removes
  * them again.
@@ -52,8 +53,16 @@ try {
     (await page.locator(`[aria-label="Used by"] [data-dependant-kind="MODEL"]`).count()) === 1,
     'the provider page lists the model reached through it',
   );
+
+  // Removing the provider is refused while its model is in use, and the page says why.
+  await page.getByRole('button', { name: 'Remove Provider' }).click();
+  const refusal = page.getByText(/while its models are in use|dopóki używane są jego modele/);
+  await refusal.first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+  record((await refusal.count()) > 0, 'removing the provider is refused while its model is in use, on the page');
+  record(page.url().includes(`/models/providers/${providerId}`), 'and the page stays where it was');
 } finally {
   if (agentId !== null) await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: agentId }).catch(() => undefined);
+  // The agent goes first, so the provider is no longer refused.
   if (providerId !== null) await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: providerId }).catch(() => undefined);
 }
 
