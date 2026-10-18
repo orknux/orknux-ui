@@ -74,7 +74,7 @@
 .focusEdit {
   position: absolute;
   top: var(--space-8);
-  right: calc(var(--space-8) + 40px + var(--space-8));
+  right: calc(var(--space-8) + 40px + var(--space-16));
   height: 40px;
 }
 

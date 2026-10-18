@@ -152,7 +152,7 @@ const closeBox = await page.getByTestId('design-image-close').boundingBox().catc
 const editBox = await page.getByTestId('design-image-edit').boundingBox().catch(() => null);
 const editText = (await page.getByTestId('design-image-edit').innerText().catch(() => '')).trim();
 record(closeBox !== null && closeBox.width >= 36 && editBox !== null && editBox.width < 120 && editText === 'Edit'
-  && Math.abs(editBox.y - closeBox.y) < 2 && editBox.x + editBox.width <= closeBox.x && closeBox.x - (editBox.x + editBox.width) < 16,
+  && Math.abs(editBox.y - closeBox.y) < 2 && editBox.x + editBox.width <= closeBox.x && closeBox.x - (editBox.x + editBox.width) >= 14 && closeBox.x - (editBox.x + editBox.width) < 24,
   `a large close button, and Edit just left of it in the corner (${JSON.stringify({ closeBox, editBox, editText })})`);
 record(drawnAsked.includes(true), 'and the gallery asks for drawn pictures only');
 
