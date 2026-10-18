@@ -26,6 +26,22 @@ try {
   await page.locator('#action-function').click();
   await page.waitForTimeout(300);
   await page.locator('[role="option"]').first().click();
+  // A name already taken is refused - and the refusal goes once the name is changed.
+  const { workspaceFunctions: present } = await graphql(
+    `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 1) { content { name } } }`,
+    { w: WORKSPACE },
+  );
+  const taken = present.content[0]?.name;
+  if (taken !== undefined) {
+    await page.locator('#action-new-function').fill(taken);
+    await page.getByTestId('open-new-function').click();
+    const refusal = page.getByText(new RegExp(`already exists`));
+    await refusal.first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+    record((await refusal.count()) > 0, `a taken name is refused (${taken})`);
+    await page.locator('#action-new-function').fill(FUNCTION);
+    await page.waitForTimeout(200);
+    record((await refusal.count()) === 0, 'and the refusal goes once the name is changed');
+  }
   await page.locator('#action-new-function').fill(FUNCTION);
 
   const button = page.getByTestId('open-new-function');
@@ -37,8 +53,8 @@ try {
   if (tab !== null) await tab.waitForLoadState('domcontentloaded').catch(() => undefined);
 
   const { workspaceFunctions } = await graphql(
-    `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 200) { content { id name } } }`,
-    { w: WORKSPACE },
+    `query($w: ID!, $s: String) { workspaceFunctions(workspaceId: $w, size: 50, search: $s) { content { id name } } }`,
+    { w: WORKSPACE, s: FUNCTION },
   );
   const made = workspaceFunctions.content.filter((one) => one.name === FUNCTION);
   record(made.length === 1, `saving made the function, once (${made.length})`);
@@ -61,8 +77,8 @@ try {
     await graphql(`mutation($id: ID!) { deleteAction(id: $id) }`, { id: one.id }).catch(() => undefined);
   }
   const { workspaceFunctions } = await graphql(
-    `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 200) { content { id name } } }`,
-    { w: WORKSPACE },
+    `query($w: ID!, $s: String) { workspaceFunctions(workspaceId: $w, size: 50, search: $s) { content { id name } } }`,
+    { w: WORKSPACE, s: FUNCTION },
   ).catch(() => ({ workspaceFunctions: { content: [] } }));
   for (const one of workspaceFunctions.content.filter((f) => f.name === FUNCTION)) {
     await graphql(`mutation($id: ID!) { deleteFunction(id: $id) }`, { id: one.id }).catch(() => undefined);

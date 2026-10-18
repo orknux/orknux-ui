@@ -529,7 +529,9 @@ export function TriggerForm({
      */
     if (!embedded || submitting || !touched) return undefined;
     const timer = window.setTimeout(() => {
-      const now = JSON.stringify(settingsNow());
+      // The new function's name too: it is not in the settings until the function is made, and a
+      // name refused as taken has to be tried again once it is changed.
+      const now = JSON.stringify([settingsNow(), newFunctionName]);
       if (lastWritten.current === now) return;
       lastWritten.current = now;
       void save();
@@ -873,7 +875,11 @@ export function TriggerForm({
                         // Selected on focus, as the function editor does it: the box
                         // arrives with a name in it, so typing over it is one gesture.
                         onFocus={(event) => event.target.select()}
-                        onChange={(event) => setNewFunctionName(event.target.value)}
+                        onChange={(event) => {
+                          setNewFunctionName(event.target.value);
+                          // A refusal of the old name says nothing about the new one.
+                          setError(null);
+                        }}
                       />
                     </div>
                   )}
