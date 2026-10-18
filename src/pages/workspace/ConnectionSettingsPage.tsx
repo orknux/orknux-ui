@@ -46,6 +46,7 @@ import type { SecretFieldHandle, SecretSource } from '../../components/SecretFie
 import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
+import dialog from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
 import { zoned } from '../../session/timeZone';
 import { ConnectionGuide } from '../../components/ConnectionGuide';
@@ -172,6 +173,8 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
   const userToken = useSecretField();
   const { variables, refresh: refreshVariables } = useWorkspaceVariables(workspaceId);
   const [urlOverride, setUrlOverride] = useState('');
+  /** Whether a new agent starts with this connection granted. */
+  const [grantNewAgents, setGrantNewAgents] = useState(false);
   const [smtpUsername, setSmtpUsername] = useState('');
   const [smtpFrom, setSmtpFrom] = useState('');
   const [smtpSecurity, setSmtpSecurity] = useState<MailSecurity>('STARTTLS');
@@ -208,6 +211,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
         setDescription(found.description ?? '');
         setAuthType(found.authType);
         setUrlOverride(found.urlOverride ?? '');
+        setGrantNewAgents(found.grantNewAgents);
         setSmtpUsername(found.smtpUsername ?? '');
         setSmtpFrom(found.smtpFrom ?? '');
         setSmtpSecurity(found.smtpSecurity);
@@ -555,6 +559,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
             ? { userTokenVariableId: sendingUserToken.variable }
             : { userToken: sendingUserToken.value }),
         urlOverride: slack ? undefined : urlOverride.trim(),
+        grantNewAgents,
         // Only for a mail connection: sending these for a Slack one would write
         // settings nothing reads and clear what somebody typed elsewhere.
         smtpPort: mail ? Number(smtpPort) : undefined,
@@ -601,7 +606,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
    * what the page last agreed with the server. Save and Discard are off while
    * there is not.
    */
-  const changed = useDirty({ name, address, description, type, pluginChoice, authType, urlOverride, smtpPort, smtpUsername, smtpFrom, smtpSecurity, secret: secret.sending, appToken: appToken.sending, userToken: userToken.sending }, [connection === null, stores]);
+  const changed = useDirty({ name, address, description, type, pluginChoice, authType, urlOverride, grantNewAgents, smtpPort, smtpUsername, smtpFrom, smtpSecurity, secret: secret.sending, appToken: appToken.sending, userToken: userToken.sending }, [connection === null, stores]);
 
   return (
     <AppShell
@@ -1012,6 +1017,19 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               </div>
             </div>
             )}
+
+            <label className={dialog.checkboxField}>
+              <input
+                type="checkbox"
+                checked={grantNewAgents}
+                onChange={(event) => setGrantNewAgents(event.target.checked)}
+                data-testid="connection-grant-new-agents"
+              />
+              <span>
+                {t('Grant to new agents')}
+                <span className={dialog.checkboxHint}>{t('A new agent starts with it ticked; agents already made are left as they are.')}</span>
+              </span>
+            </label>
 
             {saveError !== null && (
               <p className={styles.error} role="alert">

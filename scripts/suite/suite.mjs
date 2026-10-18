@@ -1549,6 +1549,13 @@ export const TESTS = [
     what: 'Add Model marks with a red star the fields it cannot be sent without',
     needs: ['workspace'],
   },
+  {
+    name: 'connection-grant-new-agents-check',
+    what: 'a connection marked Grant to new agents keeps the mark and is granted to an agent made afterwards',
+    needs: ['workspace'],
+    /* Makes its own connection and agent, and removes both. */
+  },
+
 
 
 

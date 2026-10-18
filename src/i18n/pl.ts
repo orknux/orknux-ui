@@ -37,6 +37,8 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Grant to new agents": "Przyznawaj nowym agentom",
+  "A new agent starts with it ticked; agents already made are left as they are.": "Nowy agent ma je zaznaczone od początku; istniejący agenci pozostają bez zmian.",
   "Go to Models": "Przejdź do modeli",
   "Upscale": "Powiększ",
   "Make the picture larger with an upscale model": "Powiększ obraz modelem do powiększania",

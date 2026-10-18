@@ -79,6 +79,8 @@ export interface WorkspaceConnection {
   /** What it is for, in a sentence: shown under the name, on hover, and to an agent beside the name. */
   description: string | null;
   urlOverride: string | null;
+  /** Whether a new agent starts with this connection granted. */
+  grantNewAgents: boolean;
   effectiveUrl: string;
   authType: AuthType;
   headers: HttpHeader[];
@@ -155,7 +157,7 @@ export interface McpServerCheck {
 
 const CONNECTION_FIELDS = 'id name type url description';
 const WORKSPACE_CONNECTION_FIELDS =
-  'id workspaceId name type pluginType url description urlOverride effectiveUrl authType headers { name value } inherited secretSet ' +
+  'id workspaceId name type pluginType url description urlOverride grantNewAgents effectiveUrl authType headers { name value } inherited secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing ' +
   'appTokenSet appTokenVariableId appTokenVariableName appTokenVariableCatalog appTokenVariableMissing ' +
   'userTokenSet userTokenVariableId userTokenVariableName userTokenVariableCatalog userTokenVariableMissing ' +
@@ -461,6 +463,7 @@ export async function updateWorkspaceConnection(
     smtpFrom?: string;
     smtpSecurity?: MailSecurity;
     urlOverride?: string;
+    grantNewAgents?: boolean;
     headers?: HttpHeader[];
   },
 ): Promise<WorkspaceConnection> {
