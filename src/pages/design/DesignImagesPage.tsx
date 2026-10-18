@@ -297,6 +297,9 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                   aria-pressed={image.id === artifactId}
                 >
                   <img src={image.url} alt={image.prompt} className={gallery.image} loading="lazy" />
+                  {image.draft !== null && image.draft !== undefined && (
+                    <span className={styles.draftBadge} title={t('Changes not saved yet, kept until Save or Discard')}>{t('Draft')}</span>
+                  )}
                 </button>
                 <figcaption className={gallery.caption}>
                   <span className={gallery.prompt} title={image.prompt}>

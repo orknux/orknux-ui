@@ -28,6 +28,8 @@ const MODELS = [
 ];
 const edits = [];
 const versionCalls = [];
+/** Whether the picture is answered with a draft: changes kept from an earlier visit. */
+let withDraft = false;
 /** Whether the change asked for is drawn yet: answered as drawn once the check has looked at the waiting. */
 let drawnNow = false;
 const VERSION = () => ({ ...PICTURE, id: `DESIGN-${902 + edits.length}`, versionOf: PICTURE.id });
@@ -47,7 +49,11 @@ PICTURE.url = dataUrl;
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
   const query = body.query ?? '';
-  if (query.includes('workspaceArtifact(')) return route.fulfill({ json: { data: { workspaceArtifact: PICTURE } } });
+  if (query.includes('workspaceArtifact(')) {
+    const id = body.variables?.id;
+    if (id === 'DESIGN-960') return route.fulfill({ json: { data: { workspaceArtifact: { ...PICTURE, id, versionOf: PICTURE.id, draft: null } } } });
+    return route.fulfill({ json: { data: { workspaceArtifact: { ...PICTURE, draft: withDraft ? 'DESIGN-960' : null } } } });
+  }
   if (query.includes('workspaceModels') || query.includes('models(')) {
     const answered = await route.fetch().catch(() => null);
     const json = answered === null ? null : await answered.json().catch(() => null);
@@ -273,6 +279,15 @@ await page.keyboard.press('l');
 const putDown = await page.getByTestId('magic-lasso').getAttribute('aria-pressed');
 record(byM === 'true' && byL.rectangle === 'false' && byL.lasso === 'true' && putDown === 'false',
   `M picks the rectangle, L the lasso, and L again puts it down (${JSON.stringify({ byM, byL, putDown })})`);
+
+// A picture with a draft opens at the draft - unsaved changes kept across leaving - with Save on.
+withDraft = true;
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-unsaved').waitFor({ timeout: 15_000 }).catch(() => undefined);
+const draftMark = (await page.getByTestId('editor-unsaved').innerText().catch(() => '')).trim().toLowerCase();
+record(draftMark === 'draft' && (await page.getByTestId('editor-save').isEnabled()),
+  `a picture with a draft opens at it, marked Draft, with Save on (${draftMark})`);
+withDraft = false;
 
 // Lasso: a loop drawn freehand, on the picture opened again.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });

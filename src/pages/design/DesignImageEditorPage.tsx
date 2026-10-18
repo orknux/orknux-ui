@@ -33,6 +33,7 @@ import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import {
   matches,
   useMagicAllShortcut,
+  useSaveShortcut,
   useMagicLassoShortcut,
   useMagicRectangleShortcut,
   useRedoShortcut,
@@ -153,6 +154,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const rectangleKey = useMagicRectangleShortcut();
   const lassoKey = useMagicLassoShortcut();
   const allKey = useMagicAllShortcut();
+  const saveKey = useSaveShortcut();
   const location = useLocation();
   /** Where to go once the leave guard has let go of its history - a copy just saved. */
   const goingTo = useRef<string | null>(null);
@@ -175,9 +177,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (picture?.id === artifactId || picture?.versionOf === artifactId) return;
     let left = false;
     fetchWorkspaceArtifact(workspaceId, artifactId)
-      .then((found) => {
+      .then(async (found) => {
         if (left || found === null) return;
-        setShown({ kind: 'picture', picture: found });
+        // A picture with a draft opens at the draft: unsaved changes are kept until Save or Discard, across leaving and restarts.
+        const draft = found.draft === null ? null : await fetchWorkspaceArtifact(workspaceId, found.draft).catch(() => null);
+        if (left) return;
+        setShown({ kind: 'picture', picture: draft ?? found });
         setPrompt(found.prompt);
         const drawn = found.drawnWith;
         if (drawn !== null) {
@@ -349,8 +354,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {} });
-  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {} };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
@@ -360,6 +365,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         return;
       }
       const typing = event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement;
+      // Save, chosen in Preferences, heard in a text box too - as the other editors hear it.
+      if (matches(event, saveKey)) {
+        event.preventDefault();
+        void keys.current.save();
+        return;
+      }
       if (matches(event, zoomInKey) || ((event.ctrlKey || event.metaKey) && event.code === 'NumpadAdd')) {
         event.preventDefault();
         keys.current.zoomIn();
@@ -387,7 +398,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     };
     document.addEventListener('keydown', pressed);
     return () => document.removeEventListener('keydown', pressed);
-  }, [undoKey, redoKey, zoomInKey, zoomOutKey, rectangleKey, lassoKey, allKey]);
+  }, [undoKey, redoKey, zoomInKey, zoomOutKey, rectangleKey, lassoKey, allKey, saveKey]);
 
   // -- Magic edit ---------------------------------------------------------
 
@@ -537,6 +548,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   };
 
   keys.current.all = selectAll;
+  keys.current.save = () => save();
   /** A tool picked by its shortcut, or put down by it again; nothing without a picture to select on. */
   keys.current.pick = (which: MagicTool) => {
     if (picture === null) return;
@@ -578,7 +590,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * name. Answers whether it was written, for the leave guard.
    */
   async function save(): Promise<boolean> {
-    if (picture === null || busy) return !unsaved;
+    if (picture === null || busy) return !unsaved && !drafted;
     if (picture.versionOf == null && pendingName === null) return true;
     setBusy(true);
     setError(null);
@@ -621,9 +633,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       setMade((held) => held.filter((one) => one.job.image?.versionOf !== of));
       setPast([]);
       setFuture([]);
-      // Moved to once the leave guard has stepped off its spare history entry, or that step lands back on the original.
-      goingTo.current = `/workspace/${workspaceId}/design/images/${copy.id}/edit`;
+      const to = `/workspace/${workspaceId}/design/images/${copy.id}/edit`;
       setShown({ kind: 'picture', picture: copy });
+      // With a rename held, the leave guard holds a spare history entry: moved to once it has stepped off it,
+      // or that step lands back on the original. Without one there is nothing to wait for.
+      if (unsaved) goingTo.current = to;
+      else navigate(to, { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the picture.'));
     } finally {
@@ -710,8 +725,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setPendingName(next);
   }
 
-  /** Something on the page that Save would write and leaving would lose. */
-  const unsaved = picture !== null && (pendingName !== null || picture.versionOf != null);
+  /**
+   * What leaving would lose: a rename, which is held on the page alone. Changes
+   * drawn here are a draft kept by the server, so leaving loses nothing of them.
+   */
+  const unsaved = picture !== null && pendingName !== null;
+  /** The picture shown is a draft: changes Save would write over the picture. */
+  const drafted = picture !== null && picture.versionOf != null;
   useEffect(() => {
     const to = goingTo.current;
     if (to === null || unsaved) return;
@@ -719,7 +739,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     goingTo.current = null;
     navigate(to, { replace: true });
   }, [location.key, unsaved]);
-  const canSave = unsaved;
+  const canSave = unsaved || drafted;
   const guard = useLeaveGuard({ unsaved, backTo: `/workspace/${workspaceId}/design/images`, save });
   const canDiscard = canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
 
@@ -801,7 +821,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           </span>
         )}
         {picture?.versionOf != null && (
-          <span className={styles.unsavedMark} data-testid="editor-unsaved">{t('Unsaved changes')}</span>
+          <span className={styles.unsavedMark} data-testid="editor-unsaved" title={t('Changes not saved yet, kept until Save or Discard')}>
+            {t('Draft')}
+          </span>
         )}
         {/* Said as a control and not only as a title that happens to be clickable. */}
         {naming === null && (picture === null ? job === null : picture.name !== null) && (
@@ -1279,11 +1301,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         subject={guard.asking ? (pendingName ?? picture?.name ?? t('This picture')) : null}
         creating={false}
         onStay={guard.stay}
-        onLeave={() => {
-          // Left without saving: the changes made here go with it rather than lingering unseen.
-          void dropVersions().catch(() => undefined);
-          guard.leave();
-        }}
+        onLeave={guard.leave}
         onSaveAndLeave={guard.saveAndLeave}
       />
     </AppShell>

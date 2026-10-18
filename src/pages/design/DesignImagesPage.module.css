@@ -247,3 +247,18 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* A picture with changes not saved yet. */
+.draftBadge {
+  position: absolute;
+  top: var(--space-6);
+  left: var(--space-6);
+  padding: 1px var(--space-6);
+  border: 1px solid var(--color-violet);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-raised);
+  color: var(--color-violet);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
