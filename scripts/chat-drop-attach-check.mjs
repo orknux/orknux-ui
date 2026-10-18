@@ -26,6 +26,8 @@ const sweep = async () => {
 };
 
 let uploaded = 0;
+/** The names each upload carried, read off the multipart body. */
+const carried = [];
 try {
   const started = await graphql(`mutation($input: StartChatInput!) { startChat(input: $input) { id } }`, {
     input: { workspaceId: WORKSPACE, title: `${PREFIX} ${Date.now()}` },
@@ -47,8 +49,11 @@ try {
   await page.route(`**/api/workspaces/${WORKSPACE}/attachments`, async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     uploaded += 1;
+    const names = [...(route.request().postData() ?? '').matchAll(/filename="([^"]+)"/g)].map((match) => match[1]);
+    carried.push(names);
+    const types = { 'dropped.png': 'image/png', 'notes.pdf': 'application/pdf', 'log.txt': 'text/plain' };
     return route.fulfill({
-      json: { attachments: [{ id: 'dropped-1', filename: 'dropped.png', contentType: 'image/png', size: 68 }] },
+      json: { attachments: names.map((name, at) => ({ id: `dropped-${uploaded}-${at}`, filename: name, contentType: types[name] ?? 'application/octet-stream', sizeBytes: 4 })) },
     });
   });
 
@@ -75,6 +80,24 @@ try {
   record((await page.getByTitle('Open dropped.png').count()) >= 1, 'and it waits beside the message, as an attached file does');
   record((await chat.count()) === 0, 'and the drop zone goes');
   record(page.url().includes(`/chat/${started.startChat.id}`), 'the page is still the chat, not the dropped file');
+
+  // Any kind of file, and several at once: a PDF and a text file in one drop.
+  const documents = await page.evaluateHandle(() => {
+    const data = new DataTransfer();
+    data.items.add(new File(['%PDF-1.4'], 'notes.pdf', { type: 'application/pdf' }));
+    data.items.add(new File(['started'], 'log.txt', { type: 'text/plain' }));
+    return data;
+  });
+  await target.dispatchEvent('dragover', { dataTransfer: documents });
+  await target.dispatchEvent('drop', { dataTransfer: documents });
+  await page.waitForTimeout(800);
+  record(
+    uploaded === 2 && JSON.stringify(carried[1]) === JSON.stringify(['notes.pdf', 'log.txt']),
+    `a PDF and a text file dropped together go up in one upload (${JSON.stringify(carried[1])})`,
+  );
+  const composer = page.locator('form').filter({ has: page.getByPlaceholder(/Type a message/) });
+  const shown = await composer.innerText();
+  record(/notes\.pdf/.test(shown) && /log\.txt/.test(shown) && /dropped\.png/.test(shown), 'all three wait beside the message');
 } finally {
   await sweep();
 }
