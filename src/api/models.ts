@@ -624,3 +624,35 @@ export function formatChange(fraction: number | null): string | null {
   const percent = (fraction * 100).toFixed(1);
   return `${fraction >= 0 ? '+' : ''}${percent}%`;
 }
+
+/** What reading a models file made, and what it left alone. */
+export interface ModelImport {
+  providers: string[];
+  /** Of those, the ones that held a key where they came from and now need one. */
+  needsKey: string[];
+  models: string[];
+  skipped: string[];
+}
+
+/** Saves the given models - with their providers, without any key - as a file. */
+export async function exportModels(workspaceId: string, modelIds: string[]): Promise<void> {
+  const answer = await fetch(`/api/workspaces/${workspaceId}/models/export?models=${modelIds.join(',')}`, { credentials: 'same-origin' });
+  if (!answer.ok) throw new Error(t('Could not export the models.'));
+  const url = URL.createObjectURL(await answer.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'models.orkx.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Reads a models file into the workspace. */
+export async function importModels(workspaceId: string, content: string): Promise<ModelImport> {
+  const data = await graphql<{ importModels: ModelImport }>(
+    `mutation ImportModels($workspaceId: ID!, $content: String!) { importModels(workspaceId: $workspaceId, content: $content) { providers needsKey models skipped } }`,
+    { workspaceId, content },
+  );
+  return data.importModels;
+}

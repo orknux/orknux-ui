@@ -282,3 +282,40 @@
 .notice:last-child {
   border-bottom: 0;
 }
+
+/* Import and Export, beside Add Model and quieter than it. */
+.transferButtons {
+  display: inline-flex;
+  gap: var(--space-8);
+  margin-left: auto;
+  margin-right: var(--space-8);
+}
+
+.ghostButton {
+  padding: var(--space-8) var(--space-14);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.ghostButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.transferNote,
+.transferError {
+  margin: 0;
+  padding: var(--space-8) var(--space-20) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.transferError {
+  color: var(--color-danger-solid);
+}

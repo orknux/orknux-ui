@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { fetchModels, fetchProviders, modelKindLabel, providerStatusLabel, providerTypeLabel, setModelEnabled } from '../../api/models';
+import { exportModels, fetchModels, fetchProviders, importModels, modelKindLabel, providerStatusLabel, providerTypeLabel, setModelEnabled } from '../../api/models';
 import type { Model, ModelProvider, ProviderStatus } from '../../api/models';
 import { createAgentForModel } from '../../api/agents';
 import type { SessionUser } from '../../api/session';
@@ -25,7 +25,7 @@ import { shellUser } from '../../session/user';
 import styles from './WorkspaceModelsPage.module.css';
 import { DuplicateButton } from '../../components/ComponentTransfer';
 import { duplicateModel, duplicateModelProvider } from '../../api/transfer';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface WorkspaceModelsPageProps {
   session: SessionUser;
@@ -196,6 +196,34 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
 
   const shownProviders = slice<ModelProvider>(arrangedProviders, providerPage, providerSize);
   const shownModels = slice<Model>(arrangedModels, modelPage, modelSize);
+
+  const importRef = useRef<HTMLInputElement>(null);
+  /** What the last export or import said, in a line under the heading. */
+  const [transferNote, setTransferNote] = useState<{ error: boolean; text: string } | null>(null);
+
+  /** The models the search and the type filter show - every page of them - as one file. */
+  async function exportShown() {
+    setTransferNote(null);
+    try {
+      await exportModels(workspaceId, (arrangedModels ?? []).map((model) => model.id));
+    } catch (cause) {
+      setTransferNote({ error: true, text: cause instanceof Error ? cause.message : t('Could not export the models.') });
+    }
+  }
+
+  async function importFile(file: File) {
+    setTransferNote(null);
+    try {
+      const done = await importModels(workspaceId, await file.text());
+      const parts = [tf('{count} models added', { count: done.models.length })];
+      if (done.skipped.length > 0) parts.push(tf('{count} already here', { count: done.skipped.length }));
+      if (done.needsKey.length > 0) parts.push(tf('add a key to {providers}', { providers: done.needsKey.join(', ') }));
+      setTransferNote({ error: false, text: parts.join(' · ') });
+      load();
+    } catch (cause) {
+      setTransferNote({ error: true, text: cause instanceof Error ? cause.message : t('Could not import the models.') });
+    }
+  }
 
   const load = useCallback(() => {
     if (workspaceId === '') return;
@@ -433,6 +461,40 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <h2 id="models" className={styles.cardTitle}>{t('Available Models')}</h2>
+          {/* What the list shows goes out as a file, with its providers and without their keys; a file of them comes in. */}
+          <span className={styles.transferButtons}>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => importRef.current?.click()}
+              title={t('Add models and their providers from a models file')}
+              data-testid="models-import"
+            >
+              {t('Import')}
+            </button>
+            <input
+              ref={importRef}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (file !== undefined) void importFile(file);
+              }}
+              data-testid="models-import-file"
+            />
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => void exportShown()}
+              disabled={(arrangedModels ?? []).length === 0}
+              title={t('Save the models listed below, with their providers and without any key, as a file')}
+              data-testid="models-export"
+            >
+              {t('Export')}
+            </button>
+          </span>
           {/* A model belongs to a provider, so there is nothing to add without one. */}
           <button
             type="button"
@@ -441,6 +503,11 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             disabled={providers === null || providers.length === 0}
           >{t('+ Add Model')}</button>
         </div>
+        {transferNote !== null && (
+          <p className={transferNote.error ? styles.transferError : styles.transferNote} role="status" data-testid="models-transfer-note">
+            {transferNote.text}
+          </p>
+        )}
         <SearchRow inset>
           <SearchBox
             value={modelTyped}

@@ -1555,6 +1555,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own connection and agent, and removes both. */
   },
+  {
+    name: 'models-transfer-check',
+    what: 'the Models page exports the models it lists, with providers and no key, and imports a models file',
+    needs: ['workspace'],
+    /* Imports its own provider and models, and removes them. */
+  },
+
 
 
 
