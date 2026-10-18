@@ -50,13 +50,13 @@
   position: absolute;
   top: var(--space-8);
   right: var(--space-8);
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-6);
   background: var(--color-surface-raised);
   color: var(--color-text-secondary);
-  font-size: 18px;
+  font-size: 26px;
   line-height: 1;
   cursor: pointer;
 }
@@ -67,7 +67,12 @@
 }
 
 .focusPrompt {
-  padding-right: 36px;
+  padding-right: 48px;
+}
+
+/* As wide as its words, like every other button on a page. */
+.focusEdit {
+  align-self: flex-start;
 }
 
 /* What it was drawn with: a label and its value, row by row. */
@@ -94,4 +99,114 @@
   justify-content: center;
   min-height: 1px;
   padding: var(--space-8) 0;
+}
+
+/*
+ * With a picture open: the gallery down the left, as many columns as its width
+ * holds - one at least - and the picture beside it, staying in view while the
+ * gallery is scrolled.
+ */
+.split {
+  display: grid;
+  grid-template-columns: clamp(220px, 32%, 560px) minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+.split .focus {
+  position: sticky;
+  top: var(--space-16);
+  grid-row: 1;
+  grid-column: 2;
+  margin-bottom: 0;
+}
+
+.side {
+  grid-row: 1;
+  grid-column: 1;
+  min-width: 0;
+}
+
+.side > div[data-testid='design-gallery'] {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+/* With the picture beside the gallery, its facts go under it rather than beside it. */
+.split .focus {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split .focus {
+    position: static;
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .side {
+    grid-row: 2;
+  }
+}
+
+/* A picture still on its way: the mark and what it is waiting for, where the picture will be. */
+.pending {
+  border-style: dashed;
+}
+
+.pendingThumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  cursor: default;
+}
+
+.pendingFailed {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.pendingDismiss {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* A picture drawn in the editor and not kept yet. */
+.draftBadge {
+  position: absolute;
+  top: var(--space-6);
+  left: var(--space-6);
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.draftBadgeInline {
+  margin-right: var(--space-8);
+  padding: 1px var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
 }

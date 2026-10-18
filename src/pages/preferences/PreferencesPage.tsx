@@ -32,6 +32,8 @@ import {
   setTurnShortcut,
   setAddShortcut,
   setSelectShortcut,
+  setZoomInShortcut,
+  setZoomOutShortcut,
   setUndoShortcut,
   setRedoShortcut,
   setDuplicateShortcut,
@@ -45,6 +47,8 @@ import {
   useTurnShortcut,
   useAddShortcut,
   useSelectShortcut,
+  useZoomInShortcut,
+  useZoomOutShortcut,
   useUndoShortcut,
   useRedoShortcut,
   useDuplicateShortcut,
@@ -60,6 +64,10 @@ import {
   turnShortcut,
   addShortcut,
   selectShortcut,
+  zoomInShortcut,
+  zoomOutShortcut,
+  DEFAULT_ZOOM_IN_SHORTCUT,
+  DEFAULT_ZOOM_OUT_SHORTCUT,
   undoShortcut,
   redoShortcut,
   duplicateShortcut,
@@ -82,7 +90,9 @@ type ShortcutKey =
   | 'redo'
   | 'duplicate'
   | 'publish'
-  | 'voiceMute';
+  | 'voiceMute'
+  | 'zoomIn'
+  | 'zoomOut';
 
 /** How each is read and how each is stored, for Save. */
 const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string) => void }[] = [
@@ -98,6 +108,8 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'duplicate', stored: duplicateShortcut, store: setDuplicateShortcut },
   { key: 'publish', stored: publishShortcut, store: setPublishShortcut },
   { key: 'voiceMute', stored: voiceMuteShortcut, store: setVoiceMuteShortcut },
+  { key: 'zoomIn', stored: zoomInShortcut, store: setZoomInShortcut },
+  { key: 'zoomOut', stored: zoomOutShortcut, store: setZoomOutShortcut },
 ];
 
 export interface PreferencesPageProps {
@@ -143,6 +155,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const select = shortcutDrafts.select ?? storedSelect;
   const storedUndo = useUndoShortcut();
   const undo = shortcutDrafts.undo ?? storedUndo;
+  const storedZoomIn = useZoomInShortcut();
+  const zoomIn = shortcutDrafts.zoomIn ?? storedZoomIn;
+  const storedZoomOut = useZoomOutShortcut();
+  const zoomOut = shortcutDrafts.zoomOut ?? storedZoomOut;
   const storedRedo = useRedoShortcut();
   const redo = shortcutDrafts.redo ?? storedRedo;
   const storedDuplicate = useDuplicateShortcut();
@@ -169,6 +185,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'duplicate'
     | 'publish'
     | 'voiceMute'
+    | 'zoomIn'
+    | 'zoomOut'
     | null
   >(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -219,6 +237,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'duplicate') draftShortcut('duplicate', said);
       else if (recording === 'publish') draftShortcut('publish', said);
       else if (recording === 'voiceMute') draftShortcut('voiceMute', said);
+      else if (recording === 'zoomIn') draftShortcut('zoomIn', said);
+      else if (recording === 'zoomOut') draftShortcut('zoomOut', said);
       else draftShortcut('format', said);
       setRecording(null);
       setRefused(null);
@@ -992,6 +1012,66 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 )}
               </div>
               {recording === 'redo' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="zoomIn-shortcut">{t('Zoom In Shortcut')}</span>
+                <FieldHint label={t('Zoom In Shortcut')}>
+                  {t('Zooms the image editor in. The number pad + is heard as well.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'zoomIn' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'zoomIn' ? null : 'zoomIn'));
+                  }}
+                  data-testid="zoomIn-shortcut"
+                >
+                  {recording === 'zoomIn' ? t('Press any keys…') : zoomIn}
+                </button>
+                {zoomIn !== DEFAULT_ZOOM_IN_SHORTCUT && recording !== 'zoomIn' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('zoomIn', DEFAULT_ZOOM_IN_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'zoomIn' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="zoomOut-shortcut">{t('Zoom Out Shortcut')}</span>
+                <FieldHint label={t('Zoom Out Shortcut')}>
+                  {t('Zooms the image editor out. The number pad - is heard as well.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'zoomOut' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'zoomOut' ? null : 'zoomOut'));
+                  }}
+                  data-testid="zoomOut-shortcut"
+                >
+                  {recording === 'zoomOut' ? t('Press any keys…') : zoomOut}
+                </button>
+                {zoomOut !== DEFAULT_ZOOM_OUT_SHORTCUT && recording !== 'zoomOut' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('zoomOut', DEFAULT_ZOOM_OUT_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'zoomOut' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>

@@ -54,11 +54,13 @@ export interface Artifact {
   drawnAt: string;
   /** Where it was kept - a picture drawn in Design; null elsewhere. */
   drawnWith: ArtifactDrawing | null;
+  /** Drawn in the image editor and not yet saved. */
+  draft: boolean;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
-  drawnWith { modelId model size quality style drawnBy }
+  drawnWith { modelId model size quality style drawnBy } draft
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
@@ -170,11 +172,72 @@ export interface DrawDesignImageInput {
   style: string | null;
 }
 
-/** Draws with the image model chosen and keeps the picture; a refusal throws with its reason. */
-export async function drawDesignImage(input: DrawDesignImageInput): Promise<Artifact> {
-  const data = await graphql<{ drawDesignImage: Artifact }>(
-    `mutation DrawDesignImage($input: DrawDesignImageInput!) { drawDesignImage(input: $input) { ${ARTIFACT_FIELDS} } }`,
+export type DesignImageJobStatus = 'QUEUED' | 'DRAWING' | 'DRAWN' | 'FAILED';
+
+/** A picture asked for in Design, on its way to being drawn. */
+export interface DesignImageJob {
+  id: string;
+  status: DesignImageJobStatus;
+  prompt: string;
+  modelId: string | null;
+  model: string;
+  size: string | null;
+  quality: string | null;
+  style: string | null;
+  requestedBy: string;
+  requestedAt: string;
+  startedAt: string | null;
+  /** Why it was not drawn, on a FAILED one. */
+  reason: string | null;
+  /** How many queued pictures are drawn before this one; null unless QUEUED. */
+  ahead: number | null;
+  /** The picture, once DRAWN. */
+  image: Artifact | null;
+}
+
+const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead image { ${ARTIFACT_FIELDS} }`;
+
+/** Queues a picture and answers at once; a refusal of what could never be drawn throws with its reason. */
+export async function queueDesignImage(input: DrawDesignImageInput): Promise<DesignImageJob> {
+  const data = await graphql<{ queueDesignImage: DesignImageJob }>(
+    `mutation QueueDesignImage($input: DrawDesignImageInput!) { queueDesignImage(input: $input) { ${JOB_FIELDS} } }`,
     { input },
   );
-  return data.drawDesignImage;
+  return data.queueDesignImage;
+}
+
+/** What the workspace has waiting, being drawn, or failed - oldest first. */
+export async function fetchDesignImageQueue(workspaceId: string): Promise<DesignImageJob[]> {
+  const data = await graphql<{ designImageQueue: DesignImageJob[] }>(
+    `query DesignImageQueue($workspaceId: ID!) { designImageQueue(workspaceId: $workspaceId) { ${JOB_FIELDS} } }`,
+    { workspaceId },
+  );
+  return data.designImageQueue;
+}
+
+/** One request in whatever state it is, with its picture once drawn; null for one not here. */
+export async function fetchDesignImageJob(workspaceId: string, id: string): Promise<DesignImageJob | null> {
+  const data = await graphql<{ designImageJob: DesignImageJob | null }>(
+    `query DesignImageJob($workspaceId: ID!, $id: ID!) { designImageJob(workspaceId: $workspaceId, id: $id) { ${JOB_FIELDS} } }`,
+    { workspaceId, id },
+  );
+  return data.designImageJob;
+}
+
+/** Takes a queued or failed request off. */
+export async function dismissDesignImageJob(id: string): Promise<boolean> {
+  const data = await graphql<{ dismissDesignImageJob: boolean }>(
+    `mutation DismissDesignImageJob($id: ID!) { dismissDesignImageJob(id: $id) }`,
+    { id },
+  );
+  return data.dismissDesignImageJob;
+}
+
+/** Keeps a draft drawn in the image editor. Discarding one is `deleteArtifact`. */
+export async function saveDesignImage(workspaceId: string, id: string): Promise<Artifact> {
+  const data = await graphql<{ saveDesignImage: Artifact }>(
+    `mutation SaveDesignImage($workspaceId: ID!, $id: ID!) { saveDesignImage(workspaceId: $workspaceId, id: $id) { ${ARTIFACT_FIELDS} } }`,
+    { workspaceId, id },
+  );
+  return data.saveDesignImage;
 }

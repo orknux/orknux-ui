@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
-import type { Artifact } from '../../api/artifacts';
+import { dismissDesignImageJob, fetchDesignImageQueue, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
+import type { Artifact, DesignImageJob } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { AppShell } from '../../components/AppShell';
@@ -13,12 +13,15 @@ import { shellUser } from '../../session/user';
 import table from '../workspace/CatalogueTable.module.css';
 import gallery from '../workspace/WorkspaceArtifactsPage.module.css';
 import styles from './DesignImagesPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface DesignImagesPageProps {
   session: SessionUser;
   onSignOut?: () => void;
 }
+
+/** How often the queue is asked about while something on it is waiting or being drawn. */
+const ASK_EVERY_MS = 2000;
 
 /** How many pictures one read brings; the next comes as the end of the gallery scrolls into view. */
 const BATCH = 48;
@@ -85,6 +88,33 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
     setImages(null);
     readFrom(0);
   }, [readFrom]);
+
+  /*
+   * What is queued, being drawn, or failed - at the front of the gallery, each
+   * marked for what it is. Asked again while anything on it is still on its
+   * way, and the gallery read again when something leaves it drawn.
+   */
+  const [queue, setQueue] = useState<DesignImageJob[]>([]);
+  const readQueue = useCallback(() => {
+    if (workspaceId === '') return;
+    fetchDesignImageQueue(workspaceId)
+      .then((now) => {
+        setQueue((held) => {
+          const before = held.filter((one) => one.status !== 'FAILED').length;
+          const after = now.filter((one) => one.status !== 'FAILED').length;
+          if (after < before) readFrom(0);
+          return now;
+        });
+      })
+      .catch(() => undefined);
+  }, [workspaceId, readFrom]);
+  useEffect(readQueue, [readQueue]);
+  const onTheWay = queue.some((one) => one.status === 'QUEUED' || one.status === 'DRAWING');
+  useEffect(() => {
+    if (!onTheWay) return;
+    const ask = window.setInterval(readQueue, ASK_EVERY_MS);
+    return () => window.clearInterval(ask);
+  }, [onTheWay, readQueue]);
 
   /*
    * The next batch when the end of the gallery comes near the bottom of the
@@ -167,6 +197,103 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
         </button>
       </header>
 
+      <SearchRow>
+        <SearchBox value={hunting} onChange={setHunting} placeholder={t('Search images...')} label={t('Search images')} />
+      </SearchRow>
+
+      {error !== null && (
+        <p className={table.pageError} role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className={open !== null ? styles.split : undefined}>
+      <section className={`${table.card} ${open !== null ? styles.side : ''}`}>
+        {images === null && error === null && (
+          <p className={table.notice}>
+            <Loader />
+          </p>
+        )}
+        {images?.length === 0 && queue.length === 0 && (
+          <p className={table.notice}>
+            {asked === ''
+              ? t('Nothing yet. An image node or a task that draws fills this.')
+              : t('No image matches what you typed.')}
+          </p>
+        )}
+        {images !== null && (images.length > 0 || queue.length > 0) && (
+          <div className={gallery.gallery} data-testid="design-gallery">
+            {queue.map((one) => (
+              <figure key={`job-${one.id}`} className={`${gallery.card} ${styles.pending}`} data-job-status={one.status}>
+                <div className={`${gallery.thumb} ${styles.pendingThumb}`}>
+                  {one.status === 'FAILED' ? (
+                    <span className={styles.pendingFailed}>{t('Not drawn')}</span>
+                  ) : (
+                    <Loader
+                      label={one.status === 'DRAWING' ? t('Drawing…') : t('Queued')}
+                      delay={0}
+                      size={48}
+                    />
+                  )}
+                  {one.status !== 'DRAWING' && (
+                    <button
+                      type="button"
+                      className={styles.pendingDismiss}
+                      onClick={() => void dismissDesignImageJob(one.id).then(readQueue)}
+                      aria-label={t('Take it off')}
+                      title={t('Take it off')}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <figcaption className={gallery.caption}>
+                  <span className={gallery.prompt} title={one.prompt}>
+                    {one.prompt}
+                  </span>
+                  <span className={gallery.facts} title={one.reason ?? undefined}>
+                    {one.status === 'FAILED'
+                      ? (one.reason ?? t('the model gave no reason'))
+                      : one.status === 'QUEUED' && (one.ahead ?? 0) > 0
+                        ? tf('{model} · {ahead} ahead', { model: one.model, ahead: one.ahead ?? 0 })
+                        : one.model}
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
+            {images.map((image) => (
+              <figure
+                key={image.id}
+                className={`${gallery.card} ${image.id === artifactId ? styles.chosen : ''}`}
+              >
+                <button
+                  type="button"
+                  className={gallery.thumb}
+                  onClick={() => navigate(`/workspace/${workspaceId}/design/images/${image.id}`)}
+                  aria-label={image.prompt}
+                  aria-pressed={image.id === artifactId}
+                >
+                  <img src={image.url} alt={image.prompt} className={gallery.image} loading="lazy" />
+                  {image.draft && <span className={styles.draftBadge}>{t('Draft')}</span>}
+                </button>
+                <figcaption className={gallery.caption}>
+                  <span className={gallery.prompt} title={image.prompt}>
+                    {image.prompt}
+                  </span>
+                  <span className={gallery.facts}>
+                    {image.source}
+                    <span className={gallery.dot}>·</span>
+                    {timeAgo(image.drawnAt)}
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
+        <div ref={end} className={styles.end}>
+          {loading && images !== null && <Loader />}
+        </div>
+      </section>
       {open !== null && (
         <section className={styles.focus} data-design-image={open.id}>
           <img src={open.url} alt={open.prompt} className={styles.focusImage} />
@@ -181,10 +308,13 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             >
               ×
             </button>
-            <p className={styles.focusPrompt}>{open.prompt}</p>
+            <p className={styles.focusPrompt}>
+              {open.draft && <span className={styles.draftBadgeInline}>{t('Draft')}</span>}
+              {open.prompt}
+            </p>
             <button
               type="button"
-              className={table.createButton}
+              className={`${table.createButton} ${styles.focusEdit}`}
               onClick={() => navigate(`/workspace/${workspaceId}/design/images/${open.id}/edit`)}
               data-testid="design-image-edit"
             >
@@ -230,63 +360,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
         </section>
       )}
 
-      <SearchRow>
-        <SearchBox value={hunting} onChange={setHunting} placeholder={t('Search images...')} label={t('Search images')} />
-      </SearchRow>
-
-      {error !== null && (
-        <p className={table.pageError} role="alert">
-          {error}
-        </p>
-      )}
-
-      <section className={table.card}>
-        {images === null && error === null && (
-          <p className={table.notice}>
-            <Loader />
-          </p>
-        )}
-        {images?.length === 0 && (
-          <p className={table.notice}>
-            {asked === ''
-              ? t('Nothing yet. An image node or a task that draws fills this.')
-              : t('No image matches what you typed.')}
-          </p>
-        )}
-        {images !== null && images.length > 0 && (
-          <div className={gallery.gallery} data-testid="design-gallery">
-            {images.map((image) => (
-              <figure
-                key={image.id}
-                className={`${gallery.card} ${image.id === artifactId ? styles.chosen : ''}`}
-              >
-                <button
-                  type="button"
-                  className={gallery.thumb}
-                  onClick={() => navigate(`/workspace/${workspaceId}/design/images/${image.id}`)}
-                  aria-label={image.prompt}
-                  aria-pressed={image.id === artifactId}
-                >
-                  <img src={image.url} alt={image.prompt} className={gallery.image} loading="lazy" />
-                </button>
-                <figcaption className={gallery.caption}>
-                  <span className={gallery.prompt} title={image.prompt}>
-                    {image.prompt}
-                  </span>
-                  <span className={gallery.facts}>
-                    {image.source}
-                    <span className={gallery.dot}>·</span>
-                    {timeAgo(image.drawnAt)}
-                  </span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        )}
-        <div ref={end} className={styles.end}>
-          {loading && images !== null && <Loader />}
-        </div>
-      </section>
+      </div>
 
     </AppShell>
   );

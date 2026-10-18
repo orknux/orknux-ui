@@ -87,6 +87,9 @@ export interface InstallationSettings {
   /** The longest description a picture is drawn from, in characters; Admin > Settings. */
   imageMaxPrompt: number;
   imageMaxPromptConfigured: number;
+  /** How many of Design's queued pictures are drawn at the same time; Admin > Settings. */
+  imageDrawsAtOnce: number;
+  imageDrawsAtOnceConfigured: number;
   /** What a fresh installation allows, before anybody changed it. */
   chatMaxRoundsConfigured: number;
   /**
@@ -336,7 +339,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -478,6 +481,17 @@ export async function setPluginTimeoutSeconds(seconds: number): Promise<Installa
  * its own. Eight was written into the code, and an agent holding twenty tools
  * spent them listing and loading before the work began.
  */
+/** How many of Design's queued pictures are drawn at the same time. */
+export async function setImageDrawsAtOnce(draws: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setImageDrawsAtOnce: InstallationSettings }>(
+    `mutation SetImageDrawsAtOnce($draws: Int!) {
+       setImageDrawsAtOnce(draws: $draws) { ${FIELDS} }
+     }`,
+    { draws },
+  );
+  return data.setImageDrawsAtOnce;
+}
+
 /** The longest description a picture is drawn from - in Design, a chat and a task. */
 export async function setImageMaxPrompt(characters: number): Promise<InstallationSettings> {
   const data = await graphql<{ setImageMaxPrompt: InstallationSettings }>(

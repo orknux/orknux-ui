@@ -28,6 +28,7 @@ import {
   setLongestStoredValue,
   setDrawingScale,
   setImageMaxPrompt,
+  setImageDrawsAtOnce,
   setSessionCompactAfterTokens,
   setSessionCompactionKeepTurns,
   setSessionCompactionSummaryTokens,
@@ -186,6 +187,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [storedValue, setStoredValue] = useState('');
   const [drawScale, setDrawScale] = useState('');
   const [imagePrompt, setImagePrompt] = useState('');
+  const [imageDraws, setImageDraws] = useState('');
   const [compactAfter, setCompactAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
@@ -325,6 +327,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setStoredValue(String(held.longestStoredValue));
         setDrawScale(String(held.drawingScale));
         setImagePrompt(String(held.imageMaxPrompt));
+        setImageDraws(String(held.imageDrawsAtOnce));
         setCompactAfter(String(held.sessionCompactAfterTokens));
         setCompactKeep(String(held.sessionCompactionKeepTurns));
         setCompactSummary(String(held.sessionCompactionSummaryTokens));
@@ -408,6 +411,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: storedValue, held: settings.longestStoredValue, write: setLongestStoredValue },
         { typed: drawScale, held: settings.drawingScale, write: setDrawingScale },
         { typed: imagePrompt, held: settings.imageMaxPrompt, write: setImageMaxPrompt },
+        { typed: imageDraws, held: settings.imageDrawsAtOnce, write: setImageDrawsAtOnce },
         {
           typed: compactAfter,
           held: settings.sessionCompactAfterTokens,
@@ -2165,6 +2169,32 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Longest image prompt')}
                 />
                 <span className={styles.retentionUnit}>{t('characters')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Images drawn at once')}</p>
+                  <FieldHint label={t('Images drawn at once')}>
+                    {t("How many of Design's queued pictures are drawn at the same time. One suits a local image server, which draws one at a time anyway. Between 1 and 16.")}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="image-draws-at-once"
+                  name="imageDrawsAtOnce"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={16}
+                  value={imageDraws}
+                  onChange={(event) => setImageDraws(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Images drawn at once')}
+                />
+                <span className={styles.retentionUnit}>{t('pictures')}</span>
               </div>
             </div>
 

@@ -12,6 +12,8 @@ const ADD_KEY = 'orknux.addShortcut';
 const SELECT_KEY = 'orknux.selectShortcut';
 const PUBLISH_KEY = 'orknux.publishShortcut';
 const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
+const ZOOM_IN_KEY = 'orknux.zoomInShortcut';
+const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
 
 /** What opens the palette when nothing has been chosen. */
 export const DEFAULT_SHORTCUT = 'Ctrl+Q';
@@ -144,6 +146,16 @@ export const DEFAULT_PUBLISH_SHORTCUT = 'Ctrl+Enter';
 export const DEFAULT_VOICE_MUTE_SHORTCUT = 'Alt+M';
 
 /**
+ * Zooming the image editor's canvas in and out.
+ *
+ * `Ctrl+=` is Ctrl and the key that carries +: the key is named by what it
+ * types without Shift, which is how every other shortcut here is read. The
+ * number pad's + and - are heard as well, whatever is chosen.
+ */
+export const DEFAULT_ZOOM_IN_SHORTCUT = 'Ctrl+=';
+export const DEFAULT_ZOOM_OUT_SHORTCUT = 'Ctrl+-';
+
+/**
  * Which keystroke opens the command palette, written the way it is shown:
  * modifiers in a fixed order, then the key — `Ctrl+Q`, `Ctrl+Shift+P`, `Alt+G`.
  *
@@ -212,6 +224,8 @@ const addingNode = remembered(ADD_KEY, DEFAULT_ADD_SHORTCUT);
 const selecting = remembered(SELECT_KEY, DEFAULT_SELECT_SHORTCUT);
 const publishing = remembered(PUBLISH_KEY, DEFAULT_PUBLISH_SHORTCUT);
 const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
+const zoomingIn = remembered(ZOOM_IN_KEY, DEFAULT_ZOOM_IN_SHORTCUT);
+const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
 
 export function paletteShortcut(): Shortcut {
   return palette.get();
@@ -355,6 +369,30 @@ export function setVoiceMuteShortcut(next: Shortcut): void {
 
 export function useVoiceMuteShortcut(): Shortcut {
   return voiceMuting.use();
+}
+
+export function zoomInShortcut(): Shortcut {
+  return zoomingIn.get();
+}
+
+export function setZoomInShortcut(next: Shortcut): void {
+  zoomingIn.set(next);
+}
+
+export function useZoomInShortcut(): Shortcut {
+  return zoomingIn.use();
+}
+
+export function zoomOutShortcut(): Shortcut {
+  return zoomingOut.get();
+}
+
+export function setZoomOutShortcut(next: Shortcut): void {
+  zoomingOut.set(next);
+}
+
+export function useZoomOutShortcut(): Shortcut {
+  return zoomingOut.use();
 }
 
 /** One key, named as somebody would read it rather than as the browser sends it. */

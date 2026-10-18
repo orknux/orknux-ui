@@ -11,8 +11,12 @@
  * more are read as its end is scrolled to, rather than ten in a row over a
  * pager. "+ New image" in the header goes to the image editor - a page with
  * the canvas and, down its right, the prompt, the model and its parameters -
- * which draws with the model chosen, opens a picture already drawn with what
- * it was drawn from, and undoes and redoes.
+ * which queues the picture with the model chosen and shows it the moment it is
+ * drawn, keeps it as a draft until Save and deletes it on Discard, zooms in and
+ * out by button and by the shortcuts chosen in Preferences, opens a picture
+ * already drawn with what it was drawn from, and undoes and redoes. A picture
+ * still queued shows in the gallery, marked; a draft is marked too. With a
+ * picture open, the gallery stands down its left.
  *
  * The artifact list and the drawing are answered here, so the check does not
  * depend on the installation having drawn anything or holding an image model.
@@ -36,14 +40,30 @@ const PICTURE = {
   url: PNG,
   previewUrl: PNG,
   drawnAt: new Date().toISOString(),
+  drawnWith: null,
+  draft: false,
 };
 const drawnAsked = [];
 // Sixty more, as the gallery's pages: enough for several rows, and a second read.
-const MANY = Array.from({ length: 60 }, (_, index) => ({ ...PICTURE, id: `IMAGE-${500000 + index}`, prompt: `zz design check ${index}` }));
+const MANY = Array.from({ length: 60 }, (_, index) => ({ ...PICTURE, id: `IMAGE-${500000 + index}`, prompt: `zz design check ${index}`, draft: index === 0 }));
 const DRAWN = { ...PICTURE, id: 'DESIGN-777', kind: 'DESIGN', source: 'Design', sourcePath: 'design/images/DESIGN-777', prompt: 'zz a drawn lighthouse',
-  drawnWith: { modelId: '9191', model: 'Drawer', size: '1024x1024', quality: 'hd', style: null, drawnBy: 'alice' } };
+  draft: true, drawnWith: { modelId: '9191', model: 'Drawer', size: '1024x1024', quality: 'hd', style: null, drawnBy: 'alice' } };
+const SECOND = { ...DRAWN, id: 'DESIGN-778', prompt: 'zz a second lighthouse' };
 const pagesAsked = [];
 const drawRequests = [];
+const saved = [];
+const deleted = [];
+/** A request already waiting, for the gallery's tile. */
+const WAITING = { id: '30', status: 'QUEUED', prompt: 'zz a queued lighthouse', modelId: '9191', model: 'Drawer', size: null, quality: null, style: null,
+  requestedBy: 'alice', requestedAt: new Date().toISOString(), startedAt: null, reason: null, ahead: 1, image: null };
+/** The requests the editor makes, each drawn a few seconds after it was asked for. */
+const asked = [];
+const jobFor = (id) => {
+  const one = asked.find((held) => held.id === id);
+  if (one === undefined) return null;
+  const drawn = Date.now() - one.at > 4_500;
+  return { ...WAITING, id, prompt: one.input.prompt, ahead: null, status: drawn ? 'DRAWN' : 'DRAWING', image: drawn ? one.picture : null };
+};
 
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
@@ -76,11 +96,22 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('imageModelParameters')) {
     return route.fulfill({ json: { data: { imageModelParameters: [{ name: 'quality', kind: 'CHOICE', choices: ['standard', 'hd'], minSide: null, maxSide: null, step: null }] } } });
   }
-  if (query.includes('drawDesignImage')) {
-    drawRequests.push(body.variables?.input);
-    // Long enough to be seen drawing, and past the moment a quiet loader would appear.
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
-    return route.fulfill({ json: { data: { drawDesignImage: DRAWN } } });
+  if (query.includes('queueDesignImage')) {
+    const input = body.variables?.input;
+    drawRequests.push(input);
+    const id = String(40 + asked.length);
+    asked.push({ id, input, at: Date.now(), picture: asked.length === 0 ? DRAWN : SECOND });
+    return route.fulfill({ json: { data: { queueDesignImage: { ...WAITING, id, prompt: input.prompt, ahead: 0 } } } });
+  }
+  if (query.includes('designImageJob(')) return route.fulfill({ json: { data: { designImageJob: jobFor(body.variables?.id) } } });
+  if (query.includes('designImageQueue(')) return route.fulfill({ json: { data: { designImageQueue: [WAITING] } } });
+  if (query.includes('saveDesignImage')) {
+    saved.push(body.variables?.id);
+    return route.fulfill({ json: { data: { saveDesignImage: { ...DRAWN, draft: false } } } });
+  }
+  if (query.includes('deleteArtifact')) {
+    deleted.push(body.variables?.id);
+    return route.fulfill({ json: { data: { deleteArtifact: true } } });
   }
   return route.continue();
 });
@@ -109,7 +140,15 @@ record(page.url().endsWith(`/design/images/${PICTURE.id}`), `which lands on that
 const shown = page.locator(`[data-design-image="${PICTURE.id}"]`);
 await shown.waitFor({ timeout: 10_000 }).catch(() => undefined);
 const box = await shown.locator('img').boundingBox().catch(() => null);
-record(box !== null && box.width > 200, `the image is shown large above the gallery (${JSON.stringify(box)})`);
+record(box !== null && box.width > 200, `the image is shown large (${JSON.stringify(box)})`);
+const side = await page.getByTestId('design-gallery').boundingBox().catch(() => null);
+const focusBox = await shown.boundingBox().catch(() => null);
+record(side !== null && focusBox !== null && side.x + side.width <= focusBox.x + 1 && side.width >= 160,
+  `with the gallery down its left, a column at least (${JSON.stringify({ side, focusBox })})`);
+const closeBox = await page.getByTestId('design-image-close').boundingBox().catch(() => null);
+const editBox = await page.getByTestId('design-image-edit').boundingBox().catch(() => null);
+record(closeBox !== null && closeBox.width >= 36 && editBox !== null && editBox.width < 240,
+  `a large close button, and Open in editor as wide as its words (${JSON.stringify({ closeBox, editBox })})`);
 record(drawnAsked.includes(true), 'and the gallery asks for drawn pictures only');
 
 // Design is the section lit, and its menu holds Images.
@@ -127,7 +166,7 @@ await shown.waitFor({ state: 'detached', timeout: 5_000 }).catch(() => undefined
 record(page.url().endsWith('/design/images') && (await shown.count()) === 0, `the close button goes back to the gallery (${page.url()})`);
 
 // A gallery: several rows across the width, and more read at its end.
-const cards = page.getByTestId('design-gallery').locator('figure');
+const cards = page.getByTestId('design-gallery').locator('figure:not([data-job-status])');
 await cards.nth(10).waitFor({ timeout: 10_000 }).catch(() => undefined);
 const rows = await cards.evaluateAll((all) => new Set(all.map((one) => Math.round(one.getBoundingClientRect().top))).size);
 record(rows >= 3, `the gallery fills rows rather than one (${rows} rows of ${await cards.count()})`);
@@ -135,6 +174,11 @@ await page.getByTestId('design-gallery').locator('figure').last().scrollIntoView
 await page.waitForTimeout(1500);
 record(pagesAsked.includes(1) && (await cards.count()) === 61, `scrolling to its end reads the rest (${await cards.count()}, pages ${JSON.stringify(pagesAsked)})`);
 record((await page.locator('[class*="pager"], [class*="Pagination"]').count()) === 0, 'and there is no pager');
+const tile = page.locator('figure[data-job-status="QUEUED"]');
+record((await tile.count()) === 1 && (await tile.innerText()).includes('Queued') && (await tile.locator('svg').count()) === 1,
+  `a queued picture is in the gallery, marked as queued (${(await tile.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
+const drafts = await page.getByTestId('design-gallery').locator('figure', { hasText: 'Draft' }).count();
+record(drafts === 1, `and a draft is marked as one (${drafts})`);
 
 // "+ New image", in the header's right corner, goes to the editor rather than a dialog.
 const button = page.getByTestId('new-image');
@@ -158,7 +202,7 @@ record(['Prompt', 'Model', 'Quality'].every((one) => fields.includes(one)), `the
 await page.locator('#image-prompt').fill('zz a drawn lighthouse');
 await page.locator('#image-quality').selectOption('hd').catch(() => undefined);
 await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefined);
-// While it draws: one Orknux mark and the word Drawing, at once, and nothing that turns up later beside it.
+// Queued and answered at once: while it draws, one Orknux mark and the word Drawing, and nothing that turns up later beside it.
 const waiting = page.getByTestId('editor-drawing');
 await waiting.waitFor({ timeout: 3_000 }).catch(() => undefined);
 const early = {
@@ -166,18 +210,37 @@ const early = {
   text: (await waiting.innerText().catch(() => '')).trim(),
   side: Math.round((await waiting.locator('svg').first().boundingBox().catch(() => null))?.width ?? 0),
 };
-await page.waitForTimeout(3_500);
+record((await page.getByRole('button', { name: 'Generate' }).isEnabled()), 'Generate stays free while it draws, so more can be queued');
+await page.waitForTimeout(2_500);
 const late = { marks: await waiting.locator('svg').count(), text: (await waiting.innerText().catch(() => '')).trim() };
 record(early.marks === 1 && early.text === 'Drawing…' && early.side >= 64 && late.marks === 1 && late.text === 'Drawing…',
   `while drawing, one large mark and "Drawing…" from the start to the end (${JSON.stringify({ early, late })})`);
 await page.waitForURL(new RegExp(`/design/images/${DRAWN.id}/edit$`), { timeout: 10_000 }).catch(() => undefined);
 const sent = drawRequests[0] ?? {};
 record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null,
-  `the drawing goes to the model chosen with what was asked (${JSON.stringify(sent)})`);
-record((await page.getByTestId('editor-picture').count()) === 1, 'and the picture is on the canvas');
+  `the picture is queued for the model chosen with what was asked (${JSON.stringify(sent)})`);
+record((await page.getByTestId('editor-picture').count()) === 1, 'and is on the canvas the moment it is drawn');
+const marked = await page.locator('[class*="toolbarTitle"]').innerText().catch(() => '');
+record(marked.toLowerCase().includes('draft') && (await page.getByTestId('editor-save').isEnabled()), `as a draft, with Save on (${marked})`);
+
+// Zoom: the button, then the shortcuts chosen in Preferences - Ctrl+= and Ctrl+- unless changed.
+const widthNow = async () => Math.round((await page.getByTestId('editor-picture').boundingBox().catch(() => null))?.width ?? 0);
+const fitted = await widthNow();
+await page.getByTestId('editor-zoom-in').click();
+const zoomedIn = await widthNow();
+await page.locator('body').click({ position: { x: 5, y: 300 } }).catch(() => undefined);
+await page.keyboard.press('Control+=');
+const keyedIn = await widthNow();
+await page.keyboard.press('Control+-');
+await page.keyboard.press('Control+-');
+const keyedOut = await widthNow();
+const level = await page.getByTestId('editor-zoom').innerText();
+record(zoomedIn > fitted && keyedIn > zoomedIn && keyedOut < keyedIn && /%$/.test(level),
+  `zoom in and out by button and by Ctrl+= and Ctrl+- (${JSON.stringify({ fitted, zoomedIn, keyedIn, keyedOut, level })})`);
+await page.getByTestId('editor-zoom').click();
+record((await page.getByTestId('editor-zoom').innerText()) === 'Fit', 'and the level goes back to Fit');
 
 // Undo takes the picture and the quality off; redo puts them back.
-await page.locator('body').click({ position: { x: 5, y: 300 } }).catch(() => undefined);
 await page.keyboard.press('Control+z');
 await page.waitForTimeout(400);
 const undone = { url: page.url(), picture: await page.getByTestId('editor-picture').count() };
@@ -191,6 +254,21 @@ await page.keyboard.press('Control+Shift+z');
 await page.waitForTimeout(400);
 record(page.url().endsWith(`/design/images/${DRAWN.id}/edit`) && (await page.locator('#image-quality').inputValue().catch(() => null)) === 'hd',
   `redo puts both back (${page.url()})`);
+
+// Save keeps the draft.
+await page.getByTestId('editor-save').click().catch(() => undefined);
+await page.waitForTimeout(500);
+record(saved.includes(DRAWN.id) && (await page.getByTestId('editor-save').innerText()) === 'Saved' && !(await page.getByTestId('editor-save').isEnabled()),
+  `Save keeps the draft (${JSON.stringify(saved)})`);
+
+// Discard throws a second try away and goes back to the one before.
+await page.locator('#image-prompt').fill('zz a second lighthouse');
+await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefined);
+await page.waitForURL(new RegExp(`/design/images/${SECOND.id}/edit$`), { timeout: 12_000 }).catch(() => undefined);
+await page.getByTestId('editor-discard').click().catch(() => undefined);
+await page.waitForTimeout(500);
+record(deleted.includes(SECOND.id) && page.url().endsWith(`/design/images/${DRAWN.id}/edit`),
+  `Discard deletes the second and goes back to the first (${JSON.stringify({ deleted, url: page.url() })})`);
 
 // A picture already drawn opens in the editor with what it was drawn from.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${DRAWN.id}`, { waitUntil: 'domcontentloaded' });
