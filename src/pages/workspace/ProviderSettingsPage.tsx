@@ -24,6 +24,7 @@ import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
+import { UsedBy } from '../../components/UsedBy';
 import { Loader } from '../../components/Loader';
 import { SecretField, useSecretField } from '../../components/SecretField';
 import type { SecretSource } from '../../components/SecretField';
@@ -1085,6 +1086,13 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
             </button>
           </div>
         </form>
+      )}
+
+      {/* The models reached through it, which go with it - above the way to remove it. */}
+      {!adding && providerId !== undefined && (
+        <section className={styles.card}>
+          <UsedBy kind="MODEL_PROVIDER" componentId={providerId} />
+        </section>
       )}
 
       <section className={styles.dangerCard}>

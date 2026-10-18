@@ -16,6 +16,7 @@ import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
 import { FieldHint } from '../../components/FieldHint';
+import { UsedBy } from '../../components/UsedBy';
 import { Loader } from '../../components/Loader';
 import {
   ModelDetailsFields,
@@ -352,6 +353,14 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
 
             <ModelThrottleFields form={form} />
           </form>
+
+          {/*
+            What thinks, speaks or draws with it, immediately above the way to
+            remove it - which is refused while anything here does.
+          */}
+          <section className={styles.card}>
+            <UsedBy kind="MODEL" componentId={modelId} />
+          </section>
 
           <section className={styles.dangerCard}>
             <h2 className={styles.dangerHeading}>{t('Danger Zone')}</h2>

@@ -3999,6 +3999,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'model-used-by-check',
+    what: "a model's page lists what uses it and each row opens it; a provider's page lists its models",
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

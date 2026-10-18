@@ -25,7 +25,10 @@ export type DependencyKind =
   | 'LIBRARY'
   | 'CONNECTION'
   | 'MCP_SERVER'
-  | 'MODEL_PROVIDER';
+  | 'MODEL_PROVIDER'
+  | 'MODEL'
+  /** Only ever an answer: a workspace setting naming the thing asked about; `section` is which. */
+  | 'WORKSPACE';
 
 /** One thing that depends on a component, and where to open it. */
 export interface Dependant {
@@ -37,6 +40,8 @@ export interface Dependant {
   workspaceName: string | null;
   /** Whether it is the published copy rather than the drawn one. */
   published: boolean;
+  /** Where on its page it is, for a part of a page - a workspace setting's anchor. */
+  section?: string | null;
 }
 
 export interface Dependants {
@@ -50,7 +55,7 @@ export interface Dependants {
   hidden: number;
 }
 
-export const DEPENDANT_FIELDS = 'kind id name workspaceId workspaceName published';
+export const DEPENDANT_FIELDS = 'kind id name workspaceId workspaceName published section';
 
 export async function fetchDependants(kind: DependencyKind, componentId: string): Promise<Dependants> {
   const data = await graphql<{ componentDependants: Dependants }>(
@@ -88,6 +93,8 @@ const LABELS: Record<DependencyKind, string> = {
   CONNECTION: 'connection',
   MCP_SERVER: t('MCP server'),
   MODEL_PROVIDER: 'model provider',
+  MODEL: 'model',
+  WORKSPACE: t('workspace setting'),
 };
 
 export function dependantLabel(entry: Dependant): string {
@@ -148,5 +155,10 @@ export function dependantPath(entry: Dependant): string {
       return `${workspace}/integrations/servers/${entry.id}`;
     case 'MODEL_PROVIDER':
       return `${workspace}/models/providers/${entry.id}`;
+    case 'MODEL':
+      return `${workspace}/models/${entry.id}`;
+    case 'WORKSPACE':
+      // The settings page, opened at the setting that names it.
+      return `${workspace}/settings${entry.section ? `#${entry.section}` : ''}`;
   }
 }

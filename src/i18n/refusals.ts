@@ -119,6 +119,7 @@ const PL: Record<string, string> = {
   // --- something that is still in use ------------------------------------
   ActionInUse: '{name} jest używana przez {users}, więc nie można jej usunąć',
   AgentInUse: '{name} jest używany przez {nodes}, więc nie można go usunąć',
+  ModelInUse: '{name} jest używany przez {users}, więc nie można go usunąć',
   ConditionInUse: '{name} jest używany przez {used}',
   FunctionInUse: '{name} jest wywoływana przez {callers}',
   FunctionImported: '{name} jest importowana przez {importers}',

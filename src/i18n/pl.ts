@@ -1421,6 +1421,7 @@ export const PL: Record<string, string> = {
   "Publish template": "Opublikuj szablon",
   "Use template": "Użyj szablonu",
   "Test Connection": "Sprawdź połączenie",
+  "workspace setting": "ustawienie przestrzeni roboczej",
   "Width of the sidebar": "Szerokość paska bocznego",
   "Naming this chat…": "Nadawanie nazwy rozmowie…",
   "{count} unread": "{count} nieprzeczytane",
