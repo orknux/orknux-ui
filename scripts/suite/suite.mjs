@@ -3966,6 +3966,11 @@ export const TESTS = [
     // The list and the count are failed by route; nothing is read or marked read.
   },
   {
+    name: 'palette-toggle-check',
+    what: 'the quick-actions shortcut closes the box it opened, and opens it again',
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

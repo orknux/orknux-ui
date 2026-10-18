@@ -406,6 +406,13 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
       const wantsRecent = matches(event, recentKeys);
       if (!wantsRecent && !matches(event, shortcut)) return;
       event.preventDefault();
+      // Pressed again on the list it opened, it puts the box away - the same keys open and close it.
+      if (open && wantsRecent === onRecent) {
+        setOpen(false);
+        setOnRecent(false);
+        inputRef.current?.blur();
+        return;
+      }
       setOpen(true);
       setOnRecent(wantsRecent);
       setText('');
@@ -415,7 +422,7 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shortcut, recentKeys]);
+  }, [shortcut, recentKeys, open, onRecent]);
 
   // Clicking anywhere else puts it away, the way a menu goes away.
   useEffect(() => {
