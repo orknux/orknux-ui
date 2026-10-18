@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { fetchModels, fetchProviders, modelKindLabel, providerStatusLabel, providerTypeLabel, setModelEnabled } from '../../api/models';
 import type { Model, ModelProvider, ProviderStatus } from '../../api/models';
@@ -61,6 +61,21 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
   const [models, setModels] = useState<Model[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addingModel, setAddingModel] = useState(false);
+  /*
+   * `?add=model` opens Add Model as the page arrives - the agent form's link
+   * to make one lands here. Once the providers are known, since a model needs
+   * one; then the question is taken off the address so a reload asks nothing.
+   */
+  const [asked, setAsked] = useSearchParams();
+  useEffect(() => {
+    if (asked.get('add') !== 'model' || providers === null) return;
+    if (providers.length > 0) setAddingModel(true);
+    setAsked((was) => {
+      const next = new URLSearchParams(was);
+      next.delete('add');
+      return next;
+    }, { replace: true });
+  }, [asked, providers, setAsked]);
   /** Which model an agent is being made on, so the row cannot be pressed twice. */
   const [makingAgentOn, setMakingAgentOn] = useState<string | null>(null);
 

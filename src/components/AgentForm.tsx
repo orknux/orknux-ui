@@ -1805,6 +1805,24 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             models could not be fetched looks exactly the same from outside,
             which is what this line is for.
           */}
+          {/*
+            The way to make one, in a new tab like the jump above so an edit in
+            progress here is not lost. Shown whether or not there are models:
+            the one an agent needs may not exist yet either way.
+          */}
+          {!modelCatalogue.loading && modelCatalogue.failure === null && (
+            <p className={own.emptyNote}>
+              <Link
+                className={styles.jump}
+                to={`/workspace/${workspaceId}/models?add=model`}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="agent-add-model"
+              >
+                {models.filter(answers).length === 0 ? t('No models yet - add one') : t('Add a model')}
+              </Link>
+            </p>
+          )}
           <CatalogueNote catalogue={modelCatalogue} className={own.emptyNote} />
         </div>
 
