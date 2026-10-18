@@ -291,7 +291,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const show = (next: Shown) => {
     setShown(next);
     setPendingName(null);
-    setZoom(null);
+    // The zoom stays: an edit's result is looked at where the change was looked at. Fit is the way back.
     const path =
       next?.kind === 'picture'
         ? `/workspace/${workspaceId}/design/images/${next.picture.id}/edit`
@@ -854,7 +854,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     // The picture being changed stays in view, what is being redrawn highlighted, and the wait said under it.
                     <div className={styles.changing}>
                     <div className={styles.changingFrame} data-testid="editor-changing">
-                      <img src={over.url} alt="" className={styles.changingPicture} />
+                      <img
+                        src={over.url}
+                        alt=""
+                        className={zoom === null ? styles.changingPicture : styles.pictureZoomed}
+                        style={zoom === null ? undefined : { width: `${over.width * zoom}px`, height: `${over.height * zoom}px` }}
+                      />
                       <svg
                         className={styles.changingLayer}
                         viewBox={`0 0 ${over.width} ${over.height}`}

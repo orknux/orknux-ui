@@ -114,6 +114,9 @@ record(inside.prompt === 1 && inside.model === 1 && inside.change === 'Change' &
   `asking what to change, with which model, and Change (${JSON.stringify(inside)})`);
 
 await ask.getByTestId('magic-model').selectOption('9292');
+// Zoomed in before the change is asked for: the zoom is kept through it.
+await page.getByTestId('editor-zoom-in').click();
+const zoomBefore = await page.getByTestId('editor-zoom').innerText();
 await ask.getByTestId('magic-prompt').fill('a red barn');
 await ask.getByTestId('magic-change').click();
 await page.waitForTimeout(600);
@@ -137,6 +140,10 @@ const mask = await page.evaluate(async (url) => {
 record(mask.width === PICTURE_SIZE.width && mask.height === PICTURE_SIZE.height && mask.middle === 0 && mask.corner === 255,
   `the mask is the picture's size, transparent inside the selection (${JSON.stringify(mask)})`);
 record((await page.getByTestId('editor-drawing').count()) === 1, 'and the change is on the canvas, waiting to be drawn');
+const zoomAfter = await page.getByTestId('editor-zoom').innerText();
+const drawnAt = Math.round((await page.getByTestId('editor-changing').locator('img').boundingBox().catch(() => null))?.width ?? 0);
+record(zoomBefore !== 'Fit' && zoomAfter === zoomBefore && Math.abs(drawnAt - PICTURE_SIZE.width * parseInt(zoomAfter, 10) / 100) < 3,
+  `the zoom is kept while the change is drawn (${JSON.stringify({ zoomBefore, zoomAfter, drawnAt })})`);
 const changing = page.getByTestId('editor-changing');
 const kept = {
   picture: await changing.locator('img').count(),
