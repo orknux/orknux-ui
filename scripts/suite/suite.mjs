@@ -3943,6 +3943,11 @@ export const TESTS = [
     // The dependants are canned, so the check needs no fixture of its own.
   },
   {
+    name: 'agent-orknux-default-check',
+    what: 'a new agent starts with "Let this agent ask orknux about orknux" ticked',
+    needs: ['workspace'],
+  },
+  {
     name: 'agent-add-model-check',
     what: "the agent form's Model picker links to the Models page in a new tab, with Add Model open",
     needs: ['workspace'],
