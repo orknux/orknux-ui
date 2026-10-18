@@ -11,8 +11,8 @@
   display: flex;
   justify-content: flex-end;
   box-sizing: border-box;
-  padding-top: var(--space-12);
-  padding-bottom: var(--space-12);
+  padding-top: var(--space-16);
+  padding-bottom: var(--space-16);
   /* The sidebar's own colour, so the strip reads as the shell's, not as one more card on the page. */
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);

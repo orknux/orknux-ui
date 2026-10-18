@@ -48,6 +48,9 @@ interface Placement {
  * A spacer of the strip's height stays in the page, so the last field rests
  * above the strip rather than under it.
  */
+/** The least room between Save and the window's right edge, in pixels. */
+const MIN_SIDE = 24;
+
 export function SaveBar({ children, slot }: SaveBarProps) {
   const spacer = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
@@ -106,7 +109,8 @@ export function SaveBar({ children, slot }: SaveBarProps) {
 
   const style: CSSProperties = placed === null
     ? { visibility: 'hidden' }
-    : { left: placed.left, bottom: placed.bottom, paddingLeft: placed.paddingLeft, paddingRight: placed.paddingRight };
+    // Never tighter than MIN_SIDE: a page whose content runs close to the edge would put Save there too.
+    : { left: placed.left, bottom: placed.bottom, paddingLeft: placed.paddingLeft, paddingRight: Math.max(placed.paddingRight, MIN_SIDE) };
 
   return (
     <>
