@@ -2972,13 +2972,17 @@ ${named}`;
             left of the controls that act on it.
           */}
           <header className={styles.titleBar}>
-            <h1 className={styles.chatTitle}>{current.title}</h1>
-            {naming === current.id && (
-              <span className={styles.naming} role="status" data-testid="chat-naming">
-                <span className={styles.namingDot} aria-hidden="true" />
-                {t('Naming this chat…')}
-              </span>
-            )}
+            {/* In place of "New chat" while the title is generated: the words that are about to be replaced, replaced. */}
+            <h1 className={styles.chatTitle}>
+              {naming === current.id ? (
+                <span className={styles.naming} role="status" data-testid="chat-naming">
+                  <span className={styles.namingDot} aria-hidden="true" />
+                  {t('Naming this chat…')}
+                </span>
+              ) : (
+                current.title
+              )}
+            </h1>
             <div className={styles.titleRight}>
             <div className={styles.modelBar} ref={pickerRef}>
               <button

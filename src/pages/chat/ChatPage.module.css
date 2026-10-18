@@ -1966,9 +1966,7 @@ button.attachmentName {
 .naming {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-6);
-  margin-left: var(--space-12);
-  font-size: var(--text-sm);
+  gap: var(--space-8);
   color: var(--color-text-muted);
   white-space: nowrap;
 }

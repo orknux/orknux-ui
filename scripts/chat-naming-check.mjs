@@ -68,7 +68,9 @@ try {
   await page.getByText('Forty gigabytes.').first().waitFor({ timeout: 15_000 }).catch(() => undefined);
   const naming = page.getByTestId('chat-naming');
   await naming.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const title = page.locator('h1').filter({ has: naming });
   record((await naming.count()) === 1 && /Naming this chat/.test(await naming.innerText()), 'while it is named, the title bar says so');
+  record((await title.count()) === 1 && !/zz chat naming/.test(await title.innerText()), 'in place of the title, not beside it');
   record((await page.getByTestId('chat-row-naming').count()) === 1, 'and its row in the list turns a spinner beside the name');
 
   finishes = true;
