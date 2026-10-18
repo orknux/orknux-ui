@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import {
+import { providerHolds,
   createModel,
   createProvider,
   fetchDiscoveredModels,
@@ -33,7 +33,7 @@ export interface ModelDialogProps {
  * checked and counted against a quota it would never spend. They stay in the type and
  * the labels for anything registered while they were on offer.
  */
-const MODEL_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION'];
+const MODEL_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE', 'UPSCALE', 'DECISION'];
 
 /**
  * A name worth showing, from an id that may not be one.
@@ -123,7 +123,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
    * the other pairings - so the list offers exactly the ones that would save.
    */
   const usable = useMemo(
-    () => providers.filter((provider) => (provider.type === 'SYSTEM_ONE') === (kind === 'DECISION')),
+    () => providers.filter((provider) => providerHolds(provider.type, kind)),
     [providers, kind],
   );
 

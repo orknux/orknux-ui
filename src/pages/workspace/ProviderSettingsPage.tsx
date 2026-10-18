@@ -53,6 +53,8 @@ const PROVIDER_TYPES: ProviderType[] = [
   'LLAMA_CPP',
   // OpenAI-shaped pictures, with a picture edit's mask read white-for-the-change.
   'STABLE_DIFFUSION_CPP',
+  // AUTOMATIC1111, Forge or SD.Next: held for upscaling, which no standard interface offers.
+  'STABLE_DIFFUSION_WEBUI',
   // Not a language model: any server speaking the Jev format, which answers
   // typed questions with probabilities for a workflow's decision node. Issue #577.
   'SYSTEM_ONE',
@@ -94,6 +96,9 @@ function endpointHint(type: ProviderType): string {
       return 'http://localhost:8080';
     case 'STABLE_DIFFUSION_CPP':
       return 'http://localhost:1234/v1';
+    // The host alone: /sdapi/v1 after it is the server's own.
+    case 'STABLE_DIFFUSION_WEBUI':
+      return 'http://localhost:7860';
     // Any server speaking the Jev format, hosted or local, so no address is
     // assumed; `/v1/systemone` after it is added by the server.
     case 'SYSTEM_ONE':

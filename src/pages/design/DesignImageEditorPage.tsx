@@ -7,8 +7,10 @@ import {
   dismissDesignImageJob,
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
+  importDesignImage,
   queueDesignImage,
   queueDesignImageEdit,
+  queueDesignImageUpscale,
   renameDesignImage,
   saveDesignImageVersion,
 } from '../../api/artifacts';
@@ -44,6 +46,9 @@ import {
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
 import styles from './DesignImageEditorPage.module.css';
+import { DesignUpscaleDialog } from './DesignUpscaleDialog';
+import { exportPicture, readPictureFile } from './pictureFiles';
+import type { ExportFormat } from './pictureFiles';
 import { t, tf } from '../../i18n';
 
 export interface DesignImageEditorPageProps {
@@ -127,6 +132,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const jobAsked = searching.get('job');
   const [shown, setShown] = useState<Shown>(null);
   const [models, setModels] = useState<Model[] | null>(null);
+  /** The workspace's upscale models: what the Upscale window offers, and nothing else. */
+  const [upscalers, setUpscalers] = useState<Model[]>([]);
+  const [upscaling, setUpscaling] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  /** A file being dragged over the canvas, which a drop opens here. */
+  const [dropping, setDropping] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
   const [modelId, setModelId] = useState('');
   const [spec, setSpec] = useState<ImageParameterSpec[]>([]);
   const [presets, setPresets] = useState<ImageSizePreset[]>([]);
@@ -165,7 +177,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   useEffect(() => {
     if (workspaceId === '') return;
     fetchModels(workspaceId)
-      .then((all) => setModels(all.filter((one) => one.kind === 'IMAGE')))
+      .then((all) => {
+        setModels(all.filter((one) => one.kind === 'IMAGE'));
+        setUpscalers(all.filter((one) => one.kind === 'UPSCALE' && one.enabled));
+      })
       .catch(() => setModels([]));
     fetchImageSizePresets(workspaceId).then(setPresets).catch(() => setPresets([]));
   }, [workspaceId]);
@@ -354,8 +369,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true });
-  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true, bringIn: async (_: File, __?: boolean) => {} });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true, bringIn: async (_: File, __?: boolean) => {} };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
@@ -426,6 +441,30 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [editModelId, setEditModelId] = useState('');
   const [changing, setChanging] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  // A picture pasted anywhere on the page opens like one imported; text pasted into a box stays text.
+  keys.current.bringIn = bringIn;
+  useEffect(() => {
+    const pasted = (event: ClipboardEvent) => {
+      const file = Array.from(event.clipboardData?.files ?? []).find((one) => one.type.startsWith('image/'));
+      if (file === undefined) return;
+      event.preventDefault();
+      void keys.current.bringIn(file, true);
+    };
+    window.addEventListener('paste', pasted);
+    return () => window.removeEventListener('paste', pasted);
+  }, []);
+
+  useEffect(() => {
+    if (!exporting) return;
+    const away = (event: MouseEvent) => {
+      if (!(event.target instanceof Element) || event.target.closest('[data-testid="editor-export-menu"], [data-testid="editor-export"]') === null) {
+        setExporting(false);
+      }
+    };
+    window.addEventListener('mousedown', away);
+    return () => window.removeEventListener('mousedown', away);
+  }, [exporting]);
+
   /** The picture's own size, once it has loaded: what the selection layer draws in. */
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
   // The model a change is asked of: the panel's own, until one is chosen here.
@@ -514,6 +553,55 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       setError(cause instanceof Error ? cause.message : t('Could not ask for the change.'));
     } finally {
       setChanging(false);
+    }
+  }
+
+  /** The picture made larger: a version of it, drawn behind the page as an edit is, its whole frame pulsing meanwhile. */
+  async function upscale(upscaleModelId: string, algorithm: string, scale: number) {
+    const shownPicture = pictureRef.current;
+    if (picture === null || shownPicture === null) return;
+    const queued = await queueDesignImageUpscale({ workspaceId, imageId: picture.id, modelId: upscaleModelId, algorithm, scale });
+    const width = shownPicture.naturalWidth;
+    const height = shownPicture.naturalHeight;
+    remember();
+    setChangingOver((held) => ({
+      ...held,
+      [queued.id]: { url: picture.url, width, height, points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] },
+    }));
+    setMade((held) => [{ job: queued }, ...held]);
+    forget();
+    setUpscaling(false);
+    show({ kind: 'job', jobId: queued.id });
+  }
+
+  /**
+   * A file brought in - picked, or dropped on the canvas - kept as a picture of
+   * its own and opened here. An .orkx file brings its name and prompt with it.
+   */
+  async function bringIn(file: File, pasted = false) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const read = await readPictureFile(file);
+      // A pasted picture's file is always "image.png", which names nothing.
+      const name = pasted ? t('Pasted picture') : read.name;
+      const kept = await importDesignImage({ workspaceId, image: read.image, name, prompt: read.prompt });
+      navigate(`/workspace/${workspaceId}/design/images/${kept.id}/edit`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not open that file.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportAs(format: ExportFormat) {
+    setExporting(false);
+    if (picture === null) return;
+    try {
+      await exportPicture(picture, pendingName ?? picture.name ?? t('Picture'), format);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not export the picture.'));
     }
   }
 
@@ -885,6 +973,74 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               <img src={selectAllIcon} alt="" width={16} height={16} />
             </button>
           </div>
+          <button
+            type="button"
+            className={`${form.ghost} ${styles.toolbarButton}`}
+            onClick={() => {
+              forget();
+              setUpscaling(true);
+            }}
+            disabled={picture === null || busy}
+            title={t('Make the picture larger with an upscale model')}
+            data-testid="editor-upscale"
+          >
+            {t('Upscale')}
+          </button>
+          <span className={styles.toolbarGap} aria-hidden="true" />
+          <button
+            type="button"
+            className={`${form.ghost} ${styles.toolbarButton}`}
+            onClick={() => importRef.current?.click()}
+            disabled={busy}
+            title={t('Open a picture from a file, or drop one on the canvas')}
+            data-testid="editor-import"
+          >
+            {t('Import')}
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif,.orkx"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file !== undefined) void bringIn(file);
+            }}
+            data-testid="editor-import-file"
+          />
+          <div className={styles.exportMenu}>
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.toolbarButton}`}
+              onClick={() => setExporting((held) => !held)}
+              disabled={picture === null}
+              aria-haspopup="menu"
+              aria-expanded={exporting}
+              data-testid="editor-export"
+            >
+              {t('Export')} ▾
+            </button>
+            {exporting && (
+              <div className={styles.exportItems} role="menu" data-testid="editor-export-menu">
+                <button type="button" role="menuitem" onClick={() => void exportAs('png')} data-testid="editor-export-png">
+                  PNG
+                </button>
+                <button type="button" role="menuitem" onClick={() => void exportAs('jpeg')} data-testid="editor-export-jpeg">
+                  JPEG
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void exportAs('orkx')}
+                  title={t('The picture with its name and prompt, to import into Orknux again')}
+                  data-testid="editor-export-orkx"
+                >
+                  {t('Orknux (.orkx)')}
+                </button>
+              </div>
+            )}
+          </div>
           <span className={styles.toolbarGap} aria-hidden="true" />
           <button
             type="button"
@@ -962,7 +1118,34 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       </div>
 
       <div className={styles.editor}>
-        <div className={styles.canvas} data-testid="editor-canvas" onWheel={onWheel} ref={canvasRef}>
+        <div
+          className={`${styles.canvas} ${dropping ? styles.canvasDropping : ''}`}
+          data-testid="editor-canvas"
+          onWheel={onWheel}
+          ref={canvasRef}
+          onDragOver={(event) => {
+            if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+            setDropping(true);
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+            setDropping(false);
+          }}
+          onDrop={(event) => {
+            const file = event.dataTransfer.files[0];
+            if (file === undefined) return;
+            event.preventDefault();
+            setDropping(false);
+            void bringIn(file);
+          }}
+        >
+          {dropping && (
+            <div className={styles.dropHint} data-testid="editor-drop-hint">
+              {t('Drop a picture to open it here')}
+            </div>
+          )}
           <div className={`${styles.stage} ${zoom === null ? '' : styles.stageZoomed}`}>
             {job !== null && job.status !== 'DRAWN' ? (
               job.status === 'FAILED' ? (
@@ -1297,6 +1480,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           </button>
         </form>
       </div>
+      <DesignUpscaleDialog
+        open={upscaling}
+        workspaceId={workspaceId}
+        models={upscalers}
+        width={natural?.width ?? 0}
+        height={natural?.height ?? 0}
+        onClose={() => setUpscaling(false)}
+        onUpscale={upscale}
+      />
       <UnsavedWorkDialog
         subject={guard.asking ? (pendingName ?? picture?.name ?? t('This picture')) : null}
         creating={false}

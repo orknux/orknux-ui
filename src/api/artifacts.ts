@@ -203,9 +203,13 @@ export interface DesignImageJob {
   sourceId: string | null;
   /** The picture, once DRAWN. */
   image: Artifact | null;
+  /** The algorithm an upscale uses; null for anything else. */
+  upscaler: string | null;
+  /** How many times larger an upscale makes the picture; null for anything else. */
+  scale: number | null;
 }
 
-const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead name sourceId image { ${ARTIFACT_FIELDS} }`;
+const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead name sourceId upscaler scale image { ${ARTIFACT_FIELDS} }`;
 
 /** Queues a picture and answers at once; a refusal of what could never be drawn throws with its reason. */
 export async function queueDesignImage(input: DrawDesignImageInput): Promise<DesignImageJob> {
@@ -291,4 +295,44 @@ export async function discardDesignImageVersions(workspaceId: string, id: string
     { workspaceId, id },
   );
   return data.discardDesignImageVersions;
+}
+
+/** A picture made larger by an upscale model: an unsaved version of it, as an edit's is. */
+export async function queueDesignImageUpscale(input: {
+  workspaceId: string;
+  imageId: string;
+  modelId: string;
+  algorithm: string | null;
+  scale: number;
+}): Promise<DesignImageJob> {
+  const data = await graphql<{ queueDesignImageUpscale: DesignImageJob }>(
+    `mutation QueueDesignImageUpscale($input: UpscaleDesignImageInput!) { queueDesignImageUpscale(input: $input) { ${JOB_FIELDS} } }`,
+    { input },
+  );
+  return data.queueDesignImageUpscale;
+}
+
+/** What an upscale model's server can make a picture larger with, asked of it now. */
+export interface UpscaleAlgorithms {
+  names: string[];
+  preferred: string | null;
+  /** Why the server could not be asked; names is then empty. */
+  reason: string | null;
+}
+
+export async function fetchDesignUpscaleAlgorithms(workspaceId: string, modelId: string): Promise<UpscaleAlgorithms> {
+  const data = await graphql<{ designUpscaleAlgorithms: UpscaleAlgorithms }>(
+    `query DesignUpscaleAlgorithms($workspaceId: ID!, $modelId: ID!) { designUpscaleAlgorithms(workspaceId: $workspaceId, modelId: $modelId) { names preferred reason } }`,
+    { workspaceId, modelId },
+  );
+  return data.designUpscaleAlgorithms;
+}
+
+/** Keeps a picture brought in from outside as a Design picture; image is the file as a data URL or base64. */
+export async function importDesignImage(input: { workspaceId: string; image: string; name?: string | null; prompt?: string | null }): Promise<Artifact> {
+  const data = await graphql<{ importDesignImage: Artifact }>(
+    `mutation ImportDesignImage($input: ImportDesignImageInput!) { importDesignImage(input: $input) { ${ARTIFACT_FIELDS} } }`,
+    { input },
+  );
+  return data.importDesignImage;
 }

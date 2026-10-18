@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
-import { createModel, fetchProviders, modelKindLabel } from '../api/models';
+import { providerHolds, createModel, fetchProviders, modelKindLabel } from '../api/models';
 import type { Model, ModelKind, ModelProvider } from '../api/models';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { DrawerEdge } from './DrawerWidth';
@@ -197,9 +197,9 @@ interface ModelDrawerCreateFormProps {
   onCancel: () => void;
 }
 
-/** Whether a provider can hold a model of this kind: a decision model sits under a decision provider, and nothing else does. */
+/** Whether a provider can hold a model of this kind: see providerHolds. */
 function holds(provider: ModelProvider, kind: ModelKind): boolean {
-  return (provider.type === 'SYSTEM_ONE') === (kind === 'DECISION');
+  return providerHolds(provider.type, kind);
 }
 
 /**

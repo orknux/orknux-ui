@@ -2,7 +2,7 @@ import { graphql } from './client';
 import { t } from '../i18n';
 
 /** What the endpoint speaks, not who answers there: anything OpenAI-shaped is OPENAI. */
-export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE' | 'LLAMA_CPP' | 'STABLE_DIFFUSION_CPP';
+export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE' | 'LLAMA_CPP' | 'STABLE_DIFFUSION_CPP' | 'STABLE_DIFFUSION_WEBUI';
 
 /** Where a picture edit's mask says the change goes: transparent (the standard), or white (stable-diffusion.cpp). */
 export type EditMask = 'TRANSPARENT' | 'WHITE';
@@ -15,7 +15,7 @@ export type ProviderAuthMethod = 'API_KEY' | 'ENTRA_ID';
 export type ChatApi = 'RESPONSES' | 'CHAT_COMPLETIONS';
 /** CONNECTED only once a check reached the provider: a stored key is not a working one. */
 export type ProviderStatus = 'NOT_CONFIGURED' | 'NOT_CHECKED' | 'CONNECTED' | 'FAILED';
-export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE' | 'DECISION';
+export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE' | 'DECISION' | 'UPSCALE';
 
 /**
  * The kinds that do not answer a prompt.
@@ -25,7 +25,17 @@ export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 
  * makes a conversation that cannot reply. Listed once so a sixth kind does not
  * have to be remembered in five places.
  */
-export const VOICE_KINDS: ModelKind[] = ['TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION'];
+export const VOICE_KINDS: ModelKind[] = ['TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION', 'UPSCALE'];
+
+/**
+ * Whether a provider of this type can hold a model of this kind - the pairings
+ * the server allows: a decision model only under a decision provider, an
+ * upscale model only under a Stable Diffusion WebUI, and nothing else under
+ * either of those.
+ */
+export function providerHolds(type: ProviderType, kind: ModelKind): boolean {
+  return (type === 'SYSTEM_ONE') === (kind === 'DECISION') && (type === 'STABLE_DIFFUSION_WEBUI') === (kind === 'UPSCALE');
+}
 
 /**
  * Whether this model is one that answers, rather than one that hears, reads or
@@ -366,6 +376,7 @@ export const TYPE_TOOL_CAPS: Record<ProviderType, number> = {
   ANTHROPIC: 256,
   SYSTEM_ONE: 0,
   STABLE_DIFFUSION_CPP: 0,
+  STABLE_DIFFUSION_WEBUI: 0,
 };
 
 export async function createProvider(
@@ -530,6 +541,9 @@ export function providerTypeLabel(type: ProviderType): string {
       return 'llama.cpp';
     case 'STABLE_DIFFUSION_CPP':
       return 'stable-diffusion.cpp';
+    // AUTOMATIC1111, Forge and SD.Next serve one API, so one type covers the three.
+    case 'STABLE_DIFFUSION_WEBUI':
+      return t('Stable Diffusion WebUI (AUTOMATIC1111, Forge, SD.Next)');
     // One type for any server speaking the Jev format, whoever built it. Issue #577.
     case 'SYSTEM_ONE':
       return t('Decision model (Jev format)');
@@ -569,6 +583,8 @@ export function modelKindLabel(kind: ModelKind): string {
       return 'Image';
     case 'DECISION':
       return t('Decision');
+    case 'UPSCALE':
+      return t('Upscale');
   }
 }
 

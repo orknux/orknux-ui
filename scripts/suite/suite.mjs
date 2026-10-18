@@ -1533,6 +1533,13 @@ export const TESTS = [
   },
 
   {
+    name: 'design-upscale-check',
+    what: 'the image editor upscales with the server's own algorithms, imports a picked, dropped or pasted file, and exports PNG, JPEG or .orkx',
+    needs: ['workspace'],
+    /* Answers the picture, the models, the algorithms and the queue itself. */
+  },
+
+  {
     name: 'design-images-check',
     what: "Design sits in the top bar's alphabet, and a picture on Artifacts opens in it",
     needs: ['workspace'],
