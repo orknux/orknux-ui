@@ -3948,6 +3948,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-auto-start-check',
+    what: 'Chat with no chats starts one by itself and opens it with the composer focused; with chats it starts nothing',
+    needs: ['workspace'],
+    // The list is answered empty for the first visit; the chat it makes is real and deleted at the end.
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],

@@ -1316,6 +1316,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     });
   }
 
+
   /**
    * Whether there is anything here to chat to.
    *
@@ -1336,6 +1337,46 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     counted &&
     agentCatalogue.failure === null &&
     !agents.some((one) => one.enabled && one.modelId !== null);
+
+  /** The workspaces this visit has already started a chat in by itself, so a failed start is not tried again. */
+  const autoStarted = useRef(new Set<string>());
+  /** Set by a chat started that way: its composer is focused once the chat it belongs to has drawn it. */
+  const focusWhenOpen = useRef(false);
+
+  /*
+   * Nobody with no chats is shown "No chat open".
+   *
+   * A fresh installation's first visit to Chat was an empty page and a button
+   * to press before anything could be typed. With nothing to choose between,
+   * the page presses it: the same "+ New", once per workspace per visit, and
+   * the composer is focused in the chat it makes.
+   *
+   * Only on a list that arrived and is truly empty - not while it loads, not
+   * when a search is what emptied it (`sessions` is the whole list; the search
+   * filters a copy), not when it failed - and not where the address names a
+   * chat. Not where there is no agent to chat with either: "+ New" is switched
+   * off there and the page says why, so this stands aside the same way.
+   *
+   * No pile of empty chats can come of it: it acts only on a workspace with
+   * none, and the one it makes is a chat in the list from then on.
+   */
+  useEffect(() => {
+    if (workspaceId === null || chatId !== null || sessions === null || sessions.length > 0) return;
+    if (agentCatalogue.loading || agentCatalogue.failure !== null || noAgents) return;
+    if (!agents.some((one) => one.enabled && one.modelId !== null)) return;
+    if (autoStarted.current.has(workspaceId)) return;
+    autoStarted.current.add(workspaceId);
+    focusWhenOpen.current = true;
+    void handleNew();
+    // handleNew reads the same state this lists; naming it would restart the effect on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, chatId, sessions, agentCatalogue.loading, agentCatalogue.failure, noAgents, agents]);
+
+  useEffect(() => {
+    if (!focusWhenOpen.current || composerRef.current === null || composerRef.current.disabled) return;
+    focusWhenOpen.current = false;
+    composerRef.current.focus();
+  });
 
   /**
    * Closes the composer's microphone, wherever the closing came from.
