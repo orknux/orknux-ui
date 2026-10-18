@@ -81,6 +81,9 @@ export interface InstallationSettings {
    * is what the rest of them follow.
    */
   chatMaxRounds: number;
+  /** After how many exchanges a chat a model named is named again; 0 never. */
+  chatRetitleEvery: number;
+  chatRetitleEveryConfigured: number;
   /** How deep an object's shape may go; Admin > Settings. */
   objectMaxDepth: number;
   objectMaxDepthConfigured: number;
@@ -339,7 +342,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -511,6 +514,14 @@ export async function setObjectMaxDepth(depth: number): Promise<InstallationSett
     { depth },
   );
   return data.setObjectMaxDepth;
+}
+
+export async function setChatRetitleEvery(exchanges: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatRetitleEvery: InstallationSettings }>(
+    `mutation SetChatRetitleEvery($exchanges: Int!) { setChatRetitleEvery(exchanges: $exchanges) { ${FIELDS} } }`,
+    { exchanges },
+  );
+  return data.setChatRetitleEvery;
 }
 
 export async function setChatMaxRounds(rounds: number): Promise<InstallationSettings> {

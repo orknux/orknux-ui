@@ -10,6 +10,12 @@
  * The stream is answered here, twice: once stopping after `titling`, so the
  * status can be seen, and once going on to `titled`. Makes one chat of its own
  * and deletes it again.
+ *
+ * And a stream that ends without saying the name - a voice turn cut between the
+ * two - lets the status go once nothing is reading the turn any more: it used to
+ * stay on the chat until the page was reloaded. The page reconnects to a cut
+ * stream first, so that reconnect is held open here while the status is looked
+ * at, and then answered with nothing running.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
@@ -39,6 +45,14 @@ try {
     const body = frame('chunk', { text: 'Forty gigabytes.' }) + frame('titling', {}) +
       (finishes ? frame('titled', { title: 'Disk usage check' }) : '');
     return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream' }, body });
+  });
+
+  /** Released once the status has been looked at: the turn is then over, and nothing is naming the chat. */
+  let releaseFollow = () => {};
+  const followHeld = new Promise((resolve) => { releaseFollow = resolve; });
+  await page.route(`**/api/chats/${chatId}/follow`, async (route) => {
+    await followHeld;
+    return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream' }, body: frame('idle', {}) });
   });
 
   // Once named, the server holds the name too: the page reads its chats again at the end of a turn.
@@ -72,6 +86,10 @@ try {
   record((await naming.count()) === 1 && /Naming this chat/.test(await naming.innerText()), 'while it is named, the title bar says so');
   record((await title.count()) === 1 && !/zz chat naming/.test(await title.innerText()), 'in place of the title, not beside it');
   record((await page.getByTestId('chat-row-naming').count()) === 1, 'and its row in the list turns a spinner beside the name');
+
+  releaseFollow();
+  await naming.waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
+  record((await naming.count()) === 0, 'a stream that ended without the name lets the status go, without a reload');
 
   finishes = true;
   await page.reload({ waitUntil: 'domcontentloaded' });

@@ -48,6 +48,7 @@ import {
   setExecutionRetentionDays,
   setMetricsAnonymous,
   setChatMaxRounds,
+  setChatRetitleEvery,
   setObjectMaxDepth,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
@@ -140,6 +141,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [pluginWait, setPluginWait] = useState('');
   /** The installation's ceiling on tool rounds; an agent may carry its own. */
   const [rounds, setRounds] = useState('');
+  /** After how many exchanges a chat a model named is named again; 0 never. */
+  const [retitle, setRetitle] = useState('');
   const [objectDepth, setObjectDepth] = useState('');
   /** How long one note to self may be, as typed. */
   const [noteLength, setNoteLength] = useState('');
@@ -300,6 +303,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setPluginSource(String(held.pluginMaxSourceKb));
         setPluginWait(String(held.pluginTimeoutSeconds));
         setRounds(String(held.chatMaxRounds));
+        setRetitle(String(held.chatRetitleEvery));
         setObjectDepth(String(held.objectMaxDepth));
         setNoteLength(String(held.noteMaxCharacters));
         setNoteCount(String(held.noteMaxCount));
@@ -378,6 +382,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: sweep, held: settings.taskSweepMinutes, write: setTaskSweepMinutes },
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
+        { typed: retitle, held: settings.chatRetitleEvery, write: setChatRetitleEvery },
         { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
@@ -695,6 +700,34 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Tool Rounds')}
                 />
                 <span className={styles.retentionUnit}>{t('rounds')}</span>
+              </div>
+            </div>
+
+            {/* A chat named from its first exchange drifts from it; this names it again from what it became. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Rename Chats Every')}</p>
+                  <FieldHint label={t('Rename Chats Every')}>
+                    {t('A chat is named by a model after its first exchange, and named again from its latest messages after this many more. 0 names it once. A title somebody typed is never replaced. Between 0 and 1000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-retitle-every"
+                  name="chatRetitleEvery"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={1000}
+                  value={retitle}
+                  onChange={(event) => setRetitle(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Rename Chats Every')}
+                  data-testid="chat-retitle-every"
+                />
+                <span className={styles.retentionUnit}>{t('exchanges')}</span>
               </div>
             </div>
 

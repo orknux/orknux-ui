@@ -391,6 +391,8 @@ export interface ChatStreamHandlers {
   onTitleFailed?: (reason: string) => void;
   /** The chat's model is being asked for a title, which takes a moment after the answer. */
   onTitling?: () => void;
+  /** A stream that said it was naming the chat ended without saying the name: nothing is naming it now. */
+  onTitlingAbandoned?: () => void;
   /** The chat is named, and what it is called. */
   onTitled?: (title: string) => void;
   /**
@@ -629,6 +631,41 @@ async function readToTheEnd(
     await read(first, handlers);
     return false;
   }
+  /*
+   * Naming said and its outcome never heard - a voice stream cut between the
+   * two - left "Naming this chat…" on the chat until the page was reloaded.
+   */
+  let titling = false;
+  const given = handlers;
+  const outer: ChatStreamHandlers = {
+    ...given,
+    onTitling: () => {
+      titling = true;
+      given.onTitling?.();
+    },
+    onTitled: (title) => {
+      titling = false;
+      given.onTitled?.(title);
+    },
+    onTitleFailed: (reason) => {
+      titling = false;
+      given.onTitleFailed?.(reason);
+    },
+  };
+  try {
+    return await readFollowing(id, first, outer, signal, reading);
+  } finally {
+    if (titling) given.onTitlingAbandoned?.();
+  }
+}
+
+async function readFollowing(
+  id: string,
+  first: Response,
+  handlers: ChatStreamHandlers,
+  signal: AbortSignal | undefined,
+  reading: () => boolean,
+): Promise<boolean> {
   // Carried across attempts, and kept even where a read breaks off part way.
   const heard: Heard = { position: 0, skip: 0, ended: false, idle: false };
   let response: Response | null = first;

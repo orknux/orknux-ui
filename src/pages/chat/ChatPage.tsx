@@ -1768,7 +1768,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -1852,6 +1852,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       },
       /* Naming takes a moment after the answer, and the bar said nothing while it did. */
       onTitling: () => setNaming(openChat.current),
+      onTitlingAbandoned: () => setNaming(null),
       /* The name, as soon as it is known - on the bar and in the list, not at the next reload of either. */
       onTitled: (title) => {
         const chat = openChat.current;
