@@ -14,7 +14,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
-import { Pagination } from '../../components/Pagination';
+import { CompactPagination } from '../../components/CompactPagination';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
@@ -144,12 +144,12 @@ export function AdminIntegrationsPage({ session, onSignOut }: AdminIntegrationsP
           </div>
         ))}
 
-        <Pagination
+        <CompactPagination
           page={page}
           pageSize={pageSize}
           totalItems={connections?.totalElements ?? 0}
           onPageChange={setPage}
-          label={t('default connections')}
+          unit={t('default connections')}
           pageSizes={PAGE_SIZES}
           onPageSizeChange={(chosen) => {
             setPageSize(chosen);

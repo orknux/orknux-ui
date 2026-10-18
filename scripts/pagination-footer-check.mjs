@@ -210,6 +210,16 @@ const LISTS = [
     column: 'Action',
     why: 'a row of an audit log is an entry, and "audit logs" would be the log itself',
   },
+  /*
+   * The admin lists, which drew the older, larger pager until it was folded
+   * into this one. Source only: they live under /admin rather than a
+   * workspace, which the browser half of this check walks.
+   */
+  { file: 'AdminPage.tsx', path: null, title: 'Workspaces', unit: 'workspaces', sourceOnly: true, column: null },
+  { file: 'AdminAuditPage.tsx', path: null, title: 'Audit Log', unit: 'audit entries', sourceOnly: true, column: null },
+  { file: 'AdminIntegrationsPage.tsx', path: null, title: 'Integrations', unit: 'default connections', sourceOnly: true, column: null },
+  { file: 'AdminReportsPage.tsx', path: null, title: 'Reports', unit: 'people', sourceOnly: true, column: null },
+  { file: 'AdminBoxPage.tsx', path: null, title: 'Box', unit: 'sessions', sourceOnly: true, column: null },
   {
     file: 'SessionDetailPage.tsx',
     path: null,

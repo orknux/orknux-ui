@@ -24,7 +24,6 @@ import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
-import { Pagination } from '../../components/Pagination';
 import { SearchBox } from '../../components/SearchBox';
 import { useTableSort } from '../../components/tableSort';
 import { useSearch } from '../../components/useSearch';
@@ -39,6 +38,8 @@ export interface AdminReportsPageProps {
 }
 
 const PEOPLE_PER_PAGE = 25;
+/** The sizes the people table offers, as every other list's pager does. */
+const PEOPLE_PAGE_SIZES = [10, 25, 50];
 const SESSIONS_PER_PAGE = 5;
 const SESSION_PAGE_SIZES = [5, 10, 25];
 
@@ -64,6 +65,7 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
   ]);
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
+  const [peopleSize, setPeopleSize] = useState(PEOPLE_PER_PAGE);
   const [report, setReport] = useState<UsageReport | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,14 +96,14 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
 
   const load = useCallback(() => {
     setLoading(true);
-    fetchUsageReport(JSON.parse(filterKey) as UsageFilter, page - 1, PEOPLE_PER_PAGE, order, ascending)
+    fetchUsageReport(JSON.parse(filterKey) as UsageFilter, page - 1, peopleSize, order, ascending)
       .then((held) => {
         setReport(held);
         setError(null);
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the report.')))
       .finally(() => setLoading(false));
-  }, [filterKey, page, order, ascending]);
+  }, [filterKey, page, peopleSize, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -273,13 +275,18 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
           </div>
         )}
 
-        {report !== null && report.total > PEOPLE_PER_PAGE && (
-          <Pagination
+        {report !== null && report.total > PEOPLE_PAGE_SIZES[0] && (
+          <CompactPagination
             page={page}
-            pageSize={PEOPLE_PER_PAGE}
+            pageSize={peopleSize}
             totalItems={report.total}
             onPageChange={setPage}
-            label={t('people')}
+            unit={t('people')}
+            pageSizes={PEOPLE_PAGE_SIZES}
+            onPageSizeChange={(next) => {
+              setPeopleSize(next);
+              setPage(1);
+            }}
           />
         )}
       </section>

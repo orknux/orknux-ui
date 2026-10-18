@@ -6,7 +6,7 @@ import type { Dependant, DependencyKind } from '../api/dependants';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
-import { Pagination } from './Pagination';
+import { CompactPagination } from './CompactPagination';
 import styles from './UsedBy.module.css';
 import { t } from '../i18n';
 
@@ -73,12 +73,12 @@ export function DependantList({ entries, hidden, showWorkspace = false }: Depend
         the page. Below the default size there is nothing to page.
       */}
       {entries.length > DEPENDANT_PAGE_SIZE && (
-        <Pagination
+        <CompactPagination
           page={page}
           pageSize={pageSize}
           totalItems={entries.length}
           onPageChange={setPage}
-          label={t('Used by')}
+          unit={t('Used by')}
           pageSizes={DEPENDANT_PAGE_SIZES}
           onPageSizeChange={(size) => {
             setPageSize(size);

@@ -13,7 +13,7 @@ import { AdminSidebar } from '../../components/AdminSidebar';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { Loader } from '../../components/Loader';
-import { Pagination } from '../../components/Pagination';
+import { CompactPagination } from '../../components/CompactPagination';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
@@ -206,12 +206,12 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
           </div>
         ))}
 
-        <Pagination
+        <CompactPagination
           page={page}
           pageSize={pageSize}
           totalItems={entries?.totalElements ?? 0}
           onPageChange={setPage}
-          label={t('audit entries')}
+          unit={t('audit entries')}
           pageSizes={PAGE_SIZES}
           onPageSizeChange={(chosen) => {
             setPageSize(chosen);

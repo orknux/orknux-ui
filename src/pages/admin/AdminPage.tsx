@@ -28,7 +28,7 @@ import { CreateWorkspaceDialog } from '../../components/CreateWorkspaceDialog';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { Loader } from '../../components/Loader';
-import { Pagination } from '../../components/Pagination';
+import { CompactPagination } from '../../components/CompactPagination';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
@@ -379,12 +379,12 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
           ))}
         </div>
 
-        <Pagination
+        <CompactPagination
           page={workspacesPage}
           pageSize={pageSize}
           totalItems={workspaces.data?.totalElements ?? 0}
           onPageChange={setWorkspacesPage}
-          label={t('workspaces')}
+          unit={t('workspaces')}
           pageSizes={PAGE_SIZES}
           onPageSizeChange={(chosen) => {
             setPageSize(chosen);
