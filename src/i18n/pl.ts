@@ -1421,6 +1421,7 @@ export const PL: Record<string, string> = {
   "Publish template": "Opublikuj szablon",
   "Use template": "Użyj szablonu",
   "Test Connection": "Sprawdź połączenie",
+  "{count} unread": "{count} nieprzeczytane",
   "New Function": "Nowa funkcja",
   "What it does, in a sentence": "Co robi, w jednym zdaniu",
   "Made now, taking nothing and returning a map; chosen for this action once it is made.": "Tworzona od razu, nic nie przyjmuje i zwraca mapę; po utworzeniu wybrana dla tej akcji.",

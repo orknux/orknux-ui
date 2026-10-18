@@ -20,6 +20,8 @@ export interface ChatSession {
   modelName: string | null;
   createdAt: string;
   lastMessageAt: string | null;
+  /** Answers that arrived since its owner last had it open; nought where there are none. */
+  unreadCount: number;
   /** Set when an agent is answering rather than a bare model. */
   agentId: string | null;
   /** What that agent is called, or null once it has been deleted. */
@@ -183,7 +185,7 @@ export interface ChatAnswer extends ChatSpend {
 }
 
 const SESSION_FIELDS =
-  'id workspaceId title pinned modelId modelName createdAt lastMessageAt agentId agentName llmSessionId ' +
+  'id workspaceId title pinned modelId modelName createdAt lastMessageAt unreadCount agentId agentName llmSessionId ' +
   'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures';
 
 export async function fetchChatSessions(workspaceId: string): Promise<ChatSession[]> {
@@ -293,6 +295,11 @@ export async function chooseChatAgent(id: string, agentId: string): Promise<Chat
     { id, agentId },
   );
   return data.chooseChatAgent;
+}
+
+/** Reads the chat up to now, which clears the count beside its name. */
+export async function markChatRead(id: string): Promise<void> {
+  await graphql<{ markChatRead: { id: string } }>('mutation MarkChatRead($id: ID!) { markChatRead(id: $id) { id } }', { id });
 }
 
 export async function deleteChat(id: string): Promise<boolean> {

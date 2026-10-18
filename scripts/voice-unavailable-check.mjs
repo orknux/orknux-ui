@@ -17,11 +17,12 @@ const PREFIX = 'zz voice unavailable';
 let hideVoice = false;
 
 const sweep = async () => {
-  const { workspaceChats } = await graphql(
-    `query($w: ID!) { workspaceChats(workspaceId: $w, size: 200) { content { id title } } }`,
+  const { chatSessions } = await graphql(
+    `query($w: ID!) { chatSessions(workspaceId: $w) { id title } }`,
     { w: WORKSPACE },
-  ).catch(() => ({ workspaceChats: { content: [] } }));
-  for (const old of workspaceChats.content.filter((one) => (one.title ?? '').startsWith(PREFIX))) {
+  ).catch(() => ({ chatSessions: [] }));
+  // chatSessions: the query this asked before was not one, so the error was swallowed and nothing was swept.
+  for (const old of chatSessions.filter((one) => (one.title ?? '').startsWith(PREFIX))) {
     await graphql(`mutation($id: ID!) { deleteChat(id: $id) }`, { id: old.id }).catch(() => undefined);
   }
 };

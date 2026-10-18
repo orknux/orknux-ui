@@ -55,6 +55,9 @@
 
   /* Text */
   --color-text-primary: #fafafa;
+  /* The unread count beside a chat: light silver with near-black text, standing out by brightness. */
+  --color-unread-bg: #e4e4e7;
+  --color-unread-fg: #09090b;
   /*
    * Long-form prose: a paragraph, a comment, a page of documentation.
    *
@@ -214,6 +217,9 @@
 
   /* Text */
   --color-text-primary: #18181b;
+  /* And on the light theme, the inverse: a dark grey pill with white text. */
+  --color-unread-bg: #3f3f46;
+  --color-unread-fg: #ffffff;
   /* Dark on light does not bloom the same way, so this is nearly primary. */
   --color-text-body: #27272a;
   --color-text-secondary: #52525b;

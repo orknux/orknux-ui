@@ -3971,6 +3971,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-unread-check',
+    what: 'a chat says how many answers arrived since it was last open, as a solid bold pill, and opening it clears the count',
+    needs: ['workspace'],
+    // The list's counts are rewritten in the browser; the server half is ChatUnreadTest.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

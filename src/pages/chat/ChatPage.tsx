@@ -11,6 +11,7 @@ import {
   postChatMessageDuringTurn,
   fetchChatSession,
   fetchChatSessions,
+  markChatRead,
   fetchChatsMentioning,
   interruptChat,
   followChat,
@@ -632,6 +633,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       abandoned = true;
     };
   }, [remembered, chatId]);
+
+  /*
+   * The chat on screen is read: when it is opened, and whenever the list says
+   * something arrived in it while it was open - an answer, an agent's wake-up.
+   * Cleared here at once, and told to the server, which keeps the count.
+   */
+  const currentUnread = sessions?.find((entry) => entry.id === currentId)?.unreadCount ?? 0;
+  useEffect(() => {
+    if (currentId === null) return;
+    setSessions((held) => held?.map((entry) => (entry.id === currentId && entry.unreadCount !== 0 ? { ...entry, unreadCount: 0 } : entry)) ?? held);
+    void markChatRead(currentId).catch(() => undefined);
+  }, [currentId, currentUnread]);
 
   const loadSessions = useCallback(
     async (select?: string) => {
@@ -4249,6 +4262,9 @@ ${named}`;
   );
 }
 
+/** How long the unread count's pop lasts when it goes up. */
+const UNREAD_POP_MS = 220;
+
 function SessionRow({
   entry,
   current,
@@ -4270,12 +4286,42 @@ function SessionRow({
   onRename: () => void;
   onDelete: () => void;
 }) {
+  // The chat open on screen is being read, whatever the list last said.
+  const unread = current ? 0 : entry.unreadCount;
+  /*
+   * A short pop when the count goes up, so news arriving in a long list is
+   * seen - not when it first draws or goes down. Left out where motion is
+   * not wanted.
+   */
+  const seen = useRef(unread);
+  const [popping, setPopping] = useState(false);
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = unread;
+    if (unread <= before) return undefined;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    setPopping(true);
+    const timer = window.setTimeout(() => setPopping(false), UNREAD_POP_MS);
+    return () => window.clearTimeout(timer);
+  }, [unread]);
   return (
     <div className={`${styles.sessionRow} ${current ? styles.sessionRowCurrent : ''}`}>
       <button type="button" className={styles.sessionButton} onClick={onSelect}>
         {/* No icon: the same speech bubble on every row said nothing. A pinned one keeps its dot, which does. */}
         {pinnedRow && <span className={styles.pinDot} aria-hidden="true" />}
-        <span className={styles.sessionTitle}>{entry.title}</span>
+        <span className={unread > 0 ? `${styles.sessionTitle} ${styles.sessionTitleUnread}` : styles.sessionTitle}>
+          {entry.title}
+        </span>
+        {unread > 0 && (
+          <span
+            key={unread}
+            className={popping ? `${styles.unreadPill} ${styles.unreadPop}` : styles.unreadPill}
+            data-testid="chat-unread"
+            aria-label={tf('{count} unread', { count: unread })}
+          >
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
       </button>
       <button
         type="button"
