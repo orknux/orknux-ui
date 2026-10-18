@@ -292,7 +292,6 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                   aria-pressed={image.id === artifactId}
                 >
                   <img src={image.url} alt={image.prompt} className={gallery.image} loading="lazy" />
-                  {image.draft && <span className={styles.draftBadge}>{t('Draft')}</span>}
                 </button>
                 <figcaption className={gallery.caption}>
                   <span className={gallery.prompt} title={image.prompt}>
@@ -315,13 +314,13 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       {open !== null && (
         <section className={styles.focus} data-design-image={open.id}>
           {/*
-            Its status across the top, and what can be done with it in the
+            Its name across the top, and what can be done with it in the
             corner - so the picture underneath has nothing drawn over it, and
             what it was drawn with reads under it.
           */}
           <div className={styles.focusBar}>
           <div className={styles.focusStatus}>
-            {open.draft && <span className={styles.draftBadgeInline}>{t('Draft')}</span>}
+            <span className={styles.focusName}>{open.name ?? open.prompt}</span>
           </div>
           <div className={styles.focusActions}>
             <button
@@ -358,12 +357,6 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           <img src={open.url} alt={open.prompt} className={styles.focusImage} />
           <div className={styles.focusFacts}>
             <dl className={styles.drawnWith}>
-              {open.name !== null && (
-                <>
-                  <dt>{t('Name')}</dt>
-                  <dd>{open.name}</dd>
-                </>
-              )}
               <dt>{t('Prompt')}</dt>
               <dd className={styles.focusPrompt}>
                 {open.prompt}

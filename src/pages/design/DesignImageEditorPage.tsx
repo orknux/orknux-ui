@@ -3,13 +3,11 @@ import type { FormEvent, WheelEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
-  deleteArtifact,
   dismissDesignImageJob,
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   queueDesignImage,
   renameDesignImage,
-  saveDesignImage,
 } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
 import { fetchImageModelParameters } from '../../api/graph';
@@ -24,6 +22,8 @@ import redoIcon from '../../assets/redo.svg';
 import undoIcon from '../../assets/undo.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
+import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
+import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import { matches, useRedoShortcut, useUndoShortcut, useZoomInShortcut, useZoomOutShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
@@ -68,9 +68,9 @@ const ZOOM_MOST = 8;
  * alone for one a run or a task drew, which kept nothing else.
  *
  * Generate queues rather than waits: a drawing can take minutes, so somebody can
- * ask for several, leave, and find them in the gallery. What is drawn here is a
- * draft until it is saved, and a draft discarded is deleted - five tries leave
- * the one that was wanted.
+ * ask for several, leave, and find them in the gallery. Save writes what is
+ * held on the page - a new name - and only lights when there is one; leaving
+ * with one unsaved asks first.
  *
  * Straight to the image model chosen, not through an agent: the panel is the
  * interface, and an agent would choose some of it for whoever is drawing.
@@ -337,43 +337,39 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
   }
 
-  /** Writes what is held: a new name, and the draft kept. */
-  async function save() {
-    if (picture === null || (!picture.draft && pendingName === null) || busy) return;
+  /** Writes what is held: a new name. Answers whether it was written, for the leave guard. */
+  async function save(): Promise<boolean> {
+    if (picture === null || pendingName === null || busy) return pendingName === null;
     setBusy(true);
     setError(null);
     try {
-      if (pendingName !== null) await renameDesignImage(workspaceId, picture.id, pendingName);
+      const kept = await renameDesignImage(workspaceId, picture.id, pendingName);
       setPendingName(null);
-      const kept = picture.draft
-        ? await saveDesignImage(workspaceId, picture.id)
-        : ((await fetchWorkspaceArtifact(workspaceId, picture.id)) ?? picture);
       setShown({ kind: 'picture', picture: kept });
       setMade((held) => held.map((one) => (one.job.image?.id === kept.id ? { job: { ...one.job, image: kept } } : one)));
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the picture.'));
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  /** A draft deleted, or a request still waiting taken off; the canvas moves to the one before. */
+  /** A rename not saved let go, or a request still waiting taken off; the canvas moves to the one before. */
   async function discard() {
     if (busy) return;
-    // A rename not saved is what goes first; the picture itself only when nothing else is held.
     if (pendingName !== null) {
       setPendingName(null);
       return;
     }
-    const leaving = picture !== null && picture.draft ? picture.id : null;
     const dropping = job !== null && (job.status === 'QUEUED' || job.status === 'FAILED') ? job.id : null;
-    if (leaving === null && dropping === null) return;
+    if (dropping === null) return;
     setBusy(true);
     setError(null);
     try {
-      if (leaving !== null) await deleteArtifact(leaving);
-      if (dropping !== null) await dismissDesignImageJob(dropping);
-      const rest = made.filter((one) => one.job.id !== dropping && one.job.image?.id !== leaving);
+      await dismissDesignImageJob(dropping);
+      const rest = made.filter((one) => one.job.id !== dropping);
       setMade(rest);
       // A step that pointed at what is gone cannot be gone back to.
       setPast([]);
@@ -416,7 +412,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setPendingName(next);
   }
 
-  const canSave = picture !== null && (picture.draft || pendingName !== null);
+  /** Something on the page that Save would write and leaving would lose. */
+  const unsaved = picture !== null && pendingName !== null;
+  const canSave = unsaved;
+  const guard = useLeaveGuard({ unsaved, backTo: `/workspace/${workspaceId}/design/images`, save });
   const canDiscard = canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
 
   const [width = '', height = ''] = asked.size.split('x');
@@ -444,7 +443,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         <button
           type="button"
           className={styles.back}
-          onClick={() => navigate(`/workspace/${workspaceId}/design/images${picture === null ? '' : `/${picture.id}`}`)}
+          onClick={() => {
+            const to = `/workspace/${workspaceId}/design/images${picture === null ? '' : `/${picture.id}`}`;
+            if (!askBeforeLeaving(to)) navigate(to);
+          }}
           data-testid="editor-back"
         >
           ← {t('Images')}
@@ -506,7 +508,6 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             <img src={pencilIcon} alt="" width={14} height={14} />
           </button>
         )}
-        {picture?.draft === true && <span className={styles.draftMark}>{t('Draft')}</span>}
         <div className={styles.toolbarRight}>
           <button
             type="button"
@@ -568,7 +569,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             {t('Discard')}
           </button>
           <button type="button" className={form.filled} onClick={save} disabled={!canSave || busy} data-testid="editor-save">
-            {picture !== null && !picture.draft && pendingName === null ? t('Saved') : t('Save')}
+            {t('Save')}
           </button>
         </div>
       </div>
@@ -790,6 +791,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           </button>
         </form>
       </div>
+      <UnsavedWorkDialog
+        subject={guard.asking ? (pendingName ?? picture?.name ?? t('This picture')) : null}
+        creating={false}
+        onStay={guard.stay}
+        onLeave={guard.leave}
+        onSaveAndLeave={guard.saveAndLeave}
+      />
     </AppShell>
   );
 }

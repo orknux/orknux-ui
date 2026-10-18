@@ -54,15 +54,13 @@ export interface Artifact {
   drawnAt: string;
   /** Where it was kept - a picture drawn in Design; null elsewhere. */
   drawnWith: ArtifactDrawing | null;
-  /** Drawn in the image editor and not yet saved. */
-  draft: boolean;
   /** What a picture drawn in Design is called; null for anything else, which goes by its prompt. */
   name: string | null;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
-  drawnWith { modelId model size quality style drawnBy } draft name
+  drawnWith { modelId model size quality style drawnBy } name
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
@@ -237,15 +235,6 @@ export async function dismissDesignImageJob(id: string): Promise<boolean> {
     { id },
   );
   return data.dismissDesignImageJob;
-}
-
-/** Keeps a draft drawn in the image editor. Discarding one is `deleteArtifact`. */
-export async function saveDesignImage(workspaceId: string, id: string): Promise<Artifact> {
-  const data = await graphql<{ saveDesignImage: Artifact }>(
-    `mutation SaveDesignImage($workspaceId: ID!, $id: ID!) { saveDesignImage(workspaceId: $workspaceId, id: $id) { ${ARTIFACT_FIELDS} } }`,
-    { workspaceId, id },
-  );
-  return data.saveDesignImage;
 }
 
 /** Calls a picture drawn in Design something else; its file is named after it too. */

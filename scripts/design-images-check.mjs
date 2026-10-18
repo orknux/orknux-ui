@@ -12,10 +12,11 @@
  * pager. "+ New image" in the header goes to the image editor - a page with
  * the canvas and, down its right, the prompt, the model and its parameters -
  * which queues the picture with the model chosen and shows it the moment it is
- * drawn, keeps it as a draft until Save and deletes it on Discard, zooms in and
+ * drawn, keeps Save off until there is something to save and asks before
+ * leaving with it unsaved, zooms in and
  * out by button and by the shortcuts chosen in Preferences, opens a picture
  * already drawn with what it was drawn from, and undoes and redoes. A picture
- * still queued shows in the gallery, marked; a draft is marked too. With a
+ * still queued shows in the gallery, marked. With a
  * picture open, the gallery stands down its left.
  *
  * The artifact list and the drawing are answered here, so the check does not
@@ -41,18 +42,16 @@ const PICTURE = {
   previewUrl: PNG,
   drawnAt: new Date().toISOString(),
   drawnWith: null,
-  draft: false,
   name: null,
 };
 const drawnAsked = [];
 // Sixty more, as the gallery's pages: enough for several rows, and a second read.
-const MANY = Array.from({ length: 60 }, (_, index) => ({ ...PICTURE, id: `IMAGE-${500000 + index}`, prompt: `zz design check ${index}`, draft: index === 0 }));
+const MANY = Array.from({ length: 60 }, (_, index) => ({ ...PICTURE, id: `IMAGE-${500000 + index}`, prompt: `zz design check ${index}` }));
 const DRAWN = { ...PICTURE, id: 'DESIGN-777', kind: 'DESIGN', source: 'Design', sourcePath: 'design/images/DESIGN-777', prompt: 'zz a drawn lighthouse',
-  draft: true, name: 'Zz drawn lighthouse', drawnWith: { modelId: '9191', model: 'Drawer', size: '1024x1024', quality: 'hd', style: null, drawnBy: 'alice' } };
+  name: 'Zz drawn lighthouse', drawnWith: { modelId: '9191', model: 'Drawer', size: '1024x1024', quality: 'hd', style: null, drawnBy: 'alice' } };
 const SECOND = { ...DRAWN, id: 'DESIGN-778', prompt: 'zz a second lighthouse' };
 const pagesAsked = [];
 const drawRequests = [];
-const saved = [];
 const deleted = [];
 const renamed = [];
 /** A request already waiting, for the gallery's tile. */
@@ -110,10 +109,6 @@ await page.route('**/graphql', async (route) => {
     return route.fulfill({ json: { data: { designImageJob: id === WAITING.id ? WAITING : jobFor(id) } } });
   }
   if (query.includes('designImageQueue(')) return route.fulfill({ json: { data: { designImageQueue: [WAITING] } } });
-  if (query.includes('saveDesignImage')) {
-    saved.push(body.variables?.id);
-    return route.fulfill({ json: { data: { saveDesignImage: { ...DRAWN, draft: false } } } });
-  }
   if (query.includes('renameDesignImage')) {
     renamed.push(body.variables?.name);
     return route.fulfill({ json: { data: { renameDesignImage: { ...DRAWN, name: body.variables?.name } } } });
@@ -191,16 +186,6 @@ record((await page.locator('[class*="pager"], [class*="Pagination"]').count()) =
 const tile = page.locator('figure[data-job-status="QUEUED"]');
 record((await tile.count()) === 1 && (await tile.innerText()).includes('Queued') && (await tile.locator('svg').count()) === 1,
   `a queued picture is in the gallery, marked as queued (${(await tile.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
-const drafts = await page.getByTestId('design-gallery').locator('figure', { hasText: 'Draft' }).count();
-record(drafts === 1, `and a draft is marked as one (${drafts})`);
-const badgeIn = await page.getByTestId('design-gallery').locator('figure', { hasText: 'Draft' }).first().evaluate((card) => {
-  const badge = [...card.querySelectorAll('span')].find((one) => one.textContent?.trim().toLowerCase() === 'draft');
-  if (badge === undefined) return false;
-  const b = badge.getBoundingClientRect();
-  const c = card.getBoundingClientRect();
-  return b.left >= c.left && b.right <= c.right && b.top >= c.top && b.bottom <= c.bottom;
-}).catch(() => false);
-record(badgeIn, 'and the badge sits on its own card');
 
 // "+ New image", in the header's right corner, goes to the editor rather than a dialog.
 const button = page.getByTestId('new-image');
@@ -247,8 +232,8 @@ const sent = drawRequests[0] ?? {};
 record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null && sent.name === 'Harbour at dusk',
   `the picture is queued for the model chosen with what was asked (${JSON.stringify(sent)})`);
 record((await page.getByTestId('editor-picture').count()) === 1, 'and is on the canvas the moment it is drawn');
-const marked = await page.locator('[class*="draftMark"]').innerText().catch(() => '');
-record(marked.toLowerCase().includes('draft') && (await page.getByTestId('editor-save').isEnabled()), `as a draft, with Save on (${marked})`);
+record(!(await page.getByTestId('editor-save').isEnabled()) && !(await page.getByTestId('editor-discard').isEnabled()),
+  'kept as it is drawn: Save and Discard stay off while nothing has changed');
 
 // Zoom: the button, then the shortcuts chosen in Preferences - Ctrl+= and Ctrl+- unless changed.
 const widthNow = async () => Math.round((await page.getByTestId('editor-picture').boundingBox().catch(() => null))?.width ?? 0);
@@ -298,22 +283,23 @@ const unnamed = (await page.getByTestId('editor-name').innerText().catch(() => '
 await page.keyboard.press('Control+Shift+z');
 const renamedAgain = (await page.getByTestId('editor-name').innerText().catch(() => '')).trim();
 record(unnamed === DRAWN.name && renamedAgain === 'Harbour light', `and undone and redone like any change (${JSON.stringify({ unnamed, renamedAgain })})`);
+record(await page.getByTestId('editor-save').isEnabled(), 'a rename turns Save on');
+
+// Leaving with it unsaved asks first; staying keeps it.
+await page.getByTestId('editor-back').click().catch(() => undefined);
+const asking = page.getByRole('dialog');
+await asking.waitFor({ timeout: 5_000 }).catch(() => undefined);
+const askedToStay = await asking.isVisible().catch(() => false);
+await asking.getByRole('button', { name: /^(Stay|Keep editing|Cancel)$/ }).first().click().catch(() => undefined);
+await page.waitForTimeout(300);
+record(askedToStay && page.url().endsWith(`/design/images/${DRAWN.id}/edit`), `leaving with an unsaved rename asks first (${page.url()})`);
 
 
-// Save keeps the draft.
+// Save writes the name and turns itself off again.
 await page.getByTestId('editor-save').click().catch(() => undefined);
 await page.waitForTimeout(500);
-record(saved.includes(DRAWN.id) && renamed.includes('Harbour light') && (await page.getByTestId('editor-save').innerText()) === 'Saved' && !(await page.getByTestId('editor-save').isEnabled()),
-  `Save keeps the draft and writes the name (${JSON.stringify({ saved, renamed })})`);
-
-// Discard throws a second try away and goes back to the one before.
-await page.locator('#image-prompt').fill('zz a second lighthouse');
-await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefined);
-await page.waitForURL(new RegExp(`/design/images/${SECOND.id}/edit$`), { timeout: 12_000 }).catch(() => undefined);
-await page.getByTestId('editor-discard').click().catch(() => undefined);
-await page.waitForTimeout(500);
-record(deleted.includes(SECOND.id) && page.url().endsWith(`/design/images/${DRAWN.id}/edit`),
-  `Discard deletes the second and goes back to the first (${JSON.stringify({ deleted, url: page.url() })})`);
+record(renamed.includes('Harbour light') && !(await page.getByTestId('editor-save').isEnabled()),
+  `Save writes the name (${JSON.stringify(renamed)})`);
 
 // A picture already drawn opens in the editor with what it was drawn from.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${DRAWN.id}`, { waitUntil: 'domcontentloaded' });
@@ -353,11 +339,11 @@ record(removeBox !== null && editAt !== null && removeBox.x + removeBox.width <=
 const factsAt = await page.locator(`[data-design-image="${DRAWN.id}"] dl`).boundingBox().catch(() => null);
 const pictureAt = await page.locator(`[data-design-image="${DRAWN.id}"] > img`).boundingBox().catch(() => null);
 const detailRows = (await page.locator(`[data-design-image="${DRAWN.id}"] dt`).allInnerTexts().catch(() => [])).slice(0, 2).join(', ');
-const promptRow = detailRows === 'Name, Prompt' ? 'Prompt' : detailRows;
+const promptRow = detailRows.split(', ')[0];
 const statusAt = await page.locator(`[data-design-image="${DRAWN.id}"] [class*="focusStatus"]`).boundingBox().catch(() => null);
 const statusText = (await page.locator(`[data-design-image="${DRAWN.id}"] [class*="focusStatus"]`).innerText().catch(() => '')).trim().toLowerCase();
-record(statusAt !== null && pictureAt !== null && factsAt !== null && statusAt.y < pictureAt.y && factsAt.y > pictureAt.y && promptRow === 'Prompt' && statusText === 'draft',
-  `its status above it, what it was drawn with under it, the prompt first and labelled (${JSON.stringify({ statusText, promptRow, status: statusAt?.y, picture: pictureAt?.y, facts: factsAt?.y })})`);
+record(statusAt !== null && pictureAt !== null && factsAt !== null && statusAt.y < pictureAt.y && factsAt.y > pictureAt.y && promptRow === 'Prompt' && statusText === DRAWN.name.toLowerCase(),
+  `its name above it, what it was drawn with under it, the prompt first and labelled (${JSON.stringify({ statusText, promptRow, status: statusAt?.y, picture: pictureAt?.y, facts: factsAt?.y })})`);
 await remove.click().catch(() => undefined);
 await page.getByRole('dialog').getByRole('button', { name: /^(Remove|Delete)$/ }).click({ timeout: 5_000 }).catch(() => undefined);
 await page.waitForURL(new RegExp(`/design/images$`), { timeout: 5_000 }).catch(() => undefined);
