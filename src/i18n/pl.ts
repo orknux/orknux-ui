@@ -37,6 +37,7 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Go to Models": "Przejdź do modeli",
   "Upscale": "Powiększ",
   "Make the picture larger with an upscale model": "Powiększ obraz modelem do powiększania",
   "Open a picture from a file, or drop one on the canvas": "Otwórz obraz z pliku albo upuść go na płótno",

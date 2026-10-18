@@ -28,6 +28,8 @@ const MODELS = [model('9191', 'Drawer', 'IMAGE'), model('9393', 'Forge', 'UPSCAL
 /** Each server its own algorithms. */
 const ALGORITHMS = { 9393: ['R-ESRGAN 4x+', 'Lanczos'], 9494: ['SwinIR 4x', 'ESRGAN_4x', 'Nearest'] };
 const upscales = [];
+/** Whether the workspace is answered with no upscale model at all. */
+let noUpscalers = false;
 const imports = [];
 
 const dataUrl = await page.evaluate(() => {
@@ -54,7 +56,10 @@ await page.route('**/graphql', async (route) => {
     const answered = await route.fetch().catch(() => null);
     const json = answered === null ? null : await answered.json().catch(() => null);
     const list = Object.values(json?.data ?? {}).find(Array.isArray);
-    if (Array.isArray(list)) list.push(...MODELS);
+    // The installation's own upscale models out, so the window offers exactly the ones answered here.
+    if (Array.isArray(list)) {
+      list.splice(0, list.length, ...list.filter((one) => one.kind !== 'UPSCALE'), ...MODELS.filter((one) => !noUpscalers || one.kind !== 'UPSCALE'));
+    }
     return json === null ? route.continue() : route.fulfill({ json });
   }
   if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
@@ -84,6 +89,40 @@ const editAt = (id) => `${BASE}/workspace/${WORKSPACE}/design/images/${id}/edit`
 await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
 await page.waitForTimeout(800);
+
+// With no upscale model the button is off, and why - with where to add one - shows the moment the pointer is over it.
+noUpscalers = true;
+await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(500);
+const off = await page.getByTestId('editor-upscale').isDisabled().catch(() => false);
+const hiddenBefore = !(await page.getByTestId('editor-upscale-hint').isVisible().catch(() => false));
+await page.getByTestId('editor-upscale-wrap').hover();
+await page.waitForTimeout(50);
+const upscaleHint = page.getByTestId('editor-upscale-hint');
+const shown = await upscaleHint.isVisible().catch(() => false);
+const words = (await upscaleHint.innerText().catch(() => '')).trim();
+const link = await page.getByTestId('editor-upscale-models').getAttribute('href').catch(() => null);
+// Moving onto the link keeps the hint, and the link goes where models are set up.
+await page.getByTestId('editor-upscale-models').hover().catch(() => undefined);
+const stays = await upscaleHint.isVisible().catch(() => false);
+record(off && hiddenBefore && shown && stays && words.startsWith('There is no upscale model') && link === `/workspace/${WORKSPACE}/models`,
+  `with no upscale model, Upscale is off and says why at once, linking to Models (${JSON.stringify({ off, hiddenBefore, shown, stays, link })})`);
+noUpscalers = false;
+await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(800);
+record((await page.getByTestId('editor-upscale-hint').count()) === 0 && (await page.getByTestId('editor-upscale').isEnabled()),
+  'with one, it is on and carries no hint');
+
+// Upscale stands apart from Magic edit, divided as Import is from it: one gap, not buttons touching.
+const magicBox = await page.getByTestId('magic-edit').boundingBox().catch(() => null);
+const upscaleBox = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
+const importBox = await page.getByTestId('editor-import').boundingBox().catch(() => null);
+const apart = magicBox === null || upscaleBox === null || importBox === null ? null
+  : { magicToUpscale: upscaleBox.x - (magicBox.x + magicBox.width), upscaleToImport: importBox.x - (upscaleBox.x + upscaleBox.width) };
+record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUpscale - apart.upscaleToImport) < 2,
+  `Upscale is divided from Magic edit as Import is from Upscale (${JSON.stringify(apart)})`);
 
 // Upscale: only upscale models, each with its own server's algorithms.
 await page.getByTestId('editor-upscale').click();

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   discardDesignImageVersions,
@@ -135,6 +135,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The workspace's upscale models: what the Upscale window offers, and nothing else. */
   const [upscalers, setUpscalers] = useState<Model[]>([]);
   const [upscaling, setUpscaling] = useState(false);
+  /** Models are loaded and none of them upscales: the button says so rather than opening an empty window. */
+  const noUpscaler = models !== null && upscalers.length === 0;
   const [exporting, setExporting] = useState(false);
   /** A file being dragged over the canvas, which a drop opens here. */
   const [dropping, setDropping] = useState(false);
@@ -973,19 +975,31 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               <img src={selectAllIcon} alt="" width={16} height={16} />
             </button>
           </div>
-          <button
-            type="button"
-            className={`${form.ghost} ${styles.toolbarButton}`}
-            onClick={() => {
-              forget();
-              setUpscaling(true);
-            }}
-            disabled={picture === null || busy}
-            title={t('Make the picture larger with an upscale model')}
-            data-testid="editor-upscale"
-          >
-            {t('Upscale')}
-          </button>
+          <span className={styles.toolbarGap} aria-hidden="true" />
+          {/* With no upscale model, why not and where to add one - at once on hover, not after a title's delay. */}
+          <span className={styles.upscaleWrap} data-testid="editor-upscale-wrap">
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.toolbarButton}`}
+              onClick={() => {
+                forget();
+                setUpscaling(true);
+              }}
+              disabled={picture === null || busy || noUpscaler}
+              title={noUpscaler ? undefined : t('Make the picture larger with an upscale model')}
+              data-testid="editor-upscale"
+            >
+              {t('Upscale')}
+            </button>
+            {noUpscaler && (
+              <span className={styles.upscaleHint} role="tooltip" data-testid="editor-upscale-hint">
+                {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
+                <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-upscale-models">
+                  {t('Go to Models')}
+                </Link>
+              </span>
+            )}
+          </span>
           <span className={styles.toolbarGap} aria-hidden="true" />
           <button
             type="button"

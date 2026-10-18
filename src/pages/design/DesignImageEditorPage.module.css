@@ -511,3 +511,40 @@ button.toolbarTitle:hover {
   font-size: 16px;
   pointer-events: none;
 }
+
+/* The disabled Upscale button and why: the hint shows the moment the pointer arrives, and stays while it moves onto the link. */
+.upscaleWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.upscaleHint {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 25;
+  display: none;
+  width: 300px;
+  margin-top: 0;
+  padding: calc(var(--space-6) + 6px) var(--space-12) var(--space-12);
+  transform: translateX(-50%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  background-clip: padding-box;
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.upscaleWrap:hover .upscaleHint,
+.upscaleWrap:focus-within .upscaleHint {
+  display: block;
+}
+
+.upscaleHint a {
+  color: var(--color-violet);
+  white-space: nowrap;
+}
