@@ -163,11 +163,15 @@ record(
   'nothing to open while no function is chosen',
 );
 
-// "+ New function" names something that does not exist yet, so still nothing.
+// "+ New function" opens a panel to make one, and leaves the picker - and so
+// the way out beside it - as it was; Cancel puts everything back.
 await chooseCreate('action-function');
+const making = page.locator('dialog[open]').filter({ hasText: 'New Function' });
+await making.getByRole('button', { name: 'Cancel' }).click({ timeout: 10_000 }).catch(() => undefined);
+await page.waitForTimeout(300);
 record(
   (await jumpFor("Open the function's definition").count()) === 0,
-  'nothing to open while the picker is on "+ New function"',
+  'nothing to open while "+ New function" was only being considered',
 );
 
 const functionLabel = await chooseFirst('action-function');

@@ -30,10 +30,8 @@ import { NEW_CONDITION, fetchWorkspaceConditions } from '../api/conditions';
 import type { Condition } from '../api/conditions';
 import {
   NEW_FUNCTION,
-  NEW_FUNCTION_NAME,
   createFunction,
   fetchWorkspaceFunctions,
-  validFunctionName,
 } from '../api/functions';
 import type { WorkspaceFunction } from '../api/functions';
 import { fetchWorkspaceConnections } from '../api/integrations';
@@ -48,6 +46,7 @@ import { FieldHint } from './FieldHint';
 import { HeaderRowsEditor } from './HeaderRowsEditor';
 import type { HeaderRow } from './HeaderRowsEditor';
 import { IconField } from './IconField';
+import { NewFunctionPanel } from './NewFunctionPanel';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { SlackTargetField } from './SlackTargetField';
 import { t } from '../i18n';
@@ -337,13 +336,16 @@ export function ActionForm({
   const headersReadable = action?.headersReadable ?? true;
   const [functionId, setFunctionId] = useState(action?.functionId ?? '');
   /**
-   * What to call the function this action is about to bring into existence.
+   * Whether "+ New function" is being answered, in the panel beside the form.
    *
-   * Only read when the picker is on "New function". An action is very often the
-   * reason a function is wanted at all, and the alternative was leaving a
-   * half-filled form to go and make one on another screen.
+   * An action is very often the reason a function is wanted at all, and the
+   * alternative was leaving a half-filled form to go and make one on another
+   * screen. The function is made there, on its own Create, and is then chosen
+   * here like any other - the picker never holds a name that is not a function.
    */
-  const [newFunctionName, setNewFunctionName] = useState(NEW_FUNCTION_NAME);
+  const [makingFunction, setMakingFunction] = useState(false);
+  /** Something in the form, so the panel can tell where the form is standing. */
+  const functionField = useRef<HTMLDivElement>(null);
   const [mappings, setMappings] = useState<ArgumentMapping[]>(action?.mappings ?? []);
   /**
    * Which plugin's block a Plugin Action runs, as "plugin/action". Issue #438.
@@ -557,9 +559,6 @@ export function ActionForm({
   useEffect(() => {
     if (subtype !== 'FUNCTION') return;
     if (chosenFunction === null) {
-      // A function still being named takes nothing, so the rows belonging to
-      // whatever was picked before it would otherwise be saved against it.
-      if (functionId === NEW_FUNCTION) setMappings([]);
       return;
     }
     setMappings((current) =>
@@ -622,7 +621,7 @@ export function ActionForm({
       : subtype === 'HTTP_REQUEST'
         ? url.trim() !== ''
         : subtype === 'FUNCTION'
-          ? functionId !== '' && (functionId !== NEW_FUNCTION || validFunctionName(newFunctionName))
+          ? functionId !== '' && functionId !== NEW_FUNCTION
           : subtype === 'PLUGIN_ACTION'
             ? pickHalves(pluginPick) !== null
             : subtype === 'INLINE_CONDITION'
@@ -743,9 +742,7 @@ export function ActionForm({
      */
     if (!embedded || submitting || !touched) return undefined;
     const timer = window.setTimeout(() => {
-      // The new function's name too: it is not in the settings until the function is made, and a
-      // name refused as taken has to be tried again once it is changed.
-      const now = JSON.stringify([settingsNow(), newFunctionName]);
+      const now = JSON.stringify(settingsNow());
       if (lastWritten.current === now) return;
       lastWritten.current = now;
       void save();
@@ -753,39 +750,17 @@ export function ActionForm({
     return () => window.clearTimeout(timer);
   });
 
-  /**
-   * Stored, whether a press asked for it or the panel did. Answers the id of
-   * the function the action calls, where it called one and the save went
-   * through, and null otherwise.
-   */
-  async function save(): Promise<string | null> {
+  /** Stored, whether a press asked for it or the panel did. */
+  async function save() {
     // A press still waits for a complete form; the panel does not. See the
     // watcher below for why.
-    if (submitting || (!embedded && !complete)) return null;
+    if (submitting || (!embedded && !complete)) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
-      /*
-       * Named in the picker, made here, before the action that points at it.
-       *
-       * An action holding the id of something that does not exist is a broken
-       * action, so the function goes in first and the action gets a real id or
-       * nothing at all. It starts from the server's stub, which runs and returns
-       * a map - enough for a workflow to be drawn through it, with the code
-       * written afterwards in the function editor.
-       */
-      let chosen = functionId;
-      if (subtype === 'FUNCTION' && functionId === NEW_FUNCTION) {
-        const made = await createFunction({ workspaceId, name: newFunctionName.trim() });
-        // Chosen from now on, so the next save points at it rather than making it again.
-        functionCatalogue.add(made);
-        setFunctionId(made.id);
-        chosen = made.id;
-      }
-
-      const settings = settingsNow(chosen);
+      const settings = settingsNow();
 
       const saved = editing
         ? await updateAction(action?.id ?? madeId!, settings)
@@ -794,10 +769,8 @@ export function ActionForm({
       // second definition with the same name.
       if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
-      return subtype === 'FUNCTION' && chosen !== '' ? chosen : null;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the action.'));
-      return null;
     } finally {
       /*
        * However it ended.
@@ -1319,12 +1292,10 @@ export function ActionForm({
             <>
               <div className={styles.field}>
                 {/* The code this action runs, which the picker names and the
-                    signature beside it summarises. Nothing to open while the
-                    picker is on a name: the function is created when the action
-                    is saved, not before. */}
+                    signature beside it summarises. */}
                 <span className={styles.labelRow}>
                   <label className={styles.label} htmlFor="action-function">{t('Function')}</label>
-                  {functionId !== '' && functionId !== NEW_FUNCTION && (
+                  {functionId !== '' && (
                     <Link
                       className={styles.jump}
                       to={`/workspace/${workspaceId}/functions/${functionId}`}
@@ -1340,64 +1311,36 @@ export function ActionForm({
                 {/* The way to make one sits above the list and outlasts the search:
                     a workspace's functions fill a hundred rows, and typing a name
                     that matches none of them is exactly when it is wanted. */}
+                <div ref={functionField}>
                 <DefinitionPicker
                   id="action-function"
                   value={functionId}
                   options={functionOptions}
-                  onChoose={setFunctionId}
+                  // "+ New function" opens the panel and leaves the picker on what it had.
+                  onChoose={(chosen) => (chosen === NEW_FUNCTION ? setMakingFunction(true) : setFunctionId(chosen))}
                   placeholder={t('Select function…')}
                   searchPlaceholder={t("Search functions…")}
                   create={NEW_FUNCTION_ROW}
                   failure={functionCatalogue.failure}
                 />
-                {functionId === NEW_FUNCTION && (
-                  <>
-                    <div className={styles.inputWrapper}>
-                      <input
-                        id="action-new-function"
-                        className={`${styles.input} ${styles.inputMono}`}
-                        type="text"
-                        aria-label={t('New function name')}
-                        placeholder={NEW_FUNCTION_NAME}
-                        value={newFunctionName}
-                        // Selected on focus, as the function editor does it: the box
-                        // arrives with a name in it, so typing over it is one gesture.
-                        onFocus={(event) => event.target.select()}
-                        onChange={(event) => {
-                          setNewFunctionName(event.target.value);
-                          // A refusal of the old name says nothing about the new one.
-                          setError(null);
-                        }}
-                      />
-                    </div>
-                    {/*
-                      Printed rather than behind the (?), for two reasons. It is
-                      a consequence - saving this form writes a function into the
-                      workspace, which is worth knowing before pressing Create
-                      rather than after wondering where it came from. And the box
-                      it belongs to has no visible label to hang a (?) on: the
-                      only label above it says Function, which is the picker's.
-                    */}
-                    <p className={styles.fieldHint}>
-                      {t('Created with this action, taking nothing and returning a map.')}{' '}
-                      {/* A link that saves first: the function does not exist until this form is saved,
-                          and a new tab - a new window in the desktop app - keeps this form as it is. */}
-                      <a
-                        href={`/workspace/${workspaceId}/functions`}
-                        data-testid="open-new-function"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          if (submitting || !validFunctionName(newFunctionName)) return;
-                          void save().then((made) => {
-                            if (made !== null) window.open(`/workspace/${workspaceId}/functions/${made}`, '_blank', 'noopener');
-                          });
-                        }}
-                      >
-                        {t('Open it in Functions to write what it does.')}
-                      </a>
-                    </p>
-                  </>
-                )}
+                </div>
+                {/*
+                  Made on its own Create, beside the form, and chosen here once
+                  it exists - so it can be opened at once, and a name already
+                  taken is refused where the name is.
+                */}
+                <NewFunctionPanel
+                  open={makingFunction}
+                  anchor={functionField}
+                  message={t('Made now, taking nothing and returning a map; chosen for this action once it is made.')}
+                  onClose={() => setMakingFunction(false)}
+                  onCreate={async (called, description) => {
+                    const made = await createFunction({ workspaceId, name: called, description: description || undefined });
+                    functionCatalogue.add(made);
+                    setFunctionId(made.id);
+                    setMakingFunction(false);
+                  }}
+                />
               </div>
 
               <div className={styles.field}>

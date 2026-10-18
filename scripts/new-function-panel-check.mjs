@@ -1,86 +1,134 @@
 /**
- * "+ New function" opens from a link in its note, saving first.
+ * "+ New function" opens a panel beside the form, and makes the function there.
  *
- * The note under a new function said to open it in Functions to write what it
- * does - but the function did not exist until the form was saved, so there was
- * nothing there to open, and in the desktop app, which has no tabs, a link
- * that loaded in place threw the unsaved form away. The note's link saves the
- * form, which makes the function, and opens that function in a new tab (a new
- * window in the desktop app).
+ * The picker used to turn into a name box, and the function was only made when
+ * the whole form was saved - so it could not be opened until then, and a taken
+ * name was refused under unrelated fields. Now choosing "+ New function" opens
+ * the panel the workflow editor makes things in: Name and Description, Create
+ * and Cancel. Create makes the function at once and chooses it in the picker;
+ * Cancel leaves the picker as it was and makes nothing; a taken name is refused
+ * in the panel, and the refusal goes once the name is changed.
  *
- * Makes an action and a function under names of its own and deletes both.
+ * On the action page, which is a form of its own. Makes a function under a name
+ * of its own and deletes it again.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
-const { browser, context, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
-const STAMP = Date.now();
-const ACTION = `zzSaveOpenAction${STAMP}`;
-const FUNCTION = `zzSaveOpenFn${STAMP}`;
+const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
+const FUNCTION = `zzNewFnPanel${Date.now()}`;
+const WORKFLOW_NAME = `zz new function panel ${Date.now()}`;
+
+/** The functions called [name], searched for: a workspace may hold more than one page of them. */
+const named = async (name) =>
+  (await graphql(
+    `query($w: ID!, $s: String) { workspaceFunctions(workspaceId: $w, size: 50, search: $s) { content { id name } } }`,
+    { w: WORKSPACE, s: name },
+  )).workspaceFunctions.content.filter((one) => one.name === name);
+
+const panel = page.locator('dialog[open]').filter({ hasText: 'New Function' });
+const picker = page.locator('#action-function');
+const chooseNew = async () => {
+  await picker.click();
+  await page.waitForTimeout(300);
+  await page.locator('[role="option"]').first().click();
+  await page.waitForTimeout(300);
+};
 
 try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/actions/new`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#action-name', { timeout: 20_000 });
   await page.waitForTimeout(1000);
-  await page.fill('#action-name', ACTION);
   await page.selectOption('#action-subtype', 'FUNCTION');
-  await page.locator('#action-function').click();
   await page.waitForTimeout(300);
-  await page.locator('[role="option"]').first().click();
-  // A name already taken is refused - and the refusal goes once the name is changed.
+  const before = (await picker.innerText()).trim();
+
+  // On a page of its own the form fills the width, so it is the dialog the list pages name things in.
+  await chooseNew();
+  record((await panel.count()) === 1, '"+ New function" opens the New Function panel');
+  record((await page.locator('#action-new-function').count()) === 0, 'and the form grows no name box of its own');
+  record(await panel.evaluate((dialog) => dialog.matches(':modal')), 'on the action page it is a dialog over the page');
+
+  // Cancel: nothing made, the picker as it was.
+  await panel.getByRole('button', { name: 'Cancel' }).click();
+  await page.waitForTimeout(300);
+  record((await panel.count()) === 0 && (await picker.innerText()).trim() === before, `Cancel closes it and leaves the picker on "${before}"`);
+
+  // A taken name is refused in the panel, and the refusal goes with the name.
   const { workspaceFunctions: present } = await graphql(
     `query($w: ID!) { workspaceFunctions(workspaceId: $w, size: 1) { content { name } } }`,
     { w: WORKSPACE },
   );
   const taken = present.content[0]?.name;
+  await chooseNew();
   if (taken !== undefined) {
-    await page.locator('#action-new-function').fill(taken);
-    await page.getByTestId('open-new-function').click();
-    const refusal = page.getByText(new RegExp(`already exists`));
-    await refusal.first().waitFor({ timeout: 10_000 }).catch(() => undefined);
-    record((await refusal.count()) > 0, `a taken name is refused (${taken})`);
-    await page.locator('#action-new-function').fill(FUNCTION);
-    await page.waitForTimeout(200);
+    await panel.locator('#new-name').fill(taken);
+    await panel.getByRole('button', { name: 'Create Function' }).click();
+    const refusal = panel.locator('[role="alert"]');
+    await refusal.waitFor({ timeout: 10_000 }).catch(() => undefined);
+    record((await refusal.count()) === 1 && (await panel.count()) === 1, `a taken name is refused in the panel (${taken})`);
+    await panel.locator('#new-name').fill(FUNCTION);
+    await page.waitForTimeout(150);
     record((await refusal.count()) === 0, 'and the refusal goes once the name is changed');
   }
-  await page.locator('#action-new-function').fill(FUNCTION);
 
-  const button = page.getByTestId('open-new-function');
-  record((await button.count()) === 1 && (await button.evaluate((el) => el.tagName)) === 'A', 'the note under a new function has a link to open it');
-
-  const opened = context.waitForEvent('page', { timeout: 15_000 }).catch(() => null);
-  await button.click();
-  const tab = await opened;
-  if (tab !== null) await tab.waitForLoadState('domcontentloaded').catch(() => undefined);
-
-  const { workspaceFunctions } = await graphql(
-    `query($w: ID!, $s: String) { workspaceFunctions(workspaceId: $w, size: 50, search: $s) { content { id name } } }`,
-    { w: WORKSPACE, s: FUNCTION },
-  );
-  const made = workspaceFunctions.content.filter((one) => one.name === FUNCTION);
-  record(made.length === 1, `saving made the function, once (${made.length})`);
+  // Create: made at once, chosen in the picker, the panel gone.
+  await panel.locator('#new-name').fill(FUNCTION);
+  await panel.locator('#new-description').fill('Made by the new-function panel check');
+  await panel.getByRole('button', { name: 'Create Function' }).click();
+  await panel.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => undefined);
+  await page.waitForTimeout(500);
+  const made = await named(FUNCTION);
+  record(made.length === 1, `Create made the function, once, before the action was saved (${made.length})`);
+  record((await picker.innerText()).includes(FUNCTION), `and the picker has it chosen (${(await picker.innerText()).trim()})`);
+  record((await panel.count()) === 0, 'and the panel closed');
   record(
-    tab !== null && made.length === 1 && tab.url().endsWith(`/workspace/${WORKSPACE}/functions/${made[0].id}`),
-    `and opened it in a new tab (${tab?.url()})`,
+    made.length === 1 && (await page.locator(`a[href$="/functions/${made[0].id}"]`).count()) >= 1,
+    'and it can be opened at once, from the picker\'s open icon',
   );
-  // The action was saved too: the form is a page of its own here, which goes back to the list once saved.
-  const { workspaceActions: saved } = await graphql(
-    `query($w: ID!) { workspaceActions(workspaceId: $w, size: 200) { content { name } } }`,
-    { w: WORKSPACE },
+
+  // In the workflow editor it stands down the side, to the left of the node's own panel.
+  const flow = (await graphql(`mutation($input: CreateWorkflowInput!) { createWorkflow(input: $input) { workflowId } }`, {
+    input: { workspaceId: WORKSPACE, name: WORKFLOW_NAME },
+  })).createWorkflow.workflowId;
+  await graphql(
+    `mutation($w: ID!, $f: ID!, $input: WorkflowGraphInput!) { saveWorkflowGraph(workspaceId: $w, workflowId: $f, input: $input) { workflowId } }`,
+    { w: WORKSPACE, f: flow, input: { nodes: [{ key: 'act', kind: 'ACTION', name: 'Step', x: 160, y: 160 }], edges: [] } },
   );
-  record(saved.content.some((one) => one.name === ACTION), 'and the action that calls it was saved with it');
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${flow}/editor`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.react-flow__node', { timeout: 20_000 });
+  await page.locator('.react-flow__node').first().click();
+  await page.waitForTimeout(800);
+  await page.locator('button', { hasText: /Choose an action/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole('option', { name: /^Custom/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('select').filter({ has: page.locator('option', { hasText: 'Function' }) }).first().selectOption({ label: 'Function' });
+  await page.waitForTimeout(400);
+  await chooseNew();
+  const drawn = await panel.boundingBox();
+  const field = await picker.boundingBox();
+  record(
+    drawn !== null && field !== null && !(await panel.evaluate((dialog) => dialog.matches(':modal'))) && drawn.x + drawn.width <= field.x + 1,
+    `in the editor it is a panel standing left of the node's panel (panel ends at ${Math.round((drawn?.x ?? 0) + (drawn?.width ?? 0))}, node panel's picker starts at ${Math.round(field?.x ?? 0)})`,
+  );
+  await panel.getByRole('button', { name: 'Cancel' }).click();
 } finally {
-  const { workspaceActions } = await graphql(
-    `query($w: ID!) { workspaceActions(workspaceId: $w, size: 200) { content { id name } } }`,
+  const { workspaceWorkflows } = await graphql(
+    `query($w: ID!) { workspaceWorkflows(workspaceId: $w, size: 200) { content { id name } } }`,
     { w: WORKSPACE },
-  ).catch(() => ({ workspaceActions: { content: [] } }));
-  for (const one of workspaceActions.content.filter((a) => a.name === ACTION)) {
-    await graphql(`mutation($id: ID!) { deleteAction(id: $id) }`, { id: one.id }).catch(() => undefined);
+  ).catch(() => ({ workspaceWorkflows: { content: [] } }));
+  for (const old of workspaceWorkflows.content.filter((one) => one.name === WORKFLOW_NAME)) {
+    // The Custom definition the node's panel wrote belongs to the workflow, and goes first.
+    const { workflowOwnedActions } = await graphql(
+      `query($w: ID!, $f: ID!) { workflowOwnedActions(workspaceId: $w, workflowId: $f) { id } }`,
+      { w: WORKSPACE, f: old.id },
+    ).catch(() => ({ workflowOwnedActions: [] }));
+    for (const owned of workflowOwnedActions) {
+      await graphql(`mutation($id: ID!) { deleteAction(id: $id) }`, { id: owned.id }).catch(() => undefined);
+    }
+    await graphql(`mutation($id: ID!) { removeWorkflow(id: $id) }`, { id: old.id }).catch(() => undefined);
   }
-  const { workspaceFunctions } = await graphql(
-    `query($w: ID!, $s: String) { workspaceFunctions(workspaceId: $w, size: 50, search: $s) { content { id name } } }`,
-    { w: WORKSPACE, s: FUNCTION },
-  ).catch(() => ({ workspaceFunctions: { content: [] } }));
-  for (const one of workspaceFunctions.content.filter((f) => f.name === FUNCTION)) {
+  for (const one of await named(FUNCTION).catch(() => [])) {
     await graphql(`mutation($id: ID!) { deleteFunction(id: $id) }`, { id: one.id }).catch(() => undefined);
   }
 }

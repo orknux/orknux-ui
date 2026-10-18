@@ -28,13 +28,12 @@ import type {
 } from '../api/conditions';
 import {
   NEW_FUNCTION,
-  NEW_FUNCTION_NAME,
   createFunction,
   fetchWorkspaceFunctions,
   refusingFunction,
-  validFunctionName,
 } from '../api/functions';
 import type { WorkspaceFunction } from '../api/functions';
+import { NewFunctionPanel } from './NewFunctionPanel';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 /*
@@ -234,14 +233,16 @@ export function ConditionForm({
   const [negate, setNegate] = useState(condition?.negate ?? false);
   const [functionId, setFunctionId] = useState(condition?.functionId ?? preset?.functionId ?? '');
   /**
-   * What to call the function this condition is about to bring into existence.
+   * Whether "+ New function" is being answered, in the panel beside the form.
    *
-   * Only read when the picker is on "New function". A condition whose whole job
-   * is to ask one question usually needs a function nobody has written yet, and
-   * sending somebody to the Functions screen to write it loses the half-filled
-   * form they are standing in.
+   * A condition whose whole job is to ask one question usually needs a function
+   * nobody has written yet, and sending somebody to the Functions screen to
+   * write it loses the half-filled form they are standing in. It is made there,
+   * on its own Create, and chosen here like any other.
    */
-  const [newFunctionName, setNewFunctionName] = useState(NEW_FUNCTION_NAME);
+  const [makingFunction, setMakingFunction] = useState(false);
+  /** Something in the form, so the panel can tell where the form is standing. */
+  const functionField = useRef<HTMLDivElement>(null);
   const [values, setValues] = useState<string[]>(condition?.values ?? []);
   /**
    * What this condition passes to its function, one per parameter.
@@ -430,9 +431,6 @@ export function ConditionForm({
       }
     } else if (type === 'FUNCTION') {
       if (functionId === '') missing.push(t('Choose the function to call.'));
-      else if (functionId === NEW_FUNCTION && !validFunctionName(newFunctionName)) {
-        missing.push(t('Name the new function as a script can call it: a letter, then letters or digits.'));
-      }
     } else if (label !== null) {
       const needed = check === 'BETWEEN' ? 2 : 1;
       if (values.length < needed) {
@@ -445,7 +443,7 @@ export function ConditionForm({
     }
 
     return missing;
-  }, [name, isComposite, members, type, functionId, newFunctionName, label, check, values, draftValue]);
+  }, [name, isComposite, members, type, functionId, label, check, values, draftValue]);
 
   /** In a node's panel, where the definition belongs to the node. */
   const embedded = namedAfter !== undefined;
@@ -561,9 +559,7 @@ export function ConditionForm({
      */
     if (!embedded || submitting || !touched) return undefined;
     const timer = window.setTimeout(() => {
-      // The new function's name too: it is not in the settings until the function is made, and a
-      // name refused as taken has to be tried again once it is changed.
-      const now = JSON.stringify([settingsNow(), newFunctionName]);
+      const now = JSON.stringify(settingsNow());
       if (lastWritten.current === now) return;
       lastWritten.current = now;
       void save();
@@ -572,43 +568,16 @@ export function ConditionForm({
   });
 
   /** Stored, whether a press asked for it or the panel did. */
-  /** Stored; answers the id of the function it asks, where it asks one and the save went through. */
-  async function save(): Promise<string | null> {
+  async function save() {
     // A press still waits for a complete form; the panel does not. See the
     // watcher below for why.
-    if (submitting || (!embedded && !complete)) return null;
+    if (submitting || (!embedded && !complete)) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
-      /*
-       * Named in the picker, made here, before the condition that points at it.
-       *
-       * A condition holding the id of something that does not exist is a broken
-       * condition, so the function goes in first and the condition gets a real id
-       * or nothing at all. What it starts as says no to everything, which is a
-       * condition that is simply never met until somebody opens it in the function
-       * editor and writes the question.
-       *
-       * Boolean, because a question is the only thing a condition can ask.
-       */
-      let chosen = functionId;
-      if (type === 'FUNCTION' && functionId === NEW_FUNCTION) {
-        const called = newFunctionName.trim();
-        const made = await createFunction({
-          workspaceId,
-          name: called,
-          returnType: 'BOOLEAN',
-          ...refusingFunction(called),
-        });
-        // Chosen from now on, so the next save points at it rather than making it again.
-        functionCatalogue.add(made);
-        setFunctionId(made.id);
-        chosen = made.id;
-      }
-
-      const settings = settingsNow(chosen);
+      const settings = settingsNow();
 
       const saved = editing
         ? await updateCondition(condition?.id ?? madeId!, settings)
@@ -617,10 +586,8 @@ export function ConditionForm({
       // second definition with the same name.
       if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
-      return type === 'FUNCTION' && chosen !== '' ? chosen : null;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the condition.'));
-      return null;
     } finally {
       /*
        * However it ended.
@@ -786,7 +753,7 @@ export function ConditionForm({
                     {t('Only functions that return a boolean can answer a condition. It is handed what the run is carrying.')}
                   </FieldHint>
                 </span>
-                {functionId !== '' && functionId !== NEW_FUNCTION && (
+                {functionId !== '' && (
                   <Link
                     className={styles.jump}
                     to={`/workspace/${workspaceId}/functions/${functionId}`}
@@ -802,15 +769,42 @@ export function ConditionForm({
               {/* The way to make one sits above the list and outlasts the search:
                   a workspace's functions fill a hundred rows, and typing a name
                   that matches none of them is exactly when it is wanted. */}
+              <div ref={functionField}>
               <DefinitionPicker
                 id="condition-function"
                 value={functionId}
                 options={functionOptions}
-                onChoose={setFunctionId}
+                // "+ New function" opens the panel and leaves the picker on what it had.
+                onChoose={(chosen) => (chosen === NEW_FUNCTION ? setMakingFunction(true) : setFunctionId(chosen))}
                 placeholder={t('Select function…')}
                 searchPlaceholder={t("Search functions…")}
                 create={NEW_FUNCTION_ROW}
                 failure={functionCatalogue.failure}
+              />
+              </div>
+              {/*
+                Made on its own Create, beside the form. Boolean, because a
+                question is the only thing a condition can ask, and saying no to
+                everything until somebody writes the question: a condition that
+                is simply never met.
+              */}
+              <NewFunctionPanel
+                open={makingFunction}
+                anchor={functionField}
+                message={t('Made now, answering no to everything until its question is written; chosen for this condition once it is made.')}
+                onClose={() => setMakingFunction(false)}
+                onCreate={async (called, description) => {
+                  const made = await createFunction({
+                    workspaceId,
+                    name: called,
+                    description: description || undefined,
+                    returnType: 'BOOLEAN',
+                    ...refusingFunction(called),
+                  });
+                  functionCatalogue.add(made);
+                  setFunctionId(made.id);
+                  setMakingFunction(false);
+                }}
               />
               {/*
                 The parameters are filled in on the node, not here.
@@ -828,52 +822,6 @@ export function ConditionForm({
                 Nothing was migrated and nothing changed meaning.
               */}
 
-              {functionId === NEW_FUNCTION && (
-                <>
-                  <div className={styles.inputWrapper}>
-                    <input
-                      id="condition-new-function"
-                      className={`${styles.input} ${styles.inputMono}`}
-                      type="text"
-                      aria-label={t('New function name')}
-                      placeholder={NEW_FUNCTION_NAME}
-                      value={newFunctionName}
-                      // Selected on focus, as the function editor does it: the box
-                      // arrives with a name in it, so typing over it is one gesture.
-                      onFocus={(event) => event.target.select()}
-                      onChange={(event) => {
-                          setNewFunctionName(event.target.value);
-                          // A refusal of the old name says nothing about the new one.
-                          setError(null);
-                        }}
-                    />
-                  </div>
-                  {/*
-                    Printed rather than behind the (?): this is what saving is
-                    about to do - bring a function into existence that says no to
-                    everything - and a consequence found after the fact is one
-                    that has already happened.
-                  */}
-                  <p className={styles.fieldHint}>
-                    {t('Created with this condition, saying no to everything.')}{' '}
-                      {/* A link that saves first: the function does not exist until this form is saved,
-                          and a new tab - a new window in the desktop app - keeps this form as it is. */}
-                      <a
-                        href={`/workspace/${workspaceId}/functions`}
-                        data-testid="open-new-function"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          if (submitting || !validFunctionName(newFunctionName)) return;
-                          void save().then((made) => {
-                            if (made !== null) window.open(`/workspace/${workspaceId}/functions/${made}`, '_blank', 'noopener');
-                          });
-                        }}
-                      >
-                        {t('Open it in Functions to write the question it should be asking.')}
-                      </a>
-                  </p>
-                </>
-              )}
             </div>
           )}
 

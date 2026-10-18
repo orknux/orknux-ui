@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { FormEvent } from 'react';
 
 import { DrawerEdge } from './DrawerWidth';
@@ -29,6 +29,14 @@ export interface NameDialogProps {
   onSubmit: (name: string, description: string) => Promise<void>;
   /** Another way to make the thing, offered at the foot beside Cancel: a button that opens its own dialog. */
   extra?: ReactNode;
+  /** What the Name box holds when it opens; empty where nothing would be accepted as a start. */
+  initialName?: string;
+  /**
+   * For a panel: how far from the window's right edge it stands, in pixels.
+   * Unset, it stands beside the workflow editor's node panel. Set, beside
+   * whatever else the form it was opened from sits in - another drawer, say.
+   */
+  besideRight?: number;
 }
 
 /**
@@ -47,7 +55,7 @@ export function NameDialog({
   descriptionPlaceholder,
   submitLabel,
   onClose,
-  onSubmit, placement = 'modal', extra }: NameDialogProps) {
+  onSubmit, placement = 'modal', extra, initialName = '', besideRight }: NameDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [name, setName] = useState('');
@@ -60,7 +68,7 @@ export function NameDialog({
     if (dialog === null) return;
 
     if (open && !dialog.open) {
-      setName('');
+      setName(initialName);
       setDescription('');
       setError(null);
       setSubmitting(false);
@@ -86,7 +94,15 @@ export function NameDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className={`${styles.dialog} ${placement === 'panel' ? styles.dialogPanel : ''}`} onCancel={onClose} onClose={onClose} onKeyDown={panelEscape(placement, onClose)}>
+    <dialog
+      ref={dialogRef}
+      className={`${styles.dialog} ${placement === 'panel' ? styles.dialogPanel : ''}`}
+      // The drawer and its widening edge are both placed from this one value.
+      style={besideRight === undefined ? undefined : ({ '--node-panel-width': `${besideRight}px` } as CSSProperties)}
+      onCancel={onClose}
+      onClose={onClose}
+      onKeyDown={panelEscape(placement, onClose)}
+    >
       <DrawerEdge placement={placement} />
       <form className={styles.body} onSubmit={handleSubmit}>
         <header className={styles.header}>
@@ -109,7 +125,11 @@ export function NameDialog({
                 type="text"
                 placeholder={namePlaceholder}
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  // A refusal of the name typed before says nothing about this one.
+                  setError(null);
+                }}
                 autoFocus
                 required
               />

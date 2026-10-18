@@ -3955,8 +3955,8 @@ export const TESTS = [
     // The upload is answered here and attachments are said to be allowed, so nothing is stored.
   },
   {
-    name: 'save-and-open-function-check',
-    what: "a new function's note links to it, saving the form first so there is a function to open",
+    name: 'new-function-panel-check',
+    what: '"+ New function" opens a panel beside the form that makes the function at once, refuses a taken name there, and Cancel makes nothing',
     needs: ['workspace'],
   },
   {

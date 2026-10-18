@@ -17,17 +17,16 @@ import {
   updateTrigger,
 } from '../api/triggers';
 import type { SlackBotUser, Trigger, TriggerAction, TriggerType, WebhookAuthType } from '../api/triggers';
+import { NewFunctionPanel } from './NewFunctionPanel';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import toggleOffIcon from '../assets/toggle-off.svg';
 import toggleOnIcon from '../assets/toggle-on.svg';
 import {
   NEW_FUNCTION,
-  NEW_FUNCTION_NAME,
   createFunction,
   fetchWorkspaceFunctions,
   refusingFunction,
-  validFunctionName,
 } from '../api/functions';
 import type { WorkspaceFunction } from '../api/functions';
 import { NEW_OBJECT, createObject, fetchWorkspaceObjects } from '../api/objects';
@@ -220,13 +219,15 @@ export function TriggerForm({
   const [authType, setAuthType] = useState<WebhookAuthType>(trigger?.authType ?? 'NONE');
   const [authFunctionId, setAuthFunctionId] = useState(trigger?.authFunctionId ?? '');
   /**
-   * What to call the function this trigger is about to bring into existence.
+   * Whether "+ New function" is being answered, in the panel beside the form.
    *
-   * Only read when the picker is on "New function". A webhook guarded by a
-   * function is very often the reason that function is wanted at all, and a
-   * workspace with none had nothing to choose here but a dead end.
+   * A webhook guarded by a function is very often the reason that function is
+   * wanted at all, and a workspace with none had nothing to choose here but a
+   * dead end. It is made there, on its own Create, and chosen here like any other.
    */
-  const [newFunctionName, setNewFunctionName] = useState(NEW_FUNCTION_NAME);
+  const [makingFunction, setMakingFunction] = useState(false);
+  /** Something in the form, so the panel can tell where the form is standing. */
+  const functionField = useRef<HTMLDivElement>(null);
 
   const [objects, setObjects] = useState<WorkflowObject[]>([]);
   const [functions, setFunctions] = useState<WorkspaceFunction[]>([]);
@@ -425,9 +426,7 @@ export function TriggerForm({
       : webhook
         ? webhookPath.trim() !== '' &&
           objectId !== '' &&
-          (authType !== 'FUNCTION' ||
-            (authFunctionId !== '' &&
-              (authFunctionId !== NEW_FUNCTION || validFunctionName(newFunctionName))))
+          (authType !== 'FUNCTION' || authFunctionId !== '')
         : cron.trim() !== '');
 
   /**
@@ -529,9 +528,7 @@ export function TriggerForm({
      */
     if (!embedded || submitting || !touched) return undefined;
     const timer = window.setTimeout(() => {
-      // The new function's name too: it is not in the settings until the function is made, and a
-      // name refused as taken has to be tried again once it is changed.
-      const now = JSON.stringify([settingsNow(), newFunctionName]);
+      const now = JSON.stringify(settingsNow());
       if (lastWritten.current === now) return;
       lastWritten.current = now;
       void save();
@@ -540,44 +537,15 @@ export function TriggerForm({
   });
 
   /** Stored, whether a press asked for it or the panel did. */
-  /** Stored; answers the id of the function it asks, where it asks one and the save went through. */
-  async function save(): Promise<string | null> {
+  async function save() {
     // A press still waits for a complete form; the panel does not. See the
     // watcher below for why.
-    if (submitting || (!embedded && !complete)) return null;
+    if (submitting || (!embedded && !complete)) return;
 
     setSubmitting(true);
     setError(null);
     try {
-      /*
-       * Named in the picker, made here, before the trigger that points at it.
-       *
-       * A trigger holding the id of something that does not exist would answer
-       * every caller 401 for a reason nobody could look up, so the function goes
-       * in first and the trigger gets a real id or nothing at all. What it starts
-       * as turns everybody away, which is the safe half of a guard nobody has
-       * written yet. Boolean, because letting a caller in or keeping it out is the
-       * whole question, and the picker only lists functions that answer it.
-       *
-       * Kept in this form's own list as well: this is a settings page as often as
-       * it is a dialog, and the picker it leaves behind has to be able to show
-       * what was just chosen.
-       */
-      let chosenFunction = authFunctionId;
-      if (webhook && authType === 'FUNCTION' && authFunctionId === NEW_FUNCTION) {
-        const called = newFunctionName.trim();
-        const made = await createFunction({
-          workspaceId,
-          name: called,
-          returnType: 'BOOLEAN',
-          ...refusingFunction(called),
-        });
-        setFunctions((current) => [...current, made]);
-        setAuthFunctionId(made.id);
-        chosenFunction = made.id;
-      }
-
-      const settings = settingsNow(chosenFunction);
+      const settings = settingsNow();
       const saved = editing
         ? await updateTrigger(trigger?.id ?? madeId!, settings)
         : await createTrigger({ workspaceId, workflowId, ...settings });
@@ -601,10 +569,8 @@ export function TriggerForm({
       // second definition with the same name.
       if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
-      return webhook && authType === 'FUNCTION' && chosenFunction !== '' ? chosenFunction : null;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the trigger.'));
-      return null;
     } finally {
       /*
        * However it ended.
@@ -835,9 +801,7 @@ export function TriggerForm({
                         which is where a stored secret comes from.
                       </FieldHint>
                     </span>
-                    {/* Nothing to open while the picker is on a name: the function
-                        is created when the trigger is saved, not before. */}
-                    {authFunctionId !== '' && authFunctionId !== NEW_FUNCTION && (
+                    {authFunctionId !== '' && (
                       <Link
                         className={styles.jump}
                         to={`/workspace/${workspaceId}/functions/${authFunctionId}`}
@@ -853,65 +817,50 @@ export function TriggerForm({
                   {/* The way to make one sits above the list and outlasts the search:
                       a workspace's functions fill a hundred rows, and typing a name
                       that matches none of them is exactly when it is wanted. */}
+                  <div ref={functionField}>
                   <DefinitionPicker
                     id="trigger-auth-function"
                     value={authFunctionId}
                     options={functionOptions}
-                    onChoose={setAuthFunctionId}
+                    // "+ New function" opens the panel and leaves the picker on what it had.
+                    onChoose={(chosen) => (chosen === NEW_FUNCTION ? setMakingFunction(true) : setAuthFunctionId(chosen))}
                     placeholder={t('Select function…')}
                     searchPlaceholder={t("Search functions…")}
                     create={NEW_FUNCTION_ROW}
                   />
-                  {authFunctionId === NEW_FUNCTION && (
-                    <div className={styles.inputWrapper}>
-                      <input
-                        id="trigger-new-function"
-                        name="newFunctionName"
-                        className={`${styles.input} ${styles.inputMono}`}
-                        type="text"
-                        aria-label={t('New function name')}
-                        placeholder={NEW_FUNCTION_NAME}
-                        value={newFunctionName}
-                        // Selected on focus, as the function editor does it: the box
-                        // arrives with a name in it, so typing over it is one gesture.
-                        onFocus={(event) => event.target.select()}
-                        onChange={(event) => {
-                          setNewFunctionName(event.target.value);
-                          // A refusal of the old name says nothing about the new one.
-                          setError(null);
-                        }}
-                      />
-                    </div>
-                  )}
+                  </div>
                   {/*
-                    What the field is handed went behind the (?); these two did
-                    not. The first is what saving is about to do — make a function
-                    that turns every caller away — and a consequence read after the
-                    fact is one that has already happened. The second is an empty
-                    state: it is what this field has instead of anything to choose.
+                    Made on its own Create, beside the form, turning everybody
+                    away - the safe half of a guard nobody has written yet.
+                    Boolean, because letting a caller in or keeping it out is the
+                    whole question. Kept in this form's own list too: this is a
+                    settings page as often as a dialog, and the picker has to
+                    show what was just made.
                   */}
-                  {authFunctionId === NEW_FUNCTION ? (
-                    <>
-                    <p className={styles.fieldHint}>
-                      {t('Created with this trigger, turning every caller away.')}{' '}
-                      {/* A link that saves first: the function does not exist until this form is saved,
-                          and a new tab - a new window in the desktop app - keeps this form as it is. */}
-                      <a
-                        href={`/workspace/${workspaceId}/functions`}
-                        data-testid="open-new-function"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          if (submitting || !validFunctionName(newFunctionName)) return;
-                          void save().then((made) => {
-                            if (made !== null) window.open(`/workspace/${workspaceId}/functions/${made}`, '_blank', 'noopener');
-                          });
-                        }}
-                      >
-                        {t('Open it in Functions to say who may call.')}
-                      </a>
-                    </p>
-                    </>
-                  ) : functions.length === 0 ? (
+                  <NewFunctionPanel
+                    open={makingFunction}
+                    anchor={functionField}
+                    message={t('Made now, turning every caller away until it says who may call; chosen for this trigger once it is made.')}
+                    onClose={() => setMakingFunction(false)}
+                    onCreate={async (called, description) => {
+                      const made = await createFunction({
+                        workspaceId,
+                        name: called,
+                        description: description || undefined,
+                        returnType: 'BOOLEAN',
+                        ...refusingFunction(called),
+                      });
+                      setFunctions((current) => [...current, made]);
+                      setAuthFunctionId(made.id);
+                      setMakingFunction(false);
+                    }}
+                  />
+                  {/*
+                    What the field is handed went behind the (?); this did not:
+                    it is an empty state, what this field has instead of
+                    anything to choose.
+                  */}
+                  {functions.length === 0 ? (
                     <p className={styles.fieldHint}>
                       {t('No function here returns true or false yet; one that does can be chosen here, or made above.')}
                     </p>

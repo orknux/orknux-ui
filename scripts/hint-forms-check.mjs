@@ -199,22 +199,11 @@ const screens = [
     gone: ['Only functions that return a boolean can answer a condition'],
     kept: [],
   },
-  {
-    /*
-     * The same field asked to make the function it points at. What that will do
-     * on save stays printed, because it is what saving is about to do.
-     */
-    name: 'condition new function',
-    path: `/workspace/${WORKSPACE}/conditions/new`,
-    hints: 2,
-    async drive() {
-      await page.selectOption('#condition-type', 'FUNCTION');
-      await page.waitForTimeout(400);
-      await pick('condition-function', 'New function');
-    },
-    gone: ['Only functions that return a boolean can answer a condition'],
-    kept: ['Created with this condition, saying no to everything'],
-  },
+  /*
+   * "+ New function" no longer turns this field into a name box with a note: it
+   * opens a panel of its own, which says what it is about to make in its own
+   * line. new-function-panel-check holds that.
+   */
   {
     /*
      * Not one of the two forms, but the third caller of the field they share.
