@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -21,6 +22,7 @@ import { askBeforeLeaving } from './leaveGuard';
 import { NotificationBell } from './NotificationBell';
 import { QuickChat } from './QuickChat';
 import styles from './AppShell.module.css';
+import { ResizeHandle, useDragSize } from './DragSize';
 import { t } from '../i18n';
 
 export interface AppShellUser {
@@ -71,6 +73,12 @@ export interface AppShellProps {
   sidebar: ReactNode;
   /** The workflow editor fills the workspace itself. */
   hideSidebar?: boolean;
+  /**
+   * Where the sidebar's dragged width is remembered, for a page whose sidebar
+   * holds things worth reading whole - the chat list, whose names are cut off at
+   * the shell's width. Left out, the column is the shell's fixed width.
+   */
+  sidebarResizeKey?: string;
   /**
    * This page fills the frame and owns its own bottom edge.
    *
@@ -238,6 +246,11 @@ function useSectionArrival(pathname: string, hash: string) {
 /** How near the top counts as landed on, in pixels; a heading has a margin. */
 const SEATED = 120;
 
+/** The sidebar's width where a page lets it be dragged: the shell's own to begin with, and bounds either way. */
+const SIDEBAR_DEFAULT = 240;
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 560;
+
 export function AppShell({
   user,
   workspacePath,
@@ -249,7 +262,20 @@ export function AppShell({
   title,
   onSignOut,
   children,
+  sidebarResizeKey,
 }: AppShellProps) {
+  /*
+   * Dragged on a page that asks for it - always called, so the hooks stay in
+   * one order; a page that does not ask gets the shell's own width.
+   */
+  const sidebarDragged = useDragSize({
+    storageKey: sidebarResizeKey ?? 'orknux.sidebar.width.unused',
+    initial: SIDEBAR_DEFAULT,
+    min: SIDEBAR_MIN,
+    max: SIDEBAR_MAX,
+    edge: 'right',
+  });
+  const sidebarDrag = sidebarResizeKey === undefined ? null : sidebarDragged;
   const workspaceFallback = useWorkspaceFallback(workspacePath === undefined);
   const { pathname, hash } = useLocation();
   useSectionArrival(pathname, hash);
@@ -420,12 +446,31 @@ export function AppShell({
         </div>
       </header>
 
-      <div className={styles.workspace}>
+      <div
+        className={styles.workspace}
+        // The column's width, where this page lets it be dragged; the collapse handle follows it.
+        style={sidebarDrag !== null && !collapsed ? ({ '--sidebar-width': `${sidebarDrag.size}px` } as CSSProperties) : undefined}
+      >
+        {!hideSidebar && sidebarDrag !== null && !collapsed && (
+          <ResizeHandle
+            orientation="vertical"
+            className={styles.sidebarResize}
+            label={t('Width of the sidebar')}
+            valueNow={sidebarDrag.size}
+            valueMin={SIDEBAR_MIN}
+            valueMax={SIDEBAR_MAX}
+            title={t('Drag to change the width; double-click to put it back')}
+            dragging={sidebarDrag.dragging}
+            handlers={sidebarDrag.handlers}
+          />
+        )}
         {!hideSidebar && (
           <nav
             className={collapsed ? `${styles.sidebar} ${styles.sidebarCollapsed}` : styles.sidebar}
             aria-label={t('Primary')}
             data-shell-sidebar=""
+            // Following the pointer at once while dragged, not easing after it.
+            style={sidebarDrag?.dragging ? { transition: 'none' } : undefined}
           >
             {sidebar}
           </nav>

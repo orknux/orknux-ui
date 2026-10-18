@@ -1989,3 +1989,23 @@ button.attachmentName {
 @media (prefers-reduced-motion: reduce) {
   .namingDot { animation: none; }
 }
+
+/* Beside a chat's name in the list while its title is generated: a small turning ring. */
+.namingSpinner {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-left: var(--space-6);
+  border: 1.5px solid var(--color-border);
+  border-top-color: var(--color-text-secondary);
+  border-radius: 50%;
+  animation: naming-spin 0.8s linear infinite;
+}
+
+@keyframes naming-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .namingSpinner { animation-duration: 2.4s; }
+}

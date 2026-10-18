@@ -3989,6 +3989,11 @@ export const TESTS = [
     // The conversation is answered here, so nothing is asked of a model.
   },
   {
+    name: 'chat-sidebar-resize-check',
+    what: 'the chat list is dragged wider by its edge, stays as wide after a reload, and goes back on a double-click',
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

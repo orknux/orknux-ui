@@ -31,7 +31,8 @@ import styles from './DragSize.module.css';
  * `left` sizes the width of something anchored to the right, so pulling left
  * widens it and whatever is beside it gives way.
  */
-export type DragEdge = 'bottom' | 'left';
+/** Which edge the handle is on: below, left of, or right of what it sizes. */
+export type DragEdge = 'bottom' | 'left' | 'right';
 
 export interface DragSizeOptions {
   /** Where the chosen size is written down. One key per panel, not per page. */
@@ -182,7 +183,7 @@ export function useDragSize(options: DragSizeOptions): DragSize<number | null> {
       const grip = held.current;
       if (grip === null) return;
       // Left widens, because left is where the edge goes; down makes it taller.
-      const by = edge === 'bottom' ? event.clientY - grip.from : grip.from - event.clientX;
+      const by = edge === 'bottom' ? event.clientY - grip.from : edge === 'right' ? event.clientX - grip.from : grip.from - event.clientX;
       setWanted(clamp(grip.origin + by));
     },
     onPointerUp(event) {
@@ -207,8 +208,8 @@ export function useDragSize(options: DragSizeOptions): DragSize<number | null> {
      * since there is nothing here to remove.
      */
     onKeyDown(event) {
-      const grow = edge === 'bottom' ? 'ArrowDown' : 'ArrowLeft';
-      const shrink = edge === 'bottom' ? 'ArrowUp' : 'ArrowRight';
+      const grow = edge === 'bottom' ? 'ArrowDown' : edge === 'right' ? 'ArrowRight' : 'ArrowLeft';
+      const shrink = edge === 'bottom' ? 'ArrowUp' : edge === 'right' ? 'ArrowLeft' : 'ArrowRight';
       const by = event.key === grow ? nudge : event.key === shrink ? -nudge : 0;
       if (by !== 0) {
         // Kept from the page behind, which would scroll instead.

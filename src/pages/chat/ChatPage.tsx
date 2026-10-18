@@ -2729,6 +2729,7 @@ ${named}`;
                   key={entry.id}
                   entry={entry}
                   current={entry.id === currentId}
+                  naming={naming === entry.id}
                   pinnedRow
                   menuOpen={menuFor === entry.id}
                   onSelect={() => setCurrentId(entry.id)}
@@ -2762,6 +2763,7 @@ ${named}`;
                   key={entry.id}
                   entry={entry}
                   current={entry.id === currentId}
+                  naming={naming === entry.id}
                   menuOpen={menuFor === entry.id}
                   onSelect={() => setCurrentId(entry.id)}
                   onMenu={() => setMenuFor(menuFor === entry.id ? null : entry.id)}
@@ -2890,6 +2892,8 @@ ${named}`;
       showAdmin={session.admin}
       onSignOut={onSignOut}
       sidebar={sidebar}
+      // The chat list's names are cut off at the shell's width; this one may be dragged wider.
+      sidebarResizeKey="orknux.chat.sidebar.width"
       fills
     >
       {current === null ? (
@@ -4287,6 +4291,7 @@ function SessionRow({
   entry,
   current,
   pinnedRow,
+  naming = false,
   menuOpen,
   onSelect,
   onMenu,
@@ -4297,6 +4302,8 @@ function SessionRow({
   entry: ChatSession;
   current: boolean;
   pinnedRow?: boolean;
+  /** Its title is being generated, which takes a moment after the first answer. */
+  naming?: boolean;
   menuOpen: boolean;
   onSelect: () => void;
   onMenu: () => void;
@@ -4330,6 +4337,8 @@ function SessionRow({
         <span className={unread > 0 ? `${styles.sessionTitle} ${styles.sessionTitleUnread}` : styles.sessionTitle}>
           {entry.title}
         </span>
+        {/* Turning while the chat's title is being generated, beside the name it is about to replace. */}
+        {naming && <span className={styles.namingSpinner} role="status" aria-label={t('Naming this chat…')} data-testid="chat-row-naming" />}
         {unread > 0 && (
           <span
             key={unread}

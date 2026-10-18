@@ -850,3 +850,13 @@
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
 }
+
+/* The sidebar's right edge, where a page lets it be dragged wider: the full height of the column. */
+.sidebarResize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--sidebar-width);
+  z-index: 4;
+  transform: translateX(-50%);
+}

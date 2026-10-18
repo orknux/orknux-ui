@@ -69,6 +69,7 @@ try {
   const naming = page.getByTestId('chat-naming');
   await naming.waitFor({ timeout: 10_000 }).catch(() => undefined);
   record((await naming.count()) === 1 && /Naming this chat/.test(await naming.innerText()), 'while it is named, the title bar says so');
+  record((await page.getByTestId('chat-row-naming').count()) === 1, 'and its row in the list turns a spinner beside the name');
 
   finishes = true;
   await page.reload({ waitUntil: 'domcontentloaded' });
