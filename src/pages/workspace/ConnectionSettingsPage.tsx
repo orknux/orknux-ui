@@ -1085,12 +1085,6 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               </p>
             )}
 
-            {/* Checking stays with what it checks; saving is the page's one Save, floating at the foot. */}
-            <div className={styles.actionRow}>
-              <button type="button" className={styles.testButton} onClick={handleTest} disabled={testing}>
-                {testing ? 'Checking…' : t('Test Connection')}
-              </button>
-            </div>
           </form>
 
           <section className={`${styles.card} ${styles.dangerCard}`}>
@@ -1110,7 +1104,13 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
             </div>
           </section>
           {/* Floating at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
-          <SaveBar>
+          <SaveBar
+            lead={
+              <button type="button" className={styles.testButton} onClick={handleTest} disabled={testing}>
+                {testing ? 'Checking…' : t('Test Connection')}
+              </button>
+            }
+          >
             {nameError !== null && <p className={styles.savedNote}>{nameError}</p>}
             {saveError === null && nameError === null && (saved || namedSaved) && <p className={styles.savedNote}>{t('Saved.')}</p>}
             <DiscardButton onDiscard={onDiscard} disabled={saving || savingName || !changed} />

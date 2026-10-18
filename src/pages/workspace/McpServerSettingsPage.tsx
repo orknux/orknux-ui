@@ -255,19 +255,6 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{server?.name ?? '…'}</h1>
           <img src={penIcon} alt="" width={12} height={12} />
-          {/* A check needs no edit, so it stays by the title; Save comes up in the strip at the foot once there is something to save. */}
-          {server !== null && (
-            <div className={styles.headerActions}>
-              <button
-                type="button"
-                className={styles.testButton}
-                onClick={() => void handleCheck()}
-                disabled={checking}
-              >
-                {checking ? t('Checking…') : t('Check')}
-              </button>
-            </div>
-          )}
         </div>
       </header>
 
@@ -443,7 +430,13 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
       )}
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
       {server !== null && (
-        <SaveBar>
+        <SaveBar
+          lead={
+            <button type="button" className={styles.testButton} onClick={() => void handleCheck()} disabled={checking}>
+              {checking ? t('Checking…') : t('Check')}
+            </button>
+          }
+        >
           {saved && saveError === null && <p className={styles.savedNote}>{t('Saved.')}</p>}
           <DiscardButton onDiscard={onDiscard} disabled={saving || !changed} />
           <button

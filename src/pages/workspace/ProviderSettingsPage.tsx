@@ -441,7 +441,14 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
           : await updateProvider(createdId, values())
         : await updateProvider(providerId, values());
       const checked = await testProvider(target.id);
-      apply(checked);
+      /*
+       * The provider as it now stands, for its status - and not the form.
+       * Filling the fields from this answer emptied the key somebody had just
+       * typed, since an answer never carries a secret, and on a create took
+       * Create away with it: what is in the boxes is what was just saved, so
+       * there is nothing in them to put back.
+       */
+      setProvider(checked);
       // Stay on the form. Navigating to the saved provider here is what turned
       // a half-finished create into an edit, and the button into Save Changes.
       if (adding) setCreatedId(checked.id);
@@ -483,7 +490,12 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
    * what the page last agreed with the server. Save and Discard are off while
    * there is not.
    */
-  const changed = useDirty(values(), [provider]);
+  /*
+   * Measured from what was loaded - and on a create, from the empty form for as
+   * long as the create lasts: the row Test has to save is not the create
+   * finished, so Create stays on.
+   */
+  const changed = useDirty(values(), [adding ? null : provider]);
 
   return (
     <AppShell
@@ -506,19 +518,6 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
         </p>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>{adding ? t('Add Provider') : (provider?.name ?? 'Provider')}</h1>
-          {/* A check needs no edit, so it stays by the title; Save comes up in the strip at the foot once there is something to save. */}
-          {loadError === null && (adding || provider !== null) && (
-            <div className={styles.headerActions}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => void handleTest()}
-                disabled={testing || name.trim() === '' || endpoint.trim() === ''}
-              >
-                {testing ? 'Checking…' : t('Test Connection')}
-              </button>
-            </div>
-          )}
         </div>
         <p className={styles.subtitle}>{t('Configure a new LLM provider for your workspace')}</p>
       </header>
@@ -1093,7 +1092,18 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
       </section>
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
       {loadError === null && (adding || provider !== null) && (
-        <SaveBar>
+        <SaveBar
+          lead={
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => void handleTest()}
+              disabled={testing || name.trim() === '' || endpoint.trim() === ''}
+            >
+              {testing ? 'Checking…' : t('Test Connection')}
+            </button>
+          }
+        >
           <DiscardButton onDiscard={discard} disabled={saving || !changed} />
           <button type="submit" form={formId} className={styles.primaryButton} disabled={saving || !changed}>
             {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}

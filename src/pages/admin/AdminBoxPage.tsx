@@ -477,39 +477,14 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
           </section>
 
           <div className={styles.footer}>
-            <div className={styles.status} data-box-test-result={tested === null ? undefined : tested.ok ? 'ok' : 'failed'}>
+            {/* What a save said; what a test found is beside Test, in the strip at the foot. */}
+            <div className={styles.status}>
               {error !== null ? (
                 <span className={styles.statusFailed} role="alert">
                   {error}
                 </span>
-              ) : testError !== null ? (
-                <span className={styles.statusFailed} role="alert">
-                  {testError}
-                </span>
-              ) : tested !== null ? (
-                <>
-                  <span className={`${styles.dot} ${tested.ok ? styles.dotUp : styles.dotDown}`} aria-hidden="true" />
-                  <span className={tested.ok ? styles.statusOk : styles.statusFailed}>
-                    {tested.ok && tested.version !== null
-                      ? tf('{message} (version {version})', { message: tested.message, version: tested.version })
-                      : tested.message}
-                  </span>
-                </>
               ) : (
                 saved && <span className={styles.statusOk}>{t('Saved.')}</span>
-              )}
-            </div>
-            <div className={styles.buttons}>
-              {!local && (
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  onClick={() => void handleTest()}
-                  disabled={testing || address.trim() === ''}
-                  data-box-test=""
-                >
-                  {testing ? t('Testing…') : t('Test connection')}
-                </button>
               )}
             </div>
           </div>
@@ -686,7 +661,40 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
       )}
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
       {loadError === null && !local && (adding || box !== null) && (
-        <SaveBar>
+        <SaveBar
+          lead={
+            <>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => void handleTest()}
+                disabled={testing || address.trim() === ''}
+                data-box-test=""
+              >
+                {testing ? t('Testing…') : t('Test connection')}
+              </button>
+              {/* What the test found, beside the button that asked. */}
+              {(testError !== null || tested !== null) && (
+                <span className={styles.status} data-box-test-result={tested === null ? 'failed' : tested.ok ? 'ok' : 'failed'}>
+                  {testError !== null ? (
+                    <span className={styles.statusFailed} role="alert">
+                      {testError}
+                    </span>
+                  ) : tested !== null ? (
+                    <>
+                      <span className={`${styles.dot} ${tested.ok ? styles.dotUp : styles.dotDown}`} aria-hidden="true" />
+                      <span className={tested.ok ? styles.statusOk : styles.statusFailed}>
+                        {tested.ok && tested.version !== null
+                          ? tf('{message} (version {version})', { message: tested.message, version: tested.version })
+                          : tested.message}
+                      </span>
+                    </>
+                  ) : null}
+                </span>
+              )}
+            </>
+          }
+        >
           <DiscardButton onDiscard={discard} disabled={saving || !changed} />
           {/*
             The title is on a wrapper, and the disabled button lets the

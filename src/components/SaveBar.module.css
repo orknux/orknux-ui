@@ -9,7 +9,9 @@
   right: 0;
   z-index: 30;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-12);
   box-sizing: border-box;
   padding-top: var(--space-16);
   padding-bottom: var(--space-16);
@@ -23,6 +25,16 @@
 /* What the bar covers at the end of the page, kept as room in the page so the last field rests above it. */
 .spacer {
   flex: none;
+}
+
+/* A page's Test or Check, at the strip's left end; Save and Discard keep the right. */
+.lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  margin-right: auto;
 }
 
 .row {
