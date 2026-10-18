@@ -43,6 +43,8 @@
 
 .focus {
   position: relative;
+  /* Clear of Edit and close: their row, and a gap under it before the picture. */
+  padding-top: calc(var(--space-8) + 40px + var(--space-16));
 }
 
 /* Back to the gallery, in the corner of what is open. */

@@ -151,6 +151,9 @@ record(side !== null && focusBox !== null && side.x + side.width <= focusBox.x +
 const closeBox = await page.getByTestId('design-image-close').boundingBox().catch(() => null);
 const editBox = await page.getByTestId('design-image-edit').boundingBox().catch(() => null);
 const editText = (await page.getByTestId('design-image-edit').innerText().catch(() => '')).trim();
+const pictureTop = (await shown.locator('img').boundingBox().catch(() => null))?.y ?? 0;
+record(closeBox !== null && pictureTop - (closeBox.y + closeBox.height) >= 14,
+  `the picture starts clear below the buttons (${Math.round(pictureTop - ((closeBox?.y ?? 0) + (closeBox?.height ?? 0)))}px)`);
 record(closeBox !== null && closeBox.width >= 36 && editBox !== null && editBox.width < 120 && editText === 'Edit'
   && Math.abs(editBox.y - closeBox.y) < 2 && editBox.x + editBox.width <= closeBox.x && closeBox.x - (editBox.x + editBox.width) >= 14 && closeBox.x - (editBox.x + editBox.width) < 24,
   `a large close button, and Edit just left of it in the corner (${JSON.stringify({ closeBox, editBox, editText })})`);
