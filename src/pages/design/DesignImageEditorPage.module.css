@@ -400,27 +400,26 @@ button.toolbarTitle:hover {
 
 /* The selection as it was drawn: violet, glowing, its outline marching. */
 .changingArea {
-  fill: var(--color-violet-soft);
+  fill: var(--color-violet);
   stroke: var(--color-violet);
-  stroke-width: 2;
+  stroke-width: 3;
   vector-effect: non-scaling-stroke;
-  stroke-dasharray: 6 4;
-  filter: drop-shadow(0 0 4px var(--color-violet));
-  /* Alive while it is drawn: the outline marches and the area breathes. */
+  stroke-dasharray: 8 5;
+  /* Alive while it is drawn: the outline marches and the area pulses, glowing as it swells. */
   animation:
-    marching 600ms linear infinite,
-    breathing 1.4s ease-in-out infinite;
+    marching 450ms linear infinite,
+    breathing 1s ease-in-out infinite;
 }
 
 @keyframes breathing {
   0%,
   100% {
-    fill-opacity: 0.25;
-    filter: drop-shadow(0 0 2px var(--color-violet));
+    fill-opacity: 0.18;
+    filter: drop-shadow(0 0 4px var(--color-violet));
   }
   50% {
-    fill-opacity: 0.85;
-    filter: drop-shadow(0 0 10px var(--color-violet));
+    fill-opacity: 0.68;
+    filter: drop-shadow(0 0 12px var(--color-violet)) drop-shadow(0 0 18px var(--color-violet));
   }
 }
 
