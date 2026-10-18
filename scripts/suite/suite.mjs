@@ -1519,6 +1519,13 @@ export const TESTS = [
   },
 
   {
+    name: 'provider-edit-mask-check',
+    what: "a provider page says how its server reads a picture edit's mask, and saves the choice",
+    needs: ['workspace'],
+    /* Answers the provider itself. */
+  },
+
+  {
     name: 'design-magic-edit-check',
     what: 'the image editor selects part of a picture by rectangle or lasso and asks the edit model to change it',
     needs: ['workspace'],

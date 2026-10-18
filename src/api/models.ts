@@ -2,7 +2,10 @@ import { graphql } from './client';
 import { t } from '../i18n';
 
 /** What the endpoint speaks, not who answers there: anything OpenAI-shaped is OPENAI. */
-export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE' | 'LLAMA_CPP';
+export type ProviderType = 'OPENAI' | 'ANTHROPIC' | 'AZURE_OPENAI' | 'OLLAMA' | 'SYSTEM_ONE' | 'LLAMA_CPP' | 'STABLE_DIFFUSION_CPP';
+
+/** Where a picture edit's mask says the change goes: transparent (the standard), or white (stable-diffusion.cpp). */
+export type EditMask = 'TRANSPARENT' | 'WHITE';
 export type ProviderAuthMethod = 'API_KEY' | 'ENTRA_ID';
 /**
  * Which OpenAI API an Azure OpenAI provider's chats go through. Responses is
@@ -74,6 +77,8 @@ export interface ModelProvider {
   sendsReasoning: boolean;
   /** Every tool up front from an agent's first round, as set; null is the type's default. */
   offerAllTools: boolean | null;
+  /** How a picture edit's mask is drawn for this server; null is its type's. */
+  editMask: EditMask | null;
   /** Whether it does, the default resolved: on for Ollama unless set. */
   offersAllTools: boolean;
   /** The most tools one request carries, as set; null is what the type takes. */
@@ -198,7 +203,7 @@ export interface ModelUsage {
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
   'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi sendsReasoning ' +
-  'offerAllTools offersAllTools maxTools toolCap ' +
+  'offerAllTools offersAllTools maxTools toolCap editMask ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 const MODEL_FIELDS =
@@ -334,6 +339,8 @@ export interface ProviderInput {
   sendsReasoning?: boolean;
   /** Every tool up front; null is the type's default. Sent as given on every save. */
   offerAllTools?: boolean | null;
+  /** Set as given: null is its type's. */
+  editMask?: EditMask | null;
   /** The most tools one request carries, 8 to 1024; null is what the type takes. */
   maxTools?: number | null;
 }
@@ -358,6 +365,7 @@ export const TYPE_TOOL_CAPS: Record<ProviderType, number> = {
   LLAMA_CPP: 128,
   ANTHROPIC: 256,
   SYSTEM_ONE: 0,
+  STABLE_DIFFUSION_CPP: 0,
 };
 
 export async function createProvider(
@@ -520,6 +528,8 @@ export function providerTypeLabel(type: ProviderType): string {
       return 'Ollama';
     case 'LLAMA_CPP':
       return 'llama.cpp';
+    case 'STABLE_DIFFUSION_CPP':
+      return 'stable-diffusion.cpp';
     // One type for any server speaking the Jev format, whoever built it. Issue #577.
     case 'SYSTEM_ONE':
       return t('Decision model (Jev format)');

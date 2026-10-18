@@ -14,7 +14,7 @@ import {
   TYPE_TOOL_CAPS,
   updateProvider,
 } from '../../api/models';
-import type { ChatApi, ModelProvider, ProviderAuthMethod, ProviderType } from '../../api/models';
+import type { ChatApi, EditMask, ModelProvider, ProviderAuthMethod, ProviderType } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -51,6 +51,8 @@ const PROVIDER_TYPES: ProviderType[] = [
   'OLLAMA',
   // OpenAI-shaped, and also asked how far it has read a prompt - minutes of nothing otherwise. Issue #627.
   'LLAMA_CPP',
+  // OpenAI-shaped pictures, with a picture edit's mask read white-for-the-change.
+  'STABLE_DIFFUSION_CPP',
   // Not a language model: any server speaking the Jev format, which answers
   // typed questions with probabilities for a workflow's decision node. Issue #577.
   'SYSTEM_ONE',
@@ -90,6 +92,8 @@ function endpointHint(type: ProviderType): string {
       return 'http://localhost:11434/v1';
     case 'LLAMA_CPP':
       return 'http://localhost:8080';
+    case 'STABLE_DIFFUSION_CPP':
+      return 'http://localhost:1234/v1';
     // Any server speaking the Jev format, hosted or local, so no address is
     // assumed; `/v1/systemone` after it is added by the server.
     case 'SYSTEM_ONE':
@@ -148,6 +152,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
   const [acceptRetryAfter, setAcceptRetryAfter] = useState(true);
   /** Azure OpenAI only; a new provider starts on Responses, as the server would put it. */
   const [chatApi, setChatApi] = useState<ChatApi>('RESPONSES');
+  /** Empty is the type's own way of reading an edit mask. */
+  const [editMask, setEditMask] = useState<EditMask | ''>('');
   /**
    * The one secret this provider has, whatever it is called this minute.
    *
@@ -277,6 +283,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
     setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
     setAcceptRetryAfter(found.acceptRetryAfter);
     setChatApi(found.chatApi ?? 'RESPONSES');
+    setEditMask(found.editMask ?? '');
     key.reset({ stored: found.secretSet, variable: found.secretVariableId });
   }
 
@@ -382,6 +389,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
       throttleTokensPerSecond: toNumber(throttleTokens),
       throttleRequestsPerSecond: toNumber(throttleRequests),
       acceptRetryAfter,
+      editMask: editMask === '' ? null : editMask,
       // Only Azure OpenAI chooses; the server refuses a choice on any other type.
       ...(azure ? { chatApi } : {}),
     };
@@ -662,6 +670,36 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                     >
                       <option value="RESPONSES">{t('Responses')}</option>
                       <option value="CHAT_COMPLETIONS">{t('Chat completions (legacy)')}</option>
+                    </select>
+                    <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* How the server reads a picture edit's mask: a property of the server, so it sits by its address. */}
+            {(type === 'OPENAI' || type === 'STABLE_DIFFUSION_CPP') && (
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="edit-mask">{t('Edit mask')}</label>
+                    <FieldHint label={t('Edit mask')}>
+                      {t('How this server reads the area of a picture to change. The standard marks it transparent; stable-diffusion.cpp reads white on black.')}
+                    </FieldHint>
+                  </span>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      id="edit-mask"
+                      className={`${styles.input} ${styles.select}`}
+                      value={editMask}
+                      onChange={(event) => setEditMask(event.target.value as EditMask | '')}
+                      data-testid="edit-mask"
+                    >
+                      <option value="">
+                        {type === 'STABLE_DIFFUSION_CPP' ? t("The type's: white marks the change") : t("The type's: transparent marks the change")}
+                      </option>
+                      <option value="TRANSPARENT">{t('Transparent marks the change')}</option>
+                      <option value="WHITE">{t('White marks the change')}</option>
                     </select>
                     <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
                   </div>
