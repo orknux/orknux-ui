@@ -42,6 +42,8 @@ export function NotificationBell() {
   const [waiting, setWaiting] = useState(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[] | null>(null);
+  /** Whether the list could not be read - said as that, never as an empty list. */
+  const [failed, setFailed] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,8 +55,11 @@ export function NotificationBell() {
         })
         // A bell that cannot be counted is a bell that shows nothing, not an
         // error over the page: whatever is wrong, it is not this person's
-        // problem to read about here.
-        .catch(() => undefined);
+        // problem to read about here. Nothing, too, rather than the last
+        // number - a count kept from before the failure is a count of nothing.
+        .catch(() => {
+          if (current) setWaiting(0);
+        });
     }
 
     ask();
@@ -91,6 +96,7 @@ export function NotificationBell() {
     }
     setOpen(true);
     setItems(null);
+    setFailed(false);
     try {
       const found = await fetchNotifications();
       setItems(found);
@@ -104,6 +110,12 @@ export function NotificationBell() {
         await readNotifications();
       }
     } catch {
+      /*
+       * Said as a failure. It used to be drawn as an empty list - "Nothing
+       * yet." under a bell still showing 9+ - while the server was restarting.
+       * Opening the bell again asks again.
+       */
+      setFailed(true);
       setItems([]);
     }
   }
@@ -132,7 +144,12 @@ export function NotificationBell() {
             what the panel is *for* rather than what it is showing. Moved, not
             dropped - it is the only sentence anywhere that says what fills this.
           */}
-          {items !== null && items.length === 0 && (
+          {failed && (
+            <p className={styles.notice} role="alert" data-testid="notifications-failed">
+              {t('Notifications could not be loaded. Open the bell again to retry.')}
+            </p>
+          )}
+          {!failed && items !== null && items.length === 0 && (
             <p className={styles.notice}>
               <span className={styles.labelWithHint}>
                 {t('Nothing yet.')}

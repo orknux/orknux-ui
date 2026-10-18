@@ -3960,6 +3960,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'notification-bell-failure-check',
+    what: 'a notification list that failed to load says so instead of "Nothing yet.", and a failed count leaves no number',
+    needs: [],
+    // The list and the count are failed by route; nothing is read or marked read.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

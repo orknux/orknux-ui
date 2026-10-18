@@ -1429,6 +1429,7 @@ export const PL: Record<string, string> = {
   "Publish template": "Opublikuj szablon",
   "Use template": "Użyj szablonu",
   "Test Connection": "Sprawdź połączenie",
+  "Notifications could not be loaded. Open the bell again to retry.": "Nie udało się wczytać powiadomień. Otwórz dzwonek ponownie, aby spróbować jeszcze raz.",
   "Drop to attach": "Upuść, aby załączyć",
   "No models yet - add one": "Nie ma jeszcze modeli - dodaj jeden",
   "Add a model": "Dodaj model",
