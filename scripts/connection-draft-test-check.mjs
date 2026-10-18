@@ -37,6 +37,13 @@ const KIND = {
   pluginKey: 'cards', pluginName: 'Cards',
 };
 
+/** A kind with an address of its own, so its URL may be left empty. */
+const LOCAL = {
+  id: 'cards/local', name: 'local', label: 'Local deck', description: null,
+  urlPlaceholder: 'http://localhost:8765', defaultUrl: 'http://localhost:8765', guide: null, checks: true,
+  pluginKey: 'cards', pluginName: 'Cards',
+};
+
 const sent = [];
 let created = 0;
 let answer = { status: 'CONNECTED', message: 'Deck server 6' };
@@ -47,7 +54,7 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('pluginConnectionTypes')) {
     const answered = await route.fetch();
     const json = await answered.json();
-    if (json.data) json.data.pluginConnectionTypes = [KIND];
+    if (json.data) json.data.pluginConnectionTypes = [KIND, LOCAL];
     return route.fulfill({ response: answered, json });
   }
   if (query.includes('testNewWorkspaceConnection')) {
@@ -141,5 +148,16 @@ await dialog.locator('#workspace-connection-url').fill('http://localhost:8766');
 await page.waitForTimeout(200);
 record((await result.count()) === 0, 'changing the address clears the old answer');
 record(created === 0, 'testing added nothing');
+
+// A kind with a default address: the URL is marked optional, and Test asks with it left empty for the server to fill.
+await dialog.locator('#workspace-connection-type').selectOption('cards/local');
+await dialog.locator('#workspace-connection-url').fill('');
+const urlLabel = (await dialog.locator('label[for="workspace-connection-url"]').innerText()).trim();
+record(/optional/i.test(urlLabel), `the URL is marked optional where the kind has an address of its own (${urlLabel})`);
+await page.waitForTimeout(150);
+record(await test.isEnabled(), 'with the URL left empty, Test can be pressed');
+await test.click();
+await page.waitForTimeout(300);
+record(sent.at(-1)?.pluginType === 'cards/local' && sent.at(-1)?.url === '', `and sends it empty, for the server to fill (${JSON.stringify(sent.at(-1))})`);
 
 await finish(browser);

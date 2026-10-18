@@ -33,6 +33,8 @@ export interface PluginConnectionType {
   description: string | null;
   /** What the URL box suggests when this kind is chosen; null takes the generic one. */
   urlPlaceholder: string | null;
+  /** The address a connection of this kind has unless another is typed; the URL may then be left empty. */
+  defaultUrl: string | null;
   /** How to set one up, as markdown the plugin wrote; null where it says nothing. */
   guide: string | null;
   /** Whether Test asks the plugin if this really is one, rather than only whether the address answers. */
@@ -293,7 +295,7 @@ const REVEAL_MCP_SECRET_MUTATION = `
 
 const PLUGIN_CONNECTION_TYPES_QUERY = `
   query PluginConnectionTypes {
-    pluginConnectionTypes { id name label description urlPlaceholder guide checks pluginKey pluginName }
+    pluginConnectionTypes { id name label description urlPlaceholder defaultUrl guide checks pluginKey pluginName }
   }
 `;
 

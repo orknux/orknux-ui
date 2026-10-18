@@ -182,6 +182,8 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
   /** What the server is told the connection is: a plugin kind is an HTTP one wearing a label. */
   const type: ConnectionType | '' = pluginKind !== null ? 'HTTP' : (choice as ConnectionType | '');
 
+  /** Whether the chosen kind has an address of its own, so the URL may be left empty and the server fills it in. */
+  const defaulted = (pluginKind?.defaultUrl ?? '') !== '';
   const slack = type === 'SLACK';
   const mail = type === 'SMTP';
   const complete =
@@ -201,7 +203,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
         // required: a relay inside a network often authenticates nobody.
         mail
         ? url.trim() !== '' && smtpFrom.trim() !== ''
-        : url.trim() !== '');
+        : url.trim() !== '' || defaulted);
 
   /**
    * The secrets this workspace keeps, and only those: a VALUE is read with the
@@ -238,7 +240,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
   }, [choice, url, authType, headers, smtpPort, smtpSecurity, smtpUsername]);
 
   /** Whether there is enough to ask about: a kind, and where it is. The name is not needed to test. */
-  const testable = type !== '' && !secret.unchosen && (slack ? secret.answered : url.trim() !== '');
+  const testable = type !== '' && !secret.unchosen && (slack ? secret.answered : url.trim() !== '' || defaulted);
 
   /** The form as the server takes it, for adding and for testing alike. */
   function drafted(): NewWorkspaceConnectionInput {
@@ -412,6 +414,8 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
             <label className={styles.label} htmlFor="workspace-connection-url">
               {/* A mail server is named, not addressed: there is no URL to type. */}
               {mail ? t('SMTP Host') : 'URL'}
+              {/* Where the kind names an address of its own, leaving this empty takes it. */}
+              {defaulted && <span className={styles.optional}> {t('(optional)')}</span>}
             </label>
             <div className={styles.inputWrapper}>
               <input
@@ -419,7 +423,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                 name="connectionUrl"
                 className={`${styles.input} ${styles.inputMono}`}
                 type="text"
-                placeholder={mail ? 'smtp.example.com' : (pluginKind?.urlPlaceholder ?? 'https://')}
+                placeholder={mail ? 'smtp.example.com' : (pluginKind?.defaultUrl ?? pluginKind?.urlPlaceholder ?? 'https://')}
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
                 required

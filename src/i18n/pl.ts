@@ -1423,6 +1423,7 @@ export const PL: Record<string, string> = {
   "Publish template": "Opublikuj szablon",
   "Use template": "Użyj szablonu",
   "Test Connection": "Sprawdź połączenie",
+  "(optional)": "(opcjonalnie)",
   "boxes": "skrzynki",
   "Granted by the boxes — switch it there.": "Przyznane przez skrzynki — przełącz to tam.",
   "No box is set up yet. Boxes are set up under Admin → Boxes.": "Nie ma jeszcze żadnej skrzynki. Skrzynki konfiguruje się w Administracja → Skrzynki.",
