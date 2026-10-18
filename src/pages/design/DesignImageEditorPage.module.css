@@ -395,6 +395,8 @@ button.toolbarTitle:hover {
   inset: 0;
   width: 100%;
   height: 100%;
+  /* Drawn past the picture's edge, or a selection of the whole picture loses half its outline and its glow there. */
+  overflow: visible;
   pointer-events: none;
 }
 

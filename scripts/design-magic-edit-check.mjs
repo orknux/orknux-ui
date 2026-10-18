@@ -229,6 +229,12 @@ await page.keyboard.press('Escape');
 await page.locator('body').click({ position: { x: 5, y: 500 } }).catch(() => undefined);
 await page.keyboard.press('Control+a');
 record((await page.getByTestId('magic-ask').count()) === 1, 'and Ctrl+A does the same');
+// Asked over the whole picture: while it is drawn, the outline shows all round, not clipped at the edges.
+await page.getByTestId('magic-prompt').fill('make it night');
+await page.getByTestId('magic-change').click();
+await page.getByTestId('editor-changing').waitFor({ timeout: 5_000 }).catch(() => undefined);
+const edges = await page.getByTestId('editor-changing').locator('svg').evaluate((svg) => getComputedStyle(svg).overflow).catch(() => '');
+record(edges === 'visible', `a whole-picture selection keeps its violet outline at the edges while drawn (overflow ${edges})`);
 await page.keyboard.press('Escape');
 
 // The tools by their shortcuts, chosen in Preferences - M and L unless changed.
