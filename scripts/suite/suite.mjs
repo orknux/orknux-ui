@@ -3949,6 +3949,11 @@ export const TESTS = [
     // The upload is answered here and attachments are said to be allowed, so nothing is stored.
   },
   {
+    name: 'save-and-open-function-check',
+    what: "a new function's note links to it, saving the form first so there is a function to open",
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

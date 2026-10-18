@@ -751,11 +751,15 @@ export function ActionForm({
     return () => window.clearTimeout(timer);
   });
 
-  /** Stored, whether a press asked for it or the panel did. */
-  async function save() {
+  /**
+   * Stored, whether a press asked for it or the panel did. Answers the id of
+   * the function the action calls, where it called one and the save went
+   * through, and null otherwise.
+   */
+  async function save(): Promise<string | null> {
     // A press still waits for a complete form; the panel does not. See the
     // watcher below for why.
-    if (submitting || (!embedded && !complete)) return;
+    if (submitting || (!embedded && !complete)) return null;
 
     setSubmitting(true);
     setError(null);
@@ -772,7 +776,11 @@ export function ActionForm({
        */
       let chosen = functionId;
       if (subtype === 'FUNCTION' && functionId === NEW_FUNCTION) {
-        chosen = (await createFunction({ workspaceId, name: newFunctionName.trim() })).id;
+        const made = await createFunction({ workspaceId, name: newFunctionName.trim() });
+        // Chosen from now on, so the next save points at it rather than making it again.
+        functionCatalogue.add(made);
+        setFunctionId(made.id);
+        chosen = made.id;
       }
 
       const settings = settingsNow(chosen);
@@ -784,8 +792,10 @@ export function ActionForm({
       // second definition with the same name.
       if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
+      return subtype === 'FUNCTION' && chosen !== '' ? chosen : null;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the action.'));
+      return null;
     } finally {
       /*
        * However it ended.
@@ -1363,7 +1373,22 @@ export function ActionForm({
                       only label above it says Function, which is the picker's.
                     */}
                     <p className={styles.fieldHint}>
-                      {t('Created with this action, taking nothing and returning a map. Open it in Functions to write what it does.')}
+                      {t('Created with this action, taking nothing and returning a map.')}{' '}
+                      {/* A link that saves first: the function does not exist until this form is saved,
+                          and a new tab - a new window in the desktop app - keeps this form as it is. */}
+                      <a
+                        href={`/workspace/${workspaceId}/functions`}
+                        data-testid="open-new-function"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (submitting || !validFunctionName(newFunctionName)) return;
+                          void save().then((made) => {
+                            if (made !== null) window.open(`/workspace/${workspaceId}/functions/${made}`, '_blank', 'noopener');
+                          });
+                        }}
+                      >
+                        {t('Open it in Functions to write what it does.')}
+                      </a>
                     </p>
                   </>
                 )}

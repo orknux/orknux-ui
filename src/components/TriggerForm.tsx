@@ -538,10 +538,11 @@ export function TriggerForm({
   });
 
   /** Stored, whether a press asked for it or the panel did. */
-  async function save() {
+  /** Stored; answers the id of the function it asks, where it asks one and the save went through. */
+  async function save(): Promise<string | null> {
     // A press still waits for a complete form; the panel does not. See the
     // watcher below for why.
-    if (submitting || (!embedded && !complete)) return;
+    if (submitting || (!embedded && !complete)) return null;
 
     setSubmitting(true);
     setError(null);
@@ -598,8 +599,10 @@ export function TriggerForm({
       // second definition with the same name.
       if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
+      return webhook && authType === 'FUNCTION' && chosenFunction !== '' ? chosenFunction : null;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the trigger.'));
+      return null;
     } finally {
       /*
        * However it ended.
@@ -882,9 +885,26 @@ export function TriggerForm({
                     state: it is what this field has instead of anything to choose.
                   */}
                   {authFunctionId === NEW_FUNCTION ? (
+                    <>
                     <p className={styles.fieldHint}>
-                      {t('Created with this trigger, turning every caller away. Open it in Functions to say who may call.')}
+                      {t('Created with this trigger, turning every caller away.')}{' '}
+                      {/* A link that saves first: the function does not exist until this form is saved,
+                          and a new tab - a new window in the desktop app - keeps this form as it is. */}
+                      <a
+                        href={`/workspace/${workspaceId}/functions`}
+                        data-testid="open-new-function"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (submitting || !validFunctionName(newFunctionName)) return;
+                          void save().then((made) => {
+                            if (made !== null) window.open(`/workspace/${workspaceId}/functions/${made}`, '_blank', 'noopener');
+                          });
+                        }}
+                      >
+                        {t('Open it in Functions to say who may call.')}
+                      </a>
                     </p>
+                    </>
                   ) : functions.length === 0 ? (
                     <p className={styles.fieldHint}>
                       {t('No function here returns true or false yet; one that does can be chosen here, or made above.')}

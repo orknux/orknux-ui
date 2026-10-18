@@ -570,10 +570,11 @@ export function ConditionForm({
   });
 
   /** Stored, whether a press asked for it or the panel did. */
-  async function save() {
+  /** Stored; answers the id of the function it asks, where it asks one and the save went through. */
+  async function save(): Promise<string | null> {
     // A press still waits for a complete form; the panel does not. See the
     // watcher below for why.
-    if (submitting || (!embedded && !complete)) return;
+    if (submitting || (!embedded && !complete)) return null;
 
     setSubmitting(true);
     setError(null);
@@ -599,6 +600,9 @@ export function ConditionForm({
           returnType: 'BOOLEAN',
           ...refusingFunction(called),
         });
+        // Chosen from now on, so the next save points at it rather than making it again.
+        functionCatalogue.add(made);
+        setFunctionId(made.id);
         chosen = made.id;
       }
 
@@ -611,8 +615,10 @@ export function ConditionForm({
       // second definition with the same name.
       if (madeId === null) setMadeId(saved.id);
       onSaved(saved);
+      return type === 'FUNCTION' && chosen !== '' ? chosen : null;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the condition.'));
+      return null;
     } finally {
       /*
        * However it ended.
@@ -843,7 +849,22 @@ export function ConditionForm({
                     that has already happened.
                   */}
                   <p className={styles.fieldHint}>
-                    {t('Created with this condition, saying no to everything. Open it in Functions to write the question it should be asking.')}
+                    {t('Created with this condition, saying no to everything.')}{' '}
+                      {/* A link that saves first: the function does not exist until this form is saved,
+                          and a new tab - a new window in the desktop app - keeps this form as it is. */}
+                      <a
+                        href={`/workspace/${workspaceId}/functions`}
+                        data-testid="open-new-function"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (submitting || !validFunctionName(newFunctionName)) return;
+                          void save().then((made) => {
+                            if (made !== null) window.open(`/workspace/${workspaceId}/functions/${made}`, '_blank', 'noopener');
+                          });
+                        }}
+                      >
+                        {t('Open it in Functions to write the question it should be asking.')}
+                      </a>
                   </p>
                 </>
               )}
