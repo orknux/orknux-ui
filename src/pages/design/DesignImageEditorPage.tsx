@@ -586,9 +586,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setError(null);
     try {
       const read = await readPictureFile(file);
-      // A pasted picture's file is always "image.png", which names nothing.
-      const name = pasted ? t('Pasted picture') : read.name;
-      const kept = await importDesignImage({ workspaceId, image: read.image, name, prompt: read.prompt });
+      const kept =
+        'archive' in read
+          ? await importDesignImage({ workspaceId, archive: read.archive })
+          : // A pasted picture's file is always "image.png", which names nothing.
+            await importDesignImage({ workspaceId, image: read.image, name: pasted ? t('Pasted picture') : read.name });
       navigate(`/workspace/${workspaceId}/design/images/${kept.id}/edit`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not open that file.'));
@@ -601,7 +603,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setExporting(false);
     if (picture === null) return;
     try {
-      await exportPicture(picture, pendingName ?? picture.name ?? t('Picture'), format);
+      await exportPicture(workspaceId, picture, pendingName ?? picture.name ?? t('Picture'), format);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not export the picture.'));
     }
@@ -1047,7 +1049,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   type="button"
                   role="menuitem"
                   onClick={() => void exportAs('orkx')}
-                  title={t('The picture with its name and prompt, to import into Orknux again')}
+                  title={t('An archive of the picture with its name, prompt and parameters, to import into Orknux again')}
                   data-testid="editor-export-orkx"
                 >
                   {t('Orknux (.orkx)')}

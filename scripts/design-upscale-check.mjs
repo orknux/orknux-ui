@@ -44,6 +44,14 @@ const dataUrl = await page.evaluate(() => {
 PICTURE.url = dataUrl;
 const PNG = Buffer.from(dataUrl.split(',')[1], 'base64');
 
+// The archive is the server's to write - its test holds the format - so here it is bytes that pass through.
+const ARCHIVE = Buffer.from('PK zz an archive');
+const archiveAsked = [];
+await page.route('**/api/workspaces/*/design/archive/*', (route) => {
+  archiveAsked.push(new URL(route.request().url()).pathname);
+  return route.fulfill({ status: 200, contentType: 'application/zip', body: ARCHIVE });
+});
+
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
   const query = body.query ?? '';
@@ -79,7 +87,7 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('importDesignImage')) {
     const input = body.variables?.input ?? {};
     const id = `DESIGN-${850 + imports.length}`;
-    imports.push({ id, name: input.name, prompt: input.prompt, image: input.image });
+    imports.push({ id, name: input.name, prompt: input.prompt, image: input.image, archive: input.archive });
     return route.fulfill({ json: { data: { importDesignImage: { ...PICTURE, id, name: input.name ?? 'Imported picture', prompt: input.prompt ?? PICTURE.prompt } } } });
   }
   return route.continue();
@@ -177,10 +185,9 @@ const jpeg = await downloaded('editor-export-jpeg');
 record(jpeg !== null && jpeg.name === 'Grey field.jpg' && jpeg.bytes.subarray(0, 3).toString('hex') === 'ffd8ff',
   `JPEG saves it re-encoded as a JPEG (${jpeg?.name})`);
 const orkx = await downloaded('editor-export-orkx');
-const orkxFile = orkx === null ? null : JSON.parse(orkx.bytes.toString('utf8'));
-record(orkx !== null && orkx.name === 'Grey field.orkx' && orkxFile?.format === 'orknux-picture' && orkxFile?.name === 'Grey field'
-  && orkxFile?.prompt === PICTURE.prompt && orkxFile?.image === dataUrl,
-  `Orknux saves the picture with its name and prompt (${JSON.stringify({ name: orkx?.name, format: orkxFile?.format, keys: Object.keys(orkxFile ?? {}) })})`);
+record(orkx !== null && orkx.name === 'Grey field.orkx' && orkx.bytes.equals(ARCHIVE)
+  && archiveAsked[0] === `/api/workspaces/${WORKSPACE}/design/archive/${PICTURE.id}`,
+  `Orknux saves the server's archive of the picture (${JSON.stringify({ name: orkx?.name, asked: archiveAsked })})`);
 
 // Import: a file picked opens as a picture of its own, named after the file.
 await page.getByTestId('editor-import-file').setInputFiles({ name: 'holiday.png', mimeType: 'image/png', buffer: PNG });
@@ -188,11 +195,12 @@ await page.waitForURL(/DESIGN-850\/edit/, { timeout: 5_000 }).catch(() => undefi
 record(imports[0]?.name === 'holiday' && imports[0]?.image?.startsWith('data:image/png;base64,') && page.url().includes('DESIGN-850'),
   `a picked file is imported, named after it, and opened (${JSON.stringify({ name: imports[0]?.name, url: page.url() })})`);
 
-// An .orkx file brings back its name and prompt.
-await page.getByTestId('editor-import-file').setInputFiles({ name: 'Grey field.orkx', mimeType: 'application/json', buffer: orkx?.bytes ?? Buffer.from('{}') });
+// An .orkx file goes to the server whole, which reads its project and picture.
+await page.getByTestId('editor-import-file').setInputFiles({ name: 'Grey field.orkx', mimeType: 'application/octet-stream', buffer: ARCHIVE });
 await page.waitForTimeout(800);
-record(imports[1]?.name === 'Grey field' && imports[1]?.prompt === PICTURE.prompt && imports[1]?.image === dataUrl,
-  `an .orkx file brings back its picture, name and prompt (${JSON.stringify({ name: imports[1]?.name, prompt: imports[1]?.prompt })})`);
+const sent = imports[1]?.archive ?? '';
+record(sent !== '' && Buffer.from(sent.split(',')[1] ?? '', 'base64').equals(ARCHIVE) && imports[1]?.image == null,
+  `an .orkx file is handed to the server as an archive (${JSON.stringify({ archive: sent.slice(0, 40) })})`);
 
 // Dropped on the canvas: said while it is held there, imported when it lands.
 await page.getByTestId('editor-picture').waitFor({ timeout: 10_000 }).catch(() => undefined);

@@ -328,8 +328,16 @@ export async function fetchDesignUpscaleAlgorithms(workspaceId: string, modelId:
   return data.designUpscaleAlgorithms;
 }
 
-/** Keeps a picture brought in from outside as a Design picture; image is the file as a data URL or base64. */
-export async function importDesignImage(input: { workspaceId: string; image: string; name?: string | null; prompt?: string | null }): Promise<Artifact> {
+/** Keeps a picture brought in from outside - a picture's file, or an .orkx archive - as a Design picture. */
+export async function importDesignImage(input: {
+  workspaceId: string;
+  /** A picture's file, as a data URL. */
+  image?: string;
+  /** An .orkx archive, as a data URL: the picture with its project. */
+  archive?: string;
+  name?: string | null;
+  prompt?: string | null;
+}): Promise<Artifact> {
   const data = await graphql<{ importDesignImage: Artifact }>(
     `mutation ImportDesignImage($input: ImportDesignImageInput!) { importDesignImage(input: $input) { ${ARTIFACT_FIELDS} } }`,
     { input },

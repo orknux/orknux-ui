@@ -4,74 +4,33 @@ import { t } from '../../i18n';
 /**
  * Pictures in and out of the image editor as files.
  *
- * PNG and JPEG are the picture alone. An .orkx file is the picture with what
- * Orknux knows about it - its name and the prompt it was drawn from - so that
- * importing it again brings those back rather than a nameless picture. It is
- * JSON, and the picture inside it is the stored file itself, byte for byte.
+ * PNG and JPEG are the picture alone. An .orkx file is an archive of the
+ * picture and its project - name, prompt and what it was drawn with - so that
+ * importing it again brings all of that back. The server writes and reads the
+ * archive, so the format is defined in one place; here it only passes through.
  */
 
 export type ExportFormat = 'png' | 'jpeg' | 'orkx';
 
-/** What an .orkx file says it is, and the shape it has; read as data, never trusted further. */
-const ORKX_FORMAT = 'orknux-picture';
-const ORKX_VERSION = 1;
-
-interface OrkxFile {
-  format: typeof ORKX_FORMAT;
-  version: number;
-  name: string | null;
-  prompt: string | null;
-  contentType: string;
-  /** The picture, as a data URL. */
-  image: string;
-  drawnWith: Artifact['drawnWith'];
-}
-
-/** A file read for importing: the picture as a data URL, and what the file said about it. */
-export interface ReadPicture {
-  image: string;
-  name: string | null;
-  prompt: string | null;
-}
+/** A file read for importing: an .orkx archive, or a picture and the name its file gave it. */
+export type ReadPicture = { archive: string } | { image: string; name: string | null };
 
 export async function readPictureFile(file: File): Promise<ReadPicture> {
-  if (file.name.toLowerCase().endsWith('.orkx')) {
-    let parsed: Partial<OrkxFile>;
-    try {
-      parsed = JSON.parse(await file.text()) as Partial<OrkxFile>;
-    } catch {
-      throw new Error(t('That .orkx file could not be read.'));
-    }
-    if (parsed.format !== ORKX_FORMAT || typeof parsed.image !== 'string') {
-      throw new Error(t('That .orkx file holds no picture.'));
-    }
-    return {
-      image: parsed.image,
-      name: typeof parsed.name === 'string' ? parsed.name : null,
-      prompt: typeof parsed.prompt === 'string' ? parsed.prompt : null,
-    };
-  }
+  if (file.name.toLowerCase().endsWith('.orkx')) return { archive: await dataUrlOf(file) };
   if (!file.type.startsWith('image/')) throw new Error(t('That file is not a picture.'));
-  return { image: await dataUrlOf(file), name: file.name.replace(/\.[^.]+$/, '') || null, prompt: null };
+  return { image: await dataUrlOf(file), name: file.name.replace(/\.[^.]+$/, '') || null };
 }
 
 /** Saves the picture to the computer as a PNG, a JPEG or an .orkx file. */
-export async function exportPicture(picture: Artifact, name: string, format: ExportFormat): Promise<void> {
-  const stored = await (await fetch(picture.url, { credentials: 'same-origin' })).blob();
-  const base = fileBase(name);
+export async function exportPicture(workspaceId: string, picture: Artifact, name: string, format: ExportFormat): Promise<void> {
   if (format === 'orkx') {
-    const file: OrkxFile = {
-      format: ORKX_FORMAT,
-      version: ORKX_VERSION,
-      name,
-      prompt: picture.prompt,
-      contentType: stored.type || picture.contentType,
-      image: await dataUrlOf(stored),
-      drawnWith: picture.drawnWith,
-    };
-    save(new Blob([JSON.stringify(file)], { type: 'application/json' }), `${base}.orkx`);
+    const answer = await fetch(`/api/workspaces/${workspaceId}/design/archive/${encodeURIComponent(picture.id)}`, { credentials: 'same-origin' });
+    if (!answer.ok) throw new Error(t('Could not export the picture.'));
+    save(await answer.blob(), `${fileBase(name)}.orkx`);
     return;
   }
+  const stored = await (await fetch(picture.url, { credentials: 'same-origin' })).blob();
+  const base = fileBase(name);
   const wanted = format === 'png' ? 'image/png' : 'image/jpeg';
   // Already that kind of file: handed over as it is stored, nothing re-encoded.
   if ((stored.type || picture.contentType) === wanted) {

@@ -1538,6 +1538,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Answers the picture, the models, the algorithms and the queue itself. */
   },
+  {
+    name: 'import-plan-filter-check',
+    what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
+    needs: ['workspace'],
+    /* Answers the plan itself. */
+  },
+
 
   {
     name: 'design-images-check',

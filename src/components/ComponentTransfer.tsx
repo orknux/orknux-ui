@@ -37,7 +37,7 @@ import layersIcon from '../assets/layers.svg';
 import { FieldHint } from './FieldHint';
 import dialogStyles from './Dialog.module.css';
 import styles from './ComponentTransfer.module.css';
-import { t } from '../i18n';
+import { t, tf } from '../i18n';
 
 /**
  * Export and Import for a workspace's catalogue.
@@ -404,6 +404,10 @@ function ImportDialog({
    */
   const [renames, setRenames] = useState<ComponentRename[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
+  /** The plan narrowed to what is not here - the rows that stop an import - or all of it. */
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  /** The plan at its full length rather than capped and scrolled inside. */
+  const [planOpen, setPlanOpen] = useState(false);
   const [typed, setTyped] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -630,8 +634,46 @@ function ImportDialog({
               />
             )}
 
-            <ul className={styles.plan}>
-              {plan.entries.map((entry) => {
+            {(() => {
+              const missing = plan.entries.filter((entry) => entry.disposition === 'MISSING').length;
+              return (
+                <div className={styles.planBar}>
+                  {missing > 0 && (
+                    <div className={styles.planFilter} role="group" aria-label={t('Show')} data-testid="plan-filter">
+                      <button
+                        type="button"
+                        className={!onlyMissing ? styles.planFilterOn : undefined}
+                        aria-pressed={!onlyMissing}
+                        onClick={() => setOnlyMissing(false)}
+                        data-testid="plan-filter-all"
+                      >
+                        {tf('All ({count})', { count: plan.entries.length })}
+                      </button>
+                      <button
+                        type="button"
+                        className={onlyMissing ? styles.planFilterOn : undefined}
+                        aria-pressed={onlyMissing}
+                        onClick={() => setOnlyMissing(true)}
+                        data-testid="plan-filter-missing"
+                      >
+                        {tf('Not here ({count})', { count: missing })}
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.planExpand}
+                    onClick={() => setPlanOpen((held) => !held)}
+                    aria-expanded={planOpen}
+                    data-testid="plan-expand"
+                  >
+                    {planOpen ? t('Collapse') : t('Expand')}
+                  </button>
+                </div>
+              );
+            })()}
+            <ul className={`${styles.plan} ${planOpen ? styles.planOpen : ''}`} data-testid="import-plan">
+              {plan.entries.filter((entry) => !onlyMissing || entry.disposition === 'MISSING').map((entry) => {
                 const out = entry.disposition === 'EXCLUDE';
                 return (
                   <li
