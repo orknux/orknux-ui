@@ -4015,6 +4015,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-unread-background-check',
+    what: 'news in the open chat stays counted while the window is in the background, and is read on coming back',
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

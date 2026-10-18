@@ -32,7 +32,8 @@ const start = async (title) =>
   })).startChat.id;
 
 try {
-  const elsewhere = await start(`${PREFIX} elsewhere ${Date.now()}`);
+  const elsewhereTitle = `${PREFIX} elsewhere ${Date.now()}`;
+  const elsewhere = await start(elsewhereTitle);
   const here = await start(`${PREFIX} here ${Date.now()}`);
   let news = false;
 
@@ -55,7 +56,8 @@ try {
   await page.goto(`${BASE}/chat/${here}`, { waitUntil: 'domcontentloaded' });
   await page.getByPlaceholder(/Type a message/).waitFor({ timeout: 20_000 });
   await page.waitForTimeout(800);
-  const pill = page.getByTestId('chat-unread');
+  // The other chat's row only: a chat outside this check may have real news of its own.
+  const pill = page.locator('[class*="sessionRow"]', { hasText: elsewhereTitle }).getByTestId('chat-unread');
   record((await pill.count()) === 0, 'nothing unread to begin with');
 
   // An answer finishes in the other chat; the person comes back to the window.

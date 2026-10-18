@@ -643,11 +643,29 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * Cleared here at once, and told to the server, which keeps the count.
    */
   const currentUnread = sessions?.find((entry) => entry.id === currentId)?.unreadCount ?? 0;
+  /*
+   * Only while somebody is looking: an answer that arrives in the open chat of
+   * a window in the background - the desktop app waiting in the tray, a tab
+   * behind another - is news until they come back, not read the moment it
+   * lands. Coming back to the window reads it.
+   */
+  const [looking, setLooking] = useState(() => document.visibilityState === 'visible' && document.hasFocus());
   useEffect(() => {
-    if (currentId === null) return;
+    const now = () => setLooking(document.visibilityState === 'visible' && document.hasFocus());
+    window.addEventListener('focus', now);
+    window.addEventListener('blur', now);
+    document.addEventListener('visibilitychange', now);
+    return () => {
+      window.removeEventListener('focus', now);
+      window.removeEventListener('blur', now);
+      document.removeEventListener('visibilitychange', now);
+    };
+  }, []);
+  useEffect(() => {
+    if (currentId === null || !looking) return;
     setSessions((held) => held?.map((entry) => (entry.id === currentId && entry.unreadCount !== 0 ? { ...entry, unreadCount: 0 } : entry)) ?? held);
     void markChatRead(currentId).catch(() => undefined);
-  }, [currentId, currentUnread]);
+  }, [currentId, currentUnread, looking]);
 
   /*
    * The list again - counts and names only, never which chat is open - on the
@@ -2758,6 +2776,7 @@ ${named}`;
                   entry={entry}
                   current={entry.id === currentId}
                   naming={naming === entry.id}
+                  looking={looking}
                   pinnedRow
                   menuOpen={menuFor === entry.id}
                   onSelect={() => setCurrentId(entry.id)}
@@ -2792,6 +2811,7 @@ ${named}`;
                   entry={entry}
                   current={entry.id === currentId}
                   naming={naming === entry.id}
+                  looking={looking}
                   menuOpen={menuFor === entry.id}
                   onSelect={() => setCurrentId(entry.id)}
                   onMenu={() => setMenuFor(menuFor === entry.id ? null : entry.id)}
@@ -4322,6 +4342,7 @@ const UNREAD_POP_MS = 220;
 function SessionRow({
   entry,
   current,
+  looking = true,
   pinnedRow,
   naming = false,
   menuOpen,
@@ -4333,6 +4354,8 @@ function SessionRow({
 }: {
   entry: ChatSession;
   current: boolean;
+  /** Whether the window is in front of somebody; the open chat counts as read only then. */
+  looking?: boolean;
   pinnedRow?: boolean;
   /** Its title is being generated, which takes a moment after the first answer. */
   naming?: boolean;
@@ -4344,7 +4367,8 @@ function SessionRow({
   onDelete: () => void;
 }) {
   // The chat open on screen is being read, whatever the list last said.
-  const unread = current ? 0 : entry.unreadCount;
+  // The chat open on screen is being read - while somebody is looking at the window.
+  const unread = current && looking ? 0 : entry.unreadCount;
   /*
    * A short pop when the count goes up, so news arriving in a long list is
    * seen - not when it first draws or goes down. Left out where motion is
