@@ -1544,6 +1544,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Answers the plan itself. */
   },
+  {
+    name: 'model-dialog-required-check',
+    what: 'Add Model marks with a red star the fields it cannot be sent without',
+    needs: ['workspace'],
+  },
+
 
 
   {

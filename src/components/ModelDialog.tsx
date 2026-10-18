@@ -348,7 +348,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="model-endpoint">{t('Server URL')}</label>
+                <label className={styles.label} htmlFor="model-endpoint">{t('Server URL')}<span className={styles.required} aria-hidden="true"> *</span></label>
                 <div className={styles.inputWrapper}>
                   <input
                     id="model-endpoint"
@@ -386,7 +386,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
             </>
           ) : (
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="model-provider">{t('Provider')}</label>
+              <label className={styles.label} htmlFor="model-provider">{t('Provider')}<span className={styles.required} aria-hidden="true"> *</span></label>
               <div className={styles.inputWrapper}>
                 <select
                   id="model-provider"
@@ -408,7 +408,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
           )}
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="model-name">{t('Name')}</label>
+            <label className={styles.label} htmlFor="model-name">{t('Name')}<span className={styles.required} aria-hidden="true"> *</span></label>
             <div className={styles.inputWrapper}>
               <input
                 id="model-name"
@@ -426,7 +426,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
 
           <div className={styles.field}>
             <span className={styles.labelWithHint}>
-              <label className={styles.label} htmlFor="model-id">{t('Model ID')}</label>
+              <label className={styles.label} htmlFor="model-id">{t('Model ID')}<span className={styles.required} aria-hidden="true"> *</span></label>
               {/*
                 What to type, which differs by what is being added. It was two
                 paragraphs under the field; it is the same two sentences, behind
