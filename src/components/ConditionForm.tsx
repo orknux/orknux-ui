@@ -29,7 +29,7 @@ import type {
 import {
   NEW_FUNCTION,
   createFunction,
-  fetchWorkspaceFunctions,
+  fetchAllWorkspaceFunctions,
   refusingFunction,
 } from '../api/functions';
 import type { WorkspaceFunction } from '../api/functions';
@@ -314,7 +314,7 @@ export function ConditionForm({
   const functionCatalogue = useCatalogue<WorkspaceFunction>(
     'functions',
     async () => {
-      const page = await fetchWorkspaceFunctions(workspaceId, 0, PAGE_SIZE);
+      const page = await fetchAllWorkspaceFunctions(workspaceId);
       return page.content.filter((fn) => fn.returnType === 'BOOLEAN');
     },
     [workspaceId, presetFunctionId],

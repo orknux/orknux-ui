@@ -8,6 +8,7 @@ import {
   timeAgo,
   valueTypeLabel,
 } from '../../api/functions';
+import { fetchAllWorkspaceFunctions } from '../../api/functions';
 import type { FunctionOrder, WorkspaceFunction } from '../../api/functions';
 import type { SessionUser } from '../../api/session';
 import copyIcon from '../../assets/copy.svg';
@@ -39,15 +40,6 @@ export interface WorkspaceFunctionsPageProps {
   onSignOut?: () => void;
 }
 
-/**
- * Enough of a workspace's functions to find one among them.
- *
- * Asked for once, to work out which page a just-made function is on. A
- * workspace with more than this has a function somewhere past the end of it,
- * and then the list opens where it always did rather than somewhere wrong.
- */
-const ALL_OF_THEM = 200;
-
 /** Named JavaScript functions callable from workflow actions. */
 export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunctionsPageProps) {
   const { workspaceId = '' } = useParams();
@@ -75,7 +67,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
   useEffect(() => {
     if (workspaceId === '') return;
     let current = true;
-    fetchWorkspaceFunctions(workspaceId, 0, ALL_OF_THEM, 'PLUGIN')
+    fetchAllWorkspaceFunctions(workspaceId, 'PLUGIN')
       .then((all) => {
         if (!current) return;
         const seen = new Map<string, string>();
@@ -163,7 +155,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
   useEffect(() => {
     if (made === null || workspaceId === '') return;
     let current = true;
-    fetchWorkspaceFunctions(workspaceId, 0, ALL_OF_THEM)
+    fetchAllWorkspaceFunctions(workspaceId)
       .then((all) => {
         if (!current) return;
         const at = all.content.findIndex((fn) => fn.id === made);

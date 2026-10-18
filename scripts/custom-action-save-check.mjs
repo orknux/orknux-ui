@@ -100,7 +100,9 @@ await graphql(
     input: {
       nodes: [
         { key: 'act', kind: 'ACTION', name: 'Action', x: 160, y: 160 },
-        { key: 'act2', kind: 'ACTION', name: 'Action', x: 160, y: 320 },
+        // Beside the first rather than under it: a node grows downward with its function's ports, and one
+        // whose function took eight arguments came to cover the node below it, which then could not be clicked.
+        { key: 'act2', kind: 'ACTION', name: 'Action', x: 760, y: 160 },
       ],
       edges: [],
     },

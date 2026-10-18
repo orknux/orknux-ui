@@ -25,7 +25,7 @@ import toggleOnIcon from '../assets/toggle-on.svg';
 import {
   NEW_FUNCTION,
   createFunction,
-  fetchWorkspaceFunctions,
+  fetchAllWorkspaceFunctions,
   refusingFunction,
 } from '../api/functions';
 import type { WorkspaceFunction } from '../api/functions';
@@ -293,7 +293,7 @@ export function TriggerForm({
 
     // Only the ones that can answer the question: a webhook is let in or kept
     // out, and a function returning an object has no opinion on that.
-    fetchWorkspaceFunctions(workspaceId, 0, OBJECT_PAGE_SIZE)
+    fetchAllWorkspaceFunctions(workspaceId)
       .then((page) => setFunctions(page.content.filter((held) => held.returnType === 'BOOLEAN')))
       .catch(() => setFunctions([]));
   }, [workspaceId]);

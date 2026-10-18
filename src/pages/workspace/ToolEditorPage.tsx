@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { ValueType } from '../../api/actions';
 import {
   VALUE_TYPES,
-  fetchWorkspaceFunctions,
+  fetchAllWorkspaceFunctions,
   namesObject,
   tsType,
   valueTypeLabel,
@@ -59,9 +59,6 @@ import { t } from '../../i18n';
 
 /** The whole of a workspace's shapes fits the picker. */
 const OBJECT_PAGE_SIZE = 100;
-
-/** And the whole of its functions fits the one beside it. */
-const FUNCTION_PAGE_SIZE = 100;
 
 export interface ToolEditorPageProps {
   session: SessionUser;
@@ -241,7 +238,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
    */
   useEffect(() => {
     if (workspaceId === '') return;
-    fetchWorkspaceFunctions(workspaceId, 0, FUNCTION_PAGE_SIZE)
+    fetchAllWorkspaceFunctions(workspaceId)
       .then((page) => setImportable(page.content.filter((held) => held.scope !== 'PLUGIN')))
       .catch(() => setImportable([]));
   }, [workspaceId]);

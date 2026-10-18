@@ -253,6 +253,29 @@ export function asImportInput(held: ScriptImportInput): ScriptImportInput {
 /** What the list can be put in the order of; see `FUNCTION_ORDERS` on the server. */
 export type FunctionOrder = 'NAME' | 'RETURN_TYPE' | 'LAST_MODIFIED';
 
+/**
+ * Every function the workspace has, every page of them.
+ *
+ * A picker that read only the first page offered the first hundred - the
+ * server caps a page there - so in a workspace with more, a function past
+ * the hundredth by name could be neither found nor chosen, and a new one
+ * named late in the alphabet simply was not in the list.
+ */
+export async function fetchAllWorkspaceFunctions(
+  workspaceId: string,
+  scope?: FunctionScope,
+): Promise<{ content: WorkspaceFunction[] }> {
+  const content: WorkspaceFunction[] = [];
+  for (let page = 0; ; page += 1) {
+    const held = await fetchWorkspaceFunctions(workspaceId, page, ALL_FUNCTIONS_PAGE, scope);
+    content.push(...held.content);
+    if (page + 1 >= held.totalPages || held.content.length === 0) return { content };
+  }
+}
+
+/** The page size the server allows at most, so the fewest round trips read them all. */
+const ALL_FUNCTIONS_PAGE = 100;
+
 export async function fetchWorkspaceFunctions(
   workspaceId: string,
   page: number,

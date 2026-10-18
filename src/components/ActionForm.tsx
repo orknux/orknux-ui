@@ -31,7 +31,7 @@ import type { Condition } from '../api/conditions';
 import {
   NEW_FUNCTION,
   createFunction,
-  fetchWorkspaceFunctions,
+  fetchAllWorkspaceFunctions,
 } from '../api/functions';
 import type { WorkspaceFunction } from '../api/functions';
 import { fetchWorkspaceConnections } from '../api/integrations';
@@ -407,7 +407,7 @@ export function ActionForm({
   );
   const functionCatalogue = useCatalogue<WorkspaceFunction>(
     'functions',
-    async () => (await fetchWorkspaceFunctions(workspaceId, 0, FUNCTION_PAGE_SIZE)).content,
+    async () => (await fetchAllWorkspaceFunctions(workspaceId)).content,
     [workspaceId],
     { skip: idle },
   );

@@ -61,7 +61,7 @@ import { createCondition, fetchWorkflowOwnedConditions, fetchWorkspaceConditions
 } from '../../api/conditions';
 import type { Condition } from '../../api/conditions';
 import { startExecution } from '../../api/executions';
-import { fetchWorkspaceFunctions } from '../../api/functions';
+import { fetchAllWorkspaceFunctions } from '../../api/functions';
 import type { WorkspaceFunction } from '../../api/functions';
 import { fetchWorkspaceConnections } from '../../api/integrations';
 import type { WorkspaceConnection } from '../../api/integrations';
@@ -343,7 +343,6 @@ const PANEL_OPEN_KEY = 'orknux.workflow-editor.panel-open';
 const DRAWER_KEY = 'orknux.workflow-editor.drawer-width';
 const MIN_DRAWER = 320;
 const ACTION_PAGE_SIZE = 100;
-const FUNCTION_PAGE_SIZE = 200;
 
 const CONDITION_PAGE_SIZE = 100;
 const AGENT_PAGE_SIZE = 100;
@@ -3153,7 +3152,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     ])
       .then(([shared, own]) => setConditions([...shared, ...own]))
       .catch(() => setConditions([]));
-    fetchWorkspaceFunctions(workspaceId, 0, FUNCTION_PAGE_SIZE)
+    fetchAllWorkspaceFunctions(workspaceId)
       .then((page) => setFunctions(page.content))
       .catch(() => setFunctions([]));
     fetchWorkspaceObjects(workspaceId, 0, OBJECT_PAGE_SIZE)

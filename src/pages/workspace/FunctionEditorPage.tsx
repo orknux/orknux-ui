@@ -10,7 +10,7 @@ import {
   createFunction,
   deleteFunction,
   fetchFunction,
-  fetchWorkspaceFunctions,
+  fetchAllWorkspaceFunctions,
   timeAgo,
   namesObject,
   parametersOf,
@@ -74,9 +74,6 @@ export interface FunctionEditorPageProps {
 
 /** The whole of a workspace's shapes fits the picker. */
 const OBJECT_PAGE_SIZE = 100;
-
-/** And the whole of its functions fits the one beside it. */
-const FUNCTION_PAGE_SIZE = 100;
 
 /*
  * How the two columns share the row, in pixels of panel.
@@ -282,7 +279,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
    */
   useEffect(() => {
     if (workspaceId === '') return;
-    fetchWorkspaceFunctions(workspaceId, 0, FUNCTION_PAGE_SIZE)
+    fetchAllWorkspaceFunctions(workspaceId)
       .then((page) =>
         setImportable(page.content.filter((held) => held.scope !== 'PLUGIN' && held.id !== functionId)),
       )
