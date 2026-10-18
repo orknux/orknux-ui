@@ -33,6 +33,8 @@ import {
   setAddShortcut,
   setSelectShortcut,
   setZoomInShortcut,
+  setMagicRectangleShortcut,
+  setMagicLassoShortcut,
   setZoomOutShortcut,
   setUndoShortcut,
   setRedoShortcut,
@@ -48,6 +50,8 @@ import {
   useAddShortcut,
   useSelectShortcut,
   useZoomInShortcut,
+  useMagicRectangleShortcut,
+  useMagicLassoShortcut,
   useZoomOutShortcut,
   useUndoShortcut,
   useRedoShortcut,
@@ -65,6 +69,10 @@ import {
   addShortcut,
   selectShortcut,
   zoomInShortcut,
+  magicRectangleShortcut,
+  magicLassoShortcut,
+  DEFAULT_MAGIC_RECTANGLE_SHORTCUT,
+  DEFAULT_MAGIC_LASSO_SHORTCUT,
   zoomOutShortcut,
   DEFAULT_ZOOM_IN_SHORTCUT,
   DEFAULT_ZOOM_OUT_SHORTCUT,
@@ -92,7 +100,9 @@ type ShortcutKey =
   | 'publish'
   | 'voiceMute'
   | 'zoomIn'
-  | 'zoomOut';
+  | 'zoomOut'
+  | 'magicRectangle'
+  | 'magicLasso';
 
 /** How each is read and how each is stored, for Save. */
 const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string) => void }[] = [
@@ -110,6 +120,8 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'voiceMute', stored: voiceMuteShortcut, store: setVoiceMuteShortcut },
   { key: 'zoomIn', stored: zoomInShortcut, store: setZoomInShortcut },
   { key: 'zoomOut', stored: zoomOutShortcut, store: setZoomOutShortcut },
+  { key: 'magicRectangle', stored: magicRectangleShortcut, store: setMagicRectangleShortcut },
+  { key: 'magicLasso', stored: magicLassoShortcut, store: setMagicLassoShortcut },
 ];
 
 export interface PreferencesPageProps {
@@ -155,6 +167,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const select = shortcutDrafts.select ?? storedSelect;
   const storedUndo = useUndoShortcut();
   const undo = shortcutDrafts.undo ?? storedUndo;
+  const storedMagicRectangle = useMagicRectangleShortcut();
+  const magicRectangleKey = shortcutDrafts.magicRectangle ?? storedMagicRectangle;
+  const storedMagicLasso = useMagicLassoShortcut();
+  const magicLassoKey = shortcutDrafts.magicLasso ?? storedMagicLasso;
   const storedZoomIn = useZoomInShortcut();
   const zoomIn = shortcutDrafts.zoomIn ?? storedZoomIn;
   const storedZoomOut = useZoomOutShortcut();
@@ -187,6 +203,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'voiceMute'
     | 'zoomIn'
     | 'zoomOut'
+    | 'magicRectangle'
+    | 'magicLasso'
     | null
   >(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -221,7 +239,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
        * free - which is why R, A and S can be the defaults there and cannot be
        * anywhere else.
        */
-      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && !usable(said)) {
+      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !usable(said)) {
         setRefused(said);
         return;
       }
@@ -239,6 +257,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'voiceMute') draftShortcut('voiceMute', said);
       else if (recording === 'zoomIn') draftShortcut('zoomIn', said);
       else if (recording === 'zoomOut') draftShortcut('zoomOut', said);
+      else if (recording === 'magicRectangle') draftShortcut('magicRectangle', said);
+      else if (recording === 'magicLasso') draftShortcut('magicLasso', said);
       else draftShortcut('format', said);
       setRecording(null);
       setRefused(null);
@@ -1072,6 +1092,66 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 )}
               </div>
               {recording === 'zoomOut' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="magicRectangle-shortcut">{t('Magic Rectangle Select Shortcut')}</span>
+                <FieldHint label={t('Magic Rectangle Select Shortcut')}>
+                  {t("Picks the image editor's rectangle select, or puts it down. A single key is fine: it is heard only in the image editor, never while typing.")}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'magicRectangle' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'magicRectangle' ? null : 'magicRectangle'));
+                  }}
+                  data-testid="magicRectangle-shortcut"
+                >
+                  {recording === 'magicRectangle' ? t('Press any keys…') : magicRectangleKey}
+                </button>
+                {magicRectangleKey !== DEFAULT_MAGIC_RECTANGLE_SHORTCUT && recording !== 'magicRectangle' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('magicRectangle', DEFAULT_MAGIC_RECTANGLE_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'magicRectangle' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="magicLasso-shortcut">{t('Magic Lasso Select Shortcut')}</span>
+                <FieldHint label={t('Magic Lasso Select Shortcut')}>
+                  {t("Picks the image editor's lasso select, or puts it down. A single key is fine: it is heard only in the image editor, never while typing.")}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'magicLasso' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'magicLasso' ? null : 'magicLasso'));
+                  }}
+                  data-testid="magicLasso-shortcut"
+                >
+                  {recording === 'magicLasso' ? t('Press any keys…') : magicLassoKey}
+                </button>
+                {magicLassoKey !== DEFAULT_MAGIC_LASSO_SHORTCUT && recording !== 'magicLasso' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('magicLasso', DEFAULT_MAGIC_LASSO_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'magicLasso' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>

@@ -27,7 +27,15 @@ import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
-import { matches, useRedoShortcut, useUndoShortcut, useZoomInShortcut, useZoomOutShortcut } from '../../session/shortcut';
+import {
+  matches,
+  useMagicLassoShortcut,
+  useMagicRectangleShortcut,
+  useRedoShortcut,
+  useUndoShortcut,
+  useZoomInShortcut,
+  useZoomOutShortcut,
+} from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
 import styles from './DesignImageEditorPage.module.css';
@@ -138,6 +146,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const redoKey = useRedoShortcut();
   const zoomInKey = useZoomInShortcut();
   const zoomOutKey = useZoomOutShortcut();
+  const rectangleKey = useMagicRectangleShortcut();
+  const lassoKey = useMagicLassoShortcut();
 
   const picture = shown?.kind === 'picture' ? shown.picture : null;
   const job = shown?.kind === 'job' ? (made.find((one) => one.job.id === shown.jobId)?.job ?? null) : null;
@@ -180,6 +190,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       .then((found) => {
         if (left || found === null) return;
         setMade((held) => (held.some((one) => one.job.id === found.id) ? held : [{ job: found }, ...held]));
+        if (found.sourceId !== null && found.status !== 'DRAWN') {
+          void fetchWorkspaceArtifact(workspaceId, found.sourceId)
+            .then((source) => {
+              if (left || source === null) return;
+              const probe = new Image();
+              probe.onload = () =>
+                setChangingOver((held) => ({
+                  ...held,
+                  [found.id]: { url: source.url, width: probe.naturalWidth, height: probe.naturalHeight, points: null },
+                }));
+              probe.src = source.url;
+            })
+            .catch(() => undefined);
+        }
         setPrompt(found.prompt);
         if (found.modelId !== null) setModelId(found.modelId);
         setCarried({ size: found.size ?? '', quality: found.quality ?? '', style: found.style ?? '' });
@@ -313,8 +337,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {} });
-  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {} };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {} });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {} };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
@@ -332,6 +356,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         keys.current.zoomOut();
       } else if (typing) {
         return;
+      } else if (matches(event, rectangleKey)) {
+        event.preventDefault();
+        keys.current.pick('rectangle');
+      } else if (matches(event, lassoKey)) {
+        event.preventDefault();
+        keys.current.pick('lasso');
       } else if (matches(event, undoKey)) {
         event.preventDefault();
         keys.current.undo();
@@ -342,7 +372,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     };
     document.addEventListener('keydown', pressed);
     return () => document.removeEventListener('keydown', pressed);
-  }, [undoKey, redoKey, zoomInKey, zoomOutKey]);
+  }, [undoKey, redoKey, zoomInKey, zoomOutKey, rectangleKey, lassoKey]);
 
   // -- Magic edit ---------------------------------------------------------
 
@@ -352,6 +382,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * a new picture, queued like any other, and the one changed stays as it was.
    */
   const [tool, setTool] = useState<MagicTool | null>(null);
+  /**
+   * What each change asked here is drawn over: the picture, and the selection
+   * in its pixels - null where the selection is not known, for a change opened
+   * from the gallery. So the picture stays on the canvas while it is drawn,
+   * with only the part being changed veiled.
+   */
+  const [changingOver, setChangingOver] = useState<
+    Record<string, { url: string; width: number; height: number; points: Point[] | null }>
+  >({});
   /** The selection being drawn, and the finished one, in the picture's own pixels. */
   const [selecting, setSelecting] = useState<Point[] | null>(null);
   const [selection, setSelection] = useState<Point[] | null>(null);
@@ -462,6 +501,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         mask: maskOf(selection, shownPicture.naturalWidth, shownPicture.naturalHeight),
       });
       remember();
+      setChangingOver((held) => ({
+        ...held,
+        [queued.id]: { url: picture.url, width: shownPicture.naturalWidth, height: shownPicture.naturalHeight, points: selection },
+      }));
       setMade((held) => [{ job: queued }, ...held]);
       setChange('');
       forget();
@@ -487,6 +530,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   };
 
   keys.current.forget = forget;
+  /** A tool picked by its shortcut, or put down by it again; nothing without a picture to select on. */
+  keys.current.pick = (which: MagicTool) => {
+    if (picture === null) return;
+    forget();
+    setTool((held) => (held === which ? null : which));
+  };
 
   // -- Generate, save, discard -------------------------------------------
 
@@ -701,7 +750,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               }}
               disabled={picture === null}
               aria-pressed={tool === 'rectangle'}
-              title={t('Magic rectangle select')}
+              title={`${t('Magic rectangle select')} (${rectangleKey})`}
               aria-label={t('Magic rectangle select')}
               data-testid="magic-rectangle"
             >
@@ -716,7 +765,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               }}
               disabled={picture === null}
               aria-pressed={tool === 'lasso'}
-              title={t('Magic lasso select')}
+              title={`${t('Magic lasso select')} (${lassoKey})`}
               aria-label={t('Magic lasso select')}
               data-testid="magic-lasso"
             >
@@ -797,6 +846,42 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 <p className={styles.failed} role="alert" data-testid="editor-failed">
                   {tf('Not drawn: {reason}', { reason: job.reason ?? t('the model gave no reason') })}
                 </p>
+              ) : changingOver[job.id] !== undefined ? (
+                (() => {
+                  const over = changingOver[job.id];
+                  const points = over.points;
+                  return (
+                    // The picture being changed stays in view, what is being redrawn highlighted, and the wait said under it.
+                    <div className={styles.changing}>
+                    <div className={styles.changingFrame} data-testid="editor-changing">
+                      <img src={over.url} alt="" className={styles.changingPicture} />
+                      <svg
+                        className={styles.changingLayer}
+                        viewBox={`0 0 ${over.width} ${over.height}`}
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                      >
+                        {points === null ? (
+                          <rect className={styles.changingArea} x={0} y={0} width={over.width} height={over.height} />
+                        ) : (
+                          <polygon className={styles.changingArea} points={points.map((point) => `${point.x},${point.y}`).join(' ')} />
+                        )}
+                      </svg>
+                    </div>
+                      <div className={styles.changingMark} data-testid="editor-drawing">
+                        <Loader
+                          label={
+                            job.status === 'QUEUED' && (job.ahead ?? 0) > 0
+                              ? tf('Queued, {ahead} ahead…', { ahead: job.ahead ?? 0 })
+                              : t('Drawing…')
+                          }
+                          delay={0}
+                          size={40}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()
               ) : (
                 // One mark from the first moment, saying what it is waiting for: a drawing is never quick enough to hide it.
                 <div className={styles.waiting} data-testid="editor-drawing">

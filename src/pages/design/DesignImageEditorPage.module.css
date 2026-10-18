@@ -365,3 +365,65 @@ button.toolbarTitle:hover {
   background: var(--color-violet);
   border-color: var(--color-violet);
 }
+
+/* A change on its way: the picture stays, the part being redrawn highlighted, and the wait said under it. */
+.changing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-16);
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.changingFrame {
+  position: relative;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.changingPicture {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 260px);
+  border-radius: var(--radius-6);
+  box-shadow: var(--shadow-card);
+}
+
+.changingLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The selection as it was drawn: violet, glowing, its outline marching. */
+.changingArea {
+  fill: var(--color-violet-soft);
+  stroke: var(--color-violet);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 4px var(--color-violet));
+  /* Alive while it is drawn: the outline marches and the area breathes. */
+  animation:
+    marching 600ms linear infinite,
+    breathing 1.4s ease-in-out infinite;
+}
+
+@keyframes breathing {
+  0%,
+  100% {
+    fill-opacity: 0.25;
+    filter: drop-shadow(0 0 2px var(--color-violet));
+  }
+  50% {
+    fill-opacity: 0.85;
+    filter: drop-shadow(0 0 10px var(--color-violet));
+  }
+}
+
+.changingMark {
+  color: var(--color-text-secondary);
+}

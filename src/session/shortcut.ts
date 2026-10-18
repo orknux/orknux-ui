@@ -14,6 +14,8 @@ const PUBLISH_KEY = 'orknux.publishShortcut';
 const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
 const ZOOM_IN_KEY = 'orknux.zoomInShortcut';
 const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
+const MAGIC_RECTANGLE_KEY = 'orknux.magicRectangleShortcut';
+const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
 
 /** What opens the palette when nothing has been chosen. */
 export const DEFAULT_SHORTCUT = 'Ctrl+Q';
@@ -156,6 +158,14 @@ export const DEFAULT_ZOOM_IN_SHORTCUT = 'Ctrl+=';
 export const DEFAULT_ZOOM_OUT_SHORTCUT = 'Ctrl+-';
 
 /**
+ * Magic edit's two ways of selecting, in the image editor: M for the rectangle
+ * (a marquee) and L for the lasso, as image editors have them. A bare letter,
+ * because it is heard only on the editor's canvas and never in a text box.
+ */
+export const DEFAULT_MAGIC_RECTANGLE_SHORTCUT = 'M';
+export const DEFAULT_MAGIC_LASSO_SHORTCUT = 'L';
+
+/**
  * Which keystroke opens the command palette, written the way it is shown:
  * modifiers in a fixed order, then the key — `Ctrl+Q`, `Ctrl+Shift+P`, `Alt+G`.
  *
@@ -226,6 +236,8 @@ const publishing = remembered(PUBLISH_KEY, DEFAULT_PUBLISH_SHORTCUT);
 const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
 const zoomingIn = remembered(ZOOM_IN_KEY, DEFAULT_ZOOM_IN_SHORTCUT);
 const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
+const magicRectangle = remembered(MAGIC_RECTANGLE_KEY, DEFAULT_MAGIC_RECTANGLE_SHORTCUT);
+const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
 
 export function paletteShortcut(): Shortcut {
   return palette.get();
@@ -393,6 +405,30 @@ export function setZoomOutShortcut(next: Shortcut): void {
 
 export function useZoomOutShortcut(): Shortcut {
   return zoomingOut.use();
+}
+
+export function magicRectangleShortcut(): Shortcut {
+  return magicRectangle.get();
+}
+
+export function setMagicRectangleShortcut(next: Shortcut): void {
+  magicRectangle.set(next);
+}
+
+export function useMagicRectangleShortcut(): Shortcut {
+  return magicRectangle.use();
+}
+
+export function magicLassoShortcut(): Shortcut {
+  return magicLasso.get();
+}
+
+export function setMagicLassoShortcut(next: Shortcut): void {
+  magicLasso.set(next);
+}
+
+export function useMagicLassoShortcut(): Shortcut {
+  return magicLasso.use();
 }
 
 /** One key, named as somebody would read it rather than as the browser sends it. */

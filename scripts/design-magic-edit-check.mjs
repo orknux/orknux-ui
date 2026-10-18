@@ -137,6 +137,30 @@ const mask = await page.evaluate(async (url) => {
 record(mask.width === PICTURE_SIZE.width && mask.height === PICTURE_SIZE.height && mask.middle === 0 && mask.corner === 255,
   `the mask is the picture's size, transparent inside the selection (${JSON.stringify(mask)})`);
 record((await page.getByTestId('editor-drawing').count()) === 1, 'and the change is on the canvas, waiting to be drawn');
+const changing = page.getByTestId('editor-changing');
+const kept = {
+  picture: await changing.locator('img').count(),
+  selection: await changing.locator('polygon').count(),
+  animated: await changing.locator('polygon').evaluate((one) => getComputedStyle(one).animationName).catch(() => ''),
+};
+const frameBox = await changing.boundingBox().catch(() => null);
+const markBox = await page.getByTestId('editor-drawing').boundingBox().catch(() => null);
+record(kept.picture === 1 && kept.selection === 1 && /breathing/.test(kept.animated) && frameBox !== null && markBox !== null && markBox.y >= frameBox.y + frameBox.height,
+  `while it is drawn the picture stays, the selection highlighted and alive, and Drawing under it (${JSON.stringify({ ...kept, frameBox, markBox })})`);
+
+// The tools by their shortcuts, chosen in Preferences - M and L unless changed.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
+await picture.waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(800);
+await page.locator('body').click({ position: { x: 5, y: 500 } }).catch(() => undefined);
+await page.keyboard.press('m');
+const byM = await page.getByTestId('magic-rectangle').getAttribute('aria-pressed');
+await page.keyboard.press('l');
+const byL = { rectangle: await page.getByTestId('magic-rectangle').getAttribute('aria-pressed'), lasso: await page.getByTestId('magic-lasso').getAttribute('aria-pressed') };
+await page.keyboard.press('l');
+const putDown = await page.getByTestId('magic-lasso').getAttribute('aria-pressed');
+record(byM === 'true' && byL.rectangle === 'false' && byL.lasso === 'true' && putDown === 'false',
+  `M picks the rectangle, L the lasso, and L again puts it down (${JSON.stringify({ byM, byL, putDown })})`);
 
 // Lasso: a loop drawn freehand, on the picture opened again.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
