@@ -36,7 +36,8 @@ export function ConnectionGuide({ kind, open = false, height }: ConnectionGuideP
   return (
     <details
       className={fill ? `${styles.guide} ${styles.filling}` : styles.guide}
-      style={fill ? { height } : undefined}
+      // Never shorter than the form beside it: dragged, it only grows.
+      style={fill ? { height, minHeight: height } : undefined}
       open={expanded}
       onToggle={(event) => setExpanded(event.currentTarget.open)}
       // Beside the form it is the column's whole content, so there is nothing to fold it into.

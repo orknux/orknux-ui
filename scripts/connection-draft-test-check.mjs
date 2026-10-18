@@ -99,6 +99,14 @@ await page.mouse.move(beside.x + beside.width - 3, beside.y + beside.height + 12
 await page.mouse.up();
 const dragged = (await guide.boundingBox()).height;
 record(dragged > beside.height + 80, `dragging its corner makes it taller (${Math.round(beside.height)} -> ${Math.round(dragged)}px)`);
+// Dragged up, it stops at the form's height: it only grows.
+const grown = await guide.boundingBox();
+await page.mouse.move(grown.x + grown.width - 3, grown.y + grown.height - 3);
+await page.mouse.down();
+await page.mouse.move(grown.x + grown.width - 3, grown.y + 150, { steps: 10 });
+await page.mouse.up();
+const shrunk = (await guide.boundingBox()).height;
+record(Math.abs(shrunk - beside.height) < 4, `dragged up, it stops at the form's height (${Math.round(shrunk)} vs ${Math.round(beside.height)}px)`);
 const headersAfter = await gap();
 // Measured from the Name box, since a taller dialog is centred again in the window.
 record(Math.abs(headersAfter - headersBefore) < 2, `the form stays as it was beside it - Custom Headers did not move down (${Math.round(headersBefore)} -> ${Math.round(headersAfter)}px below Name)`);

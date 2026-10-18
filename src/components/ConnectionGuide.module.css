@@ -48,6 +48,7 @@
 @media (max-width: 760px) {
   .filling {
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible;
     resize: none;
   }
