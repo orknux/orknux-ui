@@ -66,7 +66,8 @@ await page.route('**/graphql', async (route) => {
     const list = Object.values(json?.data ?? {}).find(Array.isArray);
     // The installation's own upscale models out, so the window offers exactly the ones answered here.
     if (Array.isArray(list)) {
-      list.splice(0, list.length, ...list.filter((one) => one.kind !== 'UPSCALE'), ...MODELS.filter((one) => !noUpscalers || one.kind !== 'UPSCALE'));
+      list.splice(0, list.length, ...list.filter((one) => one.kind !== 'UPSCALE' && (!noUpscalers || one.kind !== 'IMAGE')),
+        ...MODELS.filter((one) => !noUpscalers || (one.kind !== 'UPSCALE' && one.kind !== 'IMAGE')));
     }
     return json === null ? route.continue() : route.fulfill({ json });
   }
@@ -116,6 +117,9 @@ await page.getByTestId('editor-upscale-models').hover().catch(() => undefined);
 const stays = await upscaleHint.isVisible().catch(() => false);
 record(off && hiddenBefore && shown && stays && words.startsWith('There is no upscale model') && link === `/workspace/${WORKSPACE}/models`,
   `with no upscale model, Upscale is off and says why at once, linking to Models (${JSON.stringify({ off, hiddenBefore, shown, stays, link })})`);
+// With no image model either, the Model field links to where one is added.
+const modelsLink = await page.getByTestId('editor-models-link').getAttribute('href').catch(() => null);
+record(modelsLink === `/workspace/${WORKSPACE}/models`, `with no image model, the Model field links to Models (${modelsLink})`);
 noUpscalers = false;
 await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);

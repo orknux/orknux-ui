@@ -548,3 +548,10 @@ button.toolbarTitle:hover {
   color: var(--color-violet);
   white-space: nowrap;
 }
+
+/* Where the missing model is set up, under the field that has none. */
+.configureLink {
+  margin-top: var(--space-6);
+  color: var(--color-violet);
+  font-size: 13px;
+}

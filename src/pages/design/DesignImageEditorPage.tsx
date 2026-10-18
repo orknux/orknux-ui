@@ -1393,6 +1393,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 ))}
               </select>
             </div>
+            {models !== null && models.length === 0 && (
+              <Link className={styles.configureLink} to={`/workspace/${workspaceId}/models`} data-testid="editor-models-link">
+                {t('Add an image model in Models')}
+              </Link>
+            )}
           </div>
 
           {spec.map((one) =>
