@@ -59,6 +59,8 @@ const KINDS = [
     label: 'Prometheus server',
     description: 'A Prometheus server to read metrics from',
     urlPlaceholder: 'http://prometheus:9090',
+    guide: '## Before you add one\n\nPoint it at the **server root**, not at `/graph`.',
+    checks: true,
     pluginKey: 'prometheus',
     pluginName: 'Prometheus',
   },
@@ -68,6 +70,8 @@ const KINDS = [
     label: 'Wiki',
     description: null,
     urlPlaceholder: null,
+    guide: null,
+    checks: false,
     pluginKey: 'confluence',
     pluginName: 'Confluence',
   },
@@ -77,6 +81,8 @@ const KINDS = [
     label: 'Wiki',
     description: null,
     urlPlaceholder: null,
+    guide: null,
+    checks: false,
     pluginKey: 'mediawiki',
     pluginName: 'MediaWiki',
   },
@@ -331,6 +337,19 @@ try {
       `dialog: with the kind's own placeholder (${await url.getAttribute('placeholder')})`,
     );
     record((await page.locator('#workspace-connection-auth').count()) === 1, 'dialog: and the Auth Type, as HTTP does');
+    // The plugin's setup guide for the kind, open under the Type, its markdown drawn as markdown.
+    const guide = page.getByTestId('connection-guide');
+    const guideOpen = (await guide.count()) === 1 && (await guide.evaluate((one) => one.open));
+    const guideText = (await guide.innerText().catch(() => '')).replace(/\s+/g, ' ');
+    record(
+      guideOpen && guideText.includes('Setting up Prometheus server') && (await guide.locator('strong', { hasText: 'server root' }).count()) === 1,
+      `dialog: the kind's setup guide is shown open, as markdown (${guideText.slice(0, 80)})`,
+    );
+    await page.selectOption('#workspace-connection-type', 'confluence/wiki');
+    await page.waitForTimeout(300);
+    record((await page.getByTestId('connection-guide').count()) === 0, 'dialog: a kind that brings no guide shows none');
+    await page.selectOption('#workspace-connection-type', 'prometheus/server');
+    await page.waitForTimeout(300);
     record((await page.locator('#workspace-connection-secret').count()) === 1, 'dialog: and the Token / Key, as HTTP does');
     record(
       (await page.locator('#workspace-connection-security').count()) === 0 &&

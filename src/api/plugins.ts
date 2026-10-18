@@ -373,7 +373,7 @@ const PLUGIN_FIELDS = `
   declaredFunctions { name description returnType signature params { name type } }
   skills { name description content }
   declaredParameters { name description type required secret }
-  connectionTypes { id name label description urlPlaceholder pluginKey pluginName }
+  connectionTypes { id name label description urlPlaceholder guide checks pluginKey pluginName }
   actions {
     pluginKey pluginName name label description
     parameters { name type required description }

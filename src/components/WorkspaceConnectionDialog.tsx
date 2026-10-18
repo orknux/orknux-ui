@@ -23,6 +23,7 @@ import { SecretField, useSecretField } from './SecretField';
 import type { SecretFieldHandle, SecretSource } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
+import { ConnectionGuide } from './ConnectionGuide';
 
 export interface WorkspaceConnectionDialogProps {
   open: boolean;
@@ -346,6 +347,9 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
+
+          {/* What the plugin says it takes to set one up, open: this dialog is where that happens. */}
+          <ConnectionGuide kind={pluginKind} open />
 
           {!slack && (
           <div className={styles.field}>

@@ -48,6 +48,7 @@ import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
 import { t, tf } from '../../i18n';
 import { zoned } from '../../session/timeZone';
+import { ConnectionGuide } from '../../components/ConnectionGuide';
 
 export interface ConnectionSettingsPageProps {
   session: SessionUser;
@@ -749,6 +750,8 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                 </div>
               </div>
             )}
+            {/* The plugin's setup notes for the kind chosen, folded: by now it is usually done. */}
+            <ConnectionGuide kind={kinds.find((one) => one.id === typeChoice) ?? null} />
             {addressEditable ? (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="connection-url">

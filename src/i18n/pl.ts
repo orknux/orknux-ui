@@ -1707,6 +1707,7 @@ export const PL: Record<string, string> = {
   "File another": "Zgłoś kolejne",
   "Run again": "Uruchom ponownie",
   "Refresh": "Odśwież",
+  "Setting up {kind}": "Konfiguracja: {kind}",
   "A connection needs a name and an address.": "Połączenie potrzebuje nazwy i adresu.",
   "No box carries a label yet. Boxes are set up under Admin → Boxes.": "Żadne pudełko nie ma jeszcze etykiety. Pudełka konfiguruje się w Administracja → Pudełka.",
   "box labels": "etykiety pudełek",
