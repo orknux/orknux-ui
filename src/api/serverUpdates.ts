@@ -33,6 +33,8 @@ export interface StoredServerRelease {
   storedBy: string;
   state: ServerReleaseState;
   failure: string | null;
+  /** Why it was chosen and not started - built for a newer Java than this runtime; null otherwise. */
+  heldBack: string | null;
   running: boolean;
   activatable: boolean;
   /** Why it cannot be started, where it cannot. */
@@ -76,7 +78,7 @@ export interface ListedServerRelease {
 }
 
 const STORED_FIELDS =
-  'id version source sourceUrl size schemaVersion storedAt storedBy state failure running activatable refusal';
+  'id version source sourceUrl size schemaVersion storedAt storedBy state failure heldBack running activatable refusal';
 
 export async function fetchServerUpdates(): Promise<ServerUpdates> {
   const data = await graphql<{ serverUpdates: ServerUpdates }>(

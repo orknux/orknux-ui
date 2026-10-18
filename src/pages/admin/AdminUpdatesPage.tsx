@@ -585,6 +585,10 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                   {release.state === 'FAILED' && release.failure !== null && (
                     <p className={styles.error}>{release.failure}</p>
                   )}
+                  {/* Chosen, and left unstarted by the launcher - the server's own sentence, as the failure above is. */}
+                  {release.heldBack !== null && (
+                    <p className={styles.reason} data-testid="release-held-back">{release.heldBack}</p>
+                  )}
                   {!release.running && release.refusal !== null && (
                     <p className={styles.reason}>{release.refusal}</p>
                   )}
