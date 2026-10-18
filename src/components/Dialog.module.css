@@ -27,6 +27,32 @@
   width: 560px;
 }
 
+/* Room for a plugin's setup guide beside the form it is about. */
+.dialogGuided {
+  width: 920px;
+}
+
+.besideGuide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-24);
+}
+
+/* The column beside the form; the guide in it sets its own height. */
+.guideAside {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .besideGuide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guideAside {
+    order: -1;
+  }
+}
+
 .dialog::backdrop {
   background: rgba(9, 9, 11, 0.7);
 }

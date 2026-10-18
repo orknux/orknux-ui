@@ -6,6 +6,10 @@
 }
 
 .summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
   padding: var(--space-8) var(--space-12);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -13,8 +17,64 @@
   cursor: pointer;
 }
 
-/* As long as the guide is: the dialog scrolls, the guide does not scroll inside it. */
+/*
+ * Beside the Add dialog's form: as tall as the form to start with, scrolling as
+ * one box with its heading held at the top, and dragged taller by its corner.
+ * The box scrolls rather than its body, because a <details> does not lay its
+ * content out as a flex child would.
+ */
+.filling {
+  box-sizing: border-box;
+  min-height: 160px;
+  overflow-y: auto;
+  resize: vertical;
+}
+
+.filling .summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg);
+  cursor: default;
+}
+
+.filling .body {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  resize: none;
+}
+
+@media (max-width: 760px) {
+  .filling {
+    height: auto !important;
+    overflow: visible;
+    resize: none;
+  }
+
+  .filling .body {
+    height: 200px;
+    overflow-y: auto;
+    resize: vertical;
+  }
+}
+
+/* The word that says what a click does, at the row's far end. */
+.toggle {
+  flex: none;
+  font-weight: 500;
+  color: var(--color-accent);
+}
+
+/*
+ * Short to start with, so a long guide does not make the dialog taller than the
+ * window, and dragged taller by its corner by whoever is reading it.
+ */
 .body {
+  height: 200px;
+  min-height: 80px;
+  overflow-y: auto;
+  resize: vertical;
   padding: 0 var(--space-12) var(--space-12);
   font-size: var(--text-sm);
   line-height: 1.5;

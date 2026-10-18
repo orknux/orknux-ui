@@ -10,8 +10,9 @@
  * answer away.
  *
  * The guide was drawn with the chat's line breaks, so a guide wrapped at eighty
- * columns broke mid-sentence, and in a box capped at 320px that scrolled inside
- * the dialog. It now joins wrapped lines and is as tall as it is.
+ * columns broke mid-sentence, and under the fields it made the dialog taller
+ * than the window. It now joins wrapped lines, and a kind with a guide widens
+ * the dialog and puts the guide beside the form, as tall as the form is.
  *
  * Canned: the kinds are answered here with one whose guide is hand-wrapped, and
  * the test mutation is captured and answered here, so what the dialog sends can
@@ -62,21 +63,45 @@ await page.locator('button', { hasText: /^\+ Add Connection$/ }).click();
 await page.waitForSelector('#workspace-connection-name', { timeout: 20_000 });
 const dialog = page.locator('dialog[open]');
 await page.waitForTimeout(800);
+const narrow = (await dialog.boundingBox()).width;
 await dialog.locator('#workspace-connection-type').selectOption('cards/deck');
+await page.waitForTimeout(300);
 
-// The guide: one paragraph, not broken where its author's editor wrapped, and not a box that scrolls.
+// The guide: open, beside the form in a wider dialog rather than under it, and as tall as the form.
 const guide = dialog.getByTestId('connection-guide');
 await guide.waitFor({ timeout: 5_000 });
+record(await guide.evaluate((element) => element.open), 'the guide starts open in the dialog');
+const wide = (await dialog.boundingBox()).width;
+const form = await dialog.locator('#workspace-connection-name').boundingBox();
+const beside = await guide.boundingBox();
+const fields = await dialog.locator('#workspace-connection-url').boundingBox();
+record(wide > narrow + 300, `a kind with a guide widens the dialog (${Math.round(narrow)} -> ${Math.round(wide)}px)`);
+record(beside.x >= form.x + form.width && Math.abs(beside.y - form.y) < 40, 'the guide sits beside the form, level with its top');
+const viewport = page.viewportSize();
+record((await dialog.boundingBox()).height <= viewport.height, `the dialog fits the window (${Math.round((await dialog.boundingBox()).height)}px of ${viewport.height})`);
+record(beside.y + beside.height >= fields.y, 'the guide runs down beside the fields, not just a strip at the top');
+// Its text stays inside it, scrolling there - not running out of the box and over the buttons below.
+const contained = await guide.evaluate((element) => {
+  const box = element.getBoundingClientRect();
+  const text = element.querySelector('div').getBoundingClientRect();
+  return { scrolls: element.scrollHeight > element.clientHeight && getComputedStyle(element).overflowY === 'auto', boxBottom: box.bottom, textBottom: text.bottom };
+});
+const buttons = await dialog.getByRole('button', { name: 'Test Connection' }).boundingBox();
+record(contained.scrolls && beside.y + beside.height <= buttons.y, `a long guide scrolls inside its box, which ends above the buttons (${JSON.stringify(contained)})`);
+const formColumn = await dialog.locator('#workspace-connection-name').evaluate((input) => input.closest('form').querySelector('div[class*="fields"]').getBoundingClientRect().height);
+record(Math.abs(beside.height - formColumn) < 4, `it starts as tall as the form beside it (${Math.round(beside.height)} vs ${Math.round(formColumn)}px)`);
+// And its corner drags it taller, for somebody who wants more of it on screen at once.
+await page.mouse.move(beside.x + beside.width - 3, beside.y + beside.height - 3);
+await page.mouse.down();
+await page.mouse.move(beside.x + beside.width - 3, beside.y + beside.height + 120, { steps: 10 });
+await page.mouse.up();
+const dragged = (await guide.boundingBox()).height;
+record(dragged > beside.height + 80, `dragging its corner makes it taller (${Math.round(beside.height)} -> ${Math.round(dragged)}px)`);
 const shape = await guide.evaluate((element) => {
-  const body = element.querySelector('div');
   const paragraph = [...element.querySelectorAll('p')].find((p) => p.textContent.includes('add-on'));
-  return {
-    breaks: paragraph ? paragraph.querySelectorAll('br').length : -1,
-    scrolls: body ? body.scrollHeight > body.clientHeight + 1 : true,
-  };
+  return { breaks: paragraph ? paragraph.querySelectorAll('br').length : -1 };
 });
 record(shape.breaks === 0, `the guide's wrapped lines are one paragraph (${shape.breaks} breaks)`);
-record(!shape.scrolls, 'the guide is as tall as it is, with no scrollbar of its own');
 
 // Test: off until there is an address, then asks with what is typed.
 const test = dialog.getByRole('button', { name: 'Test Connection' });

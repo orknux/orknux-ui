@@ -75,6 +75,9 @@ const SECURITY: { value: MailSecurity; label: string; port: number }[] = [
  */
 export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreated }: WorkspaceConnectionDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** The form's column, whose height the guide beside it starts at. */
+  const fieldsRef = useRef<HTMLDivElement>(null);
+  const [fieldsHeight, setFieldsHeight] = useState<number | null>(null);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -165,6 +168,17 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
 
   /** The plugin kind chosen, when the menu is on one. */
   const pluginKind = kinds.find((kind) => kind.id === choice) ?? null;
+  /** Whether the chosen kind brings a setup guide, which the dialog then makes room for beside the form. */
+  const guided = (pluginKind?.guide?.trim() ?? '') !== '';
+  // Followed as the form grows and shrinks - a Slack connection asks for more than a plain one.
+  useEffect(() => {
+    const fields = fieldsRef.current;
+    if (!guided || fields === null) return;
+    const watcher = new ResizeObserver(() => setFieldsHeight(fields.getBoundingClientRect().height));
+    watcher.observe(fields);
+    return () => watcher.disconnect();
+  }, [guided]);
+
   /** What the server is told the connection is: a plugin kind is an HTTP one wearing a label. */
   const type: ConnectionType | '' = pluginKind !== null ? 'HTTP' : (choice as ConnectionType | '');
 
@@ -303,7 +317,12 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
   }
 
   return (
-    <dialog ref={dialogRef} className={`${styles.dialog} ${styles.dialogWide}`} onCancel={onClose} onClose={onClose}>
+    <dialog
+      ref={dialogRef}
+      className={`${styles.dialog} ${guided ? styles.dialogGuided : styles.dialogWide}`}
+      onCancel={onClose}
+      onClose={onClose}
+    >
       <form className={styles.body} onSubmit={handleSubmit}>
         <header className={styles.header}>
           <h2 className={styles.title}>{t('Add Connection')}</h2>
@@ -311,7 +330,13 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
 
         <p className={styles.dialogMessage}>{t('Add a new connection to this workspace')}</p>
 
-        <div className={styles.fields}>
+        {/*
+          * A kind with a setup guide widens the dialog and puts the guide beside
+          * the form, as tall as the form is: under it, a long guide made the
+          * dialog taller than the window.
+          */}
+        <div className={guided ? styles.besideGuide : undefined}>
+        <div className={styles.fields} ref={fieldsRef}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="workspace-connection-name">{t('Name')}</label>
             <div className={styles.inputWrapper}>
@@ -381,9 +406,6 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
-
-          {/* What the plugin says it takes to set one up, open: this dialog is where that happens. */}
-          <ConnectionGuide kind={pluginKind} open />
 
           {!slack && (
           <div className={styles.field}>
@@ -616,6 +638,12 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
           )}
 
           {!slack && !mail && <HeaderRowsEditor headers={headers} onChange={setHeaders} compact />}
+        </div>
+        {guided && (
+          <aside className={styles.guideAside}>
+            <ConnectionGuide kind={pluginKind} open height={fieldsHeight ?? undefined} />
+          </aside>
+        )}
         </div>
 
         {error !== null && (
