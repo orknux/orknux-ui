@@ -4004,6 +4004,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'desktop-network-check',
+    what: "Admin › Settings draws Network access only on the desktop app, checks the two passwords, and sends the choice with the password",
+    needs: [],
+    // The desktop half is canned, so nothing restarts.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

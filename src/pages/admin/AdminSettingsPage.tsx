@@ -97,6 +97,7 @@ import styles from './AdminSettingsPage.module.css';
 import { HttpToolsSection } from './HttpToolsSection';
 import { BulkheadsSection } from './BulkheadsSection';
 import { WatchersSection } from './WatchersSection';
+import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
 import { t } from '../../i18n';
@@ -2664,6 +2665,9 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
               </div>
             </div>
             {/* What Admin -> Updates keeps and how a start is judged. Issue #584. */}
+            {/* The desktop app's network switch; draws nothing on any other server. */}
+            <DesktopNetworkSection />
+
             <h2 id="server-updates" className={styles.sectionHeading}>{t('Server updates')}</h2>
             <NumberSetting
               id="releases-kept"

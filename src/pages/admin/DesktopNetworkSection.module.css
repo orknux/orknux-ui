@@ -1,0 +1,35 @@
+/* Admin › Settings › Network access, on the desktop app only. */
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.passwords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  max-width: 560px;
+}
+
+.passwords > input {
+  flex: 1 1 240px;
+}
+
+/* Its own Apply, apart from the page's Save: applying it starts the app again. */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-16);
+}
