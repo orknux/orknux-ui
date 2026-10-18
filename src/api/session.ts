@@ -3,6 +3,8 @@ import { t } from '../i18n';
 
 export interface SessionUser {
   username: string;
+  /** What to call them, where the installation has a name for them; the username otherwise. */
+  displayName?: string | null;
   roles: string[];
   /** Holds the server's configured admin role: sees the admin section and every workspace. */
   admin: boolean;

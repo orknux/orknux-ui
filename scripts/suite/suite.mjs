@@ -3919,6 +3919,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'header-display-name-check',
+    what: 'the top bar calls somebody by their display name, and by their username only where there is none',
+    needs: [],
+    // The session's answer is rewritten in the browser, so no user of its own is needed.
+  },
+  {
     name: 'connection-draft-test-check',
     what: "the Add Connection dialog tests what is typed before adding it, and a plugin's guide reads as one document, unscrolled",
     needs: ['workspace'],
