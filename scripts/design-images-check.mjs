@@ -103,7 +103,10 @@ await page.route('**/graphql', async (route) => {
     asked.push({ id, input, at: Date.now(), picture: asked.length === 0 ? DRAWN : SECOND });
     return route.fulfill({ json: { data: { queueDesignImage: { ...WAITING, id, prompt: input.prompt, ahead: 0 } } } });
   }
-  if (query.includes('designImageJob(')) return route.fulfill({ json: { data: { designImageJob: jobFor(body.variables?.id) } } });
+  if (query.includes('designImageJob(')) {
+    const id = body.variables?.id;
+    return route.fulfill({ json: { data: { designImageJob: id === WAITING.id ? WAITING : jobFor(id) } } });
+  }
   if (query.includes('designImageQueue(')) return route.fulfill({ json: { data: { designImageQueue: [WAITING] } } });
   if (query.includes('saveDesignImage')) {
     saved.push(body.variables?.id);
@@ -147,8 +150,10 @@ record(side !== null && focusBox !== null && side.x + side.width <= focusBox.x +
   `with the gallery down its left, a column at least (${JSON.stringify({ side, focusBox })})`);
 const closeBox = await page.getByTestId('design-image-close').boundingBox().catch(() => null);
 const editBox = await page.getByTestId('design-image-edit').boundingBox().catch(() => null);
-record(closeBox !== null && closeBox.width >= 36 && editBox !== null && editBox.width < 240,
-  `a large close button, and Open in editor as wide as its words (${JSON.stringify({ closeBox, editBox })})`);
+const editText = (await page.getByTestId('design-image-edit').innerText().catch(() => '')).trim();
+record(closeBox !== null && closeBox.width >= 36 && editBox !== null && editBox.width < 120 && editText === 'Edit'
+  && Math.abs(editBox.y - closeBox.y) < 2 && editBox.x + editBox.width <= closeBox.x && closeBox.x - (editBox.x + editBox.width) < 16,
+  `a large close button, and Edit just left of it in the corner (${JSON.stringify({ closeBox, editBox, editText })})`);
 record(drawnAsked.includes(true), 'and the gallery asks for drawn pictures only');
 
 // Design is the section lit, and its menu holds Images.
@@ -283,5 +288,18 @@ const carried = {
 };
 record(carried.prompt === DRAWN.prompt && carried.model === '9191' && carried.quality === 'hd',
   `Open in editor fills in the prompt, model and parameters it was drawn with (${JSON.stringify(carried)})`);
+
+// A picture still queued opens in the editor from its tile, with what it was asked with and what it waits for.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('queued-open').first().click({ timeout: 15_000 }).catch(() => undefined);
+await page.waitForURL(new RegExp(`/design/images/new\?job=${WAITING.id}$`), { timeout: 10_000 }).catch(() => undefined);
+await page.getByTestId('editor-drawing').waitFor({ timeout: 10_000 }).catch(() => undefined);
+const opened = {
+  url: page.url(),
+  prompt: await page.locator('#image-prompt').inputValue().catch(() => null),
+  waits: (await page.getByTestId('editor-drawing').innerText().catch(() => '')).trim(),
+};
+record(opened.url.endsWith(`/design/images/new?job=${WAITING.id}`) && opened.prompt === WAITING.prompt && opened.waits === 'Queued, 1 ahead…',
+  `a queued picture opens in the editor, waiting there (${JSON.stringify(opened)})`);
 
 await finish(browser);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, WheelEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   deleteArtifact,
@@ -76,6 +76,9 @@ const ZOOM_MOST = 8;
 export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorPageProps) {
   const { workspaceId = '', artifactId } = useParams();
   const navigate = useNavigate();
+  /** A request opened from the gallery while it waits or draws: `?job=` on the New address. */
+  const [searching] = useSearchParams();
+  const jobAsked = searching.get('job');
   const [shown, setShown] = useState<Shown>(null);
   const [models, setModels] = useState<Model[] | null>(null);
   const [modelId, setModelId] = useState('');
@@ -135,6 +138,26 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       left = true;
     };
   }, [artifactId, workspaceId]);
+
+  // A request opened from the gallery: what it was asked with, and the canvas waiting for it.
+  useEffect(() => {
+    if (jobAsked === null || workspaceId === '') return;
+    let left = false;
+    fetchDesignImageJob(workspaceId, jobAsked)
+      .then((found) => {
+        if (left || found === null) return;
+        setMade((held) => (held.some((one) => one.job.id === found.id) ? held : [{ job: found }, ...held]));
+        setPrompt(found.prompt);
+        if (found.modelId !== null) setModelId(found.modelId);
+        setCarried({ size: found.size ?? '', quality: found.quality ?? '', style: found.style ?? '' });
+        if (found.status === 'DRAWN' && found.image !== null) show({ kind: 'picture', picture: found.image });
+        else setShown({ kind: 'job', jobId: found.id });
+      })
+      .catch(() => undefined);
+    return () => {
+      left = true;
+    };
+  }, [jobAsked, workspaceId]);
 
   // The model drawn with when it is still here; otherwise the first that draws.
   useEffect(() => {

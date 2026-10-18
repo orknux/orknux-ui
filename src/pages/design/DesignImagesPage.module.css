@@ -70,9 +70,12 @@
   padding-right: 48px;
 }
 
-/* As wide as its words, like every other button on a page. */
+/* In the top corner, left of the close button and as tall as it. */
 .focusEdit {
-  align-self: flex-start;
+  position: absolute;
+  top: var(--space-8);
+  right: calc(var(--space-8) + 40px + var(--space-8));
+  height: 40px;
 }
 
 /* What it was drawn with: a label and its value, row by row. */
@@ -162,7 +165,11 @@
   display: grid;
   place-items: center;
   aspect-ratio: 1;
-  cursor: default;
+  cursor: pointer;
+}
+
+.pendingThumb:hover {
+  background: var(--color-surface-hover);
 }
 
 .pendingFailed {

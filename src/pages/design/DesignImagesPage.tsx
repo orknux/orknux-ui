@@ -225,7 +225,18 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           <div className={gallery.gallery} data-testid="design-gallery">
             {queue.map((one) => (
               <figure key={`job-${one.id}`} className={`${gallery.card} ${styles.pending}`} data-job-status={one.status}>
-                <div className={`${gallery.thumb} ${styles.pendingThumb}`}>
+                <div
+                  className={`${gallery.thumb} ${styles.pendingThumb}`}
+                  role="link"
+                  tabIndex={0}
+                  title={t('Open in editor')}
+                  aria-label={`${t('Open in editor')}: ${one.prompt}`}
+                  onClick={() => navigate(`/workspace/${workspaceId}/design/images/new?job=${one.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') navigate(`/workspace/${workspaceId}/design/images/new?job=${one.id}`);
+                  }}
+                  data-testid="queued-open"
+                >
                   {one.status === 'FAILED' ? (
                     <span className={styles.pendingFailed}>{t('Not drawn')}</span>
                   ) : (
@@ -239,7 +250,10 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                     <button
                       type="button"
                       className={styles.pendingDismiss}
-                      onClick={() => void dismissDesignImageJob(one.id).then(readQueue)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void dismissDesignImageJob(one.id).then(readQueue);
+                      }}
                       aria-label={t('Take it off')}
                       title={t('Take it off')}
                     >
@@ -308,18 +322,20 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             >
               ×
             </button>
-            <p className={styles.focusPrompt}>
-              {open.draft && <span className={styles.draftBadgeInline}>{t('Draft')}</span>}
-              {open.prompt}
-            </p>
+            {/* Beside the close button, in the corner: the two ways out of looking at a picture. */}
             <button
               type="button"
               className={`${table.createButton} ${styles.focusEdit}`}
               onClick={() => navigate(`/workspace/${workspaceId}/design/images/${open.id}/edit`)}
+              title={t('Open in editor')}
               data-testid="design-image-edit"
             >
-              {t('Open in editor')}
+              {t('Edit')}
             </button>
+            <p className={styles.focusPrompt}>
+              {open.draft && <span className={styles.draftBadgeInline}>{t('Draft')}</span>}
+              {open.prompt}
+            </p>
             <dl className={styles.drawnWith}>
               <dt>{t('From')}</dt>
               <dd>
