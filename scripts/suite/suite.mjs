@@ -3925,6 +3925,12 @@ export const TESTS = [
     // The session's answer is rewritten in the browser, so no user of its own is needed.
   },
   {
+    name: 'box-sessions-paged-check',
+    what: "a box's sessions a page at a time, 5, 10 or 25, and every column ordering them",
+    needs: [],
+    // Canned: boxSessions is answered with twelve sessions, on a scratch box under .invalid.
+  },
+  {
     name: 'connection-draft-test-check',
     what: "the Add Connection dialog tests what is typed before adding it, and a plugin's guide reads as one document, unscrolled",
     needs: ['workspace'],
@@ -4448,7 +4454,7 @@ export const TESTS = [
   // --- boxes ----------------------------------------------------------------
   {
     name: 'boxes-admin-check',
-    what: 'Admin -> Boxes lists a row per box with Name, Type, Health, Active sessions, Label; a remote box is added, tested and deleted through the page; the local box offers only its label; Admin Settings draws every box knob on what the server holds',
+    what: 'Admin -> Boxes lists a row per box with Name, Type, Health, Active sessions, Free sessions and no label; a remote box is added, tested and deleted through the page; the local box offers nothing to edit; Admin Settings draws every box knob on what the server holds',
     needs: [],
     /*
      * Its boxes are at addresses under `.invalid`, so no test reaches a

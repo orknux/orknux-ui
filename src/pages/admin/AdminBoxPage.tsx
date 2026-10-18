@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -8,7 +8,6 @@ import {
   deleteBox,
   fetchBox,
   fetchBoxInfo,
-  fetchBoxLabels,
   fetchBoxSessions,
   revealBoxToken,
   testBoxConnection,
@@ -23,6 +22,9 @@ import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
+import { ColumnHeader } from '../../components/ColumnHeader';
+import { CompactPagination } from '../../components/CompactPagination';
+import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { RevealToggle } from '../../components/RevealToggle';
 import { Loader } from '../../components/Loader';
@@ -31,6 +33,29 @@ import { shellUser } from '../../session/user';
 import styles from './AdminBoxPage.module.css';
 import { t, tf } from '../../i18n';
 import { moment, zoned } from '../../session/timeZone';
+
+/** How many of a box's sessions are shown at once: the sizes a person's sessions in Reports offer. */
+const SESSION_PAGE_SIZES = [5, 10, 25];
+
+type SessionOrder = 'SESSION' | 'AGENT' | 'RUNTIME' | 'LAST_ACTIVITY' | 'EXPIRES' | 'COMMANDS';
+
+/** What a column of the sessions table holds for one session, for putting them in its order. */
+function sessionKey(one: BoxRemoteSession, column: SessionOrder): string | number | null {
+  switch (column) {
+    case 'SESSION':
+      return one.id;
+    case 'AGENT':
+      return one.agentName;
+    case 'RUNTIME':
+      return one.runtime === null ? null : `${one.runtime} ${one.image ?? ''}`;
+    case 'LAST_ACTIVITY':
+      return one.lastActivityAt === null ? null : Date.parse(one.lastActivityAt);
+    case 'EXPIRES':
+      return one.expiresAt === null ? null : Date.parse(one.expiresAt);
+    case 'COMMANDS':
+      return one.totalExecutions * 1000 + one.runningExecutions;
+  }
+}
 
 export interface AdminBoxPageProps {
   session: SessionUser;
@@ -63,7 +88,11 @@ function yesNo(value: boolean | null): string {
  *
  * The local box is the same page with less to edit: it is inside this server,
  * so it has no address or token, and its limits are installation settings
- * rather than fields here. Only its label is its own.
+ * rather than fields here. Its name is fixed too: `local`.
+ *
+ * A box has one name, and it is what an agent is granted the box by. It used
+ * to have a label as well, which the grant named - two names for one box, the
+ * second visible nowhere an agent used it.
  */
 export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
   const { boxId } = useParams();
@@ -75,13 +104,11 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [label, setLabel] = useState('');
   /** What is typed in the token box. Empty keeps what is stored, unless clearing was asked for. */
   const [token, setToken] = useState('');
   const [clearToken, setClearToken] = useState(false);
   /** Whether the token box shows what is in it. */
   const [shown, setShown] = useState(false);
-  const [knownLabels, setKnownLabels] = useState<string[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -96,6 +123,14 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
   const [infoError, setInfoError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<BoxRemoteSession[] | null>(null);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionSize, setSessionSize] = useState(10);
+  const [sessionOrder, sessionAscending, sortSessionsBy] = useTableSort<SessionOrder>(
+    'box-sessions',
+    'LAST_ACTIVITY',
+    false,
+    ['LAST_ACTIVITY', 'EXPIRES', 'COMMANDS'],
+  );
 
   const local = box?.kind === 'LOCAL' || boxId === LOCAL_BOX_ID;
 
@@ -103,7 +138,6 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
     setBox(found);
     setName(found.name);
     setAddress(found.address ?? '');
-    setLabel(found.label ?? '');
     setToken('');
     setClearToken(false);
   }, []);
@@ -116,22 +150,9 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
     }
     setName('');
     setAddress('');
-    setLabel('');
     setToken('');
     setClearToken(false);
   }
-
-  useEffect(() => {
-    let current = true;
-    fetchBoxLabels()
-      .then((labels) => {
-        if (current) setKnownLabels(labels);
-      })
-      .catch(() => undefined);
-    return () => {
-      current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (boxId === undefined) return;
@@ -179,13 +200,11 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
 
   useEffect(loadDetails, [loadDetails]);
 
-  /* A box with no label is no agent's, so a label is asked for up front. */
-  const complete = !local && name.trim() !== '' && address.trim() !== '' && label.trim() !== '';
+  const complete = !local && name.trim() !== '' && address.trim() !== '';
   /** What is still missing, said on hover over a Save that will not press. */
   const missing = [
     name.trim() === '' ? t('Name') : null,
     address.trim() === '' ? t('Address') : null,
-    label.trim() === '' ? t('Label') : null,
   ].filter((one): one is string => one !== null);
 
   /**
@@ -223,10 +242,9 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
     setSaved(false);
 
     const input: BoxInput = local
-      ? { name: box?.name ?? name, label: label.trim() === '' ? null : label.trim() }
+      ? { name: box?.name ?? name }
       : {
           name: name.trim(),
-          label: label.trim() === '' ? null : label.trim(),
           address: address.trim(),
           token: tokenSent(),
         };
@@ -288,7 +306,16 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
    * what the page last agreed with the server. Save and Discard are off while
    * there is not.
    */
-  const changed = useDirty({ name, address, label, token, clearToken }, [box]);
+  const changed = useDirty({ name, address, token, clearToken }, [box]);
+
+  /** The sessions in the order chosen, then the page of them on screen. */
+  const sessionsShown = useMemo(() => {
+    if (sessions === null) return [];
+    const sorted = ordered(sessions, (one) => sessionKey(one, sessionOrder), sessionAscending, (one) => one.id);
+    const pages = Math.max(1, Math.ceil(sorted.length / sessionSize));
+    const page = Math.min(sessionPage, pages);
+    return sorted.slice((page - 1) * sessionSize, page * sessionSize);
+  }, [sessions, sessionOrder, sessionAscending, sessionPage, sessionSize]);
 
   return (
     <AppShell
@@ -337,9 +364,14 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
             <div className={styles.divider} />
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="box-name">
-                {t('Name')} {!local && <span className={styles.required}>*</span>}
-              </label>
+              <span className={styles.labelWithHint}>
+                <label className={styles.label} htmlFor="box-name">
+                  {t('Name')} {!local && <span className={styles.required}>*</span>}
+                </label>
+                <FieldHint label={t('Name')}>
+                  {t('What an agent is granted this box by and opens a session on it by. Renaming it moves the agents granted it.')}
+                </FieldHint>
+              </span>
               <input
                 id="box-name"
                 name="boxName"
@@ -437,35 +469,6 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
               </div>
             )}
 
-            <div className={styles.field}>
-              <span className={styles.labelWithHint}>
-                <label className={styles.label} htmlFor="box-label">
-                  {t('Label')} {!local && <span className={styles.required}>*</span>}
-                </label>
-                <FieldHint label={t('Label')}>
-                  {t('What an agent is granted this box by. Several boxes may share a label, and an agent holding it may be given any of them.')}
-                </FieldHint>
-              </span>
-              <input
-                id="box-label"
-                name="boxLabel"
-                className={`${styles.input} ${styles.inputMono}`}
-                type="text"
-                list="box-label-suggestions"
-                spellCheck={false}
-                placeholder={t('e.g. build')}
-                value={label}
-                required={!local}
-                readOnly={local}
-                onChange={(event) => setLabel(event.target.value)}
-              />
-              <datalist id="box-label-suggestions">
-                {knownLabels.map((one) => (
-                  <option key={one} value={one} />
-                ))}
-              </datalist>
-            </div>
-
             {local && (
               <Link className={styles.settingsLink} to="/admin/settings#boxes" data-box-settings-link="">
                 {t('Local box settings')}
@@ -561,14 +564,29 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
             ) : (
               <div className={styles.table}>
                 <div className={styles.tableHead}>
-                  <span className={styles.colId}>{t('Session')}</span>
-                  <span className={styles.colStatus}>{t('Agent')}</span>
-                  <span className={styles.colRuntime}>{t('Runtime')}</span>
-                  <span className={styles.colWhen}>{t('Last activity')}</span>
-                  <span className={styles.colWhen}>{t('Expires')}</span>
-                  <span className={styles.colRuns}>{t('Commands')}</span>
+                  {([
+                    ['SESSION', t('Session'), styles.colId],
+                    ['AGENT', t('Agent'), styles.colStatus],
+                    ['RUNTIME', t('Runtime'), styles.colRuntime],
+                    ['LAST_ACTIVITY', t('Last activity'), styles.colWhen],
+                    ['EXPIRES', t('Expires'), styles.colWhen],
+                    ['COMMANDS', t('Commands'), styles.colRuns],
+                  ] as const).map(([column, heading, className]) => (
+                    <ColumnHeader
+                      key={column}
+                      label={heading}
+                      order={column}
+                      current={sessionOrder}
+                      ascending={sessionAscending}
+                      onSort={(next) => {
+                        sortSessionsBy(next);
+                        setSessionPage(1);
+                      }}
+                      className={className}
+                    />
+                  ))}
                 </div>
-                {sessions.map((one) => (
+                {sessionsShown.map((one) => (
                   <div key={one.id} className={styles.tableRow} data-box-session={one.id}>
                     <span className={`${styles.colId} ${styles.mono}`} title={one.labels === '{}' ? undefined : one.labels}>
                       {/* A session an agent here opened links to its conversation, with the box's log open. */}
@@ -598,6 +616,20 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
                     </span>
                   </div>
                 ))}
+                {sessions.length > SESSION_PAGE_SIZES[0] && (
+                  <CompactPagination
+                    page={sessionPage}
+                    pageSize={sessionSize}
+                    totalItems={sessions.length}
+                    unit={t('sessions')}
+                    onPageChange={setSessionPage}
+                    pageSizes={SESSION_PAGE_SIZES}
+                    onPageSizeChange={(next) => {
+                      setSessionSize(next);
+                      setSessionPage(1);
+                    }}
+                  />
+                )}
               </div>
             )}
           </section>
@@ -614,7 +646,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
               <span className={styles.dangerTitle}>{t('Delete box')}</span>
               <span className={styles.dangerNote}>
                 {confirmingDelete
-                  ? tf('Delete {name}? Agents holding its label lose it.', { name: box.name })
+                  ? tf('Delete {name}? Agents granted it lose it.', { name: box.name })
                   : t('Remove this box from the installation')}
               </span>
             </div>

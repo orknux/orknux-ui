@@ -290,7 +290,7 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
     case 'HTTP_TOOLS':
       return t('Granted by the HTTP tools — switch it there.');
     case 'BOX_ACCESS':
-      return t('Granted by the box labels — switch it there.');
+      return t('Granted by the boxes — switch it there.');
     case 'VARIABLE_CATALOGS':
       return t('Granted by the secret and variable catalogs — switch it there.');
     default:
@@ -1494,7 +1494,8 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * still be revoked.
    */
   // The labels boxes carry: a box is shared by the installation, so the list is the installation's, not the workspace's.
-  const boxCatalogue = useCatalogue<string>(t('box labels'), () => fetchBoxLabels(), []);
+  // Every box's name: what a grant names. Still `boxLabels` on the wire, from when a grant named a label.
+  const boxCatalogue = useCatalogue<string>(t('boxes'), () => fetchBoxLabels(), []);
   const connectionCatalogue = useCatalogue<WorkspaceConnection>(
     t('connections'),
     () => fetchWorkspaceConnections(workspaceId),
@@ -2335,10 +2336,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             what="boxes"
             styles={styles}
             catalogue={boxCatalogue}
-            empty={t('No box carries a label yet. Boxes are set up under Admin → Boxes.')}
-            hint={t('The boxes this agent may open a session on, named by label. In one it has a filesystem and runs commands, so it can do whatever that box allows. Boxes and their labels are set up under Admin → Boxes.')}
-            keyOf={(label) => label}
-            nameOf={(label) => label}
+            empty={t('No box is set up yet. Boxes are set up under Admin → Boxes.')}
+            hint={t('The boxes this agent may open a session on. In one it has a filesystem and runs commands, so it can do whatever that box allows. Boxes are set up under Admin → Boxes.')}
+            keyOf={(box) => box}
+            nameOf={(box) => box}
             granted={boxLabels}
             onChange={setBoxLabels}
           />

@@ -338,7 +338,6 @@ const PL: Record<string, string> = {
   // --- boxes ---------------------------------------------------------------
   BoxNotFound: 'Nie ma skrzynki {id}',
   BoxNameTaken: 'Skrzynka o nazwie „{name}” już istnieje',
-  BoxLabelRequired: 'Skrzynka potrzebuje etykiety - to po niej agent dostaje do niej dostęp',
   LocalBoxNotEditable: 'Lokalnej skrzynki nie zmienia się tutaj. Jej etykieta to zawsze local, a ustawienia są w ustawieniach administratora',
   BoxNameInvalid: 'Nazwa skrzynki nie może być pusta ani dłuższa niż 255 znaków',
   BoxAddressInvalid: '„{address}” nie jest adresem skrzynki. Podaj go ze schematem, np. http://sandbox.internal:8090.',

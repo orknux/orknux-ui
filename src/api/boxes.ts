@@ -207,7 +207,7 @@ export async function fetchBoxSessions(id: string): Promise<BoxRemoteSession[]> 
   return data.boxSessions;
 }
 
-/** The labels boxes carry now, offered as somebody types one. */
+/** Every box's name, which is what an agent's grant names; called labels from when a grant named a label. */
 export async function fetchBoxLabels(): Promise<string[]> {
   const data = await graphql<{ boxLabels: string[] }>(`query BoxLabels { boxLabels }`);
   return data.boxLabels;
