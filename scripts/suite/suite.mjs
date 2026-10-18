@@ -3919,6 +3919,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'used-by-paged-check',
+    what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
+    needs: ['workspace'],
+    // The dependants are canned, so the check needs no fixture of its own.
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],

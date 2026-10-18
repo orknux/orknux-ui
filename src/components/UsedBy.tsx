@@ -6,6 +6,7 @@ import type { Dependant, DependencyKind } from '../api/dependants';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
+import { Pagination } from './Pagination';
 import styles from './UsedBy.module.css';
 import { t } from '../i18n';
 
@@ -32,7 +33,13 @@ export interface DependantListProps {
  * because the same list is what its delete refusal has to draw. Two callers,
  * one set of rows, which is the point of the whole exercise.
  */
+/** How many rows a page of dependants holds, and the sizes offered - the ones every other pager offers. */
+const DEPENDANT_PAGE_SIZES = [5, 10, 25];
+const DEPENDANT_PAGE_SIZE = 10;
+
 export function DependantList({ entries, hidden, showWorkspace = false }: DependantListProps) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEPENDANT_PAGE_SIZE);
   if (entries.length === 0 && hidden === 0) {
     return <p className={styles.empty}>{t('Nothing uses this yet.')}</p>;
   }
@@ -40,7 +47,7 @@ export function DependantList({ entries, hidden, showWorkspace = false }: Depend
   return (
     <>
       <ul className={styles.list} data-dependants>
-        {entries.map((entry) => (
+        {entries.slice((page - 1) * pageSize, page * pageSize).map((entry) => (
           <li className={styles.item} key={`${entry.kind}-${entry.id}`}>
             <Link
               className={styles.row}
@@ -60,6 +67,25 @@ export function DependantList({ entries, hidden, showWorkspace = false }: Depend
           </li>
         ))}
       </ul>
+      {/*
+        Paged where it runs long: a skill a whole workspace's agents use is
+        forty rows, and a panel that is usually three lines should not become
+        the page. Below the default size there is nothing to page.
+      */}
+      {entries.length > DEPENDANT_PAGE_SIZE && (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={entries.length}
+          onPageChange={setPage}
+          label={t('Used by')}
+          pageSizes={DEPENDANT_PAGE_SIZES}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
+      )}
       {/*
         Counted, never named. A row in a workspace this reader cannot open is a
         workspace they were not told exists; dropping it silently would answer
