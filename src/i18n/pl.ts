@@ -1423,6 +1423,7 @@ export const PL: Record<string, string> = {
   "Publish template": "Opublikuj szablon",
   "Use template": "Użyj szablonu",
   "Test Connection": "Sprawdź połączenie",
+  "Drop to attach": "Upuść, aby załączyć",
   "No models yet - add one": "Nie ma jeszcze modeli - dodaj jeden",
   "Add a model": "Dodaj model",
   "(optional)": "(opcjonalnie)",

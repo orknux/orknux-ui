@@ -299,11 +299,29 @@
 }
 
 .chat {
+  position: relative;
   display: flex;
   flex: 1 0 0;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+}
+
+/* Over the whole conversation while files are dragged across it: where they go if let go. */
+.dropZone {
+  position: absolute;
+  inset: var(--space-8);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--radius-12);
+  background: var(--color-bg);
+  opacity: 0.92;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  pointer-events: none;
 }
 
 .titleBar {

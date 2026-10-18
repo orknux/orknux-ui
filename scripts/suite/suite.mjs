@@ -326,6 +326,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'save-bar-test-check',
+    what: "a page's Test Connection or Check sits at the left of the save strip, not in the page; and Test on Add Provider keeps the typed key and Create",
+    needs: ['workspace'],
+    // Every Test but Add Provider's is captured; Add Provider's real row is removed by Discard and swept by name.
+  },
+  {
     name: 'save-bar-check',
     what: "every page that saves has Save and Discard in one strip on the footer, from the sidebar to the window's edge, above the AI button",
     needs: ['workspace'],

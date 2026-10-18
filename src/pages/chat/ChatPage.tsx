@@ -239,6 +239,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const addRef = useRef<HTMLDivElement>(null);
   /** Whether this installation allows files at all; the button is absent when not. */
   const [attachmentsAllowed, setAttachmentsAllowed] = useState(false);
+  /** Whether files are being dragged over the chat, which then says it will take them. */
+  const [dropping, setDropping] = useState(false);
   /** The chats whose messages match, as the server last answered. */
   const [mentioning, setMentioning] = useState<string[]>([]);
   const [pinnedOpen, setPinnedOpen] = useState(true);
@@ -2902,7 +2904,35 @@ ${named}`;
         </div>
       ) : (
         <div className={styles.chatRow}>
-        <div className={styles.chat}>
+        {/*
+          Files dropped anywhere on the conversation are attached, as the
+          attach button and a pasted picture are. Without this a dropped file
+          was the browser's to handle: it opened the picture in place of the
+          chat, and in the desktop app replaced the whole window with it.
+        */}
+        <div
+          className={styles.chat}
+          onDragOver={(event) => {
+            if (!event.dataTransfer.types.includes('Files')) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = attachmentsAllowed ? 'copy' : 'none';
+            if (attachmentsAllowed) setDropping(true);
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false);
+          }}
+          onDrop={(event) => {
+            if (!event.dataTransfer.types.includes('Files')) return;
+            event.preventDefault();
+            setDropping(false);
+            if (attachmentsAllowed) void handleFiles(Array.from(event.dataTransfer.files));
+          }}
+        >
+          {dropping && (
+            <div className={styles.dropZone} data-testid="chat-drop-zone" aria-hidden="true">
+              {t('Drop to attach')}
+            </div>
+          )}
           {/*
             One row, not two.
 
