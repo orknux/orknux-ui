@@ -674,6 +674,15 @@
 }
 
 /*
+ * Calls one after another are one run of work, drawn as a stack: the log's
+ * gap is for turns, and between six lookups in a row it spread them down a
+ * screen as though each were a message.
+ */
+.call + .call {
+  margin-top: calc(var(--space-6) - var(--space-24));
+}
+
+/*
  * The working of the answer being read: what it thought, and what it looked up
  * while it was thinking.
  *

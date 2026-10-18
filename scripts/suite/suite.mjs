@@ -3983,6 +3983,12 @@ export const TESTS = [
     // The stream is answered here, so no model is asked.
   },
   {
+    name: 'chat-call-stack-check',
+    what: 'tool calls made one after another sit together, and the turns around them keep their gap',
+    needs: ['workspace'],
+    // The conversation is answered here, so nothing is asked of a model.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],
