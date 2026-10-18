@@ -37,6 +37,8 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "click to rename": "kliknij, by zmienić nazwę",
+  "Could not rename the picture.": "Nie udało się zmienić nazwy obrazu.",
   "Remove this picture": "Usuń ten obraz",
   "Draft": "Szkic",
   "Queued": "W kolejce",

@@ -42,17 +42,19 @@ const PICTURE = {
   drawnAt: new Date().toISOString(),
   drawnWith: null,
   draft: false,
+  name: null,
 };
 const drawnAsked = [];
 // Sixty more, as the gallery's pages: enough for several rows, and a second read.
 const MANY = Array.from({ length: 60 }, (_, index) => ({ ...PICTURE, id: `IMAGE-${500000 + index}`, prompt: `zz design check ${index}`, draft: index === 0 }));
 const DRAWN = { ...PICTURE, id: 'DESIGN-777', kind: 'DESIGN', source: 'Design', sourcePath: 'design/images/DESIGN-777', prompt: 'zz a drawn lighthouse',
-  draft: true, drawnWith: { modelId: '9191', model: 'Drawer', size: '1024x1024', quality: 'hd', style: null, drawnBy: 'alice' } };
+  draft: true, name: 'Zz drawn lighthouse', drawnWith: { modelId: '9191', model: 'Drawer', size: '1024x1024', quality: 'hd', style: null, drawnBy: 'alice' } };
 const SECOND = { ...DRAWN, id: 'DESIGN-778', prompt: 'zz a second lighthouse' };
 const pagesAsked = [];
 const drawRequests = [];
 const saved = [];
 const deleted = [];
+const renamed = [];
 /** A request already waiting, for the gallery's tile. */
 const WAITING = { id: '30', status: 'QUEUED', prompt: 'zz a queued lighthouse', modelId: '9191', model: 'Drawer', size: null, quality: null, style: null,
   requestedBy: 'alice', requestedAt: new Date().toISOString(), startedAt: null, reason: null, ahead: 1, image: null };
@@ -111,6 +113,10 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('saveDesignImage')) {
     saved.push(body.variables?.id);
     return route.fulfill({ json: { data: { saveDesignImage: { ...DRAWN, draft: false } } } });
+  }
+  if (query.includes('renameDesignImage')) {
+    renamed.push(body.variables?.name);
+    return route.fulfill({ json: { data: { renameDesignImage: { ...DRAWN, name: body.variables?.name } } } });
   }
   if (query.includes('deleteArtifact')) {
     deleted.push(body.variables?.id);
@@ -228,8 +234,18 @@ const sent = drawRequests[0] ?? {};
 record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null,
   `the picture is queued for the model chosen with what was asked (${JSON.stringify(sent)})`);
 record((await page.getByTestId('editor-picture').count()) === 1, 'and is on the canvas the moment it is drawn');
-const marked = await page.locator('[class*="toolbarTitle"]').innerText().catch(() => '');
+const marked = await page.locator('[class*="draftMark"]').innerText().catch(() => '');
 record(marked.toLowerCase().includes('draft') && (await page.getByTestId('editor-save').isEnabled()), `as a draft, with Save on (${marked})`);
+
+// The top bar says what the picture is called, and clicking it renames it.
+const named = page.getByTestId('editor-name');
+record((await named.innerText().catch(() => '')).trim() === DRAWN.name, `the top bar shows the picture's name (${await named.innerText().catch(() => '')})`);
+await named.click().catch(() => undefined);
+await page.getByTestId('editor-name-input').fill('Harbour light');
+await page.getByTestId('editor-name-input').press('Enter');
+await page.waitForTimeout(400);
+record(renamed.includes('Harbour light') && (await page.getByTestId('editor-name').innerText().catch(() => '')).trim() === 'Harbour light',
+  `and clicking it renames it (${JSON.stringify(renamed)})`);
 
 // Zoom: the button, then the shortcuts chosen in Preferences - Ctrl+= and Ctrl+- unless changed.
 const widthNow = async () => Math.round((await page.getByTestId('editor-picture').boundingBox().catch(() => null))?.width ?? 0);
@@ -315,7 +331,8 @@ record(removeBox !== null && editAt !== null && removeBox.x + removeBox.width <=
   `Remove stands left of Edit (${JSON.stringify({ removeBox, editAt })})`);
 const factsAt = await page.locator(`[data-design-image="${DRAWN.id}"] dl`).boundingBox().catch(() => null);
 const pictureAt = await page.locator(`[data-design-image="${DRAWN.id}"] > img`).boundingBox().catch(() => null);
-const promptRow = await page.locator(`[data-design-image="${DRAWN.id}"] dt`).first().innerText().catch(() => '');
+const detailRows = (await page.locator(`[data-design-image="${DRAWN.id}"] dt`).allInnerTexts().catch(() => [])).slice(0, 2).join(', ');
+const promptRow = detailRows === 'Name, Prompt' ? 'Prompt' : detailRows;
 const statusAt = await page.locator(`[data-design-image="${DRAWN.id}"] [class*="focusStatus"]`).boundingBox().catch(() => null);
 const statusText = (await page.locator(`[data-design-image="${DRAWN.id}"] [class*="focusStatus"]`).innerText().catch(() => '')).trim().toLowerCase();
 record(statusAt !== null && pictureAt !== null && factsAt !== null && statusAt.y < pictureAt.y && factsAt.y > pictureAt.y && promptRow === 'Prompt' && statusText === 'draft',

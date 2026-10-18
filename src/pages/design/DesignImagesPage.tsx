@@ -296,7 +296,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                 </button>
                 <figcaption className={gallery.caption}>
                   <span className={gallery.prompt} title={image.prompt}>
-                    {image.prompt}
+                    {image.name ?? image.prompt}
                   </span>
                   <span className={gallery.facts}>
                     {image.source}
@@ -358,6 +358,12 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           <img src={open.url} alt={open.prompt} className={styles.focusImage} />
           <div className={styles.focusFacts}>
             <dl className={styles.drawnWith}>
+              {open.name !== null && (
+                <>
+                  <dt>{t('Name')}</dt>
+                  <dd>{open.name}</dd>
+                </>
+              )}
               <dt>{t('Prompt')}</dt>
               <dd className={styles.focusPrompt}>
                 {open.prompt}

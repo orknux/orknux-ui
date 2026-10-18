@@ -8,6 +8,7 @@ import {
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   queueDesignImage,
+  renameDesignImage,
   saveDesignImage,
 } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
@@ -377,6 +378,22 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
   }
 
+  /** The name being typed over the title, or null while it is only shown. */
+  const [naming, setNaming] = useState<string | null>(null);
+  async function rename() {
+    if (picture === null || naming === null) return;
+    const called = naming.trim();
+    setNaming(null);
+    if (called === '' || called === picture.name) return;
+    try {
+      const renamed = await renameDesignImage(workspaceId, picture.id, called);
+      setShown({ kind: 'picture', picture: renamed });
+      setMade((held) => held.map((one) => (one.job.image?.id === renamed.id ? { job: { ...one.job, image: renamed } } : one)));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not rename the picture.'));
+    }
+  }
+
   const canSave = picture !== null && picture.draft;
   const canDiscard = canSave || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
 
@@ -410,10 +427,40 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         >
           ← {t('Images')}
         </button>
-        <span className={styles.toolbarTitle}>
-          {picture !== null ? picture.filename : t('New image')}
-          {picture?.draft === true && <span className={styles.draftMark}>{t('Draft')}</span>}
-        </span>
+        {/*
+          What the picture is called: a name for one drawn here, renamed by
+          clicking it; its prompt, cut short, for one a run or a task drew.
+        */}
+        {naming !== null ? (
+          <input
+            className={styles.titleInput}
+            value={naming}
+            onChange={(event) => setNaming(event.target.value)}
+            onBlur={() => void rename()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void rename();
+              if (event.key === 'Escape') setNaming(null);
+            }}
+            aria-label={t('Name')}
+            autoFocus
+            data-testid="editor-name-input"
+          />
+        ) : picture !== null && picture.name !== null ? (
+          <button
+            type="button"
+            className={styles.toolbarTitle}
+            onClick={() => setNaming(picture.name ?? '')}
+            title={`${picture.name} - ${t('click to rename')}`}
+            data-testid="editor-name"
+          >
+            {picture.name}
+          </button>
+        ) : (
+          <span className={styles.toolbarTitle} title={picture?.prompt} data-testid="editor-name">
+            {picture !== null ? picture.prompt : job !== null ? job.prompt : t('New image')}
+          </span>
+        )}
+        {picture?.draft === true && <span className={styles.draftMark}>{t('Draft')}</span>}
         <div className={styles.toolbarRight}>
           <button
             type="button"
