@@ -180,6 +180,17 @@ drawnNow = true;
 await page.getByTestId('editor-unsaved').waitFor({ timeout: 8_000 }).catch(() => undefined);
 record((await page.getByTestId('editor-unsaved').count()) === 1 && (await page.getByTestId('editor-save').isEnabled()),
   'the drawn change is shown as unsaved, and Save lights');
+// A second round over the change just drawn: Select all outlines the whole of the picture now shown.
+await page.waitForTimeout(500);
+await page.getByTestId('magic-all').click().catch(() => undefined);
+const secondRound = {
+  selection: await page.getByTestId('magic-selection').boundingBox().catch(() => null),
+  picture: await page.getByTestId('editor-picture').boundingBox().catch(() => null),
+};
+record(secondRound.selection !== null && secondRound.picture !== null
+  && Math.abs(secondRound.selection.width - secondRound.picture.width) < 16 && Math.abs(secondRound.selection.x - secondRound.picture.x) < 8,
+  `on a second round Select all outlines the whole picture shown (${JSON.stringify(secondRound)})`);
+await page.keyboard.press('Escape');
 await page.getByTestId('editor-save').click().catch(() => undefined);
 await page.waitForTimeout(600);
 record(versionCalls.some(([what, id]) => what === 'save' && id === 'DESIGN-903') && (await page.getByTestId('editor-unsaved').count()) === 0
@@ -226,6 +237,18 @@ const pictureNow = await picture.boundingBox().catch(() => null);
 record(whole !== null && pictureNow !== null && Math.abs(whole.width - pictureNow.width) < 16 && (await page.getByTestId('magic-ask').count()) === 1,
   `Select all selects the whole picture and asks what to change (${JSON.stringify({ whole, pictureNow })})`);
 await page.keyboard.press('Escape');
+// Zoomed past the canvas and scrolled: the outline stays on the picture, not where the picture was.
+for (let step = 0; step < 4; step += 1) await page.getByTestId('editor-zoom-in').click();
+await page.locator('[class*="stage"]').first().evaluate((stage) => { stage.scrollTop = 120; stage.scrollLeft = 60; });
+await page.waitForTimeout(300);
+await page.getByTestId('magic-all').click().catch(() => undefined);
+const zoomedSelection = await page.getByTestId('magic-selection').boundingBox().catch(() => null);
+const zoomedPicture = await picture.boundingBox().catch(() => null);
+record(zoomedSelection !== null && zoomedPicture !== null
+  && Math.abs(zoomedSelection.x - zoomedPicture.x) < 8 && Math.abs(zoomedSelection.y - zoomedPicture.y) < 8 && Math.abs(zoomedSelection.width - zoomedPicture.width) < 16,
+  `zoomed and scrolled, the selection stays on the picture (${JSON.stringify({ zoomedSelection, zoomedPicture })})`);
+await page.keyboard.press('Escape');
+await page.getByTestId('editor-zoom').click();
 await page.locator('body').click({ position: { x: 5, y: 500 } }).catch(() => undefined);
 await page.keyboard.press('Control+a');
 record((await page.getByTestId('magic-ask').count()) === 1, 'and Ctrl+A does the same');

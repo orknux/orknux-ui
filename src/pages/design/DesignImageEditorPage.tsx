@@ -415,37 +415,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [editModelId, setEditModelId] = useState('');
   const [changing, setChanging] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  /** Where the picture is drawn on the canvas, which the selection layer is laid over. */
-  const [frame, setFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-
+  /** The picture's own size, once it has loaded: what the selection layer draws in. */
+  const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
   // The model a change is asked of: the panel's own, until one is chosen here.
   useEffect(() => {
     if (editModelId === '' && modelId !== '') setEditModelId(modelId);
   }, [modelId, editModelId]);
-
-  const measure = () => {
-    const shownPicture = pictureRef.current;
-    const area = canvasRef.current;
-    if (shownPicture === null || area === null) {
-      setFrame(null);
-      return;
-    }
-    const box = shownPicture.getBoundingClientRect();
-    const around = area.getBoundingClientRect();
-    setFrame({ left: box.left - around.left, top: box.top - around.top, width: box.width, height: box.height });
-  };
-  useEffect(() => {
-    measure();
-    const area = canvasRef.current;
-    if (area === null) return;
-    const watcher = new ResizeObserver(measure);
-    watcher.observe(area);
-    window.addEventListener('resize', measure);
-    return () => {
-      watcher.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [picture?.id, zoom]);
 
   /** A selection is about the picture it was drawn on; another picture starts afresh. */
   const forget = () => {
@@ -532,29 +507,35 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }
 
   /** The selection's outline as the layer over the picture draws it. */
+  /** The selection's outline in the picture's own pixels, which is what the layer over it draws in. */
   const outlineOf = (points: Point[]) => {
-    const shownPicture = pictureRef.current;
-    if (shownPicture === null || frame === null) return '';
-    const sx = frame.width / shownPicture.naturalWidth;
-    const sy = frame.height / shownPicture.naturalHeight;
     const corners =
       tool === 'rectangle' && points.length === 2
         ? [points[0], { x: points[1].x, y: points[0].y }, points[1], { x: points[0].x, y: points[1].y }]
         : points;
-    return corners.map((point) => `${point.x * sx},${point.y * sy}`).join(' ');
+    return corners.map((point) => `${point.x},${point.y}`).join(' ');
   };
 
   keys.current.forget = forget;
   /** The whole picture selected, and what to change asked over its middle. */
   const selectAll = () => {
     const shownPicture = pictureRef.current;
-    if (picture === null || shownPicture === null || frame === null) return;
+    const area = canvasRef.current;
+    if (picture === null || shownPicture === null || area === null || shownPicture.naturalWidth === 0) return;
     const width = shownPicture.naturalWidth;
     const height = shownPicture.naturalHeight;
     setSelecting(null);
     setSelection([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]);
-    setAskAt({ x: frame.left + frame.width / 2 - 150, y: frame.top + frame.height / 2 - 100 });
+    // Asked over the middle of what can be seen of the picture, which zoomed may be less than all of it.
+    const box = shownPicture.getBoundingClientRect();
+    const around = area.getBoundingClientRect();
+    const left = Math.max(box.left, around.left) - around.left;
+    const right = Math.min(box.right, around.right) - around.left;
+    const top = Math.max(box.top, around.top) - around.top;
+    const bottom = Math.min(box.bottom, around.bottom) - around.top;
+    setAskAt({ x: (left + right) / 2 - 150, y: (top + bottom) / 2 - 100 });
   };
+
   keys.current.all = selectAll;
   /** A tool picked by its shortcut, or put down by it again; nothing without a picture to select on. */
   keys.current.pick = (which: MagicTool) => {
@@ -960,7 +941,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
       <div className={styles.editor}>
         <div className={styles.canvas} data-testid="editor-canvas" onWheel={onWheel} ref={canvasRef}>
-          <div className={`${styles.stage} ${zoom === null ? '' : styles.stageZoomed}`} onScroll={measure}>
+          <div className={`${styles.stage} ${zoom === null ? '' : styles.stageZoomed}`}>
             {job !== null && job.status !== 'DRAWN' ? (
               job.status === 'FAILED' ? (
                 <p className={styles.failed} role="alert" data-testid="editor-failed">
@@ -1024,35 +1005,44 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             ) : picture === null ? (
               <p className={styles.empty}>{t('Describe a picture on the right and generate it.')}</p>
             ) : (
-              <img
-                ref={pictureRef}
-                src={picture.url}
-                alt={picture.prompt}
-                className={zoom === null ? styles.picture : styles.pictureZoomed}
-                style={
-                  zoom === null || pictureRef.current === null
-                    ? undefined
-                    : { width: `${pictureRef.current.naturalWidth * zoom}px`, height: `${pictureRef.current.naturalHeight * zoom}px` }
-                }
-                onLoad={measure}
-                data-testid="editor-picture"
-              />
+              /*
+                The selection is drawn in the picture's own frame, in its own
+                pixels: it scrolls, zooms and is cut off with the picture, where
+                laid over it from outside it drifted off a picture zoomed past
+                the canvas and scrolled.
+              */
+              <div className={styles.pictureFrame}>
+                <img
+                  ref={pictureRef}
+                  src={picture.url}
+                  alt={picture.prompt}
+                  className={zoom === null ? styles.picture : styles.pictureZoomed}
+                  style={
+                    zoom === null || pictureRef.current === null
+                      ? undefined
+                      : { width: `${pictureRef.current.naturalWidth * zoom}px`, height: `${pictureRef.current.naturalHeight * zoom}px` }
+                  }
+                  onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
+                  data-testid="editor-picture"
+                />
+                {natural !== null && (tool !== null || selection !== null) && (
+                  <svg
+                    className={`${styles.selectLayer} ${tool !== null ? styles.selectLayerOn : ''}`}
+                    viewBox={`0 0 ${natural.width} ${natural.height}`}
+                    preserveAspectRatio="none"
+                    onPointerDown={startSelecting}
+                    onPointerMove={keepSelecting}
+                    onPointerUp={finishSelecting}
+                    data-testid="magic-layer"
+                  >
+                    {(selecting ?? selection) !== null && (
+                      <polygon className={styles.selected} points={outlineOf(selecting ?? selection ?? [])} data-testid="magic-selection" />
+                    )}
+                  </svg>
+                )}
+              </div>
             )}
           </div>
-          {picture !== null && frame !== null && (tool !== null || selection !== null) && (
-            <svg
-              className={`${styles.selectLayer} ${tool !== null ? styles.selectLayerOn : ''}`}
-              style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}
-              onPointerDown={startSelecting}
-              onPointerMove={keepSelecting}
-              onPointerUp={finishSelecting}
-              data-testid="magic-layer"
-            >
-              {(selecting ?? selection) !== null && (
-                <polygon className={styles.selected} points={outlineOf(selecting ?? selection ?? [])} data-testid="magic-selection" />
-              )}
-            </svg>
-          )}
           {selection !== null && askAt !== null && (
             <form
               className={styles.ask}
