@@ -35,6 +35,12 @@
 .besideGuide {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /*
+   * Each column its own height. Stretched, the form grew with a guide dragged
+   * taller and pushed its last field down to meet it - and the guide, which
+   * starts at the form's height, then followed the form.
+   */
+  align-items: start;
   gap: var(--space-24);
 }
 

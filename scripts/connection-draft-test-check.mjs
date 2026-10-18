@@ -90,6 +90,8 @@ const buttons = await dialog.getByRole('button', { name: 'Test Connection' }).bo
 record(contained.scrolls && beside.y + beside.height <= buttons.y, `a long guide scrolls inside its box, which ends above the buttons (${JSON.stringify(contained)})`);
 const formColumn = await dialog.locator('#workspace-connection-name').evaluate((input) => input.closest('form').querySelector('div[class*="fields"]').getBoundingClientRect().height);
 record(Math.abs(beside.height - formColumn) < 4, `it starts as tall as the form beside it (${Math.round(beside.height)} vs ${Math.round(formColumn)}px)`);
+const gap = async () => (await dialog.getByText('Custom Headers').boundingBox()).y - (await dialog.locator('#workspace-connection-name').boundingBox()).y;
+const headersBefore = await gap();
 // And its corner drags it taller, for somebody who wants more of it on screen at once.
 await page.mouse.move(beside.x + beside.width - 3, beside.y + beside.height - 3);
 await page.mouse.down();
@@ -97,6 +99,9 @@ await page.mouse.move(beside.x + beside.width - 3, beside.y + beside.height + 12
 await page.mouse.up();
 const dragged = (await guide.boundingBox()).height;
 record(dragged > beside.height + 80, `dragging its corner makes it taller (${Math.round(beside.height)} -> ${Math.round(dragged)}px)`);
+const headersAfter = await gap();
+// Measured from the Name box, since a taller dialog is centred again in the window.
+record(Math.abs(headersAfter - headersBefore) < 2, `the form stays as it was beside it - Custom Headers did not move down (${Math.round(headersBefore)} -> ${Math.round(headersAfter)}px below Name)`);
 const shape = await guide.evaluate((element) => {
   const paragraph = [...element.querySelectorAll('p')].find((p) => p.textContent.includes('add-on'));
   return { breaks: paragraph ? paragraph.querySelectorAll('br').length : -1 };
