@@ -1117,7 +1117,7 @@ export function AdminPluginsPage({ session, onSignOut }: AdminPluginsPageProps) 
   );
 
   return (
-    <AppShell
+    <AppShell scrollContent
       user={shellUser(session)}
       onSignOut={onSignOut}
       sidebar={<AdminSidebar active="plugins" />}

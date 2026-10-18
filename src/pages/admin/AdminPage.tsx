@@ -149,7 +149,7 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
   }
 
   return (
-    <AppShell
+    <AppShell scrollContent
       user={shellUser(session)}
       workspacePath={workspacePath}
       onSignOut={onSignOut}

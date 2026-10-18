@@ -456,6 +456,14 @@
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   transition: width 150ms ease;
+  /*
+   * A menu longer than the window scrolls inside its column. Admin's grew a
+   * Reports row and outgrew an 800px window, and a page held to the window's
+   * height was pushed past it, the footer with it. The edge handle is a
+   * sibling, not a child, so nothing here clips it.
+   */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /*

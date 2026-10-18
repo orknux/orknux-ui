@@ -93,7 +93,7 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
   }, [search]);
 
   return (
-    <AppShell
+    <AppShell scrollContent
       user={shellUser(session)}
       showAdmin={session.admin}
       onSignOut={onSignOut}

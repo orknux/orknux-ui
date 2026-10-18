@@ -152,7 +152,7 @@ export function AdminNetworkingPage({ session, onSignOut }: AdminNetworkingPageP
   const listed = rules ?? [];
 
   return (
-    <AppShell
+    <AppShell scrollContent
       user={shellUser(session)}
       onSignOut={onSignOut}
       sidebar={<AdminSidebar active="networking" />}

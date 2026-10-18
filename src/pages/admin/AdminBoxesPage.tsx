@@ -92,7 +92,7 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
   );
 
   return (
-    <AppShell user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="boxes" />}>
+    <AppShell scrollContent user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="boxes" />}>
       <header className={styles.titleBar}>
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>

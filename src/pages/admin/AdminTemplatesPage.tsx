@@ -77,7 +77,7 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
   );
 
   return (
-    <AppShell
+    <AppShell scrollContent
       user={shellUser(session)}
       section="admin"
       showAdmin={session.admin}

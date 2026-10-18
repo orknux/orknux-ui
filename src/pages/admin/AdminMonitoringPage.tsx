@@ -44,7 +44,7 @@ export function AdminMonitoringPage({ session, onSignOut }: AdminMonitoringPageP
   useEffect(load, [load]);
 
   return (
-    <AppShell
+    <AppShell scrollContent
       user={shellUser(session)}
       onSignOut={onSignOut}
       sidebar={<AdminSidebar active="monitoring" />}

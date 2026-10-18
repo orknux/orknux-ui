@@ -137,7 +137,7 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
   }
 
   return (
-    <AppShell user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="reports" />}>
+    <AppShell scrollContent user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="reports" />}>
       <header className={styles.titleHeader}>
         <h1 className={styles.title}>{t('Reports')}</h1>
       </header>

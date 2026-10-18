@@ -337,7 +337,7 @@ export function AdminLibrariesPage({ session, onSignOut }: AdminLibrariesPagePro
   }
 
   return (
-    <AppShell user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="libraries" />}>
+    <AppShell scrollContent user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="libraries" />}>
       <header className={styles.titleBar}>
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>
