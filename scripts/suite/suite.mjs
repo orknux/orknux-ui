@@ -3925,6 +3925,12 @@ export const TESTS = [
     // Reads what is drawn on some thirty pages; it changes nothing.
   },
   {
+    name: 'markdown-math-check',
+    what: 'LaTeX in rendered markdown is set by KaTeX, inline and as a display block, while money and code keep their dollars',
+    needs: ['workspace'],
+    // Drawn through an issue description it files and deletes again.
+  },
+  {
     name: 'used-by-paged-check',
     what: 'a long Used by list is paged ten at a time with the size control, and a short one has no pager',
     needs: ['workspace'],

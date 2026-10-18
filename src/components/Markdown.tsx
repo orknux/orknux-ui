@@ -16,6 +16,9 @@ import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 import styles from './Markdown.module.css';
 import { ArtifactMiniature } from './ArtifactMiniature';
@@ -24,6 +27,7 @@ import { ImageZoom } from './ImageZoom';
 import type { Picture } from './ImageZoom';
 import { rehypeIssueLinks } from './issueLinks';
 import { rehypeMarkMatches } from './searchMatches';
+import { normaliseMath } from './markdownMath';
 import { t } from '../i18n';
 
 /**
@@ -277,6 +281,9 @@ export function Markdown({
   /** Rebuilt only when the prose changes. */
   const artifacts = useMemo(() => artifactLinksIn(children), [children]);
 
+  /** The source with its maths in the one spelling remark-math reads; see normaliseMath. */
+  const mathed = useMemo(() => normaliseMath(children), [children]);
+
   /*
    * Rebuilt only when the term changes. A fresh array on every render would have
    * react-markdown reparse the document on every keystroke, which for a manual
@@ -294,6 +301,13 @@ export function Markdown({
        * that names its language gets coloured; a block that does not is left
        * exactly as it was written, which is what output wants.
        */
+      /*
+       * LaTeX, set by KaTeX. A model's output is untrusted, so nothing in a
+       * formula may reach for a URL or an HTML attribute (trust: false), and a
+       * formula KaTeX cannot read shows its own source in the error colour
+       * rather than taking the message down with it.
+       */
+      [rehypeKatex, { throwOnError: false, trust: false, strict: 'ignore' }],
       [rehypeHighlight, { detect: false, languages: LANGUAGES }],
       ...(highlight?.trim() ? [rehypeMarkMatches(highlight)] : []),
       ...(issuesIn === undefined ? [] : [rehypeIssueLinks(issuesIn)]),
@@ -304,7 +318,12 @@ export function Markdown({
   return (
     <div className={styles.markdown}>
       <ReactMarkdown
-        remarkPlugins={lineBreaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
+        remarkPlugins={
+          // Single dollars off: normaliseMath has already turned the ones that are maths into pairs, and left money alone.
+          lineBreaks
+            ? [remarkGfm, [remarkMath, { singleDollarTextMath: false }], remarkBreaks]
+            : [remarkGfm, [remarkMath, { singleDollarTextMath: false }]]
+        }
         rehypePlugins={rehypePlugins}
         components={{
           /*
@@ -373,7 +392,7 @@ export function Markdown({
           },
         }}
       >
-        {children}
+        {mathed}
       </ReactMarkdown>
 
       {gallery.length > 0 && (
