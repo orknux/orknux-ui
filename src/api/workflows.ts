@@ -29,7 +29,7 @@ export interface WorkspaceWorkflow {
  * list asks: a page holds ten rows of however many the workspace has, and
  * sorting ten of them orders the page instead of the list.
  */
-export type WorkflowOrder = 'NAME' | 'LAST_RUN' | 'ENABLED';
+export type WorkflowOrder = 'NAME' | 'DESCRIPTION' | 'LAST_RUN' | 'ENABLED';
 
 const WORKFLOW_FIELDS =
   'id workflowId name description enabled nextRun ' +

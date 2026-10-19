@@ -34,7 +34,7 @@ let failed = false;
 try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}`, { waitUntil: 'domcontentloaded' });
   if (!(await drawn(page, 'the workflow list'))) throw new Error('the list never drew');
-  await page.waitForSelector('#workflow-order', { timeout: 20_000 });
+  await page.waitForSelector('[aria-sort]', { timeout: 20_000 });
 
   record(
     (await page.locator('h1').first().innerText()).trim() === 'Workflows',
@@ -55,8 +55,6 @@ try {
 
   const controls = (
     await Promise.all([
-      centre('sort select', '#workflow-order'),
-      centre('sort direction', 'button[aria-label^="Sorted "]'),
       centre('Auto', 'select[aria-label="Refresh automatically"]'),
       centre('Import', 'button:has-text("Import")'),
       centre('Use template', 'button:has-text("Use template")'),
@@ -64,7 +62,9 @@ try {
     ])
   ).filter((one) => one !== null);
 
-  record(controls.length === 6, `the header draws all six controls (found ${controls.length})`);
+  record(controls.length === 4, `the header draws all four controls (found ${controls.length})`);
+  // The order is a press of a column heading now, so there is no sort control in the header at all.
+  record((await page.locator('#workflow-order').count()) === 0, 'and no sort selector: the list is ordered by its headings');
 
   const centres = controls.map((one) => one.y);
   const spread = Math.max(...centres) - Math.min(...centres);
@@ -80,7 +80,7 @@ try {
    */
   record(
     spread <= 4,
-    `sort shares a row with Auto / Import / Use template / + Create Workflow - ` +
+    `Auto / Import / Use template / + Create Workflow share a row - ` +
       `their vertical centres span ${spread.toFixed(1)}px: ` +
       controls.map((one) => `${one.name} ${one.y.toFixed(1)}`).join(', '),
   );
@@ -91,7 +91,7 @@ try {
    * A second row that happened to overlap would pass the measurement above.
    */
   const inHeader = await page.evaluate(() =>
-    document.querySelector('main section > header')?.contains(document.querySelector('#workflow-order')) ?? false,
+    document.querySelector('main section > header')?.contains(document.querySelector('select[aria-label="Refresh automatically"]')) ?? false,
   );
   record(inHeader, 'and it is in the header element, not a row that lines up with one');
 
@@ -157,7 +157,8 @@ try {
     .catch(() => {});
 
   const ascending = await names();
-  await page.locator('button[aria-label^="Sorted "]').first().click();
+  // The Workflow heading, pressed again while it is the order, turns it round.
+  await page.locator('[aria-sort]').filter({ hasText: /^Workflow/ }).first().locator('button').click();
   await page.waitForFunction(() => new URL(location.href).searchParams.get('dir') === 'desc', { timeout: 10_000 });
   await page.waitForTimeout(900);
   const descending = await names();

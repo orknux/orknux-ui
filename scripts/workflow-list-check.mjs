@@ -118,16 +118,28 @@ async function settle() {
   await page.waitForTimeout(900);
 }
 
+/** The column heading each order is pressed on. */
+const HEADING = { NAME: 'Workflow', DESCRIPTION: 'Description', LAST_RUN: 'Last Run' };
+const heading = (order) => page.locator('[aria-sort]').filter({ hasText: new RegExp(`^${HEADING[order]}`) }).first();
+let current = null;
+
+/** Orders by a column, by pressing its heading unless it is the order already. */
 async function choose(order) {
-  await page.selectOption('#workflow-order', order);
+  if ((await heading(order).getAttribute('aria-sort')) === 'none') await heading(order).locator('button').click();
+  current = order;
   await settle();
 }
 
-/** Presses the direction switch and answers with the direction it is now in. */
+/** Whether the current column reads ascending, from its heading's aria-sort. */
+async function isAscending() {
+  return (await heading(current).getAttribute('aria-sort')) === 'ascending';
+}
+
+/** Presses the current heading again, which turns it round, and answers with the direction it is now in. */
 async function flip() {
-  await page.locator('button[aria-label^="Sorted"]').click();
+  await heading(current).locator('button').click();
   await settle();
-  return (await page.locator('button[aria-label^="Sorted"]').getAttribute('aria-label')) === 'Sorted ascending';
+  return isAscending();
 }
 
 async function showPerPage(size) {
@@ -211,7 +223,7 @@ try {
   // --------------------------------------------- by name, across both pages
 
   await choose('NAME');
-  let ascending = (await page.locator('button[aria-label^="Sorted"]').getAttribute('aria-label')) === 'Sorted ascending';
+  let ascending = await isAscending();
   record(ascending, 'a list of names opens ascending, not newest-first');
 
   const upFirst = await asDrawn();
@@ -279,7 +291,7 @@ try {
   // ------------------------------------------------------------- by last run
 
   await choose('LAST_RUN');
-  ascending = (await page.locator('button[aria-label^="Sorted"]').getAttribute('aria-label')) === 'Sorted ascending';
+  ascending = await isAscending();
   if (ascending) ascending = await flip();
   record(!ascending, 'reading the most recently run first means descending');
 
@@ -314,42 +326,25 @@ try {
     'and the ones that have run are oldest first',
   );
 
-  // ---------------------------------------------------------- by the switch
+  // ------------------------------------------------------ by description
 
-  await choose('ENABLED');
-  ascending = (await page.locator('button[aria-label^="Sorted"]').getAttribute('aria-label')) === 'Sorted ascending';
-  if (ascending) ascending = await flip();
-
-  const bySwitch = await asDrawn();
-  const offFrom = bySwitch.findIndex((row) => !row.enabled);
-  record(
-    bySwitch.some((row) => row.enabled) && bySwitch.some((row) => !row.enabled),
-    'the list holds both switched-on and switched-off workflows to separate',
-  );
-  record(
-    offFrom !== -1 && bySwitch.slice(offFrom).every((row) => !row.enabled),
-    'switched on first, and every switched-off one after them',
-  );
-
-  await flip();
-  const bySwitchUp = await asDrawn();
-  const onFrom = bySwitchUp.findIndex((row) => row.enabled);
-  record(
-    onFrom !== -1 && bySwitchUp.slice(onFrom).every((row) => row.enabled),
-    'and the other way round puts the switched-off ones first',
-  );
+  await choose('DESCRIPTION');
+  if (!(await isAscending())) await flip();
+  const byDescription = names(await asDrawn());
+  const fromServer = names((await asServer('DESCRIPTION', true)).content).slice(0, byDescription.length);
+  record(same(byDescription, fromServer), 'a press of Description orders the list by it, as the server does');
 
   // ------------------------------------------- the order is in the address
 
   const address = new URL(page.url());
   record(
-    address.searchParams.get('order') === 'ENABLED',
+    address.searchParams.get('order') === 'DESCRIPTION',
     `the order is in the address, so the list can be sent to somebody (?${address.searchParams})`,
   );
   await page.reload({ waitUntil: 'domcontentloaded' });
   await settle();
-  const afterReload = await page.locator('#workflow-order').inputValue();
-  record(afterReload === 'ENABLED', `and it survives a reload (came back as ${afterReload})`);
+  const afterReload = await heading('DESCRIPTION').getAttribute('aria-sort');
+  record(afterReload !== 'none', `and it survives a reload (Description is ${afterReload})`);
 
   await page.screenshot({ path: shot('workflow-list-check.png'), fullPage: false });
 } catch (cause) {

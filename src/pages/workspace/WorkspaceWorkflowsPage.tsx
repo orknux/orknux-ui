@@ -9,6 +9,7 @@ import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
 import { duplicateWorkflow, fetchWorkspaceWorkflows, setWorkflowEnabled } from '../../api/workflows';
 import type { WorkflowOrder, WorkspaceWorkflow } from '../../api/workflows';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import copyIcon from '../../assets/copy.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -24,7 +25,6 @@ import {
 } from '../../components/ComponentTransfer';
 import { CreateWorkflowDialog } from '../../components/CreateWorkflowDialog';
 import { Loader } from '../../components/Loader';
-import { SortControl } from '../../components/SortControl';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -63,26 +63,14 @@ export interface WorkspaceWorkflowsPageProps {
   onSignOut?: () => void;
 }
 
-/**
- * What the list can be ordered by, in the words this page already uses.
- *
- * Three, and they are the three questions asked of this screen: what is it
- * called, when did it last do anything, and is it switched on. Next Run is a
- * column here and is deliberately not on this list - it is not stored anywhere,
- * it is the soonest of however many cron expressions the workflow's triggers
- * carry, worked out one workflow at a time, and a database cannot order by
- * something it has never seen.
- *
- * Asked of the server, like the issue list's, because the page holds ten rows
- * of however many the workspace has: sorting ten of them orders the page rather
- * than the list, which looks like it worked until the row somebody wanted turns
- * out to be on page two.
+/*
+ * Ordered by a press of a column heading - Workflow, Description, Last Run.
+ * Next Run is not one: it is not stored anywhere, it is the soonest of however
+ * many cron expressions the workflow's triggers carry, worked out one workflow
+ * at a time, and a database cannot order by something it has never seen.
+ * Asked of the server, because the page holds ten rows of however many there
+ * are, and sorting ten of them orders the page rather than the list.
  */
-const ORDERS: { label: string; order: WorkflowOrder }[] = [
-  { label: t('Name'), order: 'NAME' },
-  { label: t('Last run'), order: 'LAST_RUN' },
-  { label: t('Switched on'), order: 'ENABLED' },
-];
 
 const WORKSPACE_LIST_SIZE = 100;
 
@@ -115,6 +103,15 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
   const [params, setParams] = useSearchParams();
   const order = (params.get('order') as WorkflowOrder | null) ?? 'NAME';
   const ascending = params.get('dir') !== 'desc';
+
+  /**
+   * A press of a heading: the same column again turns it round, another starts
+   * it the way it is read - names A to Z, the last run newest first.
+   */
+  function sortByColumn(column: WorkflowOrder) {
+    if (column === order) sortBy({ dir: ascending ? 'desc' : 'asc' });
+    else sortBy({ order: column, dir: column === 'LAST_RUN' ? 'desc' : 'asc' });
+  }
 
   /** Writes the order back into the address, replacing rather than pushing. */
   function sortBy(changes: Record<string, string | null>) {
@@ -320,14 +317,6 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
             because the issue list's default is the other way round and the
             control is the same control.
           */}
-          <SortControl
-            id="workflow-order"
-            options={ORDERS}
-            order={order}
-            onOrderChange={(wanted) => sortBy({ order: wanted })}
-            ascending={ascending}
-            onDirectionChange={(wanted) => sortBy({ dir: wanted ? 'asc' : 'desc' })}
-          />
           {/* A workflow's status changes as runs finish, without this page asking. */}
           <AutoRefresh onRefresh={load} />
           <ImportComponentsButton workspaceId={workspaceId} onImported={load} />
@@ -358,9 +347,10 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
               own Use template button. The column headed with another screen's
               noun, above rows linking into the workflow editor.
             */}
-            <span className={styles.colGrow}>{t('Workflow')}</span>
-            <span className={styles.colGrow}>{t('Description')}</span>
-            <span className={styles.colLastRun}>{t('Last Run')}</span>
+            {/* Ordered by a press of the heading, as every other list is; the order lives in the address. */}
+            <ColumnHeader label={t('Workflow')} order="NAME" current={order} ascending={ascending} onSort={sortByColumn} className={styles.colGrow} />
+            <ColumnHeader label={t('Description')} order="DESCRIPTION" current={order} ascending={ascending} onSort={sortByColumn} className={styles.colGrow} />
+            <ColumnHeader label={t('Last Run')} order="LAST_RUN" current={order} ascending={ascending} onSort={sortByColumn} className={styles.colLastRun} />
             <span className={styles.colLastRun}>{t('Next Run')}</span>
             <span className={styles.colActions}>{t('Actions')}</span>
           </div>
