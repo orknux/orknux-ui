@@ -1592,6 +1592,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own functions, workflow and actions, and removes them. */
   },
+  {
+    name: 'node-placeholders-check',
+    what: 'a node value's {{field}} placeholders are drawn as references, red when nothing answers them, and refused on save',
+    needs: ['workspace'],
+    /* Makes its own trigger, function, action and workflow, and removes them. */
+  },
+
 
 
 

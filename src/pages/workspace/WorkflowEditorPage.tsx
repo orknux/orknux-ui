@@ -111,6 +111,7 @@ import { SchemaDialog } from '../../components/SchemaDialog';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
 import { TriggerForm } from '../../components/TriggerForm';
 import { FieldPicker } from '../../components/FieldPicker';
+import { PlaceholderChips } from '../../components/PlaceholderChips';
 import type { FieldOption } from '../../components/FieldPicker';
 import { Icon, IconPickerDialog } from '../../components/IconPicker';
 import { DEFAULT_NODE_ICON, SPEECH_NODE_ICON, defaultNodeIcon, nodeIconOf, nodeIconUrl } from '../../components/nodeIcons';
@@ -7039,6 +7040,8 @@ Change the keystroke in Preferences.`}
                                   }
                                 />
                               )}
+                              {/* A written value's {{field}} placeholders, drawn as the references they are - or red, with why. */}
+                              {mapping.mode !== 'REFERENCE' && <PlaceholderChips text={mapping.expression} options={fieldOptions} />}
                             </div>
                           ))}
                         </div>

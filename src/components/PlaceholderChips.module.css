@@ -1,0 +1,45 @@
+/* A value's placeholders, under it: drawn as the references they are. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  max-width: 100%;
+  padding: 2px var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  background: var(--color-bg);
+  font-size: var(--text-2xs);
+}
+
+/* What it reads from, quieter than the field - as a chosen reference shows it. */
+.group {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  color: var(--color-accent-brand);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One nothing answers: refused on save, so said as soon as it is typed. */
+.wrong {
+  border-color: var(--color-danger-solid);
+}
+
+.wrong .field,
+.problem {
+  color: var(--color-danger-solid);
+}
