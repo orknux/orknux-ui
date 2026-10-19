@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { OpenFullPageLink } from './OpenFullPageLink';
 import type { Trigger } from '../api/triggers';
 import { TriggerForm } from './TriggerForm';
 import type { TriggerFormStyles } from './TriggerForm';
@@ -105,6 +106,7 @@ export function CreateTriggerDialog({
       <div className={styles.body}>
         <header className={styles.header}>
           <h2 className={styles.title}>{trigger === null ? t('Create Trigger') : t('Trigger Settings')}</h2>
+          {trigger !== null && <OpenFullPageLink to={`/workspace/${workspaceId}/triggers/${trigger.id}`} />}
           {placement === 'panel' && <PanelClose onClose={onClose} />}
         </header>
 

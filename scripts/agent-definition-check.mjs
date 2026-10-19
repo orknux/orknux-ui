@@ -92,6 +92,9 @@ if (triggerNode === null) {
   record((await jump.count()) === 1, `Open definition beside the trigger picker on "${triggerNode.name}"`);
   const shown = await openDefinition();
   record(shown.opened && shown.title === 'Trigger Settings', `the trigger opens in the panel (${shown.title})`);
+  // The panel is a quick edit; its own page holds what it has no room for, a press away in a new tab.
+  const toPage = await page.locator('dialog[open] [data-open-full-page]').getAttribute('href').catch(() => null);
+  record(toPage !== null && /\/triggers\/\d+$/.test(toPage), `the panel links to the trigger's own page (${toPage})`);
   record(
     shown.url.endsWith(`/workflows/${WORKFLOW}/editor`) && shown.canvas > 0,
     `the editor is still underneath it (${shown.url}, ${shown.canvas} nodes)`,
@@ -122,6 +125,8 @@ record(
 
 const shown = await openDefinition();
 record(shown.opened && shown.title === 'Agent Settings', `the agent opens in the panel (${shown.title || 'no panel'})`);
+const agentPage = await page.locator('dialog[open] [data-open-full-page]').getAttribute('href').catch(() => null);
+record(agentPage !== null && /\/agents\/\d+\/settings$/.test(agentPage), `the panel links to the agent's own page (${agentPage})`);
 record(
   shown.url.endsWith(`/workflows/${WORKFLOW}/editor`),
   `the editor was not navigated away (${shown.url})`,

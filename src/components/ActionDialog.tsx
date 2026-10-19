@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { OpenFullPageLink } from './OpenFullPageLink';
 import type { Action } from '../api/actions';
 import { ActionForm } from './ActionForm';
 import type { ActionFormStyles } from './ActionForm';
@@ -128,6 +129,7 @@ export function ActionDialog({
       <div className={styles.body}>
         <header className={styles.header}>
           <h2 className={styles.title}>{action === null ? t('Create Action') : t('Action Settings')}</h2>
+          {action !== null && <OpenFullPageLink to={`/workspace/${workspaceId}/actions/${action.id}`} />}
           {placement === 'panel' && <PanelClose onClose={onClose} />}
         </header>
 

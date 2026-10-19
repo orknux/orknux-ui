@@ -2985,4 +2985,5 @@ export const PL: Record<string, string> = {
   "The picture asked of is {width}×{height}.": "Obraz, o który poproszono, ma {width}×{height}.",
   "Start a new picture": "Zacznij nowy obraz",
   "entries": "wpisów",
+  "Open page": "Otwórz stronę",
 };

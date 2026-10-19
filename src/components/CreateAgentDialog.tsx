@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { OpenFullPageLink } from './OpenFullPageLink';
 import type { FormEvent } from 'react';
 
 import { createAgent } from '../api/agents';
@@ -112,6 +113,7 @@ export function CreateAgentDialog({ open, workspaceId, agent = null, onClose, on
         <div className={styles.body}>
           <header className={styles.header}>
             <h2 className={styles.title}>{t('Agent Settings')}</h2>
+            <OpenFullPageLink to={`/workspace/${workspaceId}/agents/${agent.id}/settings`} />
             {placement === 'panel' && <PanelClose onClose={onClose} />}
           </header>
 

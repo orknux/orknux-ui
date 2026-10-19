@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { OpenFullPageLink } from './OpenFullPageLink';
 import type { Condition } from '../api/conditions';
 import { ConditionForm } from './ConditionForm';
 import type { ConditionFormStyles } from './ConditionForm';
@@ -125,6 +126,7 @@ export function ConditionDialog({
       <div className={styles.body}>
         <header className={styles.header}>
           <h2 className={styles.title}>{condition === null ? t('Create Condition') : t('Condition Settings')}</h2>
+          {condition !== null && <OpenFullPageLink to={`/workspace/${workspaceId}/conditions/${condition.id}`} />}
           {placement === 'panel' && <PanelClose onClose={onClose} />}
         </header>
 
