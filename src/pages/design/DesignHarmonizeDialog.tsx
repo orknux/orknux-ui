@@ -11,7 +11,7 @@ import { t } from '../../i18n';
 export interface DesignHarmonizeDialogProps {
   open: boolean;
   workspaceId: string;
-  /** The workspace's image models, and its upscale models standing for their Stable Diffusion WebUIs. */
+  /** The workspace's upscale models, each standing for its Stable Diffusion WebUI. */
   models: Model[];
   /** The model the editor holds for this picture: where the choice starts. */
   defaultModelId: string;
@@ -124,7 +124,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
         </header>
         {models.length === 0 ? (
           <p className={styles.dialogMessage} data-testid="harmonize-none">
-            {t('There is no image model in this workspace to redraw the picture with.')}
+            {t('There is no Stable Diffusion WebUI in this workspace to redraw the picture with.')}
           </p>
         ) : (
           <div className={styles.fields}>
@@ -198,11 +198,6 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
                 disabled={!webUi}
                 data-testid="harmonize-strength"
               />
-              {options !== null && !webUi && (
-                <p className={styles.fieldNote} data-testid="harmonize-strength-note">
-                  {t("This model's edit endpoint takes no strength; it redraws as it judges.")}
-                </p>
-              )}
             </div>
           </div>
         )}

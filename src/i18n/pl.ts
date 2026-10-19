@@ -81,11 +81,9 @@ export const PL: Record<string, string> = {
   "Make the picture larger with an upscale model": "Powiększ obraz modelem do powiększania",
   "Harmonize": "Ujednolić",
   "Redraw the whole picture lightly, so the seams between changed parts blend": "Lekko przerysuj cały obraz, by szwy między zmienionymi częściami się zatarły",
-  "There is no image model in this workspace to redraw the picture with. Add an image model, or a Stable Diffusion WebUI provider and an Upscale model under it.": "W tym obszarze roboczym nie ma modelu obrazów, którym można przerysować obraz. Dodaj model obrazów albo dostawcę Stable Diffusion WebUI i model do powiększania pod nim.",
-  "There is no image model in this workspace to redraw the picture with.": "W tym obszarze roboczym nie ma modelu obrazów, którym można przerysować obraz.",
+  "There is no Stable Diffusion WebUI in this workspace to redraw the picture with.": "W tym obszarze roboczym nie ma Stable Diffusion WebUI, którym można przerysować obraz.",
   "Checkpoint": "Checkpoint",
   "Strength": "Siła",
-  "This model's edit endpoint takes no strength; it redraws as it judges.": "Edycja tego modelu nie przyjmuje siły; przerysowuje według własnego uznania.",
   "Harmonize strength": "Siła ujednolicania",
   "Where Harmonize's strength starts in the image editor - how much a Stable Diffusion WebUI redraws the whole picture to blend the seams a Magic edit left. Low keeps the picture; high draws another. Between 0.05 and 0.9.": "Od jakiej siły zaczyna Ujednolić w edytorze obrazów - jak mocno Stable Diffusion WebUI przerysowuje cały obraz, by zatrzeć szwy po magicznej edycji. Niska zachowuje obraz; wysoka rysuje inny. Od 0,05 do 0,9.",
   "Open a picture from a file, or drop one on the canvas": "Otwórz obraz z pliku albo upuść go na płótno",
@@ -2996,4 +2994,5 @@ export const PL: Record<string, string> = {
   "This run used the version published {when}, while the workflow had unpublished changes.": "To uruchomienie użyło wersji opublikowanej {when}, gdy przepływ miał nieopublikowane zmiany.",
   "Redraws the whole picture lightly, so the patches Magic edits left blend into one picture. Use it after a few edits, when their edges show.": "Przerysowuje cały obraz delikatnie, aby łaty pozostawione przez edycje Magic zlały się w jeden obraz. Użyj po kilku edycjach, gdy widać ich krawędzie.",
   "How much the picture may change: low keeps it as it is and only smooths the seams, high redraws more of it. Start low.": "Jak bardzo obraz może się zmienić: niska wartość zostawia go takim, jaki jest, i tylko wygładza szwy, wysoka przerysowuje go bardziej. Zacznij od niskiej.",
+  "Harmonize redraws lightly through a Stable Diffusion WebUI, and this workspace has none. Add a WebUI provider and an Upscale model under it.": "Harmonizacja przerysowuje delikatnie przez Stable Diffusion WebUI, a ten obszar roboczy go nie ma. Dodaj dostawcę WebUI i model Upscale pod nim.",
 };

@@ -2,13 +2,12 @@
  * Harmonize in the image editor: the whole picture redrawn lightly, so the
  * seams a Magic edit left blend.
  *
- * The button sits beside Upscale and, with no model to redraw with, is off and
- * says why at once with a link to Models. Its window offers the image models
- * Magic edit offers and each Stable Diffusion WebUI by its upscale model,
- * starting at the model the editor holds for the picture; the prompt starts as
- * the picture's own. A WebUI takes a strength - starting where the server says
- * the installation's setting is - and offers its checkpoints; an image model's
- * edit takes none, so the strength is off with a line saying so. What was
+ * The button sits beside Upscale and, with no Stable Diffusion WebUI to redraw
+ * with, is off and says why at once with a link to Models. Its window offers
+ * only each WebUI by its upscale model - an image model's edit takes no
+ * strength, so it redrew the whole picture rather than lightly - and the prompt
+ * starts as the picture's own. The strength starts where the server says the
+ * installation's setting is, and the WebUI's checkpoints are offered. What was
  * chosen is what is sent, the result arrives as a draft, and a failure shows
  * the model's own words over the picture, as a failed change does.
  *
@@ -118,7 +117,7 @@ const words = (await hint.innerText().catch(() => '')).trim();
 const link = await page.getByTestId('editor-harmonize-models').getAttribute('href').catch(() => null);
 await page.getByTestId('editor-harmonize-models').hover().catch(() => undefined);
 const stays = await hint.isVisible().catch(() => false);
-record(off && hiddenBefore && shown && stays && words.startsWith('There is no image model') && link === `/workspace/${WORKSPACE}/models`,
+record(off && hiddenBefore && shown && stays && words.startsWith('Harmonize redraws lightly through a Stable Diffusion WebUI') && link === `/workspace/${WORKSPACE}/models`,
   `with no model, Harmonize is off and says why at once, linking to Models (${JSON.stringify({ off, hiddenBefore, shown, stays, link })})`);
 
 noModels = false;
@@ -140,8 +139,9 @@ await dialog.waitFor({ timeout: 3_000 }).catch(() => undefined);
 await page.waitForTimeout(400);
 const offered = await page.getByTestId('harmonize-model').locator('option').evaluateAll((all) => all.map((one) => one.value)).catch(() => []);
 const startsAt = await page.getByTestId('harmonize-model').inputValue().catch(() => null);
-record(JSON.stringify(offered) === JSON.stringify(['9191', '9292', '9393']) && startsAt === '9292',
-  `the window offers the image models and the WebUI, starting at the editor's model (${JSON.stringify({ offered, startsAt })})`);
+// Only a WebUI: an image model's edit takes no strength, so it redrew the whole picture rather than lightly.
+record(JSON.stringify(offered) === JSON.stringify(['9393']) && startsAt === '9393',
+  `the window offers only the WebUI, which redraws lightly - no image model (${JSON.stringify({ offered, startsAt })})`);
 const prompt = await page.getByTestId('harmonize-prompt').inputValue().catch(() => null);
 const openHints = await page.getByTestId('harmonize-dialog').locator('[role="note"]:visible').count().catch(() => 0);
 const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'));
@@ -162,14 +162,7 @@ const tallAfter = await promptBox.evaluate((el) => Math.round(el.getBoundingClie
 record(tallBefore >= 60, `the prompt box shows its three lines (${tallBefore}px)`);
 record(tallAfter > tallBefore + 40, `and is dragged taller by its corner (${tallBefore}px -> ${tallAfter}px)`);
 record(prompt === PICTURE.prompt, `the prompt starts as the picture's own (${JSON.stringify(prompt)})`);
-// An image model's edit takes no strength: the field is off, and one line says why.
-const strengthOff = await page.getByTestId('harmonize-strength').isDisabled().catch(() => false);
-const note = (await page.getByTestId('harmonize-strength-note').innerText().catch(() => '')).trim();
-record(strengthOff && note.includes('takes no strength') && (await page.getByTestId('harmonize-checkpoint').count()) === 0,
-  `for an image model the strength is off with a note, and no checkpoint is offered (${JSON.stringify({ strengthOff, note })})`);
-
 // A WebUI: the strength on, at the installation's setting, and its checkpoints, the loaded one first.
-await page.getByTestId('harmonize-model').selectOption('9393');
 await page.waitForTimeout(400);
 const strength = await page.getByTestId('harmonize-strength').inputValue().catch(() => null);
 const strengthOn = await page.getByTestId('harmonize-strength').isEnabled().catch(() => false);
@@ -199,17 +192,13 @@ const discardOn = await page.getByTestId('editor-discard').isEnabled().catch(() 
 record(draft && saveOn && discardOn && page.url().includes(PICTURE.id),
   `the redrawn picture lands as a draft, to Save or Discard (${JSON.stringify({ draft, saveOn, discardOn, url: page.url() })})`);
 
-// An image model sends no strength and no checkpoint; a failure leaves the picture with the model's own words.
+// A failure leaves the picture with the model's own words.
 outcome = 'FAILED';
 await page.getByTestId('editor-harmonize').click();
 await dialog.waitFor({ timeout: 3_000 }).catch(() => undefined);
-await page.getByTestId('harmonize-model').selectOption('9191');
 await page.waitForTimeout(400);
 await page.getByTestId('harmonize-submit').click();
 await page.waitForTimeout(400);
-const plain = harmonizes[1] ?? null;
-record(plain !== null && plain.modelId === '9191' && plain.strength === null && plain.checkpoint === null,
-  `an image model is asked with no strength and no checkpoint (${JSON.stringify(plain)})`);
 await page.getByTestId('editor-failed').waitFor({ timeout: 15_000 }).catch(() => undefined);
 const said = await page.getByTestId('editor-failed').innerText().catch(() => '');
 const pictureStays = await page.getByTestId('editor-failed-picture').isVisible().catch(() => false);

@@ -140,8 +140,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** Models are loaded and none of them upscales: the button says so rather than opening an empty window. */
   const noUpscaler = models !== null && upscalers.length === 0;
   const [harmonizing, setHarmonizing] = useState(false);
-  /** What Harmonize redraws with: the image models Magic edit offers, and each WebUI by its upscale model. */
-  const harmonizers = [...(models ?? []), ...upscalers];
+  /**
+   * What Harmonize redraws with: each Stable Diffusion WebUI, by its upscale
+   * model. Not an image model - its edit endpoint takes no strength, so it
+   * redrew the whole picture rather than lightly, and an instruction put what
+   * it asked for over all of it.
+   */
+  const harmonizers = upscalers;
   const noHarmonizer = models !== null && harmonizers.length === 0;
   const [exporting, setExporting] = useState(false);
   /** A file being dragged over the canvas, which a drop opens here. */
@@ -1050,7 +1055,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             </button>
             {noHarmonizer && (
               <span className={styles.upscaleHint} role="tooltip" data-testid="editor-harmonize-hint">
-                {t('There is no image model in this workspace to redraw the picture with. Add an image model, or a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
+                {t('Harmonize redraws lightly through a Stable Diffusion WebUI, and this workspace has none. Add a WebUI provider and an Upscale model under it.')}{' '}
                 <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-harmonize-models">
                   {t('Go to Models')}
                 </Link>
