@@ -155,12 +155,12 @@ export function WorkspaceSchedulesPage({ session, onSignOut }: WorkspaceSchedule
       <section className={styles.card}>
         <div className={styles.tableHeader}>
           <ColumnHeader label={t('Session')} className={styles.colSession} />
-          <ColumnHeader label={t('Note')} className={styles.colDescription} />
-          <ColumnHeader label={t('Runs')} className={styles.colCondition} />
+          <ColumnHeader label={t('Note')} className={styles.colNote} />
+          <ColumnHeader label={t('Runs')} className={styles.colCadence} />
           <ColumnHeader label={t('Count')} className={styles.colNumber} />
           <ColumnHeader label={t('Set')} className={styles.colWhen} />
           <ColumnHeader label={t('Last run')} className={styles.colWhen} />
-          {!ended && <ColumnHeader label={t('Next run')} className={styles.colWhen} />}
+          {!ended && <ColumnHeader label={t('Next run')} className={styles.colNextRun} />}
           {ended ? (
             <>
               <ColumnHeader label={t('Ended')} className={styles.colWhen} />
@@ -204,10 +204,10 @@ export function WorkspaceSchedulesPage({ session, onSignOut }: WorkspaceSchedule
               </Link>
               <span className={styles.muted}>{one.agentName}</span>
             </span>
-            <span className={styles.colDescription} title={one.note} data-testid="schedule-note">
+            <span className={styles.colNote} title={one.note} data-testid="schedule-note">
               {one.note}
             </span>
-            <span className={`${styles.colCondition} ${styles.code}`} data-testid="schedule-cadence">
+            <span className={`${styles.colCadence} ${styles.code}`} data-testid="schedule-cadence">
               {cadence(one)}
             </span>
             <span
@@ -225,7 +225,7 @@ export function WorkspaceSchedulesPage({ session, onSignOut }: WorkspaceSchedule
             </span>
             {!ended && (
               <span
-                className={`${styles.colWhen} ${styles.muted}`}
+                className={`${styles.colNextRun} ${styles.muted}`}
                 title={one.nextRunAt === null ? undefined : local(one.nextRunAt)}
                 data-testid="schedule-next"
               >

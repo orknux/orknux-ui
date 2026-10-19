@@ -183,6 +183,41 @@
   white-space: nowrap;
 }
 
+/*
+ * Schedules: the note is what a row is about, so it takes the slack and wraps
+ * to three lines rather than being cut to one; the cadence is a cron or an
+ * interval and needs no more than its own width.
+ */
+.colNote {
+  flex: 1 0 0;
+  padding: 0 var(--space-8);
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-size: var(--text-md);
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.colCadence {
+  flex: 0 0 220px;
+  padding: 0 var(--space-8);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A date and a time, which at the 100px of the other times was cut to the date. */
+.colNextRun {
+  flex: 0 0 184px;
+  padding: 0 var(--space-8);
+  min-width: 0;
+}
+
 .colNumber {
   /* Wide enough for "Agent check" on one line, which at 80px broke in two. */
   flex: 0 0 104px;

@@ -16,7 +16,8 @@ const row = (id, extra) => ({
   timezone: null, status: 'ACTIVE', runs: 3, times: null, until: null, createdAt: new Date(Date.now() - 3_600_000).toISOString(),
   nextRunAt: soon, lastRunAt: new Date(Date.now() - 600_000).toISOString(), finishedAt: null, outcome: null, ...extra,
 });
-const ACTIVE = [row('1', { everySeconds: 900 }), row('2', { cron: '0 9 * * 1-5', timezone: 'Europe/Warsaw', times: 10 })];
+const LONG_NOTE = 'Daily 9:00: remind the person to log their hours and review the open pull requests';
+const ACTIVE = [row('1', { everySeconds: 900, note: LONG_NOTE }), row('2', { cron: '0 9 * * 1-5', timezone: 'Europe/Warsaw', times: 10 })];
 const asked = { ended: [], stopped: [] };
 
 await page.route('**/graphql', async (route) => {
@@ -42,6 +43,13 @@ record(JSON.stringify(cadences) === JSON.stringify(['every 15 min', '0 9 * * 1-5
   `each schedule says how often it runs (${JSON.stringify(cadences)})`);
 record(JSON.stringify(runs) === JSON.stringify(['3', '3 / 10']), `and how many times it has, of how many (${JSON.stringify(runs)})`);
 record((await page.getByTestId('schedule-next').count()) === 2, 'and when it runs next');
+
+// The note is what a row is about: at this width it is shown whole, not cut
+// to fit a column sized for a label while the cadence takes the slack.
+const cut = await page.getByTestId('schedule-note').first().evaluate((el) => el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight + 1);
+const nextCut = await page.getByTestId('schedule-next').first().evaluate((el) => el.scrollWidth > el.clientWidth);
+record(!cut, `a long note is shown whole (${cut ? 'cut' : 'whole'})`);
+record(!nextCut, `and the next run's date and time fit (${nextCut ? 'cut' : 'whole'})`);
 
 await page.locator('[data-schedule-stop="1"]').click();
 await page.waitForTimeout(500);
