@@ -1175,9 +1175,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             {/*
               A change that failed leaves the picture it was asked of, so the
               picture stays and the failure is said over it - hiding it read as
-              the picture being lost. The size is said too: a model on a local
-              server that runs out of memory answers with nothing more than
-              "no results", and the size is the one clue that it was too big.
+              the picture being lost. Its size is said as a fact beside the
+              model's own words, and nothing is guessed about why: a server may
+              answer "no results" for any reason, and only it knows which.
             */}
             {job !== null && job.status === 'FAILED' && (
               <p className={`${styles.failed} ${changingOver[job.id] === undefined ? '' : styles.failedOver}`} role="alert" data-testid="editor-failed">
@@ -1185,7 +1185,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 {changingOver[job.id] !== undefined && (
                   <>
                     {' '}
-                    {tf('The picture is {width}×{height}; a model short of memory fails like this, so a smaller one may go through.', {
+                    {tf('The picture asked of is {width}×{height}.', {
                       width: changingOver[job.id].width,
                       height: changingOver[job.id].height,
                     })}

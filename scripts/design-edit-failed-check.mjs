@@ -1,7 +1,6 @@
 /**
- * A change that fails leaves the picture in view, with why over it - and the
- * picture's size, which is the one clue when a model on a local server ran out
- * of memory and answered "no results".
+ * A change that fails leaves the picture in view, with the model's own reason
+ * over it and the picture's size - and no guess at a cause it did not give.
  *
  * The picture, the models and the queue are answered here, as in
  * design-magic-edit-check; the edit is answered as failed.
@@ -115,6 +114,7 @@ await page.getByTestId('editor-failed').waitFor({ timeout: 15_000 }).catch(() =>
 const said = await page.getByTestId('editor-failed').innerText().catch(() => '');
 record(/no results/.test(said), `the failure is said (${JSON.stringify(said)})`);
 record(/400×300/.test(said), 'with the size of the picture it was asked of');
+record(!/memory|smaller|may go through/i.test(said), 'and no guess at why');
 const shown = await page.getByTestId('editor-failed-picture').boundingBox().catch(() => null);
 record(shown !== null && shown.width > 100, `and the picture stays in view under it (${JSON.stringify(shown)})`);
 
