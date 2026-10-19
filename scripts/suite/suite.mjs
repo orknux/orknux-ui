@@ -1622,6 +1622,12 @@ export const TESTS = [
     /* Answers the picture, the models and the failed edit itself. */
   },
   {
+    name: 'design-new-image-check',
+    what: 'the image editor offers a new picture next to Save, and it opens a blank canvas',
+    needs: ['workspace'],
+    /* Answers the picture and the models itself. */
+  },
+  {
     name: 'installation-address-check',
     what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
     needs: [],

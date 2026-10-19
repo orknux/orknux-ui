@@ -103,7 +103,8 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/artifacts': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
-  '/workspace/:workspaceId/design/images/new': (session, onSignOut) => <DesignImageEditorPage session={session} onSignOut={onSignOut} />,
+  // Keyed so arriving from a picture's editor starts blank rather than keeping that picture's state.
+  '/workspace/:workspaceId/design/images/new': (session, onSignOut) => <DesignImageEditorPage key="new" session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId/edit': (session, onSignOut) => <DesignImageEditorPage session={session} onSignOut={onSignOut} />,
   /*
    * The same page, opened at one artifact.
