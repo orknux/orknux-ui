@@ -42,6 +42,12 @@ const replaced = await banner.innerText().catch(() => '');
 record(/published again since/.test(replaced), `a run of a replaced publication says so (${JSON.stringify(replaced)})`);
 const box = await banner.boundingBox().catch(() => null);
 record(box !== null && box.height > 20 && box.y < 300, `and says it above the graph, where it is seen first (${JSON.stringify(box)})`);
+const text = await banner.evaluate((el) => {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  return range.getBoundingClientRect().width;
+}).catch(() => 0);
+record(box !== null && box.width < text + 80, `and is as wide as what it says, not the whole page (${Math.round(box?.width ?? 0)}px for ${Math.round(text)}px of text)`);
 
 await look({ ...base, current: true, editedSince: true });
 record(/unpublished changes/.test(await banner.innerText().catch(() => '')), 'a run of the published version with a draft edited since says so');

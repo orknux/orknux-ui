@@ -341,8 +341,10 @@ a.refresh {
   color: var(--color-text-primary);
 }
 
-/* Loud on purpose: a run of a version since replaced looks exactly like a run of the one on screen. */
+/* Loud on purpose: a run of a version since replaced looks exactly like a run of the one on screen. As wide as what it says. */
 .oldVersion {
+  width: fit-content;
+  max-width: 100%;
   margin: var(--space-8) 0 0;
   padding: 10px 14px;
   border: 1px solid var(--color-warning, #d99a2b);
