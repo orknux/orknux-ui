@@ -143,6 +143,9 @@ const startsAt = await page.getByTestId('harmonize-model').inputValue().catch(()
 record(JSON.stringify(offered) === JSON.stringify(['9191', '9292', '9393']) && startsAt === '9292',
   `the window offers the image models and the WebUI, starting at the editor's model (${JSON.stringify({ offered, startsAt })})`);
 const prompt = await page.getByTestId('harmonize-prompt').inputValue().catch(() => null);
+const openHints = await page.getByTestId('harmonize-dialog').locator('[role="note"]:visible').count().catch(() => 0);
+const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'));
+record(openHints === 0 && focused === 'harmonize-model', `the window opens on the model, with no hint open over it (${openHints} open, focus on ${focused})`);
 const hints = await page.getByTestId('harmonize-dialog').locator('button[aria-label]').evaluateAll((all) => all.filter((b) => b.textContent.trim() === '?').length).catch(() => 0);
 record(hints >= 2, `the window explains Harmonize and its Strength behind (?) (${hints})`);
 // Tall enough for its three lines, and dragged taller: in the dialog's flex sizing it drew one cropped line and would not grow.

@@ -33,6 +33,7 @@ const MOST = 0.9;
  */
 export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelId, prompt, onClose, onHarmonize }: DesignHarmonizeDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const modelRef = useRef<HTMLSelectElement>(null);
   const [modelId, setModelId] = useState('');
   const [described, setDescribed] = useState('');
   const [options, setOptions] = useState<HarmonizeOptions | null>(null);
@@ -55,6 +56,21 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
       dialog.close();
     }
   }, [open]);
+
+  /*
+   * The window's first stop is the model, not the (?) beside its title: opening
+   * focuses the first thing it can, a focused hint opens, and it opened over
+   * the form. The picker is drawn only once the models are in, so it is
+   * focused then.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const picker = modelRef.current;
+    if (picker !== null) picker.focus();
+    else if (document.activeElement instanceof HTMLElement && dialogRef.current?.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  }, [open, models.length]);
 
   // Each model says whether it takes a strength, and a WebUI which checkpoints it has: asked whenever the model changes.
   useEffect(() => {
@@ -116,6 +132,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
               <label className={styles.label} htmlFor="harmonize-model">{t('Model')}</label>
               <select
                 id="harmonize-model"
+                ref={modelRef}
                 className={`${styles.input} ${styles.select}`}
                 value={modelId}
                 onChange={(event) => setModelId(event.target.value)}
