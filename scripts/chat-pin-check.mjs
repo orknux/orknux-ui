@@ -32,6 +32,12 @@ const menuInk = await row.locator('[aria-label^="Actions for"]').evaluate((butto
   return { menu: level(getComputedStyle(button).color), title: title ? level(getComputedStyle(title).color) : 0 };
 });
 record(menuInk.menu >= menuInk.title, `on hover the row's menu is at least as bright as its title (${JSON.stringify(menuInk)})`);
+// Big enough to see and to hit: the glyph at body size was a target a few pixels wide.
+const menuSize = await row.locator('[aria-label^="Actions for"]').evaluate((button) => {
+  const box = button.getBoundingClientRect();
+  return { width: Math.round(box.width), height: Math.round(box.height), font: parseFloat(getComputedStyle(button).fontSize) };
+});
+record(menuSize.width >= 28 && menuSize.height >= 28 && menuSize.font >= 18, `the row's menu is big enough to see and hit (${JSON.stringify(menuSize)})`);
 await row.locator('[aria-label^="Actions for"]').click();
 const started = Date.now();
 await page.getByRole('menuitem', { name: wasPinned ? 'Unpin chat' : 'Pin chat' }).click();

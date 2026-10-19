@@ -263,10 +263,15 @@
 /* The row's menu only appears once the row is pointed at. */
 .sessionMenuButton {
   flex-shrink: 0;
+  /* A glyph at body size was a target a few pixels wide; this is one a pointer finds. */
+  min-width: 28px;
+  min-height: 28px;
   padding: 0 var(--space-8);
   background: none;
   border: 0;
-  font-size: var(--text-base);
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1;
   color: var(--color-text-muted);
   visibility: hidden;
