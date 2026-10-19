@@ -10,6 +10,8 @@ const OPENED = /\{\{[^}]*(\}\})?/g;
 /** One `{{…}}` in a value, and whether the graph answers it - and if not, why. */
 export interface Placeholder {
   written: string;
+  /** Where it starts in the text, so a highlight can be laid over exactly these characters. */
+  at: number;
   field: string | null;
   answeredBy: FieldOption | null;
   problem: string | null;
@@ -23,25 +25,26 @@ export interface Placeholder {
 export function placeholdersIn(text: string, options: FieldOption[]): Placeholder[] {
   return Array.from(text.matchAll(OPENED)).map((match) => {
     const written = match[0];
+    const at = match.index ?? 0;
     const field = PLACEHOLDER.exec(written)?.[1] ?? null;
     if (field === null) {
-      return { written, field, answeredBy: null, problem: t('not a placeholder: write {{field}}') };
+      return { written, at, field, answeredBy: null, problem: t('not a placeholder: write {{field}}') };
     }
     if (field.startsWith('variables.')) {
-      return { written, field, answeredBy: null, problem: t('a workspace variable is a reference, not a placeholder') };
+      return { written, at, field, answeredBy: null, problem: t('a workspace variable is a reference, not a placeholder') };
     }
     // A field, or a field inside one: `result.total` is answered by `result`.
     const answeredBy =
       options.find((option) => option.expression === field) ??
       options.find((option) => field.startsWith(`${option.expression}.`)) ??
       null;
-    if (answeredBy !== null) return { written, field, answeredBy, problem: null };
+    if (answeredBy !== null) return { written, at, field, answeredBy, problem: null };
     // A trigger's field written bare: it is read under the trigger's name, as the edges show it.
     const asTrigger = field.startsWith('trigger.') ? null : `trigger.${field}`;
     if (asTrigger !== null && options.some((option) => option.expression === asTrigger || asTrigger.startsWith(`${option.expression}.`))) {
-      return { written, field, answeredBy: null, problem: tf('a trigger field: write {{{field}}}', { field: asTrigger }) };
+      return { written, at, field, answeredBy: null, problem: tf('a trigger field: write {{{field}}}', { field: asTrigger }) };
     }
-    return { written, field, answeredBy: null, problem: t('nothing in this workflow produces it') };
+    return { written, at, field, answeredBy: null, problem: t('nothing in this workflow produces it') };
   });
 }
 

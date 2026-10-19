@@ -1537,57 +1537,57 @@ select.input {
 }
 
 /*
- * The big box an Expand opens: a value or a description, edited at the size
- * of the screen instead of the size the panel has room for. The textarea is
- * the whole of it - a head naming the field, Done, and room.
+ * The description, dragged taller by its corner. The wrapper grows with it
+ * rather than holding a height of its own, and only taller: the panel decides
+ * the width, and a box dragged wider than the panel scrolls it sideways.
  */
-.expandOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+.descriptionWrapper {
+  align-items: stretch;
+  padding: 0 var(--space-12);
 }
 
-.expandDialog {
-  display: flex;
-  flex-direction: column;
-  width: min(760px, calc(100vw - 48px));
-  height: min(70vh, 640px);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
-  overflow: hidden;
+.descriptionText {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  color: var(--color-text-secondary);
+  resize: vertical;
 }
 
-.expandHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--color-border);
+/*
+ * The way a run goes, moving along the line.
+ *
+ * Two kinds of line meet on this canvas - the order things run in, and a
+ * field one node reads off another - and both end in an arrow. Moving beads on
+ * the run's line, laid over the solid stroke, are what tell them apart at a
+ * glance: a dependency is dashed and still, because nothing travels along it.
+ * Still for somebody who has asked for less motion, where the solid line and
+ * its arrow say the same thing without it.
+ */
+.edgeFlow {
+  fill: none;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-dasharray: 1 19;
+  pointer-events: none;
+  animation: edgeFlow 1s linear infinite;
 }
 
-.expandTitle {
-  font-size: var(--text-sm);
-  font-weight: 600;
+@keyframes edgeFlow {
+  from {
+    stroke-dashoffset: 20;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
-/* The same reading the small field gives it: written text is mono. */
-.expandText {
-  flex: 1;
-  padding: 12px 14px;
-  background: var(--color-surface);
-  color: inherit;
-  border: 0;
-  outline: none;
-  resize: none;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  line-height: 1.5;
+@media (prefers-reduced-motion: reduce) {
+  .edgeFlow {
+    display: none;
+    animation: none;
+  }
 }
 
 /*

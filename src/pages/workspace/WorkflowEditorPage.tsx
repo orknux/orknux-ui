@@ -111,7 +111,8 @@ import { SchemaDialog } from '../../components/SchemaDialog';
 import { CreateTriggerDialog } from '../../components/CreateTriggerDialog';
 import { TriggerForm } from '../../components/TriggerForm';
 import { FieldPicker } from '../../components/FieldPicker';
-import { PlaceholderChips } from '../../components/PlaceholderChips';
+import { PlaceholderChips, placeholdersIn } from '../../components/PlaceholderChips';
+import { PlaceholderField } from '../../components/PlaceholderField';
 import type { FieldOption } from '../../components/FieldPicker';
 import { Icon, IconPickerDialog } from '../../components/IconPicker';
 import { DEFAULT_NODE_ICON, SPEECH_NODE_ICON, defaultNodeIcon, nodeIconOf, nodeIconUrl } from '../../components/nodeIcons';
@@ -1107,6 +1108,15 @@ function CarriedEdge({
   return (
     <>
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} interactionWidth={0} />
+      {/* A line a run travels shows which way it goes; see `.edgeFlow`. */}
+      {data?.flow === true && (
+        <path
+          className={styles.edgeFlow}
+          d={path}
+          data-flow=""
+          style={{ stroke: typeof style?.stroke === 'string' ? style.stroke : 'var(--color-text-primary)' }}
+        />
+      )}
       {/*
        * The line itself, as something to aim at.
        *
@@ -2153,34 +2163,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const draftForRef = useRef<string | null>(null);
   draftForRef.current = draftFor;
 
-  /**
-   * The text field opened out into a big box, or null.
-   *
-   * A prompt does not fit a one-line field, and a one-line field is most of
-   * what the panel has room for - so every value field and the description
-   * carry an Expand that opens the same text in a box the size of the screen.
-   * The box edits the draft directly, exactly as the small field does: there
-   * is nothing to save or cancel, only somewhere bigger to type.
-   */
-  const [expandedField, setExpandedField] = useState<
-    { target: 'description' } | { target: 'mapping'; index: number; label: string } | null
-  >(null);
-
-  // The box is about one node's field; picking another node closes it.
-  useEffect(() => setExpandedField(null), [selectedKey]);
-
-  // Escape closes it, the way it closes the builder panel beside the page.
-  useEffect(() => {
-    if (expandedField === null) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        setExpandedField(null);
-      }
-    }
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [expandedField]);
   /** The field whose name is mid-edit, if any, and the name it had. */
   const [fieldEdit, setFieldEdit] = useState<{ index: number; was: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -2536,11 +2518,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       });
     });
 
-    function producerOf(mapping: NodeMapping): string | null {
-      if (mapping.sourceNodeKey != null && nodes.some((node) => node.id === mapping.sourceNodeKey)) {
-        return mapping.sourceNodeKey;
+    function producerOf(sourceNodeKey: string | null | undefined, expression: string): string | null {
+      if (sourceNodeKey != null && nodes.some((node) => node.id === sourceNodeKey)) {
+        return sourceNodeKey;
       }
-      const parts = mapping.expression.trim().split('.').filter((part) => part !== '');
+      const parts = expression.trim().split('.').filter((part) => part !== '');
       for (let take = parts.length; take > 0; take -= 1) {
         const held = producers.get(parts.slice(0, take).join('.'));
         if (held !== undefined) return held;
@@ -2549,17 +2531,35 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     }
 
     const between = new Map<string, { source: string; target: string; says: Carried[] }>();
+    function carry(from: string | null, to: string, says: Carried) {
+      if (from === null || from === to) return;
+      const pair = `${from}->${to}`;
+      const held = between.get(pair) ?? { source: from, target: to, says: [] };
+      held.says.push(says);
+      between.set(pair, held);
+    }
+
     nodes.forEach((node) => {
       const data = node.data as NodeData;
       data.mappings.forEach((mapping) => {
-        if (mapping.mode !== 'REFERENCE' || mapping.expression.trim() === '') return;
-        const from = producerOf(mapping);
-        if (from === null || from === node.id) return;
-
-        const pair = `${from}->${node.id}`;
-        const held = between.get(pair) ?? { source: from, target: node.id, says: [] };
-        held.says.push({ from: mapping.expression.trim(), to: mapping.name });
-        between.set(pair, held);
+        if (mapping.expression.trim() === '') return;
+        if (mapping.mode === 'REFERENCE') {
+          carry(producerOf(mapping.sourceNodeKey, mapping.expression), node.id, {
+            from: mapping.expression.trim(),
+            to: mapping.name,
+          });
+          return;
+        }
+        /*
+         * A `{{field}}` written into a value reads that field exactly as a
+         * reference does, so it is drawn as one: the same line from the same
+         * producer. Only a well-formed placeholder - a broken one reads
+         * nothing, and is red under the field already.
+         */
+        placeholdersIn(mapping.expression, []).forEach((one) => {
+          if (one.field === null || one.field.startsWith('variables.')) return;
+          carry(producerOf(null, one.field), node.id, { from: one.field, to: mapping.name });
+        });
       });
     });
     return between;
@@ -2621,7 +2621,13 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       return {
         ...shown,
         type: 'carried',
-        data: { says: held?.says ?? [], points: edgePoints[edge.id], onPoints: setPoints },
+        data: {
+          says: held?.says ?? [],
+          points: edgePoints[edge.id],
+          onPoints: setPoints,
+          // Moving along it, where a run goes along it: not a session's line.
+          flow: kindOfNode.get(edge.source) !== 'SESSION',
+        },
       };
     });
 
@@ -4807,7 +4813,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
        * follow - and this one earns it twice over, because it can be rebound
        * to a keystroke that means something inside a text box. Bound to Ctrl+X
        * it cut nothing and duplicated a node instead, and duplicating changes
-       * which node is selected, which closes the expanded box being typed in.
+       * which node is selected, which swaps out the panel being typed in.
        * A shortcut that eats a standard editing key is worse than no shortcut.
        */
       if (typingText(event.target)) return;
@@ -6841,23 +6847,6 @@ Change the keystroke in Preferences.`}
                                     }
                                   >{t('Remove')}</button>
                                 )}
-                                {/*
-                                  Somewhere bigger to type. Only on a value: a
-                                  reference is picked, not written, and a big
-                                  box for a field name would be a big box for
-                                  twelve characters.
-                                */}
-                                {mapping.mode === 'VALUE' && (
-                                  <button
-                                    type="button"
-                                    className={styles.parameterSync}
-                                    aria-label={`Expand ${mapping.name}`}
-                                    title={t('Edit this in a larger box')}
-                                    onClick={() =>
-                                      setExpandedField({ target: 'mapping', index, label: mapping.name })
-                                    }
-                                  >{t('Expand')}</button>
-                                )}
                                 {(() => {
                                   // The node holds a copy on purpose, and a copy
                                   // drifts. This is how the definition's wording
@@ -7030,6 +7019,28 @@ Change the keystroke in Preferences.`}
                                     })
                                   }
                                 />
+                              ) : slackSend === null || mapping.name !== TARGET_PARAMETER ? (
+                                /*
+                                  Written, so written at length: a prompt does
+                                  not fit one line, and the box is dragged
+                                  taller where it is rather than opened in
+                                  another. Its placeholders are lit and offered
+                                  as they are typed.
+                                */
+                                <PlaceholderField
+                                  id={`node-mapping-${mapping.name}`}
+                                  value={mapping.expression}
+                                  options={fieldOptions}
+                                  placeholder={parameterPlaceholder(draft, mapping.name)}
+                                  onChange={(next) =>
+                                    setDraft({
+                                      ...draft,
+                                      mappings: draft.mappings.map((held, at) =>
+                                        at === index ? { ...held, expression: next } : held,
+                                      ),
+                                    })
+                                  }
+                                />
                               ) : (
                                 /*
                                   What the connection can see: offered in the
@@ -7040,12 +7051,9 @@ Change the keystroke in Preferences.`}
                                   one workflow, and its target is the half of a
                                   send worth varying per step.
 
-                                  Every parameter is drawn by it and only the
-                                  target is asked about. Handed no connection it
-                                  is exactly the text field it replaced - no
-                                  list, no answer, nothing asked - which is
-                                  better than two code paths that have to agree
-                                  about what an ordinary parameter looks like.
+                                  Only the target of a Slack send is drawn by
+                                  it: a channel name is one line, and the list
+                                  of channels is the offer that matters there.
                                   A function's argument may perfectly well be
                                   called `target`; `slackSend` is what
                                   establishes that this one goes to Slack.
@@ -7063,11 +7071,7 @@ Change the keystroke in Preferences.`}
                                   value={mapping.expression}
                                   placeholder={parameterPlaceholder(draft, mapping.name)}
                                   spellCheck={false}
-                                  connectionId={
-                                    slackSend !== null && mapping.name === TARGET_PARAMETER
-                                      ? slackSend
-                                      : null
-                                  }
+                                  connectionId={slackSend}
                                   answerId={`node-mapping-${mapping.name}-answer`}
                                   answerClassName={styles.fieldNote}
                                   onChange={(next) =>
@@ -7382,22 +7386,14 @@ Change the keystroke in Preferences.`}
                 )}
 
                 <div className={styles.field}>
-                  <span className={styles.labelRow}>
-                    <label className={styles.label} htmlFor="node-description">
-                      {t('Description')}
-                    </label>
-                    <button
-                      type="button"
-                      className={styles.parameterSync}
-                      aria-label={t('Expand Description')}
-                      title={t('Edit this in a larger box')}
-                      onClick={() => setExpandedField({ target: 'description' })}
-                    >{t('Expand')}</button>
-                  </span>
-                  <div className={`${styles.inputWrapper} ${styles.inputWrapperTall}`}>
+                  <label className={styles.label} htmlFor="node-description">
+                    {t('Description')}
+                  </label>
+                  {/* Dragged taller by its corner, where it is, rather than opened in a box of its own. */}
+                  <div className={`${styles.inputWrapper} ${styles.descriptionWrapper}`}>
                     <textarea
                       id="node-description"
-                      className={`${styles.input} ${styles.textarea}`}
+                      className={`${styles.input} ${styles.descriptionText}`}
                       value={draft.description ?? ''}
                       onChange={(event) => setDraft({ ...draft, description: event.target.value || null })}
                     />
@@ -7431,61 +7427,6 @@ Change the keystroke in Preferences.`}
         </>
         )}
       </div>
-
-      {/*
-        The big box an Expand opens. It edits the draft directly, exactly as
-        the small field it stands for does - there is nothing to save or
-        cancel, only somewhere the size of the screen to type - so Done, the
-        backdrop and Escape all just close it.
-      */}
-      {expandedField !== null && draft !== null && (
-        <div
-          className={styles.expandOverlay}
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setExpandedField(null);
-          }}
-        >
-          <div
-            className={styles.expandDialog}
-            role="dialog"
-            aria-label={expandedField.target === 'description' ? t('Description') : expandedField.label}
-          >
-            <div className={styles.expandHead}>
-              <span className={styles.expandTitle}>
-                {expandedField.target === 'description' ? t('Description') : expandedField.label}
-              </span>
-              <button
-                type="button"
-                className={styles.parameterSync}
-                onClick={() => setExpandedField(null)}
-              >{t('Done')}</button>
-            </div>
-            <textarea
-              className={styles.expandText}
-              autoFocus
-              spellCheck={false}
-              value={
-                expandedField.target === 'description'
-                  ? (draft.description ?? '')
-                  : (draft.mappings[expandedField.index]?.expression ?? '')
-              }
-              onChange={(event) =>
-                setDraft(
-                  expandedField.target === 'description'
-                    ? { ...draft, description: event.target.value || null }
-                    : {
-                        ...draft,
-                        mappings: draft.mappings.map((held, at) =>
-                          at === expandedField.index ? { ...held, expression: event.target.value } : held,
-                        ),
-                      },
-                )
-              }
-            />
-          </div>
-        </div>
-      )}
 
       <IconPickerDialog
         open={browsingIcons}
