@@ -133,6 +133,8 @@ export interface ExecutionDetail extends Execution {
   startedFrom: string | null;
   /** Which version of the workflow it ran, against the workflow now; null on runs from before that was kept. */
   version?: RanVersion | null;
+  /** What each step was handed for its parameters; workspace variables are left as written. */
+  parameters?: StepParameter[];
   steps: ExecutionStep[];
   /**
    * The graph the run went through. The branch is on it because a line the run
@@ -338,6 +340,7 @@ const EXECUTION_DETAIL_FIELDS = `
   id workspaceId workflowId workflowName status trigger source { connectionType action } startedAt finishedAt durationSeconds error workflowAssigned
   stoppedAtNodeKey stoppedReason startedFrom
   version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
+  parameters { nodeKey name value reference expression }
   steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption attempts carriedOver x y }
   edges { source target branch }
   logs { id nodeKey at level message }
@@ -444,4 +447,14 @@ export interface RanVersion {
   editedSince: boolean;
   /** When the publication that replaced it was made. */
   newestPublishedAt: string | null;
+}
+
+/** One parameter of one step, as the step was handed it. */
+export interface StepParameter {
+  nodeKey: string;
+  name: string;
+  value: string;
+  reference: boolean;
+  /** As written on the node: the text, or the field a reference reads. */
+  expression: string;
 }

@@ -28,6 +28,7 @@ import type {
   ExecutionDetail,
   ExecutionPicture,
   ExecutionSpeech,
+  StepParameter,
   ExecutionStep,
   StepStatus,
 } from '../../api/executions';
@@ -1300,6 +1301,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
             workspaceId={workspaceId}
             pictures={(run?.pictures ?? []).filter((picture) => picture.nodeKey === selected.key)}
             speeches={(run?.speeches ?? []).filter((speech) => speech.nodeKey === selected.key)}
+            parameters={(run?.parameters ?? []).filter((parameter) => parameter.nodeKey === selected.key)}
             runEnded={run !== null && run.status !== 'RUNNING'}
             width={panel.size}
             onRerunFromHere={rerunFromStep}
@@ -1326,6 +1328,7 @@ function NodeDetailsPanel({
   workspaceId,
   pictures,
   speeches,
+  parameters,
   runEnded,
   width,
   onRerunFromHere,
@@ -1337,6 +1340,8 @@ function NodeDetailsPanel({
   pictures: ExecutionPicture[];
   /** What this step said out loud, if it is one that speaks; empty otherwise. */
   speeches: ExecutionSpeech[];
+  /** What it was handed for each of its parameters - a prompt, an argument - which its input is not. */
+  parameters: StepParameter[];
   /** True once the run has finished, so a pending step was never reached. */
   runEnded: boolean;
   /** What the rail has been dragged to; the page owns the number, the panel wears it. */
@@ -1351,6 +1356,7 @@ function NodeDetailsPanel({
    * point is not to scroll past an input of a thousand lines on every node.
    */
   const [inputOpen, toggleInput] = useFold('run.step-input');
+  const [parametersOpen, toggleParameters] = useFold('run.step-parameters');
   const [outputOpen, toggleOutput] = useFold('run.step-output');
 
   /** Which of this step's pictures is open over the page, or null while none is. */
@@ -1491,6 +1497,36 @@ function NodeDetailsPanel({
         <>
           <h3 className={styles.panelHeading}>{t('Error')}</h3>
           <pre className={`${styles.payload} ${styles.payloadError}`}>{step.error}</pre>
+        </>
+      )}
+
+      {/*
+        What the node was told to pass and what that came to - an agent's prompt,
+        an action's arguments. The input below is only what the run was carrying,
+        which for the first step after a trigger is the trigger's payload.
+      */}
+      {parameters.length > 0 && (
+        <>
+          <h3 className={styles.panelHeading}>
+            <FoldToggle open={parametersOpen} onToggle={toggleParameters} controls="run-step-parameters">
+              {t('Parameters')}
+            </FoldToggle>
+          </h3>
+          <FoldBody id="run-step-parameters" open={parametersOpen}>
+            <dl className={styles.parameters} data-step-parameters="">
+              {parameters.map((parameter) => (
+                <div key={parameter.name} className={styles.parameter}>
+                  <dt className={styles.parameterName}>
+                    {parameter.name}
+                    {parameter.reference && <span className={styles.parameterFrom}>{` ← ${parameter.expression}`}</span>}
+                  </dt>
+                  <dd className={styles.parameterValue}>
+                    {parameter.value === '' ? <span className={styles.parameterEmpty}>—</span> : <Payload text={parameter.value} />}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </FoldBody>
         </>
       )}
 

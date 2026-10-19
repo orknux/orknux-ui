@@ -1628,6 +1628,12 @@ export const TESTS = [
     /* Answers the picture and the models itself. */
   },
   {
+    name: 'run-step-parameters-check',
+    what: "a run's step lists what it was handed for its parameters, above its input",
+    needs: ['workspace'],
+    /* Reads a real run of the workspace whose steps were handed something. */
+  },
+  {
     name: 'installation-address-check',
     what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
     needs: [],

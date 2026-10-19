@@ -873,6 +873,39 @@ a.refresh {
   word-break: break-word;
 }
 
+.parameters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+}
+
+.parameter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.parameterName {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.parameterFrom {
+  color: var(--color-text-muted);
+}
+
+.parameterValue {
+  margin: 0;
+  min-width: 0;
+}
+
+.parameterEmpty {
+  color: var(--color-text-muted);
+}
+
 .payloadError {
   color: var(--color-danger);
 }
