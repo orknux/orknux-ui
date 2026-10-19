@@ -10,6 +10,7 @@ import {
   importDesignImage,
   queueDesignImage,
   queueDesignImageEdit,
+  queueDesignImageHarmonize,
   queueDesignImageUpscale,
   renameDesignImage,
   saveDesignImageVersion,
@@ -46,6 +47,7 @@ import {
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
 import styles from './DesignImageEditorPage.module.css';
+import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
@@ -137,6 +139,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [upscaling, setUpscaling] = useState(false);
   /** Models are loaded and none of them upscales: the button says so rather than opening an empty window. */
   const noUpscaler = models !== null && upscalers.length === 0;
+  const [harmonizing, setHarmonizing] = useState(false);
+  /** What Harmonize redraws with: the image models Magic edit offers, and each WebUI by its upscale model. */
+  const harmonizers = [...(models ?? []), ...upscalers];
+  const noHarmonizer = models !== null && harmonizers.length === 0;
   const [exporting, setExporting] = useState(false);
   /** A file being dragged over the canvas, which a drop opens here. */
   const [dropping, setDropping] = useState(false);
@@ -576,6 +582,31 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     show({ kind: 'job', jobId: queued.id });
   }
 
+  /** The whole picture redrawn lightly, so a Magic edit's seams blend: a version of it, its whole frame pulsing meanwhile, as an upscale is. */
+  async function harmonize(harmonizeModelId: string, described: string, strength: number | null, checkpoint: string | null) {
+    const shownPicture = pictureRef.current;
+    if (picture === null || shownPicture === null) return;
+    const queued = await queueDesignImageHarmonize({
+      workspaceId,
+      imageId: picture.id,
+      modelId: harmonizeModelId,
+      prompt: described,
+      strength,
+      checkpoint,
+    });
+    const width = shownPicture.naturalWidth;
+    const height = shownPicture.naturalHeight;
+    remember();
+    setChangingOver((held) => ({
+      ...held,
+      [queued.id]: { url: picture.url, width, height, points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] },
+    }));
+    setMade((held) => [{ job: queued }, ...held]);
+    forget();
+    setHarmonizing(false);
+    show({ kind: 'job', jobId: queued.id });
+  }
+
   /**
    * A file brought in - picked, or dropped on the canvas - kept as a picture of
    * its own and opened here. An .orkx file brings its name and prompt with it.
@@ -997,6 +1028,30 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               <span className={styles.upscaleHint} role="tooltip" data-testid="editor-upscale-hint">
                 {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
                 <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-upscale-models">
+                  {t('Go to Models')}
+                </Link>
+              </span>
+            )}
+          </span>
+          {/* Beside Upscale, and like it says at once why not and where to add a model. */}
+          <span className={styles.upscaleWrap} data-testid="editor-harmonize-wrap">
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.toolbarButton}`}
+              onClick={() => {
+                forget();
+                setHarmonizing(true);
+              }}
+              disabled={picture === null || busy || noHarmonizer}
+              title={noHarmonizer ? undefined : t('Redraw the whole picture lightly, so the seams between changed parts blend')}
+              data-testid="editor-harmonize"
+            >
+              {t('Harmonize')}
+            </button>
+            {noHarmonizer && (
+              <span className={styles.upscaleHint} role="tooltip" data-testid="editor-harmonize-hint">
+                {t('There is no image model in this workspace to redraw the picture with. Add an image model, or a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
+                <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-harmonize-models">
                   {t('Go to Models')}
                 </Link>
               </span>
@@ -1550,6 +1605,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         height={natural?.height ?? 0}
         onClose={() => setUpscaling(false)}
         onUpscale={upscale}
+      />
+      <DesignHarmonizeDialog
+        open={harmonizing}
+        workspaceId={workspaceId}
+        models={harmonizers}
+        defaultModelId={modelId}
+        prompt={picture?.prompt ?? prompt}
+        onClose={() => setHarmonizing(false)}
+        onHarmonize={harmonize}
       />
       <UnsavedWorkDialog
         subject={guard.asking ? (pendingName ?? picture?.name ?? t('This picture')) : null}

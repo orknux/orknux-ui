@@ -328,6 +328,44 @@ export async function fetchDesignUpscaleAlgorithms(workspaceId: string, modelId:
   return data.designUpscaleAlgorithms;
 }
 
+/** The whole picture redrawn lightly, so the seams a Magic edit left blend: an unsaved version of it, as an edit's is. */
+export async function queueDesignImageHarmonize(input: {
+  workspaceId: string;
+  imageId: string;
+  modelId: string;
+  prompt: string;
+  /** A WebUI's denoising strength; null where the model takes none. */
+  strength: number | null;
+  checkpoint: string | null;
+}): Promise<DesignImageJob> {
+  const data = await graphql<{ queueDesignImageHarmonize: DesignImageJob }>(
+    `mutation QueueDesignImageHarmonize($input: HarmonizeDesignImageInput!) { queueDesignImageHarmonize(input: $input) { ${JOB_FIELDS} } }`,
+    { input },
+  );
+  return data.queueDesignImageHarmonize;
+}
+
+/** What Harmonize can be asked with one model. */
+export interface HarmonizeOptions {
+  /** A Stable Diffusion WebUI takes a strength; the standard edit endpoint does not. */
+  strengthTaken: boolean;
+  /** Where the strength starts: the installation's setting. */
+  strength: number;
+  /** A WebUI's checkpoints, the loaded one first. */
+  checkpoints: string[];
+  preferredCheckpoint: string | null;
+  /** Why the WebUI could not be asked; checkpoints is then empty. */
+  reason: string | null;
+}
+
+export async function fetchDesignHarmonizeOptions(workspaceId: string, modelId: string): Promise<HarmonizeOptions> {
+  const data = await graphql<{ designHarmonizeOptions: HarmonizeOptions }>(
+    `query DesignHarmonizeOptions($workspaceId: ID!, $modelId: ID!) { designHarmonizeOptions(workspaceId: $workspaceId, modelId: $modelId) { strengthTaken strength checkpoints preferredCheckpoint reason } }`,
+    { workspaceId, modelId },
+  );
+  return data.designHarmonizeOptions;
+}
+
 /** Keeps a picture brought in from outside - a picture's file, or an .orkx archive - as a Design picture. */
 export async function importDesignImage(input: {
   workspaceId: string;

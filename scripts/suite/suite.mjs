@@ -1544,6 +1544,12 @@ export const TESTS = [
     /* Answers the picture, the models, the algorithms and the queue itself. */
   },
   {
+    name: 'design-harmonize-check',
+    what: 'the image editor redraws the whole picture lightly with a chosen model, prompt and strength, as a draft',
+    needs: ['workspace'],
+    /* Answers the picture, the models, the options and the queue itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],

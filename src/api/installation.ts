@@ -93,6 +93,9 @@ export interface InstallationSettings {
   /** How many of Design's queued pictures are drawn at the same time; Admin > Settings. */
   imageDrawsAtOnce: number;
   imageDrawsAtOnceConfigured: number;
+  /** Where Harmonize's strength starts, for a redraw through a Stable Diffusion WebUI; Admin > Settings. */
+  imageHarmonizeStrength: number;
+  imageHarmonizeStrengthConfigured: number;
   /** What a fresh installation allows, before anybody changed it. */
   chatMaxRoundsConfigured: number;
   /**
@@ -342,7 +345,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -493,6 +496,17 @@ export async function setImageDrawsAtOnce(draws: number): Promise<InstallationSe
     { draws },
   );
   return data.setImageDrawsAtOnce;
+}
+
+/** Where Harmonize's strength starts, for a redraw through a Stable Diffusion WebUI. */
+export async function setImageHarmonizeStrength(strength: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setImageHarmonizeStrength: InstallationSettings }>(
+    `mutation SetImageHarmonizeStrength($strength: Float!) {
+       setImageHarmonizeStrength(strength: $strength) { ${FIELDS} }
+     }`,
+    { strength },
+  );
+  return data.setImageHarmonizeStrength;
 }
 
 /** The longest description a picture is drawn from - in Design, a chat and a task. */

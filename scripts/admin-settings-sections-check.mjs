@@ -31,6 +31,8 @@ const SECTIONS = [
   // The local box and the box tools' limits.
   ['boxes', 'local-box-max-sessions'],
   ['drawing', 'drawing-scale'],
+  // Where Harmonize's strength starts, beside the other image settings.
+  ['drawing', 'image-harmonize-strength'],
   ['commands', 'command-marker'],
   ['attachments', null],
   ['metrics', null],

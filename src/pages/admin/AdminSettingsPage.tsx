@@ -29,6 +29,7 @@ import {
   setDrawingScale,
   setImageMaxPrompt,
   setImageDrawsAtOnce,
+  setImageHarmonizeStrength,
   setSessionCompactAfterTokens,
   setSessionCompactionKeepTurns,
   setSessionCompactionSummaryTokens,
@@ -193,6 +194,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [drawScale, setDrawScale] = useState('');
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageDraws, setImageDraws] = useState('');
+  const [harmonizeStrength, setHarmonizeStrength] = useState('');
   const [compactAfter, setCompactAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
@@ -338,6 +340,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setDrawScale(String(held.drawingScale));
         setImagePrompt(String(held.imageMaxPrompt));
         setImageDraws(String(held.imageDrawsAtOnce));
+        setHarmonizeStrength(String(held.imageHarmonizeStrength));
         setCompactAfter(String(held.sessionCompactAfterTokens));
         setCompactKeep(String(held.sessionCompactionKeepTurns));
         setCompactSummary(String(held.sessionCompactionSummaryTokens));
@@ -423,6 +426,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: drawScale, held: settings.drawingScale, write: setDrawingScale },
         { typed: imagePrompt, held: settings.imageMaxPrompt, write: setImageMaxPrompt },
         { typed: imageDraws, held: settings.imageDrawsAtOnce, write: setImageDrawsAtOnce },
+        { typed: harmonizeStrength, held: settings.imageHarmonizeStrength, write: setImageHarmonizeStrength },
         {
           typed: compactAfter,
           held: settings.sessionCompactAfterTokens,
@@ -2241,6 +2245,32 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Images drawn at once')}
                 />
                 <span className={styles.retentionUnit}>{t('pictures')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Harmonize strength')}</p>
+                  <FieldHint label={t('Harmonize strength')}>
+                    {t("Where Harmonize's strength starts in the image editor - how much a Stable Diffusion WebUI redraws the whole picture to blend the seams a Magic edit left. Low keeps the picture; high draws another. Between 0.05 and 0.9.")}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="image-harmonize-strength"
+                  name="imageHarmonizeStrength"
+                  className={styles.input}
+                  type="number"
+                  min={0.05}
+                  max={0.9}
+                  step={0.05}
+                  value={harmonizeStrength}
+                  onChange={(event) => setHarmonizeStrength(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Harmonize strength')}
+                />
               </div>
             </div>
 

@@ -127,14 +127,15 @@ await page.waitForTimeout(800);
 record((await page.getByTestId('editor-upscale-hint').count()) === 0 && (await page.getByTestId('editor-upscale').isEnabled()),
   'with one, it is on and carries no hint');
 
-// Upscale stands apart from Magic edit, divided as Import is from it: one gap, not buttons touching.
+// Upscale and Harmonize beside it stand apart from Magic edit, divided as Import is from them: one gap, not buttons touching.
 const magicBox = await page.getByTestId('magic-edit').boundingBox().catch(() => null);
 const upscaleBox = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
+const harmonizeBox = await page.getByTestId('editor-harmonize').boundingBox().catch(() => null);
 const importBox = await page.getByTestId('editor-import').boundingBox().catch(() => null);
-const apart = magicBox === null || upscaleBox === null || importBox === null ? null
-  : { magicToUpscale: upscaleBox.x - (magicBox.x + magicBox.width), upscaleToImport: importBox.x - (upscaleBox.x + upscaleBox.width) };
-record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUpscale - apart.upscaleToImport) < 2,
-  `Upscale is divided from Magic edit as Import is from Upscale (${JSON.stringify(apart)})`);
+const apart = magicBox === null || upscaleBox === null || harmonizeBox === null || importBox === null ? null
+  : { magicToUpscale: upscaleBox.x - (magicBox.x + magicBox.width), harmonizeToImport: importBox.x - (harmonizeBox.x + harmonizeBox.width) };
+record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUpscale - apart.harmonizeToImport) < 2,
+  `Upscale is divided from Magic edit as Import is from Harmonize beside it (${JSON.stringify(apart)})`);
 
 // Upscale: only upscale models, each with its own server's algorithms.
 await page.getByTestId('editor-upscale').click();
