@@ -2144,6 +2144,14 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    */
   const ownFields = useRef(new Map<string, NodeMapping[]>());
   const [draft, setDraft] = useState<NodeData | null>(null);
+  /**
+   * The node the draft was seeded from. Not the selection: the draft follows
+   * the selection an effect later, so for one render the two disagree - and a
+   * Custom form mounted in that render was handed the node it is leaving.
+   */
+  const [draftFor, setDraftFor] = useState<string | null>(null);
+  const draftForRef = useRef<string | null>(null);
+  draftForRef.current = draftFor;
 
   /**
    * The text field opened out into a big box, or null.
@@ -2739,6 +2747,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * uses it. Only a workflow's own is safe to edit in place, which is the
    * whole reason Custom exists.
    */
+  /**
+   * The node a Custom form on the panel belongs to, as it was when the form was
+   * drawn - and what the form is keyed by, so moving to another node mounts a
+   * form of its own. They were keyed by a `draft.key` the draft never had, so
+   * one form served every node and saved one node's fields into another's
+   * action. A save is written into this node and no other: it may land after
+   * the panel has moved on, and the selection by then is somebody else's.
+   */
+  const formNode = draft === null ? null : draftFor;
   const ownedAction = useMemo(
     () => actions.find((held) => held.id === draft?.actionId && held.workflowId !== null) ?? null,
     [actions, draft?.actionId],
@@ -2941,10 +2958,12 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     if (node === undefined) {
       setSelectedKey(null);
       setDraft(null);
+      setDraftFor(null);
     } else {
       // Without the ports, for the reason the selection effect gives.
       const { inputs: _inputs, outputs: _outputs, ...its } = node.data as NodeData;
       setDraft(its as NodeData);
+      setDraftFor(node.id);
     }
     // The held name belongs to a field of the draft that has just been replaced.
     setFieldEdit(null);
@@ -3204,6 +3223,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     }
     setSelectedKey(null);
     setDraft(null);
+    setDraftFor(null);
     loadGraph();
   }
 
@@ -3404,9 +3424,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
      */
     if (node === undefined) {
       setDraft(null);
+      setDraftFor(null);
     } else {
       const { inputs: _inputs, outputs: _outputs, ...its } = node.data as NodeData;
       setDraft(its as NodeData);
+      setDraftFor(node.id);
     }
     // Only re-seed the form when the selection changes, not on every drag.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5848,15 +5870,21 @@ Change the keystroke in Preferences.`}
                             picking another node still builds a fresh form,
                             which is all the key was ever for.
                           */
-                          key={`custom-trigger-${draft.key}`}
+                          key={`custom-trigger-${draftFor}`}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
                           trigger={ownedTrigger}
                           styles={PANEL_FORM_STYLES}
                           onSaved={(trigger) => {
                             setTriggers((all) => withDefinition(all, trigger));
+                            /*
+                              Only into the node this form belongs to. The form
+                              saves itself, and a save that lands after the panel
+                              moved on found the next node's draft here - which
+                              then took this definition and its parameters.
+                            */
                             setDraft((current) =>
-                              current === null ? current : { ...current, triggerId: trigger.id },
+                              current === null || draftForRef.current !== formNode ? current : { ...current, triggerId: trigger.id },
                             );
                             /*
                               Into the node itself, not only into the draft.
@@ -5873,7 +5901,7 @@ Change the keystroke in Preferences.`}
                             */
                             setNodes((all) =>
                               all.map((node) =>
-                                node.id === selectedKey
+                                node.id === formNode
                                   ? { ...node, data: { ...(node.data as NodeData), triggerId: trigger.id } }
                                   : node,
                               ),
@@ -6032,15 +6060,21 @@ Change the keystroke in Preferences.`}
                         </p>
                         <ActionForm
                           namedAfter={draft.name || 'Action'}
-                          key={`custom-action-${draft.key}`}
+                          key={`custom-action-${draftFor}`}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
                           action={ownedAction}
                           styles={PANEL_FORM_STYLES}
                           onSaved={(action) => {
                             setActions((all) => withDefinition(all, action));
+                            /*
+                              Only into the node this form belongs to. The form
+                              saves itself, and a save that lands after the panel
+                              moved on found the next node's draft here - which
+                              then took this definition and its parameters.
+                            */
                             setDraft((current) =>
-                              current === null ? current : { ...current, actionId: action.id },
+                              current === null || draftForRef.current !== formNode ? current : { ...current, actionId: action.id },
                             );
                             /*
                               Into the node itself, not only into the draft.
@@ -6057,7 +6091,7 @@ Change the keystroke in Preferences.`}
                             */
                             setNodes((all) =>
                               all.map((node) =>
-                                node.id === selectedKey
+                                node.id === formNode
                                   ? { ...node, data: { ...(node.data as NodeData), actionId: action.id } }
                                   : node,
                               ),
@@ -6333,15 +6367,21 @@ Change the keystroke in Preferences.`}
                         </p>
                         <ConditionForm
                           namedAfter={draft.name || 'Condition'}
-                          key={`custom-condition-${draft.key}`}
+                          key={`custom-condition-${draftFor}`}
                           workspaceId={workspaceId}
                           workflowId={workflowId}
                           condition={ownedCondition}
                           styles={PANEL_FORM_STYLES}
                           onSaved={(condition) => {
                             setConditions((all) => withDefinition(all, condition));
+                            /*
+                              Only into the node this form belongs to. The form
+                              saves itself, and a save that lands after the panel
+                              moved on found the next node's draft here - which
+                              then took this definition and its parameters.
+                            */
                             setDraft((current) =>
-                              current === null ? current : { ...current, conditionId: condition.id },
+                              current === null || draftForRef.current !== formNode ? current : { ...current, conditionId: condition.id },
                             );
                             /*
                               Into the node itself, not only into the draft.
@@ -6358,7 +6398,7 @@ Change the keystroke in Preferences.`}
                             */
                             setNodes((all) =>
                               all.map((node) =>
-                                node.id === selectedKey
+                                node.id === formNode
                                   ? { ...node, data: { ...(node.data as NodeData), conditionId: condition.id } }
                                   : node,
                               ),
@@ -6430,7 +6470,7 @@ Change the keystroke in Preferences.`}
                 )}
                 {draft.kind === 'DECISION' && (
                   <DecisionNodeFields
-                    key={`decision-${draft.key}`}
+                    key={`decision-${draftFor}`}
                     draft={draft}
                     models={decisionModels}
                     modelLink={

@@ -37,6 +37,7 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "a trigger field: write {{{field}}}": "pole wyzwalacza: wpisz {{{field}}}",
   "not a placeholder: write {{field}}": "to nie jest symbol zastępczy: wpisz {{pole}}",
   "a workspace variable is a reference, not a placeholder": "zmienna obszaru roboczego to odwołanie, nie symbol zastępczy",
   "nothing in this workflow produces it": "nic w tym przepływie tego nie tworzy",

@@ -66,6 +66,14 @@ try {
   record(answered?.ok === true && answered.text.includes('Nightly'), `an answered placeholder is drawn as the reference it is, naming its node (${JSON.stringify(answered)})`);
   record(unanswered?.ok === false && unanswered.text.includes('nothing in this workflow produces it'), `one nothing answers is red with why, as it is typed (${JSON.stringify(unanswered)})`);
 
+  // A trigger's field written bare is pointed at the way it is read.
+  await value.fill('Hi {{user}}');
+  await page.waitForTimeout(300);
+  const bare = (await page.getByTestId('placeholder-chips').innerText().catch(() => '')).trim();
+  record(bare.includes('write {{trigger.user}}'), `a trigger's field written bare says to write {{trigger.user}} (${bare})`);
+  await value.fill('Hi {{ trigger.user }}, see {{nowhere}}');
+  await page.waitForTimeout(300);
+
   await page.keyboard.press('Control+s');
   await page.waitForTimeout(2000);
   const refusal = await page.locator('[role="alert"]').allInnerTexts();

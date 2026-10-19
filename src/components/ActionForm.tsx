@@ -1367,7 +1367,7 @@ export function ActionForm({
                         current.map((row, at) => (at === index ? { ...row, expression } : row)),
                       );
                     return (
-                      <div key={mapping.argument} className={styles.mappingRow}>
+                      <div key={mapping.argument} className={styles.mappingRow} data-action-argument={mapping.argument}>
                         <span className={styles.mappingArgument}>{mapping.argument}</span>
                         {/*
                           An argument declared as a connection is picked from the

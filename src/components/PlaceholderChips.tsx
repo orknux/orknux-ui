@@ -35,7 +35,13 @@ export function placeholdersIn(text: string, options: FieldOption[]): Placeholde
       options.find((option) => option.expression === field) ??
       options.find((option) => field.startsWith(`${option.expression}.`)) ??
       null;
-    return { written, field, answeredBy, problem: answeredBy === null ? t('nothing in this workflow produces it') : null };
+    if (answeredBy !== null) return { written, field, answeredBy, problem: null };
+    // A trigger's field written bare: it is read under the trigger's name, as the edges show it.
+    const asTrigger = field.startsWith('trigger.') ? null : `trigger.${field}`;
+    if (asTrigger !== null && options.some((option) => option.expression === asTrigger || asTrigger.startsWith(`${option.expression}.`))) {
+      return { written, field, answeredBy: null, problem: tf('a trigger field: write {{{field}}}', { field: asTrigger }) };
+    }
+    return { written, field, answeredBy: null, problem: t('nothing in this workflow produces it') };
   });
 }
 

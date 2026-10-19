@@ -2,9 +2,12 @@
  * Two Custom actions in one workflow keep their own parameters in the panel.
  *
  * Reported: with two Custom actions, moving from one node to the other left the
- * panel showing a mix of the two actions' parameters. Each node here points at
- * a workflow-owned action calling a different function, with different
- * parameters; clicking one and then the other must show exactly that one's.
+ * panel showing a mix of the two actions' parameters. The Custom form was keyed
+ * by a `draft.key` the draft never had, so one form served every node - and as
+ * the draft follows the selection an effect later, a form mounted on a click
+ * started from the node being left, then saved those fields under the new
+ * node's action. Each node here points at a workflow-owned action calling a
+ * different function; moving between them must show, and keep, each one's own.
  *
  * Makes its own functions, workflow and actions, and removes them.
  */
@@ -43,6 +46,7 @@ try {
     ], edges: [] } },
   );
 
+
   await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${made.workflow}/editor`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.react-flow__node', { timeout: 20_000 });
   /** The parameter rows the node's panel shows, by name. */
@@ -51,7 +55,24 @@ try {
     return page.evaluate(() => [...document.querySelectorAll('[data-testid="mapping-name"], [data-mapping-name]')]
       .map((one) => one.getAttribute('data-mapping-name') ?? one.textContent.trim()));
   };
+  /** The arguments the Custom action's own Parameters Mapping shows - where the report's screenshot was. */
+  const mapped = async () => {
+    await page.waitForTimeout(600);
+    // The form fetches the workspace's functions the first time it opens.
+    await page.waitForSelector('[data-action-argument]', { timeout: 8_000 }).catch(() => undefined);
+    return page.evaluate(() => [...document.querySelectorAll('[data-action-argument]')].map((one) => one.getAttribute('data-action-argument')));
+  };
   const open = (name) => page.locator('.react-flow__node', { hasText: name }).first().click();
+
+  await open('First');
+  const ma = await mapped();
+  await open('Second');
+  const mb = await mapped();
+  await open('First');
+  const mc = await mapped();
+  record(JSON.stringify(ma) === JSON.stringify(['alpha', 'beta']) && JSON.stringify(mb) === JSON.stringify(['gamma'])
+    && JSON.stringify(mc) === JSON.stringify(['alpha', 'beta']),
+    `the Custom form maps each action's own function's arguments as the panel moves between them (${JSON.stringify({ ma, mb, mc })})`);
 
   await open('First');
   const a = await shown();
