@@ -788,6 +788,17 @@ a.refresh {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-8);
+  /*
+   * Scrolls inside itself, held in view beside the graph: a step's parameters,
+   * input and output run long, and the panel growing with them made the whole
+   * page scroll away from the graph it describes. Asked for on this page in so
+   * many words, against the general rule that a side column grows.
+   */
+  position: sticky;
+  top: var(--space-16);
+  align-self: flex-start;
+  max-height: calc(100vh - var(--space-32, 32px));
+  overflow-y: auto;
 }
 
 .panelHeader {
