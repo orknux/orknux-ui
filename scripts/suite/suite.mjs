@@ -1634,12 +1634,6 @@ export const TESTS = [
     /* Reads a real run of the workspace whose steps were handed something. */
   },
   {
-    name: 'run-panel-scroll-check',
-    what: "a run's node panel is no taller than the window and scrolls inside itself",
-    needs: ['workspace'],
-    /* Reads the step with the most to say among the workspace's recent runs. */
-  },
-  {
     name: 'installation-address-check',
     what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
     needs: [],
