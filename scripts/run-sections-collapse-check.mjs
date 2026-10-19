@@ -232,6 +232,13 @@ if (await selectNode(page, node, 'a step on the run graph')) {
     const there = (await button.count()) === 1;
     record(there, `the step's ${payload.name} has a toggle at its heading`);
     if (!there) continue;
+    // Dragged taller by its corner, and not held to a ceiling that would stop the drag.
+    const sizing = await page.locator(`#${payload.body} pre`).evaluate((pre) => {
+      const style = getComputedStyle(pre);
+      return { resize: style.resize, max: style.maxHeight };
+    }).catch(() => null);
+    record(sizing !== null && sizing.resize === 'vertical' && sizing.max === 'none',
+      `the step's ${payload.name} is dragged taller by its corner (${JSON.stringify(sizing)})`);
     const opened = await drawnHeight(payload.body, 'pre');
     await button.click();
     await page.waitForTimeout(200);

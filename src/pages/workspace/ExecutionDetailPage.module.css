@@ -851,8 +851,14 @@ a.refresh {
   color: var(--color-text-primary);
 }
 
+/*
+ * Dragged taller by its corner. It opens at most 160px tall - set by the page on
+ * a long payload, not as a max-height here, which would also be the most it
+ * could ever be dragged to.
+ */
 .payload {
-  max-height: 160px;
+  min-height: 48px;
+  resize: vertical;
   margin: 0;
   padding: var(--space-12);
   background: var(--color-bg);

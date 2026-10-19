@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Background,
@@ -1500,7 +1500,7 @@ function NodeDetailsPanel({
         </FoldToggle>
       </h3>
       <FoldBody id="run-step-input" open={inputOpen}>
-        <pre className={styles.payload}>{prettyJson(step.input)}</pre>
+        <Payload text={prettyJson(step.input)} />
       </FoldBody>
 
       <h3 className={styles.panelHeading}>
@@ -1509,7 +1509,7 @@ function NodeDetailsPanel({
         </FoldToggle>
       </h3>
       <FoldBody id="run-step-output" open={outputOpen}>
-        <pre className={styles.payload}>{prettyJson(step.output)}</pre>
+        <Payload text={prettyJson(step.output)} />
       </FoldBody>
 
       {pictures.length > 0 && (
@@ -1645,4 +1645,25 @@ function prettyJson(raw: string | null): string {
   } catch {
     return raw;
   }
+}
+
+/** How tall a step's input or output opens, before anybody drags it taller. */
+const PAYLOAD_OPENS_AT = 160;
+
+/**
+ * A step's input or output, dragged taller by its corner. A long one opens at
+ * PAYLOAD_OPENS_AT and scrolls; a short one is as tall as it is.
+ */
+function Payload({ text }: { text: string }) {
+  const ref = useRef<HTMLPreElement | null>(null);
+  useLayoutEffect(() => {
+    const block = ref.current;
+    if (block === null || block.style.height !== '') return;
+    if (block.scrollHeight > PAYLOAD_OPENS_AT) block.style.height = `${PAYLOAD_OPENS_AT}px`;
+  }, [text]);
+  return (
+    <pre ref={ref} className={styles.payload} data-step-payload="">
+      {text}
+    </pre>
+  );
 }
