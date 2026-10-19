@@ -797,7 +797,14 @@ a.refresh {
   position: sticky;
   top: var(--space-16);
   align-self: flex-start;
-  max-height: calc(100vh - var(--space-32, 32px));
+  /*
+   * Its height is set by the page to what is left of the frame below its top -
+   * the frame the content scrolls in, not the window - so its last line is
+   * always on screen; this is the ceiling before that is measured.
+   */
+  max-height: calc(100dvh - var(--top-nav-height) - var(--attribution-bar-height) - var(--space-32, 32px));
+  /* A wheel that reaches its end stops there rather than scrolling the page under it. */
+  overscroll-behavior: contain;
   overflow-y: auto;
 }
 

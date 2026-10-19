@@ -42,12 +42,26 @@ if (best !== null) {
   await selectNode(page, page.locator('.react-flow__node').filter({ hasText: best.name }).first(), best.name);
   await page.waitForTimeout(800);
   const after = await scroller();
-  const panel = await page.locator('#run-node-details').evaluate((el) => {
-    const box = el.getBoundingClientRect();
-    return { height: Math.round(box.height), scroll: el.scrollHeight, client: el.clientHeight, overflow: getComputedStyle(el).overflowY };
+  /*
+   * Against the frame the page scrolls in - between the top bar and the
+   * attribution strip - not the window: sized to the window, the rail ran past
+   * the frame's bottom and the page scrolled to reach it. At the top of the
+   * page, where the rail starts under the run's header, and scrolled, where it
+   * sticks.
+   */
+  const look = () => page.evaluate(() => {
+    const panel = document.querySelector('#run-node-details');
+    const frame = panel.closest('main').getBoundingClientRect();
+    const box = panel.getBoundingClientRect();
+    return { bottom: Math.round(box.bottom), frame: Math.round(frame.bottom), scroll: panel.scrollHeight, client: panel.clientHeight, overflow: getComputedStyle(panel).overflowY };
   });
-  record(panel.height <= 800, `the panel is no taller than the window (${panel.height}px in 800)`);
-  record(panel.scroll > panel.client && panel.overflow === 'auto', `and scrolls inside itself (${panel.scroll}px of content in ${panel.client})`);
+  const atTop = await look();
+  record(atTop.bottom <= atTop.frame, `at the top of the page its last line is on screen (ends ${atTop.bottom}, frame ${atTop.frame})`);
+  record(atTop.scroll > atTop.client && atTop.overflow === 'auto', `and it scrolls inside itself (${atTop.scroll}px of content in ${atTop.client})`);
+  await page.evaluate(() => { document.querySelector('#run-node-details').closest('main').scrollTop = 400; });
+  await page.waitForTimeout(500);
+  const scrolled = await look();
+  record(scrolled.bottom <= scrolled.frame, `scrolled, it stays within the frame too (ends ${scrolled.bottom}, frame ${scrolled.frame})`);
   record(after - before < 200, `the page does not grow with it (${before}px before, ${after}px after)`);
 }
 

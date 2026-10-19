@@ -1357,6 +1357,7 @@ function NodeDetailsPanel({
    */
   const [inputOpen, toggleInput] = useFold('run.step-input');
   const [parametersOpen, toggleParameters] = useFold('run.step-parameters');
+  const panelRef = useFittedToFrame();
   const [outputOpen, toggleOutput] = useFold('run.step-output');
 
   /** Which of this step's pictures is open over the page, or null while none is. */
@@ -1397,7 +1398,7 @@ function NodeDetailsPanel({
           : null;
 
   return (
-    <aside className={styles.panel} id="run-node-details" style={{ width }} aria-label={t('Node details')}>
+    <aside ref={panelRef} className={styles.panel} id="run-node-details" style={{ width }} aria-label={t('Node details')}>
       <div className={styles.panelHeader}>
         <h2 className={styles.panelTitle}>{t('Node Details')}</h2>
         <button type="button" className={styles.panelClose} onClick={onClose} aria-label={t('Close node details')}>
@@ -1702,4 +1703,40 @@ function Payload({ text }: { text: string }) {
       {text}
     </pre>
   );
+}
+
+/**
+ * Holds the rail's height to what is left of the scrolling frame below where
+ * its top is now, so its last line is on screen whether the page is at the top
+ * - where the rail starts under the run's header - or scrolled, where it sticks.
+ * Measured on every scroll and resize of the frame; CSS cannot say "from here
+ * to the bottom of the frame" about an element whose top moves.
+ */
+function useFittedToFrame() {
+  const ref = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const panel = ref.current;
+    const frame = panel?.closest('main');
+    if (panel == null || frame == null) return;
+    const fit = () => {
+      const bottom = frame.getBoundingClientRect().bottom;
+      const top = panel.getBoundingClientRect().top;
+      panel.style.maxHeight = `${Math.max(160, Math.floor(bottom - top - 16))}px`;
+    };
+    // After the frame has laid out: read in the scroll event itself, a stuck rail still reports where it was.
+    let pending = 0;
+    const later = () => {
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(fit);
+    };
+    fit();
+    frame.addEventListener('scroll', later, { passive: true });
+    window.addEventListener('resize', later);
+    return () => {
+      cancelAnimationFrame(pending);
+      frame.removeEventListener('scroll', later);
+      window.removeEventListener('resize', later);
+    };
+  }, []);
+  return ref;
 }
