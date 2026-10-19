@@ -473,6 +473,14 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
   const [run, setRun] = useState<ExecutionDetail | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logFilter, setLogFilter] = useState('');
+  /*
+   * Whether the log keeps its newest line in view as lines arrive. On until
+   * somebody scrolls up to read something - following then would drag the
+   * line they were reading away - and on again once they scroll back to the
+   * bottom, or press Follow.
+   */
+  const [followLogs, setFollowLogs] = useState(true);
+  const terminalRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [rerunning, setRerunning] = useState(false);
@@ -718,6 +726,13 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
     if (logFilter.trim() === '') return true;
     return line.message.toLowerCase().includes(logFilter.trim().toLowerCase());
   });
+
+  // New lines arriving while following: the newest stays in view.
+  const newestLog = visibleLogs.length === 0 ? null : visibleLogs[visibleLogs.length - 1].id;
+  useEffect(() => {
+    const box = terminalRef.current;
+    if (followLogs && box !== null) box.scrollTop = box.scrollHeight;
+  }, [newestLog, followLogs, logsOpen]);
 
   /**
    * Starts a run from this one and follows it the moment it exists. Issue #540.
@@ -1162,6 +1177,22 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                       />
                     </span>
                     )}
+                    {logsOpen && (
+                      <button
+                        type="button"
+                        className={`${styles.followLogs} ${followLogs ? styles.followLogsOn : ''}`}
+                        onClick={() => {
+                          setFollowLogs((held) => !held);
+                          const box = terminalRef.current;
+                          if (!followLogs && box !== null) box.scrollTop = box.scrollHeight;
+                        }}
+                        aria-pressed={followLogs}
+                        title={t('Keep the newest line in view as the run writes')}
+                        data-testid="run-logs-follow"
+                      >
+                        {t('Follow')}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={styles.download}
@@ -1175,7 +1206,18 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                 </div>
 
                 <FoldBody id="run-logs-section" open={logsOpen}>
-                <div className={styles.terminal} id="run-logs" style={{ height: logs.size }}>
+                <div
+                  className={styles.terminal}
+                  id="run-logs"
+                  style={{ height: logs.size }}
+                  ref={terminalRef}
+                  onScroll={(event) => {
+                    const box = event.currentTarget;
+                    // A few pixels' grace: a fractional scroll position is still the bottom.
+                    setFollowLogs(box.scrollHeight - box.scrollTop - box.clientHeight < 8);
+                  }}
+                  data-testid="run-logs"
+                >
                   {visibleLogs.length === 0 ? (
                     <p className={styles.terminalEmpty}>
                       {run?.logs.length === 0 ? t('This run produced no log.') : t('Nothing matches that filter.')}

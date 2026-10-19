@@ -1561,6 +1561,25 @@ export const TESTS = [
     needs: ['workspace'],
     /* Imports its own provider and models, and removes them. */
   },
+  {
+    name: 'function-create-unchanged-check',
+    what: 'a new function untouched cannot be created; typing into it turns Create Function on',
+    needs: ['workspace'],
+  },
+
+  {
+    name: 'executions-empty-steady-check',
+    what: 'an empty executions list keeps its line and its height through refreshes',
+    needs: ['workspace'],
+  },
+
+  {
+    name: 'execution-logs-follow-check',
+    what: 'a run's log follows new lines until scrolled up, and Follow brings it back',
+    needs: ['workspace'],
+    /* Takes any run of the workspace and answers its log itself. */
+  },
+
 
 
 

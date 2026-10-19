@@ -316,7 +316,8 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
         */}
         {loading && runs === null && <p className={styles.notice}><Loader /></p>}
         {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
-        {!loading && error === null && runs?.content.length === 0 && (
+        {/* Kept through a refresh too: hidden while each tick loaded, it made an empty table jump every second. */}
+        {error !== null ? null : runs?.content.length === 0 && (
           <p className={styles.notice}>{t('No runs match those filters.')}</p>
         )}
 
