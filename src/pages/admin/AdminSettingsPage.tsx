@@ -101,6 +101,7 @@ import { HttpToolsSection } from './HttpToolsSection';
 import { BulkheadsSection } from './BulkheadsSection';
 import { WatchersSection } from './WatchersSection';
 import { SchedulesSection } from './SchedulesSection';
+import { AddressSection } from './AddressSection';
 import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
@@ -229,6 +230,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const takeWatcherPending = useCallback((writes: PendingWrite[]) => setWatcherPending(writes), []);
   const [schedulePending, setSchedulePending] = useState<PendingWrite[]>([]);
   const takeSchedulePending = useCallback((writes: PendingWrite[]) => setSchedulePending(writes), []);
+  const [addressPending, setAddressPending] = useState<PendingWrite[]>([]);
+  const takeAddressPending = useCallback((writes: PendingWrite[]) => setAddressPending(writes), []);
   // Admin -> Settings -> Bulkheads, its numbers sent with the page's Save. Issue #616.
   const [bulkheadPending, setBulkheadPending] = useState<PendingWrite[]>([]);
   const takeBulkheadPending = useCallback((writes: PendingWrite[]) => setBulkheadPending(writes), []);
@@ -519,6 +522,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     httpPending.length > 0 ||
     watcherPending.length > 0 ||
     schedulePending.length > 0 ||
+    addressPending.length > 0 ||
     bulkheadPending.length > 0;
 
   /**
@@ -548,6 +552,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
       for (const write of httpPending) await write();
       for (const write of watcherPending) await write();
       for (const write of schedulePending) await write();
+      for (const write of addressPending) await write();
       for (const write of bulkheadPending) await write();
       setSettings(held);
       setMarker(held.commandMarker);
@@ -638,6 +643,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
 
         {settings !== null && (
           <>
+            <AddressSection onPending={takeAddressPending} busy={busy} />
+
             <h2 id="chat" className={styles.sectionHeading}>
               <span className={styles.headingWithHint}>
                 {t('Chat')}

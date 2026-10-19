@@ -1599,6 +1599,12 @@ export const TESTS = [
     /* Makes its own trigger, function, action and workflow, and removes them. */
   },
   {
+    name: 'installation-address-check',
+    what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
+    needs: [],
+    /* Answers the address itself, so the installation's own is left alone. */
+  },
+  {
     name: 'schedules-page-check',
     what: 'AI -> Schedules lists each schedule with how often and when next it runs, stops one, and Admin Settings holds its bounds',
     needs: ['workspace'],

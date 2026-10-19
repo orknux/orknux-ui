@@ -2977,4 +2977,7 @@ export const PL: Record<string, string> = {
   "This command printed nothing.": "To polecenie nic nie wypisało.",
   "Output height": "Wysokość wyjścia",
   "Drag to make the output taller or shorter": "Przeciągnij, aby zmienić wysokość wyjścia",
+  "Where this installation is reached from": "Adres, pod którym działa ta instalacja",
+  "Every link the server writes into something that leaves it is built on this: password reset mails, issue notifications, and the links agents paste into Slack. Leave it empty for the address in ORKNUX_BASE_URL, shown greyed out.": "Na nim opiera się każdy link, który serwer wysyła na zewnątrz: maile z resetem hasła, powiadomienia o zgłoszeniach i linki, które agenci wklejają do Slacka. Zostaw puste, aby użyć adresu z ORKNUX_BASE_URL, pokazanego na szaro.",
+  "Could not read the address.": "Nie udało się odczytać adresu.",
 };

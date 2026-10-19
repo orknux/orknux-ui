@@ -27,6 +27,8 @@ import { currentLanguage } from '../session/language';
  * protecting: a refusal is never a bare code on a screen.
  */
 const PL: Record<string, string> = {
+  InstallationAddressInvalid:
+    '{url} nie jest adresem, pod którym można dotrzeć do tej instalacji. Podaj adres zaczynający się od https:// lub http://, na przykład https://orknux.example.com.',
   // --- a name that is required, and one that is taken --------------------
   ActionNameInvalid: 'Nazwa akcji jest wymagana',
   AgentNameInvalid: 'Nazwa agenta jest wymagana',
