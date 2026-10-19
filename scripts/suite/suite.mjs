@@ -1598,6 +1598,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own trigger, function, action and workflow, and removes them. */
   },
+  {
+    name: 'schedules-page-check',
+    what: 'AI -> Schedules lists each schedule with how often and when next it runs, stops one, and Admin Settings holds its bounds',
+    needs: ['workspace'],
+    /* Answers the list itself; schedules are set by agents, not on the page. */
+  },
+
 
 
 

@@ -298,6 +298,17 @@ export const PAGES = [
       also: 'watcher poll wait until condition jsonpath regex stop',
     },
   },
+  {
+    // What the agents come back to on a schedule: a reminder that repeats, by interval or cron.
+    path: '/workspace/:workspaceId/schedules',
+    access: 'signed-in',
+    goTo: {
+      label: t('Schedules'),
+      where: 'AI',
+      icon: radarIcon,
+      also: 'schedule periodic repeat every cron timer recurring reminder stop',
+    },
+  },
 
   // ---- Workflow: the work itself, and what it is made of ----
   {
@@ -623,6 +634,7 @@ export const PAGES = [
       { label: t('Tool list'), at: '#tool-list', also: 'tool_find summaries named' },
       { label: t('HTTP tools'), at: '#http-tools', also: 'http_get http_request allow list url regex' },
       { label: t('Watchers'), at: '#watchers', also: 'watcher interval timeout per agent limit' },
+      { label: t('Schedules'), at: '#schedules', also: 'schedule periodic cron interval per agent limit' },
       { label: t('Sessions'), at: '#sessions', also: 'compaction summary transcript stored value' },
       { label: t('Scratchpads'), at: '#scratchpads', also: 'budget files keep days' },
       { label: t('Boxes'), at: '#boxes', also: 'local box orkbox sandbox runtime docker sessions ttl idle command wait timeout output' },

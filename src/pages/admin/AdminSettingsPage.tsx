@@ -100,6 +100,7 @@ import styles from './AdminSettingsPage.module.css';
 import { HttpToolsSection } from './HttpToolsSection';
 import { BulkheadsSection } from './BulkheadsSection';
 import { WatchersSection } from './WatchersSection';
+import { SchedulesSection } from './SchedulesSection';
 import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
@@ -226,6 +227,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   // Admin -> Settings -> Watchers, its three numbers sent with the page's Save. Issue #606.
   const [watcherPending, setWatcherPending] = useState<PendingWrite[]>([]);
   const takeWatcherPending = useCallback((writes: PendingWrite[]) => setWatcherPending(writes), []);
+  const [schedulePending, setSchedulePending] = useState<PendingWrite[]>([]);
+  const takeSchedulePending = useCallback((writes: PendingWrite[]) => setSchedulePending(writes), []);
   // Admin -> Settings -> Bulkheads, its numbers sent with the page's Save. Issue #616.
   const [bulkheadPending, setBulkheadPending] = useState<PendingWrite[]>([]);
   const takeBulkheadPending = useCallback((writes: PendingWrite[]) => setBulkheadPending(writes), []);
@@ -515,6 +518,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     logPending.length > 0 ||
     httpPending.length > 0 ||
     watcherPending.length > 0 ||
+    schedulePending.length > 0 ||
     bulkheadPending.length > 0;
 
   /**
@@ -543,6 +547,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
       for (const write of logPending) await write();
       for (const write of httpPending) await write();
       for (const write of watcherPending) await write();
+      for (const write of schedulePending) await write();
       for (const write of bulkheadPending) await write();
       setSettings(held);
       setMarker(held.commandMarker);
@@ -1412,6 +1417,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
             <HttpToolsSection onPending={takeHttpPending} />
 
             <WatchersSection onPending={takeWatcherPending} busy={busy} />
+            <SchedulesSection onPending={takeSchedulePending} busy={busy} />
 
             <BulkheadsSection onPending={takeBulkheadPending} busy={busy} />
 

@@ -61,6 +61,7 @@ import { WorkspaceObjectsPage } from './pages/workspace/WorkspaceObjectsPage';
 import { WorkspaceSettingsPage } from './pages/workspace/WorkspaceSettingsPage';
 import { WorkspaceSessionsPage } from './pages/workspace/WorkspaceSessionsPage';
 import { WorkspaceWatchersPage } from './pages/workspace/WorkspaceWatchersPage';
+import { WorkspaceSchedulesPage } from './pages/workspace/WorkspaceSchedulesPage';
 import { WorkspaceTasksPage } from './pages/workspace/WorkspaceTasksPage';
 import { TaskPage } from './pages/workspace/TaskPage';
 import { WorkspaceSkillsPage } from './pages/workspace/WorkspaceSkillsPage';
@@ -120,6 +121,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/tools': (session, onSignOut) => <WorkspaceToolsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/sessions': (session, onSignOut) => <WorkspaceSessionsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/watchers': (session, onSignOut) => <WorkspaceWatchersPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/schedules': (session, onSignOut) => <WorkspaceSchedulesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/tasks': (session, onSignOut) => <WorkspaceTasksPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/models': (session, onSignOut) => <WorkspaceModelsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/integrations': (session, onSignOut) => <WorkspaceIntegrationsPage session={session} onSignOut={onSignOut} />,
