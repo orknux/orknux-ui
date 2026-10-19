@@ -5,6 +5,7 @@ import { fetchDesignHarmonizeOptions } from '../../api/artifacts';
 import type { HarmonizeOptions } from '../../api/artifacts';
 import type { Model } from '../../api/models';
 import styles from '../../components/Dialog.module.css';
+import { FieldHint } from '../../components/FieldHint';
 import { t } from '../../i18n';
 
 export interface DesignHarmonizeDialogProps {
@@ -98,7 +99,12 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
     <dialog ref={dialogRef} className={styles.dialog} onCancel={onClose} onClose={onClose} data-testid="harmonize-dialog">
       <form className={styles.body} onSubmit={submit}>
         <header className={styles.header}>
-          <h2 className={styles.title}>{t('Harmonize')}</h2>
+          <h2 className={`${styles.title} ${styles.labelWithHint}`}>
+            {t('Harmonize')}
+            <FieldHint label={t('Harmonize')}>
+              {t('Redraws the whole picture lightly, so the patches Magic edits left blend into one picture. Use it after a few edits, when their edges show.')}
+            </FieldHint>
+          </h2>
         </header>
         {models.length === 0 ? (
           <p className={styles.dialogMessage} data-testid="harmonize-none">
@@ -157,7 +163,12 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
               />
             </div>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="harmonize-strength">{t('Strength')}</label>
+              <span className={styles.labelWithHint}>
+                <label className={styles.label} htmlFor="harmonize-strength">{t('Strength')}</label>
+                <FieldHint label={t('Strength')}>
+                  {t('How much the picture may change: low keeps it as it is and only smooths the seams, high redraws more of it. Start low.')}
+                </FieldHint>
+              </span>
               <input
                 id="harmonize-strength"
                 className={styles.input}

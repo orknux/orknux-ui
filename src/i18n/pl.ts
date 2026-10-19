@@ -2994,4 +2994,6 @@ export const PL: Record<string, string> = {
   "entries": "wpisów",
   "Open page": "Otwórz stronę",
   "This run used the version published {when}, while the workflow had unpublished changes.": "To uruchomienie użyło wersji opublikowanej {when}, gdy przepływ miał nieopublikowane zmiany.",
+  "Redraws the whole picture lightly, so the patches Magic edits left blend into one picture. Use it after a few edits, when their edges show.": "Przerysowuje cały obraz delikatnie, aby łaty pozostawione przez edycje Magic zlały się w jeden obraz. Użyj po kilku edycjach, gdy widać ich krawędzie.",
+  "How much the picture may change: low keeps it as it is and only smooths the seams, high redraws more of it. Start low.": "Jak bardzo obraz może się zmienić: niska wartość zostawia go takim, jaki jest, i tylko wygładza szwy, wysoka przerysowuje go bardziej. Zacznij od niskiej.",
 };
