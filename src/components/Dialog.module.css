@@ -430,6 +430,20 @@
 }
 
 /*
+ * A text box standing on its own in a field rather than inside a wrapper row:
+ * out of the flex sizing `.input` brings, which set its height from a basis of
+ * nothing - it drew one cropped line whatever its rows said, and a drag could
+ * not make it taller.
+ */
+.textareaAlone {
+  flex: none;
+  width: 100%;
+  min-height: 72px;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+/*
  * The line under a field that stays printed.
  *
  * What a field is *for* went behind the (?) beside its label; what is left here

@@ -149,7 +149,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
               <label className={styles.label} htmlFor="harmonize-prompt">{t('Prompt')}</label>
               <textarea
                 id="harmonize-prompt"
-                className={`${styles.input} ${styles.textarea}`}
+                className={`${styles.input} ${styles.textarea} ${styles.textareaAlone}`}
                 rows={3}
                 value={described}
                 onChange={(event) => setDescribed(event.target.value)}

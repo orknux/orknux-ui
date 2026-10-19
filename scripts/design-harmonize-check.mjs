@@ -143,6 +143,19 @@ const startsAt = await page.getByTestId('harmonize-model').inputValue().catch(()
 record(JSON.stringify(offered) === JSON.stringify(['9191', '9292', '9393']) && startsAt === '9292',
   `the window offers the image models and the WebUI, starting at the editor's model (${JSON.stringify({ offered, startsAt })})`);
 const prompt = await page.getByTestId('harmonize-prompt').inputValue().catch(() => null);
+// Tall enough for its three lines, and dragged taller: in the dialog's flex sizing it drew one cropped line and would not grow.
+const promptBox = page.getByTestId('harmonize-prompt');
+const tallBefore = await promptBox.evaluate((el) => Math.round(el.getBoundingClientRect().height)).catch(() => 0);
+const box = await promptBox.boundingBox().catch(() => null);
+if (box !== null) {
+  await page.mouse.move(box.x + box.width - 3, box.y + box.height - 3);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 3, box.y + box.height + 80, { steps: 6 });
+  await page.mouse.up();
+}
+const tallAfter = await promptBox.evaluate((el) => Math.round(el.getBoundingClientRect().height)).catch(() => 0);
+record(tallBefore >= 60, `the prompt box shows its three lines (${tallBefore}px)`);
+record(tallAfter > tallBefore + 40, `and is dragged taller by its corner (${tallBefore}px -> ${tallAfter}px)`);
 record(prompt === PICTURE.prompt, `the prompt starts as the picture's own (${JSON.stringify(prompt)})`);
 // An image model's edit takes no strength: the field is off, and one line says why.
 const strengthOff = await page.getByTestId('harmonize-strength').isDisabled().catch(() => false);
