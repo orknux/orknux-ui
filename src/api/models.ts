@@ -199,6 +199,8 @@ export interface ModelUsage {
   requests: number;
   inputTokens: number;
   outputTokens: number;
+  /** Of inputTokens, how many the provider served from its prompt cache. */
+  cachedInputTokens: number;
   totalTokens: number;
   averageLatencyMillis: number;
   costEstimate: number | null;
@@ -222,7 +224,7 @@ const MODEL_FIELDS =
   'inputCostPerMillion outputCostPerMillion voice skipEmptyLines ' +
   'imageCostPerImage';
 const USAGE_FIELDS =
-  'modelId days from to empty requests inputTokens outputTokens totalTokens averageLatencyMillis ' +
+  'modelId days from to empty requests inputTokens outputTokens cachedInputTokens totalTokens averageLatencyMillis ' +
   'costEstimate requestsChange tokensChange latencyChange periodStart periodTokens ' +
   'series { day requests tokens }';
 

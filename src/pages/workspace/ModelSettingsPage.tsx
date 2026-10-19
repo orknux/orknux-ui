@@ -297,6 +297,15 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
                   </p>
                   <div className={styles.breakdownGrid}>
                     <Figure label={t('Input Tokens')} value={formatTokens(usage.inputTokens)} />
+                    {/* Of the input, what the provider served from its prompt cache - with the share, which is the number worth watching. */}
+                    <Figure
+                      label={t('Cached Tokens')}
+                      value={
+                        usage.inputTokens === 0
+                          ? formatTokens(usage.cachedInputTokens)
+                          : `${formatTokens(usage.cachedInputTokens)} (${Math.round((usage.cachedInputTokens / usage.inputTokens) * 100)}%)`
+                      }
+                    />
                     <Figure label={t('Output Tokens')} value={formatTokens(usage.outputTokens)} />
                     <Figure label={t('Total Tokens')} value={formatTokens(usage.totalTokens)} />
                     <Figure

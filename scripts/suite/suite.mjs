@@ -1604,6 +1604,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Answers the list itself; schedules are set by agents, not on the page. */
   },
+  {
+    name: 'model-cached-tokens-check',
+    what: 'a model page shows the input its provider served from cache, and the share',
+    needs: ['workspace'],
+    /* Takes any chat model and answers its usage itself. */
+  },
+
 
 
 

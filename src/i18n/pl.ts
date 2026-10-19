@@ -37,6 +37,7 @@ export const PL: Record<string, string> = {
   "Primary": "Główna",
   "AI": "AI",
   "Flow": "Przepływ",
+  "Cached Tokens": "Tokeny z pamięci podręcznej",
   "Schedules": "Harmonogramy",
   "What the agents come back to on a schedule, and when next": "Do czego agenci wracają według harmonogramu i kiedy następnym razem",
   "Show schedules": "Pokaż harmonogramy",
