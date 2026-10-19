@@ -126,6 +126,11 @@ record(
 const shown = await openDefinition();
 record(shown.opened && shown.title === 'Agent Settings', `the agent opens in the panel (${shown.title || 'no panel'})`);
 const agentPage = await page.locator('dialog[open] [data-open-full-page]').getAttribute('href').catch(() => null);
+const gap = await page.locator('dialog[open] [data-open-full-page]').evaluate((link) => {
+  const close = link.nextElementSibling;
+  return close === null ? null : Math.round(close.getBoundingClientRect().left - link.getBoundingClientRect().right);
+}).catch(() => null);
+record(gap !== null && gap >= 12, `Open page stands clear of the panel's close (${gap}px apart)`);
 record(agentPage !== null && /\/agents\/\d+\/settings$/.test(agentPage), `the panel links to the agent's own page (${agentPage})`);
 record(
   shown.url.endsWith(`/workflows/${WORKFLOW}/editor`),

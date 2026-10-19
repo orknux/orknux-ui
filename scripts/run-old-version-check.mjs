@@ -1,6 +1,7 @@
 /**
- * A run of a version of its workflow since replaced says so, loudly, above the
- * graph - and a run of the version on screen says nothing.
+ * A run that started while the draft was ahead of what it ran says so, loudly,
+ * above the graph - and a run of what was newest then says nothing, however
+ * the workflow changed afterwards.
  *
  * The run page draws the graph the run kept, which reads as the workflow the
  * editor shows; a run of an older publication looked exactly like one of the
@@ -37,9 +38,9 @@ async function look(given) {
 
 const base = { draft: false, publicationId: '3', publishedAt: '2026-10-12T14:02:00+02:00', publishedBy: 'alice', newestPublishedAt: null };
 
-await look({ ...base, current: false, editedSince: false, newestPublishedAt: '2026-10-18T09:00:00+02:00' });
+await look({ ...base, current: false, editedSince: true });
 const replaced = await banner.innerText().catch(() => '');
-record(/published again since/.test(replaced), `a run of a replaced publication says so (${JSON.stringify(replaced)})`);
+record(/unpublished changes/.test(replaced), `a run started behind the draft says so (${JSON.stringify(replaced)})`);
 const box = await banner.boundingBox().catch(() => null);
 record(box !== null && box.height > 20 && box.y < 300, `and says it above the graph, where it is seen first (${JSON.stringify(box)})`);
 const text = await banner.evaluate((el) => {
@@ -49,11 +50,8 @@ const text = await banner.evaluate((el) => {
 }).catch(() => 0);
 record(box !== null && box.width < text + 80, `and is as wide as what it says, not the whole page (${Math.round(box?.width ?? 0)}px for ${Math.round(text)}px of text)`);
 
-await look({ ...base, current: true, editedSince: true });
-record(/unpublished changes/.test(await banner.innerText().catch(() => '')), 'a run of the published version with a draft edited since says so');
-
 await look({ ...base, current: true, editedSince: false });
-record((await banner.count()) === 0, 'a run of the version on screen says nothing');
+record((await banner.count()) === 0, 'a run of what was newest when it started says nothing');
 
 await look({ draft: true, publicationId: null, publishedAt: null, publishedBy: null, current: true, editedSince: false, newestPublishedAt: null });
 record((await banner.count()) === 0, 'nor does a run of the draft');

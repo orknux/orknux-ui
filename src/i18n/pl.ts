@@ -2980,10 +2980,9 @@ export const PL: Record<string, string> = {
   "Could not read the address.": "Nie udało się odczytać adresu.",
   "Fields to write in": "Pola do wstawienia",
   "Older version": "Starsza wersja",
-  "This run used the version published {when}; the workflow has been published again since.": "To uruchomienie użyło wersji opublikowanej {when}; przepływ został od tego czasu opublikowany ponownie.",
-  "This run used the published version; the workflow has unpublished changes since.": "To uruchomienie użyło opublikowanej wersji; przepływ ma od tego czasu nieopublikowane zmiany.",
   "The picture asked of is {width}×{height}.": "Obraz, o który poproszono, ma {width}×{height}.",
   "Start a new picture": "Zacznij nowy obraz",
   "entries": "wpisów",
   "Open page": "Otwórz stronę",
+  "This run used the version published {when}, while the workflow had unpublished changes.": "To uruchomienie użyło wersji opublikowanej {when}, gdy przepływ miał nieopublikowane zmiany.",
 };

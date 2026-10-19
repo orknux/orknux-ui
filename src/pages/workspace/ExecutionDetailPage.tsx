@@ -51,7 +51,7 @@ import { nodeIconOf } from '../../components/nodeIcons';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './ExecutionDetailPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import { zoned } from '../../session/timeZone';
 
 export interface ExecutionDetailPageProps {
@@ -949,19 +949,17 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
             </div>
             {/*
               The graph below is the one the run kept, and it reads as the
-              workflow the editor shows. When it is not - a publication replaced
-              since, or one the draft has moved on from - that is said before
-              anything else, or a node is debugged against wording it never had.
+              workflow the editor shows. A run that started while the draft was
+              ahead of what it ran says so before anything else, or a node is
+              debugged against wording it never had. Decided when it started: a
+              run of what was newest then is not made old by later edits.
             */}
-            {run?.version != null && !run.version.draft && (!run.version.current || run.version.editedSince) && (
+            {run?.version != null && !run.version.draft && run.version.editedSince && (
               <p className={styles.oldVersion} role="note" data-old-version="">
                 <strong>{t('Older version')}</strong>{' '}
-                {!run.version.current
-                  ? t('This run used the version published {when}; the workflow has been published again since.').replace(
-                      '{when}',
-                      run.version.publishedAt === null ? '?' : new Date(run.version.publishedAt).toLocaleString(),
-                    )
-                  : t('This run used the published version; the workflow has unpublished changes since.')}
+                {tf('This run used the version published {when}, while the workflow had unpublished changes.', {
+                  when: run.version.publishedAt === null ? '?' : new Date(run.version.publishedAt).toLocaleString(),
+                })}
               </p>
             )}
         </header>

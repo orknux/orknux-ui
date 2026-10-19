@@ -3,6 +3,8 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
+  /* Clear of the panel's close, which sits right after it. */
+  margin-right: var(--space-16, 16px);
   font-size: var(--text-sm);
   color: var(--color-accent);
   text-decoration: none;
