@@ -1579,6 +1579,20 @@ export const TESTS = [
     needs: ['workspace'],
     /* Takes any run of the workspace and answers its log itself. */
   },
+  {
+    name: 'trigger-whole-object-check',
+    what: 'a trigger held to a predefined object can be referenced whole, as the trigger event',
+    needs: ['workspace'],
+    /* Makes its own shape, trigger, function, action and workflow, and removes them. */
+  },
+
+  {
+    name: 'custom-action-switch-check',
+    what: 'two Custom actions keep their own parameters when the panel moves between them',
+    needs: ['workspace'],
+    /* Makes its own functions, workflow and actions, and removes them. */
+  },
+
 
 
 

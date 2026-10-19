@@ -2415,16 +2415,28 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       .flatMap((node): FieldOption[] => {
         const data = node.data as NodeData;
         const produced = ports[node.id]?.outputs ?? data.outputs ?? [];
-        return produced.map((port) => ({
+        const groupName = data.name === '' ? node.id : data.name;
+        /*
+         * A trigger held to a predefined object hands on that object whole as
+         * well as field by field: `trigger` alone is the event, which a run
+         * already reads. Offered first and its fields nested under it, as any
+         * object's are, so a parameter taking the object can be pointed at it.
+         */
+        const held = data.kind === 'TRIGGER' ? triggers.find((one) => one.id === data.triggerId) : undefined;
+        const contract = held?.objectId ?? null;
+        const whole: FieldOption[] = contract === null
+          ? []
+          : [{ groupKey: node.id, groupName, field: 'trigger', expression: 'trigger', type: held?.objectName ?? 'OBJECT' }];
+        return whole.concat(produced.map((port) => ({
           groupKey: node.id,
-          groupName: data.name === '' ? node.id : data.name,
-          field: port.name,
+          groupName,
+          field: contract === null ? port.name : `trigger.${port.name}`,
           expression: data.kind === 'TRIGGER' ? `trigger.${port.name}` : port.name,
           type: port.type,
-        }));
+        })));
       })
       .concat(variableOptions);
-  }, [nodes, ports, selectedKey, variableOptions]);
+  }, [nodes, ports, selectedKey, variableOptions, triggers]);
 
   /**
    * The session nodes leading into whichever node is selected.
@@ -6736,7 +6748,7 @@ Change the keystroke in Preferences.`}
                             it deleted the selected node.
                           */}
                           {draft.mappings.map((mapping, index) => (
-                            <div className={styles.parameter} key={index}>
+                            <div className={styles.parameter} key={index} data-mapping-name={mapping.name}>
                               <span className={styles.parameterHead}>
                                 {draft.kind === 'OBJECT' && draft.objectId === null ? (
                                   <input
