@@ -534,7 +534,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setImage(found?.imageModelId ?? '');
         setQuickChat(found?.quickChatModelId ?? '');
         setQuickChatWrites(found?.quickChatMayWrite ?? false);
-        setChatTimestamps(found?.chatShowTimestamps ?? false);
+        setChatTimestamps(found?.chatShowTimestamps ?? true);
         setVoiceHidden(found?.voiceButtonHidden ?? false);
         setTimerSound(found?.widgetTimerSound ?? true);
         setSessionCost(found?.sessionCostShown ?? true);

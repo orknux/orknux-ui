@@ -1286,7 +1286,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setReads(held?.speechModelId != null);
         setVoiceHidden(held?.voiceButtonHidden ?? false);
         setVoiceKnown(true);
-        setShowTimestamps(held?.chatShowTimestamps ?? false);
+        setShowTimestamps(held?.chatShowTimestamps ?? true);
         setTimerSound(held?.widgetTimerSound ?? true);
         setWorkspaceMarker(held === null ? null : (held.commandMarker ?? held.commandMarkerDefault));
         setChunking(held?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
