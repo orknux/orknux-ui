@@ -926,9 +926,14 @@ export const TESTS = [
     alone: true,
   },
   {
-    name: 'field-expand-check',
-    what: "a node panel's text fields open out into a big box that edits the same draft",
+    name: 'node-text-fields-check',
+    what: "a node's written values are dragged taller, offer and light their {{placeholders}}, draw the dependency they read, and the run's lines move while dependencies stay still",
     needs: ['workspace'],
+    /*
+     * In place of field-expand-check: the Expand box it watched is gone, and
+     * the field is now resized where it is. Makes its own trigger, function,
+     * action and workflow, and removes them.
+     */
   },
   {
     name: 'object-default-name-check',
@@ -1603,6 +1608,12 @@ export const TESTS = [
     what: 'every tool call in a chat says when it was made, to the second',
     needs: ['workspace'],
     /* Makes one chat of its own, answers its messages, and deletes it. */
+  },
+  {
+    name: 'run-old-version-check',
+    what: 'a run of a workflow version replaced or edited since says so above its graph; one of the version on screen says nothing',
+    needs: ['workspace'],
+    /* Answers the version over a real run of the workspace. */
   },
   {
     name: 'installation-address-check',

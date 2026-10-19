@@ -947,6 +947,23 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                 >{t('Open in Temporal')}</a>
               )}
             </div>
+            {/*
+              The graph below is the one the run kept, and it reads as the
+              workflow the editor shows. When it is not - a publication replaced
+              since, or one the draft has moved on from - that is said before
+              anything else, or a node is debugged against wording it never had.
+            */}
+            {run?.version != null && !run.version.draft && (!run.version.current || run.version.editedSince) && (
+              <p className={styles.oldVersion} role="note" data-old-version="">
+                <strong>{t('Older version')}</strong>{' '}
+                {!run.version.current
+                  ? t('This run used the version published {when}; the workflow has been published again since.').replace(
+                      '{when}',
+                      run.version.publishedAt === null ? '?' : new Date(run.version.publishedAt).toLocaleString(),
+                    )
+                  : t('This run used the published version; the workflow has unpublished changes since.')}
+              </p>
+            )}
         </header>
       </div>
 

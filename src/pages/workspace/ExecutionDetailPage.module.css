@@ -341,6 +341,25 @@ a.refresh {
   color: var(--color-text-primary);
 }
 
+/* Loud on purpose: a run of a version since replaced looks exactly like a run of the one on screen. */
+.oldVersion {
+  margin: var(--space-8) 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--color-warning, #d99a2b);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-warning, #d99a2b) 14%, transparent);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.oldVersion strong {
+  color: var(--color-warning, #d99a2b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--text-sm);
+}
+
 .notice {
   margin: 0;
   font-size: var(--text-md);

@@ -131,6 +131,8 @@ export interface ExecutionDetail extends Execution {
    * one - all of it, or from one of its steps. Null for a run nobody re-ran.
    */
   startedFrom: string | null;
+  /** Which version of the workflow it ran, against the workflow now; null on runs from before that was kept. */
+  version?: RanVersion | null;
   steps: ExecutionStep[];
   /**
    * The graph the run went through. The branch is on it because a line the run
@@ -335,6 +337,7 @@ export function formatRelative(iso: string): string {
 const EXECUTION_DETAIL_FIELDS = `
   id workspaceId workflowId workflowName status trigger source { connectionType action } startedAt finishedAt durationSeconds error workflowAssigned
   stoppedAtNodeKey stoppedReason startedFrom
+  version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
   steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption attempts carriedOver x y }
   edges { source target branch }
   logs { id nodeKey at level message }
@@ -426,4 +429,19 @@ export async function startExecution(
     { workspaceId, workflowId, input: input ?? null },
   );
   return data.startExecution;
+}
+
+/** Which copy of its workflow a run ran. */
+export interface RanVersion {
+  /** It ran the draft - a run somebody started by hand. */
+  draft: boolean;
+  publicationId: string | null;
+  publishedAt: string | null;
+  publishedBy: string | null;
+  /** False when the publication it ran has been replaced since. */
+  current: boolean;
+  /** True when it ran the newest publication and the draft has changed since. */
+  editedSince: boolean;
+  /** When the publication that replaced it was made. */
+  newestPublishedAt: string | null;
 }
