@@ -1616,6 +1616,12 @@ export const TESTS = [
     /* Answers the version over a real run of the workspace. */
   },
   {
+    name: 'design-edit-failed-check',
+    what: 'a picture change that fails keeps the picture in view, says why, and says its size',
+    needs: ['workspace'],
+    /* Answers the picture, the models and the failed edit itself. */
+  },
+  {
     name: 'installation-address-check',
     what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
     needs: [],

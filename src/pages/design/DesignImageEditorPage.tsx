@@ -1163,12 +1163,29 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             </div>
           )}
           <div className={`${styles.stage} ${zoom === null ? '' : styles.stageZoomed}`}>
-            {job !== null && job.status !== 'DRAWN' ? (
-              job.status === 'FAILED' ? (
-                <p className={styles.failed} role="alert" data-testid="editor-failed">
-                  {tf('Not drawn: {reason}', { reason: job.reason ?? t('the model gave no reason') })}
-                </p>
-              ) : changingOver[job.id] !== undefined ? (
+            {/*
+              A change that failed leaves the picture it was asked of, so the
+              picture stays and the failure is said over it - hiding it read as
+              the picture being lost. The size is said too: a model on a local
+              server that runs out of memory answers with nothing more than
+              "no results", and the size is the one clue that it was too big.
+            */}
+            {job !== null && job.status === 'FAILED' && (
+              <p className={`${styles.failed} ${changingOver[job.id] === undefined ? '' : styles.failedOver}`} role="alert" data-testid="editor-failed">
+                {tf('Not drawn: {reason}', { reason: job.reason ?? t('the model gave no reason') })}
+                {changingOver[job.id] !== undefined && (
+                  <>
+                    {' '}
+                    {tf('The picture is {width}×{height}; a model short of memory fails like this, so a smaller one may go through.', {
+                      width: changingOver[job.id].width,
+                      height: changingOver[job.id].height,
+                    })}
+                  </>
+                )}
+              </p>
+            )}
+            {job !== null && job.status !== 'DRAWN' && job.status !== 'FAILED' ? (
+              changingOver[job.id] !== undefined ? (
                 (() => {
                   const over = changingOver[job.id];
                   const points = over.points;
@@ -1223,6 +1240,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   />
                 </div>
               )
+            ) : picture === null && job?.status === 'FAILED' && changingOver[job.id] !== undefined ? (
+              <div className={styles.pictureFrame}>
+                <img
+                  src={changingOver[job.id].url}
+                  alt=""
+                  className={zoom === null ? styles.picture : styles.pictureZoomed}
+                  style={
+                    zoom === null
+                      ? undefined
+                      : { width: `${changingOver[job.id].width * zoom}px`, height: `${changingOver[job.id].height * zoom}px` }
+                  }
+                  data-testid="editor-failed-picture"
+                />
+              </div>
             ) : picture === null ? (
               <p className={styles.empty}>{t('Describe a picture on the right and generate it.')}</p>
             ) : (
