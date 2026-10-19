@@ -1114,6 +1114,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             <img src={redoIcon} alt="" width={16} height={16} />
           </button>
           <span className={styles.toolbarGap} aria-hidden="true" />
+          {/* A blank canvas, without going back to the gallery for it; unsaved changes here are asked about on the way out. */}
+          <Link
+            className={form.ghost}
+            style={{ textDecoration: 'none' }}
+            to={`/workspace/${workspaceId}/design/images/new`}
+            title={t('Start a new picture')}
+            data-testid="editor-new"
+          >
+            {t('New')}
+          </Link>
           <button type="button" className={form.ghost} onClick={discard} disabled={!canDiscard || busy} data-testid="editor-discard">
             {t('Discard')}
           </button>
@@ -1130,16 +1140,6 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <button type="button" className={form.filled} onClick={save} disabled={!canSave || busy} data-testid="editor-save">
             {t('Save')}
           </button>
-          {/* A blank canvas, without going back to the gallery for it; unsaved changes here are asked about on the way out. */}
-          <Link
-            className={form.ghost}
-            style={{ textDecoration: 'none' }}
-            to={`/workspace/${workspaceId}/design/images/new`}
-            title={t('Start a new picture')}
-            data-testid="editor-new"
-          >
-            {t('New')}
-          </Link>
         </div>
       </div>
 

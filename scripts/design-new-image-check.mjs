@@ -1,5 +1,5 @@
 /**
- * The image editor offers a new picture beside Save: a blank canvas, without
+ * The image editor offers a new picture, left of Discard: a blank canvas, without
  * going back to the gallery for it. The picture and models are answered here.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
@@ -90,14 +90,14 @@ await page.waitForTimeout(800);
 
 const before = await page.getByTestId('editor-picture').count();
 const offered = page.getByTestId('editor-new');
-const saveBox = await page.getByTestId('editor-save').boundingBox().catch(() => null);
+const discardBox = await page.getByTestId('editor-discard').boundingBox().catch(() => null);
 const newBox = await offered.boundingBox().catch(() => null);
 const label = (await offered.innerText().catch(() => '')).trim();
 const underline = await offered.evaluate((el) => getComputedStyle(el).textDecorationLine).catch(() => '');
 record(before === 1 && newBox !== null && label === 'New', `the editor offers a new picture, called New (${JSON.stringify({ newBox, label })})`);
 record(underline === 'none', `drawn as a button, not an underlined link (${underline})`);
-record(saveBox !== null && newBox !== null && Math.abs(newBox.y - saveBox.y) < 4 && Math.abs(newBox.x - (saveBox.x + saveBox.width)) < 24,
-  `next to Save (${JSON.stringify({ saveBox, newBox })})`);
+record(discardBox !== null && newBox !== null && Math.abs(newBox.y - discardBox.y) < 4 && Math.abs(discardBox.x - (newBox.x + newBox.width)) < 24,
+  `left of Discard (${JSON.stringify({ discardBox, newBox })})`);
 await offered.click();
 await page.waitForTimeout(1500);
 record(page.url().endsWith('/design/images/new'), `and opens a blank canvas (${page.url()})`);
