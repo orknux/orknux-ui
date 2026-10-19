@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { FIRING_OUTCOME_LABEL, fetchTriggerFirings } from '../api/triggers';
+import { CompactPagination } from './CompactPagination';
 import type { TriggerFiring } from '../api/triggers';
 import { FieldHint } from './FieldHint';
 import { t } from '../i18n';
@@ -31,6 +32,8 @@ export interface TriggerFiringsProps {
   styles: TriggerFiringsStyles;
   /** How many entries to read. Twenty is a screenful and the list page's answer. */
   limit?: number;
+  /** Pages through the whole log under it, [limit] at a time; without it, the newest [limit] alone. */
+  paged?: boolean;
 }
 
 /**
@@ -61,9 +64,12 @@ export function firedAt(at: string): string {
  * Read when it is drawn rather than with whatever list holds it: twenty rows in
  * a table would otherwise be twenty queries for something nobody asked to see.
  */
-export function TriggerFirings({ triggerId, styles, limit = 20 }: TriggerFiringsProps) {
+export function TriggerFirings({ triggerId, styles, limit = 20, paged = false }: TriggerFiringsProps) {
   const [firings, setFirings] = useState<TriggerFiring[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(limit);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (triggerId === null) return;
@@ -75,9 +81,11 @@ export function TriggerFirings({ triggerId, styles, limit = 20 }: TriggerFirings
     let current = true;
     setFirings([]);
     setError(null);
-    fetchTriggerFirings(triggerId, 0, limit)
-      .then((page) => {
-        if (current) setFirings(page.content);
+    fetchTriggerFirings(triggerId, paged ? page - 1 : 0, paged ? pageSize : limit)
+      .then((answer) => {
+        if (!current) return;
+        setFirings(answer.content);
+        setTotal(answer.totalElements);
       })
       .catch((cause: unknown) => {
         if (current) setError(cause instanceof Error ? cause.message : t('Could not load the log.'));
@@ -85,7 +93,7 @@ export function TriggerFirings({ triggerId, styles, limit = 20 }: TriggerFirings
     return () => {
       current = false;
     };
-  }, [triggerId, limit]);
+  }, [triggerId, limit, paged, page, pageSize]);
 
   if (triggerId === null) return null;
 
@@ -119,6 +127,20 @@ export function TriggerFirings({ triggerId, styles, limit = 20 }: TriggerFirings
           <span className={styles.detail}>{firing.detail}</span>
         </div>
       ))}
+      {paged && total > 0 && (
+        <CompactPagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={total}
+          onPageChange={setPage}
+          unit={t('entries')}
+          pageSizes={[10, 20, 50, 100]}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
+      )}
     </div>
   );
 }

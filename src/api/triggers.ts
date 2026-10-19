@@ -160,7 +160,7 @@ const DELETE_TRIGGER_MUTATION = `
  * narrowing what arrived on page one would hide matches on page four.
  */
 /** What the list can be put in the order of; see `TRIGGER_ORDERS` on the server. */
-export type TriggerOrder = 'NAME' | 'TYPE' | 'ACTION' | 'STATUS';
+export type TriggerOrder = 'NAME' | 'TYPE' | 'ACTION' | 'LAST_FIRED' | 'STATUS';
 
 export async function fetchWorkspaceTriggers(
   workspaceId: string,

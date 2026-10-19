@@ -2984,4 +2984,5 @@ export const PL: Record<string, string> = {
   "This run used the published version; the workflow has unpublished changes since.": "To uruchomienie użyło opublikowanej wersji; przepływ ma od tego czasu nieopublikowane zmiany.",
   "The picture asked of is {width}×{height}.": "Obraz, o który poproszono, ma {width}×{height}.",
   "Start a new picture": "Zacznij nowy obraz",
+  "entries": "wpisów",
 };

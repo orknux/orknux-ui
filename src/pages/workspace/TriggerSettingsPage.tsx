@@ -85,7 +85,7 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
   /** Bumped by Discard: the form starts over from the record this page holds. */
   const [discards, setDiscards] = useState(0);
   /** Whether the execution history is drawn; collapsed by default - it runs long. Issue #427. */
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
 
   const list = `/workspace/${workspaceId}/triggers`;
 
@@ -186,10 +186,11 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
               down, a definition nothing instances - are recorded nowhere else,
               and finding them meant going back to the list.
             */}
-            {/* Collapsed by default and opened on a press - the firing log runs
-                to many rows and pushes everything below it down. Named
-                "Execution history" to set it apart from a component's revision
-                history. Issue #427. */}
+            {/* Open by default - it is what this page is opened for when a
+                workflow did not run - and paged, so a long log is a page of it
+                rather than everything below pushed down. Still folds on a press.
+                Named "Execution history" to set it apart from a component's
+                revision history. Issue #427. */}
             <section className={styles.card}>
               <button
                 type="button"
@@ -201,7 +202,7 @@ export function TriggerSettingsPage({ session, onSignOut }: TriggerSettingsPageP
                 <span className={styles.historyCaret} aria-hidden="true">{historyOpen ? '▾' : '▸'}</span>
                 <h2 className={styles.cardHeading}>{t('Execution history')}</h2>
               </button>
-              {historyOpen && <TriggerFirings triggerId={triggerId} styles={LOG_STYLES} />}
+              {historyOpen && <TriggerFirings triggerId={triggerId} styles={LOG_STYLES} paged />}
             </section>
 
             {/*

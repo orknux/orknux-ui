@@ -239,9 +239,8 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
               Pressable where there is something stored to order by. Issue #358.
 
               Source is the name of whatever the trigger listens on, resolved row
-              by row, and Last fired lives in the firing log - a different table
-              whose newest row per trigger this query cannot order by without
-              becoming a different query. Both stay headings.
+              by row, and stays a heading. Last fired is kept on the trigger for
+              this, and orders newest first with one that never fired last.
             */}
             <ColumnHeader
               label={t('Name')}
@@ -268,7 +267,14 @@ export function WorkspaceTriggersPage({ session, onSignOut }: WorkspaceTriggersP
               onSort={sortBy}
               className={styles.colAction}
             />
-            <span className={styles.colFired}>{t('Last fired')}</span>
+            <ColumnHeader
+              label={t('Last fired')}
+              order="LAST_FIRED"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colFired}
+            />
             <ColumnHeader
               label={t('Status')}
               order="STATUS"

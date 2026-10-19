@@ -100,8 +100,9 @@ const shown = await page
 record(shown, 'it has an Execution history of its own, without going back to the list');
 if (!shown) await clean();
 
-// Collapsed by default now; open it before reading the firings. Issue #427.
-await page.locator('[data-execution-history-toggle]').click();
+// Open by default, and paged: the log is what this page is opened for.
+const historyShown = await page.locator('[data-execution-history-toggle]').getAttribute('aria-expanded').catch(() => null);
+record(historyShown === "true", `the history is open without a press (${historyShown})`);
 
 /*
  * Waited for rather than slept past: the page is drawn from the trigger and the
@@ -114,6 +115,8 @@ const said = await rows.allInnerTexts();
 console.log(`log: ${JSON.stringify(said)}`);
 
 record(said.length >= 1, `the call it was just sent is a row in it (${said.length})`);
+const pager = await page.locator('[data-execution-history-toggle]').locator('xpath=..').getByText(/Showing \d+-\d+ of \d+/).count();
+record(pager === 1, `and paged, saying which entries of how many (${pager})`);
 record(
   said.some((one) => one.includes('Nothing instances it')),
   'and the row says what became of it, which is the thing recorded nowhere else',
@@ -139,6 +142,15 @@ record(
   onList.some((one) => one.includes('Nothing instances it')),
   'the list opens the same rows it always did',
 );
+
+const asked = [];
+page.on('request', (request) => {
+  const body = request.postDataJSON?.() ?? null;
+  if (body?.query?.includes('workspaceTriggers')) asked.push(body.variables?.order);
+});
+await page.getByRole('button', { name: /Last fired/ }).first().click().catch(() => undefined);
+await page.waitForTimeout(1200);
+record(asked.includes('LAST_FIRED'), `the list orders by Last fired on a press of its heading (${JSON.stringify(asked)})`);
 
 /* ------------------------------------------------------------------- tidy up */
 
