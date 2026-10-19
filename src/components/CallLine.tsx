@@ -120,7 +120,11 @@ export function CallLine({ actor, content, result, failed = false, when, folded 
                 {running ? 'Running' : failed ? t('Failed') : 'Returned'}
               </span>
             )}
-            {when !== undefined && !knowsResult && <span className={styles.state}>{when}</span>}
+            {when !== undefined && (
+              <span className={styles.state} data-call-when="">
+                {when}
+              </span>
+            )}
           </>
         );
         return folded ? (

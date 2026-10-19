@@ -532,6 +532,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       : when.toLocaleString([], zoned({ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
   };
 
+  /**
+   * When a tool was called, to the second, beside its name. Always drawn, unlike
+   * a message's time: a turn that ran five minutes is read by which call took
+   * them, and that is only legible with the clock on every call.
+   */
+  const calledAt = (at: string | number | null | undefined): string | undefined => {
+    if (at === null || at === undefined) return undefined;
+    const when = new Date(at);
+    if (Number.isNaN(when.getTime())) return undefined;
+    return when.toLocaleTimeString([], zoned({ hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  };
+
     const findMark = (index: number): string | undefined => {
     if (findHits.length === 0) return undefined;
     if (findHits[findAt] === index) return 'at';
@@ -3413,7 +3425,7 @@ ${named}`;
                     that folded while it happened and sprawled after a reload
                     would be two different pages.
                   */}
-                  <CallLine actor={message.actor} content={message.content} folded />
+                  <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} folded />
                 </div>
               ) : message.role === 'user' ? (
                 <div className={styles.userRow} data-find={findMark(index)}>
@@ -3626,6 +3638,7 @@ ${named}`;
                               content={call.arguments}
                               result={call.result}
                               failed={call.failed}
+                              when={calledAt(call.seenAt)}
                               /*
                                 One line until asked, which is the chat's
                                 answer and not the component's. A lookup in the

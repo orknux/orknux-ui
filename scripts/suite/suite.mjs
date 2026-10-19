@@ -1599,6 +1599,12 @@ export const TESTS = [
     /* Makes its own trigger, function, action and workflow, and removes them. */
   },
   {
+    name: 'chat-call-time-check',
+    what: 'every tool call in a chat says when it was made, to the second',
+    needs: ['workspace'],
+    /* Makes one chat of its own, answers its messages, and deletes it. */
+  },
+  {
     name: 'installation-address-check',
     what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
     needs: [],
