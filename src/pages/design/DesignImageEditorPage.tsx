@@ -1133,11 +1133,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           {/* A blank canvas, without going back to the gallery for it; unsaved changes here are asked about on the way out. */}
           <Link
             className={form.ghost}
+            style={{ textDecoration: 'none' }}
             to={`/workspace/${workspaceId}/design/images/new`}
             title={t('Start a new picture')}
             data-testid="editor-new"
           >
-            {t('New image')}
+            {t('New')}
           </Link>
         </div>
       </div>

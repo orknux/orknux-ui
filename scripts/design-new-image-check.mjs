@@ -92,7 +92,10 @@ const before = await page.getByTestId('editor-picture').count();
 const offered = page.getByTestId('editor-new');
 const saveBox = await page.getByTestId('editor-save').boundingBox().catch(() => null);
 const newBox = await offered.boundingBox().catch(() => null);
-record(before === 1 && newBox !== null, `the editor offers a new image (${JSON.stringify(newBox)})`);
+const label = (await offered.innerText().catch(() => '')).trim();
+const underline = await offered.evaluate((el) => getComputedStyle(el).textDecorationLine).catch(() => '');
+record(before === 1 && newBox !== null && label === 'New', `the editor offers a new picture, called New (${JSON.stringify({ newBox, label })})`);
+record(underline === 'none', `drawn as a button, not an underlined link (${underline})`);
 record(saveBox !== null && newBox !== null && Math.abs(newBox.y - saveBox.y) < 4 && Math.abs(newBox.x - (saveBox.x + saveBox.width)) < 24,
   `next to Save (${JSON.stringify({ saveBox, newBox })})`);
 await offered.click();
