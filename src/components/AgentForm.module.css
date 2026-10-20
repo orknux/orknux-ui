@@ -625,10 +625,29 @@
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  /* Beside the name, not across the width of the form from it. */
+  justify-content: flex-start;
   column-gap: var(--space-12);
 }
 
 .inlineField > p {
   flex-basis: 100%;
+}
+
+/* A choice beside its name, boxed the way a number is. */
+.levelBox {
+  flex: none;
+  width: 14rem;
+  padding: var(--space-10) var(--space-14);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  font-family: inherit;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.levelBox:focus {
+  border-color: var(--color-accent-brand);
+  outline: none;
 }

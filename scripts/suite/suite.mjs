@@ -781,6 +781,18 @@ export const TESTS = [
     // Read-only: it opens the workspace's newest session and two list pages.
   },
   {
+    name: 'agent-chattiness-check',
+    what: "an agent's progress messages level is chosen beside its name on its page, and an agent node can choose its own",
+    needs: ['workspace', 'workflow'],
+    // Changes the first agent's level and the first agent node's, and puts both back.
+  },
+  {
+    name: 'watchers-refresh-steady-check',
+    what: 'Watchers keeps its height through auto-refresh rather than jumping',
+    needs: ['workspace'],
+    // Read-only.
+  },
+  {
     name: 'agent-stream-output-check',
     what: 'an agent node offers Send messages as they are written, on by default, and saving it off is kept',
     needs: ['workspace', 'workflow'],

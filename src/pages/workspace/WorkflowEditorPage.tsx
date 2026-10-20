@@ -6815,7 +6815,7 @@ Change the keystroke in Preferences.`}
                             with it, and the next Backspace reached the canvas — where
                             it deleted the selected node.
                           */}
-                          {draft.mappings.map((mapping, index) => (
+                          {draft.mappings.map((mapping, index) => (draft.kind === 'AGENT' && mapping.name === 'chattiness') ? null : (
                             <div className={styles.parameter} key={index} data-mapping-name={mapping.name}>
                               <span className={styles.parameterHead}>
                                 {draft.kind === 'OBJECT' && draft.objectId === null ? (
@@ -7131,8 +7131,8 @@ Change the keystroke in Preferences.`}
                 {draft.kind === 'AGENT' && (
                   <div className={styles.field}>
                     <span className={styles.labelWithHint}>
-                      <span className={styles.label}>{t('While it works')}</span>
-                      <FieldHint label={t('While it works')}>
+                      <span className={styles.label}>{t('Output streaming')}</span>
+                      <FieldHint label={t('Output streaming')}>
                         {t('On, what the agent writes beside its tool calls is handed to the nodes after this one as it is written, so a reply goes out while it is still working, and its last answer follows. Off, it finishes first and everything it said goes on together.')}
                       </FieldHint>
                     </span>
@@ -7145,6 +7145,45 @@ Change the keystroke in Preferences.`}
                       />
                       <span>{t('Send messages as they are written')}</span>
                     </label>
+                  </div>
+                )}
+
+                {/*
+                  How much the agent says while it works, for this node only: its
+                  own chattiness parameter, which the agent's setting gives way to.
+                  Empty is the agent's. A field of its own, beside the streaming
+                  switch, so the two read as two settings.
+                */}
+                {draft.kind === 'AGENT' && (
+                  <div className={styles.field}>
+                    <span className={styles.labelWithHint}>
+                      <label className={styles.label} htmlFor="node-chattiness">{t('Progress messages')}</label>
+                      <FieldHint label={t('Progress messages')}>
+                        {t('The short messages the agent writes while it is still working. None: only the answer. Low: one line on what it is about to do. Medium: that, and every few calls what it found. High: a line at every step. Left as the agent is set, this node uses the agent’s own.')}
+                      </FieldHint>
+                    </span>
+                    <div className={styles.inputWrapper}>
+                      <select
+                        id="node-chattiness"
+                        className={`${styles.input} ${styles.select}`}
+                        data-node-chattiness=""
+                        value={draft.mappings.find((one) => one.name === 'chattiness')?.expression ?? ''}
+                        onChange={(event) => {
+                          const level = event.target.value;
+                          const others = draft.mappings.filter((one) => one.name !== 'chattiness');
+                          setDraft({
+                            ...draft,
+                            mappings: level === '' ? others : [...others, { name: 'chattiness', expression: level, mode: 'VALUE' as MappingMode }],
+                          });
+                        }}
+                      >
+                        <option value="">{t('As the agent is set')}</option>
+                        <option value="NONE">{t('None')}</option>
+                        <option value="LOW">{t('Low')}</option>
+                        <option value="MEDIUM">{t('Medium')}</option>
+                        <option value="HIGH">{t('High')}</option>
+                      </select>
+                    </div>
                   </div>
                 )}
 

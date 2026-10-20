@@ -50,6 +50,7 @@ const FIELD_LABELS: Record<string, string> = {
   hiddenTools: 'Hidden tools',
   maxTools: 'Tool ceiling',
   maxRounds: 'Round limit',
+  chattiness: 'Progress messages',
   content: 'Content',
   source: 'Code',
   typescript: 'Code',

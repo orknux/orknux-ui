@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
 import { fetchBuiltInTools, fetchMemoryBudget, fetchWorkspaceAgents, updateAgent } from '../api/agents';
-import type { Agent, BuiltInToolGovernance, SessionMemoryBudget } from '../api/agents';
+import type { Agent, BuiltInToolGovernance, Chattiness, SessionMemoryBudget } from '../api/agents';
 import { fetchPluginTools } from '../api/plugins';
 import { fetchMcpServers, fetchWorkspaceConnections } from '../api/integrations';
 import type { McpServer, WorkspaceConnection } from '../api/integrations';
@@ -1185,6 +1185,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * emptying the box puts it back to whatever Admin has set.
    */
   const [rounds, setRounds] = useState<string>(agent.maxRounds === null ? '' : String(agent.maxRounds));
+  const [chattiness, setChattiness] = useState<Chattiness>(agent.chattiness ?? 'MEDIUM');
   /** The installation's number, which an empty box follows - shown in it, so empty is not a blank. */
   const [installationRounds, setInstallationRounds] = useState<number | null>(null);
   useEffect(() => {
@@ -1657,6 +1658,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     memoryShare: asked,
     // The same rule: blank is null, and null is the installation's number.
     maxRounds: rounds.trim() === '' ? null : Number(rounds),
+    chattiness,
   };
   /*
    * Whether there is anything to save, on a page that offers Discard. The
@@ -1693,6 +1695,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       setModelId(updated.modelId ?? '');
       setShare(updated.memoryShare);
       setRounds(updated.maxRounds === null ? '' : String(updated.maxRounds));
+      setChattiness(updated.chattiness ?? 'MEDIUM');
       setSaved(true);
       onSaved(updated);
     } catch (cause) {
@@ -2015,6 +2018,31 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             />
             <span className={own.unit}>{t('rounds')}</span>
           </div>
+        </div>
+
+        {/*
+          How much it says while it works - the lines beside its tool calls,
+          which reach a person before the answer does. A workflow node may
+          override it for itself.
+        */}
+        <div className={`${styles.field} ${own.inlineField}`} id="agent-chattiness" data-menu-entry={t('Progress messages')}>
+          <span className={own.labelWithHint}>
+            <label className={styles.label} htmlFor="agent-chattiness-level">{t('Progress messages')}</label>
+            <FieldHint label={t('Progress messages')}>
+              {t('The short messages the agent writes while it is still working, which reach whoever asked before its answer does. None: only the answer. Low: one line on what it is about to do. Medium: that, and every few calls what it found. High: a line at every step. A workflow node can set its own.')}
+            </FieldHint>
+          </span>
+          <select
+            id="agent-chattiness-level"
+            className={own.levelBox}
+            value={chattiness}
+            onChange={(event) => setChattiness(event.target.value as Chattiness)}
+          >
+            <option value="NONE">{t('None')}</option>
+            <option value="LOW">{t('Low')}</option>
+            <option value="MEDIUM">{t('Medium')}</option>
+            <option value="HIGH">{t('High')}</option>
+          </select>
         </div>
 
         {/*

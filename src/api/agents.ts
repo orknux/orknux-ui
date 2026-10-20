@@ -4,6 +4,9 @@ import { t } from '../i18n';
 
 export type AgentType = 'LLM';
 
+/** How much an agent says while it works, beside its tool calls. */
+export type Chattiness = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+
 export interface Agent {
   id: string;
   workspaceId: string;
@@ -92,6 +95,8 @@ export interface Agent {
   memoryShare: number | null;
   /** Its own ceiling on tool rounds; null follows the installation's. */
   maxRounds: number | null;
+  /** How much it says while it works; a workflow node may override it. */
+  chattiness: Chattiness;
   /**
    * Which boxes it may open a session on, by label. Empty is none, which is
    * where every agent starts; a box added later under a label held here is
@@ -152,7 +157,7 @@ export interface SessionMemoryBudget {
 }
 
 const AGENT_FIELDS =
-  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds';
+  'id workspaceId name type description systemPrompt enabled modelId modelName mcpServers orknuxAccess mayAskForTools memoryCatalogs secretCatalogs variableCatalogs skillCatalogs hiddenSkills requiredSkills tools connectionIds agentIds boxLabels maxTools requiredTools icon memoryShare maxRounds chattiness';
 
 /**
  * What switches one of the server's own tools on an agent. Issue #444.
@@ -371,6 +376,7 @@ export async function updateAgent(
      */
     memoryShare?: number | null;
     maxRounds?: number | null;
+    chattiness?: Chattiness;
   },
 ): Promise<Agent> {
   const data = await graphql<{ updateAgent: Agent }>(UPDATE_AGENT_MUTATION, { id, input });
