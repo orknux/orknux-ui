@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'template-description-check',
+    what: 'Save as a template draws its description box at full height, and the choice clicked shows as chosen',
+    needs: ['workspace'],
+    // Opens the dialog and closes the page; publishes nothing.
+  },
+  {
     name: 'model-price-fields-check',
     what: "a chat model's input and output prices are edited on its own page",
     needs: ['workspace'],

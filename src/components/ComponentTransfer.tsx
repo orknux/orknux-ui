@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import type {
   BindingChoice,
@@ -1155,6 +1155,13 @@ interface SaveAsTemplateDialogProps extends ExportComponentButtonProps {
 function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: SaveAsTemplateDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [templateName, setTemplateName] = useState(name);
+  /*
+   * Its own names, because every row of a list mounts one of these. Shared,
+   * the radios were one group across the page - choosing in the dialog that
+   * is open unchecked it, and its dot stayed empty - and the labels pointed
+   * at the first row's boxes.
+   */
+  const own = useId();
   const [description, setDescription] = useState('');
   const [depth, setDepth] = useState<ExportDepth>('DEEP');
   const [busy, setBusy] = useState(false);
@@ -1214,9 +1221,9 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
         ) : (
           <>
             <div className={dialogStyles.field}>
-              <label className={dialogStyles.label} htmlFor="template-name">{t('Name')}</label>
+              <label className={dialogStyles.label} htmlFor={`${own}-name`}>{t('Name')}</label>
               <input
-                id="template-name"
+                id={`${own}-name`}
                 className={dialogStyles.input}
                 value={templateName}
                 onChange={(event) => setTemplateName(event.target.value)}
@@ -1224,12 +1231,12 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
               />
             </div>
             <div className={dialogStyles.field}>
-              <label className={dialogStyles.label} htmlFor="template-description">
+              <label className={dialogStyles.label} htmlFor={`${own}-description`}>
                 {t('Description')}
               </label>
               <textarea
-                id="template-description"
-                className={`${dialogStyles.input} ${dialogStyles.textarea}`}
+                id={`${own}-description`} data-template-description=""
+                className={`${dialogStyles.input} ${dialogStyles.textarea} ${dialogStyles.textareaAlone}`}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 maxLength={1000}
@@ -1242,7 +1249,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
               <label className={`${styles.choice} ${depth === 'DEEP' ? styles.choiceSelected : ''}`}>
                 <input
                   type="radio"
-                  name="template-depth"
+                  name={`${own}-depth`}
                   checked={depth === 'DEEP'}
                   onChange={() => setDepth('DEEP')}
                 />
@@ -1256,7 +1263,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
               <label className={`${styles.choice} ${depth === 'SHALLOW' ? styles.choiceSelected : ''}`}>
                 <input
                   type="radio"
-                  name="template-depth"
+                  name={`${own}-depth`}
                   checked={depth === 'SHALLOW'}
                   onChange={() => setDepth('SHALLOW')}
                 />
