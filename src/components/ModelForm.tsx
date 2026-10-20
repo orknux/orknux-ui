@@ -105,6 +105,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const [providers, setProviders] = useState<ModelProvider[] | null>(null);
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   const [imageCost, setImageCost] = useState('');
+  const [inputCost, setInputCost] = useState('');
+  const [outputCost, setOutputCost] = useState('');
   const [tokenLimit, setTokenLimit] = useState('');
   const [resetInterval, setResetInterval] = useState<ResetInterval>('MONTHLY');
   const [requestsPerMinute, setRequestsPerMinute] = useState('');
@@ -217,6 +219,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
     setVoice(found.voice ?? '');
     setSkipEmptyLines(found.skipEmptyLines);
     setImageCost(found.imageCostPerImage === null ? '' : String(found.imageCostPerImage));
+    setInputCost(found.inputCostPerMillion === null ? '' : String(found.inputCostPerMillion));
+    setOutputCost(found.outputCostPerMillion === null ? '' : String(found.outputCostPerMillion));
     setTokenLimit(found.tokenLimit === null ? '' : String(found.tokenLimit));
     setResetInterval(found.resetInterval);
     setRequestsPerMinute(found.requestsPerMinute === null ? '' : String(found.requestsPerMinute));
@@ -313,8 +317,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
         topK: sampled('topK', topK, model.topK),
         minP: sampled('minP', minP, model.minP),
         repeatPenalty: sampled('repeatPenalty', repeatPenalty, model.repeatPenalty),
-        inputCostPerMillion: model.inputCostPerMillion,
-        outputCostPerMillion: model.outputCostPerMillion,
+        inputCostPerMillion: draws ? model.inputCostPerMillion : toNumber(inputCost),
+        outputCostPerMillion: draws ? model.outputCostPerMillion : toNumber(outputCost),
         voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
         skipEmptyLines: reads ? skipEmptyLines : model.skipEmptyLines,
         // Sent back whatever it was, for the reason above: a field this form
@@ -347,7 +351,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const changed = useDirty(
     {
       name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
-      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost,
+      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost, inputCost, outputCost,
       tokenLimit, resetInterval, requestsPerMinute, throttleTokens, throttleRequests, retryAfter,
     },
     [model],
@@ -388,6 +392,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
       voice, setVoice,
       skipEmptyLines, setSkipEmptyLines,
       imageCost, setImageCost,
+      inputCost, setInputCost,
+      outputCost, setOutputCost,
       tokenLimit, setTokenLimit,
       resetInterval, setResetInterval,
       requestsPerMinute, setRequestsPerMinute,
@@ -569,6 +575,36 @@ export function ModelWindowFields({ form }: SectionProps) {
               onChange={(event) => fields.setMaxOutput(event.target.value)}
               placeholder={t('Not recorded')}
               inputMode="numeric"
+            />
+          </div>
+          {/*
+            What the provider charges, so a cost is worked out rather than
+            guessed. The create dialog asked for these and this page did not,
+            so a price typed wrong, or a provider's new one, could not be put
+            right without making the model again.
+          */}
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="model-input-cost">{t('Input $ / million tokens')}</label>
+            <input
+              id="model-input-cost"
+              name="inputCostPerMillion"
+              className={`${styles.input} ${styles.inputMono}`}
+              value={fields.inputCost}
+              onChange={(event) => fields.setInputCost(event.target.value)}
+              placeholder={t('Not recorded')}
+              inputMode="decimal"
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="model-output-cost">{t('Output $ / million tokens')}</label>
+            <input
+              id="model-output-cost"
+              name="outputCostPerMillion"
+              className={`${styles.input} ${styles.inputMono}`}
+              value={fields.outputCost}
+              onChange={(event) => fields.setOutputCost(event.target.value)}
+              placeholder={t('Not recorded')}
+              inputMode="decimal"
             />
           </div>
           <div className={styles.field}>
