@@ -127,8 +127,13 @@
   font-weight: 600;
   font-size: var(--text-base);
   color: var(--color-text-primary);
+  text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.name:hover {
+  color: var(--color-accent-brand);
 }
 
 .description {

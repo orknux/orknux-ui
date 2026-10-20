@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'template-name-link-check',
+    what: "a template's name on Admin -> Templates opens it",
+    needs: ['workspace'],
+    // Publishes a template of one of the workspace's agents and deletes it.
+  },
+  {
     name: 'template-description-check',
     what: 'Save as a template draws its description box at full height, and the choice clicked shows as chosen',
     needs: ['workspace'],

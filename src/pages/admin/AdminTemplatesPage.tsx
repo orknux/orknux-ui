@@ -166,7 +166,10 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
         {listed.map((template) => (
           <div className={styles.row} key={template.id}>
             <div className={styles.colName}>
-              <span className={styles.name}>{template.name}</span>
+              {/* The name opens it, as a row's name does on every other list; the gear is the same door. */}
+              <Link className={styles.name} to={`/admin/templates/${template.id}`} data-template-name="">
+                {template.name}
+              </Link>
               {template.description !== null && (
                 <span className={styles.description}>{template.description}</span>
               )}
