@@ -206,7 +206,13 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
           </p>
         )}
 
-        {!loading && error === null && watchers?.content.length === 0 && (
+        {/*
+          Not hidden while a refresh is loading: with auto-refresh on, the line
+          went every second and the box collapsed under it, so the page jumped.
+          It is shown from the first answer on, and only the very first load
+          has nothing to say.
+        */}
+        {error === null && watchers?.content.length === 0 && (
           <div className={styles.empty}>
             <p className={styles.emptyTitle}>
               {finished ? t('No watcher has finished yet.') : t('No watchers are running yet.')}
