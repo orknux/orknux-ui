@@ -229,8 +229,16 @@ export function FieldHint({ label, children }: FieldHintProps) {
         /*
           Focus is the keyboard's hover, so tabbing to it says the same thing
           hovering does rather than asking for a second keystroke.
+
+          Only a keyboard's focus, though. A dialog opened with the mouse
+          focuses the first control it holds, and where that was the (?)
+          beside its title the note opened over the dialog by itself - Use a
+          template, Harmonize. `:focus-visible` is the browser's own answer to
+          whether a focus came from the keyboard.
         */
-        onFocus={glance}
+        onFocus={(event) => {
+          if (event.currentTarget.matches(':focus-visible')) glance();
+        }}
         onBlur={release}
         /*
           A press pins it, whichever kind of press: a mouse, a tap, or Enter

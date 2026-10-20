@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'dialog-hint-closed-check',
+    what: "a dialog opened with the mouse does not open the note beside its title; the keyboard's focus still does",
+    needs: ['workspace'],
+    // Opens Use template on the agents list and closes the page.
+  },
+  {
     name: 'template-name-link-check',
     what: "a template's name on Admin -> Templates opens it",
     needs: ['workspace'],
