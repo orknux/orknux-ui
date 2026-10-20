@@ -110,6 +110,11 @@ export interface GraphNode {
    */
   fallbackEnabled?: boolean;
   /**
+   * On an agent node, whether what the agent says while it works is handed on to
+   * the nodes after it as it is written. On unless switched off.
+   */
+  streamOutput?: boolean;
+  /**
    * How many times in all a run may attempt this node; null or 1 is once.
    * Held between 1 and 10 by the server. A failure the server has already
    * settled - a channel that does not exist, a model that refused the request
@@ -279,7 +284,7 @@ const GRAPH_FIELDS = `
     key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId imageSize imageQuality imageStyle outputName icon orientation
     decisionModelId decisionBranchQuestion decisionThreshold
     decisionQuestions { key kind instructions options { name description } }
-    yesLabel noLabel fallbackEnabled retryAttempts retryBackoffSeconds
+    yesLabel noLabel fallbackEnabled streamOutput retryAttempts retryBackoffSeconds
     retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds enabled x y
     mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId fieldProperties { ${FIELD_TREE} } }
     inputs { name type display }

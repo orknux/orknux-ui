@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'agent-stream-output-check',
+    what: 'an agent node offers Send messages as they are written, on by default, and saving it off is kept',
+    needs: ['workspace', 'workflow'],
+    // Switches the first agent node off, saves, and puts it back.
+  },
+  {
     name: 'agent-rounds-field-check',
     what: "an agent's Tool Rounds and Tools carried at once are boxed numbers with their unit, Tool Rounds showing the installation's number when empty",
     needs: ['workspace'],

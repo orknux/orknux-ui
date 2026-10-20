@@ -164,6 +164,8 @@ interface NodeData extends Record<string, unknown> {
    * every other kind stops the run when it fails, as it always did.
    */
   fallbackEnabled?: boolean;
+  /** On an agent node, whether what it says while it works is handed on as it is written. */
+  streamOutput?: boolean;
   /**
    * How many times in all a run may attempt this node; null or 1 is once.
    * The server holds it between 1 and 10.
@@ -3081,6 +3083,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               yesLabel: node.yesLabel ?? null,
               noLabel: node.noLabel ?? null,
               fallbackEnabled: node.fallbackEnabled ?? false,
+              streamOutput: node.streamOutput ?? true,
               retryAttempts: node.retryAttempts ?? null,
               retryBackoffSeconds: node.retryBackoffSeconds ?? null,
               retryMultiplier: node.retryMultiplier ?? null,
@@ -3683,6 +3686,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
            * second door on every node in the graph.
            */
           fallbackEnabled: false,
+          // On for a new agent node, as on every existing one.
+          streamOutput: true,
           retryAttempts: null,
           retryBackoffSeconds: null,
           retryMultiplier: null,
@@ -3894,6 +3899,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.yesLabel === draft.yesLabel &&
           data.noLabel === draft.noLabel &&
           data.fallbackEnabled === draft.fallbackEnabled &&
+          (data.streamOutput ?? true) === (draft.streamOutput ?? true) &&
           data.retryAttempts === draft.retryAttempts &&
           data.retryBackoffSeconds === draft.retryBackoffSeconds &&
           data.retryMultiplier === draft.retryMultiplier &&
@@ -4355,6 +4361,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           yesLabel: data.yesLabel ?? null,
           noLabel: data.noLabel ?? null,
           fallbackEnabled: data.fallbackEnabled ?? false,
+          streamOutput: data.kind === 'AGENT' ? (data.streamOutput ?? true) : undefined,
           retryAttempts: data.retryAttempts ?? null,
           /*
            * Nothing to wait between one attempt. The panel already refuses to
@@ -7121,6 +7128,26 @@ Change the keystroke in Preferences.`}
                   arithmetic that reads them back as a sentence is a thing in
                   itself and not four hundred more lines of this file.
                 */}
+                {draft.kind === 'AGENT' && (
+                  <div className={styles.field}>
+                    <span className={styles.labelWithHint}>
+                      <span className={styles.label}>{t('While it works')}</span>
+                      <FieldHint label={t('While it works')}>
+                        {t('On, what the agent writes beside its tool calls is handed to the nodes after this one as it is written, so a reply goes out while it is still working, and its last answer follows. Off, it finishes first and everything it said goes on together.')}
+                      </FieldHint>
+                    </span>
+                    <label className={styles.checkRow}>
+                      <input
+                        type="checkbox"
+                        data-stream-output=""
+                        checked={draft.streamOutput ?? true}
+                        onChange={(event) => setDraft({ ...draft, streamOutput: event.target.checked })}
+                      />
+                      <span>{t('Send messages as they are written')}</span>
+                    </label>
+                  </div>
+                )}
+
                 {handlesFailure(draft.kind) && (
                   <RetryPolicyFields draft={draft} onChange={(patch) => setDraft({ ...draft, ...patch })} />
                 )}
