@@ -787,6 +787,12 @@ export const TESTS = [
     // Changes the first agent's level and the first agent node's, and puts both back.
   },
   {
+    name: 'workspace-settings-load-race-check',
+    what: 'Workspace Settings does not write a late load over what was typed',
+    needs: ['workspace'],
+    // Saves one number and puts it back.
+  },
+  {
     name: 'workspace-tool-rounds-check',
     what: "a workspace's Tool Rounds is saved, and an agent with no number of its own shows it",
     needs: ['workspace'],

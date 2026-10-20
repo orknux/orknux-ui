@@ -1448,6 +1448,14 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         />
       )}
 
+      {/*
+        Everything from here on is drawn once the workspace has arrived, as the
+        sections above already were. Drawn before it, these boxes stood empty and
+        could be typed in - and the load, landing after, wrote the stored values
+        over what had been typed, which the save then sent.
+      */}
+      {workspace !== null && (
+      <>
       <section className={styles.card}>
         <div className={styles.sectionTitle}>
           <h2 id="agents" className={styles.sectionHeading}>{t('Agents')}</h2>
@@ -2624,6 +2632,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
 
         </div>
       </section>
+      </>
+      )}
 
       </div>
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}
