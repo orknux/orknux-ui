@@ -185,7 +185,10 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
             {segmentsOf(active).map((one) => (
               <span key={one.key} className={styles.tooltipRow}>
                 {measure === 'TOKENS' && <span className={`${styles.swatch} ${one.className}`} aria-hidden="true" />}
-                <span className={styles.tooltipLabel}>{one.label}</span>
+                <span className={styles.tooltipLabel}>
+                  {/* A plus on the amount says some was unpriced; the label says what the amount is of. */}
+                  {measure === 'COST' && active.partlyUnpriced ? t('Cost of priced calls') : one.label}
+                </span>
                 <span className={styles.tooltipValue} title={measure === 'TOKENS' ? tokenCount(one.value) : undefined}>
                   {measure === 'TOKENS'
                     ? shortTokens(one.value)
@@ -198,9 +201,6 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
                 <span className={styles.tooltipLabel}>{t('Total')}</span>
                 <span className={styles.tooltipValue}>{shortTokens(active.inputTokens + active.outputTokens)}</span>
               </span>
-            )}
-            {measure === 'COST' && active.partlyUnpriced && (
-              <span className={styles.tooltipNote}>{t('some models have no price')}</span>
             )}
           </div>
         )}

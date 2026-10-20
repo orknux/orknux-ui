@@ -180,8 +180,3 @@
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
-
-.tooltipNote {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}

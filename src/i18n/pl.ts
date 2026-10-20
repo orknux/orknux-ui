@@ -3006,4 +3006,5 @@ export const PL: Record<string, string> = {
   "Legend": "Legenda",
   "{what} per day, up to {peak}": "{what} dziennie, najwyżej {peak}",
   "Total": "Razem",
+  "Cost of priced calls": "Koszt wycenionych wywołań",
 };
