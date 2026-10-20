@@ -22,6 +22,29 @@ export interface ComponentRevision {
   savedBy: string;
   /** When it stopped being current, which is what retention counts from. */
   recordedAt: string;
+  /** What the save that made this state changed; null where no older version is kept. */
+  changes?: RevisionChange[] | null;
+}
+
+/**
+ * One thing a save changed. `field` is the snapshot's key; a list says what came
+ * and went, a short value what it was and became, prose only that it was edited.
+ */
+export interface RevisionChange {
+  field: string;
+  before: string | null;
+  after: string | null;
+  added: string[];
+  removed: string[];
+}
+
+/** The live state's save, which the history itself never holds. */
+export interface ComponentCurrentVersion {
+  savedAt: string;
+  savedBy: string;
+  changes: RevisionChange[];
+  /** The live state as pretty JSON, ids named. */
+  readable: string;
 }
 
 /** One revision with what it held. Asked for when a row is opened. */
@@ -36,9 +59,12 @@ export interface ComponentRevisionDetail extends ComponentRevision {
   contentLanguage: string;
   /** The whole component as it was, as JSON. */
   snapshot: string;
+  /** The same as pretty JSON, with every id said as the name behind it. */
+  readable: string;
 }
 
 const SUMMARY = 'id kind componentId name savedAt savedBy recordedAt';
+const CHANGES = 'changes { field before after added removed }';
 
 export async function fetchComponentRevisions(
   kind: ComponentRevisionKind,
@@ -47,7 +73,7 @@ export async function fetchComponentRevisions(
 ): Promise<ComponentRevision[]> {
   const data = await graphql<{ componentRevisions: ComponentRevision[] }>(
     `query ComponentRevisions($kind: ComponentRevisionKind!, $componentId: ID!, $limit: Int) {
-       componentRevisions(kind: $kind, componentId: $componentId, limit: $limit) { ${SUMMARY} }
+       componentRevisions(kind: $kind, componentId: $componentId, limit: $limit) { ${SUMMARY} ${CHANGES} }
      }`,
     { kind, componentId, limit },
   );
@@ -64,11 +90,25 @@ export async function fetchComponentRevisions(
 export async function fetchComponentRevision(id: string): Promise<ComponentRevisionDetail> {
   const data = await graphql<{ componentRevision: ComponentRevisionDetail }>(
     `query ComponentRevision($id: ID!) {
-       componentRevision(id: $id) { ${SUMMARY} content contentLanguage snapshot }
+       componentRevision(id: $id) { ${SUMMARY} content contentLanguage snapshot readable }
      }`,
     { id },
   );
   return data.componentRevision;
+}
+
+/** The newest save - the live state - and what it changed; null if never edited. */
+export async function fetchComponentCurrentVersion(
+  kind: ComponentRevisionKind,
+  componentId: string,
+): Promise<ComponentCurrentVersion | null> {
+  const data = await graphql<{ componentCurrentVersion: ComponentCurrentVersion | null }>(
+    `query ComponentCurrentVersion($kind: ComponentRevisionKind!, $componentId: ID!) {
+       componentCurrentVersion(kind: $kind, componentId: $componentId) { savedAt savedBy ${CHANGES} readable }
+     }`,
+    { kind, componentId },
+  );
+  return data.componentCurrentVersion;
 }
 
 /**

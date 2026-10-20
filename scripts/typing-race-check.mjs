@@ -229,7 +229,7 @@ await history.waitFor({ timeout: 20_000 }).catch(() => undefined);
 // the page under it off the screen.
 const toggle = history.locator('[data-history-toggle]');
 if ((await toggle.getAttribute('aria-expanded').catch(() => null)) === 'false') await toggle.click();
-const rows = history.locator('li');
+const rows = history.locator('li:not([data-history-current])');
 await rows.first().waitFor({ timeout: 20_000 }).catch(() => undefined);
 record((await rows.count()) > 0, `the History panel lists ${await rows.count()} version(s) to restore`);
 

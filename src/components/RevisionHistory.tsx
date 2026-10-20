@@ -1,20 +1,85 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  fetchComponentCurrentVersion,
   fetchComponentRevision,
   fetchComponentRevisions,
   restoreComponentRevision,
 } from '../api/revisions';
 import type {
+  ComponentCurrentVersion,
   ComponentRevision,
   ComponentRevisionDetail,
   ComponentRevisionKind,
+  RevisionChange,
 } from '../api/revisions';
+import { JsonDiff } from './JsonDiff';
 import { timeAgo } from '../api/tools';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import styles from './RevisionHistory.module.css';
 import { t } from '../i18n';
+
+/** The open-row key of the live state, which has no revision id. */
+const CURRENT = 'current';
+
+/** What each snapshot key is called on screen. */
+const FIELD_LABELS: Record<string, string> = {
+  name: 'Name',
+  description: 'Description',
+  type: 'Type',
+  systemPrompt: 'System prompt',
+  enabled: 'Enabled',
+  modelId: 'Model',
+  memoryShare: 'Memory share',
+  orknuxAccess: 'Orknux access',
+  mayAskForTools: 'May ask for tools',
+  boxLabels: 'Boxes',
+  icon: 'Icon',
+  mcpServers: 'MCP servers',
+  memoryCatalogs: 'Memory catalogs',
+  secretCatalogs: 'Secret catalogs',
+  variableCatalogs: 'Variable catalogs',
+  skillCatalogs: 'Skill catalogs',
+  tools: 'Tools',
+  connectionIds: 'Connections',
+  agentIds: 'Agents',
+  hiddenSkills: 'Hidden skills',
+  requiredSkills: 'Skills always shown',
+  requiredTools: 'Tools always carried',
+  hiddenTools: 'Hidden tools',
+  maxTools: 'Tool ceiling',
+  maxRounds: 'Round limit',
+  content: 'Content',
+  source: 'Code',
+  typescript: 'Code',
+  timeoutSeconds: 'Timeout',
+  returnType: 'Return type',
+  returnObjectId: 'Return object',
+  params: 'Parameters',
+  externals: 'Variables',
+  imports: 'Imports',
+  libraries: 'Libraries',
+  catalogId: 'Folder',
+};
+
+/** One change in a few words: "Agents −Summarizer", "Model: a → b", "System prompt edited". */
+function said(change: RevisionChange): string {
+  const label = t(FIELD_LABELS[change.field] ?? change.field);
+  if (change.added.length > 0 || change.removed.length > 0) {
+    return [label, ...change.added.map((one) => `+${one}`), ...change.removed.map((one) => `−${one}`)].join(' ');
+  }
+  if (change.before !== null || change.after !== null) {
+    return `${label}: ${change.before ?? t('none')} → ${change.after ?? t('none')}`;
+  }
+  return t('{field} edited').replace('{field}', label);
+}
+
+/** A save's changes on one line, or nothing where none are known. */
+function summary(changes: RevisionChange[] | null | undefined): string | null {
+  if (changes === null || changes === undefined) return null;
+  return changes.length === 0 ? t('No change') : changes.map(said).join('; ');
+}
 
 export interface RevisionHistoryProps {
   kind: ComponentRevisionKind;
@@ -49,6 +114,9 @@ export interface RevisionHistoryProps {
  */
 export function RevisionHistory({ kind, componentId, currentName, onRestored }: RevisionHistoryProps) {
   const [revisions, setRevisions] = useState<ComponentRevision[] | null>(null);
+  const [current, setCurrent] = useState<ComponentCurrentVersion | null>(null);
+  /** The version before the open one, which the diff compares it with. */
+  const [previous, setPrevious] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ComponentRevisionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +131,9 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
       setRevisions([]);
       return;
     }
+    fetchComponentCurrentVersion(kind, componentId)
+      .then(setCurrent)
+      .catch(() => setCurrent(null));
     fetchComponentRevisions(kind, componentId)
       .then((held) => {
         setRevisions(held);
@@ -83,8 +154,28 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
     }
     setOpenId(id);
     setDetail(null);
+    setPrevious(null);
     try {
-      setDetail(await fetchComponentRevision(id));
+      /*
+       * The open row against the one before it - or, for the live state, the
+       * newest kept version against what is saved now.
+       */
+      if (id === CURRENT) {
+        const newest = revisions?.[0];
+        if (newest === undefined) return;
+        const held = await fetchComponentRevision(newest.id);
+        setPrevious(held.readable);
+        setDetail(held);
+        return;
+      }
+      const at = revisions?.findIndex((one) => one.id === id) ?? -1;
+      const older = at >= 0 ? revisions?.[at + 1] : undefined;
+      const [held, before] = await Promise.all([
+        fetchComponentRevision(id),
+        older === undefined ? Promise.resolve(null) : fetchComponentRevision(older.id),
+      ]);
+      setPrevious(before?.readable ?? null);
+      setDetail(held);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not read that version.'));
     }
@@ -169,6 +260,26 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
           <p className={styles.empty}>{t('Nothing yet.')}</p>
         ) : (
           <ul className={styles.list}>
+          {current !== null && (
+            <li className={styles.item} data-history-current="">
+              <button
+                type="button"
+                className={styles.row}
+                onClick={() => void openRow(CURRENT)}
+                aria-expanded={openId === CURRENT}
+              >
+                <span className={styles.when}>{timeAgo(current.savedAt)}</span>
+                <span className={styles.who}>{current.savedBy === '' ? 'unknown' : current.savedBy}</span>
+                <span className={styles.now}>{t('current')}</span>
+                <span className={styles.changed} data-history-changes="">{summary(current.changes)}</span>
+              </button>
+              {openId === CURRENT && (
+                <div className={styles.detail}>
+                  {detail === null ? <Loader /> : <JsonDiff before={previous} after={current.readable} />}
+                </div>
+              )}
+            </li>
+          )}
           {revisions.map((revision) => (
             <li key={revision.id} className={styles.item}>
               <button
@@ -182,19 +293,14 @@ export function RevisionHistory({ kind, componentId, currentName, onRestored }: 
                 {currentName !== undefined && revision.name !== currentName && (
                   <span className={styles.renamed}>called {revision.name}</span>
                 )}
+                {summary(revision.changes) !== null && (
+                  <span className={styles.changed} data-history-changes="">{summary(revision.changes)}</span>
+                )}
               </button>
 
               {openId === revision.id && (
                 <div className={styles.detail}>
-                  {detail === null ? (
-                    <Loader />
-                  ) : detail.content === null || detail.content === '' ? (
-                    <p className={styles.empty}>{t('This version had nothing written in it.')}</p>
-                  ) : (
-                    <pre className={styles.content} aria-label={t('This version')}>
-                      {detail.content}
-                    </pre>
-                  )}
+                  {detail === null ? <Loader /> : <JsonDiff before={previous} after={detail.readable} />}
                   <button
                     type="button"
                     className={styles.restore}

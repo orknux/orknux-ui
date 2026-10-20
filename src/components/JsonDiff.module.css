@@ -1,0 +1,7 @@
+.diff {
+  width: 100%;
+  min-height: 80px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  overflow: hidden;
+}

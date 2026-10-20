@@ -151,6 +151,26 @@
   color: var(--color-text-muted);
 }
 
+/* What the save changed, on the row's one line, cut off rather than wrapped. */
+.changed {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+}
+
+/* The live state, which cannot be restored because it is what is there. */
+.now {
+  flex: none;
+  padding: 0 var(--space-6);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
 .detail {
   display: flex;
   flex-direction: column;

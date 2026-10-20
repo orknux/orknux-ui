@@ -765,6 +765,18 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'model-price-fields-check',
+    what: "a chat model's input and output prices are edited on its own page",
+    needs: ['workspace'],
+    // Writes the first chat model's prices and puts back what they were.
+  },
+  {
+    name: 'agent-history-changes-check',
+    what: "an agent's History says what each save changed and shows a version as JSON against the one before",
+    needs: ['workspace'],
+    // Makes two agents of its own and deletes them.
+  },
+  {
     name: 'model-provider-link-check',
     what: "a model's page links to its provider, on the Provider label's line",
     needs: ['workspace'],

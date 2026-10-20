@@ -71,13 +71,13 @@ try {
       drawn - so counting immediately counts an empty list and reports a
       missing feature.
     */
-    const rows = history.locator('li');
+    const rows = history.locator('li:not([data-history-current])');
     await rows.first().waitFor({ timeout: 20_000 }).catch(() => {});
     record((await rows.count()) === 2, `the tool's history shows ${await rows.count()} versions, and two saves were made`);
 
     // Newest first, so the top row is what the second save replaced.
     await rows.first().getByRole('button').click();
-    const shown = await history.getByLabel('This version').innerText({ timeout: 10_000 });
+    const shown = await history.locator('[data-json-diff]').innerText({ timeout: 10_000 });
     record(shown.includes("'first'"), 'opening it shows the code that version held');
     record(!shown.includes("'second'"), 'and not the code that replaced it');
 
