@@ -878,7 +878,13 @@ function BindingQuestions({ workspaceId, questions, bindings, busy, onAnswer }: 
                     making one: an agent's MCP server is a grant like a tool,
                     and the agent arrives without it. Issue #580.
                   */}
-                  {entry.droppable && <option value={LEAVE_OUT}>{t('Leave it out — the agent arrives without it')}</option>}
+                  {entry.droppable && (
+                    <option value={LEAVE_OUT}>
+                      {kind === 'MODEL'
+                        ? t('Leave it out — choose a model for the agent later')
+                        : t('Leave it out — the agent arrives without it')}
+                    </option>
+                  )}
                 </select>
                 <img src={chevronDownIcon} alt="" width={12} height={12} />
               </div>
