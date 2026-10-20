@@ -7128,23 +7128,28 @@ Change the keystroke in Preferences.`}
                   arithmetic that reads them back as a sentence is a thing in
                   itself and not four hundred more lines of this file.
                 */}
+                {/* One switch, its name and (?) on the row itself. */}
                 {draft.kind === 'AGENT' && (
                   <div className={styles.field}>
-                    <span className={styles.labelWithHint}>
-                      <span className={styles.label}>{t('Output streaming')}</span>
-                      <FieldHint label={t('Output streaming')}>
-                        {t('On, what the agent writes beside its tool calls is handed to the nodes after this one as it is written, so a reply goes out while it is still working, and its last answer follows. Off, it finishes first and everything it said goes on together.')}
-                      </FieldHint>
-                    </span>
-                    <label className={styles.checkRow}>
-                      <input
-                        type="checkbox"
+                    <div className={styles.toggleRow}>
+                      <span className={styles.labelWithHint}>
+                        <span className={styles.toggleLabel}>{t('Output streaming')}</span>
+                        <FieldHint label={t('Output streaming')}>
+                          {t('On, what the agent writes beside its tool calls is handed to the nodes after this one as it is written, so a reply goes out while it is still working, and its last answer follows. Off, it finishes first and everything it said goes on together.')}
+                        </FieldHint>
+                      </span>
+                      <button
+                        type="button"
                         data-stream-output=""
-                        checked={draft.streamOutput ?? true}
-                        onChange={(event) => setDraft({ ...draft, streamOutput: event.target.checked })}
-                      />
-                      <span>{t('Send messages as they are written')}</span>
-                    </label>
+                        aria-label={t('Output streaming')}
+                        className={(draft.streamOutput ?? true) ? `${styles.toggle} ${styles.toggleOn}` : styles.toggle}
+                        onClick={() => setDraft({ ...draft, streamOutput: !(draft.streamOutput ?? true) })}
+                        role="switch"
+                        aria-checked={draft.streamOutput ?? true}
+                      >
+                        <span className={styles.knob} />
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -7159,7 +7164,7 @@ Change the keystroke in Preferences.`}
                     <span className={styles.labelWithHint}>
                       <label className={styles.label} htmlFor="node-chattiness">{t('Progress messages')}</label>
                       <FieldHint label={t('Progress messages')}>
-                        {t('The short messages the agent writes while it is still working. None: only the answer. Low: one line on what it is about to do. Medium: that, and every few calls what it found. High: a line at every step. Left as the agent is set, this node uses the agent’s own.')}
+                        {t('The short messages the agent writes while it is still working. None: only the answer. Low: one line on what it is about to do. Medium: that, and every few calls what it found. High: a line at every step. Default uses the agent’s own setting.')}
                       </FieldHint>
                     </span>
                     <div className={styles.inputWrapper}>
@@ -7177,7 +7182,7 @@ Change the keystroke in Preferences.`}
                           });
                         }}
                       >
-                        <option value="">{t('As the agent is set')}</option>
+                        <option value="">{t('Default')}</option>
                         <option value="NONE">{t('None')}</option>
                         <option value="LOW">{t('Low')}</option>
                         <option value="MEDIUM">{t('Medium')}</option>
