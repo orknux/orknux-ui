@@ -48,6 +48,7 @@ const placed = async () => page.evaluate(() => {
   return {
     sameRow: Math.abs(add.top + add.height / 2 - (label.top + label.height / 2)) < 6,
     leftOfJump: jump === null ? null : add.right <= jump.left,
+    apart: jump === null ? null : Math.round(jump.left - add.right),
     atEnd: Math.round(row.right - (jump ?? add).right),
   };
 });
@@ -57,7 +58,7 @@ const firstModel = await model.locator('option').nth(1).getAttribute('value').ca
 if (firstModel !== null) {
   await model.selectOption(firstModel);
   const chosen = await placed();
-  record(chosen.sameRow && chosen.leftOfJump === true && chosen.atEnd <= 2, `with a model chosen it sits on the label row, left of the model's link (${JSON.stringify(chosen)})`);
+  record(chosen.sameRow && chosen.leftOfJump === true && chosen.apart >= 14 && chosen.atEnd <= 2, `with a model chosen it sits on the label row, left of the model's link (${JSON.stringify(chosen)})`);
 }
 await model.selectOption('');
 const none = await placed();
