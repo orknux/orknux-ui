@@ -966,6 +966,11 @@ export function tokenCount(tokens: number): string {
  */
 export function costAmount(cost: number): string {
   if (cost > 0 && cost < 0.0001) return 'under $0.0001';
+  /*
+   * Cents from a dollar up. Four places are for what one call costs, where
+   * $0.00 would hide it; on a total, "$1.5647" was read as fifteen hundred.
+   */
+  if (cost >= 1) return `$${cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return `$${cost.toFixed(4)}`;
 }
 
