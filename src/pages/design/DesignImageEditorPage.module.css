@@ -141,6 +141,8 @@ button.toolbarTitle:hover {
   justify-content: center;
   min-height: 0;
   overflow: auto;
+  /* What is shown in it is sized by its height, which the strip under it takes from. */
+  container-type: size;
 }
 
 .stageZoomed {
@@ -434,10 +436,16 @@ button.toolbarTitle:hover {
   line-height: 0;
 }
 
+/*
+ * Short enough to leave the wait under it in view: a picture as tall as the
+ * window pushed the wait and its Stop below the canvas, where an upscale - of
+ * a picture already large - could not be stopped. The stage's height less the
+ * wait's line (its 40px mark) and the gap above it.
+ */
 .changingPicture {
   display: block;
   max-width: 100%;
-  max-height: calc(100vh - 260px);
+  max-height: calc(100cqh - 40px - var(--space-16));
   border-radius: var(--radius-6);
   box-shadow: var(--shadow-card);
 }

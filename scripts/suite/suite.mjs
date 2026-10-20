@@ -1616,6 +1616,12 @@ export const TESTS = [
     /* Answers the picture, the models and the job itself. */
   },
   {
+    name: 'design-upscale-stop-check',
+    what: 'a large picture being upscaled leaves its wait and Stop in view, and Stop stops the upscale',
+    needs: ['workspace'],
+    /* Answers the picture, the models, the algorithms, the job and the stop itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],
