@@ -147,6 +147,14 @@ record(readOrder.join(',') === 'first,between,person', `once read, it is drawn w
 
 await page.evaluate(() => window.__midturn.release?.());
 await page.getByText('Blue it is.').first().waitFor({ timeout: 10_000 }).catch(() => {});
+// A call that has returned shows its status beside its time, both at the row's end - not halfway along the row.
+const statusGaps = await page.locator('[data-testid="call-line"]').evaluateAll((lines) => lines.map((line) => {
+  const when = line.querySelector('[data-call-when]');
+  const state = when?.previousElementSibling;
+  if (!when || !state || !state.hasAttribute('data-running')) return null;
+  return Math.round(when.getBoundingClientRect().left - state.getBoundingClientRect().right);
+}).filter((gap) => gap !== null));
+record(statusGaps.length > 0 && statusGaps.every((gap) => gap >= 0 && gap <= 24), `a returned call's status sits beside its time (${JSON.stringify(statusGaps)}px apart)`);
 record((await page.getByText('Blue it is.').count()) > 0, 'and the turn still finishes');
 
 /*

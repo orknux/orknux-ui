@@ -59,6 +59,15 @@ try {
   record(times.length === 3, `each of the three calls carries a time (${JSON.stringify(times)})`);
   record(times.every((one) => /\d{1,2}:\d{2}:\d{2}/.test(one)), 'to the second');
   record(new Set(times).size === 3 && times.every((one) => expected.includes(one)), `and it is the time the call was made (${JSON.stringify(expected)})`);
+
+  // The status sits beside the time at the row's end, not halfway along the row.
+  const gaps = await page.locator('[data-testid="call-line"]').evaluateAll((lines) => lines.map((line) => {
+    const when = line.querySelector('[data-call-when]');
+    const state = when?.previousElementSibling;
+    if (!when || !state || state === when) return null;
+    return Math.round(when.getBoundingClientRect().left - state.getBoundingClientRect().right);
+  }).filter((gap) => gap !== null));
+  record(gaps.length > 0 && gaps.every((gap) => gap >= 0 && gap <= 24), `the status sits beside the time (${JSON.stringify(gaps)}px apart)`);
 } finally {
   await sweep();
 }

@@ -97,6 +97,14 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * The time beside the status, both at the row's end. Each pushing itself right
+ * split the free space between them, which left the status in the middle.
+ */
+.state + .state {
+  margin-left: 0;
+}
+
 .state[data-running='true'] {
   color: var(--color-cyan);
 }
