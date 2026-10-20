@@ -319,6 +319,20 @@ function fits(preset: ImageSizePreset, spec: ImageParameterSpec): boolean {
 }
 
 /** The whole of a workspace's catalogue fits in the picker. */
+/**
+ * Every page of a catalogue, one after another. A picker held the first page
+ * alone - a hundred at most, the server's largest - so a node pointing at the
+ * hundred-and-first action, alphabetically, opened on "Choose an action..."
+ * with its parameters still under it, as though it pointed at nothing.
+ */
+async function everyPage<T>(fetchPage: (page: number) => Promise<{ content: T[]; totalPages: number }>): Promise<T[]> {
+  const first = await fetchPage(0);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, at) => fetchPage(at + 1).then((page) => page.content)),
+  );
+  return [...first.content, ...rest.flat()];
+}
+
 const TRIGGER_PAGE_SIZE = 100;
 
 /*
@@ -3154,7 +3168,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     if (workspaceId === '') return;
     refreshVariables();
     Promise.all([
-      fetchWorkspaceTriggers(workspaceId, 0, TRIGGER_PAGE_SIZE).then((page) => page.content),
+      everyPage((page) => fetchWorkspaceTriggers(workspaceId, page, TRIGGER_PAGE_SIZE)),
       workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedTriggers(workspaceId, workflowId),
     ])
       .then(([shared, own]) => setTriggers([...shared, ...own]))
@@ -3168,7 +3182,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
      * other page in the product reads and none of them wants these rows.
      */
     Promise.all([
-      fetchWorkspaceActions(workspaceId, 0, ACTION_PAGE_SIZE).then((page) => page.content),
+      everyPage((page) => fetchWorkspaceActions(workspaceId, page, ACTION_PAGE_SIZE)),
       workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedActions(workspaceId, workflowId),
     ])
       .then(([shared, own]) => setActions([...shared, ...own]))
@@ -3181,11 +3195,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       .then(setConnections)
       .catch(() => setConnections([]));
 
-    fetchWorkspaceAgents(workspaceId, 0, AGENT_PAGE_SIZE)
-      .then((page) => setAgents(page.content))
+    everyPage((page) => fetchWorkspaceAgents(workspaceId, page, AGENT_PAGE_SIZE))
+      .then(setAgents)
       .catch(() => setAgents([]));
     Promise.all([
-      fetchWorkspaceConditions(workspaceId, 0, CONDITION_PAGE_SIZE).then((page) => page.content),
+      everyPage((page) => fetchWorkspaceConditions(workspaceId, page, CONDITION_PAGE_SIZE)),
       workflowId === '' ? Promise.resolve([]) : fetchWorkflowOwnedConditions(workspaceId, workflowId),
     ])
       .then(([shared, own]) => setConditions([...shared, ...own]))
@@ -3193,8 +3207,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     fetchAllWorkspaceFunctions(workspaceId)
       .then((page) => setFunctions(page.content))
       .catch(() => setFunctions([]));
-    fetchWorkspaceObjects(workspaceId, 0, OBJECT_PAGE_SIZE)
-      .then((page) => setObjects(page.content))
+    everyPage((page) => fetchWorkspaceObjects(workspaceId, page, OBJECT_PAGE_SIZE))
+      .then(setObjects)
       .catch(() => setObjects([]));
     fetchModels(workspaceId)
       .then((all) => {

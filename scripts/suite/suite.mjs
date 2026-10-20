@@ -1646,6 +1646,12 @@ export const TESTS = [
     /* Reads a real run of the workspace whose steps were handed something. */
   },
   {
+    name: 'editor-catalogue-pages-check',
+    what: "the workflow editor's pickers hold every page of their catalogue, so a node's action past the first hundred is shown",
+    needs: ['workspace'],
+    /* Answers the action list in two pages itself. */
+  },
+  {
     name: 'installation-address-check',
     what: 'Admin Settings sets the address the installation links from, and refuses one that is not an address',
     needs: [],
