@@ -1661,3 +1661,23 @@
   border-color: var(--color-danger);
   color: var(--color-danger);
 }
+
+/*
+ * A filter chip borrows a line's kind class for its colours, and the thinking
+ * kind paints a tint behind its line - so the Thinking chip came out red while
+ * switched off. Two classes, so these win over any kind's background.
+ */
+.kindChip.kindChip {
+  background: var(--color-bg);
+}
+
+.kindChip.kindChipOn {
+  background: var(--kind-soft);
+}
+
+/* A side panel's name with the (?) saying what the panel holds. */
+.familyTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}

@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'session-panel-hints-check',
+    what: "every side panel on a session has its (?), the Thinking filter is not tinted while off, and Watchers and Schedules carry theirs beside the page name",
+    needs: ['workspace'],
+    // Read-only: it opens the workspace's newest session and two list pages.
+  },
+  {
     name: 'agent-stream-output-check',
     what: 'an agent node offers Send messages as they are written, on by default, and saving it off is kept',
     needs: ['workspace', 'workflow'],

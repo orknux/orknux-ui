@@ -132,7 +132,13 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
       <header className={styles.titleHeader}>
-        <h1 className={styles.title}>{t('Watchers')}</h1>
+        {/* What this page lists, behind the (?) beside its name - not beside an empty list, where it was only seen while there was nothing. */}
+        <span className={styles.labelWithHint}>
+          <h1 className={styles.title}>{t('Watchers')}</h1>
+          <FieldHint label={t('Watchers')}>
+            {t('An agent sets a watcher with watcher_set: one of its own tools, called on an interval until what it returns matches a JSONPath or a regular expression, when the agent is woken in the conversation it set it in. Admin Settings says how long one may run, how often it may look and how many one agent may have.')}
+          </FieldHint>
+        </span>
         <p className={styles.subtitle}>{t('What the agents are waiting for, checked on an interval until it happens')}</p>
       </header>
 
@@ -203,12 +209,7 @@ export function WorkspaceWatchersPage({ session, onSignOut }: WorkspaceWatchersP
         {!loading && error === null && watchers?.content.length === 0 && (
           <div className={styles.empty}>
             <p className={styles.emptyTitle}>
-              <span className={styles.labelWithHint}>
-                {finished ? t('No watcher has finished yet.') : t('No watchers are running yet.')}
-                <FieldHint label={t('Watchers')}>
-                  {t('An agent sets a watcher with watcher_set: one of its own tools, called on an interval until what it returns matches a JSONPath or a regular expression, when the agent is woken in the conversation it set it in. Admin Settings says how long one may run, how often it may look and how many one agent may have.')}
-                </FieldHint>
-              </span>
+              {finished ? t('No watcher has finished yet.') : t('No watchers are running yet.')}
             </p>
           </div>
         )}

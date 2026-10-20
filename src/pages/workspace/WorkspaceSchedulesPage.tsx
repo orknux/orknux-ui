@@ -117,7 +117,13 @@ export function WorkspaceSchedulesPage({ session, onSignOut }: WorkspaceSchedule
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
       <header className={styles.titleHeader}>
-        <h1 className={styles.title}>{t('Schedules')}</h1>
+        {/* What this page lists, behind the (?) beside its name - not beside an empty list, where it was only seen while there was nothing. */}
+        <span className={styles.labelWithHint}>
+          <h1 className={styles.title}>{t('Schedules')}</h1>
+          <FieldHint label={t('Schedules')}>
+            {t('An agent sets a schedule when it should come back to something again and again - every so many minutes, or by a cron - rather than once, which a timer does. Each run wakes it in the conversation it set it in, with its note. Admin Settings says how often one may run and how many one agent may have.')}
+          </FieldHint>
+        </span>
         <p className={styles.subtitle}>{t('What the agents come back to on a schedule, and when next')}</p>
       </header>
 
@@ -186,12 +192,7 @@ export function WorkspaceSchedulesPage({ session, onSignOut }: WorkspaceSchedule
         {error === null && schedules?.content.length === 0 && (
           <div className={styles.empty}>
             <p className={styles.emptyTitle}>
-              <span className={styles.labelWithHint}>
-                {ended ? t('No schedule has ended yet.') : t('No schedules are active yet.')}
-                <FieldHint label={t('Schedules')}>
-                  {t('An agent sets a schedule when it should come back to something again and again - every so many minutes, or by a cron - rather than once, which a timer does. Each run wakes it in the conversation it set it in, with its note. Admin Settings says how often one may run and how many one agent may have.')}
-                </FieldHint>
-              </span>
+              {ended ? t('No schedule has ended yet.') : t('No schedules are active yet.')}
             </p>
           </div>
         )}

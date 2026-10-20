@@ -2064,7 +2064,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       <div className={styles.railInner} data-session-rail="">
       {hasFamily && (
         <aside id="session-family" className={styles.family} aria-label={t('Sessions in this conversation')}>
-          <p className={styles.familyTitle}>{t('Sessions')}</p>
+          <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Sessions')}</p>
+            <FieldHint label={t('Sessions')}>{t('This conversation and the ones started from it: an agent it asked answers in a session of its own, listed under it.')}</FieldHint>
+          </span>
           {(
             <ul className={styles.familyList}>
               {family.map((member) => {
@@ -2112,7 +2115,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       */}
       <aside className={styles.scratchpads} aria-label={t('Scratchpads in this session')}>
         <div className={styles.scratchpadHead}>
-          <p className={styles.familyTitle}>{t('Scratchpads')}</p>
+          <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Scratchpads')}</p>
+            <FieldHint label={t('Scratchpads')}>{t('Documents the agent writes and edits in this session instead of typing long text into its answer. An agent it asks can read and add to the same pad.')}</FieldHint>
+          </span>
           <button
             type="button"
             className={styles.scratchpadAdd}
@@ -2161,7 +2167,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         not - and clicking one reads its log in place of the transcript.
       */}
       <aside className={styles.scratchpads} aria-label={t('Boxes in this session')} data-session-boxes="">
-        <p className={styles.familyTitle}>{t('Boxes')}</p>
+        <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Boxes')}</p>
+            <FieldHint label={t('Boxes')}>{t('The sandboxes the agent opened in this session to run commands in, and what it ran there.')}</FieldHint>
+          </span>
         {sessionBoxes === null ? (
           <p className={styles.familyNote}>{t('Could not load the boxes.')}</p>
         ) : sessionBoxes.length === 0 ? (
@@ -2226,7 +2235,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         something answers on it now, looked at on the page's refresh.
       */}
       <aside className={styles.scratchpads} aria-label={t('Ports exposed from this session')} data-session-ports="">
-        <p className={styles.familyTitle}>{t('Ports')}</p>
+        <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Ports')}</p>
+            <FieldHint label={t('Ports')}>{t('Ports the agent asked to open in a box so a person can reach what runs there. Nothing is opened until somebody allows it here.')}</FieldHint>
+          </span>
         {ports === null ? (
           <p className={styles.familyNote}>{t('Could not load the ports.')}</p>
         ) : ports.length === 0 ? (
@@ -2326,7 +2338,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         lands on first.
       */}
       <aside className={styles.scratchpads} aria-label={t('To-do list in this session')} data-session-todos="">
-        <p className={styles.familyTitle}>{t('To-do')}</p>
+        <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('To-do')}</p>
+            <FieldHint label={t('To-do')}>{t('The agent’s own checklist for this session, which it writes, ticks off and reorders as it works.')}</FieldHint>
+          </span>
         {todos === null ? (
           <p className={styles.familyNote}>{t('Could not load the to-do list.')}</p>
         ) : todos.length === 0 ? (
@@ -2374,7 +2389,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         stay where they were written, for a reader following the conversation.
       */}
       <aside className={styles.scratchpads} aria-label={t('Notes in this session')} data-session-notes="">
-        <p className={styles.familyTitle}>{t('Notes')}</p>
+        <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Notes')}</p>
+            <FieldHint label={t('Notes')}>{t('What the agent wrote down to keep for the rest of this session.')}</FieldHint>
+          </span>
         {held === null ? (
           <p className={styles.familyNote}>{t('Loading…')}</p>
         ) : (held.notes ?? []).length === 0 ? (
@@ -2400,7 +2418,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         workspace's Watchers page, where one can be stopped.
       */}
       <aside className={styles.scratchpads} aria-label={t('Watchers in this session')} data-session-watchers="">
-        <p className={styles.familyTitle}>{t('Watchers')}</p>
+        <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Watchers')}</p>
+            <FieldHint label={t('Watchers')}>{t('Checks the agent set: one of its tools called on an interval until what it returns matches, when the agent is woken here.')}</FieldHint>
+          </span>
         {watchers === null ? (
           <p className={styles.familyNote}>{t('Could not load the watchers.')}</p>
         ) : watchers.length === 0 ? (
@@ -2438,7 +2459,10 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
         first, each with its note and when it comes up; then the ones that rang.
       */}
       <aside className={styles.scratchpads} aria-label={t('Timers in this session')} data-session-timers="">
-        <p className={styles.familyTitle}>{t('Timers')}</p>
+        <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Timers')}</p>
+            <FieldHint label={t('Timers')}>{t('Reminders the agent set: when one comes due, the agent is woken in this session with its note.')}</FieldHint>
+          </span>
         {timers === null ? (
           <p className={styles.familyNote}>{t('Could not load the timers.')}</p>
         ) : timers.length === 0 ? (

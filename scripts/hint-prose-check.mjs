@@ -508,12 +508,6 @@ const IN_THE_OPEN = [
     why: 'an empty conversation, saying what to type into it',
   },
   {
-    file: 'src/components/RevisionHistory.tsx',
-    says: 'This version had nothing written in it.',
-    because: 'status',
-    why: 'what is in the version being looked at',
-  },
-  {
     file: 'src/pages/admin/AdminNetworkingPage.tsx',
     says: 'No proxy rules yet. Every request goes out the way this host does.',
     because: 'status',
@@ -717,6 +711,30 @@ const IN_THE_OPEN = [
     says: 'Output $ / million tokens',
     because: 'label',
     why: 'the same field, the other direction',
+  },
+  {
+    file: 'src/components/ModelDialog.tsx',
+    says: 'Cached input $ / million tokens',
+    because: 'label',
+    why: 'the third price, for input served from the prompt cache',
+  },
+  {
+    file: 'src/components/ModelForm.tsx',
+    says: 'Input $ / million tokens',
+    because: 'label',
+    why: "the model page's own copy of the dialog's price fields, so a price can be corrected after the model is made",
+  },
+  {
+    file: 'src/components/ModelForm.tsx',
+    says: 'Output $ / million tokens',
+    because: 'label',
+    why: 'the same field, the other direction',
+  },
+  {
+    file: 'src/components/ModelForm.tsx',
+    says: 'Cached input $ / million tokens',
+    because: 'label',
+    why: 'the cached-input price, beside the other two',
   },
   {
     file: 'src/components/MarkdownEditor.tsx',
