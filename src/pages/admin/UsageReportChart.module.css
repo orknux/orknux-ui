@@ -1,0 +1,187 @@
+.chartBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-14) var(--space-16);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-16);
+}
+
+.heading {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+/* The legend names the series; its text stays in the text colours, the swatch carries the hue. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-14);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* The same class colours a swatch (background) and a bar (fill). */
+.fresh {
+  background: var(--color-chart-1);
+  fill: var(--color-chart-1);
+}
+
+.cached {
+  background: var(--color-chart-2);
+  fill: var(--color-chart-2);
+}
+
+.output {
+  background: var(--color-chart-3);
+  fill: var(--color-chart-3);
+}
+
+.cost {
+  background: var(--color-accent-brand);
+  fill: var(--color-accent-brand);
+}
+
+.switch {
+  display: inline-flex;
+  margin-left: auto;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.switchOn,
+.switchOff {
+  padding: var(--space-4) var(--space-10);
+  font: inherit;
+  font-size: var(--text-sm);
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.switchOn {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.switchOff {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.switchOff:hover {
+  color: var(--color-text-primary);
+}
+
+.plot {
+  position: relative;
+  width: 100%;
+  min-height: 208px;
+}
+
+.svg {
+  display: block;
+}
+
+.grid,
+.baseline {
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.grid {
+  stroke: var(--color-border);
+  stroke-dasharray: 3 4;
+}
+
+.baseline {
+  stroke: var(--color-border);
+}
+
+.axisLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  fill: var(--color-text-muted);
+}
+
+/* While one day is under the pointer, the others step back. */
+.dimmed path {
+  opacity: 0.6;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 180px;
+  padding: var(--space-8) var(--space-10);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  pointer-events: none;
+}
+
+.tooltipDay {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+.tooltipLabel {
+  flex: 1 1 auto;
+  color: var(--color-text-secondary);
+}
+
+.tooltipValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.tooltipTotal {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.tooltipNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

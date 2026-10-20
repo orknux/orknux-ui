@@ -6,12 +6,13 @@ import type { SessionUser } from '../../api/session';
 import {
   fetchUsagePersonSessions,
   fetchUsageReport,
+  fetchUsageSeries,
   fetchUsageTracking,
   setUsageTracking,
   shortTokens,
   usageReportCsv,
 } from '../../api/usage';
-import type { PromptSource, UsageFilter, UsageOrder, UsagePerson, UsageReport, UsageSessionShare, UsageTracking } from '../../api/usage';
+import type { PromptSource, UsageDay, UsageFilter, UsageOrder, UsagePerson, UsageReport, UsageSessionShare, UsageTracking } from '../../api/usage';
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
@@ -31,6 +32,7 @@ import { t, tf } from '../../i18n';
 import { shellUser } from '../../session/user';
 import { zoned } from '../../session/timeZone';
 import styles from './AdminReportsPage.module.css';
+import { UsageReportChart } from './UsageReportChart';
 
 export interface AdminReportsPageProps {
   session: SessionUser;
@@ -67,6 +69,7 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
   const [page, setPage] = useState(1);
   const [peopleSize, setPeopleSize] = useState(PEOPLE_PER_PAGE);
   const [report, setReport] = useState<UsageReport | null>(null);
+  const [series, setSeries] = useState<UsageDay[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +109,17 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
   }, [filterKey, page, peopleSize, order, ascending]);
 
   useEffect(load, [load]);
+
+  // The days follow the filter and nothing else: paging and order are the table's.
+  useEffect(() => {
+    let current = true;
+    fetchUsageSeries(JSON.parse(filterKey) as UsageFilter)
+      .then((held) => current && setSeries(held))
+      .catch(() => current && setSeries(null));
+    return () => {
+      current = false;
+    };
+  }, [filterKey]);
 
   /** The report as the table shows it - every page, in this order - saved as a file. */
   async function exportCsv() {
@@ -228,6 +242,8 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
         {report !== null && report.total === 0 && (
           <p className={styles.notice}>{t('Nothing recorded in this period.')}</p>
         )}
+
+        {report !== null && report.total > 0 && series !== null && series.length > 0 && <UsageReportChart series={series} />}
 
         {report !== null && report.total > 0 && (
           <div className={styles.tableBox}>

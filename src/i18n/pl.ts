@@ -2999,4 +2999,11 @@ export const PL: Record<string, string> = {
   "Redraws the whole picture lightly, so the patches Magic edits left blend into one picture. Use it after a few edits, when their edges show.": "Przerysowuje cały obraz delikatnie, aby łaty pozostawione przez edycje Magic zlały się w jeden obraz. Użyj po kilku edycjach, gdy widać ich krawędzie.",
   "How much the picture may change: low keeps it as it is and only smooths the seams, high redraws more of it. Start low.": "Jak bardzo obraz może się zmienić: niska wartość zostawia go takim, jaki jest, i tylko wygładza szwy, wysoka przerysowuje go bardziej. Zacznij od niskiej.",
   "Harmonize redraws lightly through a Stable Diffusion WebUI, and this workspace has none. Add a WebUI provider and an Upscale model under it.": "Harmonizacja przerysowuje delikatnie przez Stable Diffusion WebUI, a ten obszar roboczy go nie ma. Dodaj dostawcę WebUI i model Upscale pod nim.",
+  "Input, not cached": "Wejście, nie z pamięci",
+  "Input, cached": "Wejście, z pamięci",
+  "Tokens per day": "Tokeny dziennie",
+  "Cost per day": "Koszt dziennie",
+  "Legend": "Legenda",
+  "{what} per day, up to {peak}": "{what} dziennie, najwyżej {peak}",
+  "Total": "Razem",
 };

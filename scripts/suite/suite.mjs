@@ -252,6 +252,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'usage-chart-check',
+    what: 'Admin > Reports: the chart draws every day on one scale, tokens stacked by kind, and cost as a measure of its own',
+    needs: [],
+    /*
+     * Measured off the marks against usageSeries: each day's stack as tall as
+     * its total, the cached part between the uncached input and the output,
+     * a tooltip for the day under the pointer. An empty period draws none.
+     */
+  },
+  {
     name: 'auto-refresh-steady-check',
     what: 'a list that refreshes itself does not move while it does',
     needs: ['workspace'],

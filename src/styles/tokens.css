@@ -117,6 +117,15 @@
   --color-violet: #c084fc;
   --color-violet-soft: rgba(168, 85, 247, 0.14);
 
+  /*
+   * Series in a chart, in this order and never cycled: the first three steps
+   * of a palette checked for colour-blind separation on this surface. They name
+   * which series a mark is; the text beside one stays in the text colours.
+   */
+  --color-chart-1: #3987e5;
+  --color-chart-2: #d95926;
+  --color-chart-3: #199e70;
+
   /* Typography */
   --font-sans: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', monospace;
@@ -252,6 +261,10 @@
   --color-cyan-soft: rgba(14, 116, 144, 0.12);
   --color-violet: #7e22ce;
   --color-violet-soft: rgba(126, 34, 206, 0.12);
+  /* The same three hues, stepped for a light surface rather than flipped. */
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-3: #1baf7a;
 
   /* Audit badges: the same hues, light enough to read dark text on. */
   --color-badge-workflow: #e9d5ff;

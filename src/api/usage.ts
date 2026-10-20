@@ -156,6 +156,28 @@ export async function fetchUsagePersonSessions(
   return data.usagePersonSessions;
 }
 
+/** One day of the report, in the server's zone; cachedInputTokens is a part of inputTokens. */
+export interface UsageDay {
+  /** YYYY-MM-DD. */
+  day: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  cost: string | null;
+  partlyUnpriced: boolean;
+}
+
+/** The report day by day, every day of the period, under the same filter as the totals. */
+export async function fetchUsageSeries(filter: UsageFilter): Promise<UsageDay[]> {
+  const data = await graphql<{ usageSeries: UsageDay[] }>(
+    `query($filter: UsageReportFilter) {
+       usageSeries(filter: $filter) { day inputTokens cachedInputTokens outputTokens cost partlyUnpriced }
+     }`,
+    { filter },
+  );
+  return data.usageSeries;
+}
+
 /** 48213000 -> "48.2M", for a column of totals read at a glance; the exact count is in the title. */
 export function shortTokens(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
