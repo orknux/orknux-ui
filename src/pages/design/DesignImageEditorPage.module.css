@@ -179,6 +179,7 @@ button.toolbarTitle:hover {
 .waiting {
   display: flex;
   align-items: center;
+  gap: var(--space-16);
   color: var(--color-text-secondary);
 }
 
@@ -261,9 +262,12 @@ button.toolbarTitle:hover {
   color: var(--color-text-secondary);
 }
 
-/* Under the wait it stops. */
+/*
+ * Beside the wait it stops, on its line: the mark, the word, then Stop. Never
+ * squeezed by the line, or its padding goes and the word meets its border.
+ */
 .stop {
-  margin-top: var(--space-8);
+  flex-shrink: 0;
 }
 
 /* Over the picture the change was asked of, which stays in view under it. */
@@ -474,6 +478,9 @@ button.toolbarTitle:hover {
 }
 
 .changingMark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
   color: var(--color-text-secondary);
 }
 

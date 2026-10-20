@@ -1610,6 +1610,12 @@ export const TESTS = [
     /* Answers the picture, the models, the queue and the settings itself. */
   },
   {
+    name: 'design-stop-line-check',
+    what: "the image editor's wait is one line - the mark, Drawing…, and a padded Stop - under a picture being changed and on an empty canvas",
+    needs: ['workspace'],
+    /* Answers the picture, the models and the job itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],
