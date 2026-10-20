@@ -1449,34 +1449,47 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             </form>
           )}
           {made.length > 0 && (
-            <div className={styles.strip} aria-label={t('Asked for here')}>
-              {made.map(({ job: one }) => {
+            /*
+              Newest first, so the one on the left is on top - the last asked
+              for, made from the ones to its right. Each is numbered in the
+              order it was asked for, 1 the first, under its picture.
+            */
+            <div
+              className={styles.strip}
+              aria-label={t('Asked for here')}
+              title={t('Numbered in the order asked for: the highest, on the left, is on top')}
+              data-testid="editor-strip"
+            >
+              {made.map(({ job: one }, index) => {
                 const chosen =
                   (shown?.kind === 'job' && shown.jobId === one.id) ||
                   (shown?.kind === 'picture' && one.image !== null && shown.picture.id === one.image.id);
+                const order = made.length - index;
                 return (
-                  <button
-                    key={one.id}
-                    type="button"
-                    className={`${styles.stripItem} ${chosen ? styles.stripChosen : ''}`}
-                    onClick={() => {
-                      if (chosen) return;
-                      remember();
-                      show(one.image !== null ? { kind: 'picture', picture: one.image } : { kind: 'job', jobId: one.id });
-                    }}
-                    title={one.prompt}
-                    data-status={one.status}
-                  >
-                    {one.image !== null ? (
-                      <img src={one.image.url} alt={one.prompt} />
-                    ) : one.status === 'FAILED' ? (
-                      <span className={styles.stripFailed}>!</span>
-                    ) : one.status === 'STOPPED' ? (
-                      <span className={styles.stripStopped} aria-label={t('Stopped')}>■</span>
-                    ) : (
-                      <Loader label="" delay={0} size={28} />
-                    )}
-                  </button>
+                  <div key={one.id} className={styles.stripCell}>
+                    <button
+                      type="button"
+                      className={`${styles.stripItem} ${chosen ? styles.stripChosen : ''}`}
+                      onClick={() => {
+                        if (chosen) return;
+                        remember();
+                        show(one.image !== null ? { kind: 'picture', picture: one.image } : { kind: 'job', jobId: one.id });
+                      }}
+                      title={one.prompt}
+                      data-status={one.status}
+                    >
+                      {one.image !== null ? (
+                        <img src={one.image.url} alt={one.prompt} />
+                      ) : one.status === 'FAILED' ? (
+                        <span className={styles.stripFailed}>!</span>
+                      ) : one.status === 'STOPPED' ? (
+                        <span className={styles.stripStopped} aria-label={t('Stopped')}>■</span>
+                      ) : (
+                        <Loader label="" delay={0} size={28} />
+                      )}
+                    </button>
+                    <span className={styles.stripOrder} data-testid="editor-strip-order">{order}</span>
+                  </div>
                 );
               })}
             </div>

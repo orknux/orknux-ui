@@ -1622,6 +1622,12 @@ export const TESTS = [
     /* Answers the picture, the models, the algorithms, the job and the stop itself. */
   },
   {
+    name: 'design-strip-order-check',
+    what: "the image editor's strip numbers each thumbnail in the order asked for, under it, and says the highest, on the left, is on top",
+    needs: ['workspace'],
+    /* Answers the jobs itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],
