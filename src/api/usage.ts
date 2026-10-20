@@ -57,6 +57,11 @@ export interface UsageSessionShare {
   workspaceName: string | null;
   tokens: number;
   sessionTokens: number;
+  /** What their calls here cost, where any was priced. */
+  cost: string | null;
+  partlyUnpriced: boolean;
+  /** When they last prompted it. */
+  lastActiveAt: string | null;
   others: string[];
 }
 
@@ -143,7 +148,7 @@ export async function fetchUsagePersonSessions(
   const data = await graphql<{ usagePersonSessions: { total: number; items: UsageSessionShare[] } }>(
     `query($person: String!, $filter: UsageReportFilter, $page: Int, $size: Int) {
        usagePersonSessions(person: $person, filter: $filter, page: $page, size: $size) {
-         total items { sessionId title workspaceId workspaceName tokens sessionTokens others }
+         total items { sessionId title workspaceId workspaceName tokens sessionTokens cost partlyUnpriced lastActiveAt others }
        }
      }`,
     { person, filter, page, size },

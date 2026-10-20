@@ -353,6 +353,8 @@ function PersonSessions({ person, filter }: { person: string; filter: UsageFilte
             <th>{t('Also prompted by')}</th>
             <th className={styles.number}>{t('Their share')}</th>
             <th className={styles.number}>{t('Tokens')}</th>
+            <th className={styles.number}>{t('Cost')}</th>
+            <th className={styles.number}>{t('Last active')}</th>
           </tr>
         </thead>
         <tbody>
@@ -379,6 +381,10 @@ function PersonSessions({ person, filter }: { person: string; filter: UsageFilte
                   {one.tokens === one.sessionTokens
                     ? shortTokens(one.tokens)
                     : tf('{mine} of {all}', { mine: shortTokens(one.tokens), all: shortTokens(one.sessionTokens) })}
+                </td>
+                <td className={styles.number} data-session-cost="">{costOf(one.cost, one.partlyUnpriced)}</td>
+                <td className={`${styles.number} ${styles.muted}`} data-session-date="">
+                  {one.lastActiveAt === null ? '—' : formatDate(one.lastActiveAt)}
                 </td>
               </tr>
             );

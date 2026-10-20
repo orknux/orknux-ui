@@ -88,6 +88,11 @@ if (usageReport.total === 0) {
   record(lines >= 1 && lines <= 5, `opening a person lists their sessions, five at most (${lines})`);
   const bar = await sessions.locator('[class*="barFill"]').first().boundingBox();
   record(bar !== null && bar.height > 0, 'with a share bar drawn beside each');
+  // And when they last prompted each, and what their calls there cost - a dash where nothing was priced.
+  const date = (await sessions.locator('[data-session-date]').first().textContent())?.trim() ?? '';
+  record(/\d/.test(date), `each session says when they last prompted it (${date})`);
+  const cost = (await sessions.locator('[data-session-cost]').first().textContent())?.trim() ?? '';
+  record(/^(\$|under \$|—)/.test(cost), `and what it cost them (${cost})`);
 
   /* ---- search over the person, order by a column, and the whole thing as a file ---- */
 
