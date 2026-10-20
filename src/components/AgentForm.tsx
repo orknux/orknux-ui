@@ -1789,18 +1789,36 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           */}
           <span className={styles.labelRow}>
             <label className={styles.label} htmlFor="agent-model">{t('Model')}</label>
-            {chosenModel !== null && (
-              <Link
-                className={styles.jump}
-                to={`/workspace/${workspaceId}/models/${chosenModel}`}
-                target="_blank"
-                rel="noreferrer"
-                title={t('Opens the model\'s settings in a new tab')}
-                aria-label={t('Open the model\'s settings')}
-              >
-                <OpenDefinitionIcon />
-              </Link>
-            )}
+            {/*
+              At the row's end: the way to make a model, then the way to the
+              chosen one - so with none chosen, making one takes the end itself.
+              Both open a new tab, so an edit in progress here is not lost.
+            */}
+            <span className={own.modelLinks}>
+              {!modelCatalogue.loading && modelCatalogue.failure === null && (
+                <Link
+                  className={styles.jump}
+                  to={`/workspace/${workspaceId}/models?add=model`}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="agent-add-model"
+                >
+                  {models.filter(answers).length === 0 ? t('No models yet - add one') : t('Add a model')}
+                </Link>
+              )}
+              {chosenModel !== null && (
+                <Link
+                  className={styles.jump}
+                  to={`/workspace/${workspaceId}/models/${chosenModel}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={t('Opens the model\'s settings in a new tab')}
+                  aria-label={t('Open the model\'s settings')}
+                >
+                  <OpenDefinitionIcon />
+                </Link>
+              )}
+            </span>
           </span>
           <div className={styles.inputWrapper}>
             <select
@@ -1825,24 +1843,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             models could not be fetched looks exactly the same from outside,
             which is what this line is for.
           */}
-          {/*
-            The way to make one, in a new tab like the jump above so an edit in
-            progress here is not lost. Shown whether or not there are models:
-            the one an agent needs may not exist yet either way.
-          */}
-          {!modelCatalogue.loading && modelCatalogue.failure === null && (
-            <p className={own.emptyNote}>
-              <Link
-                className={styles.jump}
-                to={`/workspace/${workspaceId}/models?add=model`}
-                target="_blank"
-                rel="noreferrer"
-                data-testid="agent-add-model"
-              >
-                {models.filter(answers).length === 0 ? t('No models yet - add one') : t('Add a model')}
-              </Link>
-            </p>
-          )}
           <CatalogueNote catalogue={modelCatalogue} className={own.emptyNote} />
         </div>
 

@@ -33,6 +33,31 @@ record((await link.getAttribute('target').catch(() => null)) === '_blank', 'in a
 const said = ((await link.textContent().catch(() => '')) ?? '').trim();
 record(said === 'Add a model' || said === 'No models yet - add one', `in one short line (${said})`);
 
+// On the Model label's row, at its end: left of the jump to the chosen model, or the end itself when none is chosen.
+const placed = async () => page.evaluate(() => {
+  const add = document.querySelector('[data-testid="agent-add-model"]')?.getBoundingClientRect();
+  const label = document.querySelector('label[for="agent-model"]')?.getBoundingClientRect();
+  const row = document.querySelector('label[for="agent-model"]')?.parentElement?.getBoundingClientRect();
+  const jump = document.querySelector('a[aria-label^="Open the model"]')?.getBoundingClientRect() ?? null;
+  return {
+    sameRow: Math.abs(add.top + add.height / 2 - (label.top + label.height / 2)) < 6,
+    leftOfJump: jump === null ? null : add.right <= jump.left,
+    atEnd: Math.round(row.right - (jump ?? add).right),
+  };
+});
+const model = page.locator('#agent-model');
+const before = await model.inputValue();
+const firstModel = await model.locator('option').nth(1).getAttribute('value').catch(() => null);
+if (firstModel !== null) {
+  await model.selectOption(firstModel);
+  const chosen = await placed();
+  record(chosen.sameRow && chosen.leftOfJump === true && chosen.atEnd <= 2, `with a model chosen it sits on the label row, left of the model's link (${JSON.stringify(chosen)})`);
+}
+await model.selectOption('');
+const none = await placed();
+record(none.sameRow && none.leftOfJump === null && none.atEnd <= 2, `with none chosen it takes the row's end (${JSON.stringify(none)})`);
+await model.selectOption(before);
+
 // Followed: the Models page, with Add Model open, and the question taken off the address.
 const [opened] = await Promise.all([context.waitForEvent('page'), link.click()]);
 await opened.waitForLoadState('domcontentloaded');

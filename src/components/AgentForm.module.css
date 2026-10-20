@@ -455,6 +455,13 @@
   color: var(--color-text-primary);
 }
 
+/* Add a model, then the jump to the chosen one, together at the label row's end. */
+.modelLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
 .emptyNote {
   margin: 0;
   font-size: var(--text-md);
