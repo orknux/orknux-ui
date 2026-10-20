@@ -26,12 +26,13 @@ if (agent === undefined) {
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agent}/settings`, { waitUntil: 'domcontentloaded' });
 const link = page.getByTestId('agent-add-model');
 await link.waitFor({ timeout: 20_000 }).catch(() => undefined);
-record((await link.count()) === 1, 'under the Model picker there is a link to make a model');
+record((await link.count()) === 1, 'beside the Model label there is a link to make a model');
 const href = await link.getAttribute('href').catch(() => null);
 record(href === `/workspace/${WORKSPACE}/models?add=model`, `it goes to the Models page, asking for Add Model (${href})`);
 record((await link.getAttribute('target').catch(() => null)) === '_blank', 'in a new tab, so the agent being edited is kept');
-const said = ((await link.textContent().catch(() => '')) ?? '').trim();
-record(said === 'Add a model' || said === 'No models yet - add one', `in one short line (${said})`);
+const said = await link.getAttribute('aria-label').catch(() => null);
+const drawn = await link.evaluate((one) => ({ text: one.textContent.trim(), icon: one.querySelector('img') !== null }));
+record(said === 'Add a model' && drawn.text === '' && drawn.icon, `a plus mark, named Add a model for whoever cannot see it (${JSON.stringify({ said, ...drawn })})`);
 
 // On the Model label's row, at its end: left of the jump to the chosen model, or the end itself when none is chosen.
 const placed = async () => page.evaluate(() => {

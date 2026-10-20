@@ -11,6 +11,7 @@ import type { McpServer, WorkspaceConnection } from '../api/integrations';
 import { fetchMemoryCatalogs } from '../api/memory';
 import { fetchVariableCatalogs, type VariableCatalog } from '../api/variables';
 import { fetchWorkspace } from '../api/workspaces';
+import plusIcon from '../assets/plus.svg';
 import type { MemoryCatalog } from '../api/memory';
 import { answers, fetchModels, fetchProviders } from '../api/models';
 import type { Model, ModelProvider } from '../api/models';
@@ -1802,8 +1803,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                   target="_blank"
                   rel="noreferrer"
                   data-testid="agent-add-model"
+                  title={t('Add a model')}
+                  aria-label={t('Add a model')}
                 >
-                  {models.filter(answers).length === 0 ? t('No models yet - add one') : t('Add a model')}
+                  <img src={plusIcon} alt="" width={14} height={14} />
                 </Link>
               )}
               {chosenModel !== null && (
