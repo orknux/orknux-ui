@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'agent-rounds-field-check',
+    what: "an agent's Tool Rounds and Tools carried at once are boxed numbers with their unit, Tool Rounds showing the installation's number when empty",
+    needs: ['workspace'],
+    // Read-only: it opens the first agent's settings.
+  },
+  {
     name: 'template-dialog-resize-check',
     what: 'Use a template grows from its corner, to both sides and both ways',
     needs: ['workspace'],

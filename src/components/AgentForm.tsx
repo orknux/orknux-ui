@@ -22,6 +22,7 @@ import {
   inSkillScope,
 } from '../api/skills';
 import { fetchBoxLabels } from '../api/boxes';
+import { fetchInstallationSettings } from '../api/installation';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
@@ -1184,6 +1185,13 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * emptying the box puts it back to whatever Admin has set.
    */
   const [rounds, setRounds] = useState<string>(agent.maxRounds === null ? '' : String(agent.maxRounds));
+  /** The installation's number, which an empty box follows - shown in it, so empty is not a blank. */
+  const [installationRounds, setInstallationRounds] = useState<number | null>(null);
+  useEffect(() => {
+    fetchInstallationSettings()
+      .then((held) => setInstallationRounds(held.chatMaxRounds))
+      .catch(() => setInstallationRounds(null));
+  }, []);
   /** What that share works out to, as the server works it out. Null until asked. */
   const [budget, setBudget] = useState<SessionMemoryBudget | null>(null);
 
@@ -1988,16 +1996,29 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. Empty follows Tool rounds under Admin → Settings → Chat; set one here for an agent whose work is longer than the rest. Between 2 and 10000.')}
             </FieldHint>
           </span>
-          <input
-            id="agent-max-rounds"
-            className={styles.input}
-            type="number"
-            min={2}
-            max={10000}
-            value={rounds}
-            placeholder={t('Follows the installation')}
-            onChange={(event) => setRounds(event.target.value)}
-          />
+          {/*
+            A number box with its unit beside it, as Admin -> Settings draws the
+            installation's own: a box the width of the form, holding a sentence
+            for a placeholder, read as a text field that refused typing. Empty,
+            it shows the installation's number, which is what it follows.
+          */}
+          <div className={own.numberWithUnit}>
+            <input
+              id="agent-max-rounds"
+              className={own.numberBox}
+              type="number"
+              min={2}
+              max={10000}
+              value={rounds}
+              placeholder={installationRounds === null ? '' : String(installationRounds)}
+              onChange={(event) => setRounds(event.target.value)}
+            />
+            <span className={own.unit}>
+              {rounds.trim() === '' && installationRounds !== null
+                ? t('rounds, as the installation has')
+                : t('rounds')}
+            </span>
+          </div>
         </div>
 
         {/*
@@ -2208,18 +2229,21 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('How many tools this agent holds in front of the model at a time. Left empty it holds all of them, up to what the model’s provider allows — which is 128 for OpenAI and Azure, and is the number at which a request fails rather than the number at which an agent starts choosing badly. Set one and the agent carries the ones marked "always" plus a tool for searching the rest, finding what a job needs and giving up what it looked up longest ago when the room runs out. Between 5 and 100.')}
             </FieldHint>
           </span>
-          <div className={styles.inputWrapper}>
+          {/* Boxed with its unit, as Tool Rounds is: borderless, the space around it looked like the field. */}
+          <div className={own.numberWithUnit}>
             <input
               id="agent-max-tools"
               name="maxTools"
-              className={styles.input}
+              className={own.numberBox}
               type="number"
               min={5}
               max={100}
               value={maxTools}
-              placeholder={t('As many as the provider allows')}
               onChange={(event) => setMaxTools(event.target.value)}
             />
+            <span className={own.unit}>
+              {maxTools.trim() === '' ? t('tools, as many as the provider allows') : t('tools')}
+            </span>
             {/*
               Counted as it is typed, which is what makes the number mean
               something: a ceiling under what is already marked as always
