@@ -16,6 +16,20 @@
 }
 
 /*
+ * A dialog somebody may make bigger, from its corner: the import plan and the
+ * template picker list a dozen rows in a box 420px wide. The dialog stays
+ * centred, so dragging the corner grows it to both sides and both ways.
+ */
+.dialogResizable {
+  resize: both;
+  overflow: auto;
+  min-width: 320px;
+  min-height: 160px;
+  max-width: calc(100vw - var(--space-32));
+  max-height: calc(100vh - var(--space-32));
+}
+
+/*
  * Wider still, for a form that asks several questions at once.
  *
  * A trigger's settings are a type, what it listens to, a URL, a shape, a

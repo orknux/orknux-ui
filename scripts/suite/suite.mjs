@@ -765,6 +765,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'template-dialog-resize-check',
+    what: 'Use a template grows from its corner, to both sides and both ways',
+    needs: ['workspace'],
+    // Opens Use template on the agents list and closes the page.
+  },
+  {
     name: 'dialog-hint-closed-check',
     what: "a dialog opened with the mouse does not open the note beside its title; the keyboard's focus still does",
     needs: ['workspace'],

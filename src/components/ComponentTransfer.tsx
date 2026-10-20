@@ -576,7 +576,7 @@ function ImportDialog({
   );
 
   return (
-    <dialog ref={dialogRef} className={`${dialogStyles.dialog} ${dialogStyles.dialogWide}`} onCancel={onClose} onClose={onClose}>
+    <dialog ref={dialogRef} className={`${dialogStyles.dialog} ${dialogStyles.dialogWide} ${dialogStyles.dialogResizable}`} onCancel={onClose} onClose={onClose}>
       <div className={dialogStyles.body}>
         <header className={dialogStyles.header}>
           <h2 className={dialogStyles.title}>{title}</h2>
@@ -1040,7 +1040,7 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
   return (
     <dialog
       ref={dialogRef}
-      className={`${dialogStyles.dialog} ${dialogStyles.dialogWide}`}
+      className={`${dialogStyles.dialog} ${dialogStyles.dialogWide} ${dialogStyles.dialogResizable}`}
       onCancel={onClose}
       onClose={onClose}
     >
