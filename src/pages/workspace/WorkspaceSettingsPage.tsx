@@ -31,6 +31,7 @@ import {
   setWorkspaceToolTimeout,
   setWorkspaceTaskMaxTurns,
   setWorkspaceAgentMaxSubagents,
+  setWorkspaceChatMaxRounds,
   setWorkspaceMaxToolCallsAtOnce,
   setWorkspaceSessionCompaction,
   setWorkspaceUnsafeBuiltInTools,
@@ -324,6 +325,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [turns, setTurns] = useState('');
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
+  const [rounds, setRounds] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [sessionAfter, setSessionAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
@@ -478,6 +480,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setDescription(found?.description ?? '');
         setShare(found?.defaultMemoryShare ?? null);
         setTurns(found?.taskMaxTurns === null || found?.taskMaxTurns === undefined ? '' : String(found.taskMaxTurns));
+        setRounds(found?.chatMaxRounds === null || found?.chatMaxRounds === undefined ? '' : String(found.chatMaxRounds));
         setAsks(
           found?.agentMaxSubagents === null || found?.agentMaxSubagents === undefined
             ? ''
@@ -705,6 +708,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('unsafeBuiltIns')) {
         latest = await setWorkspaceUnsafeBuiltInTools(workspaceId, unsafeBuiltIns);
       }
+      if (touched.has('rounds')) {
+        latest = await setWorkspaceChatMaxRounds(workspaceId, rounds.trim() === '' ? null : Number(rounds));
+      }
       if (touched.has('asks')) {
         latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
       }
@@ -842,6 +848,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setShare(held.defaultMemoryShare);
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
+    setRounds(held.chatMaxRounds === null ? '' : String(held.chatMaxRounds));
     setCallsAtOnce(held.maxToolCallsAtOnce === null ? '' : String(held.maxToolCallsAtOnce));
     setSessionAfter(
       held.sessionCompactAfterTokens === null ? '' : String(held.sessionCompactAfterTokens),
@@ -1624,6 +1631,31 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           <FieldHint label={t('Allow unsafe built-in tool visibility')}>
             {t('Lets an agent here have one of the tools Orknux brings hidden from it. Off, and those rows are drawn but cannot be pressed. Turning it on is at your own risk: these tools are what the product is built on, and an agent missing one behaves in ways we cannot stand behind — it retypes a file it could have kept in a scratchpad, answers in prose because it cannot say it has finished, or invents today’s date. None of that reads as a missing tool to whoever is watching.')}
           </FieldHint>
+        </div>
+
+        {/* Between an agent's own number and the installation's. */}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-tool-rounds">
+              {t('Tool Rounds')}
+            </label>
+            <FieldHint label={t('Tool Rounds')}>
+              {t('How many rounds of tool calls an agent here gets before it is stopped, unless the agent has its own number. Left empty, the installation’s number is used. Between 2 and 10000.')}
+            </FieldHint>
+          </span>
+
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-tool-rounds"
+              className={styles.input}
+              type="number"
+              min={2}
+              max={10000}
+              placeholder={workspace === null ? '' : String(workspace.chatMaxRoundsDefault)}
+              value={rounds}
+              onChange={(event) => { touch('rounds'); setRounds(event.target.value); }}
+            />
+          </div>
         </div>
 
         <div className={styles.field}>

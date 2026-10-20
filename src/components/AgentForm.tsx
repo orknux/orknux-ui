@@ -22,7 +22,6 @@ import {
   inSkillScope,
 } from '../api/skills';
 import { fetchBoxLabels } from '../api/boxes';
-import { fetchInstallationSettings } from '../api/installation';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
@@ -1186,13 +1185,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    */
   const [rounds, setRounds] = useState<string>(agent.maxRounds === null ? '' : String(agent.maxRounds));
   const [chattiness, setChattiness] = useState<Chattiness>(agent.chattiness ?? 'MEDIUM');
-  /** The installation's number, which an empty box follows - shown in it, so empty is not a blank. */
+  /**
+   * The number an empty box follows - the workspace's where it has one, else the
+   * installation's - shown in it, so empty is not a blank.
+   */
   const [installationRounds, setInstallationRounds] = useState<number | null>(null);
   useEffect(() => {
-    fetchInstallationSettings()
-      .then((held) => setInstallationRounds(held.chatMaxRounds))
+    fetchWorkspace(workspaceId)
+      .then((held) => setInstallationRounds(held?.chatMaxRounds ?? held?.chatMaxRoundsDefault ?? null))
       .catch(() => setInstallationRounds(null));
-  }, []);
+  }, [workspaceId]);
   /** What that share works out to, as the server works it out. Null until asked. */
   const [budget, setBudget] = useState<SessionMemoryBudget | null>(null);
 

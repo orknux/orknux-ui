@@ -113,6 +113,10 @@ export interface Workspace {
   unsafeBuiltInTools: boolean;
   /** What an agent here gets when the field above is null, so the box can show it. */
   agentMaxSubagentsDefault: number;
+  /** Tool rounds an agent here gets when it has no number of its own; null is the installation's. */
+  chatMaxRounds: number | null;
+  /** The installation's number, which an empty `chatMaxRounds` falls back to. */
+  chatMaxRoundsDefault: number;
   maxToolCallsAtOnceDefault: number;
   sessionCompactAfterTokensDefault: number;
   sessionCompactionKeepTurnsDefault: number;
@@ -212,7 +216,7 @@ const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
   'voiceSpeechChunking chatShowTimestamps voiceButtonHidden widgetTimerSound sessionCostShown';
@@ -483,6 +487,16 @@ export async function setWorkspaceMaxToolCallsAtOnce(
     { workspaceId, count },
   );
   return data.setWorkspaceMaxToolCallsAtOnce;
+}
+
+export async function setWorkspaceChatMaxRounds(workspaceId: string, count: number | null): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceChatMaxRounds: Workspace }>(
+    `mutation SetWorkspaceChatMaxRounds($workspaceId: ID!, $count: Int) {
+       setWorkspaceChatMaxRounds(workspaceId: $workspaceId, count: $count) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, count },
+  );
+  return data.setWorkspaceChatMaxRounds;
 }
 
 export async function setWorkspaceAgentMaxSubagents(

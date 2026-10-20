@@ -787,6 +787,12 @@ export const TESTS = [
     // Changes the first agent's level and the first agent node's, and puts both back.
   },
   {
+    name: 'workspace-tool-rounds-check',
+    what: "a workspace's Tool Rounds is saved, and an agent with no number of its own shows it",
+    needs: ['workspace'],
+    // Makes one agent and removes it; puts the workspace's number back.
+  },
+  {
     name: 'watchers-refresh-steady-check',
     what: 'Watchers keeps its height through auto-refresh rather than jumping',
     needs: ['workspace'],
