@@ -1172,7 +1172,6 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
   const [depth, setDepth] = useState<ExportDepth>('DEEP');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -1183,7 +1182,6 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
       setDepth('DEEP');
       setBusy(false);
       setError(null);
-      setDone(null);
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -1194,11 +1192,14 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
     setBusy(true);
     setError(null);
     try {
-      const made = await saveComponentAsTemplate(workspaceId, kind, id, depth, {
+      await saveComponentAsTemplate(workspaceId, kind, id, depth, {
         name: templateName.trim(),
         description: description.trim() === '' ? null : description.trim(),
       });
-      setDone(made.name);
+      // Published is the end of it: a second dialog saying so was one more thing to close.
+      setBusy(false);
+      onClose();
+      return;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not publish it.'));
     }
@@ -1219,13 +1220,6 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
           </span>
         </header>
 
-        {done !== null ? (
-          <p className={dialogStyles.dialogMessage}>
-            <strong>{done}</strong> is published. It is on the Templates page under Admin, and behind Use
-            template in every workspace.
-          </p>
-        ) : (
-          <>
             <div className={dialogStyles.field}>
               <label className={dialogStyles.label} htmlFor={`${own}-name`}>{t('Name')}</label>
               <input
@@ -1281,8 +1275,6 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
                 </span>
               </label>
             </div>
-          </>
-        )}
 
         {error !== null && (
           <p className={dialogStyles.error} role="alert">
@@ -1292,18 +1284,16 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
 
         <div className={dialogStyles.actions}>
           <button type="button" className={dialogStyles.ghost} onClick={onClose} disabled={busy}>
-            {done === null ? 'Cancel' : 'Close'}
+            {t('Cancel')}
           </button>
-          {done === null && (
-            <button
-              type="button"
-              className={dialogStyles.filled}
-              onClick={() => void publish()}
-              disabled={busy || templateName.trim() === ''}
-            >
-              {busy ? t('Publishing…') : t('Publish template')}
-            </button>
-          )}
+          <button
+            type="button"
+            className={dialogStyles.filled}
+            onClick={() => void publish()}
+            disabled={busy || templateName.trim() === ''}
+          >
+            {busy ? t('Publishing…') : t('Publish template')}
+          </button>
         </div>
       </div>
     </dialog>

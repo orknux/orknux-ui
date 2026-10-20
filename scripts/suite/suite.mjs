@@ -787,6 +787,12 @@ export const TESTS = [
     // Changes the first agent's level and the first agent node's, and puts both back.
   },
   {
+    name: 'template-publish-closes-check',
+    what: 'publishing a template closes the dialog rather than opening a message to close',
+    needs: ['workspace'],
+    // Publishes one template and deletes it.
+  },
+  {
     name: 'workspace-settings-load-race-check',
     what: 'Workspace Settings does not write a late load over what was typed',
     needs: ['workspace'],
