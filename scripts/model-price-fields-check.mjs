@@ -11,7 +11,7 @@ import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open({ viewport: { width: 1400, height: 1000 } });
 
 const { models } = await graphql(
-  'query($w: ID!) { models(workspaceId: $w) { id name kind inputCostPerMillion outputCostPerMillion } }',
+  'query($w: ID!) { models(workspaceId: $w) { id name kind inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion } }',
   { w: WORKSPACE },
 ).catch(() => ({ models: [] }));
 const model = (models ?? []).find((one) => one.kind === 'CHAT');
@@ -19,10 +19,11 @@ record(model !== undefined, `a chat model to open (${model?.name})`);
 
 if (model !== undefined) {
   const read = async () =>
-    (await graphql('query($id: ID!) { model(id: $id) { inputCostPerMillion outputCostPerMillion } }', { id: model.id })).model;
-  const saveWith = async (input, output) => {
+    (await graphql('query($id: ID!) { model(id: $id) { inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion } }', { id: model.id })).model;
+  const saveWith = async (input, output, cached) => {
     await page.locator('#model-input-cost').fill(input);
     await page.locator('#model-output-cost').fill(output);
+    await page.locator('#model-cached-cost').fill(cached);
     await page.getByRole('button', { name: /^Save/ }).first().click();
     await page.waitForTimeout(2000);
   };
@@ -39,15 +40,20 @@ if (model !== undefined) {
       `showing what is stored (${JSON.stringify(shown)})`,
     );
 
-    await saveWith('1.25', '10.5');
+    record((await page.locator('#model-cached-cost').count()) === 1, 'and a cached-input price');
+    await saveWith('1.25', '10.5', '0.125');
     const after = await read();
-    record(after.inputCostPerMillion === 1.25 && after.outputCostPerMillion === 10.5, `a save stores them (${JSON.stringify(after)})`);
+    record(
+      after.inputCostPerMillion === 1.25 && after.outputCostPerMillion === 10.5 && after.cachedInputCostPerMillion === 0.125,
+      `a save stores them (${JSON.stringify(after)})`,
+    );
   } finally {
     await page.locator('#model-input-cost').waitFor({ timeout: 5_000 }).catch(() => undefined);
     if ((await page.locator('#model-input-cost').count()) === 1) {
       await saveWith(
         model.inputCostPerMillion === null ? '' : String(model.inputCostPerMillion),
         model.outputCostPerMillion === null ? '' : String(model.outputCostPerMillion),
+        model.cachedInputCostPerMillion === null || model.cachedInputCostPerMillion === undefined ? '' : String(model.cachedInputCostPerMillion),
       );
     }
   }

@@ -93,6 +93,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
   const [maxOutput, setMaxOutput] = useState('');
   const [inputCost, setInputCost] = useState('');
   const [outputCost, setOutputCost] = useState('');
+  const [cachedCost, setCachedCost] = useState('');
   const [voice, setVoice] = useState('');
   const [imageCost, setImageCost] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -214,6 +215,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
       setMaxOutput('');
       setInputCost('');
       setOutputCost('');
+      setCachedCost('');
       setVoice('');
       setImageCost('');
       setError(null);
@@ -280,6 +282,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
           // for them. Sent, they would cost every picture at nought.
           inputCostPerMillion: draws ? null : optionalNumber(inputCost),
           outputCostPerMillion: draws ? null : optionalNumber(outputCost),
+          cachedInputCostPerMillion: draws ? null : optionalNumber(cachedCost),
           // Only meaningful on a speech model, and blank means "the provider's
           // own" rather than a name this would have to invent.
           voice: kind === 'SPEECH' ? (voice.trim() === '' ? null : voice.trim()) : null,
@@ -634,6 +637,24 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
                 placeholder="15.00"
                 value={outputCost}
                 onChange={(event) => setOutputCost(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="model-cached-cost">
+              {t('Cached input $ / million tokens')}
+            </label>
+            <div className={styles.inputWrapper}>
+              <input
+                id="model-cached-cost"
+                name="cachedInputCostPerMillion"
+                className={`${styles.input} ${styles.inputMono}`}
+                type="text"
+                inputMode="decimal"
+                placeholder={t('Input price')}
+                value={cachedCost}
+                onChange={(event) => setCachedCost(event.target.value)}
               />
             </div>
           </div>
