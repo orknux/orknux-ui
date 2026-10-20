@@ -60,11 +60,13 @@ export interface Artifact {
   versionOf: string | null;
   /** This picture's draft - its newest unsaved version - kept until saved or discarded; null where it has none. */
   draft: string | null;
+  /** Where that draft's picture is: what a picture with a draft is shown as. */
+  draftUrl?: string | null;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
-  drawnWith { modelId model size quality style drawnBy } name versionOf draft
+  drawnWith { modelId model size quality style drawnBy } name versionOf draft draftUrl
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `

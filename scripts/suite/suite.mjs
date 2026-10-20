@@ -1638,6 +1638,12 @@ export const TESTS = [
     /* Answers the jobs itself. */
   },
   {
+    name: 'design-draft-card-check',
+    what: "a picture marked Draft in Design's gallery shows its draft, on its card and opened",
+    needs: ['workspace'],
+    /* Answers the gallery itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],

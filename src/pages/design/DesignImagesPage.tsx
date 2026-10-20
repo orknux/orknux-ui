@@ -317,7 +317,8 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                   aria-label={image.prompt}
                   aria-pressed={image.id === artifactId}
                 >
-                  <img src={image.url} alt={image.prompt} className={gallery.image} loading="lazy" />
+                  {/* Marked Draft, it shows the draft: the picture as it was before the changes read as the changes lost. */}
+                  <img src={image.draftUrl ?? image.url} alt={image.prompt} className={gallery.image} loading="lazy" />
                   {image.draft !== null && image.draft !== undefined && (
                     <span className={styles.draftBadge} title={t('Changes not saved yet, kept until Save or Discard')}>{t('Draft')}</span>
                   )}
@@ -383,7 +384,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             </button>
           </div>
           </div>
-          <img src={open.url} alt={open.prompt} className={styles.focusImage} />
+          <img src={open.draftUrl ?? open.url} alt={open.prompt} className={styles.focusImage} data-testid="design-image-focus" />
           <div className={styles.focusFacts}>
             <dl className={styles.drawnWith}>
               <dt>{t('Prompt')}</dt>
