@@ -31,7 +31,12 @@ const href = await link.getAttribute('href').catch(() => null);
 record(href === `/workspace/${WORKSPACE}/models?add=model`, `it goes to the Models page, asking for Add Model (${href})`);
 record((await link.getAttribute('target').catch(() => null)) === '_blank', 'in a new tab, so the agent being edited is kept');
 const said = await link.getAttribute('aria-label').catch(() => null);
-const drawn = await link.evaluate((one) => ({ text: one.textContent.trim(), icon: one.querySelector('img') !== null }));
+const drawn = await link.evaluate((one) => {
+  const mark = one.querySelector('svg path');
+  const jump = getComputedStyle(one).color;
+  return { text: one.textContent.trim(), icon: mark !== null, stroke: mark ? getComputedStyle(mark).stroke : null, jump };
+});
+record(drawn.stroke !== null && drawn.stroke === drawn.jump && drawn.stroke !== 'rgb(250, 250, 250)', `drawn in the link's colour, not white (${drawn.stroke})`);
 record(said === 'Add a model' && drawn.text === '' && drawn.icon, `a plus mark, named Add a model for whoever cannot see it (${JSON.stringify({ said, ...drawn })})`);
 
 // On the Model label's row, at its end: left of the jump to the chosen model, or the end itself when none is chosen.

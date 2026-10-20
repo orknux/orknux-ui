@@ -11,7 +11,6 @@ import type { McpServer, WorkspaceConnection } from '../api/integrations';
 import { fetchMemoryCatalogs } from '../api/memory';
 import { fetchVariableCatalogs, type VariableCatalog } from '../api/variables';
 import { fetchWorkspace } from '../api/workspaces';
-import plusIcon from '../assets/plus.svg';
 import type { MemoryCatalog } from '../api/memory';
 import { answers, fetchModels, fetchProviders } from '../api/models';
 import type { Model, ModelProvider } from '../api/models';
@@ -1806,7 +1805,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                   title={t('Add a model')}
                   aria-label={t('Add a model')}
                 >
-                  <img src={plusIcon} alt="" width={14} height={14} />
+                  {/* Drawn in the link's own colour, like the mark beside it, rather than as a white image. */}
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                    <path d="M3.3328 8H12.6672M8 3.3328V12.6672" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
                 </Link>
               )}
               {chosenModel !== null && (
