@@ -1644,6 +1644,12 @@ export const TESTS = [
     /* Answers the gallery itself. */
   },
   {
+    name: 'design-history-reload-check',
+    what: "the image editor's strip of a picture's versions and changes is read from the server, so a reload keeps it",
+    needs: ['workspace'],
+    /* Answers the picture and its history itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],

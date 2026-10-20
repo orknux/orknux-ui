@@ -240,6 +240,18 @@ export async function fetchDesignImageJob(workspaceId: string, id: string): Prom
   return data.designImageJob;
 }
 
+/**
+ * What was asked of one picture in the image editor and not yet saved or
+ * discarded, newest first - the editor's strip, read again when the page is.
+ */
+export async function fetchDesignImageHistory(workspaceId: string, imageId: string): Promise<DesignImageJob[]> {
+  const data = await graphql<{ designImageHistory: DesignImageJob[] }>(
+    `query DesignImageHistory($workspaceId: ID!, $imageId: ID!) { designImageHistory(workspaceId: $workspaceId, imageId: $imageId) { ${JOB_FIELDS} } }`,
+    { workspaceId, imageId },
+  );
+  return data.designImageHistory;
+}
+
 /** Takes a queued or failed request off. */
 export async function dismissDesignImageJob(id: string): Promise<boolean> {
   const data = await graphql<{ dismissDesignImageJob: boolean }>(

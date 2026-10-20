@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import {
   discardDesignImageVersions,
   dismissDesignImageJob,
+  fetchDesignImageHistory,
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   importDesignImage,
@@ -213,6 +214,14 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         if (left) return;
         setShown({ kind: 'picture', picture: draft ?? found });
         setPrompt(found.prompt);
+        // Its history from the server, not from this page's memory, or a reload empties the strip while the versions are kept.
+        void fetchDesignImageHistory(workspaceId, found.id)
+          .then((history) => {
+            if (left) return;
+            const read = new Set(history.map((one) => one.id));
+            setMade((held) => [...held.filter((one) => !read.has(one.job.id)), ...history.map((job) => ({ job }))]);
+          })
+          .catch(() => undefined);
         const drawn = found.drawnWith;
         if (drawn !== null) {
           if (drawn.modelId !== null) setModelId(drawn.modelId);
