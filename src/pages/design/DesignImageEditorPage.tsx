@@ -14,6 +14,7 @@ import {
   queueDesignImageUpscale,
   renameDesignImage,
   saveDesignImageVersion,
+  stopDesignImageJob,
 } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
 import { fetchImageModelParameters } from '../../api/graph';
@@ -787,6 +788,22 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }
 
   /** A rename not saved let go, or a request still waiting taken off; the canvas moves to the one before. */
+  /** Stops the request shown, waiting or being drawn; it stays in view, said to be stopped. */
+  async function stop() {
+    if (job === null || (job.status !== 'QUEUED' && job.status !== 'DRAWING')) return;
+    const id = job.id;
+    setBusy(true);
+    setError(null);
+    try {
+      const now = await stopDesignImageJob(workspaceId, id);
+      setMade((held) => held.map((one) => (one.job.id === id ? { job: now } : one)));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not stop it.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function discard() {
     if (busy) return;
     if (pendingName !== null) {
@@ -804,7 +821,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       }
       return;
     }
-    const dropping = job !== null && (job.status === 'QUEUED' || job.status === 'FAILED') ? job.id : null;
+    const dropping = job !== null && (job.status === 'QUEUED' || job.status === 'FAILED' || job.status === 'STOPPED') ? job.id : null;
     if (dropping === null) return;
     setBusy(true);
     setError(null);
@@ -869,7 +886,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }, [location.key, unsaved]);
   const canSave = unsaved || drafted;
   const guard = useLeaveGuard({ unsaved, backTo: `/workspace/${workspaceId}/design/images`, save });
-  const canDiscard = canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED'));
+  const canDiscard =
+    canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED' || job.status === 'STOPPED'));
 
   const [width = '', height = ''] = asked.size.split('x');
   const sizeOf = (w: string, h: string) => (w === '' && h === '' ? '' : `${w}x${h}`);
@@ -1254,7 +1272,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 )}
               </p>
             )}
-            {job !== null && job.status !== 'DRAWN' && job.status !== 'FAILED' ? (
+            {job !== null && job.status === 'STOPPED' && (
+              <p className={`${styles.stopped} ${changingOver[job.id] === undefined ? '' : styles.stoppedOver}`} role="status" data-testid="editor-stopped">
+                {t('Stopped')}
+              </p>
+            )}
+            {job !== null && (job.status === 'QUEUED' || job.status === 'DRAWING') ? (
               changingOver[job.id] !== undefined ? (
                 (() => {
                   const over = changingOver[job.id];
@@ -1292,6 +1315,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                           delay={0}
                           size={40}
                         />
+                        <button type="button" className={`${form.ghost} ${styles.stop}`} onClick={() => void stop()} disabled={busy} data-testid="editor-stop">
+                          {t('Stop')}
+                        </button>
                       </div>
                     </div>
                   );
@@ -1308,9 +1334,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     delay={0}
                     size={72}
                   />
+                  <button type="button" className={`${form.ghost} ${styles.stop}`} onClick={() => void stop()} disabled={busy} data-testid="editor-stop">
+                    {t('Stop')}
+                  </button>
                 </div>
               )
-            ) : picture === null && job?.status === 'FAILED' && changingOver[job.id] !== undefined ? (
+            ) : picture === null && (job?.status === 'FAILED' || job?.status === 'STOPPED') && changingOver[job.id] !== undefined ? (
               <div className={styles.pictureFrame}>
                 <img
                   src={changingOver[job.id].url}
@@ -1442,6 +1471,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                       <img src={one.image.url} alt={one.prompt} />
                     ) : one.status === 'FAILED' ? (
                       <span className={styles.stripFailed}>!</span>
+                    ) : one.status === 'STOPPED' ? (
+                      <span className={styles.stripStopped} aria-label={t('Stopped')}>■</span>
                     ) : (
                       <Loader label="" delay={0} size={28} />
                     )}

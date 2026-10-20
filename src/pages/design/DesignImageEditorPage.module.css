@@ -239,6 +239,33 @@ button.toolbarTitle:hover {
   text-align: center;
 }
 
+/* Stopped is somebody's choice, not a failure: said plainly, in no alarm colour. */
+.stopped {
+  max-width: 480px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.stoppedOver {
+  max-width: 720px;
+  margin: 0 0 var(--space-8);
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+}
+
+.stripStopped {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+}
+
+/* Under the wait it stops. */
+.stop {
+  margin-top: var(--space-8);
+}
+
 /* Over the picture the change was asked of, which stays in view under it. */
 .failedOver {
   max-width: 720px;

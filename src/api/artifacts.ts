@@ -178,7 +178,7 @@ export interface DrawDesignImageInput {
   name?: string | null;
 }
 
-export type DesignImageJobStatus = 'QUEUED' | 'DRAWING' | 'DRAWN' | 'FAILED';
+export type DesignImageJobStatus = 'QUEUED' | 'DRAWING' | 'DRAWN' | 'FAILED' | 'STOPPED';
 
 /** A picture asked for in Design, on its way to being drawn. */
 export interface DesignImageJob {
@@ -245,6 +245,15 @@ export async function dismissDesignImageJob(id: string): Promise<boolean> {
     { id },
   );
   return data.dismissDesignImageJob;
+}
+
+/** Stops a picture waiting or being drawn: a queued one is never started, and a drawing one is thrown away. */
+export async function stopDesignImageJob(workspaceId: string, id: string): Promise<DesignImageJob> {
+  const data = await graphql<{ stopDesignImageJob: DesignImageJob }>(
+    `mutation StopDesignImageJob($workspaceId: ID!, $id: ID!) { stopDesignImageJob(workspaceId: $workspaceId, id: $id) { ${JOB_FIELDS} } }`,
+    { workspaceId, id },
+  );
+  return data.stopDesignImageJob;
 }
 
 /** Calls a picture drawn in Design something else; its file is named after it too. */

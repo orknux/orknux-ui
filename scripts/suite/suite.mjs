@@ -1539,7 +1539,7 @@ export const TESTS = [
 
   {
     name: 'design-upscale-check',
-    what: 'the image editor upscales with the server's own algorithms, imports a picked, dropped or pasted file, and exports PNG, JPEG or .orkx',
+    what: "the image editor upscales with the server's own algorithms, imports a picked, dropped or pasted file, and exports PNG, JPEG or .orkx",
     needs: ['workspace'],
     /* Answers the picture, the models, the algorithms and the queue itself. */
   },
@@ -1548,6 +1548,12 @@ export const TESTS = [
     what: 'the image editor redraws the whole picture lightly with a chosen model, prompt and strength, as a draft',
     needs: ['workspace'],
     /* Answers the picture, the models, the options and the queue itself. */
+  },
+  {
+    name: 'design-stop-check',
+    what: 'a picture waiting or being drawn is stopped from the image editor and its gallery card, and the editor says Stopped with the picture kept; Admin Settings offers the Harmonize working size',
+    needs: ['workspace'],
+    /* Answers the picture, the models, the queue and the settings itself. */
   },
   {
     name: 'import-plan-filter-check',
@@ -1586,7 +1592,7 @@ export const TESTS = [
 
   {
     name: 'execution-logs-follow-check',
-    what: 'a run's log follows new lines until scrolled up, and Follow brings it back',
+    what: "a run's log follows new lines until scrolled up, and Follow brings it back",
     needs: ['workspace'],
     /* Takes any run of the workspace and answers its log itself. */
   },
@@ -1605,7 +1611,7 @@ export const TESTS = [
   },
   {
     name: 'node-placeholders-check',
-    what: 'a node value's {{field}} placeholders are drawn as references, red when nothing answers them, and refused on save',
+    what: "a node value's {{field}} placeholders are drawn as references, red when nothing answers them, and refused on save",
     needs: ['workspace'],
     /* Makes its own trigger, function, action and workflow, and removes them. */
   },

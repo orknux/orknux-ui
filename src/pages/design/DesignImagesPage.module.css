@@ -216,6 +216,19 @@
   font-weight: 600;
 }
 
+/* Where a waiting card's × is, for one being drawn: it is stopped rather than taken off. */
+.pendingStop {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  padding: 2px var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
 .pendingDismiss {
   position: absolute;
   top: var(--space-6);

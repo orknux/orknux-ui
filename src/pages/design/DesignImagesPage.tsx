@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { deleteArtifact, dismissDesignImageJob, fetchDesignImageQueue, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
+import {
+  deleteArtifact,
+  dismissDesignImageJob,
+  fetchDesignImageQueue,
+  fetchWorkspaceArtifact,
+  fetchWorkspaceArtifacts,
+  stopDesignImageJob,
+} from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -254,6 +261,20 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                       delay={0}
                       size={48}
                     />
+                  )}
+                  {one.status === 'DRAWING' && (
+                    <button
+                      type="button"
+                      className={styles.pendingStop}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void stopDesignImageJob(workspaceId, one.id).then(readQueue);
+                      }}
+                      title={t('Stop')}
+                      data-testid="queued-stop"
+                    >
+                      {t('Stop')}
+                    </button>
                   )}
                   {one.status !== 'DRAWING' && (
                     <button

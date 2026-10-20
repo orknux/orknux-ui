@@ -96,6 +96,9 @@ export interface InstallationSettings {
   /** Where Harmonize's strength starts, for a redraw through a Stable Diffusion WebUI; Admin > Settings. */
   imageHarmonizeStrength: number;
   imageHarmonizeStrengthConfigured: number;
+  /** The longest side, in pixels, Harmonize redraws a picture at; a larger one is scaled down and back. */
+  imageHarmonizeSize: number;
+  imageHarmonizeSizeConfigured: number;
   /** What a fresh installation allows, before anybody changed it. */
   chatMaxRoundsConfigured: number;
   /**
@@ -345,7 +348,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -507,6 +510,17 @@ export async function setImageHarmonizeStrength(strength: number): Promise<Insta
     { strength },
   );
   return data.setImageHarmonizeStrength;
+}
+
+/** The longest side, in pixels, Harmonize redraws a picture at; a larger one is scaled down and back up. */
+export async function setImageHarmonizeSize(pixels: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setImageHarmonizeSize: InstallationSettings }>(
+    `mutation SetImageHarmonizeSize($pixels: Int!) {
+       setImageHarmonizeSize(pixels: $pixels) { ${FIELDS} }
+     }`,
+    { pixels },
+  );
+  return data.setImageHarmonizeSize;
 }
 
 /** The longest description a picture is drawn from - in Design, a chat and a task. */

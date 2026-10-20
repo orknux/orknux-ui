@@ -30,6 +30,7 @@ import {
   setImageMaxPrompt,
   setImageDrawsAtOnce,
   setImageHarmonizeStrength,
+  setImageHarmonizeSize,
   setSessionCompactAfterTokens,
   setSessionCompactionKeepTurns,
   setSessionCompactionSummaryTokens,
@@ -195,6 +196,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageDraws, setImageDraws] = useState('');
   const [harmonizeStrength, setHarmonizeStrength] = useState('');
+  const [harmonizeSize, setHarmonizeSize] = useState('');
   const [compactAfter, setCompactAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
   const [compactSummary, setCompactSummary] = useState('');
@@ -341,6 +343,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setImagePrompt(String(held.imageMaxPrompt));
         setImageDraws(String(held.imageDrawsAtOnce));
         setHarmonizeStrength(String(held.imageHarmonizeStrength));
+        setHarmonizeSize(String(held.imageHarmonizeSize));
         setCompactAfter(String(held.sessionCompactAfterTokens));
         setCompactKeep(String(held.sessionCompactionKeepTurns));
         setCompactSummary(String(held.sessionCompactionSummaryTokens));
@@ -427,6 +430,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: imagePrompt, held: settings.imageMaxPrompt, write: setImageMaxPrompt },
         { typed: imageDraws, held: settings.imageDrawsAtOnce, write: setImageDrawsAtOnce },
         { typed: harmonizeStrength, held: settings.imageHarmonizeStrength, write: setImageHarmonizeStrength },
+        { typed: harmonizeSize, held: settings.imageHarmonizeSize, write: setImageHarmonizeSize },
         {
           typed: compactAfter,
           held: settings.sessionCompactAfterTokens,
@@ -2271,6 +2275,33 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   disabled={busy}
                   aria-label={t('Harmonize strength')}
                 />
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Harmonize working size')}</p>
+                  <FieldHint label={t('Harmonize working size')}>
+                    {t('The longest side a picture is redrawn at by Harmonize. A larger picture is scaled down for the Stable Diffusion WebUI and its answer scaled back up to its own size, because a checkpoint draws slowly far past the size it was trained at. Between 256 and 4096.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="image-harmonize-size"
+                  name="imageHarmonizeSize"
+                  className={styles.input}
+                  type="number"
+                  min={256}
+                  max={4096}
+                  step={8}
+                  value={harmonizeSize}
+                  onChange={(event) => setHarmonizeSize(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Harmonize working size')}
+                />
+                <span className={styles.retentionUnit}>{t('pixels')}</span>
               </div>
             </div>
 
