@@ -32,7 +32,14 @@ if (agent.maxRounds === null) {
   record(drawn.placeholder === String(installationSettings.chatMaxRounds), `empty, it shows the installation's number (${drawn.placeholder})`);
 }
 const unit = (await box.locator('xpath=following-sibling::span').first().textContent())?.trim() ?? '';
-record(unit.startsWith('rounds'), `with its unit beside it (${unit})`);
+record(unit === 'rounds', `with its unit beside it, and nothing more (${unit})`);
+// On one line with its name, as Admin -> Settings lays a number out.
+const line = await page.evaluate(() => {
+  const label = document.querySelector('label[for="agent-max-rounds"]')?.getBoundingClientRect();
+  const input = document.querySelector('#agent-max-rounds')?.getBoundingClientRect();
+  return label && input ? Math.abs((label.top + label.bottom) / 2 - (input.top + input.bottom) / 2) : null;
+});
+record(line !== null && line < 12, `the name and the box are on one line (${line}px apart)`);
 // And Tools carried at once, laid out the same way.
 const tools = await page.locator('#agent-max-tools').evaluate((one) => ({
   width: one.getBoundingClientRect().width,

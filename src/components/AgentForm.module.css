@@ -615,3 +615,20 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
+
+/*
+ * A number setting on one line: its name and (?) on the left, the box and its
+ * unit on the right, as Admin -> Settings lays one out. A warning under it
+ * still takes a line of its own.
+ */
+.inlineField {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-12);
+}
+
+.inlineField > p {
+  flex-basis: 100%;
+}

@@ -1987,7 +1987,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           came back instead was "kept looking things up without reaching an
           answer" with everything it had gathered thrown away.
         */}
-        <div className={styles.field} id="agent-rounds" data-menu-entry={t('Tool Rounds')}>
+        <div className={`${styles.field} ${own.inlineField}`} id="agent-rounds" data-menu-entry={t('Tool Rounds')}>
           <span className={own.labelWithHint}>
             <label className={styles.label} htmlFor="agent-max-rounds">
               {t('Tool Rounds')}
@@ -2013,11 +2013,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               placeholder={installationRounds === null ? '' : String(installationRounds)}
               onChange={(event) => setRounds(event.target.value)}
             />
-            <span className={own.unit}>
-              {rounds.trim() === '' && installationRounds !== null
-                ? t('rounds, as the installation has')
-                : t('rounds')}
-            </span>
+            <span className={own.unit}>{t('rounds')}</span>
           </div>
         </div>
 
@@ -2220,7 +2216,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           whether the number they typed is one this agent can actually work
           under.
         */}
-        <div className={styles.field} id="agent-tools-at-once" data-menu-entry={t('Tools carried at once')}>
+        <div className={`${styles.field} ${own.inlineField}`} id="agent-tools-at-once" data-menu-entry={t('Tools carried at once')}>
           <span className={own.labelWithHint}>
             <label className={styles.label} htmlFor="agent-max-tools">
               {t('Tools carried at once')}
@@ -2241,9 +2237,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               value={maxTools}
               onChange={(event) => setMaxTools(event.target.value)}
             />
-            <span className={own.unit}>
-              {maxTools.trim() === '' ? t('tools, as many as the provider allows') : t('tools')}
-            </span>
+            <span className={own.unit}>{t('tools')}</span>
             {/*
               Counted as it is typed, which is what makes the number mean
               something: a ceiling under what is already marked as always
