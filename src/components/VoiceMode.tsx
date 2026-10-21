@@ -242,7 +242,8 @@ export const VOICE_TURN_TAKING_DEFAULTS = {
   speechOverRoomPercent: SPEECH_OVER_ROOM * 100,
   unattendedMicrophoneMs: LONGEST_TURN_MS,
   bargeInMs: BARGE_IN_MS,
-  bargeInWhileThinking: true,
+  // Off by default: a thought is not cut short by a word said into the gap.
+  bargeInWhileThinking: false,
 } as const;
 
 /** What is really in force: whatever the workspace decided, else the above. */

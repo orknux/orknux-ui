@@ -7,7 +7,7 @@
  * was still working had to sit through an answer to the old question first,
  * and their new one waited behind it. Now the same hold that stops an answer
  * stops the thinking, the request is abandoned, and what was said is the next
- * turn. It is a workspace setting, on by default, beside the hold itself.
+ * turn. It is a workspace setting, off by default, beside the hold itself.
  *
  *   on      a voice three seconds into a twenty-second think stops it within
  *           the hold, the request is aborted, and the words go next
@@ -232,7 +232,9 @@ const box = async () => {
   return there.isChecked();
 };
 const ticked = await box();
-record(ticked === true, `the Voice card offers it, ticked while the workspace has decided nothing (${ticked})`);
+record(ticked === false, `the Voice card offers it, unticked while the workspace has decided nothing (${ticked})`);
+// Turned on, for the half that shows it stopping a thinking model.
+await decide(true);
 
 /* ------------------------------------------------------------ one half */
 
@@ -290,9 +292,10 @@ await browser.close();
 /* ---- off ---- */
 
 ({ browser, context, page, graphql } = await open(LISTENS));
-await decide(false);
+// Left as it comes, which is off: the default is what leaves a thinking model alone.
+await decide(null);
 const unticked = await box();
-record(unticked === false, `turned off, the box is unticked (${unticked})`);
+record(unticked === false, `as it comes, the box is unticked (${unticked})`);
 
 const off = await drive('off');
 record(off !== null && off.aborted === null, `turned off, the same voice leaves the model thinking (${off?.aborted ?? 'not abandoned'})`);
