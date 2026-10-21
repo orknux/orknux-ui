@@ -99,9 +99,13 @@ try {
       const label = document.querySelector('ul[data-edge="reads:make->read"]');
       const lines = [...document.querySelectorAll('.react-flow__edge.edgeWiggling')].map((one) => one.getAttribute('data-id'));
       const matrix = card === null ? null : new DOMMatrix(getComputedStyle(card).transform);
+      const content = card?.querySelector('[class*="nodeContent"]');
+      const text = matrix === null || content == null ? null : matrix.multiply(new DOMMatrix(getComputedStyle(content).transform));
       return {
         lean: matrix === null ? null : Math.round(Math.atan(matrix.c) * 1800 / Math.PI) / 10,
         still: matrix === null ? null : matrix.isIdentity,
+        // The text's own frame, the body's deformation and its undoing together: upright and unstretched.
+        upright: text === null ? null : Math.max(Math.abs(text.b), Math.abs(text.c), Math.abs(text.a - 1), Math.abs(text.d - 1)) < 0.03,
         label: label === null ? null : getComputedStyle(label).translate,
         lines,
       };
@@ -115,6 +119,7 @@ try {
   }
   const moving = await drawnNow();
   record(moving.lean !== null && moving.lean < -1, `a node dragged fast leans with the motion (${moving.lean} deg)`);
+  record(moving.upright === true, 'and what it says stays straight');
   record(moving.label !== null && moving.label !== 'none' && !/^0px/.test(moving.label), `and its dependency label follows through (${moving.label})`);
   record(
     moving.lines.includes(FLOW) && moving.lines.includes(DEPENDENCY) && moving.lines.length === 2,

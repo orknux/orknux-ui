@@ -61,7 +61,8 @@ import { transcribe } from '../../api/transcription';
 import { fetchWorkspace } from '../../api/workspaces';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
-import { fetchSessionReviewsOffered } from '../../api/ratings';
+import { fetchChatReviews, fetchSessionReviewsOffered } from '../../api/ratings';
+import type { ChatReview } from '../../api/ratings';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspaces } from '../../api/workspaces';
 import audioLinesIcon from '../../assets/audio-lines.svg';
@@ -246,6 +247,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [reviewsOffered, setReviewsOffered] = useState(false);
   /** The chat being reviewed, while the dialog is open. */
   const [reviewing, setReviewing] = useState<string | null>(null);
+  /** The reviews this chat has had, drawn in the thread where they were sent. */
+  const [reviews, setReviews] = useState<ChatReview[]>([]);
   /** Whether files are being dragged over the chat, which then says it will take them. */
   const [dropping, setDropping] = useState(false);
   /** The chat whose model is being asked for a title, while it is. */
@@ -1116,6 +1119,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [requests, setRequests] = useState<InteractionRequest[]>([]);
   const requestsSession = current?.llmSessionId ?? null;
   const finishedCalls = working.calls.filter((call) => call.result !== null).length;
+  const loadReviews = useCallback(() => {
+    if (currentId === null) {
+      setReviews([]);
+      return;
+    }
+    fetchChatReviews(currentId)
+      .then(setReviews)
+      .catch(() => setReviews([]));
+  }, [currentId]);
+  // Again as answers land: rate_session sends one from inside a turn.
+  useEffect(loadReviews, [loadReviews, messages.length]);
+
   const loadRequests = useCallback(() => {
     if (requestsSession === null) {
       setRequests([]);
@@ -1152,6 +1167,14 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     working.calls.length > 0 && lastAsked !== null
       ? answeredRequests.filter((request) => Date.parse(request.createdAt) > Date.parse(lastAsked))
       : [];
+  /** Each review before the first line said after it, or at the end. */
+  const placedReviews = new Map<number, ChatReview[]>();
+  for (const review of reviews) {
+    const sent = Date.parse(review.at);
+    const before = messages.findIndex((message) => message.at !== null && Date.parse(message.at) > sent);
+    const at = before === -1 ? messages.length : before;
+    placedReviews.set(at, [...(placedReviews.get(at) ?? []), review]);
+  }
   const placedRequests = placeRequests(
     messages,
     (message) => message.at,
@@ -3394,6 +3417,7 @@ ${named}`;
 
             {messages.map((message, index) => (
               <Fragment key={index}>
+              {(placedReviews.get(index) ?? []).map((review) => <ReviewLine key={`review-${review.id}`} review={review} />)}
               {(placedRequests.get(index) ?? []).map((request) => (
                 <div key={`request-${request.id}`} className={styles.requestRow}>
                   <InteractionCard request={request} onAnswered={() => loadRequests()} />
@@ -3841,6 +3865,7 @@ ${named}`;
 
               </Fragment>
             ))}
+            {(placedReviews.get(messages.length) ?? []).map((review) => <ReviewLine key={`review-${review.id}`} review={review} />)}
             {(placedRequests.get(messages.length) ?? []).map((request) => (
               <div key={`request-${request.id}`} className={styles.requestRow}>
                 <InteractionCard request={request} onAnswered={() => loadRequests()} />
@@ -4380,7 +4405,14 @@ ${named}`;
       )}
       {/* The title bar's search focuses the sidebar's box, which is the one that filters. */}
 
-      <ReviewDialog chatId={reviewing} onClose={() => setReviewing(null)} onSent={() => setReviewing(null)} />
+      <ReviewDialog
+        chatId={reviewing}
+        onClose={() => setReviewing(null)}
+        onSent={() => {
+          setReviewing(null);
+          loadReviews();
+        }}
+      />
 
       <ConfirmDialog
         subject={deleting?.title ?? null}
@@ -4492,6 +4524,17 @@ function SessionRow({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A review of this chat, where it was sent: who, the score, and what they wrote. */
+function ReviewLine({ review }: { review: ChatReview }) {
+  return (
+    <div className={styles.reviewRow} data-testid="chat-review">
+      <span className={styles.reviewScore}>{`${review.score} / 5`}</span>
+      <span className={styles.reviewWho}>{tf('{name} reviewed this chat', { name: review.personName ?? '' })}</span>
+      {review.review !== null && <span className={styles.reviewWords}>{review.review}</span>}
     </div>
   );
 }

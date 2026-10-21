@@ -91,3 +91,21 @@ export async function sendChatReview(chatId: string, score: number, review: stri
     { chatId, score, review: review.trim() || null },
   );
 }
+
+/** A review as the chat it reviews draws it. */
+export interface ChatReview {
+  id: string;
+  at: string;
+  score: number;
+  review: string | null;
+  personName: string | null;
+}
+
+/** The reviews of the person's own chat, oldest first: from its menu and through rate_session alike. */
+export async function fetchChatReviews(chatId: string): Promise<ChatReview[]> {
+  const data = await graphql<{ chatReviews: ChatReview[] }>(
+    'query($chatId: ID!) { chatReviews(chatId: $chatId) { id at score review personName } }',
+    { chatId },
+  );
+  return data.chatReviews;
+}

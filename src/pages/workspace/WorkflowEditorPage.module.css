@@ -1925,6 +1925,17 @@ select.input {
   transform-origin: center;
 }
 
+/*
+ * What it says stays upright: the body deforms and its contents are undone by
+ * the inverse, so the text is never leaned or stretched. Exact for a lean one
+ * way and within a hair for both at once.
+ */
+:global(.react-flow__node.dragging) .nodeContent {
+  transform: scale(calc(1 / var(--jelly-sx, 1)), calc(1 / var(--jelly-sy, 1)))
+    skew(calc(-1 * var(--jelly-kx, 0deg)), calc(-1 * var(--jelly-ky, 0deg)));
+  transform-origin: center;
+}
+
 :global(.react-flow__edge.edgeWiggling) path {
   transform: translate(var(--jelly-px, 0px), var(--jelly-py, 0px));
 }

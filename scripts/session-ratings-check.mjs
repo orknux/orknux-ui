@@ -85,6 +85,13 @@ if (chat === undefined) {
   await send.click();
   await dialog.waitFor({ state: 'hidden', timeout: 10_000 });
   record(true, 'sending closes the dialog');
+  const line = page.getByTestId('chat-review').filter({ hasText: words });
+  await line.first().waitFor({ timeout: 10_000 }).catch(() => {});
+  const shown = ((await line.first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+  record(shown.includes('2 / 5') && shown.includes('reviewed this chat'), `and the review is drawn in the chat (${shown})`);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await line.first().waitFor({ timeout: 15_000 }).catch(() => {});
+  record((await line.count()) === 1, 'and is still there after a reload');
 
   const { sessionRatings } = await graphql(
     'query { sessionRatings(filter: {}, size: 5) { rows { score review sessionId personKey } } }',
