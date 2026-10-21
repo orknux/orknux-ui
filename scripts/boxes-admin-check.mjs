@@ -4,13 +4,13 @@
  *
  * What is pinned is what is drawn. The list has a row per box the server
  * lists, with its columns in the order Name, Type, Health, Active sessions,
- * Free sessions; active split into working and idle, since only a
+ * Free sessions, Label; active split into working and idle, since only a
  * working session takes a place against the limit; a remote box's health is a dot in the colour of its status, and the
  * local box - in-process, nothing to reach - has a dash there instead. A box's
  * page holds its token write-only, tests a connection on what is typed before
  * anything is saved, and says why its details could not be had when the box
- * does not answer. A box has a name and no label: the name is what an agent is
- * granted it by. The local box's page offers nothing to edit, no Delete, and the way to its settings. And the settings page draws
+ * does not answer. The local box's page offers its label and nothing else to
+ * edit, no Delete, and the way to its settings. And the settings page draws
  * every box knob opening on what the server holds, with the bounds the server
  * enforces.
  *
@@ -35,7 +35,7 @@ const fieldsOf = async (type) =>
 const queries = await fieldsOf('Query');
 record(
   ['boxes', 'box', 'boxInfo', 'boxSessions', 'boxLabels'].every((one) => queries.includes(one)),
-  'the server answers boxes, a box, what it says about itself, its sessions and the names to grant',
+  'the server answers boxes, a box, what it says about itself, its sessions and the labels in use',
 );
 const mutations = await fieldsOf('Mutation');
 record(
@@ -44,13 +44,13 @@ record(
 );
 const boxFields = await fieldsOf('Box');
 record(
-  ['id', 'name', 'kind', 'address', 'hasToken', 'health', 'activeSessions', 'capacity', 'createdAt'].every((one) =>
+  ['id', 'name', 'kind', 'label', 'address', 'hasToken', 'health', 'activeSessions', 'capacity', 'createdAt'].every((one) =>
     boxFields.includes(one),
   ),
   `a box carries every field the list draws (${boxFields.join(' ')})`,
 );
 
-const BOX = 'id name kind address hasToken health { status detail } activeSessions';
+const BOX = 'id name kind label address hasToken health { status detail } activeSessions';
 const listBoxes = async () => (await graphql(`{ boxes { ${BOX} } }`)).boxes;
 
 /* -------------------------------------------------------------- the fixture */
@@ -61,7 +61,7 @@ if (stale.length > 0) console.log(`NOTE: swept ${stale.length} scratch box(s) fr
 
 const made = (
   await graphql(`mutation ($input: BoxInput!) { createBox(input: $input) { ${BOX} } }`, {
-    input: { name: `${SCRATCH}held`, address: ADDRESS, token: 'boxes-check-token' },
+    input: { name: `${SCRATCH}held`, label: 'boxes-check', address: ADDRESS, token: 'boxes-check-token' },
   })
 ).createBox;
 record(made.kind === 'REMOTE' && made.hasToken === true, 'a remote box made with a token says it holds one');
@@ -109,7 +109,7 @@ record(asked >= 2, `and at a second it asks for the boxes again by itself (${ask
 if (chosen !== null) await auto.selectOption(chosen).catch(() => {});
 
 /* The columns, left to right in the order asked for. */
-const HEADINGS = ['Name', 'Type', 'Health', 'Active sessions', 'Free sessions'];
+const HEADINGS = ['Name', 'Type', 'Health', 'Active sessions', 'Free sessions', 'Label'];
 const xs = [];
 for (const heading of HEADINGS) {
   const box = await page.locator('button', { hasText: new RegExp(`^${heading}`) }).first().boundingBox().catch(() => null);
@@ -129,7 +129,7 @@ record(
 
 const row = page.locator(`[data-box-row="${made.id}"]`);
 record((await row.locator('[data-box-cell="kind"]').innerText().catch(() => '')).trim() === 'Remote', 'the remote box reads Remote');
-record((await row.locator('[data-box-cell="label"]').count()) === 0, 'and has no label column: a box is its name');
+record((await row.locator('[data-box-cell="label"]').innerText().catch(() => '')).trim() === 'boxes-check', 'and shows its label');
 
 const health = row.locator('[data-box-health]');
 const status = await health.getAttribute('data-box-health').catch(() => null);
@@ -171,10 +171,11 @@ await page.getByRole('link', { name: /^Add box/ }).click();
 await page.waitForURL('**/admin/boxes/new', { timeout: 10_000 }).catch(() => {});
 record(page.url().endsWith('/admin/boxes/new'), 'Add box opens the form');
 await page.locator('#box-name').fill(`${SCRATCH}added`);
-record((await page.locator('#box-label').count()) === 0, 'there is no label to fill in: the name is what a grant names');
-const blocked = (await page.locator('[data-box-save-blocked]').getAttribute('title').catch(() => null)) ?? '';
-record(blocked === 'Fill in: Address' && (await page.locator('[data-box-save]').isDisabled()), `a blocked Add box says why on hover (${blocked})`);
+record((await page.locator('label[for="box-label"] span').filter({ hasText: '*' }).count()) === 1, 'the label is marked required');
 await page.locator('#box-address').fill(ADDRESS);
+const blocked = (await page.locator('[data-box-save-blocked]').getAttribute('title').catch(() => null)) ?? '';
+record(blocked === 'Fill in: Label' && (await page.locator('[data-box-save]').isDisabled()), `a blocked Add box says why on hover (${blocked})`);
+await page.locator('#box-label').fill('boxes-check');
 
 /* The tester asks about what is typed, before anything is saved. */
 await page.locator('[data-box-test]').click();
@@ -188,7 +189,7 @@ record((await listBoxes()).every((one) => one.name !== `${SCRATCH}added`), 'and 
 await page.getByRole('button', { name: /^Add box/ }).click();
 await page.waitForURL(/\/admin\/boxes\/(?!new)[^/]+$/, { timeout: 15_000 }).catch(() => {});
 const added = (await listBoxes()).find((one) => one.name === `${SCRATCH}added`) ?? null;
-record(added !== null && added.address === ADDRESS, 'Add box stores what was typed');
+record(added !== null && added.label === 'boxes-check' && added.address === ADDRESS, 'Add box stores what was typed');
 record(added !== null && page.url().endsWith(`/admin/boxes/${encodeURIComponent(added.id)}`), "and opens the new box's page");
 
 if (added !== null) {
@@ -233,7 +234,9 @@ if (local !== null) {
   record(await address.isDisabled().catch(() => false), 'and cannot be edited');
   record(await page.locator('#box-name').isDisabled().catch(() => false), 'nor can its name');
   record((await page.locator('#box-token').count()) === 0, 'it has no token box');
-  record((await page.locator('#box-name').inputValue().catch(() => null)) === 'local', 'its name is always local');
+  const fixed = page.locator('#box-label');
+  record((await fixed.getAttribute('readonly').catch(() => null)) !== null, 'its label cannot be edited');
+  record((await fixed.inputValue().catch(() => null)) === 'local', 'and is always local');
   record((await page.locator('[data-box-save]').count()) === 0, 'so there is no Save');
   record((await page.locator('[data-box-delete]').count()) === 0, 'it cannot be deleted');
   record((await page.locator('[data-box-test]').count()) === 0, 'and has nothing to test');

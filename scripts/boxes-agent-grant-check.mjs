@@ -1,24 +1,22 @@
 /**
- * An agent's Boxes grant: every box by its name, as a list of ticks drawn the
- * way Connections is, and saved as the agent's boxLabels - the field's name
- * from when a grant named a label.
+ * An agent's Boxes grant: the labels boxes carry, as a list of ticks drawn the
+ * way Connections is, and saved as the agent's boxLabels.
  *
- * An agent starts with none. Each box is a row with a checkbox; ticking it
- * grants it. A box granted that has gone since stays on the list as a kept
- * row, as a connection that has gone does. The box_ tools are rows on the
- * Tools list that read this grant: Hide while it holds no box, Always once it
- * holds one, and not pressable either way.
+ * An agent starts with none. Each label in use is a row with a checkbox;
+ * ticking it grants it. A label granted that no box carries any more stays on
+ * the list as a kept row, as a connection that has gone does. The box_ tools
+ * are rows on the Tools list that read this grant: Hide while it holds no
+ * label, Always once it holds one, and not pressable either way.
  *
  * Makes a scratch agent and a scratch box at an address under `.invalid` - the
- * box only so there is one to be offered - and removes both, sweeping what a
- * killed run left behind.
+ * box only so there is a label in use to be offered - and removes both,
+ * sweeping what a killed run left behind.
  */
 import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
 
 const AGENT = 'boxGrantScratch_';
 const BOX = 'boxGrantScratchBox';
-// A box is granted by its name.
-const OFFERED = BOX;
+const OFFERED = 'box-grant-check';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -45,16 +43,23 @@ const agentsNamed = async (prefix) =>
     )
   ).workspaceAgents.content.filter((one) => one.name.startsWith(prefix));
 for (const one of await agentsNamed(AGENT)) await graphql(`mutation ($id: ID!) { deleteAgent(id: $id) }`, { id: one.id }).catch(() => {});
-const boxes = async () => (await graphql(`{ boxes { id name } }`)).boxes.filter((one) => one.name === BOX);
+const boxes = async () => (await graphql(`{ boxes { id name } }`)).boxes.filter((one) => one.name.startsWith(BOX));
 for (const one of await boxes()) await graphql(`mutation ($id: ID!) { deleteBox(id: $id) }`, { id: one.id }).catch(() => {});
 
 const box = (
+  await graphql(`mutation ($input: BoxInput!) { createBox(input: $input) { id label } }`, {
+    input: { name: BOX, label: OFFERED, address: 'http://box-grant-check.invalid:8090', token: null },
+  })
+).createBox;
+// A second box under the same label: a label is a group, and the grant offers it once.
+const twin = (
   await graphql(`mutation ($input: BoxInput!) { createBox(input: $input) { id } }`, {
-    input: { name: BOX, address: 'http://box-grant-check.invalid:8090', token: null },
+    input: { name: `${BOX}Twin`, label: OFFERED, address: 'http://box-grant-check-twin.invalid:8090', token: null },
   })
 ).createBox;
 const labels = (await graphql(`{ boxLabels }`)).boxLabels;
-record(labels.includes(OFFERED), `the box is offered by its name (${labels.join(', ')})`);
+record(labels.filter((one) => one === OFFERED).length === 1, 'two boxes sharing a label offer it once');
+record(labels.includes(OFFERED), `the label a box carries is one of the labels in use (${labels.join(', ')})`);
 
 const agent = (
   await graphql(`mutation ($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM }) { id boxLabels } }`, {
@@ -74,7 +79,8 @@ record(there, 'the form has a Boxes grant');
 
 /* The same list of ticks as Connections, one row per label a box carries - not a box to type a label into. */
 const row = grant.locator(`[data-grant-name="${OFFERED}"]`);
-record(await row.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false), `the box is a row, by its name (${OFFERED})`);
+record(await row.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false), `the label a box carries is a row (${OFFERED})`);
+record((await row.count()) === 1, 'one row for the label, however many boxes carry it');
 record((await grant.locator('input[placeholder*="box label"]').count()) === 0, 'and there is no box to type a label into');
 const tick = row.locator('input[type="checkbox"]');
 record((await tick.count()) === 1 && !(await tick.isChecked()), 'it is a checkbox, unticked while the agent holds no label');
@@ -112,6 +118,6 @@ record(await again.isChecked().catch(() => false), 'and it is ticked when the pa
 /* --------------------------------------------------------------- put back */
 
 await graphql(`mutation ($id: ID!) { deleteAgent(id: $id) }`, { id: agent.id }).catch(() => {});
-await graphql(`mutation ($id: ID!) { deleteBox(id: $id) }`, { id: box.id }).catch(() => {});
+for (const id of [box.id, twin.id]) await graphql(`mutation ($id: ID!) { deleteBox(id: $id) }`, { id }).catch(() => {});
 
 await finish(browser);

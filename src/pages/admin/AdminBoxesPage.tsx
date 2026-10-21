@@ -22,7 +22,7 @@ export interface AdminBoxesPageProps {
   onSignOut?: () => void;
 }
 
-type BoxOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'FREE';
+type BoxOrder = 'NAME' | 'KIND' | 'HEALTH' | 'SESSIONS' | 'FREE' | 'LABEL';
 
 /**
  * The boxes this installation can give an agent a session in.
@@ -81,6 +81,8 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
           return box.capacity?.active ?? box.activeSessions;
         case 'FREE':
           return box.capacity?.free ?? null;
+        case 'LABEL':
+          return box.label;
         default:
           return box.name;
       }
@@ -133,6 +135,7 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
             onSort={sortBy}
             className={styles.colFree}
           />
+          <ColumnHeader label={t('Label')} order="LABEL" current={order} ascending={ascending} onSort={sortBy} className={styles.colLabel} />
           <div className={styles.colActions} />
         </div>
 
@@ -205,6 +208,13 @@ export function AdminBoxesPage({ session, onSignOut }: AdminBoxesPageProps) {
                   <span className={box.capacity.free === 0 ? styles.full : undefined}>{box.capacity.free}</span>
                   <span className={styles.none}> / {box.capacity.max}</span>
                 </>
+              )}
+            </div>
+            <div className={styles.colLabel} data-box-cell="label">
+              {box.label === null || box.label === '' ? (
+                <span className={styles.none}>—</span>
+              ) : (
+                <span className={styles.labelTag}>{box.label}</span>
               )}
             </div>
             <div className={styles.colActions}>

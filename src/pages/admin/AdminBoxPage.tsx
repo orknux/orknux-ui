@@ -8,6 +8,7 @@ import {
   deleteBox,
   fetchBox,
   fetchBoxInfo,
+  fetchBoxLabels,
   fetchBoxSessions,
   revealBoxToken,
   testBoxConnection,
@@ -88,11 +89,10 @@ function yesNo(value: boolean | null): string {
  *
  * The local box is the same page with less to edit: it is inside this server,
  * so it has no address or token, and its limits are installation settings
- * rather than fields here. Its name is fixed too: `local`.
+ * rather than fields here. Its name and label are fixed too: `local`.
  *
- * A box has one name, and it is what an agent is granted the box by. It used
- * to have a label as well, which the grant named - two names for one box, the
- * second visible nowhere an agent used it.
+ * A box's label is what an agent is granted it by, and several boxes may share
+ * one: granting a label grants the group.
  */
 export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
   const { boxId } = useParams();
@@ -104,6 +104,9 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [label, setLabel] = useState('');
+  /** The labels other boxes carry, offered as one is typed so a group is joined by picking it. */
+  const [knownLabels, setKnownLabels] = useState<string[]>([]);
   /** What is typed in the token box. Empty keeps what is stored, unless clearing was asked for. */
   const [token, setToken] = useState('');
   const [clearToken, setClearToken] = useState(false);
@@ -138,6 +141,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
     setBox(found);
     setName(found.name);
     setAddress(found.address ?? '');
+    setLabel(found.label ?? '');
     setToken('');
     setClearToken(false);
   }, []);
@@ -150,6 +154,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
     }
     setName('');
     setAddress('');
+    setLabel('');
     setToken('');
     setClearToken(false);
   }
@@ -200,11 +205,25 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
 
   useEffect(loadDetails, [loadDetails]);
 
-  const complete = !local && name.trim() !== '' && address.trim() !== '';
+  useEffect(() => {
+    let current = true;
+    fetchBoxLabels()
+      .then((labels) => {
+        if (current) setKnownLabels(labels);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  /* A box with no label is no agent's, so a label is asked for up front. */
+  const complete = !local && name.trim() !== '' && address.trim() !== '' && label.trim() !== '';
   /** What is still missing, said on hover over a Save that will not press. */
   const missing = [
     name.trim() === '' ? t('Name') : null,
     address.trim() === '' ? t('Address') : null,
+    label.trim() === '' ? t('Label') : null,
   ].filter((one): one is string => one !== null);
 
   /**
@@ -245,6 +264,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
       ? { name: box?.name ?? name }
       : {
           name: name.trim(),
+          label: label.trim(),
           address: address.trim(),
           token: tokenSent(),
         };
@@ -306,7 +326,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
    * what the page last agreed with the server. Save and Discard are off while
    * there is not.
    */
-  const changed = useDirty({ name, address, token, clearToken }, [box]);
+  const changed = useDirty({ name, address, label, token, clearToken }, [box]);
 
   /** The sessions in the order chosen, then the page of them on screen. */
   const sessionsShown = useMemo(() => {
@@ -369,7 +389,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
                   {t('Name')} {!local && <span className={styles.required}>*</span>}
                 </label>
                 <FieldHint label={t('Name')}>
-                  {t('What an agent is granted this box by and opens a session on it by. Renaming it moves the agents granted it.')}
+                  {t('What an agent opens a session on this box by.')}
                 </FieldHint>
               </span>
               <input
@@ -384,6 +404,35 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
                 autoFocus={adding}
                 required={!local}
               />
+            </div>
+
+            <div className={styles.field}>
+              <span className={styles.labelWithHint}>
+                <label className={styles.label} htmlFor="box-label">
+                  {t('Label')} {!local && <span className={styles.required}>*</span>}
+                </label>
+                <FieldHint label={t('Label')}>
+                  {t('What an agent is granted this box by. Several boxes may share a label, and an agent holding it may be given any of them.')}
+                </FieldHint>
+              </span>
+              <input
+                id="box-label"
+                name="boxLabel"
+                className={`${styles.input} ${styles.inputMono}`}
+                type="text"
+                list="box-label-suggestions"
+                spellCheck={false}
+                placeholder={t('e.g. build')}
+                value={label}
+                required={!local}
+                readOnly={local}
+                onChange={(event) => setLabel(event.target.value)}
+              />
+              <datalist id="box-label-suggestions">
+                {knownLabels.map((one) => (
+                  <option key={one} value={one} />
+                ))}
+              </datalist>
             </div>
 
             <div className={styles.field}>
@@ -650,7 +699,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
               <span className={styles.dangerTitle}>{t('Delete box')}</span>
               <span className={styles.dangerNote}>
                 {confirmingDelete
-                  ? tf('Delete {name}? Agents granted it lose it.', { name: box.name })
+                  ? tf('Delete {name}? Agents holding its label lose it.', { name: box.name })
                   : t('Remove this box from the installation')}
               </span>
             </div>

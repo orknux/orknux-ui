@@ -2187,7 +2187,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     aria-current={current ? 'page' : undefined}
                     data-session-box={one.id}
                     data-session-box-active={one.active ? 'true' : 'false'}
-                    title={[one.boxName, one.remoteSessionId, one.status].filter((part) => part !== null && part !== '').join(' · ')}
+                    title={[one.boxName, one.boxLabel, one.remoteSessionId, one.status].filter((part) => part !== null && part !== '').join(' · ')}
                     onClick={() => openSessionBox(one.id)}
                   >
                     <span
@@ -2197,8 +2197,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     {/*
                       The dot says the state; the word for it, and the box's
                       name, are on hover in the row's title. The row itself is
-                      the box session's id, then the box's name as it is now
-                      (`boxLabel`, from when a box had a label of its own).
+                      the box session's id, then the box's name as it is now.
                     */}
                     <span className={styles.boxRowId} title={one.remoteSessionId} data-session-box-id="">
                       {one.remoteSessionId}

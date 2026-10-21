@@ -21,7 +21,7 @@ for (const old of (await graphql(`{ boxes { id name } }`)).boxes.filter((one) =>
   await graphql(`mutation ($id: ID!) { deleteBox(id: $id) }`, { id: old.id }).catch(() => undefined);
 }
 const box = (await graphql(`mutation ($input: BoxInput!) { createBox(input: $input) { id } }`, {
-  input: { name: NAME, address: 'http://box-sessions-paged.invalid:8090', token: null },
+  input: { name: NAME, label: 'box-sessions-paged', address: 'http://box-sessions-paged.invalid:8090', token: null },
 })).createBox;
 
 const AGENTS = ['Mira', 'Ada', 'Lin', 'Bo'];

@@ -144,6 +144,12 @@
   font-weight: 600;
 }
 
+.colLabel {
+  flex-shrink: 0;
+  width: 160px;
+  min-width: 0;
+}
+
 .colActions {
   display: flex;
   flex-shrink: 0;
@@ -201,6 +207,22 @@
 
 .none {
   color: var(--color-text-muted);
+}
+
+.labelTag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: var(--space-2) var(--space-8);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .rowAction {
