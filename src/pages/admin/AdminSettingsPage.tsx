@@ -21,6 +21,7 @@ import {
   setWritingForgottenSeconds,
   setReadingShownAfterSeconds,
   setWorkflowStepsAtOnce,
+  setWorkflowCallCheckSeconds,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
   setClusterLeaseSeconds,
@@ -185,6 +186,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [backoff, setBackoff] = useState('');
   /** How many steps of one workflow run may be running at once. Issue #285. */
   const [stepsAtOnce, setStepsAtOnce] = useState('');
+  const [callCheck, setCallCheck] = useState('');
   /** How a step a dead server was in the middle of is recovered. Issue #601. */
   const [stepHeartbeat, setStepHeartbeat] = useState('');
   const [restartAttempts, setRestartAttempts] = useState('');
@@ -336,6 +338,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
         setBackoff(String(held.rateLimitBackoffSeconds));
         setStepsAtOnce(String(held.workflowStepsAtOnce));
+        setCallCheck(String(held.workflowCallCheckSeconds));
         setStepHeartbeat(String(held.workflowStepHeartbeatSeconds));
         setRestartAttempts(String(held.workflowRestartAttempts));
         setClusterLease(String(held.clusterLeaseSeconds));
@@ -418,6 +421,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: atOnce, held: settings.agentMaxSubagentsAtOnce, write: setAgentMaxSubagentsAtOnce },
         { typed: backoff, held: settings.rateLimitBackoffSeconds, write: setRateLimitBackoffSeconds },
         { typed: stepsAtOnce, held: settings.workflowStepsAtOnce, write: setWorkflowStepsAtOnce },
+        { typed: callCheck, held: settings.workflowCallCheckSeconds, write: setWorkflowCallCheckSeconds },
         { typed: stepHeartbeat, held: settings.workflowStepHeartbeatSeconds, write: setWorkflowStepHeartbeatSeconds },
         { typed: restartAttempts, held: settings.workflowRestartAttempts, write: setWorkflowRestartAttempts },
         { typed: clusterLease, held: settings.clusterLeaseSeconds, write: setClusterLeaseSeconds },
@@ -2569,6 +2573,32 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Steps running at once')}
                 />
                 <span className={styles.retentionUnit}>{t('at once')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Called workflow check')}</p>
+                  <FieldHint label={t('Called workflow check')}>
+                    {t('A Workflow node waits for the run it called. That run ending wakes it at once; this is how long it waits before looking again when no wake arrives. Between 5 and 3600 seconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workflow-call-check-seconds"
+                  name="workflowCallCheckSeconds"
+                  className={styles.input}
+                  type="number"
+                  min={5}
+                  max={3600}
+                  value={callCheck}
+                  onChange={(event) => setCallCheck(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Called workflow check')}
+                />
+                <span className={styles.retentionUnit}>{t('seconds')}</span>
               </div>
             </div>
 

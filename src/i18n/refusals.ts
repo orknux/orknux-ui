@@ -107,6 +107,9 @@ const PL: Record<string, string> = {
     'Przepływ pracy {workflowId} nie jest przypisany do przestrzeni roboczej {workspaceId}',
 
   ActionNotInCatalogue: 'Akcji {id} nie ma w katalogu tej przestrzeni roboczej',
+  CalledWorkflowNotInWorkspace: 'Przepływu {id} nie ma w tej przestrzeni roboczej, więc węzeł Przepływ nie może go uruchomić',
+  WorkflowCallsItself: '{node} uruchamia przepływ, w którym się znajduje; przepływ nie może wywołać samego siebie',
+  CallCheckSecondsOutOfRange: '{seconds} to nie jest liczba sekund między sprawdzeniami wywołanego przepływu. Wybierz od 5 do 3600.',
   ConditionNotInCatalogue: 'Warunku {id} nie ma w katalogu tej przestrzeni roboczej',
   // A decision node's model, question keys and options (issue #577).
   DecisionModelNotInWorkspace:

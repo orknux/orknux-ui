@@ -524,6 +524,10 @@ a.refresh {
   background: #14b8a6;
 }
 
+.workflowNode {
+  background: #6366f1;
+}
+
 .handle {
   width: 6px;
   height: 6px;

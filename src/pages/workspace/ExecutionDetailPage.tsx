@@ -71,6 +71,7 @@ const KIND_CLASS: Record<NodeKind, string> = {
   SESSION: 'session',
   IMAGE: 'image',
   DECISION: 'decision',
+  WORKFLOW: 'workflowNode',
 };
 
 const STEP_STATUS_LABEL: Record<StepStatus, string> = {
@@ -1005,6 +1006,17 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   {/* Where this run came from, for a run that came of re-running
                       another. Only the id is kept, and only the id is needed:
                       the workflow is the same one named two rows below. */}
+                  {run?.parentExecutionId != null && (
+                    <SummaryRow label={t('Called by')}>
+                      <Link
+                        className={styles.summaryLink}
+                        to={`/workspace/${workspaceId}/executions/${run.parentExecutionId}`}
+                        data-called-by=""
+                      >
+                        Run #{run.parentExecutionId}
+                      </Link>
+                    </SummaryRow>
+                  )}
                   {run?.startedFrom != null && (
                     <SummaryRow label={t('Started from')}>
                       <Link
@@ -1418,6 +1430,17 @@ function NodeDetailsPanel({
       {/* The conversation this step talked into, when it kept one. An agent
           node with a session wired to it writes its turns there, and this is
           the way from the run to it. Issue #387. */}
+      {step.childExecutionId != null && (
+        <PanelField label={t('Called run')}>
+          <Link
+            className={styles.panelLink}
+            to={`/workspace/${workspaceId}/executions/${step.childExecutionId}`}
+            data-called-run=""
+          >
+            Run #{step.childExecutionId}
+          </Link>
+        </PanelField>
+      )}
       {step.sessionId !== null && (
         <PanelField label={t('Session')}>
           <Link className={styles.panelLink} to={`/workspace/${workspaceId}/sessions/${step.sessionId}`}>

@@ -3,7 +3,7 @@ import type { ObjectPropertyInput, PropertyKind } from './objects';
 import { t } from '../i18n';
 
 export type WorkflowStatus = 'DRAFT' | 'PUBLISHED';
-export type NodeKind = 'TRIGGER' | 'AGENT' | 'ACTION' | 'CONDITION' | 'OBJECT' | 'SESSION' | 'IMAGE' | 'DECISION';
+export type NodeKind = 'TRIGGER' | 'AGENT' | 'ACTION' | 'CONDITION' | 'OBJECT' | 'SESSION' | 'IMAGE' | 'DECISION' | 'WORKFLOW';
 
 /** The kinds of question a decision model answers. Issue #577. */
 export type DecisionQuestionKind = 'CHOICE' | 'SCORE' | 'NOUL';
@@ -82,6 +82,8 @@ export interface GraphNode {
   decisionBranchQuestion?: string | null;
   /** How sure an answer has to be to be taken, 0 to 1; null takes every answer. */
   decisionThreshold?: number | null;
+  /** The workflow a WORKFLOW node runs; null until one is picked. */
+  calledWorkflowId?: string | null;
   /**
    * What this node calls what it produces, so a later node can point a
    * reference at it. Null hands the output on unchanged.
@@ -282,7 +284,7 @@ const GRAPH_FIELDS = `
   assignmentId
   nodes {
     key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId imageSize imageQuality imageStyle outputName icon orientation
-    decisionModelId decisionBranchQuestion decisionThreshold
+    decisionModelId decisionBranchQuestion decisionThreshold calledWorkflowId
     decisionQuestions { key kind instructions options { name description } }
     yesLabel noLabel fallbackEnabled streamOutput retryAttempts retryBackoffSeconds
     retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds enabled x y
@@ -426,5 +428,6 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   IMAGE: t('Image model'),
   // "Decision" rather than "Decision model": it runs on a chat model too.
   DECISION: t('Decision'),
+  WORKFLOW: t('Workflow'),
 };
 

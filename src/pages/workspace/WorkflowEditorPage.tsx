@@ -76,7 +76,7 @@ import { INLINE_OBJECT, ObjectForm, asProperty, asRow, kindsOf, typeOf, typeOpti
 import type { ObjectFormStyles, Row } from '../../components/ObjectForm';
 import { fetchWorkflowOwnedTriggers, fetchWorkspaceTriggers } from '../../api/triggers';
 import type { Trigger } from '../../api/triggers';
-import { removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
+import { fetchWorkspaceWorkflows, removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
 import activityIcon from '../../assets/activity.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import { useWorkspaceVariables } from './workspaceVariables';
@@ -241,6 +241,8 @@ interface NodeData extends Record<string, unknown> {
   imageStyle: string | null;
   /** The decision model a decision node asks; null until one is picked. Issue #577. */
   decisionModelId?: string | null;
+  /** The workflow a Workflow node runs; null until one is picked. */
+  calledWorkflowId?: string | null;
   /** What a decision node asks, in order. */
   decisionQuestions?: DecisionQuestion[];
   /** The choice question whose option picks the line the run leaves by; null only answers. */
@@ -1397,6 +1399,7 @@ const KIND_COLOUR: Record<NodeKind, string> = {
   SESSION: '#8b5cf6',
   IMAGE: '#ec4899',
   DECISION: '#14b8a6',
+  WORKFLOW: '#6366f1',
 };
 
 /**
@@ -1466,6 +1469,7 @@ const KIND_CLASS: Record<NodeKind, string> = {
   SESSION: 'session',
   IMAGE: 'image',
   DECISION: 'decision',
+  WORKFLOW: 'workflowNode',
 };
 
 /**
@@ -1925,7 +1929,7 @@ function withDefinition<T extends { id: string }>(all: T[], one: T): T[] {
  * for - things that belong together are next to each other, and a list is the
  * only place that can be said.
  */
-const ADD_ORDER: NodeKind[] = ['TRIGGER', 'ACTION', 'CONDITION', 'DECISION', 'OBJECT', 'IMAGE', 'AGENT', 'SESSION'];
+const ADD_ORDER: NodeKind[] = ['TRIGGER', 'ACTION', 'CONDITION', 'DECISION', 'OBJECT', 'IMAGE', 'AGENT', 'SESSION', 'WORKFLOW'];
 
 const ADD_ICON = Object.fromEntries(
   ADD_ORDER.map((kind) => [kind, nodeIconUrl(DEFAULT_NODE_ICON[kind])]),
@@ -2899,6 +2903,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [imageModels, setImageModels] = useState<Model[]>([]);
   /** The workspace's decision models, for a decision node's model picker. Issue #577. */
   const [decisionModels, setDecisionModels] = useState<Model[]>([]);
+  /** The workspace's other workflows, which a Workflow node may run. */
+  const [callable, setCallable] = useState<{ id: string; name: string }[]>([]);
   /**
    * What the chosen image model's endpoint takes beyond a prompt, one entry per
    * parameter; null while no model is chosen or the answer is on its way. The
@@ -3106,6 +3112,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               decisionQuestions: node.decisionQuestions ?? [],
               decisionBranchQuestion: node.decisionBranchQuestion ?? null,
               decisionThreshold: node.decisionThreshold ?? null,
+              calledWorkflowId: node.calledWorkflowId ?? null,
               outputName: node.outputName ?? null,
               icon: node.icon ?? null,
               orientation: node.orientation ?? null,
@@ -3213,6 +3220,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     everyPage((page) => fetchWorkspaceObjects(workspaceId, page, OBJECT_PAGE_SIZE))
       .then(setObjects)
       .catch(() => setObjects([]));
+    fetchWorkspaceWorkflows(workspaceId, 0, 500)
+      .then((page) =>
+        setCallable(
+          page.content
+            .filter((one) => one.workflowId !== workflowId)
+            .map((one) => ({ id: one.workflowId, name: one.name })),
+        ),
+      )
+      .catch(() => setCallable([]));
     fetchModels(workspaceId)
       .then((all) => {
         setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled));
@@ -3666,6 +3682,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           decisionQuestions: [],
           decisionBranchQuestion: null,
           decisionThreshold: null,
+          calledWorkflowId: null,
           /*
            * An agent starts with its answer named.
            *
@@ -3677,7 +3694,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
            * the canvas, and only started working once somebody typed a
            * different name. Now the default is real.
            */
-          outputName: kind === 'AGENT' ? 'reply' : kind === 'IMAGE' ? 'image' : kind === 'DECISION' ? 'decision' : null,
+          outputName: kind === 'AGENT' ? 'reply' : kind === 'IMAGE' ? 'image' : kind === 'DECISION' ? 'decision' : kind === 'WORKFLOW' ? 'called' : null,
           orientation: null,
           /*
            * A new action stops the run when it fails, which is what every node
@@ -3893,6 +3910,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           JSON.stringify(data.decisionQuestions ?? []) === JSON.stringify(draft.decisionQuestions ?? []) &&
           (data.decisionBranchQuestion ?? null) === (draft.decisionBranchQuestion ?? null) &&
           (data.decisionThreshold ?? null) === (draft.decisionThreshold ?? null) &&
+          (data.calledWorkflowId ?? null) === (draft.calledWorkflowId ?? null) &&
           data.outputName === draft.outputName &&
           data.icon === draft.icon &&
           data.orientation === draft.orientation &&
@@ -4355,6 +4373,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           decisionQuestions: data.kind === 'DECISION' ? (data.decisionQuestions ?? []) : [],
           decisionBranchQuestion: data.decisionBranchQuestion ?? null,
           decisionThreshold: data.decisionThreshold ?? null,
+          calledWorkflowId: data.kind === 'WORKFLOW' ? (data.calledWorkflowId ?? null) : null,
           outputName: data.outputName,
           icon: data.icon,
           orientation: data.orientation ?? null,
@@ -6495,6 +6514,40 @@ Change the keystroke in Preferences.`}
                     />
                   </div>
                 )}
+                {draft.kind === 'WORKFLOW' && (
+                  <div className={styles.field}>
+                    <span className={styles.labelRow}>
+                      <span className={styles.labelWithHint}>
+                        <label className={styles.label} htmlFor="node-called-workflow">
+                          {t('Workflow')}
+                        </label>
+                        <FieldHint label={t('Workflow')}>
+                          {t('Which of this workspace’s workflows this node runs. It is handed this node’s parameters, and this node waits for it to finish.')}
+                        </FieldHint>
+                      </span>
+                      {draft.calledWorkflowId != null && (
+                        <span className={styles.labelLinks}>
+                          <Link
+                            to={`/workspace/${workspaceId}/workflows/${draft.calledWorkflowId}`}
+                            className={styles.definitionJump}
+                            title={t('Opens the workflow this node runs')}
+                            aria-label={t('Open the workflow this node runs')}
+                          >
+                            <OpenDefinitionIcon />
+                          </Link>
+                        </span>
+                      )}
+                    </span>
+                    <DefinitionPicker
+                      id="node-called-workflow"
+                      value={draft.calledWorkflowId ?? ''}
+                      options={callable.map((one) => ({ value: one.id, label: one.name }))}
+                      onChoose={(chosen) => setDraft({ ...draft, calledWorkflowId: chosen || null })}
+                      placeholder={callable.length === 0 ? t('This workspace has no other workflow') : t('Choose a workflow…')}
+                      searchPlaceholder={t('Search workflows…')}
+                    />
+                  </div>
+                )}
                 {draft.kind === 'DECISION' && (
                   <DecisionNodeFields
                     key={`decision-${draftFor}`}
@@ -6701,6 +6754,7 @@ Change the keystroke in Preferences.`}
                 {((draft.kind === 'ACTION' && draft.actionId !== null) ||
                   draft.kind === 'IMAGE' ||
                   draft.kind === 'DECISION' ||
+                  draft.kind === 'WORKFLOW' ||
                   draft.kind === 'AGENT' ||
                   draft.kind === 'SESSION' ||
                   draft.kind === 'OBJECT' ||
@@ -6757,6 +6811,11 @@ Change the keystroke in Preferences.`}
                                 can look at something else. Leave them all empty and the function is handed the
                                 whole of what the run carries, as it was before.
                               </>
+                            ) : draft.kind === 'WORKFLOW' ? (
+                              <>
+                                Each parameter is a field of what the called workflow is handed, written here or
+                                read from another node. With none, it is handed whatever reached this node.
+                              </>
                             ) : draft.kind === 'DECISION' ? (
                               <>
                                 <strong>state</strong> is what the questions are about - wording of your own, or a
@@ -6781,10 +6840,11 @@ Change the keystroke in Preferences.`}
                         </FieldHint>
                       </span>
                       {/* A shape of the node's own is added to here, one field at a time. */}
-                      {draft.kind === 'OBJECT' && draft.objectId === null && (
+                      {((draft.kind === 'OBJECT' && draft.objectId === null) || draft.kind === 'WORKFLOW') && (
                         <button
                           type="button"
                           className={styles.parameterSync}
+                          data-add-parameter=""
                           onClick={() =>
                             setDraft({
                               ...draft,
@@ -6795,7 +6855,7 @@ Change the keystroke in Preferences.`}
                             })
                           }
                         >
-                          {t('+ Add field')}
+                          {draft.kind === 'WORKFLOW' ? t('+ Add parameter') : t('+ Add field')}
                         </button>
                       )}
                     </span>
@@ -6803,7 +6863,9 @@ Change the keystroke in Preferences.`}
                       <p className={styles.fieldNote}>
                         {draft.kind === 'OBJECT'
                           ? t('No fields yet, so this node would make nothing.')
-                          : t('This action takes no parameters.')}
+                          : draft.kind === 'WORKFLOW'
+                            ? t('No parameters: the workflow is handed whatever reached this node.')
+                            : t('This action takes no parameters.')}
                       </p>
                     ) : (
                       <>
@@ -6818,7 +6880,7 @@ Change the keystroke in Preferences.`}
                           {draft.mappings.map((mapping, index) => (draft.kind === 'AGENT' && mapping.name === 'chattiness') ? null : (
                             <div className={styles.parameter} key={index} data-mapping-name={mapping.name}>
                               <span className={styles.parameterHead}>
-                                {draft.kind === 'OBJECT' && draft.objectId === null ? (
+                                {(draft.kind === 'OBJECT' && draft.objectId === null) || draft.kind === 'WORKFLOW' ? (
                                   <input
                                     className={`${styles.input} ${styles.fieldName}`}
                                     value={mapping.name}
@@ -6855,7 +6917,7 @@ Change the keystroke in Preferences.`}
                                     )}
                                   </span>
                                 )}
-                                {draft.kind === 'OBJECT' && draft.objectId === null && (
+                                {((draft.kind === 'OBJECT' && draft.objectId === null) || draft.kind === 'WORKFLOW') && (
                                   <button
                                     type="button"
                                     className={styles.parameterSync}
@@ -7416,7 +7478,8 @@ Change the keystroke in Preferences.`}
                   draft.kind === 'ACTION' ||
                   draft.kind === 'OBJECT' ||
                   draft.kind === 'IMAGE' ||
-                  draft.kind === 'DECISION') && (
+                  draft.kind === 'DECISION' ||
+                  draft.kind === 'WORKFLOW') && (
                   <div className={styles.field}>
                     <span className={styles.labelWithHint}>
                       <label className={styles.label} htmlFor="node-output-name">

@@ -15,6 +15,19 @@
  * of English on an otherwise Polish screen.
  */
 export const PL: Record<string, string> = {
+  // The Workflow node: one workflow running another.
+  "Which of this workspace’s workflows this node runs. It is handed this node’s parameters, and this node waits for it to finish.": "Który przepływ tej przestrzeni roboczej uruchamia ten węzeł. Dostaje parametry tego węzła, a węzeł czeka, aż się zakończy.",
+  "Opens the workflow this node runs": "Otwiera przepływ, który uruchamia ten węzeł",
+  "Open the workflow this node runs": "Otwórz przepływ, który uruchamia ten węzeł",
+  "This workspace has no other workflow": "Ta przestrzeń robocza nie ma innego przepływu",
+  "Choose a workflow…": "Wybierz przepływ…",
+  "Search workflows…": "Szukaj przepływów…",
+  "+ Add parameter": "+ Dodaj parametr",
+  "No parameters: the workflow is handed whatever reached this node.": "Brak parametrów: przepływ dostaje to, co dotarło do tego węzła.",
+  "Called workflow check": "Sprawdzanie wywołanego przepływu",
+  "A Workflow node waits for the run it called. That run ending wakes it at once; this is how long it waits before looking again when no wake arrives. Between 5 and 3600 seconds.": "Węzeł Przepływ czeka na uruchomienie, które wywołał. Jego zakończenie budzi węzeł od razu; to jest czas, po którym węzeł sprawdza ponownie, gdy nic go nie obudzi. Od 5 do 3600 sekund.",
+  "Called by": "Wywołany przez",
+  "Called run": "Wywołane uruchomienie",
   "This function takes no parameters.": "Ta funkcja nie przyjmuje parametrów.",
   "from the workspace": "z przestrzeni roboczej",
   "the stored value": "wartość zapisana",

@@ -454,6 +454,11 @@
   background: #14b8a6;
 }
 
+/* A Workflow node: another workflow run as one step. Indigo, apart from the steps it stands in for. */
+.workflowNode {
+  background: #6366f1;
+}
+
 .nodeContent {
   display: flex;
   flex-direction: column;

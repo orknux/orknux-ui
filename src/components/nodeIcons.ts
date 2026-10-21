@@ -25,6 +25,7 @@ export const DEFAULT_NODE_ICON: Record<NodeKind, string> = {
   SESSION: 'message-square',
   IMAGE: 'image',
   DECISION: 'split',
+  WORKFLOW: 'workflow',
 };
 
 /**

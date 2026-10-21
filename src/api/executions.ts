@@ -96,6 +96,8 @@ export interface ExecutionStep {
   branch: EdgeBranch | null;
   /** Which option of a decision the run went by, on an OPTION branch. Issue #577. */
   branchOption?: string | null;
+  /** The run a WORKFLOW step started, once it has. */
+  childExecutionId?: string | null;
   /**
    * How many attempts the step spent. More than one only where its node was
    * given a retry policy and needed it.
@@ -131,6 +133,8 @@ export interface ExecutionDetail extends Execution {
    * one - all of it, or from one of its steps. Null for a run nobody re-ran.
    */
   startedFrom: string | null;
+  /** The run whose WORKFLOW node started this one; null for every run nothing called. */
+  parentExecutionId?: string | null;
   /** Which version of the workflow it ran, against the workflow now; null on runs from before that was kept. */
   version?: RanVersion | null;
   /** What each step was handed for its parameters; workspace variables are left as written. */
@@ -338,10 +342,10 @@ export function formatRelative(iso: string): string {
 
 const EXECUTION_DETAIL_FIELDS = `
   id workspaceId workflowId workflowName status trigger source { connectionType action } startedAt finishedAt durationSeconds error workflowAssigned
-  stoppedAtNodeKey stoppedReason startedFrom
+  stoppedAtNodeKey stoppedReason startedFrom parentExecutionId
   version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
   parameters { nodeKey name value reference expression }
-  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption attempts carriedOver x y }
+  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption childExecutionId attempts carriedOver x y }
   edges { source target branch }
   logs { id nodeKey at level message }
   pictures { id nodeKey url prompt filename contentType }

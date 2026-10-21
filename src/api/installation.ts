@@ -142,6 +142,9 @@ export interface InstallationSettings {
    */
   workflowStepsAtOnce: number;
   workflowStepsAtOnceConfigured: number;
+  /** How long a Workflow node waits between looks at the run it called. */
+  workflowCallCheckSeconds: number;
+  workflowCallCheckSecondsConfigured: number;
   /**
    * Temporal: how long a step may go without its worker saying it is alive
    * before it is handed to another, in seconds; 0 is no heartbeat. Issue #601.
@@ -353,7 +356,7 @@ const FIELDS =
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
   'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
-  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
+  'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
@@ -618,6 +621,17 @@ export async function setAgentMaxSubagentsAtOnce(count: number): Promise<Install
     { count },
   );
   return data.setAgentMaxSubagentsAtOnce;
+}
+
+/** How long a Workflow node waits between looks at the run it called; the called run ending wakes it sooner. */
+export async function setWorkflowCallCheckSeconds(seconds: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkflowCallCheckSeconds: InstallationSettings }>(
+    `mutation SetWorkflowCallCheckSeconds($seconds: Int!) {
+       setWorkflowCallCheckSeconds(seconds: $seconds) { ${FIELDS} }
+     }`,
+    { seconds },
+  );
+  return data.setWorkflowCallCheckSeconds;
 }
 
 /** How many steps of one workflow run may be running at once. Issue #285. */

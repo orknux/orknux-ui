@@ -341,6 +341,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'workflow-node-check',
+    what: 'a Workflow node is offered, picks another workflow, takes parameters of its own, and its run links to the run it called and back',
+    needs: [],
+  },
+  {
     name: 'bulk-import-check',
     what: 'several exported files, or several ticked templates, import into a workspace as one plan and one press',
     needs: [],
