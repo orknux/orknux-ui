@@ -242,6 +242,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'session-ratings-check',
+    what: 'Admin > Reports: a picker between the reports, the ratings switch, and a review sent from a chat drawn on the Ratings report',
+    needs: [],
+  },
+  {
     name: 'usage-report-check',
     what: "Admin > Reports: the usage tracking switch survives a reload, and the report draws people and their sessions",
     needs: [],

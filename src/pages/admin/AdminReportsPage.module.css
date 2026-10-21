@@ -441,3 +441,20 @@
 .headRight {
   justify-content: flex-end;
 }
+
+/* The report picker on the title's line, at the far end of it. */
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+/* A review is the person's words: wrapped, never cut. */
+.review {
+  min-width: 240px;
+  max-width: 480px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

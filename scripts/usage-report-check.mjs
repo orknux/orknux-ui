@@ -94,6 +94,25 @@ if (usageReport.total === 0) {
   const cost = (await sessions.locator('[data-session-cost]').first().textContent())?.trim() ?? '';
   record(/^(\$|under \$|—)/.test(cost), `and what it cost them (${cost})`);
 
+  // Their sessions are put in a column's order by the server, across every page of them.
+  const shares = async () => (await sessions.locator('[class*="sharePct"]').allInnerTexts()).map((one) => Number.parseInt(one, 10));
+  const sortable = await sessions.locator('thead button').allInnerTexts();
+  record(
+    ['session', 'workspace', 'their share', 'tokens', 'cost', 'last active'].every((one) => sortable.some((text) => text.trim().toLowerCase() === one)),
+    `every session column but the others is a sort control (${sortable.map((one) => one.trim()).join(', ')})`,
+  );
+  await sessions.getByRole('button', { name: 'Their share' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="usage-sessions"] [aria-sort="descending"]')?.textContent?.includes('Their share') === true, null, { timeout: 5_000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  const down = await shares();
+  record(down.every((one, at) => at === 0 || down[at - 1] >= one), `pressing Their share puts the biggest share first (${down.join(', ')})`);
+  await sessions.getByRole('button', { name: 'Their share' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="usage-sessions"] [aria-sort="ascending"]')?.textContent?.includes('Their share') === true, null, { timeout: 5_000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  const up = await shares();
+  record(up.every((one, at) => at === 0 || up[at - 1] <= one), `and again the smallest (${up.join(', ')})`);
+  await page.evaluate(() => { localStorage.removeItem('orknux.usage-sessions.sort-order'); localStorage.removeItem('orknux.usage-sessions.sort-ascending'); });
+
   /* ---- search over the person, order by a column, and the whole thing as a file ---- */
 
   const people = (await table.getByTestId('usage-person').evaluateAll((all) => all.map((one) => one.getAttribute('data-person'))));

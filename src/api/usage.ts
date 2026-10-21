@@ -139,19 +139,24 @@ export async function usageReportCsv(filter: UsageFilter, order: UsageOrder, asc
   return lines.map((line) => line.map(cell).join(',')).join('\n') + '\n';
 }
 
+/** How a person's sessions may be put in order; TOKENS is the server's own, so it is sent as none. */
+export type UsageSessionOrder = 'SESSION' | 'WORKSPACE' | 'SHARE' | 'TOKENS' | 'COST' | 'LAST_ACTIVE';
+
 export async function fetchUsagePersonSessions(
   person: string,
   filter: UsageFilter,
   page: number,
   size: number,
+  order: UsageSessionOrder = 'TOKENS',
+  ascending = false,
 ): Promise<{ total: number; items: UsageSessionShare[] }> {
   const data = await graphql<{ usagePersonSessions: { total: number; items: UsageSessionShare[] } }>(
-    `query($person: String!, $filter: UsageReportFilter, $page: Int, $size: Int) {
-       usagePersonSessions(person: $person, filter: $filter, page: $page, size: $size) {
+    `query($person: String!, $filter: UsageReportFilter, $page: Int, $size: Int, $order: String, $ascending: Boolean) {
+       usagePersonSessions(person: $person, filter: $filter, page: $page, size: $size, order: $order, ascending: $ascending) {
          total items { sessionId title workspaceId workspaceName tokens sessionTokens cost partlyUnpriced lastActiveAt others }
        }
      }`,
-    { person, filter, page, size },
+    { person, filter, page, size, order: order === 'TOKENS' ? null : order, ascending },
   );
   return data.usagePersonSessions;
 }

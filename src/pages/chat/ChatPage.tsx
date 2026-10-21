@@ -61,6 +61,7 @@ import { transcribe } from '../../api/transcription';
 import { fetchWorkspace } from '../../api/workspaces';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
+import { fetchSessionReviewsOffered } from '../../api/ratings';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspaces } from '../../api/workspaces';
 import audioLinesIcon from '../../assets/audio-lines.svg';
@@ -85,6 +86,7 @@ import type { VoiceModeHandle, VoicePhase, VoiceTurnTaking } from '../../compone
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ReviewDialog } from '../../components/ReviewDialog';
 import { setSidebarCollapsed, useSidebarCollapsed } from '../../session/sidebar';
 import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
@@ -240,6 +242,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const addRef = useRef<HTMLDivElement>(null);
   /** Whether this installation allows files at all; the button is absent when not. */
   const [attachmentsAllowed, setAttachmentsAllowed] = useState(false);
+  /** Whether reviews can be sent, which adds an entry to the same menu. */
+  const [reviewsOffered, setReviewsOffered] = useState(false);
+  /** The chat being reviewed, while the dialog is open. */
+  const [reviewing, setReviewing] = useState<string | null>(null);
   /** Whether files are being dragged over the chat, which then says it will take them. */
   const [dropping, setDropping] = useState(false);
   /** The chat whose model is being asked for a title, while it is. */
@@ -1345,6 +1351,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setInstallationMarker(held.commandMarker);
       })
       .catch(() => setAttachmentsAllowed(false));
+    fetchSessionReviewsOffered()
+      .then(setReviewsOffered)
+      .catch(() => setReviewsOffered(false));
   }, []);
 
   // Someone on an old link, or with the page still open when it was switched
@@ -3963,7 +3972,7 @@ ${named}`;
                 rather than a paperclip because what can be added to a message
                 is going to grow, and a row of icons is how that goes wrong.
               */}
-              {attachmentsAllowed && (
+              {(attachmentsAllowed || (reviewsOffered && current !== null)) && (
                 <div className={styles.addWrapper} ref={addRef}>
                   <button
                     type="button"
@@ -3979,17 +3988,33 @@ ${named}`;
                   </button>
                   {addOpen && (
                     <div className={styles.addMenu} role="menu">
-                      <button
-                        type="button"
-                        className={styles.addMenuItem}
-                        role="menuitem"
-                        onClick={() => {
-                          setAddOpen(false);
-                          filesRef.current?.click();
-                        }}
-                      >
-                        {t('Upload files')}
-                      </button>
+                      {attachmentsAllowed && (
+                        <button
+                          type="button"
+                          className={styles.addMenuItem}
+                          role="menuitem"
+                          onClick={() => {
+                            setAddOpen(false);
+                            filesRef.current?.click();
+                          }}
+                        >
+                          {t('Upload files')}
+                        </button>
+                      )}
+                      {/* A review of this chat, sent by the person without asking the agent. */}
+                      {reviewsOffered && current !== null && (
+                        <button
+                          type="button"
+                          className={styles.addMenuItem}
+                          role="menuitem"
+                          onClick={() => {
+                            setAddOpen(false);
+                            setReviewing(current.id);
+                          }}
+                        >
+                          {t('Send a review')}
+                        </button>
+                      )}
                     </div>
                   )}
                   <input
@@ -4354,6 +4379,8 @@ ${named}`;
         </div>
       )}
       {/* The title bar's search focuses the sidebar's box, which is the one that filters. */}
+
+      <ReviewDialog chatId={reviewing} onClose={() => setReviewing(null)} onSent={() => setReviewing(null)} />
 
       <ConfirmDialog
         subject={deleting?.title ?? null}

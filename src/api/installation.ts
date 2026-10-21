@@ -237,6 +237,9 @@ export interface InstallationSettings {
   /** How many notes to self one conversation keeps. */
   noteMaxCount: number;
   noteMaxCountConfigured: number;
+  /** How many reviews rate_session sends from one conversation. */
+  reviewsPerSession: number;
+  reviewsPerSessionConfigured: number;
   /** How many times a round is asked again after an empty answer. */
   emptyAnswerRetries: number;
   emptyAnswerRetriesConfigured: number;
@@ -354,7 +357,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured readingShownAfterSeconds readingShownAfterSecondsConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured reviewsPerSession reviewsPerSessionConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured readingShownAfterSeconds readingShownAfterSecondsConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -944,6 +947,14 @@ export async function setSessionStoreMaxKeys(keys: number): Promise<Installation
     { keys },
   );
   return data.setSessionStoreMaxKeys;
+}
+
+export async function setReviewsPerSession(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setReviewsPerSession: InstallationSettings }>(
+    `mutation ($count: Int!) { setReviewsPerSession(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setReviewsPerSession;
 }
 
 export async function setNoteMaxCount(count: number): Promise<InstallationSettings> {

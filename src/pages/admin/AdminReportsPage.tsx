@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { costAmount, tokenCount } from '../../api/chat';
+import { tokenCount } from '../../api/chat';
 import type { SessionUser } from '../../api/session';
 import {
   fetchUsagePersonSessions,
@@ -12,10 +12,19 @@ import {
   shortTokens,
   usageReportCsv,
 } from '../../api/usage';
-import type { PromptSource, UsageDay, UsageFilter, UsageOrder, UsagePerson, UsageReport, UsageSessionShare, UsageTracking } from '../../api/usage';
+import type {
+  PromptSource,
+  UsageDay,
+  UsageFilter,
+  UsageOrder,
+  UsagePerson,
+  UsageReport,
+  UsageSessionOrder,
+  UsageSessionShare,
+  UsageTracking,
+} from '../../api/usage';
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
-import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import chevronDownIcon from '../../assets/chevron-down.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
 import toggleOnIcon from '../../assets/toggle-on.svg';
@@ -30,8 +39,9 @@ import { useTableSort } from '../../components/tableSort';
 import { useSearch } from '../../components/useSearch';
 import { t, tf } from '../../i18n';
 import { shellUser } from '../../session/user';
-import { zoned } from '../../session/timeZone';
 import styles from './AdminReportsPage.module.css';
+import { RatingsReport } from './RatingsReport';
+import { costOf, dayOf, formatDate, Picker, share, Tile } from './reportParts';
 import { UsageReportChart } from './UsageReportChart';
 
 export interface AdminReportsPageProps {
@@ -45,14 +55,56 @@ const PEOPLE_PAGE_SIZES = [10, 25, 50];
 const SESSIONS_PER_PAGE = 5;
 const SESSION_PAGE_SIZES = [5, 10, 25];
 
+type ReportKind = 'usage' | 'ratings';
+
 /**
- * Admin > Reports: tokens by the person who prompted them.
+ * Admin > Reports: one report at a time, picked at the top - the usage report
+ * unless somebody picked another, which is remembered as a list's order is.
+ */
+export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) {
+  const [kind, setKind] = useState<ReportKind>(() => {
+    try {
+      return window.localStorage.getItem(REPORT_KEY) === 'ratings' ? 'ratings' : 'usage';
+    } catch {
+      return 'usage';
+    }
+  });
+
+  function pick(next: ReportKind) {
+    setKind(next);
+    try {
+      window.localStorage.setItem(REPORT_KEY, next);
+    } catch {
+      // Remembering is a convenience; the pick still holds for this visit.
+    }
+  }
+
+  return (
+    <AppShell scrollContent user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="reports" />}>
+      <header className={styles.titleHeader}>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>{t('Reports')}</h1>
+          <Picker label={t('Report')} value={kind} onChange={(value) => pick(value as ReportKind)}>
+            <option value="usage">{t('Usage')}</option>
+            <option value="ratings">{t('Ratings')}</option>
+          </Picker>
+        </div>
+      </header>
+      {kind === 'usage' ? <UsageReportView /> : <RatingsReport />}
+    </AppShell>
+  );
+}
+
+const REPORT_KEY = 'orknux.reports.kind';
+
+/**
+ * Tokens by the person who prompted them.
  *
  * The switch at the top is the whole of what is recorded - off writes nothing
  * at all, and is where a fresh installation starts. The report under it reads
  * whatever was recorded while it was on, so switching off does not empty it.
  */
-export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) {
+function UsageReportView() {
   const [tracking, setTracking] = useState<UsageTracking | null>(null);
   const [busy, setBusy] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -153,11 +205,7 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
   }
 
   return (
-    <AppShell scrollContent user={shellUser(session)} onSignOut={onSignOut} sidebar={<AdminSidebar active="reports" />}>
-      <header className={styles.titleHeader}>
-        <h1 className={styles.title}>{t('Reports')}</h1>
-      </header>
-
+    <>
       <section className={styles.card} data-testid="usage-tracking">
         <div className={styles.trackingRow}>
           <div className={styles.headingRow}>
@@ -306,7 +354,7 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
           />
         )}
       </section>
-    </AppShell>
+    </>
   );
 }
 
@@ -350,13 +398,19 @@ function PersonSessions({ person, filter }: { person: string; filter: UsageFilte
   // Five to start, as asked; the size control every pager offers lets a person see more at once.
   const [size, setSize] = useState(SESSIONS_PER_PAGE);
   const [held, setHeld] = useState<{ total: number; items: UsageSessionShare[] } | null>(null);
+  // Ordered by the server: the page on screen is five of what may be hundreds.
+  const [order, ascending, sortBy] = useTableSort<UsageSessionOrder>('usage-sessions', 'TOKENS', false, [
+    'SHARE', 'TOKENS', 'COST', 'LAST_ACTIVE',
+  ]);
   const filterKey = JSON.stringify(filter);
 
+  useEffect(() => setPage(1), [order, ascending]);
+
   useEffect(() => {
-    fetchUsagePersonSessions(person, JSON.parse(filterKey) as UsageFilter, page - 1, size)
+    fetchUsagePersonSessions(person, JSON.parse(filterKey) as UsageFilter, page - 1, size, order, ascending)
       .then(setHeld)
       .catch(() => setHeld({ total: 0, items: [] }));
-  }, [person, filterKey, page, size]);
+  }, [person, filterKey, page, size, order, ascending]);
 
   if (held === null) return <Loader />;
   return (
@@ -364,13 +418,28 @@ function PersonSessions({ person, filter }: { person: string; filter: UsageFilte
       <table className={styles.sessionTable}>
         <thead>
           <tr>
-            <th>{t('Session')}</th>
-            <th>{t('Workspace')}</th>
-            <th>{t('Also prompted by')}</th>
-            <th className={styles.number}>{t('Their share')}</th>
-            <th className={styles.number}>{t('Tokens')}</th>
-            <th className={styles.number}>{t('Cost')}</th>
-            <th className={styles.number}>{t('Last active')}</th>
+            {([
+              ['SESSION', t('Session'), false],
+              ['WORKSPACE', t('Workspace'), false],
+              [null, t('Also prompted by'), false],
+              ['SHARE', t('Their share'), true],
+              ['TOKENS', t('Tokens'), true],
+              ['COST', t('Cost'), true],
+              ['LAST_ACTIVE', t('Last active'), true],
+            ] as const).map(([column, label, numeric]) => (
+              <th key={label} className={numeric ? styles.number : undefined}>
+                {column === null ? label : (
+                  <ColumnHeader
+                    label={label}
+                    order={column}
+                    current={order}
+                    ascending={ascending}
+                    onSort={sortBy}
+                    className={numeric ? styles.headRight : styles.headLeft}
+                  />
+                )}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -423,54 +492,4 @@ function PersonSessions({ person, filter }: { person: string; filter: UsageFilte
       )}
     </div>
   );
-}
-
-function Picker({ label, value, onChange, children }: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className={styles.picker}>
-      <span className={styles.pickerLabel}>{label}</span>
-      <span className={styles.pickerBox}>
-        <select className={styles.pickerSelect} value={value} onChange={(event) => onChange(event.target.value)}>
-          {children}
-        </select>
-        <img className={styles.pickerChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
-      </span>
-    </label>
-  );
-}
-
-function Tile({ label, value, exact, children }: { label: string; value: string; exact?: number; children: React.ReactNode }) {
-  return (
-    <div className={styles.tile}>
-      <span className={styles.tileLabel}>{label}</span>
-      <span className={styles.tileValue} title={exact === undefined ? undefined : tokenCount(exact)}>{value}</span>
-      <span className={styles.tileNote}>{children}</span>
-    </div>
-  );
-}
-
-function costOf(cost: string | null, partly: boolean): string {
-  if (cost === null) return '—';
-  return `${costAmount(Number(cost))}${partly ? '+' : ''}`;
-}
-
-function share(part: number, whole: number): string {
-  if (whole === 0) return '0%';
-  return `${Math.round((part / whole) * 100)}%`;
-}
-
-function dayOf(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat('en-US', zoned({ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })).format(date);
 }

@@ -251,6 +251,7 @@ const PL: Record<string, string> = {
   UnusableReplyRetriesOutOfRange: '{retries} to nie jest liczba ponowień po nieużytecznej odpowiedzi. Wybierz od 0 do 10.',
   SessionValueSizeOutOfRange: '{megabytes} MB to nie jest rozmiar, jaki może mieć wartość w sesji. Wybierz od 1 do 256.',
   SessionStoreKeysOutOfRange: '{keys} to nie jest liczba kluczy, jaką może przechowywać sesja. Wybierz od 10 do 10000.',
+  ReviewsPerSessionOutOfRange: '{count} to nie jest liczba recenzji, które może wysłać rozmowa. Wybierz od 1 do 100.',
   NoteCountOutOfRange: '{count} to nie jest liczba notatek dla siebie, którą może zachować rozmowa. Wybierz od 1 do 1000.',
   NoteLengthOutOfRange: '{characters} to nie jest długość, do której można ograniczyć notatkę dla siebie. Wybierz od 100 do 10000.',
   RateLimitBackoffOutOfRange: '{seconds} to nie jest liczba sekund pierwszego oczekiwania po limicie zapytań bez podanego czasu. Wybierz od 1 do 60.',

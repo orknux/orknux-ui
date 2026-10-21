@@ -9,6 +9,7 @@ import {
   setRateLimitBackoffSeconds,
   setNoteMaxCharacters,
   setNoteMaxCount,
+  setReviewsPerSession,
   setSessionStoreMaxKeys,
   setSessionValueMaxMb,
   setEmptyAnswerRetries,
@@ -152,6 +153,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [noteLength, setNoteLength] = useState('');
   /** How many notes to self one conversation keeps, as typed. */
   const [noteCount, setNoteCount] = useState('');
+  const [reviews, setReviews] = useState('');
   /** How big one value in a session's store may be, in MB, as typed. */
   const [valueSize, setValueSize] = useState('');
   /** How many times an empty answer is asked again, as typed. */
@@ -317,6 +319,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setObjectDepth(String(held.objectMaxDepth));
         setNoteLength(String(held.noteMaxCharacters));
         setNoteCount(String(held.noteMaxCount));
+        setReviews(String(held.reviewsPerSession));
         setValueSize(String(held.sessionValueMaxMb));
         setEmptyRetries(String(held.emptyAnswerRetries));
         setUnusableRetries(String(held.unusableReplyRetries));
@@ -398,6 +401,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
+        { typed: reviews, held: settings.reviewsPerSession, write: setReviewsPerSession },
         { typed: valueSize, held: settings.sessionValueMaxMb, write: setSessionValueMaxMb },
         { typed: emptyRetries, held: settings.emptyAnswerRetries, write: setEmptyAnswerRetries },
         { typed: unusableRetries, held: settings.unusableReplyRetries, write: setUnusableReplyRetries },
@@ -806,6 +810,33 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Notes Per Conversation')}
                 />
                 <span className={styles.retentionUnit}>{t('notes')}</span>
+              </div>
+            </div>
+
+            {/* How many reviews one conversation sends through rate_session. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Reviews Per Conversation')}</p>
+                  <FieldHint label={t('Reviews Per Conversation')}>
+                    {t('How many reviews an agent may send from one conversation; past that it is told the review was not sent. Between 1 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="reviews-per-session"
+                  name="reviewsPerSession"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={reviews}
+                  onChange={(event) => setReviews(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Reviews Per Conversation')}
+                />
+                <span className={styles.retentionUnit}>{t('reviews')}</span>
               </div>
             </div>
 
