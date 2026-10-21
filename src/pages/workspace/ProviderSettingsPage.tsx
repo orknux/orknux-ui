@@ -852,7 +852,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                 <span className={styles.labelWithHint}>
                   <label className={styles.label} htmlFor="provider-max-tools">{t('Most tools per request')}</label>
                   <FieldHint label={t('Most tools per request')}>
-                    {t('How many tools one request to this provider may carry. Left empty it is what the type takes - 128 for OpenAI, Azure and Ollama, 256 for Anthropic. Set it lower for a server that refuses fewer, or to keep a small model’s list short. Between 8 and 1024.')}
+                    {t('How many tools one request to this provider may carry. Left empty it is what the type takes - 200 for llama.cpp, Ollama and OpenAI-compatible servers, 128 for Azure and OpenAI’s own API, 256 for Anthropic. Set it lower for a server that refuses fewer, or to keep a small model’s list short. Between 8 and 1024.')}
                   </FieldHint>
                 </span>
                 <input

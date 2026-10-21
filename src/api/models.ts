@@ -375,10 +375,11 @@ export function offersAllByDefault(type: ProviderType): boolean {
  * a number - the server's `ProviderType.toolLimit`, mirrored for a placeholder.
  */
 export const TYPE_TOOL_CAPS: Record<ProviderType, number> = {
-  OPENAI: 128,
+  // OpenAI's own API takes 128; the server says so for a provider pointed at it.
+  OPENAI: 200,
   AZURE_OPENAI: 128,
-  OLLAMA: 128,
-  LLAMA_CPP: 128,
+  OLLAMA: 200,
+  LLAMA_CPP: 200,
   ANTHROPIC: 256,
   SYSTEM_ONE: 0,
   STABLE_DIFFUSION_CPP: 0,
