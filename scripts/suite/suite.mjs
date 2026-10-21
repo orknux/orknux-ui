@@ -341,6 +341,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'editor-tools-check',
+    what: 'a dragged node and its lines wiggle; Shape outlines a card; the Joint tool and J put joints on flow and dependency lines; Shift-drag drops a new joint with a hint by the pointer; the Add menu says what each node does; panel fields have hints',
+    needs: [],
+  },
+  {
     name: 'workflow-node-check',
     what: 'a Workflow node is offered, picks another workflow, takes parameters of its own, and its run links to the run it called and back',
     needs: [],

@@ -21,6 +21,15 @@ import {
   DEFAULT_TURN_SHORTCUT,
   DEFAULT_ADD_SHORTCUT,
   DEFAULT_SELECT_SHORTCUT,
+  DEFAULT_JOINT_SHORTCUT,
+  DEFAULT_JOINT_DRAG_KEY,
+  JOINT_DRAG_KEYS,
+  jointShortcut,
+  setJointShortcut,
+  useJointShortcut,
+  jointDragKey,
+  setJointDragKey,
+  useJointDragKey,
   DEFAULT_UNDO_SHORTCUT,
   DEFAULT_REDO_SHORTCUT,
   DEFAULT_DUPLICATE_SHORTCUT,
@@ -98,6 +107,8 @@ type ShortcutKey =
   | 'turn'
   | 'add'
   | 'select'
+  | 'joint'
+  | 'jointDrag'
   | 'undo'
   | 'redo'
   | 'duplicate'
@@ -118,6 +129,8 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'turn', stored: turnShortcut, store: setTurnShortcut },
   { key: 'add', stored: addShortcut, store: setAddShortcut },
   { key: 'select', stored: selectShortcut, store: setSelectShortcut },
+  { key: 'joint', stored: jointShortcut, store: setJointShortcut },
+  { key: 'jointDrag', stored: jointDragKey, store: setJointDragKey },
   { key: 'undo', stored: undoShortcut, store: setUndoShortcut },
   { key: 'redo', stored: redoShortcut, store: setRedoShortcut },
   { key: 'duplicate', stored: duplicateShortcut, store: setDuplicateShortcut },
@@ -171,6 +184,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const add = shortcutDrafts.add ?? storedAdd;
   const storedSelect = useSelectShortcut();
   const select = shortcutDrafts.select ?? storedSelect;
+  const storedJoint = useJointShortcut();
+  const joint = shortcutDrafts.joint ?? storedJoint;
+  const storedJointDrag = useJointDragKey();
+  const jointDrag = shortcutDrafts.jointDrag ?? storedJointDrag;
   const storedUndo = useUndoShortcut();
   const undo = shortcutDrafts.undo ?? storedUndo;
   const storedMagicRectangle = useMagicRectangleShortcut();
@@ -203,6 +220,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'format'
     | 'turn'
     | 'add'
+    | 'joint'
     | 'select'
     | 'undo'
     | 'redo'
@@ -248,7 +266,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
        * free - which is why R, A and S can be the defaults there and cannot be
        * anywhere else.
        */
-      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !usable(said)) {
+      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'joint' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !usable(said)) {
         setRefused(said);
         return;
       }
@@ -259,6 +277,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'turn') draftShortcut('turn', said);
       else if (recording === 'add') draftShortcut('add', said);
       else if (recording === 'select') draftShortcut('select', said);
+      else if (recording === 'joint') draftShortcut('joint', said);
       else if (recording === 'undo') draftShortcut('undo', said);
       else if (recording === 'redo') draftShortcut('redo', said);
       else if (recording === 'duplicate') draftShortcut('duplicate', said);
@@ -988,6 +1007,67 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>
               )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="joint-shortcut">
+                  {t('Joint Tool Shortcut')}
+                </span>
+                <FieldHint label={t('Joint Tool Shortcut')}>
+                  {t('Switches the workflow canvas’s Joint tool on and off, the same as its button. While it is on, a click on a line puts a joint there. A bare letter is allowed here because only the canvas hears it.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'joint' ? styles.optionCurrent : styles.option}
+                  data-shortcut="joint"
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'joint' ? null : 'joint'));
+                  }}
+                >
+                  {recording === 'joint' ? t('Press any keys…') : joint}
+                </button>
+                {joint !== DEFAULT_JOINT_SHORTCUT && recording !== 'joint' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('joint', DEFAULT_JOINT_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'joint' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="joint-drag-key">
+                  {t('Joint Drag Key')}
+                </span>
+                <FieldHint label={t('Joint Drag Key')}>
+                  {t('Held while a point of a line is dragged, it drops a new joint where the drag ends instead of moving the point.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options} role="radiogroup" aria-labelledby="joint-drag-key">
+                {JOINT_DRAG_KEYS.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={jointDrag === key}
+                    className={jointDrag === key ? styles.optionCurrent : styles.option}
+                    data-joint-drag-key={key}
+                    onClick={() => draftShortcut('jointDrag', key)}
+                  >
+                    {key}
+                  </button>
+                ))}
+                {jointDrag !== DEFAULT_JOINT_DRAG_KEY && (
+                  <span className={styles.settingNote}>{t('Shift by default.')}</span>
+                )}
+              </div>
             </div>
 
             <div className={styles.setting}>

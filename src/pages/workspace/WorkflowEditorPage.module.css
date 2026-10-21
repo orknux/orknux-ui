@@ -1276,6 +1276,12 @@ select.input {
   fill: none;
   stroke: transparent;
   stroke-width: 20px;
+  /*
+   * Its own, whatever the line's: React Flow marks a line nobody can select -
+   * every dependency line - inactive and takes pointer events off it, which
+   * left those lines with no way to put a joint on them.
+   */
+  pointer-events: stroke;
 }
 
 /*
@@ -1905,4 +1911,194 @@ select.input {
   margin-left: var(--space-8);
   padding-left: var(--space-8);
   border-left: 2px solid var(--color-border);
+}
+
+/*
+ * A node being dragged wiggles, a little, and so do the lines joined to it:
+ * what moves with it is plain while it moves. On the card inside React Flow's
+ * wrapper, since the wrapper's own transform is where the node is.
+ */
+:global(.react-flow__node.dragging) > * {
+  animation: nodeWiggle 0.32s ease-in-out infinite;
+}
+
+:global(.react-flow__edge.edgeWiggling) path {
+  animation: edgeWiggle 0.32s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes nodeWiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-1.2deg);
+  }
+  75% {
+    transform: rotate(1.2deg);
+  }
+}
+
+@keyframes edgeWiggle {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(0, -0.8px);
+  }
+  75% {
+    transform: translate(0, 0.8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.react-flow__node.dragging) > *,
+  :global(.react-flow__edge.edgeWiggling) path {
+    animation: none;
+  }
+}
+
+/* With the Joint tool on, a line says it can be clicked to put a joint on it. */
+.edgeHitJoint {
+  cursor: copy;
+}
+
+/* Where a joint drag will drop its joint, until it is dropped. */
+.edgePointGhost {
+  pointer-events: none;
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+/*
+ * By the pointer while a point of a line is dragged: move or joint, the one
+ * that will happen lit, and the key that switches them.
+ */
+.dragHint {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  pointer-events: none;
+}
+
+.dragHint img {
+  opacity: 0.35;
+}
+
+.dragHint img.dragHintOn {
+  opacity: 1;
+}
+
+.dragHintKey {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/*
+ * A node's outline, where one was picked. The rounded ones are a radius; the
+ * cut ones are drawn on a layer behind the card, so the outline clips that
+ * and not the handles, which sit on the card's edge and would be cut off with
+ * it. The layer is the border colour with the surface inset a pixel over it,
+ * which keeps a line along the cut edges too.
+ */
+.shapeRectangle {
+  border-radius: 0;
+}
+
+.shapeRounded {
+  border-radius: 20px;
+}
+
+.shapePill {
+  border-radius: 999px;
+}
+
+.shapePill .accentBar,
+.shapeNotched .accentBar,
+.shapeHexagon .accentBar {
+  top: 18%;
+  height: 64%;
+}
+
+.shapePill .accentBar {
+  left: 10px;
+}
+
+.shapeHexagon .accentBar {
+  left: 16px;
+}
+
+.shapeNotched,
+.shapeHexagon {
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.shapeNotched::before,
+.shapeNotched::after,
+.shapeHexagon::before,
+.shapeHexagon::after {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  content: '';
+}
+
+.shapeNotched::before,
+.shapeHexagon::before {
+  background: var(--color-border);
+}
+
+.shapeNotched::after,
+.shapeHexagon::after {
+  inset: 0;
+  background: var(--color-surface);
+}
+
+.shapeNotched.nodeSelected::before,
+.shapeHexagon.nodeSelected::before {
+  background: var(--color-accent-brand);
+}
+
+.shapeNotched::before,
+.shapeNotched::after {
+  clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+}
+
+.shapeHexagon::before,
+.shapeHexagon::after {
+  clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 22px 100%, 0 50%);
+}
+
+.shapeHexagon {
+  padding-inline: 10px;
+}
+
+/* Beside the Add menu: what the entry pointed at does. */
+.addHelp {
+  position: absolute;
+  top: 0;
+  left: calc(100% + var(--space-6));
+  width: 240px;
+  margin: 0;
+  padding: var(--space-8);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  pointer-events: none;
 }

@@ -59,6 +59,9 @@ const CHROME_EXACT = new Set([
   'orknux-mark',
   'undo',
   'redo',
+  // The workflow canvas's joint tool and the move it trades places with while a line is dragged.
+  'joint',
+  'move',
 ]);
 
 const isChrome = (name: string): boolean => CHROME_FAMILIES.test(name) || CHROME_EXACT.has(name);

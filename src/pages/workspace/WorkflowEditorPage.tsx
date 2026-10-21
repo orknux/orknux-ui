@@ -1,4 +1,5 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -89,6 +90,8 @@ import playIcon from '../../assets/play.svg';
 import plusIcon from '../../assets/plus.svg';
 import redoIcon from '../../assets/redo.svg';
 import marqueeIcon from '../../assets/marquee.svg';
+import jointIcon from '../../assets/joint.svg';
+import moveIcon from '../../assets/move.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
@@ -123,9 +126,13 @@ import { TrashIcon } from '../../components/TrashIcon';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { fetchImageModelParameters } from '../../api/graph';
 import type { ImageParameterSpec } from '../../api/graph';
+import type { NodeShape } from '../../api/graph';
 import {
   matches,
+  holdsJointKey,
   useAddShortcut,
+  useJointDragKey,
+  useJointShortcut,
   useSelectShortcut,
   useDuplicateShortcut,
   usePublishShortcut,
@@ -240,6 +247,8 @@ interface NodeData extends Record<string, unknown> {
   imageQuality: string | null;
   imageStyle: string | null;
   /** The decision model a decision node asks; null until one is picked. Issue #577. */
+  /** What outline the canvas draws it with; null is the plain card. */
+  shape?: NodeShape | null;
   decisionModelId?: string | null;
   /** The workflow a Workflow node runs; null until one is picked. */
   calledWorkflowId?: string | null;
@@ -902,6 +911,13 @@ function turned(from: NodeOrientation | null): NodeOrientation {
 const TurnNode = createContext<(() => void) | null>(null);
 
 /**
+ * The Joint tool, as a line reads it: whether it is on - a click on a line
+ * puts a joint there - and which key, held through a drag of a point, drops
+ * a new joint rather than moving the one held.
+ */
+const JointTool = createContext<{ on: boolean; dragKey: string }>({ on: false, dragKey: 'Shift' });
+
+/**
  * Which actions speak, by id, so a node pointed at one is drawn as a speaker.
  *
  * A context for the reason `TurnNode` is one: a node's data is compared against
@@ -998,6 +1014,24 @@ function CarriedEdge({
   // difference between them is exactly the zoom.
   const zoom = useStore((state) => state.transform[2]);
   const [drag, setDrag] = useState<{ at: number; x: number; y: number; from: EdgeOffset } | null>(null);
+  const joints = useContext(JointTool);
+  /*
+   * Where the pointer is while a point is dragged, and whether the drag will
+   * drop a new joint. Held apart from `drag` because both change on every
+   * move and on the key going down or up, where nothing else does.
+   */
+  const [pointer, setPointer] = useState<{ x: number; y: number; joint: boolean; to: EdgeOffset } | null>(null);
+  useEffect(() => {
+    if (drag === null) return;
+    const flip = (event: KeyboardEvent) =>
+      setPointer((held) => (held === null ? held : { ...held, joint: holdsJointKey(event, joints.dragKey) }));
+    window.addEventListener('keydown', flip);
+    window.addEventListener('keyup', flip);
+    return () => {
+      window.removeEventListener('keydown', flip);
+      window.removeEventListener('keyup', flip);
+    };
+  }, [drag, joints.dragKey]);
 
   /** Puts one point somewhere, making it if the line had none. */
   const movePoint = (at: number, to: EdgeOffset) => {
@@ -1031,7 +1065,9 @@ function CarriedEdge({
     event.stopPropagation();
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDrag({ at, x: event.clientX, y: event.clientY, from: points[at] ?? { x: 0, y: 0 } });
+    const from = points[at] ?? { x: 0, y: 0 };
+    setDrag({ at, x: event.clientX, y: event.clientY, from });
+    setPointer({ x: event.clientX, y: event.clientY, joint: holdsJointKey(event, joints.dragKey), to: from });
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
@@ -1041,15 +1077,36 @@ function CarriedEdge({
       x: drag.from.x + (event.clientX - drag.x) / zoom,
       y: drag.from.y + (event.clientY - drag.y) / zoom,
     };
+    const joint = holdsJointKey(event, joints.dragKey);
+    setPointer({ x: event.clientX, y: event.clientY, joint, to });
     // A press that has not moved is a click, and a click makes no bend.
     if (points.length === 0 && to.x === 0 && to.y === 0) return;
+    /*
+     * A joint drag leaves the point held where it was and drops a new one
+     * where the drag ends, so nothing moves until then; the ghost under the
+     * pointer is where it will land. A line with no point yet has nothing to
+     * leave behind, and its first point is made either way.
+     */
+    if (joint && points.length > 0) {
+      if (points[drag.at].x !== drag.from.x || points[drag.at].y !== drag.from.y) movePoint(drag.at, drag.from);
+      return;
+    }
     movePoint(drag.at, to);
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLElement>) => {
     if (drag === null) return;
     event.currentTarget.releasePointerCapture(event.pointerId);
+    const ended = pointer;
     setDrag(null);
+    setPointer(null);
+    if (ended === null || setPoints === undefined || points.length === 0) return;
+    if (!holdsJointKey(event, joints.dragKey) && !ended.joint) return;
+    if (ended.to.x === drag.from.x && ended.to.y === drag.from.y) return;
+    // Dropped in joint mode: the point held stays, and a new one goes in after it.
+    const next = points.map((point, index) => (index === drag.at ? drag.from : point));
+    next.splice(drag.at + 1, 0, ended.to);
+    setPoints(id, next);
   };
 
   /**
@@ -1146,9 +1203,45 @@ function CarriedEdge({
        * thing that calls that off is the class it looks for on the way up.
        */}
       {setPoints !== undefined && (
-        <path className={`${styles.edgeHit} nopan`} d={path} onDoubleClick={addWhereClicked}>
-          <title>{t('Double-click to add a point to bend through')}</title>
+        <path
+          className={joints.on ? `${styles.edgeHit} ${styles.edgeHitJoint} nopan` : `${styles.edgeHit} nopan`}
+          d={path}
+          data-edge-hit={id}
+          // With the Joint tool on, one click is enough; double-click works either way.
+          onClick={joints.on ? addWhereClicked : undefined}
+          onDoubleClick={addWhereClicked}
+        >
+          <title>{joints.on ? t('Click to put a joint here') : t('Double-click to add a point to bend through')}</title>
         </path>
+      )}
+      {/*
+       * What a drag of a point will do, by the pointer: move it, or - with the
+       * joint key held - drop a new joint where it ends. Both are drawn, the
+       * one that will happen lit, so the other is a reminder it is there; and
+       * the key that switches them is named beside them.
+       */}
+      {drag !== null && pointer !== null && points.length > 0 &&
+        createPortal(
+          <div
+            className={styles.dragHint}
+            style={{ left: pointer.x + 16, top: pointer.y + 16 }}
+            data-drag-hint={pointer.joint ? 'joint' : 'move'}
+            aria-hidden="true"
+          >
+            <img src={moveIcon} alt="" width={14} height={14} className={pointer.joint ? undefined : styles.dragHintOn} />
+            <img src={jointIcon} alt="" width={14} height={14} className={pointer.joint ? styles.dragHintOn : undefined} />
+            <span className={styles.dragHintKey}>{joints.dragKey}</span>
+          </div>,
+          document.body,
+        )}
+      {drag !== null && pointer !== null && pointer.joint && points.length > 0 && (
+        <EdgeLabelRenderer>
+          <span
+            className={`${styles.edgePoint} ${styles.edgePointGhost}`}
+            style={{ transform: `translate(-50%, -50%) translate(${labelX + pointer.to.x}px, ${labelY + pointer.to.y}px)` }}
+            data-joint-ghost=""
+          />
+        </EdgeLabelRenderer>
       )}
       {setPoints !== undefined && (
         <EdgeLabelRenderer>
@@ -1685,6 +1778,24 @@ function PortTree({ branches, openFirst }: { branches: PortBranch[]; openFirst: 
   return <>{branches.map(draw)}</>;
 }
 
+/** The class each outline is drawn with; see `.shapeRounded` and the rest. */
+const SHAPE_CLASS: Record<NodeShape, string> = {
+  RECTANGLE: 'shapeRectangle',
+  ROUNDED: 'shapeRounded',
+  PILL: 'shapePill',
+  NOTCHED: 'shapeNotched',
+  HEXAGON: 'shapeHexagon',
+};
+
+/** What each outline is called where it is picked. */
+const SHAPE_LABEL: Record<NodeShape, string> = {
+  RECTANGLE: t('Rectangle'),
+  ROUNDED: t('Rounded'),
+  PILL: t('Pill'),
+  NOTCHED: t('Notched'),
+  HEXAGON: t('Hexagon'),
+};
+
 function GraphNodeView({ data, selected }: NodeProps) {
   const node = data as NodeData;
   /*
@@ -1709,11 +1820,12 @@ function GraphNodeView({ data, selected }: NodeProps) {
    */
   const disabled = node.enabled === false;
   const classes = [styles.node];
+  if (node.shape != null) classes.push(styles[SHAPE_CLASS[node.shape]]);
   if (selected) classes.push(styles.nodeSelected);
   if (disabled) classes.push(styles.nodeDisabled);
 
   return (
-    <div className={classes.join(' ')} data-disabled={disabled ? 'true' : undefined}>
+    <div className={classes.join(' ')} data-disabled={disabled ? 'true' : undefined} data-shape={node.shape ?? undefined}>
       {/*
         Only on the selected node, so the canvas is not covered in handles. A
         node grows on its own to fit what it holds; this is for when a graph
@@ -1929,6 +2041,26 @@ function withDefinition<T extends { id: string }>(all: T[], one: T): T[] {
  * for - things that belong together are next to each other, and a list is the
  * only place that can be said.
  */
+/**
+ * What each kind does, in a sentence, shown beside the Add menu while an entry
+ * is pointed at or has the keyboard's focus - so choosing between nine does
+ * not mean knowing them already.
+ */
+const KIND_HELP: Record<NodeKind, string> = {
+  TRIGGER: t('Where a run starts: a schedule, a webhook or a message, and the fields it brings.'),
+  ACTION: t('Runs one of the workspace’s actions - a function, a request, a message sent - with this node’s parameters.'),
+  CONDITION: t('Asks a question of what the run carries and goes on by Yes or No.'),
+  DECISION: t('Asks a model typed questions about the run and may branch on the option it picks.'),
+  OBJECT: t('Makes an object out of fields written here or read from other nodes, and hands it on.'),
+  IMAGE: t('Draws a picture from a prompt with one of the workspace’s image models.'),
+  AGENT: t('Asks one of the workspace’s agents, which may use its tools, and hands on its answer.'),
+  SESSION: t('Names a conversation that the agents wired to it all write into.'),
+  WORKFLOW: t('Runs another workflow of the workspace with this node’s parameters, waits for it, and hands on what it produced.'),
+};
+
+/** The same for the menu's Text to speech entry, which is an action rather than a kind. */
+const SPEECH_HELP = t('Says text out loud with a speech model: an action node pointed at Speak.');
+
 const ADD_ORDER: NodeKind[] = ['TRIGGER', 'ACTION', 'CONDITION', 'DECISION', 'OBJECT', 'IMAGE', 'AGENT', 'SESSION', 'WORKFLOW'];
 
 const ADD_ICON = Object.fromEntries(
@@ -2606,6 +2738,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * agents it leads to and never reaches the engine, and its line does not count
    * towards a node's incoming when the validator asks whether a run can arrive.
    */
+  /** The nodes being dragged right now, whose lines wiggle with them. */
+  const [dragging, setDragging] = useState<ReadonlySet<string>>(() => new Set());
   const drawnEdges = useMemo<Edge[]>(() => {
     const carrying = edges.map((edge) => {
       /*
@@ -2713,8 +2847,18 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         reconnectable: false,
       }));
 
-    return [...carrying, ...loose, ...saves];
-  }, [edges, nodes, carried, edgePoints, setPoints, kindOfNode]);
+    /*
+     * The lines joined to a node being dragged wiggle with it, a little, so
+     * what comes along with the node is plain while it moves.
+     */
+    const all: Edge[] = [...carrying, ...loose, ...saves];
+    if (dragging.size === 0) return all;
+    return all.map((edge) =>
+      dragging.has(edge.source) || dragging.has(edge.target)
+        ? { ...edge, className: [edge.className, 'edgeWiggling'].filter(Boolean).join(' ') }
+        : edge,
+    );
+  }, [edges, nodes, carried, edgePoints, setPoints, kindOfNode, dragging]);
 
   /*
    * Nothing tells us an edge has gone - it simply stops being in the list - so
@@ -3116,6 +3260,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               outputName: node.outputName ?? null,
               icon: node.icon ?? null,
               orientation: node.orientation ?? null,
+              shape: node.shape ?? null,
               mappings: node.mappings ?? [],
             },
           }));
@@ -3696,6 +3841,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
            */
           outputName: kind === 'AGENT' ? 'reply' : kind === 'IMAGE' ? 'image' : kind === 'DECISION' ? 'decision' : kind === 'WORKFLOW' ? 'called' : null,
           orientation: null,
+          shape: null,
           /*
            * A new action stops the run when it fails, which is what every node
            * did before there was anything else to do. Handling it is a thing
@@ -3914,6 +4060,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.outputName === draft.outputName &&
           data.icon === draft.icon &&
           data.orientation === draft.orientation &&
+          (data.shape ?? null) === (draft.shape ?? null) &&
           data.yesLabel === draft.yesLabel &&
           data.noLabel === draft.noLabel &&
           data.fallbackEnabled === draft.fallbackEnabled &&
@@ -4377,6 +4524,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           outputName: data.outputName,
           icon: data.icon,
           orientation: data.orientation ?? null,
+          shape: data.shape ?? null,
           yesLabel: data.yesLabel ?? null,
           noLabel: data.noLabel ?? null,
           fallbackEnabled: data.fallbackEnabled ?? false,
@@ -4546,6 +4694,29 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * stays on until switched off, and the middle and right buttons still pan.
    */
   const [marquee, setMarquee] = useState(false);
+  /** What the Add menu's pointed-at entry does, while one is; see `KIND_HELP`. */
+  const [addHelp, setAddHelp] = useState<string | null>(null);
+  useEffect(() => {
+    if (!adding) setAddHelp(null);
+  }, [adding]);
+  /*
+   * The Joint tool: while on, one click on a line puts a joint where it
+   * landed. Switched from its button or its keystroke, J unless changed.
+   */
+  const jointKey = useJointShortcut();
+  const jointDragKey = useJointDragKey();
+  const [jointing, setJointing] = useState(false);
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!matches(event, jointKey)) return;
+      if (typingText(event.target)) return;
+      event.preventDefault();
+      setJointing((on) => !on);
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [jointKey]);
+  const jointTool = useMemo(() => ({ on: jointing, dragKey: jointDragKey }), [jointing, jointDragKey]);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (!matches(event, selectKey)) return;
@@ -5208,6 +5379,21 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           >
             <img src={marqueeIcon} alt="" width={16} height={16} />
           </ToolButton>
+          {/* A mode like the rectangle: lit while on, and a click on a line then puts a joint there. */}
+          <ToolButton
+            label={t('Joint')}
+            shortcut={jointKey}
+            note={
+              jointing
+                ? t('On: a click on a line puts a joint there.')
+                : `${t('Off: double-click a line to put a joint there. Hold')} ${jointDragKey} ${t('while dragging a point to drop a new joint.')}`
+            }
+            className={jointing ? styles.iconButtonOn : undefined}
+            pressed={jointing}
+            onClick={() => setJointing((on) => !on)}
+          >
+            <img src={jointIcon} alt="" width={16} height={16} />
+          </ToolButton>
           <div className={styles.addMenu} ref={addMenu} onKeyDown={addMenuKeys}>
             <button
               type="button"
@@ -5238,6 +5424,10 @@ Change the keystroke in Preferences.`}
                     type="button"
                     role="menuitem"
                     className={styles.addItem}
+                    data-add-kind={kind}
+                    aria-describedby={addHelp === KIND_HELP[kind] ? 'add-node-help' : undefined}
+                    onMouseEnter={() => setAddHelp(KIND_HELP[kind])}
+                    onFocus={() => setAddHelp(KIND_HELP[kind])}
                     onClick={() => {
                       setAdding(false);
                       addNode(kind);
@@ -5261,6 +5451,9 @@ Change the keystroke in Preferences.`}
                   type="button"
                   role="menuitem"
                   className={styles.addItem}
+                  aria-describedby={addHelp === SPEECH_HELP ? 'add-node-help' : undefined}
+                  onMouseEnter={() => setAddHelp(SPEECH_HELP)}
+                  onFocus={() => setAddHelp(SPEECH_HELP)}
                   onClick={() => {
                     setAdding(false);
                     void addSpeechNode();
@@ -5269,6 +5462,12 @@ Change the keystroke in Preferences.`}
                   <img src={nodeIconUrl(SPEECH_NODE_ICON)} alt="" width={14} height={14} />
                   {t('Text to speech')}
                 </button>
+                {/* What the entry pointed at does, beside the list rather than over it. */}
+                {addHelp !== null && (
+                  <p className={styles.addHelp} id="add-node-help" role="note" data-add-help="">
+                    {addHelp}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -5456,6 +5655,7 @@ Change the keystroke in Preferences.`}
             </p>
           ) : (
             <TurnNode.Provider value={turnSelected}>
+            <JointTool.Provider value={jointTool}>
             <SpeakingActions.Provider value={speakingActions}>
             <ReactFlow
               nodes={nodes}
@@ -5488,6 +5688,9 @@ Change the keystroke in Preferences.`}
                * effect on the selection, which Fast Refresh and a restored step re-run.
                */
               onNodeClick={() => showPanel(true)}
+              // What is being dragged, so its lines wiggle along with it; the node's own wiggle is CSS on React Flow's class.
+              onNodeDragStart={(_, __, moving) => setDragging(new Set(moving.map((one) => one.id)))}
+              onNodeDragStop={() => setDragging(new Set())}
               /*
                * Room to take hold of a line's end. The grab circle sits just
                * beyond the handle, so a wider one is easier to aim at without
@@ -5512,6 +5715,7 @@ Change the keystroke in Preferences.`}
               <Controls className={styles.controls} showInteractive={false} />
             </ReactFlow>
             </SpeakingActions.Provider>
+            </JointTool.Provider>
             </TurnNode.Provider>
           )}
           {!panelOpen && (
@@ -5594,9 +5798,14 @@ Change the keystroke in Preferences.`}
               <div className={styles.fields}>
                 <div className={styles.field}>
                   <span className={styles.labelRow}>
-                    <label className={styles.label} htmlFor="node-name">
-                      {t('Node Name')}
-                    </label>
+                    <span className={styles.labelWithHint}>
+                      <label className={styles.label} htmlFor="node-name">
+                        {t('Node Name')}
+                      </label>
+                      <FieldHint label={t('Node Name')}>
+                        {t('What the card says and what the run lists this step as. Names nothing the run reads; two nodes may share one.')}
+                      </FieldHint>
+                    </span>
                   </span>
                   <div className={`${styles.inputWrapper} ${styles.inputActive}`}>
                     <input
@@ -5784,9 +5993,14 @@ Change the keystroke in Preferences.`}
                 {draft.kind === 'TRIGGER' && (
                   <div className={styles.field}>
                     <span className={styles.labelRow}>
-                      <label className={styles.label} htmlFor="node-trigger">
-                        {t('Trigger')}
-                      </label>
+                      <span className={styles.labelWithHint}>
+                        <label className={styles.label} htmlFor="node-trigger">
+                          {t('Trigger')}
+                        </label>
+                        <FieldHint label={t('Trigger')}>
+                          {t('The trigger definition this node stands for: what starts a run here, and the fields it hands the next node.')}
+                        </FieldHint>
+                      </span>
                       <span className={styles.labelLinks}>
                         <button
                           type="button"
@@ -5965,9 +6179,14 @@ Change the keystroke in Preferences.`}
                 {draft.kind === 'ACTION' && (
                   <div className={styles.field}>
                     <span className={styles.labelRow}>
-                      <label className={styles.label} htmlFor="node-action">
-                        {t('Action')}
-                      </label>
+                      <span className={styles.labelWithHint}>
+                        <label className={styles.label} htmlFor="node-action">
+                          {t('Action')}
+                        </label>
+                        <FieldHint label={t('Action')}>
+                          {t('The action this node runs. What it does is the action’s; what it is handed is this node’s parameters below.')}
+                        </FieldHint>
+                      </span>
                       <span className={styles.labelLinks}>
                         <button
                           type="button"
@@ -6300,9 +6519,14 @@ Change the keystroke in Preferences.`}
                 {draft.kind === 'CONDITION' && (
                   <div className={styles.field}>
                     <span className={styles.labelRow}>
-                      <label className={styles.label} htmlFor="node-condition">
-                        {t('Condition')}
-                      </label>
+                      <span className={styles.labelWithHint}>
+                        <label className={styles.label} htmlFor="node-condition">
+                          {t('Condition')}
+                        </label>
+                        <FieldHint label={t('Condition')}>
+                          {t('The condition this node asks. The run goes on by Yes or No by its answer, and stops where that way leads nowhere.')}
+                        </FieldHint>
+                      </span>
                       <span className={styles.labelLinks}>
                         <button
                           type="button"
@@ -7365,7 +7589,12 @@ Change the keystroke in Preferences.`}
 
                 <div className={styles.field}>
                   <span className={styles.labelRow}>
-                    <span className={styles.label}>{t('Icon')}</span>
+                    <span className={styles.labelWithHint}>
+                      <span className={styles.label}>{t('Icon')}</span>
+                      <FieldHint label={t('Icon')}>
+                        {t('The picture on the card. Without one the card shows its kind’s own.')}
+                      </FieldHint>
+                    </span>
                     {draft.icon !== null && (
                       <button
                         type="button"
@@ -7398,6 +7627,26 @@ Change the keystroke in Preferences.`}
                     </span>
                     <button type="button" className={styles.parameterSync} onClick={() => setBrowsingIcons(true)}>{t('Browse…')}</button>
                   </div>
+                </div>
+
+                <div className={styles.field}>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="node-shape">
+                      {t('Shape')}
+                    </label>
+                    <FieldHint label={t('Shape')}>
+                      {t('The outline the card is drawn with. Nothing about what runs; a shape picked for a kind of step makes a graph read at a glance.')}
+                    </FieldHint>
+                  </span>
+                  <DefinitionPicker
+                    id="node-shape"
+                    value={draft.shape ?? ''}
+                    options={(Object.keys(SHAPE_LABEL) as NodeShape[]).map((shape) => ({ value: shape, label: SHAPE_LABEL[shape] }))}
+                    pinned={{ value: '', label: t('Default') }}
+                    onChoose={(chosen) => setDraft({ ...draft, shape: chosen === '' ? null : (chosen as NodeShape) })}
+                    placeholder={t('Default')}
+                    searchPlaceholder={t('Search…')}
+                  />
                 </div>
 
                 <div className={styles.field}>
@@ -7534,9 +7783,14 @@ Change the keystroke in Preferences.`}
                 )}
 
                 <div className={styles.field}>
-                  <label className={styles.label} htmlFor="node-description">
-                    {t('Description')}
-                  </label>
+                  <span className={styles.labelWithHint}>
+                    <label className={styles.label} htmlFor="node-description">
+                      {t('Description')}
+                    </label>
+                    <FieldHint label={t('Description')}>
+                      {t('A note on the card for whoever reads the graph next. Nothing reads it when the run goes.')}
+                    </FieldHint>
+                  </span>
                   {/* Dragged taller by its corner, where it is, rather than opened in a box of its own. */}
                   <div className={`${styles.inputWrapper} ${styles.descriptionWrapper}`}>
                     <textarea

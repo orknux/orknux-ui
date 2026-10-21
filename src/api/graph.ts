@@ -3,6 +3,9 @@ import type { ObjectPropertyInput, PropertyKind } from './objects';
 import { t } from '../i18n';
 
 export type WorkflowStatus = 'DRAFT' | 'PUBLISHED';
+/** What outline a node is drawn with. Picture only: nothing runs differently. */
+export type NodeShape = 'RECTANGLE' | 'ROUNDED' | 'PILL' | 'NOTCHED' | 'HEXAGON';
+
 export type NodeKind = 'TRIGGER' | 'AGENT' | 'ACTION' | 'CONDITION' | 'OBJECT' | 'SESSION' | 'IMAGE' | 'DECISION' | 'WORKFLOW';
 
 /** The kinds of question a decision model answers. Issue #577. */
@@ -93,6 +96,8 @@ export interface GraphNode {
   icon?: string | null;
   /** Which way round the node faces; null is the left-to-right it always was. */
   orientation?: NodeOrientation | null;
+  /** What outline the canvas draws it with; null is the plain card. */
+  shape?: NodeShape | null;
   /**
    * What a condition node's two ways out are called.
    *
@@ -283,7 +288,7 @@ const GRAPH_FIELDS = `
   enabled
   assignmentId
   nodes {
-    key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId imageSize imageQuality imageStyle outputName icon orientation
+    key kind name description agentId triggerId actionId conditionId objectId outputObjectId outputNodeKey imageModelId imageSize imageQuality imageStyle outputName icon orientation shape
     decisionModelId decisionBranchQuestion decisionThreshold calledWorkflowId
     decisionQuestions { key kind instructions options { name description } }
     yesLabel noLabel fallbackEnabled streamOutput retryAttempts retryBackoffSeconds
