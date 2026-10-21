@@ -1021,6 +1021,11 @@ function CarriedEdge({
   const zoom = useStore((state) => state.transform[2]);
   const [drag, setDrag] = useState<{ at: number; x: number; y: number; from: EdgeOffset } | null>(null);
   const joints = useContext(JointTool);
+  /** A label dragged by itself wobbles by its own movement, as a node does. */
+  const labelSway = useDragSway(
+    () => undefined,
+    () => undefined,
+  );
   /** Puts one point somewhere, making it if the line had none. */
   const movePoint = (at: number, to: EdgeOffset) => {
     if (setPoints === undefined) return;
@@ -1055,6 +1060,7 @@ function CarriedEdge({
     event.currentTarget.setPointerCapture(event.pointerId);
     const from = points[at] ?? { x: 0, y: 0 };
     setDrag({ at, x: event.clientX, y: event.clientY, from });
+    if (event.currentTarget.tagName === 'UL') labelSway.start(event.nativeEvent, [], event.currentTarget);
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
@@ -1064,6 +1070,7 @@ function CarriedEdge({
       x: drag.from.x + (event.clientX - drag.x) / zoom,
       y: drag.from.y + (event.clientY - drag.y) / zoom,
     };
+    labelSway.move(event.nativeEvent);
     // A press that has not moved is a click, and a click makes no bend.
     if (points.length === 0 && to.x === 0 && to.y === 0) return;
     movePoint(drag.at, to);
@@ -1073,6 +1080,7 @@ function CarriedEdge({
     if (drag === null) return;
     event.currentTarget.releasePointerCapture(event.pointerId);
     setDrag(null);
+    labelSway.stop();
     /*
      * A press that did not move picks the point: it takes the focus, is drawn
      * picked, and Delete or Backspace takes it off. The press's default was

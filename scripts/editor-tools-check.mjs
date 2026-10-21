@@ -194,6 +194,28 @@ try {
   await page.locator('.react-flow__controls-fitview').click();
   await page.waitForTimeout(500);
 
+  /* ---- a label dragged by itself ---- */
+
+  const label = page.locator(`ul[data-edge="${DEPENDENCY}"]`);
+  const grab = await centre(label);
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  let labelLean = 0;
+  for (let step = 1; step <= 6; step += 1) {
+    await page.mouse.move(grab.x + step * 30, grab.y, { steps: 1 });
+    await page.waitForTimeout(16);
+    const lean = await label.evaluate((one) => {
+      const matrix = new DOMMatrix(getComputedStyle(one).transform);
+      return Math.round(Math.atan(matrix.c) * 1800 / Math.PI) / 10;
+    });
+    if (lean < labelLean) labelLean = lean;
+  }
+  await page.mouse.up();
+  record(labelLean < -0.2, `a label dragged by itself wobbles with its own movement (${labelLean} deg)`);
+  await page.waitForTimeout(1500);
+  const labelStill = await label.evaluate((one) => one.hasAttribute('data-jelly'));
+  record(!labelStill, 'and rests when let go');
+
   /* ---- Add help ---- */
 
   await page.getByRole('button', { name: /add node/i }).click();
@@ -293,11 +315,12 @@ try {
   await page.mouse.up();
   await page.keyboard.up('Shift');
   const ringed = await lone.evaluate((one) => one.className.includes('edgePointPicked'));
+  const pickedCount = await page.locator(`button[data-edge="${DEPENDENCY}"][class*="edgePointPicked"]`).count();
   record(ringed, 'a selection rectangle picks the joints inside it');
   await page.keyboard.press('Delete');
   await page.waitForTimeout(300);
   record(
-    (await pointsOn(DEPENDENCY)) === kept - 1 && (await page.locator(`path[data-edge-hit="${DEPENDENCY}"]`).count()) === 1,
+    (await pointsOn(DEPENDENCY)) === kept - pickedCount && (await page.locator(`path[data-edge-hit="${DEPENDENCY}"]`).count()) === 1,
     `and Delete takes them off, leaving the line (${kept} -> ${await pointsOn(DEPENDENCY)})`,
   );
   // A drag only moves a point now: no key turns it into a new joint.

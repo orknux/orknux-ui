@@ -71,6 +71,8 @@ export function useDragSway(
   restRef.current = rest;
   const held = useRef({
     host: null as HTMLElement | null,
+    /** Whether the host is the thing moved itself - a line's label - rather than the canvas around nodes. */
+    own: false,
     effect: 'off' as DragEffect,
     dragging: false,
     ids: [] as readonly string[],
@@ -85,7 +87,12 @@ export function useDragSway(
 
   /** Puts the mark on the cards being moved, or takes it off. */
   const mark = useCallback((on: boolean) => {
-    const { host, ids } = held.current;
+    const { host, ids, own } = held.current;
+    if (own) {
+      if (on) host?.setAttribute('data-jelly', '');
+      else host?.removeAttribute('data-jelly');
+      return;
+    }
     for (const id of ids) {
       const card = host?.querySelector(`.react-flow__node[data-id="${CSS.escape(id)}"]`);
       if (on) card?.setAttribute('data-jelly', '');
@@ -150,13 +157,14 @@ export function useDragSway(
 
   return {
     start: useCallback(
-      (event: Dragged, ids: readonly string[]) => {
+      (event: Dragged, ids: readonly string[], own?: HTMLElement) => {
         const it = held.current;
         it.effect = currentDragEffect();
         if (it.effect === 'off') return;
         // A drag that starts while the last one still glides or wobbles takes over from it.
         if (it.frame !== 0) mark(false);
-        it.host = (event.target as Element | null)?.closest('.react-flow') as HTMLElement | null;
+        it.own = own !== undefined;
+        it.host = own ?? ((event.target as Element | null)?.closest('.react-flow') as HTMLElement | null);
         it.dragging = true;
         it.ids = ids;
         mark(true);
@@ -191,8 +199,8 @@ export function useDragSway(
         return;
       }
       it.dragging = false;
-      // Jelly without the slide stops where it is put, and only its body carries on.
-      if (it.effect !== 'slide') {
+      // Jelly without the slide stops where it is put, and only its body carries on - as a label always does.
+      if (it.effect !== 'slide' || it.own) {
         it.speed = { x: 0, y: 0 };
         it.thrown = { x: 0, y: 0 };
         return;

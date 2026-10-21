@@ -1946,7 +1946,8 @@ select.input {
 }
 
 /* A label deforms with its line's node, hanging from the line it sits on. Its place is the translate property. */
-.edgeLabelWiggling {
+.edgeLabelWiggling,
+.edgeLabel[data-jelly] {
   transform: translate(var(--jelly-px, 0px), var(--jelly-py, 0px)) rotate(var(--jelly-a, 0deg))
     scale(var(--jelly-s, 1), calc(1 / var(--jelly-s, 1))) rotate(calc(-1 * var(--jelly-a, 0deg))) skew(var(--jelly-kx, 0deg), var(--jelly-ky, 0deg));
   transform-origin: center bottom;
