@@ -1319,9 +1319,9 @@ function CarriedEdge({
              * aimed at the point takes it off, on a labelled line as on a bare
              * one.
              */
+            // Placed by the translate property, so that transform is left for the wobble while a node it joins is dragged.
             style={{
-              transform:
-                `translate(-50%, -100%) translate(${handles[0].x}px, ${handles[0].y - LABEL_LIFT}px)`,
+              translate: `calc(-50% + ${handles[0].x}px) calc(-100% + ${handles[0].y - LABEL_LIFT}px)`,
             }}
             // Which line it belongs to, said in the markup: a label that has been
             // dragged away is otherwise attributable only by eye.

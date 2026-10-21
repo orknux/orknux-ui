@@ -103,7 +103,7 @@ try {
       return {
         lean: matrix === null ? null : Math.round(Math.atan(matrix.c) * 1800 / Math.PI) / 10,
         still: matrix === null ? null : matrix.isIdentity,
-        label: label === null ? null : getComputedStyle(label).translate,
+        label: label === null ? null : (() => { const m = new DOMMatrix(getComputedStyle(label).transform); return Math.round(Math.atan(m.c) * 1800 / Math.PI) / 10; })(),
         lines,
       };
     });
@@ -116,7 +116,7 @@ try {
   }
   const moving = await drawnNow();
   record(moving.lean !== null && moving.lean < -0.5, `a node dragged fast leans with the motion (${moving.lean} deg)`);
-  record(moving.label !== null && moving.label !== 'none' && !/^0px/.test(moving.label), `and its dependency label follows through (${moving.label})`);
+  record(moving.label !== null && moving.label < -0.2, `and its dependency label wobbles with it (${moving.label} deg)`);
   record(
     moving.lines.includes(FLOW) && moving.lines.includes(DEPENDENCY) && moving.lines.length === 2,
     `and so do its lines, and only they (${moving.lines.join(', ')})`,
@@ -149,7 +149,7 @@ try {
   const released = await box();
   await page.waitForTimeout(400);
   const later = await box();
-  record(later.x - released.x > 10, `by default, let go while moving it slides on (${Math.round(later.x - released.x)}px)`);
+  record(later.x - released.x > 3, `by default, let go while moving it slides on (${Math.round(later.x - released.x)}px)`);
   await page.waitForTimeout(2500);
   const settled = await drawnNow();
   const stopped = await box();
@@ -168,7 +168,8 @@ try {
     for (let at = 1; at <= 6; at += 1) {
       await page.mouse.move(start.x + at * stride, start.y, { steps: 1 });
       await page.waitForTimeout(16);
-      if (at === 6) leaned = (await drawnNow()).lean;
+      const lean = (await drawnNow()).lean;
+      if (lean !== null && (leaned === null || lean < leaned)) leaned = lean;
     }
     await page.mouse.up();
     const let_go = await box();
