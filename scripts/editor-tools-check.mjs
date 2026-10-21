@@ -33,6 +33,11 @@ const sweep = async () => {
 };
 await sweep();
 
+const AGENT = (
+  await graphql(`mutation($input: CreateAgentInput!) { createAgent(input: $input) { id name } }`, {
+    input: { workspaceId: WORKSPACE, name: `${PREFIX} Reviewer ${Date.now()}`, type: 'LLM' },
+  })
+).createAgent;
 const WORKFLOW = (
   await graphql(`mutation($input: CreateWorkflowInput!) { createWorkflow(input: $input) { workflowId } }`, {
     input: { workspaceId: WORKSPACE, name: `${PREFIX} ${Date.now()}` },
@@ -49,6 +54,7 @@ await graphql(
         { key: 'make', kind: 'OBJECT', name: 'Make', x: 400, y: 0, outputName: 'made', mappings: [{ name: 'a', expression: 'x', mode: 'VALUE' }] },
         { key: 'read', kind: 'OBJECT', name: 'Read', x: 800, y: 300, mappings: [{ name: 'b', expression: 'made', mode: 'REFERENCE', sourceNodeKey: 'make' }] },
         { key: 'aside', kind: 'OBJECT', name: 'Aside', x: 0, y: 400, mappings: [] },
+        { key: 'ask', kind: 'AGENT', name: 'Asks', x: 400, y: 400, agentId: AGENT.id, mappings: [] },
       ],
       edges: [{ source: 'start', target: 'make' }],
     },
@@ -184,6 +190,9 @@ try {
   const off = await flick('off');
   record(off.leaned === null && Math.abs(off.slid) < 2, `Off moves it plainly (${JSON.stringify(off)})`);
   await page.evaluate(() => localStorage.removeItem('orknux.dragEffect'));
+  // The drags above carry Make to the canvas's edge, where React Flow pans after it; everything back in view.
+  await page.locator('.react-flow__controls-fitview').click();
+  await page.waitForTimeout(500);
 
   /* ---- Add help ---- */
 
@@ -275,8 +284,19 @@ try {
   record((await pointsOn(FLOW)) === count - 1, `and Delete takes it off (${count} -> ${await pointsOn(FLOW)})`);
   // A drag only moves a point now: no key turns it into a new joint.
   record((await page.locator('[data-drag-hint]').count()) === 0, 'and no drag hint is drawn');
+
+  /* ---- a definition's name onto the node ---- */
+
+  await selectNode(page, page.locator('.react-flow__node', { hasText: 'Asks' }).first(), 'Asks');
+  await page.locator('#node-name').waitFor({ timeout: 10_000 });
+  const arrow = page.locator('[data-name-from-definition]');
+  record((await arrow.count()) === 1, "beside the link to its agent, an arrow offers the agent's name");
+  await arrow.click();
+  const named = await page.locator('#node-name').inputValue();
+  record(named === AGENT.name, `and pressing it names the node after it (${named})`);
 } finally {
   await sweep();
+  await graphql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: AGENT.id }).catch(() => undefined);
 }
 
 await finish(browser);

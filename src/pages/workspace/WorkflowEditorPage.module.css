@@ -2181,3 +2181,10 @@ select.input {
 :global(.react-flow__node .react-flow__resize-control.line) {
   border-color: transparent;
 }
+
+/* The arrow that puts the definition's name on the node: a link's look, as a button. */
+button.definitionJump {
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

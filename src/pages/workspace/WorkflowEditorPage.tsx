@@ -5824,6 +5824,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={agents.find((one) => one.id === draft.agentId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     <DefinitionPicker
@@ -5995,6 +5996,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={triggers.find((one) => one.id === draft.triggerId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     {/* Custom, as the action and condition pickers offer it. */}
@@ -6180,6 +6182,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={actions.find((one) => one.id === draft.actionId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     {/*
@@ -6384,6 +6387,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={objects.find((one) => one.id === draft.objectId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     {/*
@@ -6518,6 +6522,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={conditions.find((one) => one.id === draft.conditionId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     <DefinitionPicker
@@ -6692,6 +6697,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={imageModels.find((one) => one.id === draft.imageModelId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     <DefinitionPicker
@@ -6729,6 +6735,7 @@ Change the keystroke in Preferences.`}
                           >
                             <OpenDefinitionIcon />
                           </Link>
+                          <NameFromDefinition name={callable.find((one) => one.id === draft.calledWorkflowId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         </span>
                       )}
                     </span>
@@ -6772,6 +6779,7 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
+                        <NameFromDefinition name={decisionModels.find((one) => one.id === draft.decisionModelId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     }
                     onChange={(patch) => {
@@ -8070,5 +8078,27 @@ Change the keystroke in Preferences.`}
       />
       </DrawerWidth.Provider>
     </AppShell>
+  );
+}
+
+/**
+ * Beside a node's link to its definition: the definition's name, put in the
+ * node's Name above with one press. Drawn only while there is a name to copy.
+ */
+function NameFromDefinition({ name, onUse }: { name: string | undefined; onUse: (name: string) => void }) {
+  if (name === undefined || name.trim() === '') return null;
+  return (
+    <button
+      type="button"
+      className={styles.definitionJump}
+      onClick={() => onUse(name)}
+      title={tf('Name this node {name}', { name })}
+      aria-label={t('Use the definition\'s name as the node name')}
+      data-name-from-definition=""
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+        <path d="M7 11.5V2.5M3 6.5l4-4 4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
   );
 }
