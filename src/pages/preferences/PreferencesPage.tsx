@@ -24,14 +24,9 @@ import {
   DEFAULT_ADD_SHORTCUT,
   DEFAULT_SELECT_SHORTCUT,
   DEFAULT_JOINT_SHORTCUT,
-  DEFAULT_JOINT_DRAG_KEY,
-  JOINT_DRAG_KEYS,
   jointShortcut,
   setJointShortcut,
   useJointShortcut,
-  jointDragKey,
-  setJointDragKey,
-  useJointDragKey,
   DEFAULT_UNDO_SHORTCUT,
   DEFAULT_REDO_SHORTCUT,
   DEFAULT_DUPLICATE_SHORTCUT,
@@ -110,7 +105,6 @@ type ShortcutKey =
   | 'add'
   | 'select'
   | 'joint'
-  | 'jointDrag'
   | 'undo'
   | 'redo'
   | 'duplicate'
@@ -132,7 +126,6 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'add', stored: addShortcut, store: setAddShortcut },
   { key: 'select', stored: selectShortcut, store: setSelectShortcut },
   { key: 'joint', stored: jointShortcut, store: setJointShortcut },
-  { key: 'jointDrag', stored: jointDragKey, store: setJointDragKey },
   { key: 'undo', stored: undoShortcut, store: setUndoShortcut },
   { key: 'redo', stored: redoShortcut, store: setRedoShortcut },
   { key: 'duplicate', stored: duplicateShortcut, store: setDuplicateShortcut },
@@ -188,8 +181,6 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const select = shortcutDrafts.select ?? storedSelect;
   const storedJoint = useJointShortcut();
   const joint = shortcutDrafts.joint ?? storedJoint;
-  const storedJointDrag = useJointDragKey();
-  const jointDrag = shortcutDrafts.jointDrag ?? storedJointDrag;
   const storedUndo = useUndoShortcut();
   const undo = shortcutDrafts.undo ?? storedUndo;
   const storedMagicRectangle = useMagicRectangleShortcut();
@@ -1077,35 +1068,6 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>
               )}
-            </div>
-
-            <div className={styles.setting}>
-              <span className={styles.labelWithHint}>
-                <span className={styles.settingLabel} id="joint-drag-key">
-                  {t('Joint Drag Key')}
-                </span>
-                <FieldHint label={t('Joint Drag Key')}>
-                  {t('Held while a point of a line is dragged, it drops a new joint where the drag ends instead of moving the point.')}
-                </FieldHint>
-              </span>
-              <div className={styles.options} role="radiogroup" aria-labelledby="joint-drag-key">
-                {JOINT_DRAG_KEYS.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    role="radio"
-                    aria-checked={jointDrag === key}
-                    className={jointDrag === key ? styles.optionCurrent : styles.option}
-                    data-joint-drag-key={key}
-                    onClick={() => draftShortcut('jointDrag', key)}
-                  >
-                    {key}
-                  </button>
-                ))}
-                {jointDrag !== DEFAULT_JOINT_DRAG_KEY && (
-                  <span className={styles.settingNote}>{t('Shift by default.')}</span>
-                )}
-              </div>
             </div>
 
             <div className={styles.setting}>

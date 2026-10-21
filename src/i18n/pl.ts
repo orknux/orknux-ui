@@ -29,13 +29,8 @@ export const PL: Record<string, string> = {
   // The Joint tool on the workflow canvas.
   "Joint Tool Shortcut": "Skrót narzędzia przegubu",
   "Switches the workflow canvas’s Joint tool on and off, the same as its button. While it is on, a click on a line puts a joint there. A bare letter is allowed here because only the canvas hears it.": "Włącza i wyłącza narzędzie przegubu na płótnie przepływu, tak jak jego przycisk. Gdy jest włączone, kliknięcie linii stawia na niej przegub. Sama litera jest tu dozwolona, bo słyszy ją tylko płótno.",
-  "Joint Drag Key": "Klawisz przegubu przy przeciąganiu",
-  "Held while a point of a line is dragged, it drops a new joint where the drag ends instead of moving the point.": "Przytrzymany podczas przeciągania punktu linii stawia nowy przegub tam, gdzie kończy się przeciąganie, zamiast przesuwać punkt.",
-  "Shift by default.": "Domyślnie Shift.",
   "Joint": "Przegub",
   "On: a click on a line puts a joint there.": "Włączone: kliknięcie linii stawia na niej przegub.",
-  "Off: double-click a line to put a joint there. Hold": "Wyłączone: kliknij dwukrotnie linię, by postawić przegub. Przytrzymaj",
-  "while dragging a point to drop a new joint.": "podczas przeciągania punktu, by postawić nowy przegub.",
   "Click to put a joint here": "Kliknij, by postawić tu przegub",
   // A node's outline on the workflow canvas.
   "The outline the card is drawn with. Nothing about what runs; a shape picked for a kind of step makes a graph read at a glance.": "Obrys, którym rysowana jest karta. Nie zmienia tego, co się uruchamia; kształt wybrany dla rodzaju kroku sprawia, że graf czyta się na pierwszy rzut oka.",
@@ -2006,6 +2001,8 @@ export const PL: Record<string, string> = {
   "People": "Osoby",
   "in {count} sessions": "w {count} sesjach",
   "{name} reviewed this chat": "{name} ocenia ten czat",
+  "Drag to move this point; click it and press Delete, or double-click it, to take it off": "Przeciągnij, by przesunąć punkt; kliknij go i naciśnij Delete albo kliknij dwukrotnie, by go usunąć",
+  "Off: double-click a line to put a joint there. Click a joint and press Delete to take it off.": "Wyłączone: kliknij dwukrotnie linię, by dodać tam przegub. Kliknij przegub i naciśnij Delete, by go usunąć.",
   "Node Drag Effect": "Efekt przeciągania węzła",
   "How a workflow node moves while you drag it. Kept in this browser.": "Jak porusza się węzeł workflow podczas przeciągania. Zapisane w tej przeglądarce.",
   "Jelly": "Galaretka",
@@ -2125,7 +2122,6 @@ export const PL: Record<string, string> = {
   // --- the editor canvas ----------------------------------------------------
   "Drag to bend the line; double-click the line to add a point": "Przeciągnij, aby zgiąć linię; kliknij linię dwukrotnie, aby dodać punkt",
   "Drag to move it and the line; double-click to put it back": "Przeciągnij, aby przesunąć to i linię; kliknij dwukrotnie, aby przywrócić",
-  "Drag to move this point; double-click or Delete to take it off; + adds another": "Przeciągnij, aby przesunąć ten punkt; kliknij dwukrotnie albo naciśnij Delete, aby go zdjąć; + dodaje kolejny",
   "Nodes drawn from this action start with it; each node can change its own.": "Węzły utworzone z tej akcji zaczynają z nią; każdy węzeł może zmienić swoją własną.",
   "Nodes drawn from this agent start with it; each node can change its own.": "Węzły utworzone z tego agenta zaczynają z nim; każdy węzeł może zmienić swój własny.",
   "Nodes drawn from this condition start with it; each node can change its own.": "Węzły utworzone z tego warunku zaczynają z nim; każdy węzeł może zmienić swój własny.",

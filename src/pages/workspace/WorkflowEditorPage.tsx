@@ -1,5 +1,4 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -81,6 +80,7 @@ import { fetchWorkspaceWorkflows, removeWorkflow, setWorkflowEnabled } from '../
 import activityIcon from '../../assets/activity.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import { useDragSway } from './dragSway';
+import { ShapePicker } from './ShapePicker';
 import { useWorkspaceVariables } from './workspaceVariables';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import cloudUploadIcon from '../../assets/cloud-upload.svg';
@@ -92,7 +92,6 @@ import plusIcon from '../../assets/plus.svg';
 import redoIcon from '../../assets/redo.svg';
 import marqueeIcon from '../../assets/marquee.svg';
 import jointIcon from '../../assets/joint.svg';
-import moveIcon from '../../assets/move.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
@@ -130,9 +129,7 @@ import type { ImageParameterSpec } from '../../api/graph';
 import type { NodeShape } from '../../api/graph';
 import {
   matches,
-  holdsJointKey,
   useAddShortcut,
-  useJointDragKey,
   useJointShortcut,
   useSelectShortcut,
   useDuplicateShortcut,
@@ -568,6 +565,8 @@ const HISTORY_STEPS = 50;
 interface Step {
   nodes: Node<NodeData>[];
   edges: Edge[];
+  /** The joints its lines bend through: put on by hand, so taken back by an undo like a moved node. */
+  points: Record<string, EdgeOffset[]>;
   /** What of it counted as an edit, so two steps can be told apart cheaply. */
   shape: string;
 }
@@ -583,13 +582,14 @@ interface Step {
  * press. Positions are in, because moving a node is exactly the kind of thing
  * somebody wants back.
  */
-function editShape(nodes: Node<NodeData>[], edges: Edge[]): string {
+function editShape(nodes: Node<NodeData>[], edges: Edge[], points: Record<string, EdgeOffset[]>): string {
   return JSON.stringify({
     nodes: nodes.map((node) => {
       const { inputs: _inputs, outputs: _outputs, ...data } = node.data as NodeData;
       return [node.id, node.position.x, node.position.y, node.width ?? null, node.height ?? null, data];
     }),
     edges: edges.map((edge) => [edge.id, edge.source, edge.target, edge.sourceHandle ?? null]),
+    points,
   });
 }
 
@@ -916,7 +916,7 @@ const TurnNode = createContext<(() => void) | null>(null);
  * puts a joint there - and which key, held through a drag of a point, drops
  * a new joint rather than moving the one held.
  */
-const JointTool = createContext<{ on: boolean; dragKey: string }>({ on: false, dragKey: 'Shift' });
+const JointTool = createContext<{ on: boolean; key: string }>({ on: false, key: 'J' });
 
 /**
  * Which actions speak, by id, so a node pointed at one is drawn as a speaker.
@@ -1016,24 +1016,6 @@ function CarriedEdge({
   const zoom = useStore((state) => state.transform[2]);
   const [drag, setDrag] = useState<{ at: number; x: number; y: number; from: EdgeOffset } | null>(null);
   const joints = useContext(JointTool);
-  /*
-   * Where the pointer is while a point is dragged, and whether the drag will
-   * drop a new joint. Held apart from `drag` because both change on every
-   * move and on the key going down or up, where nothing else does.
-   */
-  const [pointer, setPointer] = useState<{ x: number; y: number; joint: boolean; to: EdgeOffset } | null>(null);
-  useEffect(() => {
-    if (drag === null) return;
-    const flip = (event: KeyboardEvent) =>
-      setPointer((held) => (held === null ? held : { ...held, joint: holdsJointKey(event, joints.dragKey) }));
-    window.addEventListener('keydown', flip);
-    window.addEventListener('keyup', flip);
-    return () => {
-      window.removeEventListener('keydown', flip);
-      window.removeEventListener('keyup', flip);
-    };
-  }, [drag, joints.dragKey]);
-
   /** Puts one point somewhere, making it if the line had none. */
   const movePoint = (at: number, to: EdgeOffset) => {
     if (setPoints === undefined) return;
@@ -1068,7 +1050,6 @@ function CarriedEdge({
     event.currentTarget.setPointerCapture(event.pointerId);
     const from = points[at] ?? { x: 0, y: 0 };
     setDrag({ at, x: event.clientX, y: event.clientY, from });
-    setPointer({ x: event.clientX, y: event.clientY, joint: holdsJointKey(event, joints.dragKey), to: from });
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
@@ -1078,36 +1059,21 @@ function CarriedEdge({
       x: drag.from.x + (event.clientX - drag.x) / zoom,
       y: drag.from.y + (event.clientY - drag.y) / zoom,
     };
-    const joint = holdsJointKey(event, joints.dragKey);
-    setPointer({ x: event.clientX, y: event.clientY, joint, to });
     // A press that has not moved is a click, and a click makes no bend.
     if (points.length === 0 && to.x === 0 && to.y === 0) return;
-    /*
-     * A joint drag leaves the point held where it was and drops a new one
-     * where the drag ends, so nothing moves until then; the ghost under the
-     * pointer is where it will land. A line with no point yet has nothing to
-     * leave behind, and its first point is made either way.
-     */
-    if (joint && points.length > 0) {
-      if (points[drag.at].x !== drag.from.x || points[drag.at].y !== drag.from.y) movePoint(drag.at, drag.from);
-      return;
-    }
     movePoint(drag.at, to);
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLElement>) => {
     if (drag === null) return;
     event.currentTarget.releasePointerCapture(event.pointerId);
-    const ended = pointer;
     setDrag(null);
-    setPointer(null);
-    if (ended === null || setPoints === undefined || points.length === 0) return;
-    if (!holdsJointKey(event, joints.dragKey) && !ended.joint) return;
-    if (ended.to.x === drag.from.x && ended.to.y === drag.from.y) return;
-    // Dropped in joint mode: the point held stays, and a new one goes in after it.
-    const next = points.map((point, index) => (index === drag.at ? drag.from : point));
-    next.splice(drag.at + 1, 0, ended.to);
-    setPoints(id, next);
+    /*
+     * A press that did not move picks the point: it takes the focus, is drawn
+     * picked, and Delete or Backspace takes it off. The press's default was
+     * held back so the canvas would not pan, which also held back the focus.
+     */
+    if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 3) event.currentTarget.focus();
   };
 
   /**
@@ -1215,35 +1181,6 @@ function CarriedEdge({
           <title>{joints.on ? t('Click to put a joint here') : t('Double-click to add a point to bend through')}</title>
         </path>
       )}
-      {/*
-       * What a drag of a point will do, by the pointer: move it, or - with the
-       * joint key held - drop a new joint where it ends. Both are drawn, the
-       * one that will happen lit, so the other is a reminder it is there; and
-       * the key that switches them is named beside them.
-       */}
-      {drag !== null && pointer !== null && points.length > 0 &&
-        createPortal(
-          <div
-            className={styles.dragHint}
-            style={{ left: pointer.x + 16, top: pointer.y + 16 }}
-            data-drag-hint={pointer.joint ? 'joint' : 'move'}
-            aria-hidden="true"
-          >
-            <img src={moveIcon} alt="" width={14} height={14} className={pointer.joint ? undefined : styles.dragHintOn} />
-            <img src={jointIcon} alt="" width={14} height={14} className={pointer.joint ? styles.dragHintOn : undefined} />
-            <span className={styles.dragHintKey}>{joints.dragKey}</span>
-          </div>,
-          document.body,
-        )}
-      {drag !== null && pointer !== null && pointer.joint && points.length > 0 && (
-        <EdgeLabelRenderer>
-          <span
-            className={`${styles.edgePoint} ${styles.edgePointGhost}`}
-            style={{ transform: `translate(-50%, -50%) translate(${labelX + pointer.to.x}px, ${labelY + pointer.to.y}px)` }}
-            data-joint-ghost=""
-          />
-        </EdgeLabelRenderer>
-      )}
       {setPoints !== undefined && (
         <EdgeLabelRenderer>
           {/*
@@ -1284,7 +1221,7 @@ function CarriedEdge({
                 title={
                   points.length === 0
                     ? t('Drag to bend the line; double-click the line to add a point')
-                    : t('Drag to move this point; double-click or Delete to take it off; + adds another')
+                    : t('Drag to move this point; click it and press Delete, or double-click it, to take it off')
                 }
                 onPointerDown={onPointerDown(at)}
                 onPointerMove={onPointerMove}
@@ -3103,7 +3040,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [steps, setSteps] = useState({ back: 0, forward: 0 });
 
   useEffect(() => {
-    const now: Step = { nodes, edges, shape: editShape(nodes, edges) };
+    const now: Step = { nodes, edges, points: edgePoints, shape: editShape(nodes, edges, edgePoints) };
     /*
      * The first graph to arrive is where the history starts. Anything that is
      * not an edit - a preview landing, a node being selected - moves what the
@@ -3124,7 +3061,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       setSteps({ back: back.current.length, forward: 0 });
     }, HISTORY_PAUSE_MS);
     return () => window.clearTimeout(timer);
-  }, [nodes, edges]);
+  }, [nodes, edges, edgePoints]);
 
   /**
    * Puts a step back on the canvas, and the panel with it.
@@ -3146,7 +3083,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     const put = step.nodes.map((node) => ({ ...node, selected: chosen.get(node.id) ?? node.id === selectedKey }));
     setNodes(put);
     setEdges(step.edges);
-    settled.current = { nodes: put, edges: step.edges, shape: step.shape };
+    setEdgePoints(remember(step.points));
+    settled.current = { nodes: put, edges: step.edges, points: step.points, shape: step.shape };
 
     const node = put.find((candidate) => candidate.id === selectedKey);
     if (node === undefined) {
@@ -3166,7 +3104,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   function undo() {
-    const now: Step = { nodes, edges, shape: editShape(nodes, edges) };
+    const now: Step = { nodes, edges, points: edgePoints, shape: editShape(nodes, edges, edgePoints) };
     /*
      * Whatever has happened since the last step becomes one first. Ctrl+Z
      * pressed before a change has settled would otherwise reach past it to the
@@ -3190,7 +3128,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     const step = forward.current[forward.current.length - 1];
     if (step === undefined) return;
     forward.current = forward.current.slice(0, -1);
-    const now: Step = settled.current ?? { nodes, edges, shape: editShape(nodes, edges) };
+    const now: Step = settled.current ?? { nodes, edges, points: edgePoints, shape: editShape(nodes, edges, edgePoints) };
     back.current = [...back.current, now].slice(-HISTORY_STEPS);
     setSteps({ back: back.current.length, forward: forward.current.length });
     goTo(step);
@@ -4726,7 +4664,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * landed. Switched from its button or its keystroke, J unless changed.
    */
   const jointKey = useJointShortcut();
-  const jointDragKey = useJointDragKey();
   const [jointing, setJointing] = useState(false);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -4738,7 +4675,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [jointKey]);
-  const jointTool = useMemo(() => ({ on: jointing, dragKey: jointDragKey }), [jointing, jointDragKey]);
+  const jointTool = useMemo(() => ({ on: jointing, key: jointKey }), [jointing, jointKey]);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (!matches(event, selectKey)) return;
@@ -5408,7 +5345,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
             note={
               jointing
                 ? t('On: a click on a line puts a joint there.')
-                : `${t('Off: double-click a line to put a joint there. Hold')} ${jointDragKey} ${t('while dragging a point to drop a new joint.')}`
+                : t('Off: double-click a line to put a joint there. Click a joint and press Delete to take it off.')
             }
             className={jointing ? styles.iconButtonOn : undefined}
             pressed={jointing}
@@ -7658,21 +7595,18 @@ Change the keystroke in Preferences.`}
 
                 <div className={styles.field}>
                   <span className={styles.labelWithHint}>
-                    <label className={styles.label} htmlFor="node-shape">
+                    <span className={styles.label} id="node-shape-label">
                       {t('Shape')}
-                    </label>
+                    </span>
                     <FieldHint label={t('Shape')}>
                       {t('The outline the card is drawn with. Nothing about what runs; a shape picked for a kind of step makes a graph read at a glance.')}
                     </FieldHint>
                   </span>
-                  <DefinitionPicker
+                  <ShapePicker
                     id="node-shape"
-                    value={draft.shape ?? ''}
-                    options={(Object.keys(SHAPE_LABEL) as NodeShape[]).map((shape) => ({ value: shape, label: SHAPE_LABEL[shape] }))}
-                    pinned={{ value: '', label: t('Default') }}
-                    onChoose={(chosen) => setDraft({ ...draft, shape: chosen === '' ? null : (chosen as NodeShape) })}
-                    placeholder={t('Default')}
-                    searchPlaceholder={t('Search…')}
+                    value={draft.shape ?? null}
+                    labels={SHAPE_LABEL}
+                    onChoose={(chosen) => setDraft({ ...draft, shape: chosen })}
                   />
                 </div>
 

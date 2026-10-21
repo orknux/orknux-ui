@@ -1331,6 +1331,16 @@ select.input {
   outline: none;
 }
 
+/* Picked by a click: ringed, and Delete or Backspace takes it off. */
+.edgePoint:focus {
+  opacity: 1;
+  background: var(--color-accent-brand);
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-accent-brand);
+  outline: none;
+}
+
 /* Holding a bend. Lit, so the thing to double-click is the thing you can see. */
 .edgePointMoved {
   opacity: 1;
@@ -1970,6 +1980,9 @@ select.input {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
   padding: var(--space-2) var(--space-6);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -2088,4 +2101,13 @@ select.input {
   color: var(--color-text-primary);
   box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
   pointer-events: none;
+}
+
+/*
+ * A selected node is outlined by its own shape, lit. The resizer's frame is a
+ * rectangle around every node, so its lines are not drawn: they still take
+ * hold for a resize along an edge, and the corner handles say where.
+ */
+:global(.react-flow__node .react-flow__resize-control.line) {
+  border-color: transparent;
 }

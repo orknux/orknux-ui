@@ -9,9 +9,7 @@
  *   joint tool  a toolbox button and its keystroke switch it; while on, one
  *               click on a line puts a joint there, on a flow line and on a
  *               dependency line alike
- *   drag hint   dragging a point shows move and joint by the pointer, move lit;
- *               with Shift held joint is lit, and dropping leaves the point
- *               held where it was and puts a new joint where it dropped
+ *   pick joint  a click picks a joint and Delete takes it off
  *   Add help    pointing at an Add menu entry, or giving it focus, says what
  *               that node does
  *   hints       the node panel's Name, Trigger, Icon and Description each have
@@ -210,10 +208,17 @@ try {
   );
   record(hints.every((one) => one.hinted), `the panel's fields have help hints (${JSON.stringify(hints.filter((one) => !one.hinted))})`);
 
-  await page.locator('#node-shape').click();
-  const menu = page.locator('[role="listbox"]');
-  await menu.waitFor({ timeout: 5000 });
-  await menu.locator('[role="option"]', { hasText: 'Hexagon' }).first().click();
+  // Every outline drawn as a tile, the current one checked.
+  const tiles = page.locator('#node-shape [role="radio"]');
+  const drawnTiles = await tiles.evaluateAll((all) =>
+    all.map((one) => ({ name: one.textContent?.trim(), path: one.querySelector('path')?.getAttribute('d') ?? '', checked: one.getAttribute('aria-checked') })),
+  );
+  record(
+    drawnTiles.length === 6 && new Set(drawnTiles.map((one) => one.path)).size === 6 && drawnTiles[0].checked === 'true',
+    `Shape offers each outline as a drawing, Default checked (${drawnTiles.map((one) => one.name).join(', ')})`,
+  );
+  await page.locator('#node-shape [data-shape-choice="HEXAGON"]').click();
+  record((await page.locator('#node-shape [data-shape-choice="HEXAGON"]').getAttribute('aria-checked')) === 'true', 'pressing Hexagon checks it');
   await page.getByRole('button', { name: /^save\b/i }).click();
   await page.waitForTimeout(2000);
   await page.locator('.react-flow__node [data-shape="HEXAGON"]').waitFor({ timeout: 8000 }).catch(() => {});
@@ -247,30 +252,29 @@ try {
     const later = await pointsOn(edge);
     record(later === before + 1, `one click on ${what} puts a joint there (${before} -> ${later})`);
   }
+  // A joint is an edit like any other: Undo takes the last one back.
+  const beforeUndo = await pointsOn(DEPENDENCY);
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(300);
+  record((await pointsOn(DEPENDENCY)) === beforeUndo - 1, `Undo takes the last joint back (${beforeUndo} -> ${await pointsOn(DEPENDENCY)})`);
+  await page.keyboard.press('Control+y');
+  await page.waitForTimeout(300);
+  record((await pointsOn(DEPENDENCY)) === beforeUndo, 'and Redo puts it back');
   await page.keyboard.press('j');
   record((await tool.getAttribute('aria-pressed')) === 'false', 'and J switches it off');
 
-  /* ---- the drag hint, and a Shift drop ---- */
+  /* ---- picking a joint to take it off ---- */
 
   const held = page.locator(`button[data-edge="${FLOW}"][data-point="0"]`);
   const at = await centre(held);
   const count = await pointsOn(FLOW);
-  await page.mouse.move(at.x, at.y);
-  await page.mouse.down();
-  await page.mouse.move(at.x + 40, at.y + 60, { steps: 4 });
-  const plain = await page.locator('[data-drag-hint]').getAttribute('data-drag-hint').catch(() => null);
-  record(plain === 'move', `dragging a point says move, with joint beside it (${plain})`);
-  await page.keyboard.down('Shift');
-  await page.mouse.move(at.x + 50, at.y + 70, { steps: 2 });
-  const shifted = await page.locator('[data-drag-hint]').getAttribute('data-drag-hint').catch(() => null);
-  record(shifted === 'joint', `with Shift held it says joint (${shifted})`);
-  await page.mouse.up();
-  await page.keyboard.up('Shift');
+  await page.mouse.click(at.x, at.y);
+  record(await held.evaluate((one) => one === document.activeElement), 'a click picks a joint');
+  await page.keyboard.press('Delete');
   await page.waitForTimeout(300);
-  const still = await centre(held);
-  record(Math.abs(still.x - at.x) < 2 && Math.abs(still.y - at.y) < 2, 'dropped with Shift, the point held stays where it was');
-  record((await pointsOn(FLOW)) === count + 1, `and a new joint is put where it dropped (${count} -> ${await pointsOn(FLOW)})`);
-  record((await page.locator('[data-drag-hint]').count()) === 0, 'and the hint goes');
+  record((await pointsOn(FLOW)) === count - 1, `and Delete takes it off (${count} -> ${await pointsOn(FLOW)})`);
+  // A drag only moves a point now: no key turns it into a new joint.
+  record((await page.locator('[data-drag-hint]').count()) === 0, 'and no drag hint is drawn');
 } finally {
   await sweep();
 }

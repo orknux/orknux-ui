@@ -11,7 +11,6 @@ const DUPLICATE_KEY = 'orknux.duplicateShortcut';
 const ADD_KEY = 'orknux.addShortcut';
 const SELECT_KEY = 'orknux.selectShortcut';
 const JOINT_KEY = 'orknux.jointShortcut';
-const JOINT_DRAG_KEY = 'orknux.jointDragKey';
 const PUBLISH_KEY = 'orknux.publishShortcut';
 const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
 const ZOOM_IN_KEY = 'orknux.zoomInShortcut';
@@ -120,16 +119,6 @@ export const DEFAULT_SELECT_SHORTCUT = 'S';
  * where it landed.
  */
 export const DEFAULT_JOINT_SHORTCUT = 'J';
-
-/**
- * The key that, held while a line's point is dragged, drops a new joint
- * instead of moving the one held: Shift unless somebody chose another. A
- * modifier on its own, since it is held through a drag rather than pressed.
- */
-export const DEFAULT_JOINT_DRAG_KEY = 'Shift';
-
-/** The keys a joint drag may be switched with: a modifier, held. */
-export const JOINT_DRAG_KEYS = ['Shift', 'Alt', 'Ctrl'] as const;
 
 /**
  * What publishes the workflow on screen when nothing has been chosen.
@@ -256,7 +245,6 @@ const duplicating = remembered(DUPLICATE_KEY, DEFAULT_DUPLICATE_SHORTCUT);
 const addingNode = remembered(ADD_KEY, DEFAULT_ADD_SHORTCUT);
 const selecting = remembered(SELECT_KEY, DEFAULT_SELECT_SHORTCUT);
 const jointing = remembered(JOINT_KEY, DEFAULT_JOINT_SHORTCUT);
-const jointDragging = remembered(JOINT_DRAG_KEY, DEFAULT_JOINT_DRAG_KEY);
 const publishing = remembered(PUBLISH_KEY, DEFAULT_PUBLISH_SHORTCUT);
 const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
 const zoomingIn = remembered(ZOOM_IN_KEY, DEFAULT_ZOOM_IN_SHORTCUT);
@@ -395,25 +383,6 @@ export function setJointShortcut(next: Shortcut): void {
 
 export function useJointShortcut(): Shortcut {
   return jointing.use();
-}
-
-export function jointDragKey(): Shortcut {
-  return jointDragging.get();
-}
-
-export function setJointDragKey(next: Shortcut): void {
-  jointDragging.set(next);
-}
-
-export function useJointDragKey(): Shortcut {
-  return jointDragging.use();
-}
-
-/** Whether the joint drag key is held in [event]. */
-export function holdsJointKey(event: { shiftKey: boolean; altKey: boolean; ctrlKey: boolean; metaKey: boolean }, key: Shortcut): boolean {
-  if (key === 'Alt') return event.altKey;
-  if (key === 'Ctrl') return event.ctrlKey || event.metaKey;
-  return event.shiftKey;
 }
 
 export function publishShortcut(): Shortcut {
