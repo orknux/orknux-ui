@@ -46,6 +46,20 @@ try {
   );
   record(feet.every((one) => Math.abs(one - feet[0]) <= 2), `the pickers and Share sit on one line (${feet.join(', ')})`);
 
+  /* ---- every workspace at once ---- */
+
+  const visible = (await graphql('query { workspaces(page: 0, size: 200) { content { id } } }')).workspaces.content.length - 1;
+  await card.getByTestId('share-component').selectOption({ label: CATALOG });
+  await card.getByTestId('share-workspace').selectOption({ label: 'All workspaces' });
+  await card.getByRole('button', { name: 'Share', exact: true }).click();
+  await page.waitForFunction((n) => document.querySelectorAll('[data-testid="share-given"]').length === n, visible, { timeout: 20_000 }).catch(() => {});
+  const all = await card.getByTestId('share-given').count();
+  record(all === visible, `All workspaces shares with every other workspace, once each (${all} of ${visible})`);
+  const { workspaceSharesGiven: lentOut } = await graphql('query ($w: ID!) { workspaceSharesGiven(workspaceId: $w) { id granteeWorkspaceId } }', { w: lender });
+  for (const one of lentOut.filter((share) => share.granteeWorkspaceId !== borrower)) {
+    await graphql('mutation ($id: ID!) { removeWorkspaceShare(id: $id) }', { id: one.id });
+  }
+
   /* ---- using it, from the borrower's agent ---- */
 
   await page.goto(`${BASE}/workspace/${borrower}/agents/${agent.id}/settings`, { waitUntil: 'domcontentloaded' });

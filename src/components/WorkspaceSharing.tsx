@@ -18,6 +18,9 @@ interface Choice {
 
 const KINDS: ShareKind[] = ['VARIABLE_CATALOG', 'MODEL_PROVIDER'];
 
+/** The picker's value for every workspace listed, as one press. */
+const ALL = '*';
+
 function kindName(kind: ShareKind): string {
   return kind === 'VARIABLE_CATALOG' ? t('Variable catalog') : t('Model provider');
 }
@@ -100,6 +103,7 @@ export function WorkspaceSharing({ workspaceId }: { workspaceId: string }) {
         </Picker>
         <Picker label={t('With workspace')} value={grantee} onChange={setGrantee} testId="share-workspace">
           <option value="">{t('Choose…')}</option>
+          {workspaces.length > 1 && <option value={ALL}>{t('All workspaces')}</option>}
           {workspaces.map((one) => <option key={one.id} value={one.id}>{one.name}</option>)}
         </Picker>
         <button
@@ -107,7 +111,10 @@ export function WorkspaceSharing({ workspaceId }: { workspaceId: string }) {
           className={styles.share}
           disabled={busy || component === '' || grantee === ''}
           onClick={() => void act(async () => {
-            await shareWithWorkspace(workspaceId, grantee, kind, component);
+            // Every workspace listed now, one share each; one made later is shared with on its own.
+            const lent = new Set((given ?? []).filter((one) => one.kind === kind && one.componentId === component).map((one) => one.granteeWorkspaceId));
+            const to = grantee === ALL ? workspaces.map((one) => one.id).filter((id) => !lent.has(id)) : [grantee];
+            for (const one of to) await shareWithWorkspace(workspaceId, one, kind, component);
             setComponent('');
           })}
         >
