@@ -80,6 +80,7 @@ import type { Trigger } from '../../api/triggers';
 import { fetchWorkspaceWorkflows, removeWorkflow, setWorkflowEnabled } from '../../api/workflows';
 import activityIcon from '../../assets/activity.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
+import { useDragSway } from './dragSway';
 import { useWorkspaceVariables } from './workspaceVariables';
 import arrowLeftIcon from '../../assets/arrow-left.svg';
 import cloudUploadIcon from '../../assets/cloud-upload.svg';
@@ -2747,6 +2748,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    */
   /** The nodes being dragged right now, whose lines wiggle with them. */
   const [dragging, setDragging] = useState<ReadonlySet<string>>(() => new Set());
+  /** How what is being dragged wobbles, from how fast and which way it moves. */
+  const sway = useDragSway();
   const drawnEdges = useMemo<Edge[]>(() => {
     const carrying = edges.map((edge) => {
       /*
@@ -5695,9 +5698,16 @@ Change the keystroke in Preferences.`}
                * effect on the selection, which Fast Refresh and a restored step re-run.
                */
               onNodeClick={() => showPanel(true)}
-              // What is being dragged, so its lines wiggle along with it; the node's own wiggle is CSS on React Flow's class.
-              onNodeDragStart={(_, __, moving) => setDragging(new Set(moving.map((one) => one.id)))}
-              onNodeDragStop={() => setDragging(new Set())}
+              // What is being dragged, so it and its lines wobble by how fast and which way it moves.
+              onNodeDragStart={(event, __, moving) => {
+                setDragging(new Set(moving.map((one) => one.id)));
+                sway.start(event);
+              }}
+              onNodeDrag={(event) => sway.move(event)}
+              onNodeDragStop={() => {
+                setDragging(new Set());
+                sway.stop();
+              }}
               /*
                * Room to take hold of a line's end. The grab circle sits just
                * beyond the handle, so a wider one is easier to aim at without

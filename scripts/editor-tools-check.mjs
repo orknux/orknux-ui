@@ -1,8 +1,8 @@
 /**
  * The workflow editor's newer tools, as drawn:
  *
- *   wiggle      a node being dragged wiggles - an animation runs on its card -
- *               and so do the lines joined to it, and nothing else
+ *   jelly       a node dragged fast leans with the way it moves, its lines and
+ *               their labels follow, and held still it rests
  *   shape       the panel's Shape picks the card's outline, it is saved, and
  *               the card is drawn with it
  *   joint tool  a toolbox button and its keystroke switch it; while on, one
@@ -88,29 +88,52 @@ try {
   await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(1000);
 
-  /* ---- wiggle ---- */
+  /* ---- jelly ---- */
 
   const make = page.locator('.react-flow__node', { hasText: 'Make' }).first();
   const from = await centre(make.locator('[class*="nodeContent"]').first());
+  /** The dragged card's transform, its lines, and the dependency label's follow-through, as drawn now. */
+  const drawnNow = () =>
+    page.evaluate(() => {
+      const card = document.querySelector('.react-flow__node.dragging > *');
+      const label = document.querySelector('ul[data-edge="reads:make->read"]');
+      const lines = [...document.querySelectorAll('.react-flow__edge.edgeWiggling')].map((one) => one.getAttribute('data-id'));
+      const matrix = card === null ? null : new DOMMatrix(getComputedStyle(card).transform);
+      return {
+        lean: matrix === null ? null : Math.round(Math.atan(matrix.c) * 1800 / Math.PI) / 10,
+        still: matrix === null ? null : matrix.isIdentity,
+        label: label === null ? null : getComputedStyle(label).translate,
+        lines,
+      };
+    });
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(from.x + 30, from.y + 20, { steps: 5 });
-  await page.waitForTimeout(150);
-  const wiggling = await page.evaluate(() => {
-    const card = document.querySelector('.react-flow__node.dragging > *');
-    const lines = [...document.querySelectorAll('.react-flow__edge.edgeWiggling')].map((one) => one.getAttribute('data-id'));
-    const label = document.querySelector('ul[data-edge="reads:make->read"]');
-    return { card: card === null ? null : getComputedStyle(card).animationName, lines, label: label === null ? null : getComputedStyle(label).animationName };
-  });
-  await page.mouse.up();
-  record(wiggling.card !== null && wiggling.card !== 'none', `a dragged node wiggles (${wiggling.card})`);
+  // A quick drag to the right: the body lags behind, leaning against the way it goes.
+  for (let at = 1; at <= 8; at += 1) {
+    await page.mouse.move(from.x + at * 25, from.y + 5, { steps: 1 });
+    await page.waitForTimeout(16);
+  }
+  const moving = await drawnNow();
+  record(moving.lean !== null && moving.lean < -1, `a node dragged fast leans with the motion (${moving.lean} deg)`);
+  record(moving.label !== null && moving.label !== 'none' && !/^0px/.test(moving.label), `and its dependency label follows through (${moving.label})`);
   record(
-    wiggling.lines.includes(FLOW) && wiggling.lines.includes(DEPENDENCY) && wiggling.lines.length === 2,
-    `and so do its lines, and only they (${wiggling.lines.join(', ')})`,
+    moving.lines.includes(FLOW) && moving.lines.includes(DEPENDENCY) && moving.lines.length === 2,
+    `and so do its lines, and only they (${moving.lines.join(', ')})`,
   );
-  record(wiggling.label !== null && wiggling.label !== 'none', `and so does the dependency line's label (${wiggling.label})`);
+  // And the other way: the lean turns round with the direction.
+  for (let at = 1; at <= 8; at += 1) {
+    await page.mouse.move(from.x + 200 - at * 25, from.y + 5, { steps: 1 });
+    await page.waitForTimeout(16);
+  }
+  const back = await drawnNow();
+  record(back.lean !== null && back.lean > 1, `dragged back, it leans the other way (${back.lean} deg)`);
+  // Held still, still held: it settles straight.
+  await page.waitForTimeout(1500);
+  const resting = await drawnNow();
+  record(resting.still === true, `held still, it rests (lean ${resting.lean})`);
+  await page.mouse.up();
   const after = await page.locator('.react-flow__edge.edgeWiggling').count();
-  record(after === 0, 'and it stops when dropped');
+  record(after === 0, 'and the lines stop when dropped');
 
   /* ---- Add help ---- */
 

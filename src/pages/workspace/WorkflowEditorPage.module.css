@@ -1914,62 +1914,24 @@ select.input {
 }
 
 /*
- * A node being dragged wiggles, a little, and so do the lines joined to it:
- * what moves with it is plain while it moves. On the card inside React Flow's
- * wrapper, since the wrapper's own transform is where the node is.
+ * A node being dragged moves like jelly, and its lines and their labels go
+ * along a little: leaning and stretching the way it moves, by how fast, and
+ * resting when held still. `useDragSway` drives the properties; on the card
+ * inside React Flow's wrapper, since the wrapper's own transform is where the
+ * node is.
  */
 :global(.react-flow__node.dragging) > * {
-  animation: nodeWiggle 0.6s ease-in-out infinite;
-}
-
-:global(.react-flow__edge.edgeWiggling) path {
-  animation: edgeWiggle 0.6s ease-in-out infinite;
-  transform-box: fill-box;
+  transform: skew(var(--jelly-kx, 0deg), var(--jelly-ky, 0deg)) scale(var(--jelly-sx, 1), var(--jelly-sy, 1));
   transform-origin: center;
 }
 
-@keyframes nodeWiggle {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  25% {
-    transform: rotate(-0.5deg);
-  }
-  75% {
-    transform: rotate(0.5deg);
-  }
+:global(.react-flow__edge.edgeWiggling) path {
+  transform: translate(var(--jelly-px, 0px), var(--jelly-py, 0px));
 }
 
-/* The label's place is its inline transform, so the wiggle is the separate rotate property, which adds to it. */
+/* The label's place is its inline transform, so it follows through the separate translate property, which adds to it. */
 .edgeLabelWiggling {
-  animation: edgeLabelWiggle 0.6s ease-in-out infinite;
-}
-
-@keyframes edgeLabelWiggle {
-  0%,
-  100% {
-    rotate: 0deg;
-  }
-  25% {
-    rotate: -0.5deg;
-  }
-  75% {
-    rotate: 0.5deg;
-  }
-}
-
-@keyframes edgeWiggle {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  25% {
-    transform: translate(0, -0.4px);
-  }
-  75% {
-    transform: translate(0, 0.4px);
-  }
+  translate: var(--jelly-px, 0px) var(--jelly-py, 0px);
 }
 
 @media (prefers-reduced-motion: reduce) {
