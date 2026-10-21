@@ -99,7 +99,8 @@ try {
   const wiggling = await page.evaluate(() => {
     const card = document.querySelector('.react-flow__node.dragging > *');
     const lines = [...document.querySelectorAll('.react-flow__edge.edgeWiggling')].map((one) => one.getAttribute('data-id'));
-    return { card: card === null ? null : getComputedStyle(card).animationName, lines };
+    const label = document.querySelector('ul[data-edge="reads:make->read"]');
+    return { card: card === null ? null : getComputedStyle(card).animationName, lines, label: label === null ? null : getComputedStyle(label).animationName };
   });
   await page.mouse.up();
   record(wiggling.card !== null && wiggling.card !== 'none', `a dragged node wiggles (${wiggling.card})`);
@@ -107,6 +108,7 @@ try {
     wiggling.lines.includes(FLOW) && wiggling.lines.includes(DEPENDENCY) && wiggling.lines.length === 2,
     `and so do its lines, and only they (${wiggling.lines.join(', ')})`,
   );
+  record(wiggling.label !== null && wiggling.label !== 'none', `and so does the dependency line's label (${wiggling.label})`);
   const after = await page.locator('.react-flow__edge.edgeWiggling').count();
   record(after === 0, 'and it stops when dropped');
 

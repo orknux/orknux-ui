@@ -1301,7 +1301,14 @@ function CarriedEdge({
       {says.length > 0 && (
         <EdgeLabelRenderer>
           <ul
-            className={[styles.edgeLabel, drag?.at === 0 ? styles.edgeLabelDragging : '', 'nodrag', 'nopan']
+            className={[
+              styles.edgeLabel,
+              drag?.at === 0 ? styles.edgeLabelDragging : '',
+              // Its line wiggles while a node it joins is dragged, and the label is part of the line.
+              data?.wiggling === true ? styles.edgeLabelWiggling : '',
+              'nodrag',
+              'nopan',
+            ]
               .filter(Boolean)
               .join(' ')}
             /*
@@ -2855,7 +2862,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     if (dragging.size === 0) return all;
     return all.map((edge) =>
       dragging.has(edge.source) || dragging.has(edge.target)
-        ? { ...edge, className: [edge.className, 'edgeWiggling'].filter(Boolean).join(' ') }
+        ? { ...edge, className: [edge.className, 'edgeWiggling'].filter(Boolean).join(' '), data: { ...edge.data, wiggling: true } }
         : edge,
     );
   }, [edges, nodes, carried, edgePoints, setPoints, kindOfNode, dragging]);
