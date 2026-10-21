@@ -2231,9 +2231,11 @@ ${named}`;
      * the consequence that matters here: the second answer is read aloud. It
      * was not, because nothing in the panel had been told a turn was happening,
      * so a conversation being held out loud went silent at exactly the press
-     * that says the last answer was not good enough. Issue #314.
+     * that says the last answer was not good enough. Issue #314. The same for
+     * a question left unanswered: *answer this* is a turn too, and going round
+     * the panel left it on Listening while an answer nobody heard was written.
      */
-    if (voice && voiceControls.current !== null && !unanswered) {
+    if (voice && voiceControls.current !== null) {
       setError(null);
       voiceControls.current.again();
       return;
@@ -2334,11 +2336,19 @@ ${named}`;
   ): Promise<string> {
     if (currentId === null) return '';
     const at = messages.length - 1;
-    if (messages[at]?.role !== 'assistant') return '';
+    const unanswered = messages[at]?.role === 'user';
+    if (messages[at]?.role !== 'assistant' && !unanswered) return '';
 
     setError(null);
     setSending(true);
-    anotherTake(at);
+    if (unanswered) {
+      // Nothing to keep as a take: an empty answer under the question, filled as it streams.
+      setWorking(NOTHING_YET);
+      thinkingSoFar.current = '';
+      setMessages((present) => [...present, { role: 'assistant', content: '', actor: null, takes: [], thinking: null, thinkingMillis: null, at: null }]);
+    } else {
+      anotherTake(at);
+    }
 
     let answer = '';
     let failure: string | null = null;
