@@ -170,6 +170,7 @@ const AGENT_FIELDS =
 export type BuiltInToolGovernance =
   | 'GRANT'
   | 'GRANT_REACHING'
+  | 'GRANT_OPTIONAL'
   | 'SKILL_CATALOGS'
   | 'MEMORY_CATALOGS'
   | 'ORKNUX_ACCESS'

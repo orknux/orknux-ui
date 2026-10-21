@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { fetchVariables } from '../../api/variables';
+import { fetchLentVariables, fetchVariables } from '../../api/variables';
 import type { Variable } from '../../api/variables';
 
 /** More variables than a workspace realistically keeps, so a picker is complete. */
 const LIMIT = 500;
 
 /**
- * The workspace's variables, for a screen that offers them, kept current.
+ * The workspace's variables, for a screen that offers them, kept current -
+ * with the variables of the catalogs other workspaces lend it, whose catalog
+ * name says whose they are.
  *
  * A picker like that sits on a page somebody leaves open — a function editor
  * most of all — while the variable it ought to be offering is made somewhere
@@ -38,8 +40,9 @@ export function useWorkspaceVariables(workspaceId: string): {
   const refresh = useCallback(() => {
     if (workspaceId === '' || asking.current) return;
     asking.current = true;
-    fetchVariables(workspaceId, { size: LIMIT })
-      .then((page) => setVariables(page.content))
+    // Its own, and those of every catalog another workspace lends it, after them.
+    Promise.all([fetchVariables(workspaceId, { size: LIMIT }), fetchLentVariables(workspaceId).catch(() => [])])
+      .then(([page, lent]) => setVariables([...page.content, ...lent]))
       // Left as it was rather than emptied: whatever is wrong, taking away the
       // options somebody is looking at does not tell them anything.
       .catch(() => undefined)

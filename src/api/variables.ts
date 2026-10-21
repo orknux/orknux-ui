@@ -198,6 +198,15 @@ export async function deleteVariableCatalog(id: string): Promise<boolean> {
 /** What the list can be put in the order of; see `VARIABLE_ORDERS` on the server. */
 export type VariableOrder = 'NAME' | 'DESCRIPTION' | 'TYPE';
 
+/** The variables of every catalog lent to this workspace, for its pickers; never a value. */
+export async function fetchLentVariables(workspaceId: string): Promise<Variable[]> {
+  const data = await graphql<{ lentVariables: Variable[] }>(
+    `query LentVariables($workspaceId: ID!) { lentVariables(workspaceId: $workspaceId) { ${VARIABLE_FIELDS} } }`,
+    { workspaceId },
+  );
+  return data.lentVariables;
+}
+
 export async function fetchVariables(
   workspaceId: string,
   options: {
