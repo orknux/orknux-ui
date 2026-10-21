@@ -399,27 +399,36 @@
   border-bottom: 0;
 }
 
-/* The whole row is the control: a template is chosen, not configured. */
+/* The whole row ticks it: several can be used at once, as one import. */
 .templateChoice {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  align-items: flex-start;
+  gap: var(--space-10);
   width: 100%;
   padding: var(--space-10) var(--space-12);
-  background: transparent;
-  border: 0;
-  font-family: inherit;
-  text-align: left;
   cursor: pointer;
 }
 
-.templateChoice:hover:not(:disabled) {
+.templateChoice:hover:not(.templateChoiceOff) {
   background: var(--color-surface-raised);
 }
 
-.templateChoice:disabled {
+.templateChoiceOff {
   cursor: default;
   opacity: 0.7;
+}
+
+.templateTick {
+  flex: none;
+  margin: 3px 0 0;
+  accent-color: var(--color-accent-brand);
+}
+
+.templateText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
 .templateName {

@@ -341,6 +341,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'bulk-import-check',
+    what: 'several exported files, or several ticked templates, import into a workspace as one plan and one press',
+    needs: [],
+  },
+  {
     name: 'user-last-signed-in-check',
     what: 'the Users list says when each person last signed in, under its own heading, and sorts by it',
     needs: [],

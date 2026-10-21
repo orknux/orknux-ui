@@ -284,17 +284,22 @@ export interface ImportComponentsButtonProps {
  */
 export function ImportComponentsButton({ workspaceId, onImported, label = t('Import') }: ImportComponentsButtonProps) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [envelope, setEnvelope] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>('');
+  /*
+   * Every file picked, imported together: one plan, one confirmation, and all
+   * of them or none - so a set of exports that point at each other lands whole.
+   */
+  const [envelopes, setEnvelopes] = useState<string[] | null>(null);
+  const [fileNames, setFileNames] = useState<string[]>([]);
 
-  async function chosen(file: File | undefined) {
-    if (file === undefined) return;
-    setFileName(file.name);
-    setEnvelope(await file.text());
+  async function chosen(files: FileList | null) {
+    const picked = files === null ? [] : [...files];
+    if (picked.length === 0) return;
+    setFileNames(picked.map((file) => file.name));
+    setEnvelopes(await Promise.all(picked.map((file) => file.text())));
   }
 
   function close() {
-    setEnvelope(null);
+    setEnvelopes(null);
     if (fileRef.current !== null) fileRef.current.value = '';
   }
 
@@ -305,13 +310,13 @@ export function ImportComponentsButton({ workspaceId, onImported, label = t('Imp
    */
   const planFor = useCallback(
     (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
-      componentImportPlan(workspaceId, envelope ?? '', bindings, exclude, rename),
-    [workspaceId, envelope],
+      componentImportPlan(workspaceId, envelopes ?? [], bindings, exclude, rename),
+    [workspaceId, envelopes],
   );
   const commit = useCallback(
     (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
-      importComponents(workspaceId, envelope ?? '', bindings, exclude, rename),
-    [workspaceId, envelope],
+      importComponents(workspaceId, envelopes ?? [], bindings, exclude, rename),
+    [workspaceId, envelopes],
   );
 
   return (
@@ -321,14 +326,16 @@ export function ImportComponentsButton({ workspaceId, onImported, label = t('Imp
         className={styles.hidden}
         type="file"
         accept="application/json,.json"
-        onChange={(event) => void chosen(event.target.files?.[0])}
+        multiple
+        data-testid="import-files"
+        onChange={(event) => void chosen(event.target.files)}
       />
       <button type="button" className={styles.importButton} onClick={() => fileRef.current?.click()}>
         {label}
       </button>
       <ImportDialog
-        open={envelope !== null}
-        title={`Import ${fileName}`}
+        open={envelopes !== null}
+        title={fileNames.length === 1 ? `Import ${fileNames[0]}` : tf('Import {count} files', { count: fileNames.length })}
         workspaceId={workspaceId}
         planFor={planFor}
         commit={commit}
@@ -952,7 +959,8 @@ export interface UseTemplateButtonProps {
 export function UseTemplateButton({ workspaceId, kind, onImported, label = t('Use template') }: UseTemplateButtonProps) {
   const [picking, setPicking] = useState(false);
   const [templates, setTemplates] = useState<ComponentTemplate[] | null>(null);
-  const [chosen, setChosen] = useState<ComponentTemplate | null>(null);
+  /* Every template ticked, used together as one import. Empty while none is being used. */
+  const [chosen, setChosen] = useState<ComponentTemplate[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   function open() {
@@ -966,16 +974,17 @@ export function UseTemplateButton({ workspaceId, kind, onImported, label = t('Us
       );
   }
 
-  const templateId = chosen?.id ?? '';
+  // A string rather than the array, so the plan is asked for again only when the choice changes.
+  const templateIds = chosen.map((template) => template.id).join(',');
   const planFor = useCallback(
     (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
-      componentTemplatePlan(workspaceId, templateId, bindings, exclude, rename),
-    [workspaceId, templateId],
+      componentTemplatePlan(workspaceId, templateIds.split(','), bindings, exclude, rename),
+    [workspaceId, templateIds],
   );
   const commit = useCallback(
     (bindings: ComponentBinding[], exclude: ComponentExclusion[], rename: ComponentRename[]) =>
-      useComponentTemplate(workspaceId, templateId, bindings, exclude, rename),
-    [workspaceId, templateId],
+      useComponentTemplate(workspaceId, templateIds.split(','), bindings, exclude, rename),
+    [workspaceId, templateIds],
   );
 
   return (
@@ -987,22 +996,22 @@ export function UseTemplateButton({ workspaceId, kind, onImported, label = t('Us
         open={picking}
         templates={templates}
         error={picking ? error : null}
-        onChoose={(template) => {
-          setChosen(template);
+        onChoose={(templates) => {
+          setChosen(templates);
           setPicking(false);
         }}
         onClose={() => setPicking(false)}
       />
       <ImportDialog
-        open={chosen !== null}
-        title={chosen === null ? '' : `Use ${chosen.name}`}
+        open={chosen.length > 0}
+        title={chosen.length === 1 ? `Use ${chosen[0].name}` : tf('Use {count} templates', { count: chosen.length })}
         workspaceId={workspaceId}
         planFor={planFor}
         commit={commit}
-        confirmLabel={t("Use template")}
-        onClose={() => setChosen(null)}
+        confirmLabel={chosen.length === 1 ? t('Use template') : t('Use templates')}
+        onClose={() => setChosen([])}
         onImported={() => {
-          setChosen(null);
+          setChosen([]);
           onImported();
         }}
       />
@@ -1015,7 +1024,8 @@ interface TemplatePickerProps {
   /** Null while they are still being fetched. */
   templates: ComponentTemplate[] | null;
   error: string | null;
-  onChoose: (template: ComponentTemplate) => void;
+  /** The ones ticked, in the list's order. */
+  onChoose: (templates: ComponentTemplate[]) => void;
   onClose: () => void;
 }
 
@@ -1029,13 +1039,19 @@ interface TemplatePickerProps {
  */
 function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplatePickerProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [ticked, setTicked] = useState<string[]>([]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog === null) return;
     if (open && !dialog.open) dialog.showModal();
     else if (!open && dialog.open) dialog.close();
+    if (open) setTicked([]);
   }, [open]);
+
+  function toggle(id: string) {
+    setTicked((held) => (held.includes(id) ? held.filter((one) => one !== id) : [...held, id]));
+  }
 
   return (
     <dialog
@@ -1066,20 +1082,27 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
           <ul className={styles.templates}>
             {templates.map((template) => (
               <li className={styles.template} key={template.id}>
-                <button
-                  type="button"
-                  className={styles.templateChoice}
-                  onClick={() => onChoose(template)}
-                  disabled={!template.usable}
+                <label
+                  className={`${styles.templateChoice} ${template.usable ? '' : styles.templateChoiceOff}`}
+                  data-testid="template-choice"
                 >
-                  <span className={styles.templateName}>{template.name}</span>
-                  {template.description !== null && (
-                    <span className={styles.templateNote}>{template.description}</span>
-                  )}
-                  <span className={template.usable ? styles.templateMeta : styles.templateProblem}>
-                    {template.usable ? contentsSummary(template) : template.problem}
+                  <input
+                    type="checkbox"
+                    className={styles.templateTick}
+                    checked={ticked.includes(template.id)}
+                    onChange={() => toggle(template.id)}
+                    disabled={!template.usable}
+                  />
+                  <span className={styles.templateText}>
+                    <span className={styles.templateName}>{template.name}</span>
+                    {template.description !== null && (
+                      <span className={styles.templateNote}>{template.description}</span>
+                    )}
+                    <span className={template.usable ? styles.templateMeta : styles.templateProblem}>
+                      {template.usable ? contentsSummary(template) : template.problem}
+                    </span>
                   </span>
-                </button>
+                </label>
               </li>
             ))}
           </ul>
@@ -1094,6 +1117,14 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
         <div className={dialogStyles.actions}>
           <button type="button" className={dialogStyles.ghost} onClick={onClose}>
             {t('Cancel')}
+          </button>
+          <button
+            type="button"
+            className={dialogStyles.filled}
+            disabled={ticked.length === 0}
+            onClick={() => onChoose((templates ?? []).filter((template) => ticked.includes(template.id)))}
+          >
+            {ticked.length > 1 ? tf('Use {count} templates', { count: ticked.length }) : t('Use template')}
           </button>
         </div>
       </div>

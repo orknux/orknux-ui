@@ -154,48 +154,50 @@ export async function exportComponent(
   return data.exportComponent;
 }
 
+/** What importing these files together would do: one plan over all of them. */
 export async function componentImportPlan(
   workspaceId: string,
-  envelope: string,
+  envelopes: string[],
   bindings: ComponentBinding[] = [],
   exclude: ComponentExclusion[] = [],
   rename: ComponentRename[] = [],
 ): Promise<ImportPlan> {
   const data = await graphql<{ componentImportPlan: ImportPlan }>(
     `query ComponentImportPlan(
-       $workspaceId: ID!, $envelope: String!,
+       $workspaceId: ID!, $envelopes: [String!],
        $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!], $rename: [ComponentRenameInput!]
      ) {
        componentImportPlan(
-         workspaceId: $workspaceId, envelope: $envelope, bindings: $bindings, exclude: $exclude, rename: $rename
+         workspaceId: $workspaceId, envelopes: $envelopes, bindings: $bindings, exclude: $exclude, rename: $rename
        ) {
          ${PLAN_FIELDS}
        }
      }`,
-    { workspaceId, envelope, bindings, exclude, rename },
+    { workspaceId, envelopes, bindings, exclude, rename },
   );
   return data.componentImportPlan;
 }
 
+/** Imports these files together: all of them, or nothing. */
 export async function importComponents(
   workspaceId: string,
-  envelope: string,
+  envelopes: string[],
   bindings: ComponentBinding[] = [],
   exclude: ComponentExclusion[] = [],
   rename: ComponentRename[] = [],
 ): Promise<ImportPlan> {
   const data = await graphql<{ importComponents: ImportPlan }>(
     `mutation ImportComponents(
-       $workspaceId: ID!, $envelope: String!,
+       $workspaceId: ID!, $envelopes: [String!],
        $bindings: [ComponentBindingInput!], $exclude: [ComponentExclusionInput!], $rename: [ComponentRenameInput!]
      ) {
        importComponents(
-         workspaceId: $workspaceId, envelope: $envelope, bindings: $bindings, exclude: $exclude, rename: $rename
+         workspaceId: $workspaceId, envelopes: $envelopes, bindings: $bindings, exclude: $exclude, rename: $rename
        ) {
          ${PLAN_FIELDS}
        }
      }`,
-    { workspaceId, envelope, bindings, exclude, rename },
+    { workspaceId, envelopes, bindings, exclude, rename },
   );
   return data.importComponents;
 }
