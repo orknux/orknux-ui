@@ -659,11 +659,13 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
     setStarting(true);
     setStartError(null);
     try {
+      // Saved first, so the agent is handed the issue as it is on the screen - the agent picked included.
+      if (unsaved && !(await save(false))) return;
       const started = await startIssueTask(issue.id);
-      setIssueTasks([started, ...issueTasks]);
+      setIssueTasks((before) => [started, ...before]);
       // The server moved the issue to In progress, so the page has to say so.
       setStatus('IN_PROGRESS');
-      setIssue({ ...issue, status: 'IN_PROGRESS' });
+      setIssue((current) => (current === null ? current : { ...current, status: 'IN_PROGRESS' }));
     } catch (cause) {
       setStartError(cause instanceof Error ? cause.message : t('Could not start it.'));
     } finally {
@@ -1563,8 +1565,7 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                 Under the assignee, because it is about the assignee.
 
                 Drawn only where the issue is assigned to an *agent* and is not
-                closed - a person, a model and nobody are all things that cannot
-                be set to work, and a button that exists only to be refused is
+                closed - a person and nobody cannot be set to work, and a button that exists only to be refused is
                 worse than no button. It is the same condition the server checks,
                 so the two cannot disagree.
 
@@ -1573,20 +1574,19 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                 second one needs is the task that already exists rather than a
                 second agent on the same problem.
 
-                Read off the saved issue and not off the picker beside it. An
-                agent chosen and not yet saved is not who the issue is assigned
-                to, and a button that appeared on the choice would hand the work
-                to whoever was there before it.
+                Read off the picker, not the saved issue: pressing it saves
+                whatever is unsaved first, so the agent chosen is the one that
+                is handed the work.
               */}
               {!creating &&
                 issue !== null &&
-                issue.assignee?.kind === 'AGENT' &&
+                assignee?.kind === 'AGENT' &&
                 !isClosedStatus(issue.status, definitions) && (
                   <div className={styles.sideField} data-testid="issue-ai">
                     <span className={styles.labelWithHint}>
                       <span className={styles.label}>Start by AI</span>
                       <FieldHint label={t('Start by AI')}>
-                        Hands this issue to <strong>{issue.assignee.name}</strong> as a task: the number,
+                        Hands this issue to <strong>{assignee.name}</strong> as a task: the number,
                         the title, the kind, the labels, the description and the conversation, in the
                         agent's own words no further than that. The issue moves to In progress and the
                         task is linked to it both ways, so whoever is watching this issue hears what the
@@ -1608,7 +1608,7 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                         type="button"
                         className={styles.aiStart}
                         data-testid="issue-start-ai"
-                        disabled={starting}
+                        disabled={starting || saving}
                         onClick={() => void startByAI()}
                       >
                         {starting ? 'Starting…' : t('Start by AI')}

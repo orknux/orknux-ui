@@ -128,6 +128,32 @@ check(
   'Start by AI was offered on an issue with no assignee',
 );
 
+/*
+ * Picking an agent is enough: the button follows the picker, and pressing it
+ * saves the pick before the agent is set to work.
+ */
+await page.locator('button[aria-haspopup="listbox"]', { hasText: 'No one' }).first().click();
+await page.getByLabel('Search for someone to assign').fill(AGENT);
+await page.locator('[role="option"]', { hasText: AGENT }).first().click();
+const unsavedStart = page.locator('[data-testid="issue-start-ai"]');
+await unsavedStart.waitFor({ timeout: 10_000 }).catch(() => {});
+check(
+  (await unsavedStart.count()) === 1,
+  'an agent picked and not yet saved offers Start by AI',
+  'Start by AI waited for the pick to be saved',
+);
+await unsavedStart.click();
+await page.locator('[data-testid="issue-task-link"]').first().waitFor({ timeout: 30_000 });
+const savedPick = await gql(
+  `query($w: ID!, $n: Int!) { workspaceIssue(workspaceId: $w, number: $n) { assignee { kind id } } }`,
+  { w: WORKSPACE, n: unassigned.number },
+);
+check(
+  savedPick.workspaceIssue.assignee?.kind === 'AGENT' && savedPick.workspaceIssue.assignee?.id === agent.id,
+  'pressing it saved the pick first',
+  `the issue was left assigned to ${JSON.stringify(savedPick.workspaceIssue.assignee)}`,
+);
+
 await page.goto(`${BASE}/workspace/${WORKSPACE}/issues/${assigned.number}`, {
   waitUntil: 'domcontentloaded',
 });

@@ -185,7 +185,7 @@ export function AssigneePicker({
             type="search"
             value={search}
             autoFocus
-            placeholder={t('Find a person, agent or model…')}
+            placeholder={t('Find a person or agent…')}
             aria-label={t('Search for someone to assign')}
             onChange={(event) => setSearch(event.target.value)}
           />
