@@ -108,6 +108,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const [inputCost, setInputCost] = useState('');
   const [outputCost, setOutputCost] = useState('');
   const [cachedCost, setCachedCost] = useState('');
+  const [writeCost, setWriteCost] = useState('');
   const [tokenLimit, setTokenLimit] = useState('');
   const [resetInterval, setResetInterval] = useState<ResetInterval>('MONTHLY');
   const [requestsPerMinute, setRequestsPerMinute] = useState('');
@@ -223,6 +224,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     setInputCost(found.inputCostPerMillion === null ? '' : String(found.inputCostPerMillion));
     setOutputCost(found.outputCostPerMillion === null ? '' : String(found.outputCostPerMillion));
     setCachedCost(found.cachedInputCostPerMillion === null ? '' : String(found.cachedInputCostPerMillion));
+    setWriteCost(found.cacheWriteCostPerMillion === null || found.cacheWriteCostPerMillion === undefined ? '' : String(found.cacheWriteCostPerMillion));
     setTokenLimit(found.tokenLimit === null ? '' : String(found.tokenLimit));
     setResetInterval(found.resetInterval);
     setRequestsPerMinute(found.requestsPerMinute === null ? '' : String(found.requestsPerMinute));
@@ -322,6 +324,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
         inputCostPerMillion: draws ? model.inputCostPerMillion : toNumber(inputCost),
         outputCostPerMillion: draws ? model.outputCostPerMillion : toNumber(outputCost),
         cachedInputCostPerMillion: draws ? model.cachedInputCostPerMillion : toNumber(cachedCost),
+        cacheWriteCostPerMillion: draws ? model.cacheWriteCostPerMillion : toNumber(writeCost),
         voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
         skipEmptyLines: reads ? skipEmptyLines : model.skipEmptyLines,
         // Sent back whatever it was, for the reason above: a field this form
@@ -354,7 +357,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const changed = useDirty(
     {
       name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
-      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost, inputCost, outputCost, cachedCost,
+      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost, inputCost, outputCost, cachedCost, writeCost,
       tokenLimit, resetInterval, requestsPerMinute, throttleTokens, throttleRequests, retryAfter,
     },
     [model],
@@ -398,6 +401,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
       inputCost, setInputCost,
       outputCost, setOutputCost,
       cachedCost, setCachedCost,
+      writeCost, setWriteCost,
       tokenLimit, setTokenLimit,
       resetInterval, setResetInterval,
       requestsPerMinute, setRequestsPerMinute,
@@ -878,7 +882,7 @@ export function ModelThrottleFields({ form }: SectionProps) {
 
 /**
  * What the provider charges per million tokens, so a cost is worked out rather
- * than guessed. Its own card, apart from the window: three prices with the
+ * than guessed. Its own card, apart from the window: four prices with the
  * dollar and the unit drawn in the box, so each label is one word and the
  * boxes sit level - they were a row of nine with two-line labels.
  */
@@ -902,6 +906,15 @@ export function ModelPriceFields({ form }: SectionProps) {
         hint={t('What the provider charges for input it served from its prompt cache, usually a fraction of the input price. Left empty, cached input is costed at the input price.')}
         value={fields.cachedCost}
         onChange={fields.setCachedCost}
+        placeholder={t('Input price')}
+      />
+      <MoneyField
+        id="model-write-cost"
+        name="cacheWriteCostPerMillion"
+        label={t('Cache write')}
+        hint={t('What the provider charges for input it writes into its prompt cache, which Anthropic bills above the input price. Left empty, it is costed at the input price.')}
+        value={fields.writeCost}
+        onChange={fields.setWriteCost}
         placeholder={t('Input price')}
       />
       <MoneyField

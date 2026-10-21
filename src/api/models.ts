@@ -155,6 +155,8 @@ export interface Model {
   outputCostPerMillion: number | null;
   /** What cached input costs, per million; null charges it at the input price. */
   cachedInputCostPerMillion: number | null;
+  /** What writing input into the provider's cache costs, per million; null charges it at the input price. */
+  cacheWriteCostPerMillion: number | null;
   /** Which voice a SPEECH model reads in; null sends none and takes the provider's. */
   voice: string | null;
   /**
@@ -223,7 +225,7 @@ const PROVIDER_FIELDS =
 const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
-  'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion voice skipEmptyLines ' +
+  'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion voice skipEmptyLines ' +
   'imageCostPerImage';
 const USAGE_FIELDS =
   'modelId days from to empty requests inputTokens outputTokens cachedInputTokens totalTokens averageLatencyMillis ' +
@@ -448,6 +450,7 @@ export interface ModelDetailsInput {
   inputCostPerMillion?: number | null;
   outputCostPerMillion?: number | null;
   cachedInputCostPerMillion?: number | null;
+  cacheWriteCostPerMillion?: number | null;
   /** Only asked for on a SPEECH model; null sends none and takes the provider's. */
   voice?: string | null;
   /** Whether a SPEECH model is handed text with its empty lines taken out. */

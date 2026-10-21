@@ -3039,4 +3039,6 @@ export const PL: Record<string, string> = {
   "Prices": "Ceny",
   "Cached input": "Wejście z pamięci podręcznej",
   "/ 1M tokens": "/ 1 mln tokenów",
+  "Cache write": "Zapis do pamięci podręcznej",
+  "What the provider charges for input it writes into its prompt cache, which Anthropic bills above the input price. Left empty, it is costed at the input price.": "Ile dostawca liczy za wejście zapisywane do pamięci podręcznej promptów; Anthropic liczy za to więcej niż za zwykłe wejście. Puste liczy się po cenie wejścia.",
 };

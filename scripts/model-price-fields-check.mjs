@@ -11,7 +11,7 @@ import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open({ viewport: { width: 1400, height: 1000 } });
 
 const { models } = await graphql(
-  'query($w: ID!) { models(workspaceId: $w) { id name kind inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion } }',
+  'query($w: ID!) { models(workspaceId: $w) { id name kind inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion } }',
   { w: WORKSPACE },
 ).catch(() => ({ models: [] }));
 const model = (models ?? []).find((one) => one.kind === 'CHAT');
@@ -19,11 +19,12 @@ record(model !== undefined, `a chat model to open (${model?.name})`);
 
 if (model !== undefined) {
   const read = async () =>
-    (await graphql('query($id: ID!) { model(id: $id) { inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion } }', { id: model.id })).model;
-  const saveWith = async (input, output, cached) => {
+    (await graphql('query($id: ID!) { model(id: $id) { inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion } }', { id: model.id })).model;
+  const saveWith = async (input, output, cached, written) => {
     await page.locator('#model-input-cost').fill(input);
     await page.locator('#model-output-cost').fill(output);
     await page.locator('#model-cached-cost').fill(cached);
+    await page.locator('#model-write-cost').fill(written);
     await page.getByRole('button', { name: /^Save/ }).first().click();
     await page.waitForTimeout(2000);
   };
@@ -42,10 +43,10 @@ if (model !== undefined) {
 
     record((await page.locator('#model-cached-cost').count()) === 1, 'and a cached-input price');
 
-    // The three sit level in a card of their own, each label one line: they were
+    // The four sit level in a card of their own, each label one line: they were
     // squeezed into the window's row of nine, two-line labels pushing boxes down.
     const boxes = await page.evaluate(() =>
-      ['model-input-cost', 'model-cached-cost', 'model-output-cost'].map((id) => {
+      ['model-input-cost', 'model-cached-cost', 'model-write-cost', 'model-output-cost'].map((id) => {
         const input = document.getElementById(id);
         const box = input?.parentElement?.getBoundingClientRect();
         const label = document.querySelector(`label[for="${id}"]`);
@@ -58,10 +59,11 @@ if (model !== undefined) {
     record(boxes.every((one) => one.width >= 200), `and wide enough to read a price in (${boxes.map((one) => one.width).join(', ')}px)`);
     const card = await page.evaluate(() => document.getElementById('model-input-cost')?.closest('form')?.querySelector('h2')?.textContent);
     record(card === 'Prices', `in a card of their own (${card})`);
-    await saveWith('1.25', '10.5', '0.125');
+    await saveWith('1.25', '10.5', '0.125', '1.5625');
     const after = await read();
     record(
-      after.inputCostPerMillion === 1.25 && after.outputCostPerMillion === 10.5 && after.cachedInputCostPerMillion === 0.125,
+      after.inputCostPerMillion === 1.25 && after.outputCostPerMillion === 10.5 && after.cachedInputCostPerMillion === 0.125
+        && after.cacheWriteCostPerMillion === 1.5625,
       `a save stores them (${JSON.stringify(after)})`,
     );
   } finally {
@@ -71,6 +73,7 @@ if (model !== undefined) {
         model.inputCostPerMillion === null ? '' : String(model.inputCostPerMillion),
         model.outputCostPerMillion === null ? '' : String(model.outputCostPerMillion),
         model.cachedInputCostPerMillion === null || model.cachedInputCostPerMillion === undefined ? '' : String(model.cachedInputCostPerMillion),
+        model.cacheWriteCostPerMillion === null || model.cacheWriteCostPerMillion === undefined ? '' : String(model.cacheWriteCostPerMillion),
       );
     }
   }
