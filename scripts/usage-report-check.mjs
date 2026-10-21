@@ -81,6 +81,13 @@ if (usageReport.total === 0) {
   const rows = await table.getByTestId('usage-person').count();
   record(rows === Math.min(usageReport.total, 25), `a row per person, a page at a time (${rows} of ${usageReport.total})`);
 
+  const beside = await table.getByTestId('usage-person').first().evaluate((row) => {
+    const name = row.querySelector('[class*="personName"]')?.getBoundingClientRect();
+    const count = row.querySelector('[data-person-sessions]');
+    const box = count?.getBoundingClientRect();
+    return { text: count?.textContent ?? '', right: name !== undefined && box !== undefined && box.left >= name.right, cell: row.cells[2]?.textContent?.trim() };
+  });
+  record(beside.right && beside.text.includes(beside.cell), `the session count sits to the right of the name (${JSON.stringify(beside)})`);
   await table.getByTestId('usage-person').first().getByRole('button').click();
   const sessions = page.getByTestId('usage-sessions');
   await sessions.waitFor({ timeout: 10_000 });

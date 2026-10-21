@@ -111,7 +111,8 @@ const keys = keysOf('pl.ts', 'export const PL');
 if (keys.length === 0) fail('the Polish catalogue could not be read at all');
 else pass(`the Polish catalogue holds ${keys.length} entries`);
 
-const orphans = keys.filter((key) => !called.has(key));
+// A key with a sense after the separator is keyed on the English before it.
+const orphans = keys.filter((key) => !called.has(key.split(/\u001f|\\u001f/)[0]));
 if (orphans.length > 0) {
   fail(`${orphans.length} catalogue entries are keyed on English no longer in the source:`);
   for (const one of orphans.slice(0, 20)) console.log(`        ${JSON.stringify(one)}`);

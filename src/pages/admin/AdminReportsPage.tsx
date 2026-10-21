@@ -38,6 +38,7 @@ import { SearchBox } from '../../components/SearchBox';
 import { useTableSort } from '../../components/tableSort';
 import { useSearch } from '../../components/useSearch';
 import { t, tf } from '../../i18n';
+import { currentLanguage } from '../../session/language';
 import { shellUser } from '../../session/user';
 import styles from './AdminReportsPage.module.css';
 import { RatingsReport } from './RatingsReport';
@@ -358,6 +359,12 @@ function UsageReportView() {
   );
 }
 
+/** "4 sessions", in the plural form the language in force wants for the number. */
+function sessionCount(count: number): string {
+  const form = new Intl.PluralRules(currentLanguage()).select(count);
+  return count === 1 ? tf('{count} session', { count }, form) : tf('{count} sessions', { count }, form);
+}
+
 function PersonRow({ person, open, onToggle }: { person: UsagePerson; open: boolean; onToggle: () => void }) {
   const unattributed = person.source === 'NONE';
   return (
@@ -366,7 +373,10 @@ function PersonRow({ person, open, onToggle }: { person: UsagePerson; open: bool
         <button type="button" className={styles.personButton} onClick={onToggle} aria-expanded={open}>
           <img className={open ? styles.chevronOpen : styles.chevron} src={chevronDownIcon} alt="" width={14} height={14} />
           <span className={styles.person}>
-            <span className={styles.personName}>{unattributed ? t('Unattributed') : person.name ?? person.personKey}</span>
+            <span className={styles.personLine}>
+              <span className={styles.personName}>{unattributed ? t('Unattributed') : person.name ?? person.personKey}</span>
+              <span className={styles.personSessions} data-person-sessions="">{sessionCount(person.sessions)}</span>
+            </span>
             <span className={styles.personDetail}>
               {unattributed
                 ? t('nobody prompted it')
