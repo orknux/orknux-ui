@@ -39,13 +39,15 @@ export interface AppUser {
   editable: boolean;
   /** Whether they can sign in, which is not the same as existing. */
   hasPassword: boolean;
+  /** When they last signed in; null while they have not since it was recorded. */
+  lastSignedInAt: string | null;
   lastModifiedAt: string;
   lastModifiedBy: string;
 }
 
 const USER_FIELDS =
   'id username displayName email emailChosen emailNotifications chatCostShown language timeZone type roles { id name } ' +
-  'editable hasPassword lastModifiedAt lastModifiedBy';
+  'editable hasPassword lastSignedInAt lastModifiedAt lastModifiedBy';
 
 /** A token, as it is listed: never its secret, which is shown once. */
 export interface UserToken {

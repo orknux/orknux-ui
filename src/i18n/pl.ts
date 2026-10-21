@@ -762,6 +762,7 @@ export const PL: Record<string, string> = {
   "Last Run": "Ostatnie uruchomienie",
   "Next Run": "Następne uruchomienie",
   "Last Modified": "Ostatnia zmiana",
+  "Last Signed In": "Ostatnie logowanie",
   "Last modified": "Ostatnia zmiana",
   "Last checked": "Ostatnie sprawdzenie",
   "Last fired": "Ostatnie zadziałanie",

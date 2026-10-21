@@ -37,7 +37,7 @@ const SEARCH_PAUSE_MS = 300;
  * still belongs to the provider.
  */
 /** What this list can be put in the order of. */
-type UserColumn = 'USER' | 'EMAIL' | 'TYPE' | 'ROLES' | 'MODIFIED';
+type UserColumn = 'USER' | 'EMAIL' | 'TYPE' | 'ROLES' | 'SIGNED_IN' | 'MODIFIED';
 
 export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
    * Ordered here: the list arrives whole, because an installation's accounts are
    * a list an administrator reads rather than pages through. Issue #358.
    */
-  const [order, ascending, sortBy] = useTableSort<UserColumn>('admin-users', 'USER', true, ['MODIFIED']);
+  const [order, ascending, sortBy] = useTableSort<UserColumn>('admin-users', 'USER', true, ['SIGNED_IN', 'MODIFIED']);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +61,7 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
             if (order === 'EMAIL') return user.email ?? '';
             if (order === 'TYPE') return user.type;
             if (order === 'ROLES') return user.roles.length;
+            if (order === 'SIGNED_IN') return user.lastSignedInAt ?? '';
             if (order === 'MODIFIED') return user.lastModifiedAt;
             return user.displayName;
           },
@@ -172,6 +173,14 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
               className={styles.colRoles}
             />
             <ColumnHeader
+              label={t('Last Signed In')}
+              order="SIGNED_IN"
+              current={order}
+              ascending={ascending}
+              onSort={sortBy}
+              className={styles.colSignedIn}
+            />
+            <ColumnHeader
               label={t('Last Modified')}
               order="MODIFIED"
               current={order}
@@ -229,6 +238,13 @@ export function AdminUsersPage({ session, onSignOut }: AdminUsersPageProps) {
                 </span>
                 <span className={styles.colRoles}>
                   {user.roles.length === 0 ? '—' : user.roles.map((role) => role.name).join(', ')}
+                </span>
+                <span
+                  className={styles.colSignedIn}
+                  data-testid="user-signed-in"
+                  title={user.lastSignedInAt === null ? undefined : new Date(user.lastSignedInAt).toLocaleString()}
+                >
+                  {user.lastSignedInAt === null ? '—' : timeAgo(user.lastSignedInAt)}
                 </span>
                 <span className={styles.colModified}>
                   {timeAgo(user.lastModifiedAt)} by {user.lastModifiedBy}

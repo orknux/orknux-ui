@@ -341,6 +341,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'user-last-signed-in-check',
+    what: 'the Users list says when each person last signed in, under its own heading, and sorts by it',
+    needs: [],
+  },
+  {
     name: 'user-save-stays-check',
     what: "saving a user keeps the page open and says Saved, until the next edit",
     needs: [],

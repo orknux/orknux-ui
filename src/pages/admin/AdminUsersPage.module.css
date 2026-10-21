@@ -92,7 +92,7 @@
 .tableHeader,
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) 100px minmax(0, 2fr) minmax(0, 2fr) 44px;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) 100px minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 2fr) 44px;
   align-items: center;
   gap: var(--space-12);
   padding: var(--space-12) var(--space-8);
@@ -182,6 +182,7 @@
 
 .colEmail,
 .colRoles,
+.colSignedIn,
 .colModified {
   overflow: hidden;
   font-size: var(--text-sm);
