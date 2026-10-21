@@ -282,6 +282,24 @@ try {
   await page.keyboard.press('Delete');
   await page.waitForTimeout(300);
   record((await pointsOn(FLOW)) === count - 1, `and Delete takes it off (${count} -> ${await pointsOn(FLOW)})`);
+  // A selection rectangle around a joint picks it, and Delete takes it off and keeps the line.
+  const lone = page.locator(`button[data-edge="${DEPENDENCY}"][data-point="0"]`);
+  const spot = await centre(lone);
+  const kept = await pointsOn(DEPENDENCY);
+  await page.keyboard.down('Shift');
+  await page.mouse.move(spot.x - 30, spot.y - 40);
+  await page.mouse.down();
+  await page.mouse.move(spot.x + 30, spot.y + 40, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  const ringed = await lone.evaluate((one) => one.className.includes('edgePointPicked'));
+  record(ringed, 'a selection rectangle picks the joints inside it');
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(300);
+  record(
+    (await pointsOn(DEPENDENCY)) === kept - 1 && (await page.locator(`path[data-edge-hit="${DEPENDENCY}"]`).count()) === 1,
+    `and Delete takes them off, leaving the line (${kept} -> ${await pointsOn(DEPENDENCY)})`,
+  );
   // A drag only moves a point now: no key turns it into a new joint.
   record((await page.locator('[data-drag-hint]').count()) === 0, 'and no drag hint is drawn');
 

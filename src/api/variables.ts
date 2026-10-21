@@ -42,6 +42,8 @@ export interface Variable {
   workspaceId: string;
   catalogId: string;
   catalogName: string;
+  /** The workspace that lends it, for a variable of a catalog lent to this one; null for the workspace's own. */
+  lentFrom: string | null;
   name: string;
   /** What it is for, since the name has to be an identifier. */
   description: string | null;
@@ -114,7 +116,7 @@ export interface VariableSuggestion {
 }
 
 const CATALOG_FIELDS = 'id workspaceId name variableCount createdAt createdBy';
-const VARIABLE_FIELDS = `id workspaceId catalogId catalogName name description type kind
+const VARIABLE_FIELDS = `id workspaceId catalogId catalogName lentFrom name description type kind
    elementType customType typeArguments value valueSet
    createdAt createdBy lastModifiedAt lastModifiedBy`;
 

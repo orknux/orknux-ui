@@ -1331,8 +1331,9 @@ select.input {
   outline: none;
 }
 
-/* Picked by a click: ringed, and Delete or Backspace takes it off. */
-.edgePoint:focus {
+/* Picked by a click or a selection rectangle: ringed, and Delete or Backspace takes it off. */
+.edgePoint:focus,
+.edgePointPicked {
   opacity: 1;
   background: var(--color-accent-brand);
   box-shadow:

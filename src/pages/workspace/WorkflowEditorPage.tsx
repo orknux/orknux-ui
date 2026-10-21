@@ -916,7 +916,12 @@ const TurnNode = createContext<(() => void) | null>(null);
  * puts a joint there - and which key, held through a drag of a point, drops
  * a new joint rather than moving the one held.
  */
-const JointTool = createContext<{ on: boolean; key: string }>({ on: false, key: 'J' });
+const JointTool = createContext<{ on: boolean; key: string; picked: ReadonlySet<string> }>({ on: false, key: 'J', picked: new Set() });
+
+/** How a joint is named among those a rectangle picked: its line, and its place on it. */
+function jointId(edgeId: string, at: number): string {
+  return `${edgeId}|${at}`;
+}
 
 /**
  * Which actions speak, by id, so a node pointed at one is drawn as a speaker.
@@ -1209,6 +1214,7 @@ function CarriedEdge({
                   styles.edgePoint,
                   points.length > 0 ? styles.edgePointMoved : '',
                   drag?.at === at ? styles.edgePointDragging : '',
+                  joints.picked.has(jointId(id, at)) ? styles.edgePointPicked : '',
                   'nodrag',
                   'nopan',
                 ]
@@ -2494,8 +2500,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
       workspaceVariables
         .filter((variable) => variable.kind === 'VALUE')
         .map((variable) => ({
-          groupKey: '__variables',
-          groupName: t('Workspace variables'),
+          // A lent one in a group of its own, headed by whose it is.
+          groupKey: variable.lentFrom === null ? '__variables' : `__lent:${variable.lentFrom}`,
+          groupName: variable.lentFrom === null ? t('Workspace variables') : tf('Shared from {workspace}', { workspace: variable.lentFrom }),
           field: variable.name,
           expression: `variables.${variable.id}`,
           type: variable.type,
@@ -4681,7 +4688,41 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [jointKey]);
-  const jointTool = useMemo(() => ({ on: jointing, key: jointKey }), [jointing, jointKey]);
+  /*
+   * The joints a selection rectangle took in. React Flow's rectangle picks
+   * nodes and lines and knows nothing of joints, which are drawn over it, so
+   * the rectangle is measured here as it is dragged and every joint inside it
+   * when it is let go is picked; Delete or Backspace then takes them all off.
+   */
+  const [pickedJoints, setPickedJoints] = useState<ReadonlySet<string>>(() => new Set());
+  const marqueeFrom = useRef<{ x: number; y: number } | null>(null);
+  const jointTool = useMemo(() => ({ on: jointing, key: jointKey, picked: pickedJoints }), [jointing, jointKey, pickedJoints]);
+  useEffect(() => {
+    if (pickedJoints.size === 0) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      if (typingText(event.target)) return;
+      /*
+       * With nodes in the rectangle too, the key is the canvas's: they go, and
+       * their lines with them. With only lines and joints, it takes the joints
+       * off and keeps the lines - which the rectangle had touched, and which the
+       * canvas would otherwise delete under them.
+       */
+      if (nodes.some((node) => node.selected)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const byLine = new Map<string, Set<number>>();
+      pickedJoints.forEach((one) => {
+        const cut = one.lastIndexOf('|');
+        const line = one.slice(0, cut);
+        byLine.set(line, (byLine.get(line) ?? new Set()).add(Number(one.slice(cut + 1))));
+      });
+      byLine.forEach((ats, line) => setPoints(line, (edgePoints[line] ?? []).filter((_, at) => !ats.has(at))));
+      setPickedJoints(new Set());
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [pickedJoints, edgePoints, setPoints, nodes]);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (!matches(event, selectKey)) return;
@@ -5639,6 +5680,33 @@ Change the keystroke in Preferences.`}
                */
               multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
               selectionOnDrag={marquee}
+              onSelectionStart={(event) => {
+                marqueeFrom.current = { x: event.clientX, y: event.clientY };
+                setPickedJoints(new Set());
+              }}
+              onSelectionEnd={(event) => {
+                const from = marqueeFrom.current;
+                marqueeFrom.current = null;
+                if (from === null) return;
+                const left = Math.min(from.x, event.clientX);
+                const right = Math.max(from.x, event.clientX);
+                const top = Math.min(from.y, event.clientY);
+                const bottom = Math.max(from.y, event.clientY);
+                const inside = new Set<string>();
+                // Only a joint that holds a bend: the quiet dot on a straight line has nothing to take off.
+                document.querySelectorAll<HTMLElement>('button[data-edge][data-point]').forEach((point) => {
+                  const box = point.getBoundingClientRect();
+                  const x = box.left + box.width / 2;
+                  const y = box.top + box.height / 2;
+                  const line = point.dataset.edge ?? '';
+                  const at = Number(point.dataset.point);
+                  if (x >= left && x <= right && y >= top && y <= bottom && (edgePoints[line]?.length ?? 0) > at) {
+                    inside.add(jointId(line, at));
+                  }
+                });
+                setPickedJoints(inside);
+              }}
+              onPaneClick={() => setPickedJoints(new Set())}
               panOnDrag={marquee ? [1, 2] : true}
               // What the rectangle touches, not only what it swallows: a node half inside is a node meant.
               selectionMode={SelectionMode.Partial}
@@ -5809,6 +5877,7 @@ Change the keystroke in Preferences.`}
                         >
                           {t('New')}
                         </button>
+                        <NameFromDefinition name={agents.find((one) => one.id === draft.agentId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.agentId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/agents/${draft.agentId}/settings`}
@@ -5824,7 +5893,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={agents.find((one) => one.id === draft.agentId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     <DefinitionPicker
@@ -5981,6 +6049,7 @@ Change the keystroke in Preferences.`}
                           {t('New')}
                         </button>
                         {/* Where the node points, so the definition is one click away. */}
+                        <NameFromDefinition name={triggers.find((one) => one.id === draft.triggerId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.triggerId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/triggers/${draft.triggerId}`}
@@ -5996,7 +6065,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={triggers.find((one) => one.id === draft.triggerId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     {/* Custom, as the action and condition pickers offer it. */}
@@ -6167,6 +6235,7 @@ Change the keystroke in Preferences.`}
                         >
                           {t('New')}
                         </button>
+                        <NameFromDefinition name={actions.find((one) => one.id === draft.actionId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.actionId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/actions/${draft.actionId}`}
@@ -6182,7 +6251,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={actions.find((one) => one.id === draft.actionId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     {/*
@@ -6376,6 +6444,7 @@ Change the keystroke in Preferences.`}
                         >
                           {t('New')}
                         </button>
+                        <NameFromDefinition name={objects.find((one) => one.id === draft.objectId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.objectId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/objects/${draft.objectId}`}
@@ -6387,7 +6456,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={objects.find((one) => one.id === draft.objectId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     {/*
@@ -6507,6 +6575,7 @@ Change the keystroke in Preferences.`}
                           className={styles.definitionLink}
                           onClick={() => setBuilding({ kind: 'CONDITION', id: null })}
                         >{t('New')}</button>
+                        <NameFromDefinition name={conditions.find((one) => one.id === draft.conditionId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.conditionId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/conditions/${draft.conditionId}`}
@@ -6522,7 +6591,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={conditions.find((one) => one.id === draft.conditionId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     <DefinitionPicker
@@ -6682,6 +6750,7 @@ Change the keystroke in Preferences.`}
                         >
                           {t('New')}
                         </button>
+                        <NameFromDefinition name={imageModels.find((one) => one.id === draft.imageModelId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.imageModelId !== null && (
                           <Link
                             to={`/workspace/${workspaceId}/models/${draft.imageModelId}`}
@@ -6697,7 +6766,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={imageModels.find((one) => one.id === draft.imageModelId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     </span>
                     <DefinitionPicker
@@ -6727,6 +6795,7 @@ Change the keystroke in Preferences.`}
                       </span>
                       {draft.calledWorkflowId != null && (
                         <span className={styles.labelLinks}>
+                          <NameFromDefinition name={callable.find((one) => one.id === draft.calledWorkflowId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                           <Link
                             to={`/workspace/${workspaceId}/workflows/${draft.calledWorkflowId}`}
                             className={styles.definitionJump}
@@ -6735,7 +6804,6 @@ Change the keystroke in Preferences.`}
                           >
                             <OpenDefinitionIcon />
                           </Link>
-                          <NameFromDefinition name={callable.find((one) => one.id === draft.calledWorkflowId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         </span>
                       )}
                     </span>
@@ -6764,6 +6832,7 @@ Change the keystroke in Preferences.`}
                         >
                           {t('New')}
                         </button>
+                        <NameFromDefinition name={decisionModels.find((one) => one.id === draft.decisionModelId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                         {draft.decisionModelId != null && (
                           <Link
                             to={`/workspace/${workspaceId}/models/${draft.decisionModelId}`}
@@ -6779,7 +6848,6 @@ Change the keystroke in Preferences.`}
                             <OpenDefinitionIcon />
                           </Link>
                         )}
-                        <NameFromDefinition name={decisionModels.find((one) => one.id === draft.decisionModelId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                       </span>
                     }
                     onChange={(patch) => {
