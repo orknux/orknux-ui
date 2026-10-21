@@ -222,7 +222,7 @@ const PROVIDER_FIELDS =
   'offerAllTools offersAllTools maxTools toolCap editMask ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
-const MODEL_FIELDS =
+export const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion voice skipEmptyLines ' +

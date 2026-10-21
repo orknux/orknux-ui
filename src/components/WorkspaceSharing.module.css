@@ -1,0 +1,63 @@
+/* What to share and with whom, on one row: three pickers and the press. */
+.add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-12);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.label {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.share {
+  height: 36px;
+  padding: 0 var(--space-16);
+  background: var(--color-accent-brand);
+  border: 0;
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.share:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.unshare {
+  padding: var(--space-6) var(--space-10);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.unshare:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.unshare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

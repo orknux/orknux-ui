@@ -62,6 +62,7 @@ import { VOICE_TURN_TAKING_DEFAULTS } from '../../components/VoiceMode';
 import { SectionMenu } from '../../components/SectionMenu';
 import menuStyles from '../../components/SectionMenu.module.css';
 import { WorkspaceMembers } from '../../components/WorkspaceMembers';
+import { WorkspaceSharing } from '../../components/WorkspaceSharing';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
@@ -1447,6 +1448,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
           version={membersVersion}
         />
       )}
+
+      {/* What this workspace lends others, and what it is lent. */}
+      {workspace?.administered === true && <WorkspaceSharing workspaceId={workspaceId} />}
 
       {/*
         Everything from here on is drawn once the workspace has arrived, as the

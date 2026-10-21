@@ -242,6 +242,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-sharing-check',
+    what: "one workspace lends another a variable catalog from its Sharing card; the other's agent is offered it, grants it, and loses it when the share stops",
+    needs: [],
+  },
+  {
     name: 'session-ratings-check',
     what: 'Admin > Reports: a picker between the reports, the ratings switch, and a review sent from a chat drawn on the Ratings report',
     needs: [],

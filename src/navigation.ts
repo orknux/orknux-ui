@@ -438,6 +438,9 @@ export const PAGES = [
     path: '/workspace/:workspaceId/settings',
     access: 'workspace-admin',
     goTo: { label: t('Settings'), where: 'Workspace', icon: settingsIcon },
+    sections: [
+      { label: t('Sharing'), at: '#sharing', also: 'share lend workspace catalog provider reuse' },
+    ],
   },
 
   // ---- One of something, opened from a list. There is no "go to" without saying

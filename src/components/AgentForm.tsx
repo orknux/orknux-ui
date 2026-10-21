@@ -9,6 +9,7 @@ import { fetchPluginTools } from '../api/plugins';
 import { fetchMcpServers, fetchWorkspaceConnections } from '../api/integrations';
 import type { McpServer, WorkspaceConnection } from '../api/integrations';
 import { fetchMemoryCatalogs } from '../api/memory';
+import { fetchSharedModels, fetchSharesReceived } from '../api/sharing';
 import { fetchVariableCatalogs, type VariableCatalog } from '../api/variables';
 import { fetchWorkspace } from '../api/workspaces';
 import type { MemoryCatalog } from '../api/memory';
@@ -491,6 +492,14 @@ interface GrantListProps<Item> {
  * answering `slack` with four rows of which one matched does not read as a
  * filter that is broken.
  */
+/** A catalog as the grant lists draw it: the workspace's own, or one another lends it by [grant]. */
+type GrantableVariableCatalog = VariableCatalog & {
+  /** share:<id> for a lent catalog; absent for the workspace's own, which is granted by name. */
+  grant?: string;
+  /** The workspace that lends it. */
+  from?: string | null;
+};
+
 function GrantList<Item>({
   label,
   what,
@@ -1227,13 +1236,42 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
       wanted = false;
     };
   }, [workspaceId]);
-  const modelCatalogue = useCatalogue('models in this workspace', () => fetchModels(workspaceId), [workspaceId], {
+  /*
+   * The workspace's models, and after them those of the providers other
+   * workspaces lend it - an agent here may answer on either.
+   */
+  const modelCatalogue = useCatalogue('models in this workspace', async () => {
+    const [own, lent] = await Promise.all([fetchModels(workspaceId), fetchSharedModels(workspaceId).catch(() => [])]);
+    return [...own, ...lent];
+  }, [workspaceId], {
     skip: noWorkspace,
   });
   const memoryCatalogue = useCatalogue('memory catalogs', () => fetchMemoryCatalogs(workspaceId), [workspaceId], {
     skip: noWorkspace,
   });
-  const variableCatalogue = useCatalogue('variable catalogs', () => fetchVariableCatalogs(workspaceId), [workspaceId], {
+  /*
+   * The workspace's catalogs, and the ones other workspaces lend it - held in
+   * a grant as share:<id>, so the lender renaming one does not break it.
+   */
+  const variableCatalogue = useCatalogue<GrantableVariableCatalog>('variable catalogs', async () => {
+    const [own, received] = await Promise.all([
+      fetchVariableCatalogs(workspaceId),
+      fetchSharesReceived(workspaceId).catch(() => []),
+    ]);
+    const lent = received
+      .filter((share) => share.kind === 'VARIABLE_CATALOG' && share.componentName !== null)
+      .map((share): GrantableVariableCatalog => ({
+        id: share.grant,
+        workspaceId: share.ownerWorkspaceId,
+        name: share.componentName ?? '',
+        variableCount: 0,
+        createdAt: share.createdAt,
+        createdBy: share.createdBy,
+        grant: share.grant,
+        from: share.ownerWorkspaceName,
+      }));
+    return [...own, ...lent];
+  }, [workspaceId], {
     skip: noWorkspace,
   });
   /*
@@ -1811,7 +1849,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                   </svg>
                 </Link>
               )}
-              {chosenModel !== null && (
+              {chosenModel !== null && models.find((one) => one.id === chosenModel)?.workspaceId === workspaceId && (
                 <Link
                   className={styles.jump}
                   to={`/workspace/${workspaceId}/models/${chosenModel}`}
@@ -1836,7 +1874,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {/* An agent talks; these hear and read rather than answer. */}
               {models.filter(answers).map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name}
+                  {model.workspaceId === workspaceId ? model.name : tf('{model} · shared', { model: model.name })}
                 </option>
               ))}
             </select>
@@ -2077,7 +2115,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           box prints shows it as ***. A variable catalog's plain values are read.
         */}
         <div data-secret-catalogs="">
-          <GrantList<VariableCatalog>
+          <GrantList<GrantableVariableCatalog>
             label={t('Secret Catalogs')}
             what="secret catalogs"
             styles={styles}
@@ -2086,14 +2124,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             hint={t('Secrets it may hand a box command by name, never seeing them; output that prints one shows ***.')}
             keyOf={(catalog) => catalog.id}
             nameOf={(catalog) => catalog.name}
-            metaOf={(catalog) => catalog.variableCount}
-            linkOf={() => `/workspace/${workspaceId}/variables`}
+            metaOf={(catalog) => (catalog.grant === undefined ? catalog.variableCount : tf('from {workspace}', { workspace: catalog.from ?? '' }))}
+            linkOf={(catalog) => (catalog.grant === undefined ? `/workspace/${workspaceId}/variables` : null)}
+            storedAs={(catalog) => catalog.grant ?? catalog.name}
+            groupOf={(catalog) => (catalog.grant === undefined ? null : tf('Shared by {workspace}', { workspace: catalog.from ?? '' }))}
             granted={secretCatalogs}
             onChange={setSecretCatalogs}
           />
         </div>
         <div data-variable-catalogs="">
-          <GrantList<VariableCatalog>
+          <GrantList<GrantableVariableCatalog>
             label={t('Variable Catalogs')}
             what="variable catalogs"
             styles={styles}
@@ -2102,8 +2142,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             hint={t('Plain values it may read and hand a box command; nothing is masked.')}
             keyOf={(catalog) => catalog.id}
             nameOf={(catalog) => catalog.name}
-            metaOf={(catalog) => catalog.variableCount}
-            linkOf={() => `/workspace/${workspaceId}/variables`}
+            metaOf={(catalog) => (catalog.grant === undefined ? catalog.variableCount : tf('from {workspace}', { workspace: catalog.from ?? '' }))}
+            linkOf={(catalog) => (catalog.grant === undefined ? `/workspace/${workspaceId}/variables` : null)}
+            storedAs={(catalog) => catalog.grant ?? catalog.name}
+            groupOf={(catalog) => (catalog.grant === undefined ? null : tf('Shared by {workspace}', { workspace: catalog.from ?? '' }))}
             granted={variableCatalogs}
             onChange={setVariableCatalogs}
           />
