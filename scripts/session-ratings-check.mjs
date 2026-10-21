@@ -98,6 +98,9 @@ if (chat === undefined) {
   await drawnRow.first().waitFor({ timeout: 10_000 });
   const score = (await drawnRow.first().locator('[data-rating-score]').textContent())?.trim();
   record(score === '2 / 5', `and drawn on the Ratings report (${score})`);
+  const cells = await drawnRow.first().locator('td').allTextContents();
+  const workspace = (await drawnRow.first().locator('[data-rating-workspace]').textContent())?.trim() ?? '';
+  record(workspace !== '' && !cells.at(-2).includes(workspace), `the workspace has a column of its own, not the session's (${JSON.stringify(cells.slice(-2))})`);
   await graphql(`mutation { setReviewsPerSession(count: ${limits.reviewsPerSession}) { reviewsPerSession } }`);
 }
 

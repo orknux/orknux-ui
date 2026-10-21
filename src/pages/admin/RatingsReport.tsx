@@ -156,6 +156,7 @@ export function RatingsReport() {
                     ['PERSON', t('Person'), false],
                     ['AGENT', t('Agent'), false],
                     ['SESSION', t('Session'), false],
+                    [null, t('Workspace'), false],
                   ] as const).map(([column, label, numeric]) => (
                     <th key={label} className={numeric ? styles.number : undefined}>
                       <ColumnHeader
@@ -213,7 +214,9 @@ function RatingRow({ rating }: { rating: SessionRating }) {
         <Link to={`/workspace/${rating.workspaceId}/sessions/${rating.sessionId}`}>
           {`#${rating.sessionId} ${rating.sessionTitle ?? t('Removed session')}`}
         </Link>
-        <span className={styles.personDetail}>{rating.workspaceName ?? t('Removed workspace')}</span>
+      </td>
+      <td className={rating.workspaceName === null ? styles.muted : undefined} data-rating-workspace="">
+        {rating.workspaceName ?? t('Removed workspace')}
       </td>
     </tr>
   );
