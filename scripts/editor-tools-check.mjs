@@ -2,7 +2,8 @@
  * The workflow editor's newer tools, as drawn:
  *
  *   jelly       a node dragged fast leans with the way it moves, its lines and
- *               their labels follow, and held still it rests
+ *               their labels follow, held still it rests, and thrown it glides
+ *               on and settles
  *   shape       the panel's Shape picks the card's outline, it is saved, and
  *               the card is drawn with it
  *   joint tool  a toolbox button and its keystroke switch it; while on, one
@@ -95,17 +96,13 @@ try {
   /** The dragged card's transform, its lines, and the dependency label's follow-through, as drawn now. */
   const drawnNow = () =>
     page.evaluate(() => {
-      const card = document.querySelector('.react-flow__node.dragging > *');
+      const card = document.querySelector('.react-flow__node[data-jelly] > *');
       const label = document.querySelector('ul[data-edge="reads:make->read"]');
       const lines = [...document.querySelectorAll('.react-flow__edge.edgeWiggling')].map((one) => one.getAttribute('data-id'));
       const matrix = card === null ? null : new DOMMatrix(getComputedStyle(card).transform);
-      const content = card?.querySelector('[class*="nodeContent"]');
-      const text = matrix === null || content == null ? null : matrix.multiply(new DOMMatrix(getComputedStyle(content).transform));
       return {
         lean: matrix === null ? null : Math.round(Math.atan(matrix.c) * 1800 / Math.PI) / 10,
         still: matrix === null ? null : matrix.isIdentity,
-        // The text's own frame, the body's deformation and its undoing together: upright and unstretched.
-        upright: text === null ? null : Math.max(Math.abs(text.b), Math.abs(text.c), Math.abs(text.a - 1), Math.abs(text.d - 1)) < 0.03,
         label: label === null ? null : getComputedStyle(label).translate,
         lines,
       };
@@ -119,7 +116,6 @@ try {
   }
   const moving = await drawnNow();
   record(moving.lean !== null && moving.lean < -0.5, `a node dragged fast leans with the motion (${moving.lean} deg)`);
-  record(moving.upright === true, 'and what it says stays straight');
   record(moving.label !== null && moving.label !== 'none' && !/^0px/.test(moving.label), `and its dependency label follows through (${moving.label})`);
   record(
     moving.lines.includes(FLOW) && moving.lines.includes(DEPENDENCY) && moving.lines.length === 2,
@@ -137,8 +133,55 @@ try {
   const resting = await drawnNow();
   record(resting.still === true, `held still, it rests (lean ${resting.lean})`);
   await page.mouse.up();
-  const after = await page.locator('.react-flow__edge.edgeWiggling').count();
-  record(after === 0, 'and the lines stop when dropped');
+  await page.waitForTimeout(300);
+  record((await page.locator('.react-flow__edge.edgeWiggling').count()) === 0, 'let go when still, it does not glide and its lines rest');
+
+  // Thrown: let go while moving fast, it glides on the way it went and then settles.
+  const box = async () => (await make.boundingBox()) ?? { x: 0, y: 0 };
+  const grip = await centre(make.locator('[class*="nodeContent"]').first());
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  for (let at = 1; at <= 6; at += 1) {
+    await page.mouse.move(grip.x + at * 30, grip.y, { steps: 1 });
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
+  const released = await box();
+  await page.waitForTimeout(400);
+  const later = await box();
+  record(later.x - released.x > 10 && later.x - released.x < 120, `by default, let go while moving it slides on a short way (${Math.round(later.x - released.x)}px)`);
+  await page.waitForTimeout(2500);
+  const settled = await drawnNow();
+  const stopped = await box();
+  await page.waitForTimeout(300);
+  const stillAt = await box();
+  record(Math.abs(stillAt.x - stopped.x) < 0.5, 'and comes to a stop');
+  record(settled.lean === null && (await page.locator('.react-flow__edge.edgeWiggling').count()) === 0, 'and settles, its lines with it');
+
+  /** One quick drag to the right and a let-go while still moving, under the effect chosen in Preferences. */
+  const flick = async (effect) => {
+    await page.evaluate((one) => localStorage.setItem('orknux.dragEffect', one), effect);
+    const start = await centre(make.locator('[class*="nodeContent"]').first());
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    let leaned = null;
+    for (let at = 1; at <= 6; at += 1) {
+      await page.mouse.move(start.x + at * 30, start.y, { steps: 1 });
+      await page.waitForTimeout(16);
+      if (at === 6) leaned = (await drawnNow()).lean;
+    }
+    await page.mouse.up();
+    const let_go = await box();
+    await page.waitForTimeout(500);
+    const after = await box();
+    await page.waitForTimeout(1500);
+    return { leaned, slid: Math.round(after.x - let_go.x) };
+  };
+  const jelly = await flick('jelly');
+  record(jelly.leaned !== null && jelly.leaned < -0.5 && Math.abs(jelly.slid) < 2, `Jelly in Preferences wobbles and stops where it is let go (${JSON.stringify(jelly)})`);
+  const off = await flick('off');
+  record(off.leaned === null && Math.abs(off.slid) < 2, `Off moves it plainly (${JSON.stringify(off)})`);
+  await page.evaluate(() => localStorage.removeItem('orknux.dragEffect'));
 
   /* ---- Add help ---- */
 

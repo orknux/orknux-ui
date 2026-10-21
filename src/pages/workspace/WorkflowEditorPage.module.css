@@ -1914,26 +1914,20 @@ select.input {
 }
 
 /*
- * A node being dragged moves like jelly, and its lines and their labels go
- * along a little: leaning and stretching the way it moves, by how fast, and
- * resting when held still. `useDragSway` drives the properties; on the card
+ * A node being dragged, or gliding on after it was let go, moves like jelly:
+ * sheared by its lag and stretched along the motion, narrowed across it to keep
+ * its area, all of it together - what it says included. Its lines and their
+ * labels follow a little. `useDragSway` drives the properties; on the card
  * inside React Flow's wrapper, since the wrapper's own transform is where the
  * node is.
  */
-:global(.react-flow__node.dragging) > * {
-  transform: skew(var(--jelly-kx, 0deg), var(--jelly-ky, 0deg)) scale(var(--jelly-sx, 1), var(--jelly-sy, 1));
+:global(.react-flow__node) > * {
   transform-origin: center;
 }
 
-/*
- * What it says stays upright: the body deforms and its contents are undone by
- * the inverse, so the text is never leaned or stretched. Exact for a lean one
- * way and within a hair for both at once.
- */
-:global(.react-flow__node.dragging) .nodeContent {
-  transform: scale(calc(1 / var(--jelly-sx, 1)), calc(1 / var(--jelly-sy, 1)))
-    skew(calc(-1 * var(--jelly-kx, 0deg)), calc(-1 * var(--jelly-ky, 0deg)));
-  transform-origin: center;
+:global(.react-flow__node[data-jelly]) > * {
+  transform: rotate(var(--jelly-a, 0deg)) scale(var(--jelly-s, 1), calc(1 / var(--jelly-s, 1))) rotate(calc(-1 * var(--jelly-a, 0deg)))
+    skew(var(--jelly-kx, 0deg), var(--jelly-ky, 0deg));
 }
 
 :global(.react-flow__edge.edgeWiggling) path {

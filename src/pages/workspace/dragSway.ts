@@ -1,28 +1,45 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { currentDragEffect } from '../../session/dragEffect';
+import type { DragEffect } from '../../session/dragEffect';
+
 /*
- * A dragged node moves like a chunk of jelly. Its body lags behind the hand by
- * a damped spring in both directions, pulled toward a lag that follows the
- * pointer's velocity: a fast drag leans and stretches it along the way it is
- * going, a stop lets it wobble back past straight once or twice, and held still
- * it rests. Nothing runs while nothing is moving.
+ * A dragged node moves like a chunk of jelly.
+ *
+ * Its body lags behind the hand on a damped spring in both directions, pulled
+ * toward a lag that follows how fast and which way it moves. The lag shears it
+ * and stretches it along the motion while narrowing it across, keeping its
+ * area, as a soft body does. Let go while moving and it has inertia: it slides
+ * on the way it was going, slowed by friction, and wobbles as it comes to a
+ * stop - a short way, a slide rather than a throw. Held still, it rests. Nothing runs while nothing is moving.
+ *
+ * Which of that happens is the person's: Preferences offers it off, as jelly,
+ * or as jelly that slides on - see `session/dragEffect`.
  */
-/** Pixels of lag per pixel per millisecond of pointer speed. */
+/** Pixels of lag per pixel per millisecond of speed. */
 const LAG_PER_SPEED = 6;
-/** The most it lags, however fast the drag. */
+/** The most it lags, however fast it moves. */
 const MOST_LAG = 12;
 /** How hard the body is pulled toward its lag, per second squared. */
 const STIFFNESS = 320;
 /** How quickly a wobble dies away, per second; low enough to overshoot. */
-const DAMPING = 18;
-/** Degrees of lean per pixel of lag. */
-const LEAN = 0.25;
-/** Stretch along the motion per pixel of lag; it narrows across by half as much. */
-const STRETCH = 0.003;
+const DAMPING = 14;
+/** Degrees of shear per pixel of lag. */
+const SHEAR = 0.25;
+/** Stretch along the motion per pixel of lag; across it narrows to keep the area. */
+const STRETCH = 0.006;
 /** How much of the lag the lines and labels follow. */
 const LINE_SHARE = 0.15;
-/** A pointer that has not moved for this long is held still. */
+/** A pointer that has not moved for this long is held still, and lets go with no throw. */
 const STILL_AFTER_MS = 60;
+/** How fast a thrown node slows, per second: its speed falls by e every 1/FRICTION seconds. */
+const FRICTION = 10;
+/** Slower than this, in pixels per millisecond, a glide has stopped. */
+const STOPPED = 0.02;
+/** The fastest a node can be thrown, in pixels per millisecond. */
+const FASTEST_THROW = 1;
+/** How much of the hand's speed a let-go node keeps: a nudge on, not a throw. */
+const THROW_SHARE = 0.6;
 
 type Dragged = MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent;
 
@@ -34,29 +51,56 @@ function pointOf(event: Dragged): { x: number; y: number } {
 
 /**
  * Drives the `--jelly-*` custom properties on the editor's canvas while a
- * node is dragged; the dragged card, its lines and their labels read them.
+ * node is dragged or gliding, which the card, its lines and their labels read.
+ * The cards it moves carry `data-jelly` until they settle; the attribute is
+ * set on the element rather than through the node's class, which React Flow
+ * would carry into the graph's state.
+ *
+ * @param glide moves the nodes let go by this many screen pixels, as their
+ *   inertia carries them on
+ * @param rest is told when the nodes let go have stopped and settled
  */
-export function useDragSway() {
+export function useDragSway(
+  glide: (ids: readonly string[], dx: number, dy: number) => void,
+  rest: (ids: readonly string[]) => void,
+) {
+  const glideRef = useRef(glide);
+  glideRef.current = glide;
+  const restRef = useRef(rest);
+  restRef.current = rest;
   const held = useRef({
     host: null as HTMLElement | null,
+    effect: 'off' as DragEffect,
     dragging: false,
+    ids: [] as readonly string[],
     last: { x: 0, y: 0, at: 0 },
     speed: { x: 0, y: 0 },
+    thrown: { x: 0, y: 0 },
     lag: { x: 0, y: 0 },
     moving: { x: 0, y: 0 },
     frame: 0,
     then: 0,
   });
 
+  /** Puts the mark on the cards being moved, or takes it off. */
+  const mark = useCallback((on: boolean) => {
+    const { host, ids } = held.current;
+    for (const id of ids) {
+      const card = host?.querySelector(`.react-flow__node[data-id="${CSS.escape(id)}"]`);
+      if (on) card?.setAttribute('data-jelly', '');
+      else card?.removeAttribute('data-jelly');
+    }
+  }, []);
+
   const write = useCallback(() => {
     const { host, lag } = held.current;
     if (host === null) return;
-    const along = (mine: number, other: number) => 1 + Math.abs(mine) * STRETCH - Math.abs(other) * STRETCH * 0.5;
+    const size = Math.hypot(lag.x, lag.y);
     const set = (name: string, value: string) => host.style.setProperty(name, value);
-    set('--jelly-kx', `${(lag.x * LEAN).toFixed(3)}deg`);
-    set('--jelly-ky', `${(lag.y * LEAN).toFixed(3)}deg`);
-    set('--jelly-sx', along(lag.x, lag.y).toFixed(4));
-    set('--jelly-sy', along(lag.y, lag.x).toFixed(4));
+    set('--jelly-a', `${(size === 0 ? 0 : (Math.atan2(lag.y, lag.x) * 180) / Math.PI).toFixed(2)}deg`);
+    set('--jelly-s', (1 + size * STRETCH).toFixed(4));
+    set('--jelly-kx', `${(lag.x * SHEAR).toFixed(3)}deg`);
+    set('--jelly-ky', `${(lag.y * SHEAR).toFixed(3)}deg`);
     set('--jelly-px', `${(lag.x * LINE_SHARE).toFixed(3)}px`);
     set('--jelly-py', `${(lag.y * LINE_SHARE).toFixed(3)}px`);
   }, []);
@@ -64,9 +108,20 @@ export function useDragSway() {
   const step = useCallback(
     (now: number) => {
       const it = held.current;
-      const seconds = Math.min((now - it.then) / 1000, 0.05);
+      const elapsed = Math.min(now - it.then, 50);
+      const seconds = elapsed / 1000;
       it.then = now;
-      if (now - it.last.at > STILL_AFTER_MS) it.speed = { x: 0, y: 0 };
+      if (it.dragging && now - it.last.at > STILL_AFTER_MS) it.speed = { x: 0, y: 0 };
+
+      // Let go while moving: on it goes, slowing, and what drives the body is the glide.
+      if (!it.dragging && Math.hypot(it.thrown.x, it.thrown.y) > 0) {
+        glideRef.current(it.ids, it.thrown.x * elapsed, it.thrown.y * elapsed);
+        const kept = Math.exp(-FRICTION * seconds);
+        it.thrown = { x: it.thrown.x * kept, y: it.thrown.y * kept };
+        if (Math.hypot(it.thrown.x, it.thrown.y) < STOPPED) it.thrown = { x: 0, y: 0 };
+        it.speed = it.thrown;
+      }
+
       const toward = (speed: number) => Math.max(-MOST_LAG, Math.min(MOST_LAG, -speed * LAG_PER_SPEED));
       for (const axis of ['x', 'y'] as const) {
         it.moving[axis] += (STIFFNESS * (toward(it.speed[axis]) - it.lag[axis]) - DAMPING * it.moving[axis]) * seconds;
@@ -74,30 +129,37 @@ export function useDragSway() {
       }
       const still = it.speed.x === 0 && it.speed.y === 0;
       const resting = still && Math.hypot(it.lag.x, it.lag.y) < 0.02 && Math.hypot(it.moving.x, it.moving.y) < 0.02;
-      // At rest is exactly straight, not a hair off it for as long as the hand stays put.
       if (resting) {
         it.lag = { x: 0, y: 0 };
         it.moving = { x: 0, y: 0 };
       }
+      write();
       if (!it.dragging && resting) {
         it.frame = 0;
-        write();
+        mark(false);
+        restRef.current(it.ids);
         return;
       }
-      write();
       it.frame = requestAnimationFrame(step);
     },
-    [write],
+    [write, mark],
   );
 
   useEffect(() => () => cancelAnimationFrame(held.current.frame), []);
 
   return {
     start: useCallback(
-      (event: Dragged) => {
+      (event: Dragged, ids: readonly string[]) => {
         const it = held.current;
+        it.effect = currentDragEffect();
+        if (it.effect === 'off') return;
+        // A drag that starts while the last one still glides or wobbles takes over from it.
+        if (it.frame !== 0) mark(false);
         it.host = (event.target as Element | null)?.closest('.react-flow') as HTMLElement | null;
         it.dragging = true;
+        it.ids = ids;
+        mark(true);
+        it.thrown = { x: 0, y: 0 };
         it.last = { ...pointOf(event), at: performance.now() };
         it.speed = { x: 0, y: 0 };
         if (it.frame === 0) {
@@ -105,10 +167,11 @@ export function useDragSway() {
           it.frame = requestAnimationFrame(step);
         }
       },
-      [step],
+      [step, mark],
     ),
     move: useCallback((event: Dragged) => {
       const it = held.current;
+      if (!it.dragging) return;
       const now = performance.now();
       const at = pointOf(event);
       const elapsed = Math.max(now - it.last.at, 1);
@@ -120,7 +183,24 @@ export function useDragSway() {
       it.last = { ...at, at: now };
     }, []),
     stop: useCallback(() => {
-      held.current.dragging = false;
+      const it = held.current;
+      if (!it.dragging) {
+        // Nothing was moved this way: the lines are let go at once.
+        restRef.current(it.ids);
+        return;
+      }
+      it.dragging = false;
+      // Jelly without the slide stops where it is put, and only its body carries on.
+      if (it.effect !== 'slide') {
+        it.speed = { x: 0, y: 0 };
+        it.thrown = { x: 0, y: 0 };
+        return;
+      }
+      // Thrown only if it was still moving when let go.
+      const fresh = performance.now() - it.last.at <= STILL_AFTER_MS;
+      const speed = Math.hypot(it.speed.x, it.speed.y);
+      const scale = (speed > FASTEST_THROW ? FASTEST_THROW / speed : 1) * THROW_SHARE;
+      it.thrown = fresh && speed > STOPPED ? { x: it.speed.x * scale, y: it.speed.y * scale } : { x: 0, y: 0 };
     }, []),
   };
 }

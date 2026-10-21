@@ -10,6 +10,8 @@ import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { FieldHint } from '../../components/FieldHint';
 import { currentLanguage, LANGUAGE_NAMES, LANGUAGES, setLanguage } from '../../session/language';
 import type { Language } from '../../session/language';
+import { currentDragEffect, rememberDragEffect } from '../../session/dragEffect';
+import type { DragEffect } from '../../session/dragEffect';
 import { applyTheme, currentTheme, rememberTheme } from '../../session/theme';
 import { adoptTimeZone, browserTimeZone, chosenTimeZone, timeZones } from '../../session/timeZone';
 import type { Theme } from '../../session/theme';
@@ -385,6 +387,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const [costError, setCostError] = useState<string | null>(null);
 
   const [savedTheme, setSavedTheme] = useState<Theme>(currentTheme);
+  const [dragEffect, setDragEffect] = useState<DragEffect>(currentDragEffect);
+  const [savedDragEffect, setSavedDragEffect] = useState<DragEffect>(currentDragEffect);
 
   /** Every setting that differs from what is stored, by name - what the count at the foot counts. */
   const shortcutsUnsaved = SHORTCUTS.filter(
@@ -396,6 +400,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     costShown !== savedCost,
     zone !== savedZone,
     theme !== savedTheme,
+    dragEffect !== savedDragEffect,
     pickedLanguage !== language,
   ].filter(Boolean).length + shortcutsUnsaved.length;
   const [saving, setSaving] = useState(false);
@@ -447,6 +452,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       applyTheme(theme);
       rememberTheme(theme);
       setSavedTheme(theme);
+    }
+    if (dragEffect !== savedDragEffect) {
+      rememberDragEffect(dragEffect);
+      setSavedDragEffect(dragEffect);
     }
     for (const { key, store } of shortcutsUnsaved) store(shortcutDrafts[key] as string);
     setShortcutDrafts({});
@@ -737,6 +746,35 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   <img src={sunIcon} alt="" width={14} height={14} />
                   {t('Light Mode')}
                 </button>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="drag-effect">
+                  {t('Node Drag Effect')}
+                </span>
+                <FieldHint label={t('Node Drag Effect')}>
+                  {t('How a workflow node moves while you drag it. Kept in this browser.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options} role="radiogroup" aria-labelledby="drag-effect" data-testid="drag-effect">
+                {([
+                  ['off', t('Off')],
+                  ['jelly', t('Jelly')],
+                  ['slide', t('Jelly and slide')],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={dragEffect === value}
+                    className={dragEffect === value ? styles.optionCurrent : styles.option}
+                    onClick={() => setDragEffect(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 

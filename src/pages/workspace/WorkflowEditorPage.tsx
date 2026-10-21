@@ -2248,7 +2248,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     [remember],
   );
   const navigate = useNavigate();
-  const { updateNode, screenToFlowPosition } = useReactFlow();
+  const { updateNode, screenToFlowPosition, getZoom } = useReactFlow();
   /*
    * React Flow measures a node's handles once and remembers where they are.
    *
@@ -2749,7 +2749,19 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   /** The nodes being dragged right now, whose lines wiggle with them. */
   const [dragging, setDragging] = useState<ReadonlySet<string>>(() => new Set());
   /** How what is being dragged wobbles, from how fast and which way it moves. */
-  const sway = useDragSway();
+  const sway = useDragSway(
+    (ids, dx, dy) => {
+      // Screen pixels to the canvas's, at whatever zoom it is drawn.
+      const zoom = getZoom();
+      setNodes((all) =>
+        all.map((node) =>
+          ids.includes(node.id) ? { ...node, position: { x: node.position.x + dx / zoom, y: node.position.y + dy / zoom } } : node,
+        ),
+      );
+    },
+    // Settled: the lines stop following.
+    () => setDragging(new Set()),
+  );
   const drawnEdges = useMemo<Edge[]>(() => {
     const carrying = edges.map((edge) => {
       /*
@@ -5701,13 +5713,11 @@ Change the keystroke in Preferences.`}
               // What is being dragged, so it and its lines wobble by how fast and which way it moves.
               onNodeDragStart={(event, __, moving) => {
                 setDragging(new Set(moving.map((one) => one.id)));
-                sway.start(event);
+                sway.start(event, moving.map((one) => one.id));
               }}
               onNodeDrag={(event) => sway.move(event)}
-              onNodeDragStop={() => {
-                setDragging(new Set());
-                sway.stop();
-              }}
+              // The lines keep following while it glides on; they are let go when it settles.
+              onNodeDragStop={() => sway.stop()}
               /*
                * Room to take hold of a line's end. The grab circle sits just
                * beyond the handle, so a wider one is easier to aim at without
