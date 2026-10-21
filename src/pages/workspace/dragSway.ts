@@ -11,7 +11,8 @@ import type { DragEffect } from '../../session/dragEffect';
  * and stretches it along the motion while narrowing it across, keeping its
  * area, as a soft body does. Let go while moving and it has inertia: it slides
  * on the way it was going, slowed by friction, and wobbles as it comes to a
- * stop - a short way, a slide rather than a throw. Held still, it rests. Nothing runs while nothing is moving.
+ * stop - as far as the speed it was let go at carries it, a quick long
+ * move further than a slow one. Held still, it rests. Nothing runs while nothing is moving.
  *
  * Which of that happens is the person's: Preferences offers it off, as jelly,
  * or as jelly that slides on - see `session/dragEffect`.
@@ -36,10 +37,10 @@ const STILL_AFTER_MS = 60;
 const FRICTION = 10;
 /** Slower than this, in pixels per millisecond, a glide has stopped. */
 const STOPPED = 0.02;
-/** The fastest a node can be thrown, in pixels per millisecond. */
-const FASTEST_THROW = 1;
-/** How much of the hand's speed a let-go node keeps: a nudge on, not a throw. */
-const THROW_SHARE = 0.6;
+/** The fastest a node can be let go, in pixels per millisecond: only a wild flick is held to it. */
+const FASTEST_THROW = 4;
+/** How much of the hand's speed a let-go node keeps; how far it slides follows from that and the friction. */
+const THROW_SHARE = 0.5;
 
 type Dragged = MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent;
 

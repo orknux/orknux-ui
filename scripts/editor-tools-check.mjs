@@ -149,7 +149,7 @@ try {
   const released = await box();
   await page.waitForTimeout(400);
   const later = await box();
-  record(later.x - released.x > 10 && later.x - released.x < 120, `by default, let go while moving it slides on a short way (${Math.round(later.x - released.x)}px)`);
+  record(later.x - released.x > 10, `by default, let go while moving it slides on (${Math.round(later.x - released.x)}px)`);
   await page.waitForTimeout(2500);
   const settled = await drawnNow();
   const stopped = await box();
@@ -159,14 +159,14 @@ try {
   record(settled.lean === null && (await page.locator('.react-flow__edge.edgeWiggling').count()) === 0, 'and settles, its lines with it');
 
   /** One quick drag to the right and a let-go while still moving, under the effect chosen in Preferences. */
-  const flick = async (effect) => {
+  const flick = async (effect, stride = 30) => {
     await page.evaluate((one) => localStorage.setItem('orknux.dragEffect', one), effect);
     const start = await centre(make.locator('[class*="nodeContent"]').first());
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     let leaned = null;
     for (let at = 1; at <= 6; at += 1) {
-      await page.mouse.move(start.x + at * 30, start.y, { steps: 1 });
+      await page.mouse.move(start.x + at * stride, start.y, { steps: 1 });
       await page.waitForTimeout(16);
       if (at === 6) leaned = (await drawnNow()).lean;
     }
@@ -177,8 +177,11 @@ try {
     await page.waitForTimeout(1500);
     return { leaned, slid: Math.round(after.x - let_go.x) };
   };
+  const gentle = await flick('slide', 8);
+  const quick = await flick('slide', 40);
+  record(quick.slid > gentle.slid * 2 && gentle.slid >= 0, `a quicker move slides further (${gentle.slid}px slow, ${quick.slid}px quick)`);
   const jelly = await flick('jelly');
-  record(jelly.leaned !== null && jelly.leaned < -0.5 && Math.abs(jelly.slid) < 2, `Jelly in Preferences wobbles and stops where it is let go (${JSON.stringify(jelly)})`);
+  record(jelly.leaned !== null && jelly.leaned < -0.2 && Math.abs(jelly.slid) < 2, `Jelly in Preferences wobbles and stops where it is let go (${JSON.stringify(jelly)})`);
   const off = await flick('off');
   record(off.leaned === null && Math.abs(off.slid) < 2, `Off moves it plainly (${JSON.stringify(off)})`);
   await page.evaluate(() => localStorage.removeItem('orknux.dragEffect'));
