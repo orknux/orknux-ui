@@ -3036,4 +3036,7 @@ export const PL: Record<string, string> = {
   "Turn chat reviews off": "Wyłącz recenzje z czatu",
   "Turn chat reviews on": "Włącz recenzje z czatu",
   "Could not change the switch.": "Nie udało się zmienić przełącznika.",
+  "Prices": "Ceny",
+  "Cached input": "Wejście z pamięci podręcznej",
+  "/ 1M tokens": "/ 1 mln tokenów",
 };

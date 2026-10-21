@@ -41,6 +41,23 @@ if (model !== undefined) {
     );
 
     record((await page.locator('#model-cached-cost').count()) === 1, 'and a cached-input price');
+
+    // The three sit level in a card of their own, each label one line: they were
+    // squeezed into the window's row of nine, two-line labels pushing boxes down.
+    const boxes = await page.evaluate(() =>
+      ['model-input-cost', 'model-cached-cost', 'model-output-cost'].map((id) => {
+        const input = document.getElementById(id);
+        const box = input?.parentElement?.getBoundingClientRect();
+        const label = document.querySelector(`label[for="${id}"]`);
+        const line = label ? parseFloat(getComputedStyle(label).lineHeight) || 20 : 0;
+        return { top: Math.round(box?.top ?? -1), width: Math.round(box?.width ?? 0), labelLines: label ? Math.round(label.getBoundingClientRect().height / line) : 0 };
+      }),
+    );
+    record(boxes.every((one) => one.top === boxes[0].top), `the price boxes sit level (${boxes.map((one) => one.top).join(', ')})`);
+    record(boxes.every((one) => one.labelLines === 1), `and each label is one line (${boxes.map((one) => one.labelLines).join(', ')})`);
+    record(boxes.every((one) => one.width >= 200), `and wide enough to read a price in (${boxes.map((one) => one.width).join(', ')}px)`);
+    const card = await page.evaluate(() => document.getElementById('model-input-cost')?.closest('form')?.querySelector('h2')?.textContent);
+    record(card === 'Prices', `in a card of their own (${card})`);
     await saveWith('1.25', '10.5', '0.125');
     const after = await read();
     record(

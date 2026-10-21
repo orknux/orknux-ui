@@ -581,53 +581,6 @@ export function ModelWindowFields({ form }: SectionProps) {
               inputMode="numeric"
             />
           </div>
-          {/*
-            What the provider charges, so a cost is worked out rather than
-            guessed. The create dialog asked for these and this page did not,
-            so a price typed wrong, or a provider's new one, could not be put
-            right without making the model again.
-          */}
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="model-input-cost">{t('Input $ / million tokens')}</label>
-            <input
-              id="model-input-cost"
-              name="inputCostPerMillion"
-              className={`${styles.input} ${styles.inputMono}`}
-              value={fields.inputCost}
-              onChange={(event) => fields.setInputCost(event.target.value)}
-              placeholder={t('Not recorded')}
-              inputMode="decimal"
-            />
-          </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="model-output-cost">{t('Output $ / million tokens')}</label>
-            <input
-              id="model-output-cost"
-              name="outputCostPerMillion"
-              className={`${styles.input} ${styles.inputMono}`}
-              value={fields.outputCost}
-              onChange={(event) => fields.setOutputCost(event.target.value)}
-              placeholder={t('Not recorded')}
-              inputMode="decimal"
-            />
-          </div>
-          <div className={styles.field}>
-            <span className={styles.labelWithHint}>
-              <label className={styles.label} htmlFor="model-cached-cost">{t('Cached input $ / million tokens')}</label>
-              <FieldHint label={t('Cached input $ / million tokens')}>
-                {t('What the provider charges for input it served from its prompt cache, usually a fraction of the input price. Left empty, cached input is costed at the input price.')}
-              </FieldHint>
-            </span>
-            <input
-              id="model-cached-cost"
-              name="cachedInputCostPerMillion"
-              className={`${styles.input} ${styles.inputMono}`}
-              value={fields.cachedCost}
-              onChange={(event) => fields.setCachedCost(event.target.value)}
-              placeholder={t('Input price')}
-              inputMode="decimal"
-            />
-          </div>
           <div className={styles.field}>
             <span className={styles.labelWithHint}>
               <label className={styles.label} htmlFor="parallel-tool-calls">{t('Tool Calls Per Reply')}</label>
@@ -920,5 +873,77 @@ export function ModelThrottleFields({ form }: SectionProps) {
         <div className={styles.field} />
       </div>
     </>
+  );
+}
+
+/**
+ * What the provider charges per million tokens, so a cost is worked out rather
+ * than guessed. Its own card, apart from the window: three prices with the
+ * dollar and the unit drawn in the box, so each label is one word and the
+ * boxes sit level - they were a row of nine with two-line labels.
+ */
+export function ModelPriceFields({ form }: SectionProps) {
+  const { draws, fields } = form;
+  if (form.model === null || draws) return null;
+  return (
+    <div className={styles.fieldRow}>
+      <MoneyField
+        id="model-input-cost"
+        name="inputCostPerMillion"
+        label={t('Input')}
+        value={fields.inputCost}
+        onChange={fields.setInputCost}
+        placeholder={t('Not recorded')}
+      />
+      <MoneyField
+        id="model-cached-cost"
+        name="cachedInputCostPerMillion"
+        label={t('Cached input')}
+        hint={t('What the provider charges for input it served from its prompt cache, usually a fraction of the input price. Left empty, cached input is costed at the input price.')}
+        value={fields.cachedCost}
+        onChange={fields.setCachedCost}
+        placeholder={t('Input price')}
+      />
+      <MoneyField
+        id="model-output-cost"
+        name="outputCostPerMillion"
+        label={t('Output')}
+        value={fields.outputCost}
+        onChange={fields.setOutputCost}
+        placeholder={t('Not recorded')}
+      />
+    </div>
+  );
+}
+
+function MoneyField({ id, name, label, hint, value, onChange, placeholder }: {
+  id: string;
+  name: string;
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className={styles.field}>
+      <span className={styles.labelWithHint}>
+        <label className={styles.label} htmlFor={id}>{label}</label>
+        {hint !== undefined && <FieldHint label={label}>{hint}</FieldHint>}
+      </span>
+      <div className={styles.money}>
+        <span className={styles.moneySign} aria-hidden="true">$</span>
+        <input
+          id={id}
+          name={name}
+          className={styles.moneyInput}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          inputMode="decimal"
+        />
+        <span className={styles.moneyUnit} aria-hidden="true">{t('/ 1M tokens')}</span>
+      </div>
+    </div>
   );
 }

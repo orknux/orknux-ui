@@ -11,6 +11,7 @@ import {
   ModelDetailsFields,
   ModelQuotaFields,
   ModelThrottleFields,
+  ModelPriceFields,
   ModelWindowFields,
   useModelForm,
 } from './ModelForm';
@@ -165,6 +166,9 @@ function ModelDrawerForm({ workspaceId, modelId, onSaved, onCancel }: ModelDrawe
 
       <h3 className={own.heading}>{form.draws ? t('Price') : t('Context Window')}</h3>
       <ModelWindowFields form={form} />
+
+      {!form.draws && <h3 className={own.heading}>{t('Prices')}</h3>}
+      <ModelPriceFields form={form} />
 
       <h3 className={own.heading}>{t('Quotas & Limits')}</h3>
       <ModelQuotaFields form={form} />

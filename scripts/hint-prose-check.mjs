@@ -550,6 +550,12 @@ const IN_THE_OPEN = [
     why: 'an empty report, in place of an empty table',
   },
   {
+    file: 'src/pages/admin/RatingsReport.tsx',
+    says: 'No reviews in this period.',
+    because: 'status',
+    why: 'the ratings report empty, in place of an empty table, as the usage report says',
+  },
+  {
     file: 'src/pages/workspace/ExecutionDetailPage.tsx',
     says: 'No step detail was recorded for this run.',
     because: 'status',
@@ -717,24 +723,6 @@ const IN_THE_OPEN = [
     says: 'Cached input $ / million tokens',
     because: 'label',
     why: 'the third price, for input served from the prompt cache',
-  },
-  {
-    file: 'src/components/ModelForm.tsx',
-    says: 'Input $ / million tokens',
-    because: 'label',
-    why: "the model page's own copy of the dialog's price fields, so a price can be corrected after the model is made",
-  },
-  {
-    file: 'src/components/ModelForm.tsx',
-    says: 'Output $ / million tokens',
-    because: 'label',
-    why: 'the same field, the other direction',
-  },
-  {
-    file: 'src/components/ModelForm.tsx',
-    says: 'Cached input $ / million tokens',
-    because: 'label',
-    why: 'the cached-input price, beside the other two',
   },
   {
     file: 'src/components/MarkdownEditor.tsx',

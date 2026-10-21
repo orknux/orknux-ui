@@ -148,6 +148,46 @@
   font-family: var(--font-mono);
 }
 
+/* A price: the dollar and the unit drawn inside the box, the figure between them. */
+.money {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.money:focus-within {
+  border-color: var(--color-accent-brand);
+}
+
+.moneySign,
+.moneyUnit {
+  flex: none;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.moneyInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-10) 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.moneyInput::placeholder {
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+}
+
 .input:focus {
   border-color: var(--color-accent-brand);
   outline: none;

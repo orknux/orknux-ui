@@ -22,6 +22,7 @@ import {
   ModelDetailsFields,
   ModelQuotaFields,
   ModelThrottleFields,
+  ModelPriceFields,
   ModelWindowFields,
   useModelForm,
 } from '../../components/ModelForm';
@@ -171,6 +172,13 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
             <h2 className={styles.sectionHeading}>{form.draws ? t('Price') : t('Context Window')}</h2>
             <ModelWindowFields form={form} />
           </form>
+
+          {!form.draws && (
+            <form className={styles.card} onSubmit={handleSubmit}>
+              <h2 className={styles.sectionHeading}>{t('Prices')}</h2>
+              <ModelPriceFields form={form} />
+            </form>
+          )}
 
           <section className={styles.card}>
             <h2 className={styles.sectionHeading}>{t('Usage Metrics')}</h2>
