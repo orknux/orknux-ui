@@ -8,17 +8,17 @@ import { useCallback, useEffect, useRef } from 'react';
  * it rests. Nothing runs while nothing is moving.
  */
 /** Pixels of lag per pixel per millisecond of pointer speed. */
-const LAG_PER_SPEED = 10;
+const LAG_PER_SPEED = 6;
 /** The most it lags, however fast the drag. */
-const MOST_LAG = 22;
+const MOST_LAG = 12;
 /** How hard the body is pulled toward its lag, per second squared. */
-const STIFFNESS = 220;
+const STIFFNESS = 320;
 /** How quickly a wobble dies away, per second; low enough to overshoot. */
-const DAMPING = 10;
+const DAMPING = 18;
 /** Degrees of lean per pixel of lag. */
-const LEAN = 0.35;
+const LEAN = 0.25;
 /** Stretch along the motion per pixel of lag; it narrows across by half as much. */
-const STRETCH = 0.005;
+const STRETCH = 0.003;
 /** How much of the lag the lines and labels follow. */
 const LINE_SHARE = 0.15;
 /** A pointer that has not moved for this long is held still. */

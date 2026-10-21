@@ -118,7 +118,7 @@ try {
     await page.waitForTimeout(16);
   }
   const moving = await drawnNow();
-  record(moving.lean !== null && moving.lean < -1, `a node dragged fast leans with the motion (${moving.lean} deg)`);
+  record(moving.lean !== null && moving.lean < -0.5, `a node dragged fast leans with the motion (${moving.lean} deg)`);
   record(moving.upright === true, 'and what it says stays straight');
   record(moving.label !== null && moving.label !== 'none' && !/^0px/.test(moving.label), `and its dependency label follows through (${moving.label})`);
   record(
@@ -131,7 +131,7 @@ try {
     await page.waitForTimeout(16);
   }
   const back = await drawnNow();
-  record(back.lean !== null && back.lean > 1, `dragged back, it leans the other way (${back.lean} deg)`);
+  record(back.lean !== null && back.lean > 0.5, `dragged back, it leans the other way (${back.lean} deg)`);
   // Held still, still held: it settles straight.
   await page.waitForTimeout(1500);
   const resting = await drawnNow();
