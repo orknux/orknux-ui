@@ -13,6 +13,9 @@ const OUTLINES: Record<NodeShape | 'DEFAULT', string> = {
   PILL: 'M18 2.5 H46 A15.5 15.5 0 0 1 46 33.5 H18 A15.5 15.5 0 0 1 18 2.5 Z',
   NOTCHED: 'M8 2.5 H56 L61.5 8 V28 L56 33.5 H8 L2.5 28 V8 Z',
   HEXAGON: 'M11 2.5 H53 L61.5 18 L53 33.5 H11 L2.5 18 Z',
+  CIRCLE: 'M32 2.5 A29.5 15.5 0 1 1 31.99 2.5 Z',
+  TRIANGLE: 'M32 2 L61.5 33.5 H2.5 Z',
+  STAR: 'M32 1.5 L38.5 12.5 L61 13.5 L43 21.5 L50 34 L32 26.5 L14 34 L21 21.5 L3 13.5 L25.5 12.5 Z',
 };
 
 /**
@@ -62,9 +65,16 @@ export function ShapePicker({
           >
             <svg className={styles.outline} viewBox="0 0 64 36" aria-hidden="true">
               <path className={styles.body} d={one.outline} />
-              <rect className={styles.accent} x={one.shape === 'PILL' ? 12 : one.shape === 'HEXAGON' ? 13 : 7} y="11" width="2.5" height="14" rx="1.25" />
-              <rect className={styles.line} x={one.shape === 'PILL' ? 18 : one.shape === 'HEXAGON' ? 19 : 13} y="13" width="22" height="3" rx="1.5" />
-              <rect className={styles.lineFaint} x={one.shape === 'PILL' ? 18 : one.shape === 'HEXAGON' ? 19 : 13} y="20" width="30" height="3" rx="1.5" />
+              {/* A card's text, inside the outline; the pointed ones hold it lower and narrower. */}
+              {one.shape === 'TRIANGLE' || one.shape === 'STAR' ? (
+                <rect className={styles.line} x="24" y={one.shape === 'TRIANGLE' ? 22 : 16} width="16" height="3" rx="1.5" />
+              ) : (
+                <>
+                  <rect className={styles.accent} x={one.shape === 'PILL' || one.shape === 'CIRCLE' ? 12 : one.shape === 'HEXAGON' ? 13 : 7} y="11" width="2.5" height="14" rx="1.25" />
+                  <rect className={styles.line} x={one.shape === 'PILL' || one.shape === 'CIRCLE' ? 18 : one.shape === 'HEXAGON' ? 19 : 13} y="13" width="22" height="3" rx="1.5" />
+                  <rect className={styles.lineFaint} x={one.shape === 'PILL' || one.shape === 'CIRCLE' ? 18 : one.shape === 'HEXAGON' ? 19 : 13} y="20" width={one.shape === 'CIRCLE' ? 24 : 30} height="3" rx="1.5" />
+                </>
+              )}
             </svg>
             <span className={styles.name}>{one.label}</span>
           </button>

@@ -4,7 +4,7 @@ import { t } from '../i18n';
 
 export type WorkflowStatus = 'DRAFT' | 'PUBLISHED';
 /** What outline a node is drawn with. Picture only: nothing runs differently. */
-export type NodeShape = 'RECTANGLE' | 'ROUNDED' | 'PILL' | 'NOTCHED' | 'HEXAGON';
+export type NodeShape = 'RECTANGLE' | 'ROUNDED' | 'PILL' | 'NOTCHED' | 'HEXAGON' | 'CIRCLE' | 'TRIANGLE' | 'STAR';
 
 export type NodeKind = 'TRIGGER' | 'AGENT' | 'ACTION' | 'CONDITION' | 'OBJECT' | 'SESSION' | 'IMAGE' | 'DECISION' | 'WORKFLOW';
 

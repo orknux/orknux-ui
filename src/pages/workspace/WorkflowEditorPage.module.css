@@ -2085,6 +2085,76 @@ select.input {
   padding-inline: 10px;
 }
 
+/* An ellipse: as round as a card that is wider than it is tall can be. */
+.shapeCircle {
+  border-radius: 50%;
+  padding-inline: 18px;
+}
+
+.shapeCircle .accentBar {
+  top: 22%;
+  left: 18px;
+  height: 56%;
+}
+
+/*
+ * The pointed ones are drawn like the hexagon, a border and a fill clipped to
+ * the outline, and hold what they say inside it: low and narrow for a
+ * triangle, in the middle for a star.
+ */
+.shapeTriangle,
+.shapeStar {
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.shapeTriangle::before,
+.shapeTriangle::after,
+.shapeStar::before,
+.shapeStar::after {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  content: '';
+  background: var(--color-border);
+}
+
+.shapeTriangle::after,
+.shapeStar::after {
+  inset: 1px;
+  background: var(--color-surface);
+}
+
+.shapeTriangle.nodeSelected::before,
+.shapeStar.nodeSelected::before {
+  background: var(--color-accent-brand);
+}
+
+.shapeTriangle::before,
+.shapeTriangle::after {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.shapeStar::before,
+.shapeStar::after {
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.shapeTriangle {
+  padding: 40% 22% 10px;
+}
+
+.shapeStar {
+  padding: 18% 30% 22%;
+}
+
+.shapeTriangle .accentBar,
+.shapeStar .accentBar {
+  display: none;
+}
+
 /* Beside the Add menu: what the entry pointed at does. */
 .addHelp {
   position: absolute;

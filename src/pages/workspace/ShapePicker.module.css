@@ -2,7 +2,7 @@
 /* One row, however narrow the panel: the tiles share it and the names shorten. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 6px;
 }
 

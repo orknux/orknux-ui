@@ -214,7 +214,7 @@ try {
     all.map((one) => ({ name: one.textContent?.trim(), path: one.querySelector('path')?.getAttribute('d') ?? '', checked: one.getAttribute('aria-checked') })),
   );
   record(
-    drawnTiles.length === 6 && new Set(drawnTiles.map((one) => one.path)).size === 6 && drawnTiles[0].checked === 'true',
+    drawnTiles.length === 9 && new Set(drawnTiles.map((one) => one.path)).size === 9 && drawnTiles[0].checked === 'true',
     `Shape offers each outline as a drawing, Default checked (${drawnTiles.map((one) => one.name).join(', ')})`,
   );
   await page.locator('#node-shape [data-shape-choice="HEXAGON"]').click();

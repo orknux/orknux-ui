@@ -1730,6 +1730,9 @@ const SHAPE_CLASS: Record<NodeShape, string> = {
   PILL: 'shapePill',
   NOTCHED: 'shapeNotched',
   HEXAGON: 'shapeHexagon',
+  CIRCLE: 'shapeCircle',
+  TRIANGLE: 'shapeTriangle',
+  STAR: 'shapeStar',
 };
 
 /** What each outline is called where it is picked. */
@@ -1739,6 +1742,9 @@ const SHAPE_LABEL: Record<NodeShape, string> = {
   PILL: t('Pill'),
   NOTCHED: t('Notched'),
   HEXAGON: t('Hexagon'),
+  CIRCLE: t('Circle'),
+  TRIANGLE: t('Triangle'),
+  STAR: t('Star'),
 };
 
 function GraphNodeView({ data, selected }: NodeProps) {
