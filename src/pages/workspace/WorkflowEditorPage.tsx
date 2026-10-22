@@ -4217,7 +4217,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   /**
-  /**
    * The nodes Copy and Cut take: what the canvas has selected, or the one the
    * panel is on - unless joints are picked and no node is, when the joints are
    * the selection and the panel's node is not part of it.
@@ -5568,7 +5567,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     return () => window.removeEventListener('keydown', onKey, true);
   });
 
-  /**
   /**
    * Copy, Cut and Paste from the keyboard, Ctrl+C, Ctrl+X and Ctrl+V until
    * somebody changes them in Preferences, with Cmd heard for Ctrl.
