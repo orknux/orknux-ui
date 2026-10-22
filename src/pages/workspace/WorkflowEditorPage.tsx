@@ -756,6 +756,45 @@ function distanceToRun(where: EdgeOffset, from: EdgeOffset, to: EdgeOffset): num
   return Math.hypot(where.x - (from.x + along * run.x), where.y - (from.y + along * run.y));
 }
 
+/**
+ * The point of a drawn line nearest a place, in the line's own coordinates -
+ * which for a line on the canvas are flow coordinates.
+ *
+ * The hit stroke is twenty pixels wide, so where the pointer is and where the
+ * line is can be ten apart; a joint goes on the line, not beside it. Coarse
+ * steps along the path find the stretch, then halving steps either side of the
+ * best settle on the point - the browser walks the curve, so a bent line and a
+ * routed one are answered alike.
+ */
+function nearestOnPath(path: SVGPathElement, where: EdgeOffset): EdgeOffset {
+  const length = path.getTotalLength();
+  const away = (at: number) => {
+    const on = path.getPointAtLength(at);
+    return Math.hypot(on.x - where.x, on.y - where.y);
+  };
+  let best = 0;
+  let least = Infinity;
+  for (let at = 0; at <= length; at += 8) {
+    const now = away(at);
+    if (now < least) {
+      least = now;
+      best = at;
+    }
+  }
+  for (let step = 4; step > 0.1; step /= 2) {
+    for (const at of [best - step, best + step]) {
+      if (at < 0 || at > length) continue;
+      const now = away(at);
+      if (now < least) {
+        least = now;
+        best = at;
+      }
+    }
+  }
+  const on = path.getPointAtLength(best);
+  return { x: on.x, y: on.y };
+}
+
 /** Which gap between a line's knots a place on it falls in. */
 function gapAt(knots: EdgeOffset[], where: EdgeOffset): number {
   let best = 0;
@@ -998,13 +1037,13 @@ function CarriedEdge({
   const points = (data?.points as EdgeOffset[] | undefined) ?? NO_POINTS;
   const setPoints = data?.onPoints as ((edgeId: string, to: EdgeOffset[]) => void) | undefined;
   const { screenToFlowPosition } = useReactFlow();
+  // The line's and its points' hints, drawn by the application rather than as a native title.
+  const { hintFor, hint } = useHoverHint();
 
   /*
    * A moved point takes its line with it.
    *
    * The label used to slide away on its own, leaving the line where it was -
-  // The line's and its points' hints, drawn by the application rather than as a native title.
-  const { hintFor, hint } = useHoverHint();
    * so on a graph with more than a couple of them, nothing said which label
    * belonged to which line, which is the one thing a label has to say. The
    * line is now drawn through wherever the points have been put.
@@ -1154,12 +1193,54 @@ function CarriedEdge({
   const addWhereClicked = (event: ReactMouseEvent<SVGPathElement>) => {
     if (setPoints === undefined) return;
     event.stopPropagation();
-    const where = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    // On the line, where the ghost stood - not beside it, wherever in the hit stroke the click fell.
+    const where = onTheLine(event.currentTarget, event.clientX, event.clientY);
+    setPreview(null);
     const gap = gapAt([ends.source, ...placed, ends.target], where);
     const next = [...points];
     next.splice(gap, 0, { x: where.x - labelX, y: where.y - labelY });
     setPoints(id, next);
   };
+
+  /** Where on this line a joint put at a pointer would go, in flow coordinates. */
+  const onTheLine = (line: SVGPathElement, clientX: number, clientY: number) =>
+    nearestOnPath(line, screenToFlowPosition({ x: clientX, y: clientY }, { snapToGrid: false }));
+
+  /*
+   * A ghost of the joint a click would put down, standing where it would go.
+   *
+   * Reported: "I want to show the icon on line where the joint would be
+   * placed". The words in the hint say a joint can be put on the line; this
+   * says where, which is the half the words cannot. It follows the pointer
+   * along the line, goes when the pointer leaves or presses, and is not drawn
+   * while a point or a node it joins is moving - the line is going somewhere
+   * else then, and the ghost would be left behind on where it was.
+   */
+  const [preview, setPreview] = useState<EdgeOffset | null>(null);
+  const lineHint = hintFor(joints.on ? t('Click to put a joint here') : t('Double-click to add a point to bend through'));
+  const showPreview = (event: ReactPointerEvent<SVGPathElement>) => {
+    setPreview(event.buttons !== 0 ? null : onTheLine(event.currentTarget, event.clientX, event.clientY));
+  };
+  const lineHandlers = {
+    ...lineHint,
+    onPointerEnter: (event: ReactPointerEvent<SVGPathElement>) => {
+      lineHint.onPointerEnter(event);
+      showPreview(event);
+    },
+    onPointerMove: (event: ReactPointerEvent<SVGPathElement>) => {
+      lineHint.onPointerMove(event);
+      showPreview(event);
+    },
+    onPointerLeave: () => {
+      lineHint.onPointerLeave();
+      setPreview(null);
+    },
+    onPointerDownCapture: () => {
+      lineHint.onPointerDownCapture();
+      setPreview(null);
+    },
+  };
+  const ghost = preview !== null && drag === null && data?.wiggling !== true ? preview : null;
 
   /** What a handle is called, which is which of the points it is. */
   const pointName = (at: number) => {
@@ -1197,15 +1278,15 @@ function CarriedEdge({
           // With the Joint tool on, one click is enough; double-click works either way.
           onClick={joints.on ? addWhereClicked : undefined}
           onDoubleClick={addWhereClicked}
-          {...hintFor(joints.on ? t('Click to put a joint here') : t('Double-click to add a point to bend through'))}
+          {...lineHandlers}
         />
       )}
+      {hint}
       {setPoints !== undefined && (
         <EdgeLabelRenderer>
           {/*
            * The points a line can be taken hold of by.
            *
-      {hint}
            * Lines are routed for you, and where two nodes sit awkwardly the
            * line between them runs through whatever is in the way. These are
            * the handles: small and quiet on a line still running where it was
@@ -1255,6 +1336,15 @@ function CarriedEdge({
                 }}
               />
           ))}
+          {/* Placed as the joints are, in flow coordinates, so it lands where the real one will at any zoom. */}
+          {ghost !== null && (
+            <span
+              className={`${styles.edgePoint} ${styles.edgePointGhost}`}
+              style={{ transform: `translate(-50%, -50%) translate(${ghost.x}px, ${ghost.y}px)` }}
+              data-joint-preview={id}
+              aria-hidden="true"
+            />
+          )}
         </EdgeLabelRenderer>
       )}
       {says.length > 0 && (

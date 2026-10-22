@@ -1965,11 +1965,17 @@ select.input {
   cursor: copy;
 }
 
-/* Where a joint drag will drop its joint, until it is dropped. */
+/*
+ * Where a click on the line under the pointer would put a joint: the joint
+ * itself, lit as a placed one is, but see-through. Never a target - the click
+ * it announces has to reach the line beneath it.
+ */
 .edgePointGhost {
   pointer-events: none;
-  opacity: 0.7;
-  border-style: dashed;
+  cursor: inherit;
+  background: var(--color-accent-brand);
+  opacity: 0.5;
+  transition: none;
 }
 
 /*
