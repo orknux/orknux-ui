@@ -135,6 +135,18 @@ try {
     'off-plain->after': true,
   };
 
+  // Reported: a skipped step should be marked with a silver border.
+  const skippedBorder = await page.evaluate(() => {
+    const card = document.querySelector('.react-flow__node[data-id="off"] [class*="outcome-skipped"]');
+    if (card === null) return null;
+    const style = getComputedStyle(card);
+    return { color: style.borderTopColor, style: style.borderTopStyle };
+  });
+  record(
+    skippedBorder !== null && skippedBorder.style === 'solid' && /rgba?\(192, 192, 200/.test(skippedBorder.color),
+    `a skipped step is drawn with a silver border (${JSON.stringify(skippedBorder)})`,
+  );
+
   for (const theme of ['light', 'dark']) {
     await page.evaluate((one) => document.documentElement.setAttribute('data-theme', one), theme);
     await page.waitForTimeout(300);
