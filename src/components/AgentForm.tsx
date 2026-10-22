@@ -2119,10 +2119,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             hint={t('Secrets it may hand a box command by name, never seeing them; output that prints one shows ***.')}
             keyOf={(catalog) => catalog.id}
             nameOf={(catalog) => catalog.name}
-            metaOf={(catalog) => (catalog.grant === undefined ? catalog.variableCount : tf('from {workspace}', { workspace: catalog.from ?? '' }))}
+            metaOf={(catalog) => (catalog.grant === undefined ? catalog.variableCount : tf('from workspace {workspace}', { workspace: catalog.from ?? '' }))}
             linkOf={(catalog) => (catalog.grant === undefined ? `/workspace/${workspaceId}/variables` : null)}
             storedAs={(catalog) => catalog.grant ?? catalog.name}
-            groupOf={(catalog) => (catalog.grant === undefined ? null : tf('Shared by {workspace}', { workspace: catalog.from ?? '' }))}
+            groupOf={(catalog) => (catalog.grant === undefined ? null : tf('Shared by workspace {workspace}', { workspace: catalog.from ?? '' }))}
             granted={secretCatalogs}
             onChange={setSecretCatalogs}
           />
@@ -2137,10 +2137,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             hint={t('Plain values it may read and hand a box command; nothing is masked.')}
             keyOf={(catalog) => catalog.id}
             nameOf={(catalog) => catalog.name}
-            metaOf={(catalog) => (catalog.grant === undefined ? catalog.variableCount : tf('from {workspace}', { workspace: catalog.from ?? '' }))}
+            metaOf={(catalog) => (catalog.grant === undefined ? catalog.variableCount : tf('from workspace {workspace}', { workspace: catalog.from ?? '' }))}
             linkOf={(catalog) => (catalog.grant === undefined ? `/workspace/${workspaceId}/variables` : null)}
             storedAs={(catalog) => catalog.grant ?? catalog.name}
-            groupOf={(catalog) => (catalog.grant === undefined ? null : tf('Shared by {workspace}', { workspace: catalog.from ?? '' }))}
+            groupOf={(catalog) => (catalog.grant === undefined ? null : tf('Shared by workspace {workspace}', { workspace: catalog.from ?? '' }))}
             granted={variableCatalogs}
             onChange={setVariableCatalogs}
           />

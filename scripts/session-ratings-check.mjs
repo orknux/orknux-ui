@@ -58,6 +58,24 @@ await drawn(page, 'Session ratings');
 record((await page.getByRole('combobox', { name: 'Report' }).inputValue()) === 'ratings', 'the picked report is remembered over a reload');
 record((await page.getByRole('switch', { name: /chat reviews/i }).getAttribute('aria-checked')) === 'true', 'and the chat reviews switch says on');
 
+/* ---- a chat with nothing answered offers no review ---- */
+
+// Reported: the menu offered Send a review on a new chat, and sending it was refused.
+const { startChat: fresh } = await graphql(
+  `mutation { startChat(input: { workspaceId: ${WORKSPACE}, title: "zz review nothing yet" }) { id } }`,
+);
+try {
+  await page.goto(`${BASE}/chat/${fresh.id}`, { waitUntil: 'domcontentloaded' });
+  await page.getByText('Nothing said yet', { exact: false }).first().waitFor({ timeout: 15_000 }).catch(() => {});
+  const plusFresh = page.getByRole('button', { name: 'Add to this message' });
+  if ((await plusFresh.count()) > 0) await plusFresh.click();
+  await page.waitForTimeout(300);
+  const offered = await page.getByRole('menuitem', { name: 'Send a review' }).count();
+  record(offered === 0, `a chat with no answer yet does not offer Send a review (${offered})`);
+} finally {
+  await graphql(`mutation { deleteChat(id: ${fresh.id}) }`).catch(() => undefined);
+}
+
 /* ---- a review from a chat's + menu ---- */
 
 const { chatSessions } = await graphql(`query { chatSessions(workspaceId: ${WORKSPACE}) { id llmSessionId } }`);
@@ -88,7 +106,25 @@ if (chat === undefined) {
   const line = page.getByTestId('chat-review').filter({ hasText: words });
   await line.first().waitFor({ timeout: 10_000 }).catch(() => {});
   const shown = ((await line.first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
-  record(shown.includes('2 / 5') && shown.includes('reviewed this chat'), `and the review is drawn in the chat (${shown})`);
+  const stars = await line.first().locator('[role="img"]').getAttribute('aria-label').catch(() => null);
+  record(stars === '2 out of 5' && shown.includes('reviewed this chat'), `and the review is drawn in the chat (${stars}; ${shown})`);
+  // A card of its own: a panel behind it, the stars drawn, and the words on a line below them.
+  const card = await line.first().evaluate((element) => {
+    const lit = [...element.querySelectorAll('svg')].map((star) => getComputedStyle(star).fill);
+    const words = element.querySelector('p')?.getBoundingClientRect();
+    const head = element.firstElementChild?.getBoundingClientRect();
+    return {
+      panel: getComputedStyle(element).backgroundColor,
+      page: getComputedStyle(document.body).backgroundColor,
+      lit: lit.filter((fill) => fill === lit[0]).length,
+      count: lit.length,
+      below: words !== undefined && head !== undefined && words.top >= head.bottom,
+    };
+  });
+  record(
+    card.panel !== card.page && card.panel !== 'rgba(0, 0, 0, 0)' && card.count === 5 && card.lit === 2 && card.below,
+    `drawn as a card: a panel, two of five stars lit, the words below (${JSON.stringify(card)})`,
+  );
   await page.reload({ waitUntil: 'domcontentloaded' });
   await line.first().waitFor({ timeout: 15_000 }).catch(() => {});
   record((await line.count()) === 1, 'and is still there after a reload');

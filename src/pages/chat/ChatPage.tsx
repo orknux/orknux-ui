@@ -1109,6 +1109,15 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   }, [draft, attached, currentId]);
 
   const current = sessions?.find((entry) => entry.id === currentId) ?? null;
+  /*
+   * A review is offered only once there is something to review: the server
+   * refuses a chat with no session and no answer, so the entry would only lead
+   * to that refusal.
+   */
+  const reviewable =
+    reviewsOffered &&
+    current !== null &&
+    (current.llmSessionId !== null || messages.some((message) => message.role === 'assistant' && message.content !== ''));
 
   /*
    * Questions the agent put to the person here - may it expose a port, and
@@ -4007,7 +4016,7 @@ ${named}`;
                 rather than a paperclip because what can be added to a message
                 is going to grow, and a row of icons is how that goes wrong.
               */}
-              {(attachmentsAllowed || (reviewsOffered && current !== null)) && (
+              {(attachmentsAllowed || reviewable) && (
                 <div className={styles.addWrapper} ref={addRef}>
                   <button
                     type="button"
@@ -4037,7 +4046,7 @@ ${named}`;
                         </button>
                       )}
                       {/* A review of this chat, sent by the person without asking the agent. */}
-                      {reviewsOffered && current !== null && (
+                      {reviewable && current !== null && (
                         <button
                           type="button"
                           className={styles.addMenuItem}
@@ -4538,13 +4547,30 @@ function SessionRow({
   );
 }
 
-/** A review of this chat, where it was sent: who, the score, and what they wrote. */
+/** A review of this chat, where it was sent: a card with its stars, who sent it, and what they wrote. */
 function ReviewLine({ review }: { review: ChatReview }) {
   return (
-    <div className={styles.reviewRow} data-testid="chat-review">
-      <span className={styles.reviewScore}>{`${review.score} / 5`}</span>
-      <span className={styles.reviewWho}>{tf('{name} reviewed this chat', { name: review.personName ?? '' })}</span>
-      {review.review !== null && <span className={styles.reviewWords}>{review.review}</span>}
+    <div className={styles.reviewRow}>
+      <div className={styles.reviewCard} data-testid="chat-review" data-score={review.score}>
+        <div className={styles.reviewHead}>
+          <span className={styles.reviewStars} role="img" aria-label={tf('{score} out of 5', { score: String(review.score) })}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <svg
+                key={star}
+                className={star <= review.score ? styles.starOn : styles.starOff}
+                viewBox="0 0 24 24"
+                width={16}
+                height={16}
+                aria-hidden="true"
+              >
+                <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" />
+              </svg>
+            ))}
+          </span>
+          <span className={styles.reviewWho}>{tf('{name} reviewed this chat', { name: review.personName ?? '' })}</span>
+        </div>
+        {review.review !== null && <p className={styles.reviewWords}>{review.review}</p>}
+      </div>
     </div>
   );
 }

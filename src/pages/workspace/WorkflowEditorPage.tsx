@@ -2510,7 +2510,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         .map((variable) => ({
           // A lent one in a group of its own, headed by whose it is.
           groupKey: variable.lentFrom === null ? '__variables' : `__lent:${variable.lentFrom}`,
-          groupName: variable.lentFrom === null ? t('Workspace variables') : tf('Shared from {workspace}', { workspace: variable.lentFrom }),
+          groupName: variable.lentFrom === null ? t('Workspace variables') : tf('Shared from workspace {workspace}', { workspace: variable.lentFrom }),
           field: variable.name,
           expression: `variables.${variable.id}`,
           type: variable.type,

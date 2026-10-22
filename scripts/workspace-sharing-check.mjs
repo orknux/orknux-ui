@@ -69,7 +69,7 @@ try {
   await lent.waitFor({ timeout: 15_000 }).catch(() => {});
   record((await lent.count()) === 1, "the borrower's agent is offered the lent catalog");
   const said = (await lent.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  record(said.includes(`from zzLender ${stamp}`), `and says which workspace lends it (${said})`);
+  record(said.includes(`from workspace zzLender ${stamp}`), `and says it is a workspace that lends it, and which (${said})`);
 
   await lent.locator('input[type="checkbox"]').click();
   await page.getByRole('button', { name: /^Save/ }).first().click();
