@@ -64,6 +64,10 @@ await page
 const said = (await page.locator('[class*="statusConnected"], [class*="statusFailed"]').allTextContents()).join(' ');
 record(/connected; 1 model listed/i.test(said), `a keyless decision provider checks as connected (${JSON.stringify(said)})`);
 
+// Test checks the form as it stands and saves nothing (since c354779); Create is what saves it.
+await page.getByRole('button', { name: 'Create', exact: true }).click();
+await page.waitForURL(/\/models$/, { timeout: 20_000 }).catch(() => undefined);
+
 const { modelProviders } = await graphql(`query($w: ID!) { modelProviders(workspaceId: $w) { id name } }`, {
   w: WORKSPACE,
 });

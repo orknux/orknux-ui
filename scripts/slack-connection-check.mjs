@@ -160,7 +160,8 @@ try {
   record((await appToken.inputValue()) === '', 'empty, because nothing was given at creation');
 
   await appToken.fill('xapp-scratch-not-a-real-token');
-  await page.locator('button[type="submit"]').first().click();
+  // Save Changes, in the strip at the foot of the window - a plain button, not the form's submit.
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
   await page.waitForTimeout(2000);
 
   const after = await ask(`query ($id: ID!) { workspaceConnection(id: $id) { type appTokenSet secretSet url } }`, {

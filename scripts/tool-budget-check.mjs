@@ -84,15 +84,23 @@ if (TOOL === null) {
  * only the workspace tool would be measuring an agent nobody has.
  */
 const { builtInTools } = await graphql(`{ builtInTools { name governance } }`);
-const BY_NAME = builtInTools.filter((one) => one.governance === 'GRANT').map((one) => one.name);
+// GRANT_OPTIONAL - rate_session - is a by-name switch on by default like GRANT;
+// all it lacks is the unsafe-visibility gate in front of the switch.
+const BY_NAME = builtInTools
+  .filter((one) => one.governance === 'GRANT' || one.governance === 'GRANT_OPTIONAL')
+  .map((one) => one.name);
 // The reaching built-ins - fetching and searching - are switched by name like the
 // rest, only off until asked for, so they are not rows of somebody else's grant.
-const WITH_GRANT = builtInTools.filter((one) => one.governance !== 'GRANT' && one.governance !== 'GRANT_REACHING');
+const WITH_GRANT = builtInTools.filter(
+  (one) => one.governance !== 'GRANT' && one.governance !== 'GRANT_OPTIONAL' && one.governance !== 'GRANT_REACHING',
+);
 console.log(`built-ins: ${BY_NAME.length} by name, ${WITH_GRANT.length} with a wider grant`);
 
 await graphql(
   `mutation($id: ID!, $name: String!, $tools: [String!]) {
-     updateAgent(id: $id, input: { name: $name, tools: $tools, skillCatalogs: [], memoryCatalogs: [] }) { tools }
+     updateAgent(id: $id, input: {
+       name: $name, tools: $tools, skillCatalogs: [], memoryCatalogs: [], orknuxAccess: false, mayAskForTools: false
+     }) { tools }
    }`,
   { id: AGENT, name: made.createAgent.name, tools: [TOOL, ...BY_NAME] },
 );
@@ -148,7 +156,9 @@ record(notAlways.length === 0, `and a fresh agent reads Always on each (not: ${n
 /*
  * The ones that come with a wider grant are rows too, read-only: this agent
  * holds no catalogs and no access, so each reads Hide, cannot be pressed, and
- * says where the switch is.
+ * says where the switch is. "No access" is the fixture's doing: a new agent
+ * starts with Orknux access and May ask for more tools on, so the grant above
+ * switches both off.
  */
 const unfixed = [];
 for (const one of WITH_GRANT) {

@@ -284,6 +284,13 @@ try {
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/integrations`, { waitUntil: 'domcontentloaded' });
   if (await drawn(page, 'integrations (live)')) {
+    /*
+     * The headings are drawn, and hold still, before the rows under them have
+     * arrived - two seconds later on the development server - so `drawn` alone
+     * reads a list with nothing in it. Waited for by the row, as the canned half
+     * below does by its locator.
+     */
+    await page.locator('main a', { hasText: PLAIN }).first().waitFor({ timeout: 20_000 }).catch(() => undefined);
     const rows = await page.locator('main').innerText();
     record(rows.includes(LABELLED) && rows.includes(PLAIN), 'live: both scratch connections are listed');
     record(
@@ -294,6 +301,8 @@ try {
     await page.locator('button', { hasText: /^\+ Add Connection$/ }).click();
     await page.waitForSelector('#workspace-connection-name', { timeout: 20_000 });
     await page.waitForTimeout(800);
+    // The plugins' kinds arrive after the core ones; waited for, as the dialog half does.
+    if (live.pluginConnectionTypes.length > 0) await offers('#workspace-connection-type', live.pluginConnectionTypes[0].id);
     const offered = await options('#workspace-connection-type');
     const values = offered.map((one) => one.value);
     record(
