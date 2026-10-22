@@ -30,8 +30,15 @@ export function placeholdersIn(text: string, options: FieldOption[]): Placeholde
     if (field === null) {
       return { written, at, field, answeredBy: null, problem: t('not a placeholder: write {{field}}') };
     }
-    if (field.startsWith('variables.')) {
-      return { written, at, field, answeredBy: null, problem: t('a workspace variable is a reference, not a placeholder') };
+    /*
+     * A workspace variable, by id: answered when it is one the list offers - the
+     * workspace's own or a lent one, never a secret, which the save refuses too.
+     */
+    if (field.split('.')[0] === 'variables') {
+      const variable = options.find((option) => option.expression === field) ?? null;
+      return variable !== null
+        ? { written, at, field, answeredBy: variable, problem: null }
+        : { written, at, field, answeredBy: null, problem: t('not a variable this workspace can use') };
     }
     // A field, or a field inside one: `result.total` is answered by `result`.
     const answeredBy =
@@ -62,7 +69,10 @@ export function PlaceholderChips({ text, options }: { text: string; options: Fie
         one.problem === null ? (
           <span key={index} className={styles.chip} data-placeholder={one.field ?? ''} data-placeholder-ok="">
             <span className={styles.group}>{one.answeredBy?.groupName}</span>
-            <span className={styles.field}>{one.field}</span>
+            {/* A variable by its name, since the id it is written with says nothing. */}
+            <span className={styles.field}>
+              {one.field?.startsWith('variables.') ? one.answeredBy?.field : one.field}
+            </span>
           </span>
         ) : (
           <span

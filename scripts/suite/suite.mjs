@@ -1842,6 +1842,12 @@ export const TESTS = [
     /* Makes one chat of its own, answers its messages, and deletes it. */
   },
   {
+    name: 'placeholder-variables-check',
+    what: "a workspace variable is offered by name after {{ in a node's value, written as {{variables.<id>}}, saved, and filled in by a run - and a secret is not offered",
+    needs: ['workspace'],
+    /* Makes its own variables, trigger, function, action and workflow, and removes them. */
+  },
+  {
     name: 'run-old-version-check',
     what: 'a run of a workflow version replaced or edited since says so above its graph; one of the version on screen says nothing',
     needs: ['workspace'],
