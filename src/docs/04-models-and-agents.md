@@ -347,8 +347,8 @@ beyond the server itself.
 How an MCP server - or a connection - signs in is its **Auth** setting. *Bearer
 Token* sends `Authorization: Bearer <secret>`, *API Key* sends the secret as the
 `Authorization` header as it is, and *Basic* takes `username:password` typed
-plainly: Orknux encodes it to base64 and sends `Authorization: Basic …`, so
-nothing is to be encoded by hand.
+plainly: Orknux encodes it to base64 and sends `Authorization: Basic …`. One
+already encoded by hand is recognised and sent as it is.
 
 ## Keeping what they were
 
