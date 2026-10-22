@@ -1,6 +1,6 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useReadsSecrets } from './readsSecrets';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
@@ -239,7 +239,11 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
       setSelection((current) => {
         // Only one of these catalogs: one deleted elsewhere, or another
         // workspace's, falls back to the first rather than being asked for.
-        const wanted = keep ?? (current?.workspace === workspaceId ? current.id : null);
+        // Then the one the address names, so a reload or a link opens it.
+        const wanted =
+          keep ??
+          (current?.workspace === workspaceId ? current.id : null) ??
+          new URLSearchParams(window.location.search).get('catalog');
         const id = wanted !== null && held.some((one) => one.id === wanted) ? wanted : (held[0]?.id ?? null);
         return id === null ? null : { workspace: workspaceId, id };
       });
@@ -295,6 +299,37 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
   }, [loadCatalogs]);
 
   useEffect(() => {
+  /*
+   * The open catalog is in the address, `?catalog=<id>`, the way the skills and
+   * memory pages are opened by, so a reload or a link someone was sent opens the
+   * catalog it was taken on. Replaced rather than pushed: Back leaves the page
+   * instead of walking through every catalog looked at. An id this workspace has
+   * no catalog of is not refused - the first catalog opens and the address is
+   * corrected to it.
+   *
+   * Both directions in one effect, because they would otherwise race: a link to
+   * another catalog arriving while the page is open selects it, and only a
+   * change of selection the address did not ask for is written back.
+   */
+  const location = useLocation();
+  const navigate = useNavigate();
+  const asked = new URLSearchParams(location.search).get('catalog');
+  const seenAsked = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (catalogs === null) return;
+    if (asked !== seenAsked.current) {
+      seenAsked.current = asked;
+      if (asked !== null && asked !== selected && catalogs.some((one) => one.id === asked)) {
+        setSelected(asked);
+        return;
+      }
+    }
+    if (selected === null || selected === asked) return;
+    const next = new URLSearchParams(location.search);
+    next.set('catalog', selected);
+    navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
+  }, [asked, selected, catalogs, setSelected, navigate, location.pathname, location.search, location.hash]);
+
     void guard(() => loadVariables());
   }, [loadVariables]);
 
