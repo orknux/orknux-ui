@@ -357,7 +357,7 @@ export const TESTS = [
   },
   {
     name: 'editor-cut-check',
-    what: 'Ctrl+X and the toolbar Cut take selected nodes and their lines off the canvas, one Ctrl+Z puts them back, and Paste brings them back in the same or another workflow, as Copy does; Ctrl+X in a text box is the text box\'s',
+    what: 'Ctrl+X and the toolbar Cut take selected nodes and their lines off the canvas, one Ctrl+Z puts them back, and Paste brings them back in the same or another workflow, as Copy does; Ctrl+X in a text box is the text box\'s; picked joints come off their lines on Cut, alone or beside a node, and one Ctrl+Z puts them back',
     needs: [],
   },
   {
