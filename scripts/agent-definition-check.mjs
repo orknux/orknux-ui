@@ -152,7 +152,7 @@ record(nameHeld === agent.name, `it holds the agent it was opened on ("${nameHel
 
 // And the whole definition, which is what the node's own fields cannot show:
 // the model it answers on, its instructions, and the catalogs it was granted.
-const model = page.locator('dialog[open] select#agent-model');
+const model = page.locator('dialog[open] #agent-model');
 record((await model.count()) === 1, 'the model it answers on is in the panel');
 record(
   (await page.locator('dialog[open] #agent-system-prompt').count()) === 1,
@@ -160,7 +160,7 @@ record(
 );
 record(shown.text.includes('Tools'), 'its tool grants are in the panel');
 record(
-  (await model.count()) === 1 && (await model.inputValue()) === (agent.modelId ?? ''),
+  (await model.count()) === 1 && (await model.getAttribute('data-value')) === (agent.modelId ?? ''),
   'the model shown is the one the agent is saved with',
 );
 
@@ -213,7 +213,7 @@ await page.waitForSelector('#agent-name', { timeout: 20_000 });
 await page.waitForTimeout(600);
 
 record((await page.locator('input#agent-name').inputValue()) === agent.name, "the page holds the agent's name");
-record((await page.locator('select#agent-model').count()) === 1, 'and the model it answers on');
+record((await page.locator('#agent-model').count()) === 1, 'and the model it answers on');
 record((await page.locator('#agent-system-prompt').count()) === 1, 'and its system prompt');
 const pageText = await page.locator('main').innerText();
 record(pageText.includes('Memory Catalogs') && pageText.includes('Skill Catalogs') && pageText.includes('Tools'), 'and every grant');

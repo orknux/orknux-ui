@@ -29,7 +29,7 @@
  * agent itself. Both are put back at the end, and any server left behind by a
  * killed run is swept at the start.
  */
-import { BASE, WORKSPACE, WORKFLOW, open, record, shot, finish } from './suite/harness.mjs';
+import { pickModel, modelsOffered, BASE, WORKSPACE, WORKFLOW, open, record, shot, finish } from './suite/harness.mjs';
 
 /** Nobody's MCP server is called this. The sweep is by prefix. */
 const SCRATCH = 'jumpCheckServer_';
@@ -145,7 +145,7 @@ async function measure(root, where) {
 
   // ---- the model --------------------------------------------------------
 
-  await select.selectOption('');
+  await pickModel(page, select, '');
   await page.waitForTimeout(200);
   record(
     (await modelJump(root).count()) === 0,
@@ -158,20 +158,11 @@ async function measure(root, where) {
    * concludes the workspace has no model in it - which is a fetch in flight
    * reported as an empty workspace.
    */
-  await page
-    .waitForFunction(
-      (id) => (document.getElementById(id)?.options.length ?? 0) > 1,
-      await select.getAttribute('id'),
-      { timeout: 15_000 },
-    )
-    .catch(() => {});
-  const options = await select.locator('option').evaluateAll((all) =>
-    all.map((one) => ({ value: one.value, label: one.textContent.trim() })).filter((one) => one.value !== ''),
-  );
+  const options = (await modelsOffered(page, select)).filter((one) => one.value !== '');
   if (options.length === 0) {
     record(false, `${where}: this workspace has no model to point the picker at`);
   } else {
-    await select.selectOption(options[0].value);
+    await pickModel(page, select, options[0].value);
     await page.waitForTimeout(200);
     record((await modelJump(root).count()) === 1, `${where}: a way out beside Model, on "${options[0].label}"`);
     const href = await modelJump(root).getAttribute('href');

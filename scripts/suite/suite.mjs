@@ -2335,6 +2335,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'agent-model-picker-check',
+    what: "the agent's Model field names each model's provider, so two models of one name can be told apart",
+    needs: ['session'],
+    /*
+     * Builds a scratch workspace of its own - two providers, each serving a
+     * model of the same name, and an agent - and deletes it at the end. Nothing
+     * is called on either provider: the endpoints are `.invalid`.
+     */
+  },
+  {
     name: 'workspace-memory-check',
     what: "the workspace's default session memory, what it means per model, and the agent that inherits it",
     needs: ['workspace'],

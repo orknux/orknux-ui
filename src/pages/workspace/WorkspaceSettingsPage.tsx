@@ -68,6 +68,7 @@ import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
 import styles from './WorkspaceSettingsPage.module.css';
+import { ModelPicker } from '../../components/ModelPicker';
 import { t } from '../../i18n';
 
 export interface WorkspaceSettingsPageProps {
@@ -1547,20 +1548,14 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
                   {t('Worked Out Against')}
                 </label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <ModelPicker
                     id="workspace-memory-against"
                     className={`${styles.input} ${styles.select}`}
                     value={against}
-                    onChange={(event) => setAgainst(event.target.value)}
-                  >
-                    <option value="">{t('None — no figures shown')}</option>
-                    {answering.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
-                  <img src={chevronDown12Icon} alt="" width={12} height={12} />
+                    models={answering}
+                    onChange={(next) => setAgainst(next)}
+                    none={t('None — no figures shown')}
+                  />
                 </div>
               </div>
 
@@ -1961,24 +1956,16 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            {/* A small job is still a chat job: it asks a model for a title. */}
+            <ModelPicker
               id="companion-model"
               className={`${styles.input} ${styles.select}`}
               value={companion}
-              onChange={(event) => { touch('companion'); setCompanion(event.target.value); }}
+              models={answering}
+              onChange={(next) => { touch('companion'); setCompanion(next); }}
+              none={t('None — each chat’s own model names it')}
               disabled={workspace === null}
-            >
-              <option value="">{t('None — each chat’s own model names it')}</option>
-              {/* A small job is still a chat job: it asks a model for a title. */}
-              {models
-                .filter(answers)
-                .map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+            />
           </div>
 
           {/*
@@ -2047,23 +2034,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            <ModelPicker
               id="transcription-model"
               className={`${styles.input} ${styles.select}`}
               value={transcription}
-              onChange={(event) => { touch('transcription'); setTranscription(event.target.value); }}
+              models={models.filter((model) => model.kind === 'TRANSCRIPTION')}
+              onChange={(next) => { touch('transcription'); setTranscription(next); }}
+              none={t('None — the microphone is not offered')}
               disabled={workspace === null}
-            >
-              <option value="">{t('None — the microphone is not offered')}</option>
-              {models
-                .filter((model) => model.kind === 'TRANSCRIPTION')
-                .map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+            />
           </div>
           {/*
             The list being empty is not a footnote about the field, it is what
@@ -2097,23 +2076,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            <ModelPicker
               id="speech-model"
               className={`${styles.input} ${styles.select}`}
               value={speech}
-              onChange={(event) => { touch('speech'); setSpeech(event.target.value); }}
+              models={models.filter((model) => model.kind === 'SPEECH')}
+              onChange={(next) => { touch('speech'); setSpeech(next); }}
+              none={t('None — answers are not read aloud')}
               disabled={workspace === null}
-            >
-              <option value="">{t('None — answers are not read aloud')}</option>
-              {models
-                .filter((model) => model.kind === 'SPEECH')
-                .map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+            />
           </div>
           {modelCatalogue.failure === null ? (
             !modelCatalogue.loading &&
@@ -2148,23 +2119,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            <ModelPicker
               id="image-model"
               className={`${styles.input} ${styles.select}`}
               value={image}
-              onChange={(event) => { touch('image'); setImage(event.target.value); }}
+              models={models.filter((model) => model.kind === 'IMAGE')}
+              onChange={(next) => { touch('image'); setImage(next); }}
+              none={t('None — no agent is offered the drawing tool')}
               disabled={workspace === null}
-            >
-              <option value="">{t('None — no agent is offered the drawing tool')}</option>
-              {models
-                .filter((model) => model.kind === 'IMAGE')
-                .map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+            />
           </div>
           {modelCatalogue.failure === null ? (
             !modelCatalogue.loading &&
@@ -2531,24 +2494,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            <ModelPicker
               id="compaction-model"
               className={`${styles.input} ${styles.select}`}
               value={summariser}
+              models={answering}
+              onChange={(next) => { touch('compaction'); setSummariser(next); }}
+              none={t('The chat’s own model')}
               disabled={workspace === null}
-              onChange={(event) => {
-                touch('compaction');
-                setSummariser(event.target.value);
-              }}
-            >
-              <option value="">{t('The chat’s own model')}</option>
-              {answering.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+            />
           </div>
         </div>
 
@@ -2584,23 +2538,15 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            <ModelPicker
               id="quick-chat-model"
               className={`${styles.input} ${styles.select}`}
               value={quickChat}
-              onChange={(event) => { touch('quickChat'); setQuickChat(event.target.value); }}
+              models={models.filter((model) => model.kind === 'CHAT')}
+              onChange={(next) => { touch('quickChat'); setQuickChat(next); }}
+              none={t('None — the AI button is not offered')}
               disabled={workspace === null}
-            >
-              <option value="">{t('None — the AI button is not offered')}</option>
-              {models
-                .filter((model) => model.kind === 'CHAT')
-                .map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+            />
           </div>
 
           {/*

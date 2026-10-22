@@ -25,7 +25,6 @@ import {
 import { fetchBoxLabels } from '../api/boxes';
 import { fetchWorkspaceTools } from '../api/tools';
 import chevronDownIcon from '../assets/chevron-down.svg';
-import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { CatalogueNote, useCatalogue } from './Catalogue';
 import type { Catalogue } from './Catalogue';
 import { ResizeHandle, useDragSize, useRoom, useWindowHeight } from './DragSize';
@@ -34,6 +33,7 @@ import { IconField } from './IconField';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { segments } from './searchMatches';
 import own from './AgentForm.module.css';
+import { ModelPicker } from './ModelPicker';
 import { t, tf } from '../i18n';
 import { DiscardButton } from './SaveBar';
 import { useDirty } from './useDirty';
@@ -1864,21 +1864,16 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             </span>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            {/* An agent talks; the models that hear and read rather than answer are left out. */}
+            <ModelPicker
               id="agent-model"
               className={`${styles.input} ${styles.select}`}
               value={modelId}
-              onChange={(event) => setModelId(event.target.value)}
-            >
-              <option value="">{t('None — this agent cannot run')}</option>
-              {/* An agent talks; these hear and read rather than answer. */}
-              {models.filter(answers).map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.workspaceId === workspaceId ? model.name : tf('{model} · shared', { model: model.name })}
-                </option>
-              ))}
-            </select>
-            <img src={chevronDown12Icon} alt="" width={12} height={12} />
+              models={models.filter(answers)}
+              onChange={setModelId}
+              none={t('None — this agent cannot run')}
+              workspaceId={workspaceId}
+            />
           </div>
           {/*
             No empty state here on purpose: a workspace with no models says so

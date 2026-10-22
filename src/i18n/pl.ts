@@ -3164,4 +3164,6 @@ export const PL: Record<string, string> = {
   "Could not use the template.": "Nie udało się użyć szablonu.",
   "Could not publish the template.": "Nie udało się opublikować szablonu.",
   "Use": "Użyj",
+  "Filter models": "Filtruj modele",
+  "No model matches": "Żaden model nie pasuje",
 };

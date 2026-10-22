@@ -34,7 +34,7 @@
  * and the default itself are put back afterwards, including what an earlier
  * killed run left behind.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { pickModel, BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
 
 const PREFIX = 'zzWorkspaceMemory';
 
@@ -265,7 +265,7 @@ async function shown(selector) {
        * would now be four cards claiming one save.
        */
       saved: [...document.querySelectorAll('p')].some((node) => (node.textContent ?? '').trim() === 'Saved.'),
-      against: picker === null ? null : picker.value,
+      against: picker === null ? null : picker.getAttribute('data-value'),
       saveOff: save === undefined ? null : save.disabled,
     };
   }, selector);
@@ -433,7 +433,7 @@ if (drew) {
   /* ---- a share, worked out against one model at a time ---- */
 
   await drag(SLIDER, SHARE);
-  await page.selectOption(AGAINST, roomy.id);
+  await pickModel(page, AGAINST, roomy.id);
   await page.waitForTimeout(900);
 
   const generous = await shown(SLIDER);
@@ -456,7 +456,7 @@ if (drew) {
    * alone, on purpose, because refusing it here would refuse a default that is
    * right for every other model in the workspace.
    */
-  await page.selectOption(AGAINST, cramped.id);
+  await pickModel(page, AGAINST, cramped.id);
   await page.waitForTimeout(900);
 
   const tight = await shown(SLIDER);
@@ -496,7 +496,7 @@ if (drew) {
 
   /* ---- saved, and still there after a reload ---- */
 
-  await page.selectOption(AGAINST, roomy.id);
+  await pickModel(page, AGAINST, roomy.id);
   await page.waitForTimeout(900);
   await save();
 

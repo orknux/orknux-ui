@@ -382,3 +382,35 @@ export async function asPlainHttp(page) {
     Object.defineProperty(window, 'isSecureContext', { get: () => false, configurable: true });
   });
 }
+
+/**
+ * Picks a model in a model field - `ModelPicker`, the application's own list
+ * rather than a native select, so `selectOption` has nothing to act on. `field`
+ * is the trigger's selector or a locator for it; `value` is a model id, or ''
+ * for the field's None row.
+ */
+export async function pickModel(page, field, value) {
+  const trigger = typeof field === 'string' ? page.locator(field) : field;
+  const id = await trigger.getAttribute('id');
+  const menu = page.locator(`[data-model-menu="${id}"]`);
+  if ((await menu.count()) === 0) await trigger.click();
+  await menu.locator(`[role="option"][data-value="${value}"]`).click();
+}
+
+/**
+ * The rows a model field offers, as `{ value, label }`, the None row included
+ * with value ''. Opens the list, waits up to `within` for more than the None
+ * row (the models arrive after the field is drawn), and closes it again.
+ */
+export async function modelsOffered(page, field, within = 15_000) {
+  const trigger = typeof field === 'string' ? page.locator(field) : field;
+  const id = await trigger.getAttribute('id');
+  const menu = page.locator(`[data-model-menu="${id}"]`);
+  await trigger.click();
+  await menu.locator('[role="option"]').nth(1).waitFor({ timeout: within }).catch(() => undefined);
+  const rows = await menu.locator('[role="option"]').evaluateAll((all) =>
+    all.map((one) => ({ value: one.getAttribute('data-value') ?? '', label: (one.textContent ?? '').trim() })),
+  );
+  await page.keyboard.press('Escape');
+  return rows;
+}

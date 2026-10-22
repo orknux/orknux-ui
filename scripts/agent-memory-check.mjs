@@ -26,7 +26,7 @@
  * Everything it makes - two models and an agent - it removes again, including
  * what an earlier killed run left behind.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { pickModel, BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
 
 const PREFIX = 'zzMemoryShare';
 
@@ -167,7 +167,7 @@ async function drag(to) {
 }
 
 async function chooseModel(id) {
-  await page.selectOption('#agent-model', id);
+  await pickModel(page, '#agent-model', id);
   await page.waitForTimeout(900);
 }
 

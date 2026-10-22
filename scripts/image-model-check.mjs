@@ -30,7 +30,7 @@
  * do: a seeded installation has one chat model and nothing else, and a check
  * that left an image model behind would change what the next one sees.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { pickModel, modelsOffered, BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
 
 const PREFIX = 'zzImageModel';
 
@@ -123,11 +123,9 @@ await picker.waitFor({ state: 'visible', timeout: 20_000 });
 
 // The catalogue arrives after the page does, so the option is waited for rather
 // than read off a select that has only just been drawn.
-await picker.locator(`option:has-text("${PREFIX}-image")`).waitFor({ state: 'attached', timeout: 20_000 })
-  .catch(() => undefined);
-const offered = await picker.locator('option').allTextContents();
+const offered = (await modelsOffered(page, picker, 20_000)).map((one) => one.label);
 record(
-  offered.some((one) => one.includes(`${PREFIX}-image`)),
+  offered.some((one) => one.includes(model.name)),
   `the Text-to-image picker offers the image model (it offers ${JSON.stringify(offered)})`,
 );
 /*
@@ -140,7 +138,7 @@ record(
   `the picker offers nothing that is not an image model (${JSON.stringify(offered)})`,
 );
 
-await picker.selectOption(String(model.id));
+await pickModel(page, picker, String(model.id));
 // Chosen and then saved: this page holds a draft and writes it on one press at
 // the foot of it, rather than saving each picker as it is touched.
 await page.locator('button:has-text("Save Changes")').last().click();

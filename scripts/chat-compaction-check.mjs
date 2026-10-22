@@ -31,7 +31,7 @@
  *
  * It puts the workspace back to off, because that is what it found.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { pickModel, modelsOffered, BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -125,16 +125,16 @@ await page.screenshot({ path: shot('chat-compaction-refusal.png'), fullPage: fal
  * endpoint that takes a conversation cannot be found out to be the wrong one
  * until a compaction has already thrown the older half away.
  */
-const offered = await summariser.locator('option').allTextContents();
+const offered = (await modelsOffered(page, summariser)).map((one) => one.label);
 record(offered.length > 1, `the summariser picker offers something to choose (${JSON.stringify(offered)})`);
 record(
   /own model|chat|własn/i.test(offered[0] ?? ''),
   `and its first option is the chat's own model rather than a blank ("${offered[0]}")`,
 );
 
-const chosen = await summariser.locator('option').nth(1).getAttribute('value');
+const chosen = (await modelsOffered(page, summariser))[1]?.value;
 await length.fill('500');
-await summariser.selectOption(chosen);
+await pickModel(page, summariser, chosen);
 await save.click();
 await page.waitForTimeout(1200);
 

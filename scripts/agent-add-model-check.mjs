@@ -9,7 +9,7 @@
  *
  * Opens an agent this workspace already has and changes nothing.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { pickModel, modelsOffered, BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, context, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -53,17 +53,17 @@ const placed = async () => page.evaluate(() => {
   };
 });
 const model = page.locator('#agent-model');
-const before = await model.inputValue();
-const firstModel = await model.locator('option').nth(1).getAttribute('value').catch(() => null);
+const before = (await model.getAttribute('data-value')) ?? '';
+const firstModel = (await modelsOffered(page, model))[1]?.value ?? null;
 if (firstModel !== null) {
-  await model.selectOption(firstModel);
+  await pickModel(page, model, firstModel);
   const chosen = await placed();
   record(chosen.sameRow && chosen.leftOfJump === true && chosen.apart >= 14 && chosen.atEnd <= 2, `with a model chosen it sits on the label row, left of the model's link (${JSON.stringify(chosen)})`);
 }
-await model.selectOption('');
+await pickModel(page, model, '');
 const none = await placed();
 record(none.sameRow && none.leftOfJump === null && none.atEnd <= 2, `with none chosen it takes the row's end (${JSON.stringify(none)})`);
-await model.selectOption(before);
+await pickModel(page, model, before);
 
 // Followed: the Models page, with Add Model open, and the question taken off the address.
 const [opened] = await Promise.all([context.waitForEvent('page'), link.click()]);
