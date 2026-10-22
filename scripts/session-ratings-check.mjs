@@ -2,12 +2,14 @@
  * Admin > Reports > Ratings, and the chat's own way of sending one.
  *
  * The page opens on the usage report, with a picker over it naming the
- * report; picking Ratings draws its own switch - what offers rate_session -
- * and the reviews. A review sent from a chat's "+" menu, a score of 1 to 5 and
- * the person's words, is then a row there - with the chat reviews switch on
- * and the agents' one off, since the two are separate doors.
+ * report; picking Ratings draws the reviews and no switch. The two switches -
+ * what offers rate_session, and the chat's own menu - are in Admin Settings'
+ * Reports section, and the report says which of them is off, on one line that
+ * links to it. A review sent from a chat's "+" menu, a score of 1 to 5 and the
+ * person's words, is then a row there - with the chat reviews switch on and
+ * the agents' one off, since the two are separate doors.
  *
- * Leaves the switch, the limit and the picked report as it found them.
+ * Leaves the switches, the limit and the picked report as it found them.
  */
 import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
@@ -27,7 +29,7 @@ await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => { try { localStorage.removeItem('orknux.reports.kind'); } catch { /* none kept */ } });
 
 await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
-await drawn(page, 'Usage tracking');
+await drawn(page, 'Tokens by person');
 const picker = page.getByRole('combobox', { name: 'Report' });
 record((await picker.count()) === 1, 'a report picker sits at the top of Reports');
 const chosen = await chosenOption(page, picker);
@@ -45,11 +47,24 @@ const level = await page.evaluate(() => {
 record(level !== null && level.overlap > 0 && level.right, `the picker is on the title's line, after it (${JSON.stringify(level)})`);
 
 await chooseOption(page, picker, 'ratings');
-await drawn(page, 'Session ratings');
-record((await page.getByTestId('usage-tracking').count()) === 0, 'picking Ratings swaps the usage report out');
+await drawn(page, 'Reviews');
+record((await page.getByText('Tokens by person').count()) === 0, 'picking Ratings swaps the usage report out');
+record((await page.getByRole('switch').count()) === 0, 'the ratings report draws no switch of its own');
+
+/* ---- the two switches, in Admin Settings ---- */
+
+await page.goto(`${BASE}/admin/settings#reports`, { waitUntil: 'domcontentloaded' });
 const toggle = page.getByRole('switch', { name: /session ratings/i });
 const chatToggle = page.getByRole('switch', { name: /chat reviews/i });
-record((await toggle.count()) === 1 && (await chatToggle.count()) === 1, "the ratings report has a switch for the agents' tool and one for the chat menu");
+await chatToggle.waitFor({ timeout: 20_000 });
+record((await toggle.count()) === 1 && (await chatToggle.count()) === 1, "Admin Settings has a switch for the agents' tool and one for the chat menu");
+const sections = await page.evaluate(() => ['#session-ratings', '#chat-reviews', '#reviews-per-session'].map((selector) => {
+  const element = document.querySelector(selector);
+  if (element === null) return null;
+  const headings = [...document.querySelectorAll('h2[id]')].filter((one) => one.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING);
+  return headings.at(-1)?.id ?? null;
+}));
+record(sections.every((one) => one === 'reports'), `both switches and the reviews per conversation are in its Reports section (${sections.join()})`);
 
 // Chat reviews on, so a chat can send one; agents' ratings off, to show the two are apart.
 const switchTo = async (which, want) => {
@@ -61,9 +76,37 @@ const switchTo = async (which, want) => {
 await switchTo(chatToggle, true);
 await switchTo(toggle, false);
 await page.reload({ waitUntil: 'domcontentloaded' });
-await drawn(page, 'Session ratings');
+// Disabled until the server has said what it holds, and saying off until then.
+await page.locator('#chat-reviews [role="switch"]:not([disabled])').waitFor({ timeout: 20_000 });
+record((await page.getByRole('switch', { name: /chat reviews/i }).getAttribute('aria-checked')) === 'true', 'and the chat reviews switch says on after a reload');
+
+/* ---- the report says which is off, and links to it ---- */
+
+await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
+await drawn(page, 'Reviews');
 record((await chosenOption(page, page.getByRole('combobox', { name: 'Report' }))) === 'ratings', 'the picked report is remembered over a reload');
-record((await page.getByRole('switch', { name: /chat reviews/i }).getAttribute('aria-checked')) === 'true', 'and the chat reviews switch says on');
+const offLine = page.locator('[data-recording-off="ratings"]');
+await offLine.waitFor({ timeout: 10_000 }).catch(() => {});
+const said = ((await offLine.textContent().catch(() => '')) ?? '').trim();
+record((await offLine.count()) === 1 && /Session ratings are off/.test(said) && !/chat reviews/i.test(said), `with agents' ratings off, the report says which (${said})`);
+const href = await offLine.getByRole('link').getAttribute('href').catch(() => null);
+record(href === '/admin/settings#session-ratings', `and links to that switch (${href})`);
+await offLine.getByRole('link').click();
+await page.waitForURL(/\/admin\/settings#session-ratings$/, { timeout: 10_000 }).catch(() => {});
+const landed = page.locator('#session-ratings [role="switch"]');
+await landed.waitFor({ timeout: 20_000 }).catch(() => {});
+const view = await landed.evaluate((element) => {
+  const box = element.getBoundingClientRect();
+  return { top: Math.round(box.top), bottom: Math.round(box.bottom), height: window.innerHeight };
+}).catch(() => null);
+record(view !== null && view.top >= 0 && view.bottom <= view.height, `which lands on it, in view (${JSON.stringify(view)})`);
+
+// Both on, and the report says nothing about either.
+await graphql('mutation { setSessionRatings(enabled: true) { enabled } }');
+await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
+await drawn(page, 'Reviews');
+record((await page.locator('[data-recording-off]').count()) === 0, 'with both on, the report says nothing about them');
+await graphql('mutation { setSessionRatings(enabled: false) { enabled } }');
 
 /* ---- a chat with nothing answered offers no review ---- */
 
@@ -165,7 +208,7 @@ if (chat === undefined) {
   record(row?.score === 2 && row?.sessionId === chat.llmSessionId, `the review is kept with its score and session (${JSON.stringify(row)})`);
 
   await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
-  await drawn(page, 'Session ratings');
+  await drawn(page, 'Reviews');
   const drawnRow = page.getByTestId('rating-row').filter({ hasText: words });
   await drawnRow.first().waitFor({ timeout: 10_000 });
   const score = (await drawnRow.first().locator('[data-rating-score]').textContent())?.trim();

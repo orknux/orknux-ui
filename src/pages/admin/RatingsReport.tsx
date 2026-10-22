@@ -1,22 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { fetchChatReviewsEnabled, fetchSessionRatings, fetchSessionRatingsEnabled, setChatReviews, setSessionRatings } from '../../api/ratings';
+import { fetchChatReviewsEnabled, fetchSessionRatings, fetchSessionRatingsEnabled } from '../../api/ratings';
 import type { RatingOrder, SessionRating, SessionRatingReport } from '../../api/ratings';
-import type { PromptSource, UsageFilter, UsageTracking } from '../../api/usage';
+import type { PromptSource, UsageFilter } from '../../api/usage';
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
-import toggleOffIcon from '../../assets/toggle-off.svg';
-import toggleOnIcon from '../../assets/toggle-on.svg';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
-import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { SearchBox } from '../../components/SearchBox';
 import { useTableSort } from '../../components/tableSort';
 import { useSearch } from '../../components/useSearch';
 import { t } from '../../i18n';
 import styles from './AdminReportsPage.module.css';
+import { RecordingOff } from './RecordingOff';
 import { dayOf, formatDate, Picker, Tile } from './reportParts';
 
 const PER_PAGE = 25;
@@ -26,8 +24,9 @@ const PAGE_SIZES = [10, 25, 50];
  * The reviews people wrote about a conversation, which the agent sent on
  * through rate_session.
  *
- * The switch is what offers the tool: off, no agent is handed it, and what was
- * sent while it was on stays readable - the same shape as usage tracking.
+ * Two switches in Admin Settings feed it - the agents' tool, and the chat's own
+ * menu - and a line here says which is off. Off, nothing new arrives through
+ * that door; what was sent while it was on stays readable.
  */
 export function RatingsReport() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -40,8 +39,16 @@ export function RatingsReport() {
   const [size, setSize] = useState(PER_PAGE);
   const [report, setReport] = useState<SessionRatingReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [agentsOn, setAgentsOn] = useState<boolean | null>(null);
+  const [chatOn, setChatOn] = useState<boolean | null>(null);
 
   useEffect(() => {
+    fetchSessionRatingsEnabled()
+      .then((held) => setAgentsOn(held.enabled))
+      .catch(() => setAgentsOn(null));
+    fetchChatReviewsEnabled()
+      .then((held) => setChatOn(held.enabled))
+      .catch(() => setChatOn(null));
     fetchWorkspaces(0, 200)
       .then((held) => setWorkspaces(held.content))
       .catch(() => setWorkspaces([]));
@@ -73,27 +80,19 @@ export function RatingsReport() {
 
   return (
     <>
-      <section className={styles.card} data-testid="session-ratings-switch">
-        {/* Two doors, two switches: the agents' tool, and the chat's own menu. */}
-        <ReportSwitch
-          heading={t('Session ratings')}
-          hint={t('Lets agents send Orknux the review a person gives a conversation. Off offers no agent the tool; what was sent stays readable.')}
-          read={fetchSessionRatingsEnabled}
-          write={setSessionRatings}
-          on={t('Turn session ratings off')}
-          off={t('Turn session ratings on')}
-          onError={setError}
-        />
-        <ReportSwitch
-          heading={t('Chat reviews')}
-          hint={t("Offers Send a review in the chat's + menu, so a person can review a chat without asking its agent.")}
-          read={fetchChatReviewsEnabled}
-          write={setChatReviews}
-          on={t('Turn chat reviews off')}
-          off={t('Turn chat reviews on')}
-          onError={setError}
-        />
-      </section>
+      {agentsOn === false && chatOn === false ? (
+        <RecordingOff report="ratings" setting="session-ratings" action={t('Turn them on in Settings')}>
+          {t('Session ratings and chat reviews are off.')}
+        </RecordingOff>
+      ) : agentsOn === false ? (
+        <RecordingOff report="ratings" setting="session-ratings" action={t('Turn them on in Settings')}>
+          {t('Session ratings are off.')}
+        </RecordingOff>
+      ) : chatOn === false ? (
+        <RecordingOff report="ratings" setting="chat-reviews" action={t('Turn them on in Settings')}>
+          {t('Chat reviews are off.')}
+        </RecordingOff>
+      ) : null}
 
       <section className={styles.card}>
         <div className={styles.reportHead}>
@@ -219,61 +218,5 @@ function RatingRow({ rating }: { rating: SessionRating }) {
         {rating.workspaceName ?? t('Removed workspace')}
       </td>
     </tr>
-  );
-}
-
-/** One of the report's switches: its name, whether it is on, and the press that changes it. */
-function ReportSwitch({ heading, hint, read, write, on, off, onError }: {
-  heading: string;
-  hint: string;
-  read: () => Promise<UsageTracking>;
-  write: (enabled: boolean) => Promise<UsageTracking>;
-  /** What pressing it says while it is on, and while it is off. */
-  on: string;
-  off: string;
-  onError: (message: string) => void;
-}) {
-  const [held, setHeld] = useState<UsageTracking | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    read()
-      .then(setHeld)
-      .catch((cause: unknown) => onError(cause instanceof Error ? cause.message : t('Could not load the report.')));
-  }, [read, onError]);
-
-  async function flip() {
-    if (held === null) return;
-    setBusy(true);
-    try {
-      setHeld(await write(!held.enabled));
-    } catch (cause: unknown) {
-      onError(cause instanceof Error ? cause.message : t('Could not change the switch.'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className={styles.trackingRow}>
-      <div className={styles.headingRow}>
-        <h2 className={styles.sectionHeading}>{heading}</h2>
-        <FieldHint label={heading}>{hint}</FieldHint>
-      </div>
-      <span className={held?.enabled ? styles.stateOn : styles.stateOff}>
-        {held === null ? '' : held.enabled ? t('On') : t('Off')}
-      </span>
-      <button
-        type="button"
-        className={styles.toggle}
-        onClick={() => void flip()}
-        disabled={busy || held === null}
-        role="switch"
-        aria-checked={held?.enabled ?? false}
-        aria-label={held?.enabled ? on : off}
-      >
-        <img src={held?.enabled ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
-      </button>
-    </div>
   );
 }

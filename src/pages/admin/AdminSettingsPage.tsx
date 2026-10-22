@@ -109,6 +109,7 @@ import { AddressSection } from './AddressSection';
 import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
+import { ReportSwitches } from './ReportSwitches';
 import { t } from '../../i18n';
 
 export interface AdminSettingsPageProps {
@@ -814,33 +815,6 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Notes Per Conversation')}
                 />
                 <span className={styles.retentionUnit}>{t('notes')}</span>
-              </div>
-            </div>
-
-            {/* How many reviews one conversation sends through rate_session. */}
-            <div className={styles.setting}>
-              <div className={styles.settingText}>
-                <span className={styles.labelWithHint}>
-                  <p className={styles.settingLabel}>{t('Reviews Per Conversation')}</p>
-                  <FieldHint label={t('Reviews Per Conversation')}>
-                    {t('How many reviews an agent may send from one conversation; past that it is told the review was not sent. Between 1 and 100.')}
-                  </FieldHint>
-                </span>
-              </div>
-              <div className={styles.retention}>
-                <input
-                  id="reviews-per-session"
-                  name="reviewsPerSession"
-                  className={styles.input}
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={reviews}
-                  onChange={(event) => setReviews(event.target.value)}
-                  disabled={busy}
-                  aria-label={t('Reviews Per Conversation')}
-                />
-                <span className={styles.retentionUnit}>{t('reviews')}</span>
               </div>
             </div>
 
@@ -2500,6 +2474,41 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                 </>
               )}
             </p>
+
+            {/*
+              What Admin > Reports reads. The switches were on the reports
+              themselves; a report now says when one is off and links here.
+            */}
+            <h2 id="reports" className={styles.sectionHeading}>{t('Reports')}</h2>
+
+            <ReportSwitches onError={setError} />
+
+            {/* How many reviews one conversation sends through rate_session. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Reviews Per Conversation')}</p>
+                  <FieldHint label={t('Reviews Per Conversation')}>
+                    {t('How many reviews an agent may send from one conversation; past that it is told the review was not sent. Between 1 and 100.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="reviews-per-session"
+                  name="reviewsPerSession"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={reviews}
+                  onChange={(event) => setReviews(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Reviews Per Conversation')}
+                />
+                <span className={styles.retentionUnit}>{t('reviews')}</span>
+              </div>
+            </div>
 
             <h2 id="component-history" className={styles.sectionHeading}>{t('Component history')}</h2>
 
