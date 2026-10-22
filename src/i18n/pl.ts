@@ -3151,4 +3151,7 @@ export const PL: Record<string, string> = {
   "Shared by {workspace}": "Udostępnia {workspace}",
   "{model} · shared": "{model} · udostępniony",
   "from {workspace}": "z {workspace}",
+  "Move to…": "Przenieś do…",
+  "Move {name} to another catalog": "Przenieś {name} do innego katalogu",
+  "That could not be moved.": "Nie udało się tego przenieść.",
 };

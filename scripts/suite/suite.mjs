@@ -600,6 +600,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'move-to-catalog-check',
+    what: "a variable, a secret, a skill and a memory each move to another catalog from their row's own menu, and a refusal is shown in it",
+    needs: [],
+  },
+  {
     name: 'workspace-menu-check',
     what: 'the workspace menu in the top bar: every workspace, the current one ticked, a readable highlight, keys that move and close',
     needs: ['workspace'],

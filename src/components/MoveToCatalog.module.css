@@ -1,0 +1,109 @@
+/* A row's "move to another catalog", and the list it opens: the look of the workspace menu. */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.trigger:hover {
+  background: var(--color-surface-raised);
+  opacity: 1;
+}
+
+.panel {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  max-height: min(320px, 60vh);
+  padding: var(--space-6);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+  animation: menuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.panelHead {
+  padding: var(--space-4) var(--space-8) var(--space-6);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.list:focus {
+  outline: none;
+}
+
+.list[aria-busy='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-6);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.optionAt {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.optionName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.refused {
+  margin: var(--space-6) var(--space-2) 0;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}

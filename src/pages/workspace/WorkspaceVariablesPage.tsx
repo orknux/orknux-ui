@@ -22,6 +22,7 @@ import type { ScalarType, VariableTypeOffer } from '../../api/variables';
 import { fetchWorkspaceConnections, offersConnection } from '../../api/integrations';
 import type { WorkspaceConnection } from '../../api/integrations';
 import { ListValueField } from '../../components/ListValueField';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
 import { TypedValueField } from '../../components/TypedValueField';
 import typed from '../../components/TypedValueField.module.css';
 import checkIcon from '../../assets/check.svg';
@@ -508,6 +509,7 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 connections={connections}
                 workspaceId={workspaceId}
                 catalogId={current.id}
+                catalogs={catalogs ?? []}
                 variables={showing.filter((variable) => variable.kind === 'VALUE')}
                 order={order}
                 ascending={ascending}
@@ -525,6 +527,7 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
                 connections={connections}
                 workspaceId={workspaceId}
                 catalogId={current.id}
+                catalogs={catalogs ?? []}
                 variables={showing.filter((variable) => variable.kind === 'SECRET')}
                 order={order}
                 ascending={ascending}
@@ -566,6 +569,7 @@ function VariableTable({
   connections,
   workspaceId,
   catalogId,
+  catalogs,
   variables,
   order,
   ascending,
@@ -582,6 +586,8 @@ function VariableTable({
   connections: WorkspaceConnection[];
   workspaceId: string;
   catalogId: string;
+  /** The workspace's catalogs, which a row may be moved to. */
+  catalogs: VariableCatalog[];
   variables: Variable[];
   /**
    * Which column the list is in the order of, and which way round.
@@ -1154,6 +1160,14 @@ function VariableTable({
                     <img src={checkIcon} alt="" width={14} height={14} />
                   </button>
                 )}
+                <MoveToCatalog
+                  name={variable.name}
+                  catalogs={catalogs}
+                  currentCatalogId={catalogId}
+                  className={styles.iconButton}
+                  move={(target) => updateVariable(variable.id, { catalogId: target })}
+                  onMoved={() => onChanged()}
+                />
                 <button
                   type="button"
                   className={styles.iconButton}

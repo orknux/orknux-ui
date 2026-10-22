@@ -13,6 +13,7 @@ import {
   fetchWorkspaceSkills,
   renameSkillCatalog,
   setSkillEnabled,
+  updateSkill,
 } from '../../api/skills';
 import type { PluginSkillCatalog, Skill, SkillCatalog } from '../../api/skills';
 import { timeAgo } from '../../api/tools';
@@ -37,6 +38,7 @@ import {
 import { Loader } from '../../components/Loader';
 import { CatalogNameDialog } from '../../components/CatalogNameDialog';
 import { Markdown } from '../../components/Markdown';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
 import { NameDialog } from '../../components/NameDialog';
 import { UsedBy } from '../../components/UsedBy';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -531,6 +533,19 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                           name={skill.name}
                           className={styles.iconButton}
                           canPublish={session.admin}
+                        />
+                        <MoveToCatalog
+                          name={skill.name}
+                          catalogs={catalogs ?? []}
+                          currentCatalogId={skill.catalogId}
+                          className={styles.iconButton}
+                          move={(target) => updateSkill(skill.id, { catalogId: target })}
+                          onMoved={() =>
+                            guard(async () => {
+                              await loadSkills();
+                              await loadCatalogs(selected ?? undefined);
+                            })
+                          }
                         />
                         <Link
                           className={styles.iconButton}

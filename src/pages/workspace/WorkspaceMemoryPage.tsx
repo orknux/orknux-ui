@@ -9,6 +9,7 @@ import {
   fetchMemoryAuthors,
   fetchMemoryCatalogs,
   memoryDate,
+  moveMemory,
   renameMemoryCatalog,
 } from '../../api/memory';
 import type { Memory, MemoryCatalog, MemorySort } from '../../api/memory';
@@ -27,6 +28,7 @@ import slidersIcon from '../../assets/sliders-horizontal.svg';
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
 import { UsedBy } from '../../components/UsedBy';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
@@ -387,6 +389,19 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                           className={styles.iconButton}
                           run={() => duplicateMemory(memory.id).then((made) => made.title)}
                           onDone={() => void loadMemories()}
+                        />
+                        <MoveToCatalog
+                          name={memory.title}
+                          catalogs={catalogs ?? []}
+                          currentCatalogId={memory.catalogId}
+                          className={styles.iconButton}
+                          move={(target) => moveMemory(memory.id, memory.title, memory.content, target)}
+                          onMoved={() =>
+                            guard(async () => {
+                              await loadMemories();
+                              await loadCatalogs(selected ?? undefined);
+                            })
+                          }
                         />
                         <Link
                           className={styles.iconButton}
