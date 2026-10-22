@@ -781,6 +781,7 @@ export const PL: Record<string, string> = {
   "Headers": "Nagłówki",
   "Header name": "Nazwa nagłówka",
   "Remove header": "Usuń nagłówek",
+  "Remove the reference": "Usuń odwołanie",
   "Body": "Treść",
   "Payload": "Ładunek",
   "Webhook": "Webhook",

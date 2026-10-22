@@ -7896,6 +7896,17 @@ Change the keystroke in Preferences.`}
                                       ),
                                     })
                                   }
+                                  // Taken off: a value, and nothing written in it yet.
+                                  onClear={() =>
+                                    setDraft({
+                                      ...draft,
+                                      mappings: draft.mappings.map((held, at) =>
+                                        at === index
+                                          ? { ...held, mode: 'VALUE', expression: '', sourceNodeKey: null }
+                                          : held,
+                                      ),
+                                    })
+                                  }
                                 />
                               ) : slackSend === null || mapping.name !== TARGET_PARAMETER ? (
                                 /*
