@@ -352,7 +352,7 @@ export const TESTS = [
   },
   {
     name: 'remove-dialog-wording-check',
-    what: 'removing a saved file or a picture asks in its own words, not a workflow's; only reads the dialog and cancels it',
+    what: "removing a saved file or a picture asks in its own words, not a workflow's; only reads the dialog and cancels it",
     needs: [],
   },
   {
