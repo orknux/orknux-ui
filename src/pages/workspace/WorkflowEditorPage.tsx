@@ -4467,6 +4467,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     setSaved(false);
   }
 
+  /**
    * The panel edits the node as it is typed in, so the canvas keeps up: the
    * name changes as you type it, and picking a trigger or an action takes
    * effect where it can be seen. There is no button to press afterwards: what

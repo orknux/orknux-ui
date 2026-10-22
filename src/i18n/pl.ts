@@ -3192,7 +3192,6 @@ export const PL: Record<string, string> = {
   "No model matches": "Żaden model nie pasuje",
   "Deployment Name": "Nazwa wdrożenia",
   "Region": "Region",
-};
   // A Danger Zone's Remove asks first: a provider, a model, a trusted authority.
   "Remove provider": "Usuń dostawcę",
   "Remove model": "Usuń model",
@@ -3202,3 +3201,4 @@ export const PL: Record<string, string> = {
   "Stop trusting this authority": "Przestań ufać temu urzędowi",
   "Goes with it:": "Odchodzi razem z nim:",
   "No model is reached through it.": "Żaden model nie jest przez niego dostępny.",
+};
