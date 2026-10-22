@@ -3117,6 +3117,8 @@ export const PL: Record<string, string> = {
   "Report": "Raport",
   "Usage": "Użycie",
   "Ratings": "Oceny",
+  "Errors per day": "Błędy dziennie",
+  "Errors per day, up to {peak}": "Błędy dziennie, najwięcej {peak}",
   "Session ratings": "Oceny sesji",
   "Turn session ratings off": "Wyłącz oceny sesji",
   "Turn session ratings on": "Włącz oceny sesji",

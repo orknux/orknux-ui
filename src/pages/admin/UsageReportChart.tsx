@@ -246,7 +246,7 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
 const EMPTY_DAY: UsageDay = { day: '', inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, cost: null, partlyUnpriced: false, sessions: 0, calls: 0 };
 
 /** A bar from its foot up, rounded only at its free end - the top of the stack. */
-function barPath(x: number, top: number, width: number, height: number, roundTop: boolean): string {
+export function barPath(x: number, top: number, width: number, height: number, roundTop: boolean): string {
   const r = roundTop ? Math.min(2, width / 2, height) : 0;
   const bottom = top + height;
   return [
@@ -261,7 +261,7 @@ function barPath(x: number, top: number, width: number, height: number, roundTop
 }
 
 /** The axis's top: the peak rounded up to a step of 1, 2, 2.5 or 5 at its scale, so the gridlines read as round numbers. */
-function niceCeiling(peak: number): number {
+export function niceCeiling(peak: number): number {
   if (peak <= 0) return 0;
   const rough = peak / TICKS;
   const scale = 10 ** Math.floor(Math.log10(rough));
@@ -270,7 +270,7 @@ function niceCeiling(peak: number): number {
 }
 
 /** "2026-10-03" as "Oct 3", or "Sat, Oct 3" in the tooltip; the day is the server's, so no zone moves it. */
-function dayLabel(day: string, long = false): string {
+export function dayLabel(day: string, long = false): string {
   const [year, month, date] = day.split('-').map(Number);
   const at = new Date(Date.UTC(year, month - 1, date));
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', ...(long ? { weekday: 'short' } : {}) }).format(at);

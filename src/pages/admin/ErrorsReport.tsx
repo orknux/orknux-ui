@@ -12,6 +12,7 @@ import { SearchBox } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
 import { t } from '../../i18n';
 import styles from './AdminReportsPage.module.css';
+import { ErrorsChart } from './ErrorsChart';
 import { dayOf, formatDate, Picker, Tile } from './reportParts';
 
 const PER_PAGE = 25;
@@ -107,6 +108,8 @@ export function ErrorsReport() {
           <Tile label={t('Quick chat')} value={String(countOf('MODEL'))}>{t('its model could not answer')}</Tile>
         </div>
       )}
+
+      {report !== null && report.days.length > 0 && <ErrorsChart series={report.days} />}
 
       {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
       {report === null && error === null && <p className={styles.notice}><Loader /></p>}

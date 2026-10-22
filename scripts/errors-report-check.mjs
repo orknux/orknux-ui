@@ -22,6 +22,13 @@ try {
   const said = (await tiles.textContent()) ?? '';
   record(/Workflow runs/.test(said) && /Agents/.test(said) && /Quick chat/.test(said), `tiles count each source (${said.replace(/\s+/g, ' ').slice(0, 120)})`);
 
+  // The chart: a bar slot for every day of the period, with a legend for the three sources.
+  const chart = page.getByTestId('errors-chart');
+  await chart.waitFor({ timeout: 15_000 }).catch(() => undefined);
+  const slots = await chart.locator('[data-day]').count();
+  const legend = await chart.locator('[data-legend]').count();
+  record(slots === 30 && legend === 3, `a chart draws the last 30 days, a slot each, with the three sources in its legend (${slots} days, ${legend} in the legend)`);
+
   const { errorReport } = await graphql('query { errorReport(filter: { from: "2000-01-01" }, size: 5) { total rows { source } } }');
   if (errorReport.total === 0) {
     record(true, 'this installation has no recorded failures; the rows half is skipped');
@@ -29,6 +36,8 @@ try {
     await chooseOption(page, page.getByRole('combobox', { name: 'Period' }), '365');
     const rows = page.getByTestId('error-row');
     await rows.first().waitFor({ timeout: 15_000 });
+    const bars = await page.getByTestId('errors-chart').locator('path[data-segment]').count();
+    record(bars > 0, `and a failed day is drawn as a bar (${bars} segments)`);
     record((await rows.count()) > 0, `failures are listed (${await rows.count()} on the page)`);
     const message = ((await rows.first().locator('[data-error-message]').textContent()) ?? '').trim();
     record(message !== '', `a row says what the failure said ("${message.slice(0, 60)}")`);

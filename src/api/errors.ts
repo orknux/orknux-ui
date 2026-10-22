@@ -26,8 +26,18 @@ export interface ErrorSubject {
   last: string;
 }
 
+/** One day of the chart: how many of each source failed. */
+export interface ErrorDay {
+  day: string;
+  runs: number;
+  agents: number;
+  models: number;
+}
+
 export interface ErrorReport {
   total: number;
+  /** Every day of the period, oldest first, quiet days included. */
+  days: ErrorDay[];
   counts: { source: ErrorSource; count: number }[];
   /** What failed most often, at most five. */
   often: ErrorSubject[];
@@ -47,6 +57,7 @@ export async function fetchErrorReport(
          total
          counts { source count }
          often { source subject count last }
+         days { day runs agents models }
          rows { id at workspaceId workspaceName source subject executionId sessionId message }
        }
      }`,
