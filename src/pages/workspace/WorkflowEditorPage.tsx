@@ -70,6 +70,7 @@ import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import { fetchImageSizePresets } from '../../api/imagePresets';
 import type { ImageSizePreset } from '../../api/imagePresets';
+import { useHoverHint } from '../../components/HoverHint';
 import { ImageSizePresetsDialog } from '../../components/ImageSizePresetsDialog';
 import type { ObjectPropertyInput, WorkflowObject } from '../../api/objects';
 import { INLINE_OBJECT, ObjectForm, asProperty, asRow, kindsOf, typeOf, typeOptionsOf } from '../../components/ObjectForm';
@@ -998,6 +999,8 @@ function CarriedEdge({
    * A moved point takes its line with it.
    *
    * The label used to slide away on its own, leaving the line where it was -
+  // The line's and its points' hints, drawn by the application rather than as a native title.
+  const { hintFor, hint } = useHoverHint();
    * so on a graph with more than a couple of them, nothing said which label
    * belonged to which line, which is the one thing a label has to say. The
    * line is now drawn through wherever the points have been put.
@@ -1190,15 +1193,15 @@ function CarriedEdge({
           // With the Joint tool on, one click is enough; double-click works either way.
           onClick={joints.on ? addWhereClicked : undefined}
           onDoubleClick={addWhereClicked}
-        >
-          <title>{joints.on ? t('Click to put a joint here') : t('Double-click to add a point to bend through')}</title>
-        </path>
+          {...hintFor(joints.on ? t('Click to put a joint here') : t('Double-click to add a point to bend through'))}
+        />
       )}
       {setPoints !== undefined && (
         <EdgeLabelRenderer>
           {/*
            * The points a line can be taken hold of by.
            *
+      {hint}
            * Lines are routed for you, and where two nodes sit awkwardly the
            * line between them runs through whatever is in the way. These are
            * the handles: small and quiet on a line still running where it was
@@ -1232,11 +1235,11 @@ function CarriedEdge({
                 data-edge={id}
                 data-point={at}
                 aria-label={pointName(at)}
-                title={
+                {...hintFor(
                   points.length === 0
                     ? t('Drag to bend the line; double-click the line to add a point')
-                    : t('Drag to move this point; click it and press Delete, or double-click it, to take it off')
-                }
+                    : t('Drag to move this point; click it and press Delete, or double-click it, to take it off'),
+                )}
                 onPointerDown={onPointerDown(at)}
                 onPointerMove={onPointerMove}
                 onPointerUp={endDrag}

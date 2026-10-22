@@ -346,6 +346,16 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'editor-hover-hint-check',
+    what: "a line's and a joint's hint in the editor is the application's own box beside the pointer, not a native title",
+    needs: [],
+  },
+  {
+    name: 'editor-cut-check',
+    what: 'Ctrl+X and the toolbar Cut take selected nodes and their lines off the canvas, one Ctrl+Z puts them back, and Paste brings them back in the same or another workflow, as Copy does; Ctrl+X in a text box is the text box\'s',
+    needs: [],
+  },
+  {
     name: 'workflow-node-check',
     what: 'a Workflow node is offered, picks another workflow, takes parameters of its own, and its run links to the run it called and back',
     needs: [],
