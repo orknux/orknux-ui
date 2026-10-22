@@ -590,6 +590,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'mcp-draft-check-check',
+    what: 'Test in the Add MCP Server dialog: a server is asked before it is added, and asking adds nothing',
+    needs: ['workspace'],
+  },
+  {
     name: 'mcp-check-button-check',
     what: 'the Check button on an MCP server, and whether its reason names what failed',
     needs: ['workspace'],

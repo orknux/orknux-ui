@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { authTypeLabel, secretPlaceholder, createMcpServer } from '../api/integrations';
-import type { AuthType, HttpHeader, McpServer } from '../api/integrations';
+import { authTypeLabel, secretPlaceholder, checkMcpServerDraft, createMcpServer } from '../api/integrations';
+import type { AuthType, HttpHeader, McpServer, McpServerCheck } from '../api/integrations';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
 import { HeaderRowsEditor } from './HeaderRowsEditor';
@@ -55,6 +55,8 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
   }, [open]);
 
   const complete = name.trim() !== '' && address.trim() !== '' && !secret.unchosen;
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState<McpServerCheck | null>(null);
 
   /**
    * The secrets this workspace keeps, and only those: a VALUE is read with the
@@ -78,25 +80,43 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
     setSubmitting(true);
     setError(null);
     try {
-      const created = await createMcpServer({
-        workspaceId,
-        name: name.trim(),
-        address: address.trim(),
-        authType,
-        // One of the two, never both: sending the pair is refused rather than
-        // resolved by precedence, and sending neither adds a server with no
-        // credential, which is a thing somebody may perfectly well want.
-        ...(sending === null
-          ? {}
-          : 'variable' in sending
-            ? { secretVariableId: sending.variable }
-            : { secret: sending.value.trim() || undefined }),
-        headers: headers.filter((header) => header.name.trim() !== ''),
-      });
+      const created = await createMcpServer(asked(sending));
       onCreated(created);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not add the server.'));
       setSubmitting(false);
+    }
+  }
+
+  /** What the form holds, as the server takes it - for adding the server and for testing it first. */
+  function asked(sending: typeof secret.sending) {
+    return {
+      workspaceId,
+      name: name.trim(),
+      address: address.trim(),
+      authType,
+      // One of the two, never both: sending the pair is refused rather than
+      // resolved by precedence, and sending neither adds a server with no
+      // credential, which is a thing somebody may perfectly well want.
+      ...(sending === null
+        ? {}
+        : 'variable' in sending
+          ? { secretVariableId: sending.variable }
+          : { secret: sending.value.trim() || undefined }),
+      headers: headers.filter((header) => header.name.trim() !== ''),
+    };
+  }
+
+  /** The same check the saved server's page makes, on what is typed here; nothing is saved. */
+  async function handleTest() {
+    setTesting(true);
+    setTested(null);
+    try {
+      setTested(await checkMcpServerDraft(asked(secret.sending)));
+    } catch (cause) {
+      setTested({ reachable: false, detail: cause instanceof Error ? cause.message : t('The check could not be made.'), tools: null });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -195,6 +215,21 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
             {error}
           </p>
         )}
+
+        {/* Test beside its result, on a line of its own below the form, as on the saved server's page. */}
+        <p className={styles.dialogMessage} data-testid="mcp-draft-check">
+          <button
+            type="button"
+            className={styles.ghost}
+            onClick={() => void handleTest()}
+            disabled={address.trim() === '' || testing || submitting}
+          >
+            {testing ? t('Testing…') : t('Test')}
+          </button>{' '}
+          <span data-check-reachable={tested === null ? undefined : String(tested.reachable)}>
+            {tested === null ? t('Ask the server whether it answers, before adding it.') : tested.detail}
+          </span>
+        </p>
 
         <div className={styles.actions}>
           <button type="button" className={styles.ghost} onClick={onClose} disabled={submitting}>

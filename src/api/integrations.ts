@@ -759,6 +759,18 @@ export async function fetchMcpServer(id: string): Promise<McpServer | null> {
   return data.mcpServer;
 }
 
+const CHECK_MCP_SERVER_DRAFT_MUTATION = `
+  mutation CheckMcpServerDraft($input: CreateMcpServerInput!) {
+    checkMcpServerDraft(input: $input) { reachable detail tools }
+  }
+`;
+
+/** The add dialog's Test: the same check on what the form holds, saving nothing. */
+export async function checkMcpServerDraft(input: Parameters<typeof createMcpServer>[0]): Promise<McpServerCheck> {
+  const data = await graphql<{ checkMcpServerDraft: McpServerCheck }>(CHECK_MCP_SERVER_DRAFT_MUTATION, { input });
+  return data.checkMcpServerDraft;
+}
+
 export async function createMcpServer(input: {
   workspaceId: string;
   name: string;
