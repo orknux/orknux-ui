@@ -2,6 +2,7 @@ import { costAmount, tokenCount } from '../../api/chat';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
 import { zoned } from '../../session/timeZone';
 import styles from './AdminReportsPage.module.css';
+import { Select } from '../../components/Select';
 
 /** What every report on Admin > Reports draws alike: its pickers, its tiles, its dates. */
 
@@ -15,9 +16,9 @@ export function Picker({ label, value, onChange, children }: {
     <label className={styles.picker}>
       <span className={styles.pickerLabel}>{label}</span>
       <span className={styles.pickerBox}>
-        <select className={styles.pickerSelect} value={value} onChange={(event) => onChange(event.target.value)}>
+        <Select className={styles.pickerSelect} value={value} onChange={(picked) => onChange(picked)} chevron={false}>
           {children}
-        </select>
+        </Select>
         <img className={styles.pickerChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
       </span>
     </label>
