@@ -1,13 +1,15 @@
 /**
- * Admin > Reports: the usage tracking switch, and the report under it.
+ * Admin > Reports > Usage, and the switch that decides what it reads.
  *
- * The switch is the whole of what is recorded, so what is asserted about it is
- * that it says what it is and survives a reload - and that, off, the page says
- * since when, because a report that stops at a date has to say which date. The
- * report is read as drawn: the four totals, the people table with its columns
- * named, and a person opened to their sessions, with the share bar beside each.
+ * The switch is the whole of what is recorded, and it lives in Admin Settings'
+ * Reports section with the installation's other switches; the report draws no
+ * switch of its own. What is asserted about it is that it says what the server
+ * has and survives a reload - and that, off, the report says so on one line with
+ * a link that lands on the switch, and on says nothing. The report is read as
+ * drawn: the four totals, the people table with its columns named, and a person
+ * opened to their sessions, with the share bar beside each.
  *
- * Leaves the switch as it found it.
+ * Leaves the switch as it found it, however the run ends.
  */
 import { BASE, open, drawn, record, finish } from './suite/harness.mjs';
 
@@ -15,34 +17,87 @@ const { browser, page, graphql } = await open({ viewport: { width: 1500, height:
 
 const { usageTracking: before } = await graphql('query { usageTracking { enabled } }');
 
+try {
 await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'Workspaces');
 const link = page.getByRole('link', { name: 'Reports' });
 record((await link.count()) > 0, 'the admin menu offers Reports');
+await page.evaluate(() => { try { localStorage.removeItem('orknux.reports.kind'); } catch { /* none kept */ } });
 await link.first().click();
-await drawn(page, 'Usage tracking');
+await drawn(page, 'Tokens by person');
+record((await page.getByRole('switch').count()) === 0, 'the usage report draws no switch of its own');
 
+/* ---- the switch, in Admin Settings ---- */
+
+await page.goto(`${BASE}/admin/settings#reports`, { waitUntil: 'domcontentloaded' });
 const toggle = page.getByRole('switch', { name: /usage tracking/i });
+// Disabled until the server has said what it holds, and saying off until then.
+const answered = () => page.locator('#usage-tracking [role="switch"]:not([disabled])').waitFor({ timeout: 20_000 });
+await answered();
+const inReports = await toggle.evaluate((element) => {
+  // The section a row is in is the last h2 above it.
+  const headings = [...document.querySelectorAll('h2[id]')].filter((one) => one.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING);
+  return headings.at(-1)?.id ?? null;
+});
+record(inReports === 'reports', `Admin Settings holds the usage tracking switch, in its Reports section (${inReports})`);
 const was = (await toggle.getAttribute('aria-checked')) === 'true';
 record(was === before.enabled, `the switch says what the server has (${was})`);
 
-await toggle.click();
-await page.waitForFunction((expected) => document.querySelector('[role="switch"]')?.getAttribute('aria-checked') === String(expected), !was);
-await page.reload({ waitUntil: 'domcontentloaded' });
-await drawn(page, 'Usage tracking');
-const after = (await page.getByRole('switch', { name: /usage tracking/i }).getAttribute('aria-checked')) === 'true';
-record(after === !was, 'pressing it changes it, and a reload still says so');
-
-const offLine = page.locator('[data-tracking-off-since]');
-if (!after) {
-  record(/Off since/.test((await offLine.textContent()) ?? ''), 'off, the page says since when');
-} else {
-  record((await offLine.count()) === 0, 'on, there is no off-since line');
+const settle = async (want) => {
+  await page.waitForFunction(
+    (expected) => document.querySelector('#usage-tracking [role="switch"]')?.getAttribute('aria-checked') === String(expected),
+    want,
+    { timeout: 10_000 },
+  );
+};
+// Off first, so the report's line can be looked for; pressed rather than written, so the press is what is tested.
+if (was) {
+  await toggle.click();
+  await settle(false);
 }
+await page.reload({ waitUntil: 'domcontentloaded' });
+await answered();
+await settle(false);
+record(true, 'pressing it changes it, and a reload still says so');
 
-// Back as it was.
-await page.getByRole('switch', { name: /usage tracking/i }).click();
-await page.waitForFunction((expected) => document.querySelector('[role="switch"]')?.getAttribute('aria-checked') === String(expected), was);
+/* ---- the report, while it is off ---- */
+
+await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
+await drawn(page, 'Tokens by person');
+const offLine = page.locator('[data-recording-off="usage"]');
+await offLine.waitFor({ timeout: 10_000 }).catch(() => {});
+const said = ((await offLine.textContent().catch(() => '')) ?? '').trim();
+record((await offLine.count()) === 1 && /Usage tracking is off/.test(said), `off, the report says so (${said})`);
+const lines = await offLine.evaluate((element) => {
+  const height = element.getBoundingClientRect().height;
+  const line = Number.parseFloat(getComputedStyle(element).lineHeight) || 20;
+  return Math.round(height / line);
+}).catch(() => null);
+record(lines === 1, `on one line (${lines})`);
+const settingsLink = offLine.getByRole('link');
+const href = await settingsLink.getAttribute('href').catch(() => null);
+record(href === '/admin/settings#usage-tracking', `with a link to the switch (${href})`);
+await settingsLink.click();
+await page.waitForURL(/\/admin\/settings#usage-tracking$/, { timeout: 10_000 }).catch(() => {});
+const landed = page.locator('#usage-tracking [role="switch"]');
+await landed.waitFor({ timeout: 20_000 }).catch(() => {});
+const view = await landed.evaluate((element) => {
+  const box = element.getBoundingClientRect();
+  return { top: Math.round(box.top), bottom: Math.round(box.bottom), height: window.innerHeight };
+}).catch(() => null);
+record(view !== null && view.top >= 0 && view.bottom <= view.height, `which lands on it, in view (${JSON.stringify(view)})`);
+
+/* ---- and while it is on ---- */
+
+await landed.click();
+await settle(true);
+await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
+await drawn(page, 'Tokens by person');
+record((await page.locator('[data-recording-off]').count()) === 0, 'on, the report says nothing about it');
+} finally {
+  // Back as it was.
+  await graphql(`mutation { setUsageTracking(enabled: ${before.enabled}) { enabled } }`).catch(() => undefined);
+}
 const { usageTracking: restored } = await graphql('query { usageTracking { enabled } }');
 record(restored.enabled === before.enabled, 'and it is left as it was found');
 

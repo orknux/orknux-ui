@@ -8,7 +8,6 @@ import {
   fetchUsageReport,
   fetchUsageSeries,
   fetchUsageTracking,
-  setUsageTracking,
   shortTokens,
   usageReportCsv,
 } from '../../api/usage';
@@ -26,13 +25,10 @@ import type {
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
 import chevronDownIcon from '../../assets/chevron-down.svg';
-import toggleOffIcon from '../../assets/toggle-off.svg';
-import toggleOnIcon from '../../assets/toggle-on.svg';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { AppShell } from '../../components/AppShell';
 import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
-import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { SearchBox } from '../../components/SearchBox';
 import { useTableSort } from '../../components/tableSort';
@@ -43,6 +39,7 @@ import { shellUser } from '../../session/user';
 import styles from './AdminReportsPage.module.css';
 import { ErrorsReport } from './ErrorsReport';
 import { RatingsReport } from './RatingsReport';
+import { RecordingOff } from './RecordingOff';
 import { costOf, dayOf, formatDate, Picker, share, Tile } from './reportParts';
 import { UsageReportChart } from './UsageReportChart';
 
@@ -104,13 +101,13 @@ const REPORT_KEY = 'orknux.reports.kind';
 /**
  * Tokens by the person who prompted them.
  *
- * The switch at the top is the whole of what is recorded - off writes nothing
- * at all, and is where a fresh installation starts. The report under it reads
- * whatever was recorded while it was on, so switching off does not empty it.
+ * Usage tracking is the whole of what is recorded - off writes nothing at all,
+ * and is where a fresh installation starts. Its switch is in Admin Settings;
+ * here a line says when it is off. The report reads whatever was recorded while
+ * it was on, so switching off does not empty it.
  */
 function UsageReportView() {
   const [tracking, setTracking] = useState<UsageTracking | null>(null);
-  const [busy, setBusy] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [days, setDays] = useState(30);
   const [workspaceId, setWorkspaceId] = useState('');
@@ -196,49 +193,11 @@ function UsageReportView() {
     }
   }
 
-  async function flip() {
-    if (tracking === null) return;
-    setBusy(true);
-    try {
-      setTracking(await setUsageTracking(!tracking.enabled));
-    } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : t('Could not change usage tracking.'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <>
-      <section className={styles.card} data-testid="usage-tracking">
-        <div className={styles.trackingRow}>
-          <div className={styles.headingRow}>
-            <h2 className={styles.sectionHeading}>{t('Usage tracking')}</h2>
-            <FieldHint label={t('Usage tracking')}>
-              {t('Records who prompted every model call. Off records nothing at all; what was recorded stays readable.')}
-            </FieldHint>
-          </div>
-          <span className={tracking?.enabled ? styles.stateOn : styles.stateOff} data-tracking-state="">
-            {tracking === null ? '' : tracking.enabled ? t('On') : t('Off')}
-          </span>
-          <button
-            type="button"
-            className={styles.toggle}
-            onClick={() => void flip()}
-            disabled={busy || tracking === null}
-            role="switch"
-            aria-checked={tracking?.enabled ?? false}
-            aria-label={tracking?.enabled ? t('Turn usage tracking off') : t('Turn usage tracking on')}
-          >
-            <img src={tracking?.enabled ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
-          </button>
-        </div>
-        {tracking !== null && !tracking.enabled && tracking.changedAt !== null && (
-          <p className={styles.offSince} data-tracking-off-since="">
-            {tf('Off since {when}. Nothing after that is recorded.', { when: formatDate(tracking.changedAt) })}
-          </p>
-        )}
-      </section>
+      {tracking !== null && !tracking.enabled && (
+        <RecordingOff report="usage" setting="usage-tracking">{t('Usage tracking is off.')}</RecordingOff>
+      )}
 
       <section className={styles.card}>
         <div className={styles.reportHead}>

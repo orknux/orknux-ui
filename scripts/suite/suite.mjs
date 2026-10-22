@@ -248,16 +248,16 @@ export const TESTS = [
   },
   {
     name: 'session-ratings-check',
-    what: 'Admin > Reports: a picker between the reports, the ratings switch, and a review sent from a chat drawn on the Ratings report',
+    what: "Admin > Reports: a picker between the reports, no switch on Ratings but a line saying which of Admin Settings' two is off, and a review sent from a chat drawn on the report",
     needs: [],
   },
   {
     name: 'usage-report-check',
-    what: "Admin > Reports: the usage tracking switch survives a reload, and the report draws people and their sessions",
+    what: "Admin > Reports: usage tracking is switched in Admin Settings, the report says when it is off and links there, and draws people and their sessions",
     needs: [],
     /*
-     * The switch is the whole of what is recorded, so it is pressed, reloaded
-     * and put back. The table half runs where the period holds anything; an
+     * The switch is the whole of what is recorded, so it is pressed in Admin
+     * Settings, reloaded, followed from the report's line and put back. The table half runs where the period holds anything; an
      * empty one has to say so rather than draw an empty table.
      */
   },

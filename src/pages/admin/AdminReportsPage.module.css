@@ -57,45 +57,21 @@
   font-size: var(--text-sm);
 }
 
-/* ---- The switch ---- */
+/* ---- A recording that is off, said in one line over the report ---- */
 
-.trackingRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-}
-
-.headingRow {
-  display: inline-flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: var(--space-6);
-}
-
-.stateOn,
-.stateOff {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.55px;
-  text-transform: uppercase;
-}
-
-.stateOn {
-  color: var(--color-accent-brand);
-}
-
-.stateOff {
-  color: var(--color-text-muted);
-}
-
-.toggle {
-  composes: iconButton from '../../styles/iconButton.module.css';
-}
-
-.offSince {
+.recordingOff {
   margin: 0;
   font-size: var(--text-md);
   color: var(--color-text-secondary);
+}
+
+.recordingOffLink {
+  color: var(--color-accent-brand);
+  text-decoration: none;
+}
+
+.recordingOffLink:hover {
+  text-decoration: underline;
 }
 
 /* ---- The report ---- */
