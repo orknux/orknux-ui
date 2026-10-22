@@ -6810,7 +6810,7 @@ Change the keystroke in Preferences.`}
                         <span className={styles.labelLinks}>
                           <NameFromDefinition name={callable.find((one) => one.id === draft.calledWorkflowId)?.name} onUse={(name) => setDraft({ ...draft, name })} />
                           <Link
-                            to={`/workspace/${workspaceId}/workflows/${draft.calledWorkflowId}`}
+                            to={`/workspace/${workspaceId}/workflows/${draft.calledWorkflowId}/editor`}
                             className={styles.definitionJump}
                             title={t('Opens the workflow this node runs')}
                             aria-label={t('Open the workflow this node runs')}

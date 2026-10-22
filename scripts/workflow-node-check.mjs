@@ -95,6 +95,11 @@ try {
     `the node saves with the workflow it runs and its parameter (${JSON.stringify(saved)})`,
   );
 
+  // Reported: the link beside the picker went to the workflow's page, not to its editor.
+  const jump = page.getByRole('link', { name: 'Open the workflow this node runs' });
+  const href = (await jump.getAttribute('href').catch(() => null)) ?? '';
+  record(href.endsWith(`/workflows/${CALLEE}/editor`), `the link beside it opens that workflow's editor (${href})`);
+
   /* ---- the run, both ways ---- */
 
   if (saved !== undefined) {
