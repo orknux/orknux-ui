@@ -8,6 +8,7 @@ import type {
   ComponentKind,
   ExportDepth,
   ExternalKind,
+  ImportDisposition,
   ImportEntry,
   ImportPlan,
 } from '../api/transfer';
@@ -412,7 +413,8 @@ function ImportDialog({
   const [renames, setRenames] = useState<ComponentRename[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
   /** The plan narrowed to what is not here - the rows that stop an import - or all of it. */
-  const [onlyMissing, setOnlyMissing] = useState(false);
+  /** Which rows the plan shows: all, or those of one disposition - the renamed and the missing are what need a look. */
+  const [showing, setShowing] = useState<'ALL' | ImportDisposition>('ALL');
   /** The plan at its full length rather than capped and scrolled inside. */
   const [planOpen, setPlanOpen] = useState(false);
   const [typed, setTyped] = useState('');
@@ -642,29 +644,36 @@ function ImportDialog({
             )}
 
             {(() => {
-              const missing = plan.entries.filter((entry) => entry.disposition === 'MISSING').length;
+              // What needs a look first - a name that was taken, a thing that is not here - then the rest.
+              const present = FILTER_ORDER.map((disposition) => ({
+                disposition,
+                count: plan.entries.filter((entry) => entry.disposition === disposition).length,
+              })).filter((one) => one.count > 0);
               return (
                 <div className={styles.planBar}>
-                  {missing > 0 && (
+                  {present.length > 1 && (
                     <div className={styles.planFilter} role="group" aria-label={t('Show')} data-testid="plan-filter">
                       <button
                         type="button"
-                        className={!onlyMissing ? styles.planFilterOn : undefined}
-                        aria-pressed={!onlyMissing}
-                        onClick={() => setOnlyMissing(false)}
+                        className={showing === 'ALL' ? styles.planFilterOn : undefined}
+                        aria-pressed={showing === 'ALL'}
+                        onClick={() => setShowing('ALL')}
                         data-testid="plan-filter-all"
                       >
                         {tf('All ({count})', { count: plan.entries.length })}
                       </button>
-                      <button
-                        type="button"
-                        className={onlyMissing ? styles.planFilterOn : undefined}
-                        aria-pressed={onlyMissing}
-                        onClick={() => setOnlyMissing(true)}
-                        data-testid="plan-filter-missing"
-                      >
-                        {tf('Not here ({count})', { count: missing })}
-                      </button>
+                      {present.map(({ disposition, count }) => (
+                        <button
+                          key={disposition}
+                          type="button"
+                          className={showing === disposition ? styles.planFilterOn : undefined}
+                          aria-pressed={showing === disposition}
+                          onClick={() => setShowing(disposition)}
+                          data-testid={`plan-filter-${disposition.toLowerCase()}`}
+                        >
+                          {`${DISPOSITION_LABEL[disposition]} (${count})`}
+                        </button>
+                      ))}
                     </div>
                   )}
                   <button
@@ -680,7 +689,7 @@ function ImportDialog({
               );
             })()}
             <ul className={`${styles.plan} ${planOpen ? styles.planOpen : ''}`} data-testid="import-plan">
-              {plan.entries.filter((entry) => !onlyMissing || entry.disposition === 'MISSING').map((entry) => {
+              {plan.entries.filter((entry) => showing === 'ALL' || entry.disposition === showing).map((entry) => {
                 const out = entry.disposition === 'EXCLUDE';
                 return (
                   <li
@@ -692,7 +701,12 @@ function ImportDialog({
                       <span className={styles.entryName}>
                         {entry.name === entry.targetName ? entry.name : `${entry.name} → ${entry.targetName}`}
                       </span>
-                      <span className={`${styles.badge} ${badgeOf(entry)}`}>
+                      {/* Why, on the badge itself: a renamed row says which name was taken, a missing one what is not here. */}
+                      <span
+                        className={`${styles.badge} ${badgeOf(entry)}`}
+                        title={entry.disposition === 'RENAME' || entry.disposition === 'MISSING' ? entry.detail.split('. ')[0] + '.' : undefined}
+                        data-disposition={entry.disposition}
+                      >
                         {DISPOSITION_LABEL[entry.disposition]}
                       </span>
                       {/*
@@ -791,6 +805,9 @@ function ImportDialog({
     </dialog>
   );
 }
+
+/** The filter's buttons, in the order a reader wants them: what needs a look first. */
+const FILTER_ORDER: ImportDisposition[] = ['RENAME', 'MISSING', 'CREATE', 'REUSE', 'EXCLUDE'];
 
 interface BindingQuestionsProps {
   workspaceId: string;
