@@ -16,17 +16,42 @@
 }
 
 /*
- * A dialog somebody may make bigger, from its corner: the import plan and the
- * template picker list a dozen rows in a box 420px wide. The dialog stays
- * centred, so dragging the corner grows it to both sides and both ways.
+ * A dialog somebody may make bigger, from any edge or corner: `useDialogSize`
+ * and `DialogEdges` do the dragging, and this is the frame they drag.
+ *
+ * The body scrolls rather than the dialog, because the eight strips along the
+ * edges are positioned in the dialog and would scroll away with its content.
+ * A flex column so that once a height is chosen the body fills it, and a list
+ * inside (`[data-sized]`) can take the room rather than keep its own cap.
+ * `[open]`, because a closed dialog is hidden by `display: none` and a class
+ * that set `display` would show it.
  */
 .dialogResizable {
-  resize: both;
-  overflow: auto;
-  min-width: 320px;
+  overflow: hidden;
+  min-width: min(320px, calc(100vw - var(--space-32)));
   min-height: 160px;
   max-width: calc(100vw - var(--space-32));
   max-height: calc(100vh - var(--space-32));
+}
+
+.dialogResizable[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialogResizable > .body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/*
+ * The import plan: a row is a kind, a name that may be two names and an arrow,
+ * a badge and two buttons, and at 420px every one of them wrapped. Capped by
+ * `max-width` above, so on a phone it is the window's width less the margin.
+ */
+.dialogPlan {
+  width: 860px;
 }
 
 /*

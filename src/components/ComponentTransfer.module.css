@@ -48,6 +48,10 @@
 
 .planFilter {
   display: inline-flex;
+  /* Labels never wrap; a strip too wide for a narrow dialog scrolls sideways instead. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
   padding: 2px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-6);
@@ -62,6 +66,7 @@
   color: var(--color-text-muted);
   font: inherit;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -71,6 +76,7 @@
 }
 
 .planExpand {
+  flex: none;
   margin-left: auto;
 }
 
@@ -83,9 +89,22 @@
   max-height: none;
 }
 
+/*
+ * A dialog dragged to a height: the list takes the room, and gives it back
+ * down to a few rows before the dialog's body starts to scroll instead.
+ */
+:global([data-sized]) .plan:not(.planOpen),
+:global([data-sized]) .templates {
+  flex: 0 1 auto;
+  min-height: 120px;
+  max-height: none;
+}
+
 .plan {
   display: flex;
   flex-direction: column;
+  /* Its own length in a dialog's flex column, not squeezed: the body scrolls. */
+  flex: none;
   max-height: 320px;
   margin: 0;
   padding: 0;
@@ -382,6 +401,7 @@
 .templates {
   display: flex;
   flex-direction: column;
+  flex: none;
   max-height: 320px;
   margin: 0;
   padding: 0;
