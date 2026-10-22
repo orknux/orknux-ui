@@ -974,7 +974,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * run it again. A chat of six thousand pixels opened at the top of the first
    * thing anybody had said.
    *
-   * So it also watches which chat is open, and asks for the frame after the one
+   * So it also watches which chat is open, and the reviews drawn at its foot,
+   * which arrive after the turns do, and asks for the frame after the one
    * it is on: a run of markdown is laid out by then, where at effect time the
    * box can still be shorter than what is in it. An image arriving later moves
    * the floor again, which is what the observer is for - it keeps the newest
@@ -1055,7 +1056,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       log.removeEventListener('touchmove', onTouch);
       grew.disconnect();
     };
-  }, [messages, currentId, logBox]);
+  }, [messages, reviews, currentId, logBox]);
 
   /*
    * The box is as tall as what has been typed into it, up to the top of the

@@ -9,7 +9,7 @@
  *
  * Leaves the switch, the limit and the picked report as it found them.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -17,6 +17,12 @@ const { sessionRatingsEnabled: before, chatReviewsEnabled: beforeChat } = await 
   'query { sessionRatingsEnabled { enabled } chatReviewsEnabled { enabled } }',
 );
 const { installationSettings: limits } = await graphql('query { installationSettings { reviewsPerSession } }');
+/*
+ * Everything below switches settings of the installation it runs against, so
+ * they are put back in a finally: a run that stopped halfway left agents'
+ * ratings off and the limit at a hundred, and the next run "restored" that.
+ */
+try {
 await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => { try { localStorage.removeItem('orknux.reports.kind'); } catch { /* none kept */ } });
 
@@ -24,12 +30,13 @@ await page.goto(`${BASE}/admin/reports`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'Usage tracking');
 const picker = page.getByRole('combobox', { name: 'Report' });
 record((await picker.count()) === 1, 'a report picker sits at the top of Reports');
-record((await picker.inputValue()) === 'usage', `and it opens on the usage report (${await picker.inputValue()})`);
+const chosen = await chosenOption(page, picker);
+record(chosen === 'usage', `and it opens on the usage report (${chosen})`);
 
 // On the title's line, not under it.
 const level = await page.evaluate(() => {
   const title = [...document.querySelectorAll('h1')].find((one) => one.textContent === 'Reports');
-  const select = document.querySelector('select[class*="pickerSelect"]');
+  const select = document.querySelector('[data-select][class*="pickerSelect"]');
   if (!title || !select) return null;
   const a = title.getBoundingClientRect();
   const b = select.getBoundingClientRect();
@@ -37,7 +44,7 @@ const level = await page.evaluate(() => {
 });
 record(level !== null && level.overlap > 0 && level.right, `the picker is on the title's line, after it (${JSON.stringify(level)})`);
 
-await picker.selectOption('ratings');
+await chooseOption(page, picker, 'ratings');
 await drawn(page, 'Session ratings');
 record((await page.getByTestId('usage-tracking').count()) === 0, 'picking Ratings swaps the usage report out');
 const toggle = page.getByRole('switch', { name: /session ratings/i });
@@ -55,7 +62,7 @@ await switchTo(chatToggle, true);
 await switchTo(toggle, false);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await drawn(page, 'Session ratings');
-record((await page.getByRole('combobox', { name: 'Report' }).inputValue()) === 'ratings', 'the picked report is remembered over a reload');
+record((await chosenOption(page, page.getByRole('combobox', { name: 'Report' }))) === 'ratings', 'the picked report is remembered over a reload');
 record((await page.getByRole('switch', { name: /chat reviews/i }).getAttribute('aria-checked')) === 'true', 'and the chat reviews switch says on');
 
 /* ---- a chat with nothing answered offers no review ---- */
@@ -128,6 +135,28 @@ if (chat === undefined) {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await line.first().waitFor({ timeout: 15_000 }).catch(() => {});
   record((await line.count()) === 1, 'and is still there after a reload');
+  // Reported: opening the chat scrolled to the last turn and left the review below the fold.
+  // A short window, so the chat overflows and there is a fold for it to be left below.
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await line.first().waitFor({ timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  const inView = await line.first().evaluate((card) => {
+    let log = card.parentElement;
+    while (log !== null && getComputedStyle(log).overflowY !== 'auto' && getComputedStyle(log).overflowY !== 'scroll') log = log.parentElement;
+    if (log === null) return null;
+    return {
+      cardBottom: Math.round(card.getBoundingClientRect().bottom),
+      logBottom: Math.round(log.getBoundingClientRect().bottom),
+      gap: Math.round(log.scrollHeight - log.clientHeight - log.scrollTop),
+      overflows: log.scrollHeight > log.clientHeight + 40,
+    };
+  });
+  record(
+    inView !== null && inView.overflows && inView.cardBottom <= inView.logBottom + 1 && inView.gap < 40,
+    `opening the chat scrolls down to the review (${JSON.stringify(inView)})`,
+  );
+  await page.setViewportSize({ width: 1500, height: 1000 });
 
   const { sessionRatings } = await graphql(
     'query { sessionRatings(filter: {}, size: 5) { rows { score review sessionId personKey } } }',
@@ -144,12 +173,13 @@ if (chat === undefined) {
   const cells = await drawnRow.first().locator('td').allTextContents();
   const workspace = (await drawnRow.first().locator('[data-rating-workspace]').textContent())?.trim() ?? '';
   record(workspace !== '' && !cells.at(-2).includes(workspace), `the workspace has a column of its own, not the session's (${JSON.stringify(cells.slice(-2))})`);
-  await graphql(`mutation { setReviewsPerSession(count: ${limits.reviewsPerSession}) { reviewsPerSession } }`);
 }
-
-// Back as it was.
-await graphql(`mutation { setSessionRatings(enabled: ${before.enabled}) { enabled } }`);
-await graphql(`mutation { setChatReviews(enabled: ${beforeChat.enabled}) { enabled } }`);
-await page.evaluate(() => { try { localStorage.removeItem('orknux.reports.kind'); } catch { /* none kept */ } });
+} finally {
+  // Back as it was, however the run ended.
+  await graphql(`mutation { setReviewsPerSession(count: ${limits.reviewsPerSession}) { reviewsPerSession } }`).catch(() => undefined);
+  await graphql(`mutation { setSessionRatings(enabled: ${before.enabled}) { enabled } }`).catch(() => undefined);
+  await graphql(`mutation { setChatReviews(enabled: ${beforeChat.enabled}) { enabled } }`).catch(() => undefined);
+  await page.evaluate(() => { try { localStorage.removeItem('orknux.reports.kind'); } catch { /* none kept */ } }).catch(() => undefined);
+}
 
 await finish(browser);
