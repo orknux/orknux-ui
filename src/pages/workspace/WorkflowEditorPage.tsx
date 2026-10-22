@@ -130,10 +130,14 @@ import type { ImageParameterSpec } from '../../api/graph';
 import type { NodeShape } from '../../api/graph';
 import {
   matches,
+  matchesCommand,
   useAddShortcut,
   useJointShortcut,
   useSelectShortcut,
   useDuplicateShortcut,
+  useCopyShortcut,
+  useCutShortcut,
+  usePasteShortcut,
   usePublishShortcut,
   useRedoShortcut,
   useSaveShortcut,
@@ -1376,6 +1380,105 @@ function copyOutputName(of: string, taken: Set<string>): string {
 const COPY_OFFSET = 40;
 
 /** What a node starts as, which is what "centred" is measured against. */
+/**
+ * What Copy and Cut put down and Paste picks up: the selected nodes, the lines
+ * running between two of them, and the joints those lines bend through.
+ *
+ * Kept in the browser's storage rather than on the system clipboard, so it
+ * crosses from one workflow's editor to another's - and from one tab to the
+ * next - without asking for permission to read the clipboard, and without
+ * putting a graph where somebody's Ctrl+V into a chat would find it. A line to
+ * a node that was not copied is left behind, as Duplicate leaves its wiring.
+ */
+interface ClippedGraph {
+  workspaceId: string;
+  workflowId: string;
+  nodes: {
+    id: string;
+    type?: string;
+    width?: number;
+    height?: number;
+    style?: Node['style'];
+    position: { x: number; y: number };
+    data: NodeData;
+  }[];
+  edges: { source: string; target: string; sourceHandle: string | null; targetHandle: string | null }[];
+  /** By the line's id, as the editor keeps them. */
+  points: Record<string, EdgeOffset[]>;
+  /**
+   * The definitions among those the nodes point at that are the source
+   * workflow's own ("Custom"). Shown in no other workflow's picker, so a node
+   * pasted elsewhere is left to have one picked rather than point at another
+   * workflow's.
+   */
+  custom: string[];
+}
+
+const CLIPBOARD_KEY = 'orknux.workflowClipboard';
+/** Where the clipboard lives while the browser will not keep it; lost with the page. */
+let clippedHere: ClippedGraph | null = null;
+
+function writeClip(clip: ClippedGraph): void {
+  clippedHere = clip;
+  try {
+    window.localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(clip));
+  } catch {
+    // Kept for this page only, which still covers pasting into the same workflow.
+  }
+}
+
+function readClip(): ClippedGraph | null {
+  try {
+    const held = window.localStorage.getItem(CLIPBOARD_KEY);
+    if (held !== null) {
+      const clip = JSON.parse(held) as ClippedGraph;
+      if (Array.isArray(clip.nodes) && clip.nodes.length > 0) return clip;
+    }
+  } catch {
+    // Unreadable: what this page put down, if anything.
+  }
+  return clippedHere;
+}
+
+/** A line's two ends, read off its id, for the dependency lines that have no edge behind them. */
+function linkedBy(lineId: string): { prefix: string; source: string; target: string } | null {
+  const found = /^(reads|saves):(.+)->(.+)$/.exec(lineId);
+  return found === null ? null : { prefix: found[1], source: found[2], target: found[3] };
+}
+
+/** A pair of scissors, drawn like the toolbar's other pictures in the button's own colour. */
+function CutIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M20 4 8.12 15.88" />
+      <path d="M14.47 14.48 20 20" />
+      <path d="M8.12 8.12 12 12" />
+    </svg>
+  );
+}
+
+/** Two sheets, the copy beside its original. */
+function CopyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <rect x="8" y="8" width="13" height="13" rx="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+/** A clipboard, for what comes off it. */
+function PasteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    </svg>
+  );
+}
+
 const NEW_NODE_WIDTH = 220;
 const NEW_NODE_HEIGHT = 96;
 
@@ -4009,6 +4112,231 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   /**
+  /** The nodes Copy and Cut take: what the canvas has selected, or the one the panel is on. */
+  function chosenKeys(): string[] {
+    const picked = nodes.filter((node) => node.selected).map((node) => node.id);
+    if (picked.length > 0) return picked;
+    return selectedKey !== null && nodes.some((node) => node.id === selectedKey) ? [selectedKey] : [];
+  }
+
+  /**
+   * The selected nodes put down for Paste, with the lines between them and the
+   * joints those lines bend through; null when nothing is selected.
+   *
+   * The node the panel is editing is read from the panel, for the reason
+   * Duplicate gives: the canvas is a quarter of a second behind it. Without
+   * the ports, which describe the node to the server that answered and would
+   * describe nothing true about the copy.
+   */
+  function copySelection(): string[] | null {
+    const keys = chosenKeys();
+    if (keys.length === 0) return null;
+    const taken = new Set(keys);
+    const clipped = nodes
+      .filter((node) => taken.has(node.id))
+      .map((node) => {
+        const data: NodeData =
+          node.id === selectedKey && draft !== null
+            ? { ...(node.data as NodeData), ...named(withHeldName(draft, fieldEdit)) }
+            : (node.data as NodeData);
+        const { inputs: _inputs, outputs: _outputs, ...its } = data;
+        return {
+          id: node.id,
+          type: node.type,
+          width: node.width,
+          height: node.height,
+          style: node.style,
+          position: { ...node.position },
+          data: its as NodeData,
+        };
+      });
+    const lines = edges.filter((edge) => taken.has(edge.source) && taken.has(edge.target));
+    const lineIds = new Set(lines.map((edge) => edge.id));
+    const points: Record<string, EdgeOffset[]> = {};
+    Object.entries(edgePoints).forEach(([id, held]) => {
+      const linked = linkedBy(id);
+      if (lineIds.has(id) || (linked !== null && taken.has(linked.source) && taken.has(linked.target))) points[id] = held;
+    });
+    const custom = [
+      ...actions.filter((one) => one.workflowId !== null).map((one) => one.id),
+      ...conditions.filter((one) => one.workflowId !== null).map((one) => one.id),
+      ...triggers.filter((one) => one.workflowId !== null).map((one) => one.id),
+    ];
+    writeClip({
+      workspaceId,
+      workflowId,
+      nodes: clipped,
+      edges: lines.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle ?? null,
+        targetHandle: edge.targetHandle ?? null,
+      })),
+      points,
+      custom,
+    });
+    setClipHeld(true);
+    return keys;
+  }
+
+  /**
+   * The selected nodes copied as Copy copies them, then taken off the canvas as
+   * Delete takes them: with every line joined to them, and their joints. One
+   * change to the graph, so Undo puts all of it back in one step.
+   */
+  function cutSelection() {
+    const keys = copySelection();
+    if (keys === null) return;
+    const gone = new Set(keys);
+    setNodes((current) => current.filter((node) => !gone.has(node.id)));
+    setEdges((current) => current.filter((edge) => !gone.has(edge.source) && !gone.has(edge.target)));
+    setPickedJoints(new Set());
+    if (selectedKey !== null && gone.has(selectedKey)) {
+      setFieldEdit(null);
+      setSelectedKey(null);
+    }
+    setSaved(false);
+  }
+
+  /**
+   * What Copy or Cut last put down, onto this canvas.
+   *
+   * Every node gets a key of its own, and the lines and joints are carried over
+   * to the new keys, so pasting twice is two copies rather than one node fought
+   * over. A name or output name the graph already uses is stepped as
+   * Duplicate steps it; one that is free is kept, which is what makes a cut
+   * and a paste give back the node it took. Pasted where they were when the
+   * originals are gone, beside them while they are still there, and in the
+   * middle of the view in another workflow, where their old place means
+   * nothing. What came from another workspace is refused: everything a node
+   * points at is that workspace's.
+   */
+  function paste() {
+    const clip = readClip();
+    if (clip === null) return;
+    if (clip.workspaceId !== workspaceId) {
+      setError(t('Nodes copied in another workspace cannot be pasted here.'));
+      return;
+    }
+    const sameWorkflow = clip.workflowId === workflowId;
+    const custom = new Set(sameWorkflow ? [] : clip.custom);
+    const takenKeys = new Set(nodes.map((node) => node.id));
+    const takenNames = new Set(nodes.map((node) => (node.data as NodeData).name));
+    const takenOutputs = new Set(
+      nodes.map((node) => (node.data as NodeData).outputName).filter((one): one is string => one !== null && one !== ''),
+    );
+    const keyOf = new Map<string, string>();
+    clip.nodes.forEach((one) => {
+      const stem = `${one.data.kind.toLowerCase()}-${Date.now().toString(36)}`;
+      const key = untaken(stem, (at) => `${stem}-${at}`, takenKeys);
+      takenKeys.add(key);
+      keyOf.set(one.id, key);
+    });
+
+    // Where the group goes: see above.
+    let shift = { x: 0, y: 0 };
+    if (!sameWorkflow) {
+      const canvas = document.querySelector<HTMLElement>('.react-flow');
+      const box = canvas?.getBoundingClientRect();
+      if (box !== undefined) {
+        const middle = screenToFlowPosition({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+        const xs = clip.nodes.map((one) => one.position.x);
+        const ys = clip.nodes.map((one) => one.position.y);
+        shift = {
+          x: middle.x - (Math.min(...xs) + Math.max(...xs) + NEW_NODE_WIDTH) / 2,
+          y: middle.y - (Math.min(...ys) + Math.max(...ys) + NEW_NODE_HEIGHT) / 2,
+        };
+      }
+    } else {
+      const occupied = (by: number) =>
+        clip.nodes.some((one) =>
+          nodes.some(
+            (node) =>
+              Math.abs(node.position.x - (one.position.x + by)) < 1 && Math.abs(node.position.y - (one.position.y + by)) < 1,
+          ),
+        );
+      let by = 0;
+      while (occupied(by) && by < COPY_OFFSET * 50) by += COPY_OFFSET;
+      shift = { x: by, y: by };
+    }
+
+    const moved = (key: string | null | undefined): string | null => {
+      if (key === null || key === undefined) return null;
+      const pasted = keyOf.get(key);
+      if (pasted !== undefined) return pasted;
+      return sameWorkflow && nodes.some((node) => node.id === key) ? key : null;
+    };
+    const unlessCustom = (id: string | null) => (id !== null && custom.has(id) ? null : id);
+
+    const added: Node<NodeData>[] = clip.nodes.map((one) => {
+      const name = takenNames.has(one.data.name) ? copyName(one.data.name, takenNames) : one.data.name;
+      takenNames.add(name);
+      const given = one.data.outputName;
+      let outputName = given;
+      if (given !== null && given !== '') {
+        outputName = takenOutputs.has(given) ? copyOutputName(given, takenOutputs) : given;
+        takenOutputs.add(outputName);
+      }
+      return {
+        id: keyOf.get(one.id) as string,
+        type: one.type ?? 'graphNode',
+        width: one.width,
+        height: one.height,
+        style: one.style,
+        initialWidth: NODE_MIN_WIDTH,
+        initialHeight: NODE_MIN_HEIGHT,
+        position: { x: one.position.x + shift.x, y: one.position.y + shift.y },
+        selected: false,
+        data: {
+          ...one.data,
+          name,
+          outputName,
+          actionId: unlessCustom(one.data.actionId),
+          conditionId: unlessCustom(one.data.conditionId),
+          triggerId: unlessCustom(one.data.triggerId),
+          outputNodeKey: moved(one.data.outputNodeKey),
+          // Its own, and pointed at the pasted node where the field came from one copied with it.
+          mappings: one.data.mappings.map((mapping) =>
+            mapping.sourceNodeKey === undefined || mapping.sourceNodeKey === null
+              ? { ...mapping }
+              : { ...mapping, sourceNodeKey: moved(mapping.sourceNodeKey) ?? mapping.sourceNodeKey },
+          ),
+        },
+      };
+    });
+    const lines: Edge[] = clip.edges.map((edge) => {
+      const wired = {
+        source: keyOf.get(edge.source) as string,
+        target: keyOf.get(edge.target) as string,
+        sourceHandle: edge.sourceHandle,
+      };
+      return { ...wired, targetHandle: edge.targetHandle, id: edgeName(wired) };
+    });
+    const bent: Record<string, EdgeOffset[]> = {};
+    Object.entries(clip.points).forEach(([id, held]) => {
+      const linked = linkedBy(id);
+      if (linked !== null) {
+        bent[`${linked.prefix}:${keyOf.get(linked.source)}->${keyOf.get(linked.target)}`] = held;
+        return;
+      }
+      const edge = clip.edges.find(
+        (one) => edgeName({ source: one.source, sourceHandle: one.sourceHandle, target: one.target }) === id,
+      );
+      if (edge === undefined) return;
+      const pasted = { source: keyOf.get(edge.source) as string, sourceHandle: edge.sourceHandle, target: keyOf.get(edge.target) as string };
+      bent[edgeName(pasted)] = held;
+    });
+
+    setNodes((current) => [...current.map((node) => (node.selected ? { ...node, selected: false } : node)), ...added]);
+    setEdges((current) => [...current.map((edge) => (edge.selected ? { ...edge, selected: false } : edge)), ...lines]);
+    if (Object.keys(bent).length > 0) setEdgePoints((held) => remember({ ...held, ...bent }));
+    setFieldEdit(null);
+    setSelectedKey(added[0]?.id ?? null);
+    // The store only learns about the nodes on the next tick, so they are selected then, as Duplicate's is.
+    requestAnimationFrame(() => added.forEach((node) => updateNode(node.id, { selected: true })));
+    setSaved(false);
+  }
+
    * The panel edits the node as it is typed in, so the canvas keeps up: the
    * name changes as you type it, and picking a trigger or an action takes
    * effect where it can be seen. There is no button to press afterwards: what
@@ -4670,6 +4998,23 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const redoKey = useRedoShortcut();
   const copyKey = useDuplicateShortcut();
   const addKey = useAddShortcut();
+  const copyNodesKey = useCopyShortcut();
+  const cutKey = useCutShortcut();
+  const pasteKey = usePasteShortcut();
+  /**
+   * Whether Copy or Cut has put anything down, here or in another tab, for the
+   * Paste button to say. Another tab's copy arrives as a storage event.
+   */
+  const [clipHeld, setClipHeld] = useState(() => readClip() !== null);
+  useEffect(() => {
+    const look = () => setClipHeld(readClip() !== null);
+    window.addEventListener('storage', look);
+    window.addEventListener('focus', look);
+    return () => {
+      window.removeEventListener('storage', look);
+      window.removeEventListener('focus', look);
+    };
+  }, []);
   const selectKey = useSelectShortcut();
   /*
    * Whether a drag on the empty canvas draws a selection rectangle or pans.
@@ -5059,6 +5404,46 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   });
 
   /**
+  /**
+   * Copy, Cut and Paste from the keyboard, Ctrl+C, Ctrl+X and Ctrl+V until
+   * somebody changes them in Preferences, with Cmd heard for Ctrl.
+   *
+   * Handed back to the browser inside a text box and in Monaco, as Ctrl+Z is:
+   * there they mean the text, and the node being named is not what anybody
+   * pressing Ctrl+X in its name wants gone. So is a copy while some text on the
+   * page is selected, which is somebody copying the text, and anything while a
+   * dialog is open over the canvas. Prevented only when the editor did
+   * something, so a key with nothing to act on still does what it always did.
+   * Rebound every render, so it reads the graph as it stands.
+   */
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const asked = matchesCommand(event, cutKey)
+        ? 'cut'
+        : matchesCommand(event, copyNodesKey)
+          ? 'copy'
+          : matchesCommand(event, pasteKey)
+            ? 'paste'
+            : null;
+      if (asked === null || typingText(event.target)) return;
+      if (document.querySelector('dialog[open]') !== null) return;
+      if (asked !== 'paste' && (window.getSelection()?.toString() ?? '') !== '') return;
+      if (asked === 'paste') {
+        if (readClip() === null) return;
+        event.preventDefault();
+        paste();
+        return;
+      }
+      if (chosenKeys().length === 0) return;
+      event.preventDefault();
+      if (asked === 'cut') cutSelection();
+      else copySelection();
+    }
+
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  });
+
    * Publishing from the keyboard, Ctrl+Enter until somebody changes it in
    * Preferences - issue #233.
    *
@@ -5511,6 +5896,40 @@ Change the keystroke in Preferences.`}
             <img src={copyIcon} alt="" width={16} height={16} />
           </ToolButton>
           {/*
+          {/*
+            Cut, Copy and Paste beside Duplicate: the same gesture, except that
+            what is copied waits for somewhere to put it - this canvas or
+            another workflow's. Grey while there is nothing to take or nothing
+            to put down, and each says its keystroke, read from the setting the
+            handler obeys.
+          */}
+          <ToolButton
+            label={t('Cut')}
+            shortcut={cutKey}
+            note={selectedKey === null && selectedCount === 0 ? t('Select nodes to cut them.') : t('Change the keystroke in Preferences.')}
+            onClick={() => cutSelection()}
+            disabled={selectedKey === null && selectedCount === 0}
+          >
+            <CutIcon />
+          </ToolButton>
+          <ToolButton
+            label={t('Copy')}
+            shortcut={copyNodesKey}
+            note={selectedKey === null && selectedCount === 0 ? t('Select nodes to copy them.') : t('Change the keystroke in Preferences.')}
+            onClick={() => void copySelection()}
+            disabled={selectedKey === null && selectedCount === 0}
+          >
+            <CopyIcon />
+          </ToolButton>
+          <ToolButton
+            label={t('Paste')}
+            shortcut={pasteKey}
+            note={clipHeld ? t('Change the keystroke in Preferences.') : t('Copy or cut nodes to paste them.')}
+            onClick={() => paste()}
+            disabled={!clipHeld}
+          >
+            <PasteIcon />
+          </ToolButton>
             Beside Duplicate, because it is the same gesture at a longer range:
             one makes a second copy on this canvas, the other makes one that can
             leave the installation. It was on the workflows list and nowhere

@@ -8,6 +8,9 @@ const TURN_KEY = 'orknux.turnShortcut';
 const UNDO_KEY = 'orknux.undoShortcut';
 const REDO_KEY = 'orknux.redoShortcut';
 const DUPLICATE_KEY = 'orknux.duplicateShortcut';
+const COPY_KEY = 'orknux.copyShortcut';
+const CUT_KEY = 'orknux.cutShortcut';
+const PASTE_KEY = 'orknux.pasteShortcut';
 const ADD_KEY = 'orknux.addShortcut';
 const SELECT_KEY = 'orknux.selectShortcut';
 const JOINT_KEY = 'orknux.jointShortcut';
@@ -88,6 +91,16 @@ export const DEFAULT_REDO_SHORTCUT = 'Ctrl+Shift+Z';
  * somebody copied a node would be the worse of the two surprises.
  */
 export const DEFAULT_DUPLICATE_SHORTCUT = 'Ctrl+D';
+
+/**
+ * What copies, cuts and pastes the selected nodes of a workflow when nothing
+ * has been chosen: Ctrl+C, Ctrl+X and Ctrl+V, which hands already do. Heard
+ * only on the canvas - inside a text box they are the box's own, as Ctrl+Z is
+ * - and Cmd stands in for Ctrl, so a Mac answers to the same three.
+ */
+export const DEFAULT_COPY_SHORTCUT = 'Ctrl+C';
+export const DEFAULT_CUT_SHORTCUT = 'Ctrl+X';
+export const DEFAULT_PASTE_SHORTCUT = 'Ctrl+V';
 
 /**
  * What opens the workflow editor's Add menu when nothing has been chosen.
@@ -242,6 +255,9 @@ const turning = remembered(TURN_KEY, DEFAULT_TURN_SHORTCUT);
 const undoing = remembered(UNDO_KEY, DEFAULT_UNDO_SHORTCUT);
 const redoing = remembered(REDO_KEY, DEFAULT_REDO_SHORTCUT);
 const duplicating = remembered(DUPLICATE_KEY, DEFAULT_DUPLICATE_SHORTCUT);
+const copying = remembered(COPY_KEY, DEFAULT_COPY_SHORTCUT);
+const cutting = remembered(CUT_KEY, DEFAULT_CUT_SHORTCUT);
+const pasting = remembered(PASTE_KEY, DEFAULT_PASTE_SHORTCUT);
 const addingNode = remembered(ADD_KEY, DEFAULT_ADD_SHORTCUT);
 const selecting = remembered(SELECT_KEY, DEFAULT_SELECT_SHORTCUT);
 const jointing = remembered(JOINT_KEY, DEFAULT_JOINT_SHORTCUT);
@@ -347,6 +363,42 @@ export function setDuplicateShortcut(next: Shortcut): void {
 
 export function useDuplicateShortcut(): Shortcut {
   return duplicating.use();
+}
+
+export function copyShortcut(): Shortcut {
+  return copying.get();
+}
+
+export function setCopyShortcut(next: Shortcut): void {
+  copying.set(next);
+}
+
+export function useCopyShortcut(): Shortcut {
+  return copying.use();
+}
+
+export function cutShortcut(): Shortcut {
+  return cutting.get();
+}
+
+export function setCutShortcut(next: Shortcut): void {
+  cutting.set(next);
+}
+
+export function useCutShortcut(): Shortcut {
+  return cutting.use();
+}
+
+export function pasteShortcut(): Shortcut {
+  return pasting.get();
+}
+
+export function setPasteShortcut(next: Shortcut): void {
+  pasting.set(next);
+}
+
+export function usePasteShortcut(): Shortcut {
+  return pasting.use();
 }
 
 export function addShortcut(): Shortcut {
@@ -510,4 +562,18 @@ export function usable(chosen: Shortcut): boolean {
 export function matches(event: KeyboardEvent, chosen: Shortcut): boolean {
   const said = describe(event);
   return said !== null && said.toLowerCase() === chosen.trim().toLowerCase();
+}
+
+/**
+ * The same, with Cmd standing in for Ctrl: what a Mac means by Ctrl+C is Cmd+C,
+ * and a copy key that answered only to the other is one a Mac never presses.
+ */
+export function matchesCommand(event: KeyboardEvent, chosen: Shortcut): boolean {
+  if (matches(event, chosen)) return true;
+  if (!event.metaKey || event.ctrlKey || MODIFIER_KEYS.has(event.key)) return false;
+  const held: string[] = ['Ctrl'];
+  if (event.altKey) held.push('Alt');
+  if (event.shiftKey) held.push('Shift');
+  held.push(keyName(event.key));
+  return held.join('+').toLowerCase() === chosen.trim().toLowerCase();
 }

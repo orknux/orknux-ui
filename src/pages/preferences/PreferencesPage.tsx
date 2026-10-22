@@ -30,6 +30,18 @@ import {
   DEFAULT_UNDO_SHORTCUT,
   DEFAULT_REDO_SHORTCUT,
   DEFAULT_DUPLICATE_SHORTCUT,
+  DEFAULT_COPY_SHORTCUT,
+  DEFAULT_CUT_SHORTCUT,
+  DEFAULT_PASTE_SHORTCUT,
+  copyShortcut,
+  cutShortcut,
+  pasteShortcut,
+  setCopyShortcut,
+  setCutShortcut,
+  setPasteShortcut,
+  useCopyShortcut,
+  useCutShortcut,
+  usePasteShortcut,
   DEFAULT_PUBLISH_SHORTCUT,
   DEFAULT_VOICE_MUTE_SHORTCUT,
   DEFAULT_RECENT_SHORTCUT,
@@ -109,6 +121,9 @@ type ShortcutKey =
   | 'redo'
   | 'duplicate'
   | 'publish'
+  | 'copy'
+  | 'cut'
+  | 'paste'
   | 'voiceMute'
   | 'zoomIn'
   | 'zoomOut'
@@ -130,6 +145,9 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'redo', stored: redoShortcut, store: setRedoShortcut },
   { key: 'duplicate', stored: duplicateShortcut, store: setDuplicateShortcut },
   { key: 'publish', stored: publishShortcut, store: setPublishShortcut },
+  { key: 'copy', stored: copyShortcut, store: setCopyShortcut },
+  { key: 'cut', stored: cutShortcut, store: setCutShortcut },
+  { key: 'paste', stored: pasteShortcut, store: setPasteShortcut },
   { key: 'voiceMute', stored: voiceMuteShortcut, store: setVoiceMuteShortcut },
   { key: 'zoomIn', stored: zoomInShortcut, store: setZoomInShortcut },
   { key: 'zoomOut', stored: zoomOutShortcut, store: setZoomOutShortcut },
@@ -198,6 +216,12 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const storedDuplicate = useDuplicateShortcut();
   const duplicate = shortcutDrafts.duplicate ?? storedDuplicate;
   const storedPublish = usePublishShortcut();
+  const storedCopy = useCopyShortcut();
+  const copyKey = shortcutDrafts.copy ?? storedCopy;
+  const storedCut = useCutShortcut();
+  const cutKey = shortcutDrafts.cut ?? storedCut;
+  const storedPaste = usePasteShortcut();
+  const pasteKey = shortcutDrafts.paste ?? storedPaste;
   const publish = shortcutDrafts.publish ?? storedPublish;
   const storedVoiceMute = useVoiceMuteShortcut();
   const voiceMute = shortcutDrafts.voiceMute ?? storedVoiceMute;
@@ -219,6 +243,9 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'redo'
     | 'duplicate'
     | 'publish'
+    | 'copy'
+    | 'cut'
+    | 'paste'
     | 'voiceMute'
     | 'zoomIn'
     | 'zoomOut'
@@ -275,6 +302,9 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'redo') draftShortcut('redo', said);
       else if (recording === 'duplicate') draftShortcut('duplicate', said);
       else if (recording === 'publish') draftShortcut('publish', said);
+      else if (recording === 'copy') draftShortcut('copy', said);
+      else if (recording === 'cut') draftShortcut('cut', said);
+      else if (recording === 'paste') draftShortcut('paste', said);
       else if (recording === 'voiceMute') draftShortcut('voiceMute', said);
       else if (recording === 'zoomIn') draftShortcut('zoomIn', said);
       else if (recording === 'zoomOut') draftShortcut('zoomOut', said);
@@ -1309,6 +1339,102 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
               {recording === 'duplicate' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="copy-shortcut">
+                  {t('Copy Nodes Shortcut')}
+                </span>
+                <FieldHint label={t('Copy Nodes Shortcut')}>
+                  {t("Puts the selected nodes of a workflow, and the lines between them, where Paste can put them back, in this workflow or another. Heard only on the canvas, never while typing.")}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'copy' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'copy' ? null : 'copy'));
+                  }}
+                  data-testid="copy-shortcut"
+                >
+                  {recording === 'copy' ? t('Press any keys…') : copyKey}
+                </button>
+                {copyKey !== DEFAULT_COPY_SHORTCUT && recording !== 'copy' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('copy', DEFAULT_COPY_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'copy' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="cut-shortcut">
+                  {t('Cut Nodes Shortcut')}
+                </span>
+                <FieldHint label={t('Cut Nodes Shortcut')}>
+                  {t("Copies the selected nodes of a workflow as Copy does and takes them off the canvas, in one step that Undo puts back. Heard only on the canvas, never while typing.")}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'cut' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'cut' ? null : 'cut'));
+                  }}
+                  data-testid="cut-shortcut"
+                >
+                  {recording === 'cut' ? t('Press any keys…') : cutKey}
+                </button>
+                {cutKey !== DEFAULT_CUT_SHORTCUT && recording !== 'cut' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('cut', DEFAULT_CUT_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'cut' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="paste-shortcut">
+                  {t('Paste Nodes Shortcut')}
+                </span>
+                <FieldHint label={t('Paste Nodes Shortcut')}>
+                  {t("Puts the nodes last copied or cut onto the workflow canvas, with the lines between them. Heard only on the canvas, never while typing.")}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'paste' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'paste' ? null : 'paste'));
+                  }}
+                  data-testid="paste-shortcut"
+                >
+                  {recording === 'paste' ? t('Press any keys…') : pasteKey}
+                </button>
+                {pasteKey !== DEFAULT_PASTE_SHORTCUT && recording !== 'paste' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('paste', DEFAULT_PASTE_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'paste' && (
+                <p className={styles.settingNote}>
                 </p>
               )}
             </div>
