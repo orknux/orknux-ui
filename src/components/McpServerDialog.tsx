@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { authTypeLabel, secretPlaceholder, checkMcpServerDraft, createMcpServer } from '../api/integrations';
+import { authTypeHint, authTypeLabel, secretPlaceholder, checkMcpServerDraft, createMcpServer } from '../api/integrations';
 import type { AuthType, HttpHeader, McpServer, McpServerCheck } from '../api/integrations';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
@@ -10,6 +10,7 @@ import { HeaderRowsEditor } from './HeaderRowsEditor';
 import { SecretField, useSecretField } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface McpServerDialogProps {
   open: boolean;
@@ -169,19 +170,20 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
           <div className={styles.field}>
             <label className={styles.label} htmlFor="mcp-server-auth">{t('Auth Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="mcp-server-auth"
                 name="authType"
                 className={`${styles.input} ${styles.select}`}
                 value={authType}
-                onChange={(event) => setAuthType(event.target.value as AuthType)}
+                onChange={(picked) => setAuthType(picked as AuthType)}
+                chevron={false}
               >
                 {AUTH_TYPES.map((candidate) => (
-                  <option key={candidate} value={candidate}>
+                  <option key={candidate} value={candidate} data-hint={authTypeHint(candidate)}>
                     {authTypeLabel(candidate)}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>

@@ -21,6 +21,7 @@ import { FieldHint } from './FieldHint';
 import styles from './ModelForm.module.css';
 import { t } from '../i18n';
 import { useDirty } from './useDirty';
+import { Select } from './Select';
 
 /**
  * A model's settings, as one form drawn in two frames.
@@ -449,16 +450,17 @@ export function ModelDetailsFields({ form }: SectionProps) {
           one it is on is the only choice, so the box never reads empty.
         */}
         <div className={styles.selectWrapper}>
-          <select
+          <Select
             id="model-provider"
             className={`${styles.input} ${styles.select}`}
             value={fields.providerId}
-            onChange={(event) => fields.setProviderId(event.target.value)}
+            onChange={(picked) => fields.setProviderId(picked)}
+            chevron={false}
           >
             {(providers ?? [{ id: model.providerId, name: model.providerName }]).map((one) => (
               <option key={one.id} value={one.id}>{one.name}</option>
             ))}
-          </select>
+          </Select>
           <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
         </div>
       </div>
@@ -474,16 +476,17 @@ export function ModelDetailsFields({ form }: SectionProps) {
       <div className={styles.detail}>
         <label className={styles.detailLabel} htmlFor="model-kind">{t('Type')}</label>
         <div className={styles.selectWrapper}>
-          <select
+          <Select
             id="model-kind"
             className={`${styles.input} ${styles.select}`}
             value={fields.kind}
-            onChange={(event) => fields.setKind(event.target.value as ModelKind)}
+            onChange={(picked) => fields.setKind(picked as ModelKind)}
+            chevron={false}
           >
             {editableKinds.map((one) => (
               <option key={one} value={one}>{modelKindLabel(one)}</option>
             ))}
-          </select>
+          </Select>
           <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
         </div>
       </div>
@@ -592,16 +595,16 @@ export function ModelWindowFields({ form }: SectionProps) {
                 {t('Whether one reply may ask for several tools at once. Left to the provider, nothing is sent. One per reply sends parallel_tool_calls false, which a local server such as llama.cpp enforces in its grammar - a model that starts repeating the same calls in one reply then cannot, where otherwise it can write a hundred of them before its output runs out.')}
               </FieldHint>
             </span>
-            <select
+            <Select
               id="parallel-tool-calls"
               className={styles.input}
               value={fields.parallel}
-              onChange={(event) => fields.setParallel(event.target.value as '' | 'one' | 'several')}
+              onChange={(picked) => fields.setParallel(picked as '' | 'one' | 'several')}
             >
               <option value="">{t('Unset')}</option>
               <option value="one">{t('One per reply')}</option>
               <option value="several">{t('Several allowed')}</option>
-            </select>
+            </Select>
           </div>
           {effortChoices !== null && (
             <div className={styles.field}>
@@ -611,17 +614,17 @@ export function ModelWindowFields({ form }: SectionProps) {
                   {t('How long a reasoning model thinks before answering; default sends nothing.')}
                 </FieldHint>
               </span>
-              <select
+              <Select
                 id="reasoning-effort"
                 className={styles.input}
                 value={fields.reasoningEffort}
-                onChange={(event) => fields.setReasoningEffort(event.target.value)}
+                onChange={(picked) => fields.setReasoningEffort(picked)}
               >
                 <option value="">{t('Unset')}</option>
                 {effortChoices.map((one) => (
                   <option key={one} value={one}>{effortLabel(one)}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           {offered('temperature') && (
@@ -784,18 +787,19 @@ export function ModelQuotaFields({ form, between }: SectionProps & { between?: R
             {t('Reset Interval')}
           </label>
           <div className={styles.selectWrapper}>
-            <select
+            <Select
               id="reset-interval"
               className={`${styles.input} ${styles.select}`}
               value={fields.resetInterval}
-              onChange={(event) => fields.setResetInterval(event.target.value as ResetInterval)}
+              onChange={(picked) => fields.setResetInterval(picked as ResetInterval)}
+              chevron={false}
             >
               {RESET_INTERVALS.map((interval) => (
                 <option key={interval} value={interval}>
                   {resetIntervalLabel(interval)}
                 </option>
               ))}
-            </select>
+            </Select>
             <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
           </div>
         </div>
@@ -861,16 +865,17 @@ export function ModelThrottleFields({ form }: SectionProps) {
         <div className={styles.field}>
           <label className={styles.label} htmlFor="retry-after">{t('Obey Retry-After')}</label>
           <div className={styles.selectWrapper}>
-            <select
+            <Select
               id="retry-after"
               className={`${styles.input} ${styles.select}`}
               value={fields.retryAfter}
-              onChange={(event) => fields.setRetryAfter(event.target.value as 'inherit' | 'obey' | 'ignore')}
+              onChange={(picked) => fields.setRetryAfter(picked as 'inherit' | 'obey' | 'ignore')}
+              chevron={false}
             >
               <option value="inherit">{t('Inherit provider')}</option>
               <option value="obey">{t('Obey')}</option>
               <option value="ignore">{t('Ignore')}</option>
-            </select>
+            </Select>
             <img className={styles.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
           </div>
         </div>

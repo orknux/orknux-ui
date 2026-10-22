@@ -111,6 +111,7 @@ import { LogLevelsSection } from './LogLevelsSection';
 import type { PendingWrite } from './LogLevelsSection';
 import { ReportSwitches } from './ReportSwitches';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface AdminSettingsPageProps {
   session: SessionUser;
@@ -1779,18 +1780,18 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                 </span>
               </div>
               <div className={styles.retention}>
-                <select
+                <Select
                   id="local-box-runtime"
                   name="localBoxRuntime"
                   className={styles.input}
                   value={boxRuntime}
-                  onChange={(event) => setBoxRuntime(event.target.value)}
+                  onChange={(picked) => setBoxRuntime(picked)}
                   disabled={busy}
                   aria-label={t('Local box runtime')}
                 >
                   <option value="local">{t('Local')}</option>
                   <option value="docker">Docker</option>
-                </select>
+                </Select>
               </div>
             </div>
 

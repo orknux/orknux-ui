@@ -52,6 +52,7 @@ import { SlackTargetField } from './SlackTargetField';
 import { t } from '../i18n';
 import { DiscardButton } from './SaveBar';
 import { useDirty } from './useDirty';
+import { Select } from './Select';
 
 /**
  * The class names the form paints itself with.
@@ -831,24 +832,25 @@ export function ActionForm({
           <div className={styles.field}>
             <label className={styles.label} htmlFor="action-type">{t('Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="action-type"
                 name="type"
                 className={`${styles.input} ${styles.select}`}
                 value={type}
-                onChange={(event) => changeType(event.target.value as ActionType)}
+                onChange={(picked) => changeType(picked as ActionType)}
                 // What a shared action is does not change; its settings do -
                 // several workflows may point at one. A definition belonging to
                 // one node is this node's alone, so it can be turned into
                 // something else without starting again.
                 disabled={editing && !embedded}
+                chevron={false}
               >
                 {(['EXECUTE', 'WAIT'] as ActionType[]).map((candidate) => (
                   <option key={candidate} value={candidate}>
                     {ACTION_TYPE_LABEL[candidate]}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
@@ -858,19 +860,20 @@ export function ActionForm({
               {type === 'EXECUTE' ? t('Execute Type') : 'Until'}
             </label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="action-subtype"
                 name="subtype"
                 className={`${styles.input} ${styles.select}`}
                 value={subtype}
-                onChange={(event) => setSubtype(event.target.value as ActionSubtype)}
+                onChange={(picked) => setSubtype(picked as ActionSubtype)}
+                chevron={false}
               >
                 {SUBTYPES_BY_TYPE[type].map((candidate) => (
                   <option key={candidate} value={candidate}>
                     {ACTION_SUBTYPE_LABEL[candidate]}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
@@ -933,18 +936,19 @@ export function ActionForm({
                   {t('Action')}
                 </label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="action-connection-action"
                     className={`${styles.input} ${styles.select}`}
                     value={connectionAction}
-                    onChange={(event) => setConnectionAction(event.target.value as ConnectionActionKind)}
+                    onChange={(picked) => setConnectionAction(picked as ConnectionActionKind)}
+                    chevron={false}
                   >
                     {CONNECTION_ACTIONS.map((candidate) => (
                       <option key={candidate} value={candidate}>
                         {CONNECTION_ACTION_LABEL[candidate]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
@@ -1227,18 +1231,19 @@ export function ActionForm({
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="action-method">{t('Method')}</label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="action-method"
                     className={`${styles.input} ${styles.select}`}
                     value={method}
-                    onChange={(event) => setMethod(event.target.value)}
+                    onChange={(picked) => setMethod(picked)}
+                    chevron={false}
                   >
                     {HTTP_METHODS.map((candidate) => (
                       <option key={candidate} value={candidate}>
                         {candidate}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>

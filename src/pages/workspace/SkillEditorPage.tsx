@@ -29,6 +29,7 @@ import { shellUser } from '../../session/user';
 import { highlightMarkdown } from './highlightMarkdown';
 import styles from './EditorPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface SkillEditorPageProps {
   session: SessionUser;
@@ -441,21 +442,22 @@ export function SkillEditorPage({ session, onSignOut }: SkillEditorPageProps) {
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="skill-catalog">{t('Catalog')}</label>
                   <div className={styles.selectWrapper}>
-                    <select
+                    <Select
                       id="skill-catalog"
                       className={styles.input}
                       value={catalogId}
-                      onChange={(event) => {
-                        setCatalogId(event.target.value);
+                      onChange={(picked) => {
+                        setCatalogId(picked);
                         setSaved(false);
                       }}
+                      chevron={false}
                     >
                       {catalogs.map((catalog) => (
                         <option key={catalog.id} value={catalog.id}>
                           {catalog.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <img src={chevronDown12Icon} alt="" width={12} height={12} />
                   </div>
                 </div>

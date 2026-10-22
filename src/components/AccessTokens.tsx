@@ -7,6 +7,7 @@ import { timeAgo } from '../api/tools';
 import { t, tf } from '../i18n';
 import { CopyButton } from './CopyButton';
 import styles from './AccessTokens.module.css';
+import { Select } from './Select';
 
 export interface AccessTokensProps {
   /**
@@ -143,16 +144,17 @@ export function AccessTokens({ userId, inputClassName, buttonClassName }: Access
           button, nothing saying it opened.
         */}
         <span className={styles.accessWrap}>
-          <select
+          <Select
             className={`${inputClassName} ${styles.accessPicker}`}
             value={readOnly ? 'read' : 'write'}
             aria-label={t('What the token may do')}
             data-testid="token-access"
-            onChange={(event) => setReadOnly(event.target.value === 'read')}
+            onChange={(picked) => setReadOnly(picked === 'read')}
+            chevron={false}
           >
             <option value="write">{t('Read and write')}</option>
             <option value="read">{t('Read-only')}</option>
-          </select>
+          </Select>
           <img className={styles.accessChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
         </span>
         <button

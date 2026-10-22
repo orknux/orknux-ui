@@ -150,6 +150,7 @@ import { ResizeHandle, useDragSize, useRoom } from '../../components/DragSize';
 import { DrawerWidth } from '../../components/DrawerWidth';
 import { PanelClose } from '../../components/PanelClose';
 import { t, tf } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkflowEditorPageProps {
   session: SessionUser;
@@ -7560,13 +7561,13 @@ Change the keystroke in Preferences.`}
                           </div>
                           {/* On its own line: three controls across a 240px panel left the menu a sliver. */}
                           <div className={styles.inputWrapper}>
-                            <select
+                            <Select
                               id="node-image-preset"
                               className={`${styles.input} ${styles.select}`}
                               aria-label={t('Preset')}
                               value={chosen?.id ?? ''}
-                              onChange={(event) => {
-                                const picked = imagePresets.find((one) => one.id === event.target.value);
+                              onChange={(id) => {
+                                const picked = imagePresets.find((one) => one.id === id);
                                 if (picked === undefined) return;
                                 setDraft({ ...draft, imageSize: `${picked.width}x${picked.height}` });
                               }}
@@ -7577,7 +7578,7 @@ Change the keystroke in Preferences.`}
                                   {one.name} ({one.width}×{one.height})
                                 </option>
                               ))}
-                            </select>
+                            </Select>
                           </div>
                         </div>
                       );
@@ -8116,13 +8117,13 @@ Change the keystroke in Preferences.`}
                       </FieldHint>
                     </span>
                     <div className={styles.inputWrapper}>
-                      <select
+                      <Select
                         id="node-chattiness"
                         className={`${styles.input} ${styles.select}`}
                         data-node-chattiness=""
                         value={draft.mappings.find((one) => one.name === 'chattiness')?.expression ?? ''}
-                        onChange={(event) => {
-                          const level = event.target.value;
+                        onChange={(picked) => {
+                          const level = picked;
                           const others = draft.mappings.filter((one) => one.name !== 'chattiness');
                           setDraft({
                             ...draft,
@@ -8135,7 +8136,7 @@ Change the keystroke in Preferences.`}
                         <option value="LOW">{t('Low')}</option>
                         <option value="MEDIUM">{t('Medium')}</option>
                         <option value="HIGH">{t('High')}</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
                 )}

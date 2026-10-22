@@ -34,6 +34,7 @@ import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceFunctionsPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceFunctionsPageProps {
   session: SessionUser;
@@ -198,12 +199,12 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
               One origin, or both. A select rather than tabs, because it is a
               sieve over one list and not two lists wearing one heading.
             */}
-            <select
+            <Select
               className={styles.sourceFilter}
               aria-label={t('Which functions to list')}
               value={scope}
-              onChange={(event) => {
-                setScope(event.target.value);
+              onChange={(picked) => {
+                setScope(picked);
                 // Which page somebody is on means nothing in another sieve.
                 setPage(1);
               }}
@@ -217,7 +218,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
                   {plugin.name}
                 </option>
               ))}
-            </select>
+            </Select>
             <ImportComponentsButton workspaceId={workspaceId} onImported={load} />
             <UseTemplateButton workspaceId={workspaceId} kind="FUNCTION" onImported={load} />
             <button

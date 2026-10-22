@@ -41,6 +41,7 @@ import own from './TriggerForm.module.css';
 import { t } from '../i18n';
 import { DiscardButton } from './SaveBar';
 import { useDirty } from './useDirty';
+import { Select } from './Select';
 
 /**
  * The class names the form paints itself with.
@@ -613,12 +614,12 @@ export function TriggerForm({
           <div className={styles.field}>
             <label className={styles.label} htmlFor="trigger-type">{t('Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="trigger-type"
                 name="triggerType"
                 className={`${styles.input} ${styles.select}`}
                 value={type}
-                onChange={(event) => setType(event.target.value as TriggerType)}
+                onChange={(picked) => setType(picked as TriggerType)}
                 /*
                   What a shared trigger waits for does not change; its settings
                   do. Several workflows may point at one, and a kind changed
@@ -631,11 +632,12 @@ export function TriggerForm({
                   somewhere else and back.
                  */
                 disabled={editing && !embedded}
+                chevron={false}
               >
                 <option value="INCOMING_CONNECTION">{t('Connection')}</option>
                 <option value="SCHEDULED">{t('Scheduled')}</option>
                 <option value="WEBHOOK">{t('Webhook')}</option>
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
@@ -771,18 +773,19 @@ export function TriggerForm({
                   </FieldHint>
                 </span>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="trigger-auth"
                     name="authType"
                     className={`${styles.input} ${styles.select}`}
                     value={authType}
-                    onChange={(event) => setAuthType(event.target.value as WebhookAuthType)}
+                    onChange={(picked) => setAuthType(picked as WebhookAuthType)}
+                    chevron={false}
                   >
-                    <option value="NONE">{t('Open — the URL is the secret')}</option>
-                    <option value="FUNCTION">
-                      {t('Function — ask one of this workspace\'s functions')}
+                    <option value="NONE" data-hint={t('The URL is the secret.')}>{t('Open access')}</option>
+                    <option value="FUNCTION" data-hint={t("Asks one of this workspace's functions.")}>
+                      {t('Function')}
                     </option>
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
@@ -957,19 +960,20 @@ export function TriggerForm({
                   </FieldHint>
                 </span>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="trigger-action"
                     name="action"
                     className={`${styles.input} ${styles.select}`}
                     value={action}
-                    onChange={(event) => setAction(event.target.value as TriggerAction)}
+                    onChange={(picked) => setAction(picked as TriggerAction)}
+                    chevron={false}
                   >
                     {TRIGGER_ACTIONS.filter((candidate) => deliverable.includes(candidate)).map((candidate) => (
                       <option key={candidate} value={candidate}>
                         {TRIGGER_ACTION_LABEL[candidate]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
                 {/*
@@ -1135,19 +1139,20 @@ export function TriggerForm({
                   </FieldHint>
                 </span>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="trigger-timezone"
                     name="timezone"
                     className={`${styles.input} ${styles.select}`}
                     value={timezone}
-                    onChange={(event) => setTimezone(event.target.value)}
+                    onChange={(picked) => setTimezone(picked)}
+                    chevron={false}
                   >
                     {TIMEZONES.map((zone) => (
                       <option key={zone} value={zone}>
                         {zone}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>

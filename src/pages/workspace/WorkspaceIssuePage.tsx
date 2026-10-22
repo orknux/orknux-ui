@@ -64,6 +64,7 @@ import { shellUser } from '../../session/user';
 import styles from './WorkspaceIssuePage.module.css';
 import { t } from '../../i18n';
 import { zoned } from '../../session/timeZone';
+import { Select } from '../../components/Select';
 
 /**
  * How many existing labels are offered at once.
@@ -1543,11 +1544,11 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
               */}
               <div className={styles.sideField}>
                 <span className={styles.label}>Type</span>
-                <select
+                <Select
                   className={styles.typeSelect}
                   aria-label={t('Issue type')}
                   value={typeId}
-                  onChange={(event) => setTypeId(event.target.value)}
+                  onChange={(picked) => setTypeId(picked)}
                   disabled={saving}
                 >
                   <option value="">Untyped</option>
@@ -1556,7 +1557,7 @@ function Issue({ session, onSignOut }: WorkspaceIssuePageProps) {
                       {type.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <AssigneePicker workspaceId={workspaceId} chosen={assignee} onChoose={setAssignee} />

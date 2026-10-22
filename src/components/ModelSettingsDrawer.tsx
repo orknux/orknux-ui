@@ -20,6 +20,7 @@ import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { PanelClose, panelEscape } from './PanelClose';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface ModelSettingsDrawerProps {
   /** Beside the page, as the workflow editor asks for, or over it. */
@@ -284,17 +285,18 @@ function ModelDrawerCreateForm({ workspaceId, kinds, onCreated, onCancel }: Mode
         <div className={own.detail}>
           <label className={own.detailLabel} htmlFor="new-model-kind">{t('Type')}</label>
           <div className={own.selectWrapper}>
-            <select
+            <Select
               id="new-model-kind"
               className={`${own.input} ${own.select}`}
               value={kind}
-              onChange={(event) => setKind(event.target.value as ModelKind)}
+              onChange={(picked) => setKind(picked as ModelKind)}
               disabled={kinds.length < 2}
+              chevron={false}
             >
               {kinds.map((one) => (
                 <option key={one} value={one}>{modelKindLabel(one)}</option>
               ))}
-            </select>
+            </Select>
             <img className={own.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
           </div>
         </div>
@@ -313,18 +315,19 @@ function ModelDrawerCreateForm({ workspaceId, kinds, onCreated, onCancel }: Mode
           </span>
           {/* With none to hold this kind, the empty select says so, and Add Provider above is the way on. */}
           <div className={own.selectWrapper}>
-            <select
+            <Select
               id="new-model-provider"
               className={`${own.input} ${own.select}`}
               value={providerId}
-              onChange={(event) => setProviderId(event.target.value)}
+              onChange={(picked) => setProviderId(picked)}
               disabled={usable.length === 0}
+              chevron={false}
             >
               {usable.length === 0 && <option value="">{t('No provider for this kind of model')}</option>}
               {usable.map((one) => (
                 <option key={one.id} value={one.id}>{one.name}</option>
               ))}
-            </select>
+            </Select>
             <img className={own.selectChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
           </div>
         </div>

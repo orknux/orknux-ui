@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
-  authTypeLabel, secretPlaceholder,
+  authTypeHint, authTypeLabel, secretPlaceholder,
   checkMcpServer,
   fetchMcpServer,
   removeMcpServer,
@@ -28,6 +28,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface McpServerSettingsPageProps {
   session: SessionUser;
@@ -306,19 +307,20 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
             <div className={styles.field}>
               <label className={styles.label} htmlFor="server-auth">{t('Auth Type')}</label>
               <div className={styles.inputWrapper}>
-                <select
+                <Select
                   id="server-auth"
                   name="authType"
                   className={`${styles.input} ${styles.select}`}
                   value={authType}
-                  onChange={(event) => setAuthType(event.target.value as AuthType)}
+                  onChange={(picked) => setAuthType(picked as AuthType)}
+                  chevron={false}
                 >
                   {AUTH_TYPES.map((candidate) => (
-                    <option key={candidate} value={candidate}>
+                    <option key={candidate} value={candidate} data-hint={authTypeHint(candidate)}>
                       {authTypeLabel(candidate)}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </div>
             </div>

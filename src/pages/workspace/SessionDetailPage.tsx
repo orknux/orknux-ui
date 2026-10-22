@@ -76,6 +76,7 @@ import styles from './SessionDetailPage.module.css';
 import { BoxOutput } from './BoxOutput';
 import { t, tf } from '../../i18n';
 import { moment, zoned } from '../../session/timeZone';
+import { Select } from '../../components/Select';
 
 export interface SessionDetailPageProps {
   session: SessionUser;
@@ -1663,18 +1664,19 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
             <div className={styles.sortRow}>
               <label className={styles.sortLabel} htmlFor="event-order">{t('Sort')}</label>
               <span className={styles.selectWrapper}>
-                <select
+                <Select
                   id="event-order"
                   className={styles.sortSelect}
                   value={order}
-                  onChange={(event) => setOrder(event.target.value as LlmSessionEventOrder)}
+                  onChange={(picked) => setOrder(picked as LlmSessionEventOrder)}
+                  chevron={false}
                 >
                   {ORDERS.map((one) => (
                     <option key={one.order} value={one.order}>
                       {one.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </span>
               <button

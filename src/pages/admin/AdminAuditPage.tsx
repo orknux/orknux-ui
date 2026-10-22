@@ -20,6 +20,7 @@ import { shellUser } from '../../session/user';
 import styles from './AdminAuditPage.module.css';
 import { t } from '../../i18n';
 import { zoned } from '../../session/timeZone';
+import { Select } from '../../components/Select';
 
 export interface AdminAuditPageProps {
   session: SessionUser;
@@ -104,10 +105,11 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
 
         <label className={styles.filter}>
           <span className={styles.filterLabel}>{t('User:')}</span>
-          <select
+          <Select
             className={styles.filterSelect}
             value={userId}
-            onChange={(event) => setUserId(event.target.value)}
+            onChange={(picked) => setUserId(picked)}
+            chevron={false}
           >
             <option value="">{t('All Users')}</option>
             {users.map((user) => (
@@ -115,23 +117,24 @@ export function AdminAuditPage({ session, onSignOut }: AdminAuditPageProps) {
                 {user}
               </option>
             ))}
-          </select>
+          </Select>
           <img src={chevronDown12Icon} alt="" width={12} height={12} />
         </label>
 
         <label className={styles.filter}>
           <img src={calendarIcon} alt="" width={16} height={16} />
-          <select
+          <Select
             className={`${styles.filterSelect} ${styles.filterValue}`}
             value={days}
-            onChange={(event) => setDays(event.target.value === '' ? '' : Number(event.target.value))}
+            onChange={(picked) => setDays(picked === '' ? '' : Number(picked))}
             aria-label={t('Date range')}
+            chevron={false}
           >
             <option value={1}>{t('Last 24 Hours')}</option>
             <option value={7}>{t('Last 7 Days')}</option>
             <option value={30}>{t('Last 30 Days')}</option>
             <option value="">{t('All Time')}</option>
-          </select>
+          </Select>
           <img src={chevronDown12Icon} alt="" width={12} height={12} />
         </label>
 

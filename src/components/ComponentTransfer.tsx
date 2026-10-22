@@ -39,6 +39,7 @@ import { FieldHint } from './FieldHint';
 import dialogStyles from './Dialog.module.css';
 import styles from './ComponentTransfer.module.css';
 import { t, tf } from '../i18n';
+import { Select } from './Select';
 import { DialogEdges, useDialogSize } from './DialogSize';
 
 /**
@@ -889,12 +890,13 @@ function BindingQuestions({ workspaceId, questions, bindings, busy, onAnswer }: 
                 <span className={styles.entryName}>{entry.name}</span>
               </span>
               <div className={`${dialogStyles.inputWrapper} ${styles.picker}`}>
-                <select
+                <Select
                   className={`${dialogStyles.input} ${dialogStyles.select}`}
                   value={entry.disposition === 'EXCLUDE' ? LEAVE_OUT : chosenFor(bindings, entry)}
                   aria-label={`Which ${EXTERNAL_LABEL[kind].toLowerCase()} ${entry.name} means here`}
                   disabled={busy || offered === undefined}
-                  onChange={(event) => onAnswer(entry, event.target.value)}
+                  onChange={(picked) => onAnswer(entry, picked)}
+                  chevron={false}
                 >
                   <option value="">
                     {offered === undefined
@@ -914,13 +916,14 @@ function BindingQuestions({ workspaceId, questions, bindings, busy, onAnswer }: 
                     and the agent arrives without it. Issue #580.
                   */}
                   {entry.droppable && (
-                    <option value={LEAVE_OUT}>
-                      {kind === 'MODEL'
-                        ? t('Leave it out — choose a model for the agent later')
-                        : t('Leave it out — the agent arrives without it')}
+                    <option
+                      value={LEAVE_OUT}
+                      data-hint={kind === 'MODEL' ? t('Choose a model for the agent later.') : t('The agent arrives without it.')}
+                    >
+                      {t('Leave it out')}
                     </option>
                   )}
-                </select>
+                </Select>
                 <img src={chevronDownIcon} alt="" width={12} height={12} />
               </div>
             </li>

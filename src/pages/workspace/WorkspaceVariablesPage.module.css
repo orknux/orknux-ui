@@ -268,7 +268,7 @@
  * screen. It is given the surface it sits on instead: flat in the row, themed
  * when it opens.
  */
-.typeCell select {
+.typeCell [data-select] {
   flex: 1 0 0;
   min-width: 0;
   appearance: none;
@@ -283,7 +283,7 @@
 }
 
 /* The row being added sits on the raised surface, so its control does too. */
-.addRow .typeCell select {
+.addRow .typeCell [data-select] {
   background-color: var(--color-surface-raised);
 }
 

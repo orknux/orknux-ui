@@ -55,6 +55,7 @@ import { IconField } from './IconField';
 import { t } from '../i18n';
 import { DiscardButton } from './SaveBar';
 import { useDirty } from './useDirty';
+import { Select } from './Select';
 
 /**
  * The class names the form paints itself with.
@@ -647,11 +648,12 @@ export function ConditionForm({
           <div className={styles.field}>
             <label className={styles.label} htmlFor="condition-type">{t('Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="condition-type"
                 className={`${styles.input} ${styles.select}`}
                 value={type}
-                onChange={(event) => changeType(event.target.value as ConditionType)}
+                onChange={(picked) => changeType(picked as ConditionType)}
+                chevron={false}
               >
                 {/* A type no longer offered still belongs to the condition that has it. */}
                 {(CONDITION_TYPES.includes(type) ? CONDITION_TYPES : [type, ...CONDITION_TYPES]).map(
@@ -661,7 +663,7 @@ export function ConditionForm({
                     </option>
                   ),
                 )}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
@@ -686,18 +688,19 @@ export function ConditionForm({
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="condition-property">{t('Property')}</label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="condition-property"
                     className={`${styles.input} ${styles.select}`}
                     value={property}
-                    onChange={(event) => changeProperty(event.target.value as ConditionProperty)}
+                    onChange={(picked) => changeProperty(picked as ConditionProperty)}
+                    chevron={false}
                   >
                     {properties.map((candidate) => (
                       <option key={candidate} value={candidate}>
                         {PROPERTY_LABEL[candidate]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
@@ -706,18 +709,19 @@ export function ConditionForm({
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="condition-check">{t('Check')}</label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="condition-check"
                     className={`${styles.input} ${styles.select}`}
                     value={check}
-                    onChange={(event) => setCheck(event.target.value as ConditionCheck)}
+                    onChange={(picked) => setCheck(picked as ConditionCheck)}
+                    chevron={false}
                   >
                     {checks.map((candidate) => (
                       <option key={candidate} value={candidate}>
                         {CHECK_LABEL[candidate]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>

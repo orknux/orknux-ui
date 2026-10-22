@@ -5,6 +5,7 @@ import { fetchDesignUpscaleAlgorithms } from '../../api/artifacts';
 import type { Model } from '../../api/models';
 import styles from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface DesignUpscaleDialogProps {
   open: boolean;
@@ -100,11 +101,11 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
           <div className={styles.fields}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="upscale-model">{t('Model')}</label>
-              <select
+              <Select
                 id="upscale-model"
                 className={`${styles.input} ${styles.select}`}
                 value={modelId}
-                onChange={(event) => setModelId(event.target.value)}
+                onChange={(picked) => setModelId(picked)}
                 data-testid="upscale-model"
               >
                 {models.map((one) => (
@@ -112,15 +113,15 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
                     {one.name} · {one.providerName}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="upscale-algorithm">{t('Algorithm')}</label>
-              <select
+              <Select
                 id="upscale-algorithm"
                 className={`${styles.input} ${styles.select}`}
                 value={algorithm}
-                onChange={(event) => setAlgorithm(event.target.value)}
+                onChange={(picked) => setAlgorithm(picked)}
                 disabled={algorithms === null || algorithms.length === 0}
                 data-testid="upscale-algorithm"
               >
@@ -130,7 +131,7 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
                     {name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {unreachable !== null && (
                 <p className={styles.error} role="alert" data-testid="upscale-unreachable">
                   {unreachable}
@@ -139,11 +140,11 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="upscale-scale">{t('Scale')}</label>
-              <select
+              <Select
                 id="upscale-scale"
                 className={`${styles.input} ${styles.select}`}
                 value={scale}
-                onChange={(event) => setScale(Number(event.target.value))}
+                onChange={(picked) => setScale(Number(picked))}
                 data-testid="upscale-scale"
               >
                 {SCALES.map((one) => (
@@ -153,7 +154,7 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
                       : `${one}×`}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
         )}

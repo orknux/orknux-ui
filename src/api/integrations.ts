@@ -907,6 +907,20 @@ export function authTypeLabel(authType: AuthType): string {
     case 'BEARER_TOKEN':
       return t('Bearer Token');
     case 'BASIC':
-      return t('Basic (username:password)');
+      return t('Basic');
+  }
+}
+
+/** One line on what each kind of auth sends, as `ConnectionTarget.requestHeaders` on the server sends it. */
+export function authTypeHint(authType: AuthType): string {
+  switch (authType) {
+    case 'NONE':
+      return t('Sends no credentials.');
+    case 'API_KEY':
+      return t('Sends the key as the Authorization header, as it is.');
+    case 'BEARER_TOKEN':
+      return t('Sends the token as Authorization: Bearer.');
+    case 'BASIC':
+      return t('Sends username:password, base64-encoded, as Basic authorization.');
   }
 }

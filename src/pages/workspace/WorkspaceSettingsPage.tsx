@@ -70,6 +70,7 @@ import { forgetWorkspaces } from '../../session/workspaces';
 import styles from './WorkspaceSettingsPage.module.css';
 import { ModelPicker } from '../../components/ModelPicker';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceSettingsPageProps {
   session: SessionUser;
@@ -2371,20 +2372,21 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
             </FieldHint>
           </span>
           <div className={styles.inputWrapper}>
-            <select
+            <Select
               id="voice-chunking"
               className={`${styles.input} ${styles.select}`}
               value={chunking}
               disabled={workspace === null}
-              onChange={(event) => {
+              onChange={(picked) => {
                 touch('chunking');
-                setChunking(event.target.value as SpeechChunking);
+                setChunking(picked as SpeechChunking);
               }}
+              chevron={false}
             >
               <option value="NONE">{t('None')}</option>
               <option value="SENTENCE">{t('Sentence')}</option>
               <option value="PARAGRAPH">{t('Paragraph')}</option>
-            </select>
+            </Select>
             <img src={chevronDown12Icon} alt="" width={12} height={12} />
           </div>
         </div>

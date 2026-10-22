@@ -8,6 +8,7 @@ import editor from './WorkflowEditorPage.module.css';
 import styles from './DecisionNodeFields.module.css';
 import { TrashIcon } from '../../components/TrashIcon';
 import { t, tf } from '../../i18n';
+import { Select } from '../../components/Select';
 
 /**
  * What a decision node asks: the model, the questions, which one branches, and
@@ -478,11 +479,11 @@ export function DecisionNodeFields({ draft, models, onChange, modelLink }: Decis
           </FieldHint>
         </span>
         <div className={editor.inputWrapper}>
-          <select
+          <Select
             id="node-decision-branch"
             className={`${editor.input} ${editor.select}`}
             value={branch ?? ''}
-            onChange={(event) => onChange({ decisionBranchQuestion: event.target.value || null })}
+            onChange={(picked) => onChange({ decisionBranchQuestion: picked || null })}
           >
             <option value="">{t('No branching')}</option>
             {choices.map((question) => (
@@ -490,7 +491,7 @@ export function DecisionNodeFields({ draft, models, onChange, modelLink }: Decis
                 {question.key}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 

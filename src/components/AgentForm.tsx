@@ -37,6 +37,7 @@ import { ModelPicker } from './ModelPicker';
 import { t, tf } from '../i18n';
 import { DiscardButton } from './SaveBar';
 import { useDirty } from './useDirty';
+import { Select } from './Select';
 
 /**
  * The class names the form paints itself with.
@@ -816,11 +817,11 @@ function GrantList<Item>({
             reading every row.
           */}
           {groups.length > 1 && (
-            <select
+            <Select
               className={own.grantGroup}
               value={group}
               aria-label={`Which ${what} to list`}
-              onChange={(event) => setGroup(event.target.value)}
+              onChange={(picked) => setGroup(picked)}
             >
               <option value="">{t('All')}</option>
               {groups.map((one) => (
@@ -828,24 +829,24 @@ function GrantList<Item>({
                   {one === OWN_GROUP ? t("This workspace's own") : one}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
 
           {/* Narrow to one status - what is pinned, offered, or off. Only on a
               list that has statuses, which is the tools list. Issue #413. */}
           {onMark !== undefined && (
-            <select
+            <Select
               className={own.grantGroup}
               value={status}
               aria-label={t('Which tool status to list')}
               data-tool-status-filter=""
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(picked) => setStatus(picked)}
             >
               <option value="all">{t('Any status')}</option>
               <option value="always">{t('Always')}</option>
               <option value="offer">{t('Offer')}</option>
               <option value="hide">{t('Hide')}</option>
-            </select>
+            </Select>
           )}
         </div>
       )}
@@ -2072,17 +2073,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('The short messages the agent writes while it is still working, which reach whoever asked before its answer does. None: only the answer. Low: one line on what it is about to do. Medium: that, and every few calls what it found. High: a line at every step. A workflow node can set its own.')}
             </FieldHint>
           </span>
-          <select
+          <Select
             id="agent-chattiness-level"
             className={own.levelBox}
             value={chattiness}
-            onChange={(event) => setChattiness(event.target.value as Chattiness)}
+            onChange={(picked) => setChattiness(picked as Chattiness)}
           >
             <option value="NONE">{t('None')}</option>
             <option value="LOW">{t('Low')}</option>
             <option value="MEDIUM">{t('Medium')}</option>
             <option value="HIGH">{t('High')}</option>
-          </select>
+          </Select>
         </div>
 
         {/*
