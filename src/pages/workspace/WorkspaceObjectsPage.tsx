@@ -102,6 +102,21 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
     return all.filter((one) => one.lastModifiedBy.replace(/^plugin /, '') === wanted);
   })();
 
+  /*
+   * One list across both halves, so the pager counts what is drawn. The
+   * workspace's own come first, a page at a time from the server; the plugins'
+   * shapes follow them, cut here to the same page. It counted the workspace's
+   * alone and drew every plugin shape under it: "1-4 of 4" over tens of rows.
+   */
+  const pluginsOnly = source === 'PLUGIN' || source.startsWith('plugin:');
+  const ownTotal = pluginsOnly ? 0 : objects?.totalElements ?? 0;
+  const totalShown = ownTotal + shownPlugins.length;
+  const pageStart = (page - 1) * pageSize;
+  const pagedPlugins = shownPlugins.slice(
+    Math.max(0, pageStart - ownTotal),
+    Math.max(0, pageStart + pageSize - ownTotal),
+  );
+
   const load = useCallback(() => {
     if (workspaceId === '') return;
     setError(null);
@@ -253,7 +268,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           </p>
         )}
 
-        {(source === 'PLUGIN' || source.startsWith('plugin:') ? [] : objects?.content ?? []).map((held) => (
+        {(pluginsOnly ? [] : objects?.content ?? []).map((held) => (
           <div key={held.id} className={styles.row}>
             <Link className={`${styles.colName} ${styles.name}`} to={`/workspace/${workspaceId}/objects/${held.id}`}>
               {held.name}
@@ -299,9 +314,9 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           row's actions: a plugin's shape is replaced wholesale the next time
           it is loaded, so an edit would be an edit somebody loses.
         */}
-        {shownPlugins.length > 0 && (
+        {pagedPlugins.length > 0 && (
           <>
-            {shownPlugins.map((held) => (
+            {pagedPlugins.map((held) => (
               <div key={held.id} className={styles.row}>
                 <Link
                   className={`${styles.colName} ${styles.name}`}
@@ -344,7 +359,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           <CompactPagination
             page={page}
             pageSize={pageSize}
-            totalItems={objects.totalElements}
+            totalItems={totalShown}
             unit="objects"
             onPageChange={setPage}
             pageSizes={PAGE_SIZES}

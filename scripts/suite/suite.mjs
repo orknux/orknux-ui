@@ -346,6 +346,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'objects-paging-check',
+    what: "the Objects page's pager counts and pages the workspace's own objects and the plugins' shapes as one list",
+    needs: [],
+  },
+  {
     name: 'remove-dialog-wording-check',
     what: 'removing a saved file or a picture asks in its own words, not a workflow's; only reads the dialog and cancels it',
     needs: [],
