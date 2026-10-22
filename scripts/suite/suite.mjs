@@ -590,6 +590,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-copy-parts-check',
+    what: 'the copy dialog asks what to take, the copy carries only that, and the choice is kept',
+    needs: [],
+  },
+  {
     name: 'workspace-menu-check',
     what: 'the workspace menu in the top bar: every workspace, the current one ticked, a readable highlight, keys that move and close',
     needs: ['workspace'],

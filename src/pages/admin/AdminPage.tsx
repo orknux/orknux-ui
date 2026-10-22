@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { CopyWorkspaceDialog } from '../../components/CopyWorkspaceDialog';
 import type { WorkspaceOrder } from '../../api/workspaces';
 import { Link } from 'react-router-dom';
 
@@ -47,6 +48,8 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
   const [creating, setCreating] = useState(false);
   /* Copying a workspace, and what came of it. Issue #408. */
   const [copying, setCopying] = useState<string | null>(null);
+  /** The workspace whose copy is being set up in the dialog, before it starts. */
+  const [copyAsked, setCopyAsked] = useState<{ id: string; name: string } | null>(null);
   const [copied, setCopied] = useState<WorkspaceCopy | null>(null);
   /** How far the copy under way has got, read while it runs. Issue #572. */
   const [progress, setProgress] = useState<WorkspaceCopyProgress | null>(null);
@@ -331,15 +334,8 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                   disabled={copying !== null}
                   aria-label={`Duplicate ${workspace.name}`}
                   title={`Duplicate ${workspace.name}`}
-                  onClick={() => {
-                    // Named by the server: the first free of "<name> copy", "<name> copy 2"... A name chosen here was refused once taken.
-                    runCopy(
-                      workspace.id,
-                      'copy',
-                      (key) => duplicateWorkspace(workspace.id, null, key),
-                      t('That workspace was not copied.'),
-                    );
-                  }}
+                  // Asked first: what the copy takes with it is a choice now.
+                  onClick={() => setCopyAsked({ id: workspace.id, name: workspace.name })}
                 >
                   <img src={copyIcon} alt="" width={16} height={16} />
                 </button>
@@ -395,6 +391,17 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
       </section>
 
       <CreateWorkspaceDialog open={creating} onClose={() => setCreating(false)} onCreated={handleCreated} />
+      <CopyWorkspaceDialog
+        workspace={copyAsked}
+        onClose={() => setCopyAsked(null)}
+        onCopy={(name, parts) => {
+          const asked = copyAsked;
+          setCopyAsked(null);
+          if (asked === null) return;
+          // A blank name is the server's: the first free of "<name> copy", "<name> copy 2"...
+          runCopy(asked.id, 'copy', (key) => duplicateWorkspace(asked.id, name, key, parts), t('That workspace was not copied.'));
+        }}
+      />
     </AppShell>
   );
 }

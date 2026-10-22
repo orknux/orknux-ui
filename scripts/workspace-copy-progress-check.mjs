@@ -40,8 +40,13 @@ await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the workspaces'), 'the workspaces are on screen');
 
 const duplicate = page.getByRole('button', { name: `Duplicate ${NAME}`, exact: true });
+/** Duplicate, then Copy in the dialog that asks what to take - everything, as it comes. */
+const copyWhole = async () => {
+  await duplicate.click();
+  await page.getByTestId('copy-workspace-dialog').getByRole('button', { name: 'Copy', exact: true }).click();
+};
 await duplicate.waitFor({ timeout: 20_000 });
-await duplicate.click();
+await copyWhole();
 
 const block = page.locator('[data-copy-progress]');
 record(await block.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false), 'a progress block appears while the copy runs');
@@ -76,7 +81,7 @@ await page.locator('[data-copy-dismiss]').click();
 record((await answer.count()) === 0, 'the answer is dismissed with its close button');
 
 /* A second copy is not refused for a name the first one took: it takes "copy 2". */
-await duplicate.click();
+await copyWhole();
 record(
   await page.locator('[role="status"]', { hasText: `${NAME} copy 2` }).waitFor({ timeout: 60_000 }).then(() => true).catch(() => false),
   'a second copy takes the next free name',
@@ -94,7 +99,7 @@ await page.route('**/graphql', async (route) => {
   await route.fulfill({ status: 500, contentType: 'text/plain', body: 'unavailable' });
 });
 await page.locator('[data-copy-dismiss]').click().catch(() => undefined);
-await duplicate.click();
+await copyWhole();
 record(
   await page.locator('[data-copy-progress-unread]').waitFor({ timeout: 10_000 }).then(() => true).catch(() => false),
   'a progress that cannot be read is said under the bar',

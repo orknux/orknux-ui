@@ -744,10 +744,33 @@ export async function fetchWorkspaceCopyProgress(key: string): Promise<Workspace
  * `progressKey` is made up by the caller, which reads how far the copy has got
  * under it with [fetchWorkspaceCopyProgress] while this is still waiting. #572.
  */
-export async function duplicateWorkspace(id: string, name: string | null, progressKey?: string): Promise<WorkspaceCopy> {
+/** What a workspace copy may carry, each a switch in the copy dialog. */
+export type WorkspaceCopyPart =
+  | 'CONNECTIONS'
+  | 'MCP_SERVERS'
+  | 'MODELS'
+  | 'VARIABLES'
+  | 'MEMORIES'
+  | 'OBJECTS'
+  | 'FUNCTIONS'
+  | 'CONDITIONS'
+  | 'TOOLS'
+  | 'SKILLS'
+  | 'ACTIONS'
+  | 'AGENTS'
+  | 'TRIGGERS'
+  | 'WORKFLOWS';
+
+/** Copies a workspace; `parts` left out copies everything. */
+export async function duplicateWorkspace(
+  id: string,
+  name: string | null,
+  progressKey?: string,
+  parts?: WorkspaceCopyPart[],
+): Promise<WorkspaceCopy> {
   const data = await graphql<{ duplicateWorkspace: WorkspaceCopy }>(
-    `mutation DuplicateWorkspace($id: ID!, $name: String, $progressKey: String) {
-       duplicateWorkspace(id: $id, name: $name, progressKey: $progressKey) {
+    `mutation DuplicateWorkspace($id: ID!, $name: String, $progressKey: String, $parts: [WorkspaceCopyPart!]) {
+       duplicateWorkspace(id: $id, name: $name, progressKey: $progressKey, parts: $parts) {
          workspace { id name description }
          carried { kind count }
          variablesToSet
@@ -755,7 +778,7 @@ export async function duplicateWorkspace(id: string, name: string | null, progre
          problems
        }
      }`,
-    { id, name, progressKey: progressKey ?? null },
+    { id, name, progressKey: progressKey ?? null, parts: parts ?? null },
   );
   return data.duplicateWorkspace;
 }
