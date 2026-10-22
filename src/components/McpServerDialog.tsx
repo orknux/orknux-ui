@@ -5,6 +5,7 @@ import { authTypeLabel, secretPlaceholder, checkMcpServerDraft, createMcpServer 
 import type { AuthType, HttpHeader, McpServer, McpServerCheck } from '../api/integrations';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
+import status from '../pages/workspace/IntegrationSettings.module.css';
 import { HeaderRowsEditor } from './HeaderRowsEditor';
 import { SecretField, useSecretField } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
@@ -216,20 +217,32 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
           </p>
         )}
 
-        {/* Test beside its result, on a line of its own below the form, as on the saved server's page. */}
-        <p className={styles.dialogMessage} data-testid="mcp-draft-check">
+        {/* Test at the end of the status line it updates, as on the saved server's page. */}
+        <div className={status.statusRow} data-testid="mcp-draft-check">
+          <span
+            className={`${status.statusDot} ${
+              tested === null ? status.statusIdle : tested.reachable ? status.statusConnected : status.statusFailed
+            }`}
+          />
+          <span className={status.statusLabel}>
+            {tested === null ? t('Not checked') : tested.reachable ? t('Connected') : t('Failed')}
+          </span>
+          <span
+            className={status.statusDetail}
+            title={tested?.detail ?? undefined}
+            data-check-reachable={tested === null ? undefined : String(tested.reachable)}
+          >
+            {tested === null ? t('Ask the server whether it answers, before adding it.') : tested.detail}
+          </span>
           <button
             type="button"
-            className={styles.ghost}
+            className={`${styles.ghost} ${status.statusAction}`}
             onClick={() => void handleTest()}
             disabled={address.trim() === '' || testing || submitting}
           >
             {testing ? t('Testing…') : t('Test')}
-          </button>{' '}
-          <span data-check-reachable={tested === null ? undefined : String(tested.reachable)}>
-            {tested === null ? t('Ask the server whether it answers, before adding it.') : tested.detail}
-          </span>
-        </p>
+          </button>
+        </div>
 
         <div className={styles.actions}>
           <button type="button" className={styles.ghost} onClick={onClose} disabled={submitting}>
