@@ -346,6 +346,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'errors-report-check',
+    what: 'Admin > Reports offers Errors: how many runs, agents and quick chats failed, what failed most often, a row per failure linking to its run or conversation, narrowed by source',
+    needs: [],
+  },
+  {
     name: 'editor-hover-hint-check',
     what: "a line's and a joint's hint in the editor is the application's own box beside the pointer, not a native title",
     needs: [],

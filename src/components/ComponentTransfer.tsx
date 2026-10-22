@@ -1149,10 +1149,18 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
   );
 }
 
-export interface SaveAsTemplateButtonProps extends ExportComponentButtonProps {
+export interface SaveAsTemplateButtonProps extends Omit<ExportComponentButtonProps, 'kind'> {
+  /** What is published, for a component; left out where [save] publishes it instead. */
+  kind?: ComponentKind;
   /** Renders nothing when false: publishing is installation-wide. */
   canPublish: boolean;
 }
+  /**
+   * How to publish something that is not a component - a model, whose template
+   * carries its provider and is published by its own mutation. Given, the
+   * dialog offers no depth: what travels is decided by the thing itself.
+   */
+  save?: (input: { name: string; description: string | null }) => Promise<unknown>;
 
 /**
  * The row action that publishes this component for the whole installation.
@@ -1174,6 +1182,7 @@ export function SaveAsTemplateButton({
   className,
   canPublish,
 }: SaveAsTemplateButtonProps) {
+  save,
   const [open, setOpen] = useState(false);
 
   if (!canPublish) return null;
@@ -1196,17 +1205,20 @@ export function SaveAsTemplateButton({
         id={id}
         name={name}
         onClose={() => setOpen(false)}
+        save={save}
       />
     </>
   );
 }
 
-interface SaveAsTemplateDialogProps extends ExportComponentButtonProps {
+interface SaveAsTemplateDialogProps extends Omit<ExportComponentButtonProps, 'kind'> {
+  kind?: ComponentKind;
+  save?: SaveAsTemplateButtonProps['save'];
   open: boolean;
   onClose: () => void;
 }
 
-function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: SaveAsTemplateDialogProps) {
+function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose }: SaveAsTemplateDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [templateName, setTemplateName] = useState(name);
   /*
@@ -1240,10 +1252,12 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
     setBusy(true);
     setError(null);
     try {
-      await saveComponentAsTemplate(workspaceId, kind, id, depth, {
+      const input = {
         name: templateName.trim(),
         description: description.trim() === '' ? null : description.trim(),
-      });
+      };
+      if (save !== undefined) await save(input);
+      else if (kind !== undefined) await saveComponentAsTemplate(workspaceId, kind, id, depth, input);
       // Published is the end of it: a second dialog saying so was one more thing to close.
       setBusy(false);
       onClose();
@@ -1293,7 +1307,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
               />
             </div>
 
-            <div className={styles.choices}>
+            {save === undefined && <div className={styles.choices}>
               <label className={`${styles.choice} ${depth === 'DEEP' ? styles.choiceSelected : ''}`}>
                 <input
                   type="radio"
@@ -1322,7 +1336,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, onClose }: Sa
                   </span>
                 </span>
               </label>
-            </div>
+            </div>}
 
         {error !== null && (
           <p className={dialogStyles.error} role="alert">

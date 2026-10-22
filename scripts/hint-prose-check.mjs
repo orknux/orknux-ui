@@ -556,6 +556,12 @@ const IN_THE_OPEN = [
     why: 'the ratings report empty, in place of an empty table, as the usage report says',
   },
   {
+    file: 'src/pages/admin/ErrorsReport.tsx',
+    says: 'Nothing failed in this period.',
+    because: 'status',
+    why: 'the errors report empty, in place of an empty table, as the other reports say',
+  },
+  {
     file: 'src/pages/workspace/ExecutionDetailPage.tsx',
     says: 'No step detail was recorded for this run.',
     because: 'status',

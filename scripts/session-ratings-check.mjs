@@ -118,7 +118,7 @@ if (chat === undefined) {
   // A card of its own: a panel behind it, the stars drawn, and the words on a line below them.
   const card = await line.first().evaluate((element) => {
     const lit = [...element.querySelectorAll('svg')].map((star) => getComputedStyle(star).fill);
-    const words = element.querySelector('p')?.getBoundingClientRect();
+    const words = element.querySelector('[data-review-words]')?.getBoundingClientRect();
     const head = element.firstElementChild?.getBoundingClientRect();
     return {
       panel: getComputedStyle(element).backgroundColor,

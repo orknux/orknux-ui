@@ -1,6 +1,6 @@
 /**
- * Models as templates: published from one workspace's Models page, used on
- * another's.
+ * Models as templates: made from a model's own row on one workspace's Models
+ * page, as every other component's template is, and used on another's.
  *
  * Asked for as "add ability to expose model as template". A model is not a
  * component, so the component templates could not carry one; a template of
@@ -29,12 +29,19 @@ try {
   });
 
   await page.goto(`${BASE}/workspace/${from}/models`, { waitUntil: 'domcontentloaded' });
-  await page.getByTestId('models-publish-template').waitFor({ timeout: 20_000 });
-  await page.getByTestId('models-publish-template').click();
-  await page.locator('#model-template-name').fill(TEMPLATE);
-  await page.getByTestId('model-templates-dialog').getByRole('button', { name: 'Publish' }).click();
-  const published = await page.getByTestId('models-transfer-note').innerText({ timeout: 10_000 }).catch(() => '');
-  record(published.includes(TEMPLATE), `Publish as template publishes the listed models (${published})`);
+  // Made from the model's own row, as every other component's template is; there is no page-wide Publish.
+  const save = page.getByRole('button', { name: 'Save Talker as a template' });
+  await save.waitFor({ timeout: 20_000 });
+  record((await page.getByRole('button', { name: 'Publish as template' }).count()) === 0, 'there is no page-wide Publish as template');
+  await save.click();
+  const dialog = page.locator('dialog[open]');
+  await dialog.getByLabel('Name').fill(TEMPLATE);
+  record((await dialog.getByText('Everything it uses').count()) === 0, 'the dialog asks for no depth: a model travels with its provider');
+  await dialog.getByRole('button', { name: 'Publish template' }).click();
+  await dialog.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => undefined);
+  const { modelTemplates: held } = await graphql('query { modelTemplates { name models } }');
+  const made = held.find((one) => one.name === TEMPLATE);
+  record(made !== undefined && made.models.length === 1, `the row's template button publishes that model (${JSON.stringify(made)})`);
 
   await page.goto(`${BASE}/workspace/${into}/models`, { waitUntil: 'domcontentloaded' });
   await page.getByTestId('models-use-template').waitFor({ timeout: 20_000 });

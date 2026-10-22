@@ -41,6 +41,7 @@ import { t, tf } from '../../i18n';
 import { currentLanguage } from '../../session/language';
 import { shellUser } from '../../session/user';
 import styles from './AdminReportsPage.module.css';
+import { ErrorsReport } from './ErrorsReport';
 import { RatingsReport } from './RatingsReport';
 import { costOf, dayOf, formatDate, Picker, share, Tile } from './reportParts';
 import { UsageReportChart } from './UsageReportChart';
@@ -56,7 +57,7 @@ const PEOPLE_PAGE_SIZES = [10, 25, 50];
 const SESSIONS_PER_PAGE = 5;
 const SESSION_PAGE_SIZES = [5, 10, 25];
 
-type ReportKind = 'usage' | 'ratings';
+type ReportKind = 'usage' | 'ratings' | 'errors';
 
 /**
  * Admin > Reports: one report at a time, picked at the top - the usage report
@@ -65,7 +66,8 @@ type ReportKind = 'usage' | 'ratings';
 export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) {
   const [kind, setKind] = useState<ReportKind>(() => {
     try {
-      return window.localStorage.getItem(REPORT_KEY) === 'ratings' ? 'ratings' : 'usage';
+      const held = window.localStorage.getItem(REPORT_KEY);
+      return held === 'ratings' || held === 'errors' ? held : 'usage';
     } catch {
       return 'usage';
     }
@@ -88,10 +90,11 @@ export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) 
           <Picker label={t('Report')} value={kind} onChange={(value) => pick(value as ReportKind)}>
             <option value="usage">{t('Usage')}</option>
             <option value="ratings">{t('Ratings')}</option>
+            <option value="errors">{t('Errors')}</option>
           </Picker>
         </div>
       </header>
-      {kind === 'usage' ? <UsageReportView /> : <RatingsReport />}
+      {kind === 'usage' ? <UsageReportView /> : kind === 'ratings' ? <RatingsReport /> : <ErrorsReport />}
     </AppShell>
   );
 }

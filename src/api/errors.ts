@@ -1,0 +1,56 @@
+import { graphql } from './client';
+import type { UsageFilter } from './usage';
+
+/** What failed: a workflow run, an agent's answer, or the quick chat's model. */
+export type ErrorSource = 'RUN' | 'AGENT' | 'MODEL';
+
+/** One thing that failed, as it was recorded when it happened. */
+export interface ErrorRecord {
+  id: string;
+  at: string;
+  workspaceId: string;
+  /** Null for a workspace that has been removed. */
+  workspaceName: string | null;
+  source: ErrorSource;
+  /** The workflow, agent or model by name, as it was called then. */
+  subject: string;
+  executionId: string | null;
+  sessionId: string | null;
+  message: string;
+}
+
+export interface ErrorSubject {
+  source: ErrorSource;
+  subject: string;
+  count: number;
+  last: string;
+}
+
+export interface ErrorReport {
+  total: number;
+  counts: { source: ErrorSource; count: number }[];
+  /** What failed most often, at most five. */
+  often: ErrorSubject[];
+  rows: ErrorRecord[];
+}
+
+/** Admin > Reports > Errors: what failed over the filter's period, newest first. */
+export async function fetchErrorReport(
+  filter: UsageFilter,
+  source: ErrorSource | null,
+  page: number,
+  size: number,
+): Promise<ErrorReport> {
+  const data = await graphql<{ errorReport: ErrorReport }>(
+    `query($filter: UsageReportFilter, $source: ErrorSource, $page: Int, $size: Int) {
+       errorReport(filter: $filter, source: $source, page: $page, size: $size) {
+         total
+         counts { source count }
+         often { source subject count last }
+         rows { id at workspaceId workspaceName source subject executionId sessionId message }
+       }
+     }`,
+    { filter: { ...filter, source: undefined }, source, page, size },
+  );
+  return data.errorReport;
+}

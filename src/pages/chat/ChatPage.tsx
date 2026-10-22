@@ -4570,7 +4570,7 @@ function ReviewLine({ review }: { review: ChatReview }) {
           </span>
           <span className={styles.reviewWho}>{tf('{name} reviewed this chat', { name: review.personName ?? '' })}</span>
         </div>
-        {review.review !== null && <p className={styles.reviewWords}>{review.review}</p>}
+        {review.review !== null && <div className={styles.reviewWords} data-review-words="">{review.review}</div>}
       </div>
     </div>
   );

@@ -475,3 +475,13 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* A table's own title, above it and in the section heading's voice. */
+.caption {
+  caption-side: top;
+  text-align: left;
+  padding-bottom: var(--space-8);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}

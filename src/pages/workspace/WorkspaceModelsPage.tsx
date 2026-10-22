@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { exportModels, fetchModels, fetchProviders, importModels, modelKindLabel, providerStatusLabel, providerTypeLabel, setModelEnabled } from '../../api/models';
+import { exportModels, fetchModels, fetchProviders, importModels, modelKindLabel, providerStatusLabel, providerTypeLabel, publishModelTemplate, setModelEnabled } from '../../api/models';
 import type { Model, ModelImport, ModelProvider, ProviderStatus } from '../../api/models';
 import { createAgentForModel } from '../../api/agents';
 import type { SessionUser } from '../../api/session';
@@ -16,7 +16,6 @@ import { FilterSelect } from '../../components/FilterSelect';
 import { Loader } from '../../components/Loader';
 import { ModelDialog } from '../../components/ModelDialog';
 import { ModelTemplatesDialog } from '../../components/ModelTemplatesDialog';
-import type { ModelTemplatesMode } from '../../components/ModelTemplatesDialog';
 import { CompactPagination } from '../../components/CompactPagination';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
@@ -25,7 +24,7 @@ import { ordered, useTableSort } from '../../components/tableSort';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceModelsPage.module.css';
-import { DuplicateButton } from '../../components/ComponentTransfer';
+import { DuplicateButton, SaveAsTemplateButton } from '../../components/ComponentTransfer';
 import { duplicateModel, duplicateModelProvider } from '../../api/transfer';
 import { t, tf } from '../../i18n';
 
@@ -213,8 +212,8 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
     }
   }
 
-  /** Use a template, or publish the listed models as one; null while neither is open. */
-  const [templating, setTemplating] = useState<ModelTemplatesMode | null>(null);
+  /** Whether the Use a template dialog is open. */
+  const [templating, setTemplating] = useState(false);
 
   /** What an import or a used template brought, in the line under the heading. */
   function noteImported(done: ModelImport) {
@@ -506,24 +505,12 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             <button
               type="button"
               className={styles.ghostButton}
-              onClick={() => setTemplating({ kind: 'use' })}
+              onClick={() => setTemplating(true)}
               title={t('Add models and their providers from a template')}
               data-testid="models-use-template"
             >
               {t('Use a template')}
             </button>
-            {session.admin && (
-              <button
-                type="button"
-                className={styles.ghostButton}
-                onClick={() => setTemplating({ kind: 'publish', modelIds: (arrangedModels ?? []).map((model) => model.id) })}
-                disabled={(arrangedModels ?? []).length === 0}
-                title={t('Publish the models listed below as a template every workspace can use')}
-                data-testid="models-publish-template"
-              >
-                {t('Publish as template')}
-              </button>
-            )}
           </span>
           {/* A model belongs to a provider, so there is nothing to add without one. */}
           <button
@@ -535,16 +522,12 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
         </div>
         <ModelTemplatesDialog
           workspaceId={workspaceId}
-          mode={templating}
-          onClose={() => setTemplating(null)}
+          open={templating}
+          onClose={() => setTemplating(false)}
           onUsed={(done) => {
-            setTemplating(null);
+            setTemplating(false);
             noteImported(done);
             load();
-          }}
-          onPublished={(made) => {
-            setTemplating(null);
-            setTransferNote({ error: false, text: tf('Published as template {name}', { name: made.name }) });
           }}
         />
         {transferNote !== null && (
@@ -685,6 +668,17 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
                   className={styles.rowAction}
                   run={() => duplicateModel(model.id).then((made) => made.name)}
                   onDone={() => load()}
+                />
+              </span>
+              {/* As every other component's row makes one: this model, with its provider and without its key. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <SaveAsTemplateButton
+                  workspaceId={workspaceId}
+                  id={model.id}
+                  name={model.name}
+                  className={styles.rowAction}
+                  canPublish={session.admin}
+                  save={(input) => publishModelTemplate(workspaceId, [model.id], input.name, input.description)}
                 />
               </span>
               <Link
