@@ -265,6 +265,31 @@ export async function drawn(page, name, options = {}) {
  * false when nothing ever is, so the caller can stop rather than read a canvas
  * with no selection on it.
  */
+/** The workspace menu in the top bar: the button that names the workspace one is in. */
+export const WORKSPACE_MENU = 'button[aria-label="Selected workspace"]';
+
+/** Moves to another workspace through the top bar's menu, the way a person does. */
+export async function pickWorkspace(page, id) {
+  await page.locator(WORKSPACE_MENU).click();
+  await page.locator(`[role="option"][data-workspace-id="${id}"]`).click();
+}
+
+/** Which workspace the top bar says one is in, by id. */
+export async function workspaceShown(page) {
+  return page.locator(WORKSPACE_MENU).getAttribute('data-workspace-id');
+}
+
+/** The names the workspace menu offers, read with it open and closed again after. */
+export async function workspacesOffered(page) {
+  await page.locator(WORKSPACE_MENU).click();
+  const options = page.locator('[role="option"][data-workspace-id]');
+  await options.first().waitFor({ timeout: 5000 });
+  const names = await options.evaluateAll((all) => all.map((one) => one.querySelector('[data-workspace-name]')?.textContent.trim() ?? ''));
+  await page.keyboard.press('Escape');
+  await options.first().waitFor({ state: 'detached', timeout: 5000 });
+  return names;
+}
+
 export async function selectNode(page, node, name = 'the node') {
   await node.waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
   for (let press = 0; press < 5; press += 1) {

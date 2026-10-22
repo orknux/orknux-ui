@@ -1194,6 +1194,12 @@ const SHOTS = [
       await page.waitForTimeout(1500);
     },
   },
+  /*
+   * The box built into the server, which every installation has from its first
+   * start - so the page is never empty, and nothing has to be seeded for it.
+   * Its health is asked for after the list draws, hence the pause.
+   */
+  { name: 'boxes', path: '/admin/boxes', prepare: async (page) => page.waitForTimeout(2500) },
   { name: 'monitoring', path: '/admin/monitoring' },
   { name: 'admin-settings', path: '/admin/settings' },
   // By a setting rather than by the page having text in it: this one lays its
@@ -1261,9 +1267,9 @@ function hideEverywhere({ real, shown }) {
  * a real one, and its options are in the page whether or not it is open.
  */
 function hideOtherWorkspaces({ keep, invented }) {
-  const picker = document.querySelector('select[aria-label="Selected workspace"]');
-  if (picker === null) return;
-  const options = [...picker.options];
+  // The menu draws its options only while it is open, and a shot is taken with it closed - so there is usually nothing to rename.
+  const options = [...document.querySelectorAll('[role="option"][data-workspace-id]')];
+  if (options.length === 0) return;
   const others = options
     .map((option) => option.textContent?.trim() ?? '')
     .filter((name) => name !== keep)
@@ -1345,7 +1351,7 @@ for (const shot of CHOSEN) {
      * good picture of a page over a missing corner is the wrong trade.
      */
     if (shot.path.startsWith('/workspace/')) {
-      for (const corner of ['select[aria-label="Selected workspace"]', 'button[aria-label="Ask about this page"]']) {
+      for (const corner of ['button[aria-label="Selected workspace"]', 'button[aria-label="Ask about this page"]']) {
         try {
           await page.waitForSelector(corner, { timeout: 10_000 });
         } catch {

@@ -18,7 +18,7 @@
  * than the "after". Both are removed at the end, and any left by a killed run
  * are swept at the start.
  */
-import { BASE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, open, record, drawn, finish, pickWorkspace } from './suite/harness.mjs';
 
 const PREFIX = 'zzPageReset';
 /*
@@ -120,7 +120,7 @@ record(onThird === '3', `the list is on page 3 (${JSON.stringify(onThird)})`);
 
 /* ---- switch workspace, which is the whole of the report ---- */
 
-await page.selectOption('select[aria-label="Selected workspace"]', few);
+await pickWorkspace(page, few);
 await page.waitForTimeout(1200);
 if (!(await drawn(page, 'the triggers screen after switching', { within: 30_000 }))) await clean();
 

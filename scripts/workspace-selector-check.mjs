@@ -24,7 +24,7 @@
  * this drives. The name carries a timestamp behind a `zz suite` prefix, the way
  * `chat-workspace-switch-check` names the one it makes.
  */
-import { BASE, WORKSPACE, open, record, drawn, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, shot, finish, WORKSPACE_MENU, workspacesOffered } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -35,10 +35,10 @@ const MADE = `zz suite - selector catches up ${Date.now()}`;
 await page.goto(`${BASE}/admin`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'the admin screen');
 
-const picker = page.locator('select[aria-label="Selected workspace"]');
+const picker = page.locator(WORKSPACE_MENU);
 await picker.waitFor({ timeout: 20_000 });
 
-const namesIn = async () => picker.locator('option').evaluateAll((all) => all.map((one) => one.textContent.trim()));
+const namesIn = async () => workspacesOffered(page);
 
 const before = await namesIn();
 record(before.length > 0, `the selector is drawn with the workspaces that exist (${before.length})`);

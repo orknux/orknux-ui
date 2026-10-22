@@ -22,7 +22,7 @@
  * page still lands on the same page of the new workspace, because that rule was
  * right and is what the chat has now joined rather than replaced.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, WORKSPACE_MENU, pickWorkspace, workspaceShown } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -87,11 +87,11 @@ record(chatSessions.length > 0, `workspace ${WORKSPACE} has chats of its own to 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/issues`, { waitUntil: 'domcontentloaded' });
 await drawn(page, 'the issue list');
 
-const picker = page.locator('select[aria-label="Selected workspace"]');
+const picker = page.locator(WORKSPACE_MENU);
 
 /* ------------------------------------- the rule that was already right */
 
-await picker.selectOption(other);
+await pickWorkspace(page, other);
 await page.waitForTimeout(1200);
 record(
   new URL(page.url()).pathname === `/workspace/${other}/issues`,
@@ -113,7 +113,7 @@ if (await drawn(page, 'the chat')) {
     `the chats listed are this workspace's (${before.length} of them)`,
   );
 
-  await picker.selectOption(other);
+  await pickWorkspace(page, other);
   /*
    * Waited for rather than slept through.
    *
@@ -143,8 +143,8 @@ if (await drawn(page, 'the chat')) {
   record(lit === 'Chat', `and Chat is still the section that is lit (${lit})`);
 
   record(
-    (await picker.inputValue()) === other,
-    `the corner names the workspace that was chosen (${await picker.inputValue()}, wanted ${other})`,
+    (await workspaceShown(page)) === other,
+    `the corner names the workspace that was chosen (${await workspaceShown(page)}, wanted ${other})`,
   );
 
   const after = await page.locator('[class*="_sessionTitle"]').allTextContents();
@@ -198,8 +198,8 @@ if (mine !== undefined) {
       `a chat opened by its address is about its own workspace (${JSON.stringify(elsewhere.slice(0, 4))})`,
     );
     record(
-      (await picker.inputValue()) === String(WORKSPACE),
-      `and the corner follows it there (${await picker.inputValue()}, wanted ${WORKSPACE})`,
+      (await workspaceShown(page)) === String(WORKSPACE),
+      `and the corner follows it there (${await workspaceShown(page)}, wanted ${WORKSPACE})`,
     );
     /*
      * The title is off `current`, which is the chat found in the list this page

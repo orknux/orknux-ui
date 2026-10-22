@@ -29,7 +29,7 @@
  *
  * Files nothing it does not delete, and sweeps what an earlier killed run left.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, WORKSPACE_MENU, pickWorkspace, workspaceShown } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -80,7 +80,7 @@ console.log(`made ${seeded.createIssue.title} (#${seeded.createIssue.number})`);
 
 /* -------------------------------------------------------------- the rulers */
 
-const picker = page.locator('select[aria-label="Selected workspace"]');
+const picker = page.locator(WORKSPACE_MENU);
 const dialog = page.locator('dialog[data-check="unsaved-work"][open]');
 const titleBox = page.locator('input[aria-label="Title"]');
 
@@ -133,7 +133,7 @@ async function openForm(text) {
 
 /** The picker, used the way somebody uses it. */
 async function switchTo(workspaceId) {
-  await picker.selectOption(workspaceId);
+  await pickWorkspace(page, workspaceId);
   await page.waitForTimeout(1400);
 }
 
@@ -152,15 +152,15 @@ if (await openForm(`${MARK} never filed`)) {
   record(await asking(), 'half written: switching workspace asks first');
   record(MINE.test(page.url()), `half written: and has not gone anywhere (${page.url()})`);
   record(
-    (await picker.inputValue()) === WORKSPACE,
-    `half written: and the corner still names the workspace we are in (${await picker.inputValue()})`,
+    (await workspaceShown(page)) === WORKSPACE,
+    `half written: and the corner still names the workspace we are in (${await workspaceShown(page)})`,
   );
 
   await press('Cancel');
   await page.waitForTimeout(500);
   record((await asking()) === false, 'cancel: the question is put away');
   record((await typed()).includes('never filed'), 'cancel: and the writing is still in the box');
-  record((await picker.inputValue()) === WORKSPACE, 'cancel: and the corner has not drifted either');
+  record((await workspaceShown(page)) === WORKSPACE, 'cancel: and the corner has not drifted either');
 
   /* ------------------------------------------------------------------ leave */
 

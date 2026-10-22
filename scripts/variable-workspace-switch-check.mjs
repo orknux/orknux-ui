@@ -13,7 +13,7 @@
  *
  * Makes a workspace with one catalog, and removes it.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, WORKSPACE_MENU, pickWorkspace, workspaceShown } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -50,8 +50,8 @@ record(
   `a catalog of this workspace is open (${variableCatalogs[0].name})`,
 );
 
-const picker = page.locator('select[aria-label="Selected workspace"]');
-await picker.selectOption(other);
+const picker = page.locator(WORKSPACE_MENU);
+await pickWorkspace(page, other);
 await page.waitForURL(`**/workspace/${other}/variables`, { timeout: 10_000 }).catch(() => {});
 await heading.filter({ hasText: THERE }).first().waitFor({ timeout: 10_000 }).catch(() => {});
 await page.waitForTimeout(800);
@@ -61,7 +61,7 @@ const said = await refused.allInnerTexts();
 record(said.length === 0, `and refuses nothing${said.length > 0 ? ` (${said.join(' | ')})` : ''}`);
 record((await heading.allInnerTexts()).some((text) => text.includes(THERE)), "and opens the other workspace's catalog");
 
-await picker.selectOption(WORKSPACE);
+await pickWorkspace(page, WORKSPACE);
 await page.waitForURL(`**/workspace/${WORKSPACE}/variables`, { timeout: 10_000 }).catch(() => {});
 await heading.filter({ hasText: variableCatalogs[0].name }).first().waitFor({ timeout: 10_000 }).catch(() => {});
 await page.waitForTimeout(800);

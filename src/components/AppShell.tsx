@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { WorkspaceMenu } from './WorkspaceMenu';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -741,7 +742,7 @@ function WorkspaceSwitcher({ workspacePath }: { workspacePath?: string }) {
 
   return (
     <>
-      <WorkspaceSelector
+      <WorkspaceMenu
         workspaces={workspaces}
         selectedId={selectedId}
         /*
@@ -806,53 +807,6 @@ export function LdapStatus({ connected = true }: { connected?: boolean }) {
         <span className={connected ? styles.statusDotOnline : styles.statusDotOffline} aria-hidden="true" />
         {connected ? t('LDAP Connected') : t('LDAP Unavailable')}
       </p>
-    </div>
-  );
-}
-
-interface WorkspaceSelectorProps {
-  workspaces: Array<{ id: string; name: string }>;
-  selectedId: string;
-  /** @returns whether the switch happened; false means a page asked to be asked. */
-  onSelect: (id: string) => boolean;
-}
-
-/**
- * The workspace's name with a chevron; a real select, so it opens with the
- * keyboard, is announced as a listbox, and behaves as the platform's own.
- *
- * The name alone, without the "Workspaces / " it carried in the sidebar: the
- * heading was worth having in a column with nothing else in it, and is a
- * hundred pixels of a corner that now holds four other things. What it is, is
- * what the label says.
- */
-function WorkspaceSelector({ workspaces, selectedId, onSelect }: WorkspaceSelectorProps) {
-  return (
-    <div className={styles.workspaceSelector}>
-      <select
-        className={styles.workspaceSelect}
-        value={selectedId}
-        /*
-          Put back by hand when the switch did not happen.
-
-          `value` is React's, but the browser has already drawn the name that
-          was chosen, and nothing here changes state when a guard takes the
-          navigation - so there is no re-render to correct it, and the corner
-          would go on naming a workspace nobody is in for as long as the
-          question is open.
-        */
-        onChange={(event) => {
-          if (!onSelect(event.target.value)) event.target.value = selectedId;
-        }}
-        aria-label={t('Selected workspace')}
-      >
-        {workspaces.map((workspace) => (
-          <option key={workspace.id} value={workspace.id}>
-            {workspace.name}
-          </option>
-        ))}
-      </select>
-      <img className={styles.workspaceChevron} src={chevronDown12Icon} alt="" width={12} height={12} />
     </div>
   );
 }

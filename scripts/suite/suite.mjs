@@ -590,6 +590,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-menu-check',
+    what: 'the workspace menu in the top bar: every workspace, the current one ticked, a readable highlight, keys that move and close',
+    needs: ['workspace'],
+  },
+  {
     name: 'docs-search-typing-check',
     what: 'typing into the manual search shows every letter at once, and choosing a hit lands on a marked word',
     needs: [],
