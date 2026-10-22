@@ -20,7 +20,7 @@
  *
  * It makes its own connection and removes it again.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, context, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -45,12 +45,12 @@ try {
 
   // One Slack, and it is called Slack: no choosing between two spellings of the
   // same service before you have looked at which token you hold.
-  const offered = await page.locator('#workspace-connection-type option').allTextContents();
+  const offered = (await optionsOffered(page, '#workspace-connection-type')).map((option) => option.label);
   const slacks = offered.filter((label) => label.includes('Slack'));
   record(slacks.length === 1 && slacks[0] === 'Slack', `one Slack in the type list (${slacks.join(', ')})`);
 
   await page.fill('#workspace-connection-name', named);
-  await page.selectOption('#workspace-connection-type', 'SLACK');
+  await chooseOption(page, '#workspace-connection-type', 'SLACK');
   await page.waitForTimeout(500);
 
   // The complaint that started this: a form demanding a URL that nothing reads.
@@ -185,26 +185,26 @@ try {
   // The kind can still be changed, and Socket Mode is not among the choices.
   const chooser = page.locator('#connection-type');
   record((await chooser.count()) === 1, 'the kind can still be chosen');
-  const kinds = await chooser.locator('option').allTextContents();
+  const kinds = (await optionsOffered(page, chooser)).map((option) => option.label);
   record(!kinds.some((label) => label.includes('Socket')), `and Socket Mode is gone (${kinds.join(', ')})`);
 
-  await chooser.selectOption('SMTP');
+  await chooseOption(page, chooser, 'SMTP');
   await page.waitForTimeout(400);
   record((await appToken.count()) === 0, 'choosing a kind with no app token takes the field away at once');
-  await chooser.selectOption('SLACK');
+  await chooseOption(page, chooser, 'SLACK');
   await page.waitForTimeout(400);
   record((await appToken.count()) === 1, 'and choosing Slack brings it back');
 
   // Hidden because Slack decides both of them, not because the page stopped
   // offering them: the kind that has a use for either still gets both.
-  await chooser.selectOption('HTTP');
+  await chooseOption(page, chooser, 'HTTP');
   await page.waitForTimeout(400);
   record((await page.locator('#connection-auth').count()) === 1, 'an HTTP endpoint is still offered an Auth Type');
   record(
     (await page.locator('#connection-url-override').count()) === 1,
     'and still offered its URL Override',
   );
-  await chooser.selectOption('SLACK');
+  await chooseOption(page, chooser, 'SLACK');
   await page.waitForTimeout(400);
 } finally {
   if (id !== null) {

@@ -30,7 +30,7 @@
  * started on a workflow with no nodes in it - so this wants a workspace where
  * at least two workflows have run, which is what the seed builds.
  */
-import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, shot, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -143,7 +143,7 @@ async function flip() {
 }
 
 async function showPerPage(size) {
-  await page.selectOption('select[aria-label="How many workflows to show at once"]', String(size));
+  await chooseOption(page, '[data-select][aria-label="How many workflows to show at once"]', String(size));
   await settle();
 }
 
@@ -215,7 +215,7 @@ try {
   // The size is a fact about the screen somebody is at, so it outlives the page.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await settle();
-  const remembered = await page.locator('select[aria-label="How many workflows to show at once"]').inputValue();
+  const remembered = await chosenOption(page, '[data-select][aria-label="How many workflows to show at once"]');
   record(remembered === '25', `the chosen size survives a reload (came back as ${remembered})`);
 
   await showPerPage(10);

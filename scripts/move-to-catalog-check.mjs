@@ -23,7 +23,7 @@ async function menuFor(name) {
   const box = await menu.boundingBox();
   const inside = box !== null && box.y >= 0 && box.y + box.height <= 900 && box.x >= 0 && box.x + box.width <= 1440;
   record(inside, `the menu for ${name} is drawn whole on the screen (${box ? `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}` : 'nothing'})`);
-  record((await menu.locator('select').count()) === 0 && (await menu.getByRole('listbox').count()) === 1, `the menu for ${name} is a listbox, not a native select`);
+  record((await menu.locator('select, [data-select]').count()) === 0 && (await menu.getByRole('listbox').count()) === 1, `the menu for ${name} is a listbox, not a native select`);
   return menu;
 }
 

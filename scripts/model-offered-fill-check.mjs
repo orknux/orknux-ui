@@ -10,7 +10,7 @@
  * Canned: the provider's listing is answered here, so any provider the
  * workspace has will do and nothing is added.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -37,7 +37,7 @@ const openDialog = async () => {
 const value = (id) => page.locator(id).inputValue();
 
 await openDialog();
-await page.locator('#model-offered').selectOption('/models/gemma-4-31B-it-Q4_K_M.gguf');
+await chooseOption(page, '#model-offered', '/models/gemma-4-31B-it-Q4_K_M.gguf');
 await page.waitForTimeout(200);
 record((await value('#model-context')) === '262144', `the context window is the server's (${await value('#model-context')})`);
 record(
@@ -48,7 +48,7 @@ record(
 // A model the listing says nothing about fills nothing; what was typed stays.
 await openDialog();
 await page.locator('#model-context').fill('8000');
-await page.locator('#model-offered').selectOption('hosted-model');
+await chooseOption(page, '#model-offered', 'hosted-model');
 await page.waitForTimeout(200);
 record(
   (await value('#model-context')) === '8000' && (await value('#model-input-cost')) === '',

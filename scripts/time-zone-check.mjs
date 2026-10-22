@@ -13,7 +13,7 @@
  *
  * Puts the zone back to what it was however it ends.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1280, height: 900 } });
 
@@ -25,11 +25,11 @@ try {
   record(await drawn(page, 'the preferences page'), 'the preferences page opens');
   const picker = page.locator('#preferences-time-zone');
   record(await picker.isVisible({ timeout: 10_000 }).catch(() => false), 'it has a time zone picker');
-  const browserOwn = (await picker.locator('option[value=""]').textContent().catch(() => '')) ?? '';
+  const browserOwn = (await optionsOffered(page, picker).catch(() => [])).find((one) => one.value === '')?.label ?? '';
   record(/\(.+\)/.test(browserOwn), `whose first choice is the browser's own, named (${browserOwn})`);
 
   const saved = page.waitForResponse((answer) => (answer.request().postData() ?? '').includes('setMyTimeZone'), { timeout: 10_000 }).catch(() => null);
-  await picker.selectOption('Pacific/Kiritimati');
+  await chooseOption(page, picker, 'Pacific/Kiritimati');
   // Preferences keeps a change as a draft until its Save.
   await page.locator('[class*="_pageSave_"]').click();
   record((await saved) !== null, 'choosing one and saving stores it');

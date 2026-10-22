@@ -61,7 +61,7 @@
  * relayed. `TaskStreamAPI` hands the connection back every four minutes, so
  * anything only relayed would be gone at the next stint.
  */
-import { BASE, WORKSPACE, open, check, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, record, shot, finish, chooseOption } from './suite/harness.mjs';
 
 /** Where something that thinks out loud is, as the *server* sees it. */
 const STUB = process.env.ORKNUX_REASONING_STUB ?? 'http://localhost:8198';
@@ -183,7 +183,7 @@ const readPage = () =>
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('h1:text("Tasks")', { timeout: 20_000 });
 await page.locator('#task-prompt').fill(PROMPT);
-await page.locator('#task-worker').selectOption(String(worker.id));
+await chooseOption(page, '#task-worker', String(worker.id));
 await page.locator('button:text("Start")').click();
 await page.waitForURL(/\/tasks\/\d+$/, { timeout: 20_000 });
 const taskId = page.url().split('/').pop();
@@ -226,7 +226,7 @@ await page.evaluate(() => {
  * would go on passing while testing nothing - which is the failure mode the
  * whole suite is written against.
  */
-const refreshers = await page.locator('select[aria-label="Refresh automatically"]').count();
+const refreshers = await page.locator('[data-select][aria-label="Refresh automatically"]').count();
 check(
   refreshers === 0,
   'the page has no refresh control, so nothing on it can be arriving by poll',

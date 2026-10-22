@@ -20,7 +20,7 @@
  * end, and a row an earlier killed run left behind is swept at the start, as
  * is the action.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 /** Nobody's plugin is called this. The sweep is by key. */
 const KEY = 'zzactionscratch';
@@ -104,14 +104,12 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/actions/new`, { waitUntil: 'domc
 await page.waitForSelector('#action-name', { timeout: 20_000 });
 await page.locator('#action-name').fill(NAME);
 
-const offered = await page.locator('#action-subtype option').evaluateAll((all) =>
-  all.map((one) => ({ value: one.value, label: one.textContent?.trim() })),
-);
+const offered = await optionsOffered(page, '#action-subtype');
 record(
   offered.some((one) => one.value === 'PLUGIN_ACTION' && one.label === 'Plugin Action'),
   `Execute Type offers Plugin Action (${offered.map((one) => one.label).join(', ')})`,
 );
-await page.locator('#action-subtype').selectOption('PLUGIN_ACTION');
+await chooseOption(page, '#action-subtype', 'PLUGIN_ACTION');
 
 const picker = page.locator('#action-plugin-action');
 await picker.waitFor({ state: 'visible', timeout: 10_000 });
@@ -215,7 +213,7 @@ await page
   .waitFor({ state: 'visible', timeout: 10_000 })
   .catch(() => {});
 record(
-  (await page.locator('#action-subtype').inputValue()) === 'PLUGIN_ACTION',
+  (await chosenOption(page, '#action-subtype')) === 'PLUGIN_ACTION',
   'reopened, the subtype is Plugin Action',
 );
 record(

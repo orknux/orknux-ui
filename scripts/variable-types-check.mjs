@@ -16,7 +16,7 @@
  *
  * Makes a plugin, a catalog and two variables, and removes them.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -115,14 +115,14 @@ await page.getByRole('button', { name: '+ Add Value' }).first().click();
 /* -------------------------------------------- the type is on the picker - */
 
 const typePicker = page.getByLabel('New type');
-const offered = await typePicker.locator('option').evaluateAll((all) => all.map((one) => one.value));
+const offered = (await optionsOffered(page, typePicker)).map((one) => one.value);
 console.log(`offered: ${JSON.stringify(offered)}`);
 record(offered.includes(`${KEY}:Colour`), "the plugin's type is on the picker, under the plugin's key");
 record(offered.includes('LIST:NUMBER'), 'and so is a list of numbers');
 record(offered.includes(`LIST:${KEY}:Colour`), "and a list of the plugin's type");
 
 await page.getByLabel('New value name').fill('favourite');
-await typePicker.selectOption(`${KEY}:Colour`);
+await chooseOption(page, typePicker, `${KEY}:Colour`);
 
 /* What the type is told, drawn under the value. */
 const told = page.locator(`[data-type-arguments="${KEY}:Colour"]`);
@@ -173,7 +173,7 @@ record(held.find((one) => one.name === 'favourite')?.value === 'green', 'and was
 
 await page.getByRole('button', { name: '+ Add Value' }).first().click();
 await page.getByLabel('New value name').fill('thresholds');
-await page.getByLabel('New type').selectOption('LIST:NUMBER');
+await chooseOption(page, page.getByLabel('New type'), 'LIST:NUMBER');
 
 const list = page.locator('[data-list-of="number"]');
 record(await list.count().then((many) => many === 1), 'a list is edited as a list');

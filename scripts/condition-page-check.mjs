@@ -7,7 +7,7 @@
  * in the list, change it, reload and see the change, then press Open definition
  * and check where it lands.
  */
-import { BASE, WORKSPACE, open, check, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const stamp = Date.now();
 const NAME = `zz Scratch Condition ${stamp}`;
@@ -104,7 +104,7 @@ check(crumb > 0, 'the page carries a breadcrumb back to Conditions', 'no breadcr
 
 // Fill it in: a function condition, so #88 has something to open.
 await page.locator('#condition-name').fill(NAME);
-await page.locator('#condition-type').selectOption('FUNCTION');
+await chooseOption(page, '#condition-type', 'FUNCTION');
 await page.waitForTimeout(300);
 
 await pick('condition-function', target.name);

@@ -108,6 +108,18 @@ const madeObject = await graphql(
   },
 );
 const scratchObject = madeObject.createObject;
+
+/**
+ * Until its rows have arrived a choice has nothing to show for the value it
+ * holds; once they have, its label names that row. Waited on without opening
+ * it, so nothing on the page is touched.
+ */
+const showing = (control, name) =>
+  page.waitForFunction(
+    ([selector, wanted]) => (document.querySelector(`${selector} [data-select-label]`)?.textContent ?? '').trim().startsWith(wanted),
+    [control, name],
+    { timeout: 30_000 },
+  );
 console.log(`made object ${scratchObject.name} (#${scratchObject.id})`);
 
 /*
@@ -307,10 +319,7 @@ await untouched({
      * on the page that says the late fetch has landed - which is exactly the
      * render the rewrite used to happen on.
      */
-    await page
-      .locator('select[aria-label="External parameter 1"]')
-      .locator(`option[value="${someVariables[0].id}"]`)
-      .waitFor({ state: 'attached', timeout: 30_000 });
+    await showing('[data-select][aria-label="External parameter 1"]', someVariables[0].name);
   },
   held: () => codeColumn(),
   stored: FUNCTION_TS,
@@ -328,10 +337,7 @@ await untouched({
   settled: async () => {
     await page.waitForSelector('.view-lines', { timeout: 30_000 });
     // The object-typed parameter naming its object: the objects have arrived.
-    await page
-      .locator('select[aria-label="Object for ticket"]')
-      .locator(`option[value="${scratchObject.id}"]`)
-      .waitFor({ state: 'attached', timeout: 30_000 });
+    await showing('[data-select][aria-label="Object for ticket"]', scratchObject.name);
   },
   held: () => codeColumn(),
   // Monaco draws the empty line after a trailing newline, so the column is the
@@ -391,10 +397,7 @@ await untouched({
  */
 await page.goto(FUNCTION_WHERE, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.view-lines', { timeout: 30_000 });
-await page
-  .locator('select[aria-label="External parameter 1"]')
-  .locator(`option[value="${someVariables[0].id}"]`)
-  .waitFor({ state: 'attached', timeout: 30_000 });
+await showing('[data-select][aria-label="External parameter 1"]', someVariables[0].name);
 await page.waitForTimeout(1500);
 
 const beforeTheMove = await firstLine();

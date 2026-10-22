@@ -17,7 +17,7 @@
  * footer have to agree.
  */
 import { writeFileSync } from 'node:fs';
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, pickWorkspace } from './suite/harness.mjs';
 import { NAMES, anyOf, workspaceIdOf, workspaceNameOf } from './suite/named.mjs';
 
 const ENVELOPE = '/tmp/import-refresh-check.orkx.json';
@@ -89,7 +89,7 @@ async function state() {
   const rows = await page.locator('a[href*="/workflows/"][href$="/editor"]').count();
   const empty = await page.locator('text=/No workflows for .* yet/').count();
   const size = Number(
-    await page.locator('select[aria-label="How many workflows to show at once"]').inputValue(),
+    await chosenOption(page, '[data-select][aria-label="How many workflows to show at once"]'),
   );
   return { summary, total, rows, empty: empty > 0, size };
 }
@@ -269,7 +269,7 @@ await page.waitForTimeout(1200);
  * Ten a page is the smallest the control offers, and eleven workflows is the
  * whole of what a second page needs.
  */
-await page.selectOption('select[aria-label="How many workflows to show at once"]', '10');
+await chooseOption(page, '[data-select][aria-label="How many workflows to show at once"]', '10');
 await page.waitForTimeout(1200);
 
 const propped = [];
@@ -295,7 +295,8 @@ await page.waitForTimeout(1500);
 const onPageTwo = await state();
 console.log(`page two of the bigger workspace: ${onPageTwo.rows} rows, footer "${onPageTwo.summary}"`);
 
-await page.locator('select').first().selectOption({ label: WORKSPACE_NAME });
+// The top bar's workspace menu, which is where a person switches.
+await pickWorkspace(page, WORKSPACE);
 await page.waitForTimeout(2500);
 const switched = await state();
 console.log(

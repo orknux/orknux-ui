@@ -8,7 +8,7 @@
  * more, choosing one leaves rows of that type and only those, counted off what
  * is drawn. Reads the workspace as it is and changes nothing.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -19,16 +19,16 @@ async function sieve(where, filterId, rowAttribute) {
   // Drawn whenever the list has a row, a single type included: a filter that comes and goes with the data reads as missing.
   record(rows === 0 || (await filter.count()) === 1, `${where}: the sieve is drawn (${rows} row(s))`);
   if ((await filter.count()) === 0) return;
-  const select = filter.locator('select');
-  const values = (await select.locator('option').evaluateAll((all) => all.map((one) => one.value))).filter((one) => one !== '');
+  const select = filter;
+  const values = (await optionsOffered(page, select)).map((one) => one.value).filter((one) => one !== '');
   record(values.length >= 1, `${where}: the sieve offers the types the list has (${values.join(', ')})`);
   for (const value of values) {
-    await select.selectOption(value);
+    await chooseOption(page, select, value);
     await page.waitForTimeout(150);
     const seen = await page.locator(`[${rowAttribute}]`).evaluateAll((all) => all.map((one) => one.getAttribute(one.getAttributeNames().find((name) => name.startsWith('data-')))));
     record(seen.length > 0 && seen.every((one) => one === value), `${where}: choosing ${value} leaves ${seen.length} row(s), all of it`);
   }
-  await select.selectOption('');
+  await chooseOption(page, select, '');
 }
 
 /* ---- Models page: providers wear their type, and both lists have a sieve ---- */

@@ -11,7 +11,7 @@
  * The picture, the models and the queue are answered here, so the check needs
  * no image model of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -139,7 +139,7 @@ const inside = {
 record(inside.prompt === 1 && inside.model === 1 && inside.change === 'Change' && inside.focused === 'magic-prompt',
   `asking what to change, with which model, and Change (${JSON.stringify(inside)})`);
 
-await ask.getByTestId('magic-model').selectOption('9292');
+await chooseOption(page, ask.getByTestId('magic-model'), '9292');
 // Zoomed in before the change is asked for: the zoom is kept through it.
 await page.getByTestId('editor-zoom-in').click();
 const zoomBefore = await page.getByTestId('editor-zoom').innerText();

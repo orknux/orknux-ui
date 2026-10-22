@@ -18,7 +18,7 @@
  * the test mutation is captured and answered here, so what the dialog sends can
  * be read exactly. Nothing reaches the database.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -71,7 +71,7 @@ await page.waitForSelector('#workspace-connection-name', { timeout: 20_000 });
 const dialog = page.locator('dialog[open]');
 await page.waitForTimeout(800);
 const narrow = (await dialog.boundingBox()).width;
-await dialog.locator('#workspace-connection-type').selectOption('cards/deck');
+await chooseOption(page, dialog.locator('#workspace-connection-type'), 'cards/deck');
 await page.waitForTimeout(300);
 
 // The guide: open, beside the form in a wider dialog rather than under it, and as tall as the form.
@@ -150,7 +150,7 @@ record((await result.count()) === 0, 'changing the address clears the old answer
 record(created === 0, 'testing added nothing');
 
 // A kind with a default address: the URL is marked optional, and Test asks with it left empty for the server to fill.
-await dialog.locator('#workspace-connection-type').selectOption('cards/local');
+await chooseOption(page, dialog.locator('#workspace-connection-type'), 'cards/local');
 await dialog.locator('#workspace-connection-url').fill('');
 const urlLabel = (await dialog.locator('label[for="workspace-connection-url"]').innerText()).trim();
 record(/optional/i.test(urlLabel), `the URL is marked optional where the kind has an address of its own (${urlLabel})`);

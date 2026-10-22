@@ -50,7 +50,7 @@
  * its own providers, all under a name nobody would mistake for real, swept at
  * the end and swept again by prefix at the start in case a run was killed.
  */
-import { BASE, WORKSPACE, open, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, shot, finish, chooseOption } from './suite/harness.mjs';
 
 /** Nobody's catalog is called this. The sweep is by prefix. */
 const SCRATCH = 'providerCredentialCheck';
@@ -371,7 +371,7 @@ if (where === null) {
  * follow it, because on a card with two secrets the name is the only thing
  * saying which one is being answered.
  */
-await page.selectOption('#provider-type', 'AZURE_OPENAI');
+await chooseOption(page, '#provider-type', 'AZURE_OPENAI');
 await page.getByRole('tab', { name: 'Service Principal', exact: true }).click();
 await page.waitForTimeout(300);
 const asSecret = await placement('Client Secret', 'provider-secret');

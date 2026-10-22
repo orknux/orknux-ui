@@ -7,7 +7,7 @@
  * Builds two workspaces of its own and removes them after, so it lends nothing
  * of anybody's.
  */
-import { BASE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, open, record, drawn, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -31,8 +31,8 @@ try {
   await card.waitFor({ timeout: 15_000 });
   record((await card.locator('h2#sharing').textContent()) === 'Sharing', 'the settings have a Sharing card');
 
-  await card.getByTestId('share-component').selectOption({ label: CATALOG });
-  await card.getByTestId('share-workspace').selectOption({ label: `zzBorrower ${stamp}` });
+  await chooseOption(page, card.getByTestId('share-component'), { label: CATALOG });
+  await chooseOption(page, card.getByTestId('share-workspace'), { label: `zzBorrower ${stamp}` });
   await card.getByRole('button', { name: 'Share', exact: true }).click();
   const given = card.getByTestId('share-given');
   await given.first().waitFor({ timeout: 10_000 });
@@ -41,7 +41,7 @@ try {
 
   // The three pickers and the press on one row, level at their foot.
   const feet = await card.evaluate((el) =>
-    [...el.querySelectorAll('select'), [...el.querySelectorAll('button')].find((one) => one.textContent === 'Share')]
+    [...el.querySelectorAll('[data-select]'), [...el.querySelectorAll('button')].find((one) => one.textContent === 'Share')]
       .map((one) => Math.round(one?.getBoundingClientRect().bottom ?? -1)),
   );
   record(feet.every((one) => Math.abs(one - feet[0]) <= 2), `the pickers and Share sit on one line (${feet.join(', ')})`);
@@ -49,8 +49,8 @@ try {
   /* ---- every workspace at once ---- */
 
   const visible = (await graphql('query { workspaces(page: 0, size: 200) { content { id } } }')).workspaces.content.length - 1;
-  await card.getByTestId('share-component').selectOption({ label: CATALOG });
-  await card.getByTestId('share-workspace').selectOption({ label: 'All workspaces' });
+  await chooseOption(page, card.getByTestId('share-component'), { label: CATALOG });
+  await chooseOption(page, card.getByTestId('share-workspace'), { label: 'All workspaces' });
   await card.getByRole('button', { name: 'Share', exact: true }).click();
   await page.waitForFunction((n) => document.querySelectorAll('[data-testid="share-given"]').length === n, visible, { timeout: 20_000 }).catch(() => {});
   const all = await card.getByTestId('share-given').count();

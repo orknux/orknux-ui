@@ -13,7 +13,7 @@
  * Canned: `boxSessions` is answered here with twelve sessions, on a scratch box
  * at an address under `.invalid` that the check makes and removes again.
  */
-import { BASE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, open, record, drawn, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 const NAME = 'boxSessionsPagedScratch';
@@ -60,11 +60,11 @@ const ids = async () => rows.evaluateAll((all) => all.map((one) => one.getAttrib
 record((await rows.count()) === 10, `ten of the twelve are shown at first (${await rows.count()})`);
 const summary = (await card.innerText().catch(() => '')).replace(/\s+/g, ' ');
 record(/Showing 1-10 of 12 sessions/.test(summary), 'under the pager every list has');
-const sizes = await card.locator('select').first().evaluate((select) => [...select.options].map((one) => one.value)).catch(() => []);
+const sizes = (await optionsOffered(page, card.locator('[data-select]').first()).catch(() => [])).map((one) => one.value);
 record(JSON.stringify(sizes) === '["5","10","25"]', `with 5, 10 and 25 to choose from (${sizes.join(', ')})`);
 record((await ids())[0] === 'ses_01', `newest activity first to begin with (${(await ids())[0]})`);
 
-await card.locator('select').first().selectOption('5');
+await chooseOption(page, card.locator('[data-select]').first(), '5');
 await page.waitForTimeout(200);
 record((await rows.count()) === 5, `choosing 5 shows five (${await rows.count()})`);
 await card.getByRole('button', { name: /^Next/ }).click();

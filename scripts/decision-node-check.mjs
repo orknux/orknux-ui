@@ -35,7 +35,7 @@
  * never checked. `decision-run-check` is the half that runs one, over a stub.
  * Makes its own provider, model and workflow, and removes them.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, selectNode } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, selectNode, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const PREFIX = 'zzDecisionNode';
 const STAMP = Date.now();
@@ -70,9 +70,9 @@ const clean = async () => {
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/models/providers/new`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#provider-type', { timeout: 30_000 });
-const types = await page.locator('#provider-type option').evaluateAll((all) => all.map((one) => one.value));
+const types = (await optionsOffered(page, '#provider-type').catch(() => [])).map((one) => one.value);
 record(types.includes('SYSTEM_ONE'), `the Providers form offers the decision model type (${JSON.stringify(types)})`);
-await page.locator('#provider-type').selectOption('SYSTEM_ONE').catch(() => undefined);
+await chooseOption(page, '#provider-type', 'SYSTEM_ONE').catch(() => undefined);
 await page.waitForTimeout(300);
 const keyLabel = (await page.locator('label[for="provider-secret"]').first().textContent().catch(() => '')) ?? '';
 record(!keyLabel.includes('*'), `and once picked, its key is not marked required (${JSON.stringify(keyLabel)})`);

@@ -19,7 +19,7 @@
  * see an outgoing header, and a check that pretended to would be asserting the
  * form rather than the call.
  */
-import { BASE, WORKSPACE, drawn, finish, open, record, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, drawn, finish, open, record, shot, chooseOption } from './suite/harness.mjs';
 
 /** What must not appear anywhere. Distinctive on purpose, so a match is a match. */
 const SECRET = 'Bearer sk-live-9If2-never-shown';
@@ -118,7 +118,7 @@ try {
    * have no id of their own, are reached by the aria-label that numbers them.
    */
   await form.locator('#action-name').fill(rowsName);
-  await form.locator('#action-subtype').selectOption('HTTP_REQUEST');
+  await chooseOption(page, form.locator('#action-subtype'), 'HTTP_REQUEST');
   await form.locator('#action-url').fill('https://api.example.com/orders');
 
   // Add two rows, and take one away again. The count is read off the name

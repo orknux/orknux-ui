@@ -61,7 +61,7 @@
  * Its fixture is its own and it takes it away again: one scratch trigger, named
  * for this run, deleted at the end.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, shot, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -276,13 +276,13 @@ try {
    * made against the form: the scope bites the event, not the connection, and a
    * form that kept the line would be teaching the opposite.
    */
-  await page.selectOption('#trigger-action', 'MENTION');
+  await chooseOption(page, '#trigger-action', 'MENTION');
   await page.waitForTimeout(400);
   record(
     (await page.locator('#trigger-action-receives').count()) === 0,
     'choosing Mention takes it away, because a mention arrives without that scope',
   );
-  await page.selectOption('#trigger-action', 'REPLY');
+  await chooseOption(page, '#trigger-action', 'REPLY');
   await page.waitForTimeout(400);
   record(
     (await page.locator('#trigger-action-receives').count()) === 1,

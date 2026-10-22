@@ -2,7 +2,7 @@
  * How much an agent says while it works is chosen on its page, and a workflow
  * node can choose otherwise for itself.
  */
-import { BASE, WORKSPACE, WORKFLOW, open, record, selectNode, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, WORKFLOW, open, record, selectNode, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -17,7 +17,7 @@ const read = async () => (await graphql('query($id: ID!) { agent(id: $id) { chat
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents/${agent.id}/settings`, { waitUntil: 'domcontentloaded' });
 const level = page.locator('#agent-chattiness-level');
 await level.waitFor({ timeout: 20_000 });
-record((await level.inputValue()) === was, `the agent page shows its level (${was})`);
+record((await chosenOption(page, level)) === was, `the agent page shows its level (${was})`);
 // Beside its name, not across the form from it.
 const gap = await page.evaluate(() => {
   const label = document.querySelector('label[for="agent-chattiness-level"]')?.getBoundingClientRect();
@@ -27,12 +27,12 @@ const gap = await page.evaluate(() => {
 record(gap !== null && gap < 80, `the choice sits beside its name (${gap}px after it)`);
 const other = was === 'NONE' ? 'HIGH' : 'NONE';
 try {
-  await level.selectOption(other);
+  await chooseOption(page, level, other);
   await page.getByRole('button', { name: 'Save Changes' }).first().click();
   await page.waitForTimeout(1500);
   record((await read()) === other, `chosen and saved, the agent keeps it (${await read()})`);
 } finally {
-  await level.selectOption(was).catch(() => undefined);
+  await chooseOption(page, level, was).catch(() => undefined);
   await page.getByRole('button', { name: 'Save Changes' }).first().click().catch(() => undefined);
   await page.waitForTimeout(1500);
 }
@@ -53,14 +53,14 @@ if (node !== undefined) {
   record((await choice.count()) === 1, 'the agent node offers its own level');
   record((await page.locator('[data-mapping-name="chattiness"]').count()) === 0, 'and not as a raw parameter row as well');
   try {
-    await choice.selectOption('HIGH');
+    await chooseOption(page, choice, 'HIGH');
     await page.keyboard.press('Control+s');
     await page.waitForTimeout(2000);
     const saved = (await nodes()).find((one) => one.key === node.key);
     const held = saved?.mappings.find((one) => one.name === 'chattiness')?.expression;
     record(held === 'HIGH', `saved, the node holds it (${held})`);
   } finally {
-    await choice.selectOption('').catch(() => undefined);
+    await chooseOption(page, choice, '').catch(() => undefined);
     await page.keyboard.press('Control+s');
     await page.waitForTimeout(2000);
   }

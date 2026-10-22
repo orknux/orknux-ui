@@ -17,7 +17,7 @@
  * Makes nothing and removes nothing.
  * ---------------------------------------------------------------------------
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -110,13 +110,13 @@ await page.waitForTimeout(600);
 record(asked === before + 1, `pressing Refresh asks for the list again (${asked - before} request)`);
 
 const rowBefore = await row('issue:42').evaluate((el) => { el.dataset.mark = 'kept'; return true; });
-await auto.selectOption('1');
+await chooseOption(page, auto, '1');
 await page.waitForTimeout(2600);
 record(rowBefore && asked >= before + 3, `Auto at 1s keeps asking (${asked - before - 1} ticks in 2.5s)`);
 record(
   (await row('issue:42').getAttribute('data-mark')) === 'kept',
   'and a tick replaces the rows in place - the row on screen is the same element',
 );
-await auto.selectOption('0');
+await chooseOption(page, auto, '0');
 
 await finish(browser);

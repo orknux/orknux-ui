@@ -142,7 +142,7 @@ await page.locator('#image-harmonize-size').waitFor({ timeout: 15_000 }).catch((
 const size = await page.locator('#image-harmonize-size').inputValue().catch(() => null);
 // Next to it: the field after the strength's, with nothing between (positions move while the page's sections load).
 const next = await page.evaluate(() => {
-  const fields = [...document.querySelectorAll('input, select, textarea')];
+  const fields = [...document.querySelectorAll('input, [data-select], textarea')];
   const strength = fields.findIndex((one) => one.id === 'image-harmonize-strength');
   return strength >= 0 && fields[strength + 1]?.id === 'image-harmonize-size';
 }).catch(() => false);

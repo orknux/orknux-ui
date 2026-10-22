@@ -39,7 +39,7 @@
  * stays taken is exactly what lets this find its own fixture again.
  * ---------------------------------------------------------------------------
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, shot, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -152,10 +152,8 @@ const asDrawn = () =>
   });
 
 /** Every option the Workflow filter offers, as drawn. */
-const filterOptions = () =>
-  page.$$eval('select[aria-label="Workflow:"] option', (options) =>
-    options.map((option) => ({ value: option.value, label: option.textContent.trim() })),
-  );
+const filterOptions = async () =>
+  (await optionsOffered(page, '[data-select][aria-label="Workflow:"]')).map(({ value, label }) => ({ value, label }));
 
 /** Waits for the rows to settle after a control was used. */
 async function settle() {
@@ -170,7 +168,8 @@ async function settle() {
    */
   await page
     .waitForFunction(
-      () => (document.querySelector('select[aria-label="Workflow:"]')?.options.length ?? 0) > 1,
+      // The closed control says how many rows it holds.
+      () => Number(document.querySelector('[data-select][aria-label="Workflow:"]')?.getAttribute('data-option-count') ?? 0) > 1,
       undefined,
       { timeout: 20_000 },
     )
@@ -183,7 +182,7 @@ async function openList() {
   if (!(await drawn(page, 'the executions list'))) return false;
   // The list opens on the last 24 hours, and the fixture is made once and then
   // reused, so it is older than that on every run but the first.
-  await page.selectOption('select[aria-label="Date range"]', '');
+  await chooseOption(page, '[data-select][aria-label="Date range"]', '');
   await settle();
   return true;
 }
@@ -228,7 +227,7 @@ try {
   const live = options.find((one) => one.value !== '' && one.value !== String(gone.workflowId) && !/removed/i.test(one.label));
   record(live !== undefined, `while an assigned workflow is offered unmarked: "${live?.label ?? '—'}"`);
 
-  await page.selectOption('select[aria-label="Workflow:"]', String(gone.workflowId));
+  await chooseOption(page, '[data-select][aria-label="Workflow:"]', String(gone.workflowId));
   await settle();
   /*
    * And for the rows to be the answer to the filter rather than the rows that
@@ -295,7 +294,7 @@ try {
   if (stillHere === undefined) {
     record(false, 'this workspace has no run of an assigned workflow to compare against');
   } else {
-    await page.selectOption('select[aria-label="Workflow:"]', String(stillHere.workflowId));
+    await chooseOption(page, '[data-select][aria-label="Workflow:"]', String(stillHere.workflowId));
     await settle();
     const alive = await asDrawn();
     record(alive.length > 0, `a workflow the workspace does list still draws its runs (${alive.length})`);

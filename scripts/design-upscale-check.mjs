@@ -10,7 +10,7 @@
  * The picture, the models, the algorithms and the queue are answered here, so
  * the check needs no upscale server of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -141,22 +141,22 @@ record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUps
 await page.getByTestId('editor-upscale').click();
 const dialog = page.getByTestId('upscale-dialog');
 await dialog.waitFor({ timeout: 3_000 }).catch(() => undefined);
-const offered = await page.getByTestId('upscale-model').locator('option').allInnerTexts().catch(() => []);
+const offered = (await optionsOffered(page, page.getByTestId('upscale-model')).catch(() => [])).map((one) => one.label);
 record(offered.length === 2 && offered.every((one) => /Forge|SD\.Next/.test(one)),
   `the Upscale window offers the upscale models and nothing else (${JSON.stringify(offered)})`);
 const algorithmsOf = async () => {
   await page.waitForTimeout(400);
-  return page.getByTestId('upscale-algorithm').locator('option').allInnerTexts().catch(() => []);
+  return optionsOffered(page, page.getByTestId('upscale-algorithm')).then((rows) => rows.map((one) => one.label)).catch(() => []);
 };
 const first = await algorithmsOf();
-await page.getByTestId('upscale-model').selectOption('9494');
+await chooseOption(page, page.getByTestId('upscale-model'), '9494');
 const second = await algorithmsOf();
 record(JSON.stringify(first) === JSON.stringify(ALGORITHMS[9393]) && JSON.stringify(second) === JSON.stringify(ALGORITHMS[9494]),
   `the algorithms are the chosen model's server's own (${JSON.stringify({ first, second })})`);
-const scales = await page.getByTestId('upscale-scale').locator('option').allInnerTexts().catch(() => []);
+const scales = (await optionsOffered(page, page.getByTestId('upscale-scale')).catch(() => [])).map((one) => one.label);
 record(scales.some((one) => one.includes('400 × 200')), `each scale says what the picture becomes (${JSON.stringify(scales)})`);
-await page.getByTestId('upscale-algorithm').selectOption('ESRGAN_4x');
-await page.getByTestId('upscale-scale').selectOption('4');
+await chooseOption(page, page.getByTestId('upscale-algorithm'), 'ESRGAN_4x');
+await chooseOption(page, page.getByTestId('upscale-scale'), '4');
 await page.getByTestId('upscale-submit').click();
 await page.waitForTimeout(500);
 const asked = upscales[0] ?? null;

@@ -11,7 +11,7 @@
  * DOM, and on what the server holds after Save. Makes its own providers on
  * `.invalid` hosts and removes them, with their models.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1100 } });
 const stamp = Date.now();
@@ -53,21 +53,23 @@ try {
     `the Azure model draws Temperature, Top P and Reasoning effort only (${onAzure.join(',')})`,
   );
 
-  const select = page.locator('select#reasoning-effort');
+  const select = page.locator('[data-select]#reasoning-effort');
   if (onAzure.includes('reasoning-effort')) {
     record(await page.getByText('Reasoning effort', { exact: true }).isVisible(), 'labelled Reasoning effort');
-    const offered = await select.locator('option').evaluateAll((all) => all.map((one) => one.value));
+    const offered = (await optionsOffered(page, select)).map((one) => one.value);
     record(
       JSON.stringify(offered) === JSON.stringify(['', 'minimal', 'low', 'medium', 'high']),
       `it offers default and the four efforts (${offered.join(',')})`,
     );
-    record((await select.inputValue()) === '', 'it opens on the default');
+    record((await chosenOption(page, select)) === '', 'it opens on the default');
     // Every optional choice on the page names its empty state the same way: Unset.
-    const empties = await page.locator('select').evaluateAll((all) =>
-      all.map((one) => one.querySelector('option[value=""]')?.textContent?.trim()).filter((text) => text !== undefined),
-    );
+    const empties = [];
+    for (const one of await page.locator('[data-select]').all()) {
+      const empty = (await optionsOffered(page, one)).find((option) => option.value === '');
+      if (empty !== undefined) empties.push(empty.label);
+    }
     record(empties.length >= 2 && empties.every((text) => text === 'Unset'), `each optional choice offers Unset (${JSON.stringify(empties)})`);
-    await select.selectOption('high');
+    await chooseOption(page, select, 'high');
     await page.locator('#temperature').fill('0.4');
     await page.getByRole('button', { name: /^Save/ }).first().click();
     await page.getByText('Saved.', { exact: true }).waitFor({ timeout: 10_000 }).catch(() => undefined);
@@ -78,7 +80,7 @@ try {
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await select.waitFor({ timeout: 20_000 }).catch(() => undefined);
-    record((await select.inputValue().catch(() => '')) === 'high', 'and a reload draws it back');
+    record((await chosenOption(page, select).catch(() => '')) === 'high', 'and a reload draws it back');
   } else {
     record(false, 'the Azure model offers a Reasoning effort select');
   }

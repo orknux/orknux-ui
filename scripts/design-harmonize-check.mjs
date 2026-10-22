@@ -14,7 +14,7 @@
  * The picture, the models, the options and the queue are answered here, so the
  * check needs no image server of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -137,8 +137,8 @@ await page.getByTestId('editor-harmonize').click();
 const dialog = page.getByTestId('harmonize-dialog');
 await dialog.waitFor({ timeout: 3_000 }).catch(() => undefined);
 await page.waitForTimeout(400);
-const offered = await page.getByTestId('harmonize-model').locator('option').evaluateAll((all) => all.map((one) => one.value)).catch(() => []);
-const startsAt = await page.getByTestId('harmonize-model').inputValue().catch(() => null);
+const offered = (await optionsOffered(page, page.getByTestId('harmonize-model')).catch(() => [])).map((one) => one.value);
+const startsAt = await chosenOption(page, page.getByTestId('harmonize-model')).catch(() => null);
 // Only a WebUI: an image model's edit takes no strength, so it redrew the whole picture rather than lightly.
 record(JSON.stringify(offered) === JSON.stringify(['9393']) && startsAt === '9393',
   `the window offers only the WebUI, which redraws lightly - no image model (${JSON.stringify({ offered, startsAt })})`);
@@ -166,15 +166,15 @@ record(prompt === PICTURE.prompt, `the prompt starts as the picture's own (${JSO
 await page.waitForTimeout(400);
 const strength = await page.getByTestId('harmonize-strength').inputValue().catch(() => null);
 const strengthOn = await page.getByTestId('harmonize-strength').isEnabled().catch(() => false);
-const checkpoints = await page.getByTestId('harmonize-checkpoint').locator('option').allInnerTexts().catch(() => []);
-const checkpoint = await page.getByTestId('harmonize-checkpoint').inputValue().catch(() => null);
+const checkpoints = (await optionsOffered(page, page.getByTestId('harmonize-checkpoint')).catch(() => [])).map((one) => one.label);
+const checkpoint = await chosenOption(page, page.getByTestId('harmonize-checkpoint')).catch(() => null);
 record(strengthOn && Number(strength) === SETTING && JSON.stringify(checkpoints) === JSON.stringify(CHECKPOINTS) && checkpoint === CHECKPOINTS[0]
   && (await page.getByTestId('harmonize-strength-note').count()) === 0,
   `for a WebUI the strength starts at the setting and its checkpoints are offered (${JSON.stringify({ strength, strengthOn, checkpoints, checkpoint })})`);
 
 // What was chosen is what is sent, and the window closes onto the picture being redrawn.
 await page.getByTestId('harmonize-strength').fill('0.2');
-await page.getByTestId('harmonize-checkpoint').selectOption(CHECKPOINTS[1]);
+await chooseOption(page, page.getByTestId('harmonize-checkpoint'), CHECKPOINTS[1]);
 await page.getByTestId('harmonize-prompt').fill('a grey field at dusk, evenly lit');
 await page.getByTestId('harmonize-submit').click();
 await page.waitForTimeout(400);

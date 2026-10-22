@@ -25,7 +25,7 @@
  * are one Object node each: the smallest thing that runs to completion without
  * a model, a connection or a schedule.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -101,9 +101,9 @@ const runsLink = () => page.locator('a[aria-label="Runs of this workflow"]');
 
 /** What the Workflow filter reads, as drawn. */
 const filterReads = () =>
-  page.$eval('select[aria-label="Workflow:"]', (select) => ({
-    value: select.value,
-    label: select.options[select.selectedIndex]?.textContent?.trim() ?? '',
+  page.$eval('[data-select][aria-label="Workflow:"]', (select) => ({
+    value: select.getAttribute('data-value') ?? '',
+    label: select.querySelector('[data-select-label]')?.textContent?.trim() ?? '',
   }));
 
 /** The workflow named on every run row drawn. */
@@ -121,7 +121,8 @@ const rowsDrawn = () =>
 async function settled() {
   await page
     .waitForFunction(
-      () => (document.querySelector('select[aria-label="Workflow:"]')?.options.length ?? 0) > 1,
+      // The closed control says how many rows it holds.
+      () => Number(document.querySelector('[data-select][aria-label="Workflow:"]')?.getAttribute('data-option-count') ?? 0) > 1,
       undefined,
       { timeout: 20_000 },
     )
@@ -201,7 +202,7 @@ record(
   `the address opened cold draws the same filtered list (${cold.label}, ${coldRows.length} row(s))`,
 );
 
-await page.selectOption('select[aria-label="Workflow:"]', '');
+await chooseOption(page, '[data-select][aria-label="Workflow:"]', '');
 await settled();
 const widened = await rowsDrawn();
 record(!page.url().includes('workflowId='), `picking All Workflows takes the filter out of the address (${page.url()})`);
@@ -210,7 +211,7 @@ record(
   `and the other workflow's run is back in the list (${widened.length} row(s))`,
 );
 
-await page.selectOption('select[aria-label="Workflow:"]', String(other.workflowId));
+await chooseOption(page, '[data-select][aria-label="Workflow:"]', String(other.workflowId));
 await settled();
 record(
   page.url().endsWith(`?workflowId=${other.workflowId}`),

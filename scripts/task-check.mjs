@@ -21,7 +21,7 @@
  * #295 it builds an agent on that model as well, because a task is given to an
  * agent and there is no longer a bare model in the picker to give it to.
  */
-import { BASE, WORKSPACE, open, check, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const stamp = Date.now();
 const PROVIDER = `zzScratchTaskProvider${stamp}`;
@@ -126,7 +126,7 @@ check(
 );
 
 await page.locator('#task-prompt').fill(PROMPT);
-await page.locator('#task-worker').selectOption(String(worker.id));
+await chooseOption(page, '#task-worker', String(worker.id));
 check(
   await start.isEnabled(),
   'Start is offered once there is a prompt and somebody to do it',

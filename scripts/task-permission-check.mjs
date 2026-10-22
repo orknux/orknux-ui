@@ -25,7 +25,7 @@
  * installation. It borrows whichever model the workspace already has, because a
  * model that answers is the one thing it cannot make.
  */
-import { BASE, WORKSPACE, open, check, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, record, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const stamp = Date.now();
 const AGENT = `zzScratchTaskAgent${stamp}`;
@@ -94,7 +94,7 @@ await page.locator('#task-prompt').fill(PROMPT);
  * came from; issue #295 took the models out of it, so what is left is an agent
  * list and an option is an agent.
  */
-await page.locator('#task-worker').selectOption(String(agent.id));
+await chooseOption(page, '#task-worker', String(agent.id));
 await page.getByRole('button', { name: 'Start', exact: true }).click();
 await page.waitForURL(/\/tasks\/\d+$/, { timeout: 20_000 });
 const taskId = page.url().split('/').pop();

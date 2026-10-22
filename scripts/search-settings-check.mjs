@@ -7,7 +7,7 @@
  * back - and a page that drew it into an input would undo the point of
  * encrypting the column.
  */
-import { BASE, open, record, finish } from './suite/harness.mjs';
+import { BASE, open, record, finish, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1280, height: 1000 } });
 
@@ -24,7 +24,7 @@ record(await section.isVisible().catch(() => false), 'the Search section is on t
 
 const engine = page.locator('#search-engine');
 record(await engine.isVisible().catch(() => false), 'the engine can be chosen');
-record((await engine.inputValue().catch(() => '')) === 'tavily', 'and tavily is the one it starts on');
+record((await chosenOption(page, engine).catch(() => '')) === 'tavily', 'and tavily is the one it starts on');
 
 /* Set a key through the API, then reload and check the page never shows it. */
 const secret = `zz-not-a-real-key-${Date.now()}`;

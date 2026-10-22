@@ -27,7 +27,7 @@
  * Everything is this check's own, made and deleted over GraphQL, and swept at
  * the start in case an earlier run was killed before it could delete.
  */
-import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, shot, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1800, height: 1000 } });
 
@@ -145,7 +145,8 @@ try {
 
   const linkField = page.getByLabel('Argument link');
   const noteField = page.getByLabel('Argument note');
-  const linkTag = await linkField.evaluate((node) => node.tagName.toLowerCase());
+  // The application's own select is a button that says it is one.
+  const linkTag = await linkField.evaluate((node) => (node.matches('[data-select]') ? 'select' : node.tagName.toLowerCase()));
   const noteTag = await noteField.evaluate((node) => node.tagName.toLowerCase());
   check(linkTag === 'select', `the connection parameter is a picker rather than a JSON box (it is a <${linkTag}>)`);
   check(noteTag === 'input', `and the string beside it is still a plain field (a <${noteTag}>)`);
@@ -157,19 +158,18 @@ try {
    * Reading it at a fixed delay passed here and failed on the same machine ten
    * minutes later, which is the definition of a check nobody can believe.
    */
-  await page.waitForFunction(
-    () => (document.querySelector('select[aria-label="Argument link"]')?.options.length ?? 0) > 1,
-    undefined,
-    { timeout: 20_000 },
-  );
-  const offered = await linkField.evaluate((node) => Array.from(node.options).map((option) => option.text));
+  let offered = [];
+  for (let waited = 0; waited < 20_000 && offered.length <= 1; waited += 500) {
+    offered = (await optionsOffered(page, linkField)).map((option) => option.label);
+    if (offered.length <= 1) await page.waitForTimeout(500);
+  }
   check(
     offered.includes(CONNECTION),
     `it offers the workspace's connections by name: ${JSON.stringify(offered.slice(0, 6))}`,
   );
   check(offered[0] === 'nothing', 'with the blank row first, which is the null an unmapped node passes');
 
-  await linkField.selectOption(connectionId);
+  await chooseOption(page, linkField, connectionId);
   await noteField.fill('read the thread');
   await page.screenshot({ path: shot('connection-parameter-run.png'), fullPage: true });
 
@@ -201,7 +201,7 @@ try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/actions/new`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#action-name', { timeout: 20_000 });
   await page.waitForTimeout(1000);
-  await page.selectOption('#action-subtype', 'FUNCTION');
+  await chooseOption(page, '#action-subtype', 'FUNCTION');
   await page.waitForTimeout(500);
 
   await page.locator('#action-function').click();

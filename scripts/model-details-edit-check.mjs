@@ -6,7 +6,7 @@
  * three; the page sent back what it had loaded. Measured on what the server
  * holds after Save.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1100 } });
 
@@ -26,7 +26,7 @@ const nameBox = page.locator('#model-name');
 record(await nameBox.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), 'the name is a box');
 await nameBox.fill('zz details renamed');
 await page.locator('#model-id').fill('new-id');
-await page.locator('#model-kind').selectOption('TRANSCRIPTION');
+await chooseOption(page, '#model-kind', 'TRANSCRIPTION');
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2000);
 

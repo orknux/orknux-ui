@@ -14,7 +14,7 @@
  * Three: "Open definition ↗" is a mark now, and a mark with no words has to
  * carry its name some other way.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 import { NAMES, idOf } from './suite/named.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
@@ -39,12 +39,12 @@ await page.waitForSelector('text=Function Details', { timeout: 20_000 });
 await page.waitForTimeout(1200);
 
 // A parameter that names an object and an external, so both boxes are real.
-await page.getByLabel('Parameter 1 type').selectOption('OBJECT');
+await chooseOption(page, page.getByLabel('Parameter 1 type'), 'OBJECT');
 await page.getByRole('button', { name: 'Add External' }).click();
 await page.waitForTimeout(600);
 
 /** The external's three controls, and whether they share a line. */
-const external = page.locator('select[aria-label="External parameter 1"]');
+const external = page.locator('[data-select][aria-label="External parameter 1"]');
 const externalRow = external.locator('xpath=..');
 const remove = page.getByRole('button', { name: 'Remove external parameter 1' });
 const selectBox = await external.boundingBox();
@@ -60,8 +60,8 @@ console.log(`external row: ${rowBox.height.toFixed(0)}px tall, select centre ${(
 console.log(sameLine && oneLine ? 'PASS: the external × sits beside its fields' : 'FAIL: the external × is off its line');
 
 /** The parameter's own box still holds its object selector inside it. */
-const objectSelect = page.locator('select[aria-label^="Object for"]').first();
-const paramBox = await page.locator('select[aria-label="Parameter 1 type"]')
+const objectSelect = page.locator('[data-select][aria-label^="Object for"]').first();
+const paramBox = await page.locator('[data-select][aria-label="Parameter 1 type"]')
   .locator('xpath=ancestor::div[contains(@class,"paramGroup")]').boundingBox();
 const objectBox = await objectSelect.boundingBox();
 const inside = objectBox.y > paramBox.y && objectBox.y + objectBox.height <= paramBox.y + paramBox.height + 1;
@@ -75,7 +75,7 @@ console.log(inside ? 'PASS: the object selector is inside the parameter box' : '
  */
 async function notchMatches(themed) {
   const paints = await page.evaluate(() => {
-    const select = document.querySelector('select[aria-label="Parameter 1 type"]');
+    const select = document.querySelector('[data-select][aria-label="Parameter 1 type"]');
     const label = document.querySelector('label[for="param-type-0"]');
     return {
       label: getComputedStyle(label).backgroundColor,

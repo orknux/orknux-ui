@@ -14,7 +14,7 @@
  *
  * Makes an agent and removes it.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1200 } });
 
@@ -255,7 +255,7 @@ record((await note.getAttribute('data-tool-state')) === 'hide', 'note_to_self ca
  */
 const statusFilter = page.locator('[data-grants="tools"] [data-tool-status-filter]'); // the skills list has one too since ed85852
 if ((await statusFilter.count()) > 0) {
-  await statusFilter.selectOption('always');
+  await chooseOption(page, statusFilter, 'always');
   await page.waitForTimeout(400);
   record(
     (await page.locator(`[data-grant-name="${TOOL}"] [data-tool-state="always"]`).count()) > 0,
@@ -266,13 +266,13 @@ if ((await statusFilter.count()) > 0) {
     (await page.locator('[data-grants="tools"] [data-grant-rows] > [data-grant-name] [data-tool-state="offer"]').count()) === 0,
     'and nothing that is merely offered',
   );
-  await statusFilter.selectOption('hide');
+  await chooseOption(page, statusFilter, 'hide');
   await page.waitForTimeout(400);
   record(
     (await page.locator(`[data-grant-name="${TOOL}"]`).count()) === 0,
     'filtering to Hide leaves the always-carried tool out',
   );
-  await statusFilter.selectOption('all');
+  await chooseOption(page, statusFilter, 'all');
   await page.waitForTimeout(300);
 }
 

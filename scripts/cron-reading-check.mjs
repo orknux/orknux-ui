@@ -31,7 +31,7 @@
  * that the note is drawn from that list and that the list is the server's
  * dialect, seconds first.
  */
-import { BASE, WORKSPACE, open, record, drawn, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, shot, finish, chooseOption } from './suite/harness.mjs';
 import { CRON_FIELDS } from '../src/components/cronText.ts';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
@@ -70,7 +70,7 @@ if (!(await drawn(page, 'the triggers page'))) await finish(browser, false);
 
 await page.getByRole('button', { name: '+ Create Trigger' }).click();
 await page.waitForSelector('#trigger-type', { timeout: 10_000 });
-await page.selectOption('#trigger-type', 'SCHEDULED');
+await chooseOption(page, '#trigger-type', 'SCHEDULED');
 await page.waitForSelector('#trigger-cron', { timeout: 10_000 });
 
 record(await reading().isVisible(), 'the schedule field says what the schedule does');

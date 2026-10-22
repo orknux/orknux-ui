@@ -18,7 +18,7 @@
  * nobody would pick, a plugin under a key nobody would pick, and the grant is
  * taken back before the connection goes.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const CONNECTION = 'grantscratch-http';
 const SLACK_CONNECTION = 'grantscratch-slack';
@@ -136,10 +136,10 @@ await page.waitForSelector(`button:has-text("${KEY}")`, { timeout: 20_000 });
 await page.click(`button:has-text("${KEY}")`);
 await page.waitForTimeout(500);
 
-const picker = page.locator(`select[id^="plugin-parameter-"]`);
+const picker = page.locator(`[data-select][id^="plugin-parameter-"]`);
 record((await picker.count()) >= 1, 'a connection parameter draws a picker, not a box');
 
-const options = await picker.first().locator('option').allInnerTexts();
+const options = (await picker.count()) === 0 ? [] : (await optionsOffered(page, picker.first())).map((one) => one.label);
 record(
   options.some((one) => one === CONNECTION),
   `the picker offers the workspace's connections by name (${JSON.stringify(options)})`,
@@ -150,7 +150,7 @@ const reference = page
   .getByRole('button', { name: 'Reference' });
 record(await reference.isDisabled(), 'and Reference cannot be pressed for one');
 
-await picker.first().selectOption({ label: CONNECTION });
+await chooseOption(page, picker.first(), { label: CONNECTION });
 await page.waitForTimeout(400);
 // A choice waits for Save like anything typed, since every control on the page does.
 await page.locator('[class*="_pageSave_"]').click();

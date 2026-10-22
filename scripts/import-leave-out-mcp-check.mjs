@@ -13,7 +13,7 @@
  * the empty one, imports the agent across, and removes all of it.
  */
 import { writeFileSync } from 'node:fs';
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 import { NAMES, workspaceIdOf } from './suite/named.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 980 } });
@@ -117,11 +117,11 @@ record(listed.find((row) => row.name === KEPT)?.badge !== 'Not here', 'the one i
 record(await importDisabled(), 'until it is answered, the import is refused');
 
 // The question's select, which waits for this workspace's servers to load.
-const question = page.locator(`dialog[open] select[aria-label$="${GONE} means here"]`);
+const question = page.locator(`dialog[open] [data-select][aria-label$="${GONE} means here"]`);
 await question.waitFor({ timeout: 10_000 });
 await page.waitForFunction(
   (name) => {
-    const select = [...document.querySelectorAll('dialog[open] select')].find((one) =>
+    const select = [...document.querySelectorAll('dialog[open] [data-select]')].find((one) =>
       (one.getAttribute('aria-label') ?? '').endsWith(`${name} means here`),
     );
     return select !== undefined && !select.disabled;
@@ -129,21 +129,19 @@ await page.waitForFunction(
   GONE,
   { timeout: 20_000 },
 ).catch(() => undefined);
-const offered = await question.locator('option').evaluateAll((options) =>
-  options.map((option) => ({ value: option.value, text: option.textContent.trim() })),
-);
+const offered = (await optionsOffered(page, question)).map((option) => ({ value: option.value, text: option.label }));
 const leave = offered.find((option) => option.value === 'leave-out') ?? null;
 record(leave !== null, `the question offers leaving it out (${JSON.stringify(offered.map((option) => option.text))})`);
 record(leave !== null && !leave.text.includes('\n') && leave.text.length <= 60, `in one short line (${leave?.text ?? ''})`);
 
 if (leave === null) await clean();
 
-await question.selectOption('leave-out');
+await chooseOption(page, question, 'leave-out');
 await settled();
 listed = await rows();
 gone = listed.find((row) => row.name === GONE) ?? null;
 record(gone !== null && gone.badge === 'Left out', `left out, the plan row says so (${gone?.badge ?? 'no row'})`);
-record((await question.inputValue().catch(() => '')) === 'leave-out', 'and the question stays, showing the answer given');
+record((await chosenOption(page, question).catch(() => '')) === 'leave-out', 'and the question stays, showing the answer given');
 record(!(await importDisabled()), 'and the import is offered');
 
 /* ------------------------------------------------------------- the import */

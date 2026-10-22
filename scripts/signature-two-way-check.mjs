@@ -27,7 +27,7 @@
  *
  * Makes a function and deletes it.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -76,7 +76,7 @@ const clean = async () => {
 /** What the panel says the first parameter is. */
 const panel = async () => ({
   name: await page.inputValue('input[aria-label="Parameter 1 name"]').catch(() => null),
-  type: await page.inputValue('select[aria-label="Parameter 1 type"]').catch(() => null),
+  type: await chosenOption(page, '[data-select][aria-label="Parameter 1 type"]').catch(() => null),
 });
 
 /**
@@ -208,8 +208,8 @@ record(
 
 /* ---- the return type, which the panel never read back ---- */
 
-const returnPicker = 'select[aria-label="Return type"]';
-const returned = () => page.inputValue(returnPicker).catch(() => null);
+const returnPicker = '[data-select][aria-label="Return type"]';
+const returned = () => chosenOption(page, returnPicker).catch(() => null);
 record((await returned()) === 'STRING', `the panel starts on the stored return type (${await returned()})`);
 
 await writeAll(
@@ -240,7 +240,7 @@ for (let waited = 0; waited < 15_000 && followed !== 'BOOLEAN'; waited += 150) {
 }
 record(followed === 'BOOLEAN', `and one wrapped in Promise<...> as well (${followed})`);
 
-await page.selectOption(returnPicker, 'STRING');
+await chooseOption(page, returnPicker, 'STRING');
 const rewrote = await until(
   (now) => (now.code ?? '').includes('Promise<string>'),
   'the annotation to follow the panel',

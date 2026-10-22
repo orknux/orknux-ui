@@ -11,7 +11,7 @@
  * and it is unloaded at the end; a row an earlier killed run left behind is
  * swept at the start.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 /** Nobody's plugin is called this. The sweep is by key. */
 const KEY = 'toolgrantscratch';
@@ -128,8 +128,8 @@ record(
  * the plugins'.
  */
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tools`, { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('select[aria-label="Which tools to list"]', { timeout: 20_000 });
-await page.selectOption('select[aria-label="Which tools to list"]', 'PLUGIN');
+await page.waitForSelector('[data-select][aria-label="Which tools to list"]', { timeout: 20_000 });
+await chooseOption(page, '[data-select][aria-label="Which tools to list"]', 'PLUGIN');
 await page.waitForTimeout(800);
 const toolsPage = await page.locator('main, body').first().innerText();
 record(toolsPage.includes(`${KEY}_fronted`), 'the tools browser lists what the plugin offers');
@@ -138,22 +138,22 @@ const badge = page.locator(`text=${KEY}_fronted`).locator('..').locator('span', 
 record((await badge.count()) > 0, 'and the row wears the plugin that offers it');
 
 // And one plugin by name, which is the question people actually ask.
-await page.selectOption('select[aria-label="Which tools to list"]', { label: KEY });
+await chooseOption(page, '[data-select][aria-label="Which tools to list"]', { label: KEY });
 await page.waitForTimeout(800);
 const oneToolPlugin = await page.locator('main, body').first().innerText();
 record(oneToolPlugin.includes(`${KEY}_fronted`), 'the sieve narrows the tools to one plugin by name');
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/functions`, { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('select[aria-label="Which functions to list"]', { timeout: 20_000 });
-await page.selectOption('select[aria-label="Which functions to list"]', 'PLUGIN');
+await page.waitForSelector('[data-select][aria-label="Which functions to list"]', { timeout: 20_000 });
+await chooseOption(page, '[data-select][aria-label="Which functions to list"]', 'PLUGIN');
 await page.waitForTimeout(800);
 const functionsPage = await page.locator('main, body').first().innerText();
 record(functionsPage.includes(`${KEY}_workflowOnly`), "the functions browser sieves to the plugins' rows");
-await page.selectOption('select[aria-label="Which functions to list"]', 'WORKSPACE');
+await chooseOption(page, '[data-select][aria-label="Which functions to list"]', 'WORKSPACE');
 await page.waitForTimeout(800);
 const ownOnly = await page.locator('main, body').first().innerText();
 record(!ownOnly.includes(`${KEY}_workflowOnly`), "and the workspace's-own sieve leaves them out");
-await page.selectOption('select[aria-label="Which functions to list"]', { label: KEY });
+await chooseOption(page, '[data-select][aria-label="Which functions to list"]', { label: KEY });
 await page.waitForTimeout(800);
 const onePlugin = await page.locator('main, body').first().innerText();
 record(

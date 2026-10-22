@@ -25,7 +25,7 @@
  * the parameters and the presets - from the page instead of the server, for a
  * checkout whose server does not have the schema yet. The default is live.
  */
-import { BASE, WORKSPACE, WORKFLOW, open, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, WORKFLOW, open, record, shot, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 const PREFIX = 'zzParams';
 const CANNED = process.env.ORKNUX_IMAGE_CANNED === '1';
@@ -202,12 +202,13 @@ try {
   record((await page.locator('[data-testid="image-style-choice"]').count()) === 0, 'and no style picker');
 
   const preset = page.locator('#node-image-preset');
-  const offered = await preset.locator('option').allInnerTexts();
+  const presetRows = await optionsOffered(page, preset);
+  const offered = presetRows.map((one) => one.label);
   record(offered.some((one) => one.startsWith('Landscape 1536')), `the Preset menu offers the workspace's presets (${JSON.stringify(offered).slice(0, 160)})`);
   if (CANNED) {
-    record(await preset.locator('option', { hasText: 'Too wide' }).isDisabled(), 'a preset outside the model’s bounds is greyed out');
+    record(presetRows.some((one) => one.label.includes('Too wide') && one.disabled), 'a preset outside the model’s bounds is greyed out');
   }
-  await preset.selectOption({ label: offered.find((one) => one.startsWith('Landscape 1536')) });
+  await chooseOption(page, preset, { label: offered.find((one) => one.startsWith('Landscape 1536')) });
   await page.waitForTimeout(300);
   record((await page.locator('#node-image-width').inputValue()) === '1536', 'picking a preset fills the width');
   record((await page.locator('#node-image-height').inputValue()) === '1024', 'and the height');
@@ -215,7 +216,7 @@ try {
   await page.locator('#node-image-width').fill('800');
   await page.locator('#node-image-height').fill('600');
   await page.waitForTimeout(300);
-  record((await preset.inputValue()) === '', 'a size typed by hand is no preset, so the menu says so');
+  record((await chosenOption(page, preset)) === '', 'a size typed by hand is no preset, so the menu says so');
   await page.screenshot({ path: shot('image-parameters-hosted.png') });
 
   // ---- Switching back: the style the hosted model did not take is gone --
@@ -269,7 +270,7 @@ try {
 
   await dialog.getByRole('button', { name: 'Close' }).click();
   await page.waitForTimeout(300);
-  const after = await preset.locator('option').allInnerTexts();
+  const after = (await optionsOffered(page, preset)).map((one) => one.label);
   record(!after.some((one) => one.startsWith(NAME)), 'the Preset menu follows the dialog');
 } finally {
   await sweep().catch(() => undefined);

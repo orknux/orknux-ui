@@ -10,7 +10,7 @@
  *
  * Both lists, because they wear the same sieve and were both forgetting it.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -32,16 +32,16 @@ for (const [list, where, label] of [
   await page.waitForTimeout(600);
 
   // Every list opens on "all of them" until somebody says otherwise.
-  record((await sieve().inputValue()) === '', `${list} opens on every origin`);
+  record((await chosenOption(page, sieve())) === '', `${list} opens on every origin`);
 
-  await sieve().selectOption('PLUGIN');
+  await chooseOption(page, sieve(), 'PLUGIN');
   await page.waitForTimeout(500);
-  record((await sieve().inputValue()) === 'PLUGIN', `${list} takes the choice`);
+  record((await chosenOption(page, sieve())) === 'PLUGIN', `${list} takes the choice`);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector(`[aria-label="${label}"]`, { timeout: 20_000 });
   await page.waitForTimeout(600);
-  record((await sieve().inputValue()) === 'PLUGIN', `and ${list} still wears it after a refresh`);
+  record((await chosenOption(page, sieve())) === 'PLUGIN', `and ${list} still wears it after a refresh`);
 
   /*
    * And it is per list: choosing on one does not choose on the other. The two
@@ -53,12 +53,12 @@ for (const [list, where, label] of [
   await page.goto(`${BASE}${other}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(`[aria-label="${otherLabel}"]`, { timeout: 20_000 });
   await page.waitForTimeout(600);
-  const carried = await page.getByLabel(otherLabel).inputValue();
+  const carried = await chosenOption(page, page.getByLabel(otherLabel));
 
   // Put it back, so the next pass of this loop starts where it expects to.
   await page.goto(`${BASE}${where}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(`[aria-label="${label}"]`, { timeout: 20_000 });
-  await sieve().selectOption('');
+  await chooseOption(page, sieve(), '');
   await page.waitForTimeout(400);
 
   if (list === 'functions') {

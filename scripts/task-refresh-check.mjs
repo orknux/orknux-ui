@@ -27,7 +27,7 @@
  * one answer. The stream is answered too, with a single `end` frame, so the
  * page opens exactly one and a second one can only come from a reconnect.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, shot, chooseOption, chosenOption } from './suite/harness.mjs';
 
 /** The task the page is given, and the session it is told to follow. */
 const TASK = '99999903';
@@ -112,14 +112,14 @@ await page.route('**/api/tasks/*/stream*', async (route) => {
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks/${TASK}`, { waitUntil: 'domcontentloaded' });
 if (!(await drawn(page, 'the task page'))) await finish(browser);
 
-const control = page.locator('select[aria-label="Refresh automatically"]');
+const control = page.locator('[data-select][aria-label="Refresh automatically"]');
 await control.waitFor({ state: 'visible', timeout: 20_000 });
 await page.waitForTimeout(1200);
 
 record(await control.isVisible(), 'a task still being worked on offers an interval to refresh at');
 record(
-  (await control.inputValue()) === '0',
-  `and it is Off until somebody chooses otherwise (it reads "${await control.inputValue()}")`,
+  (await chosenOption(page, control)) === '0',
+  `and it is Off until somebody chooses otherwise (it reads "${await chosenOption(page, control)}")`,
 );
 
 /* ------------------------------------------------------------------ off is off */
@@ -134,7 +134,7 @@ record(
 
 /* ------------------------------------------------------- and a chosen one asks */
 
-await control.selectOption('5');
+await chooseOption(page, control, '5');
 await page.waitForTimeout(WATCH_MS);
 
 const ticks = asked - settled;

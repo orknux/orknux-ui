@@ -6,7 +6,7 @@
  * a parameter an object type - presses the link that appears, and checks the tab
  * it opens is that object's editor.
  */
-import { BASE, WORKSPACE, open, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, shot, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 import { NAMES, idOf } from './suite/named.mjs';
 
 const { browser, context, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
@@ -35,17 +35,17 @@ const before = await jumps.count();
 // A parameter of object type, made the way somebody would.
 await page.locator('button', { hasText: /^Add Parameter$/ }).click();
 await page.waitForTimeout(300);
-const rows = await page.locator('select[aria-label^="Parameter "][aria-label$=" type"]').count();
-await page.locator(`select[aria-label="Parameter ${rows} type"]`).selectOption('OBJECT');
+const rows = await page.locator('[data-select][aria-label^="Parameter "][aria-label$=" type"]').count();
+await chooseOption(page, `[data-select][aria-label="Parameter ${rows} type"]`, 'OBJECT');
 await page.waitForTimeout(400);
 
 const paramJump = jumps.first();
 const shownForParam = await paramJump.isVisible();
 const paramHref = await paramJump.getAttribute('href');
-const chosen = await page.locator(`select[aria-label^="Object for "]`).first().inputValue();
+const chosen = await chosenOption(page, page.locator(`[data-select][aria-label^="Object for "]`).first());
 
 // The return type wants one too, and is the second place this panel names an object.
-await page.locator('select[aria-label="Return type"]').selectOption('OBJECT');
+await chooseOption(page, '[data-select][aria-label="Return type"]', 'OBJECT');
 await page.waitForTimeout(400);
 const shownForReturn = (await jumps.count()) === 2;
 

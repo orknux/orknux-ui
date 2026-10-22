@@ -153,7 +153,7 @@ record(
   `each row offers the ordinary Value/Reference switch (${JSON.stringify(modes)})`,
 );
 record(
-  (await first.locator('select').count()) === 0,
+  (await first.locator('select, [data-select]').count()) === 0,
   'and not the select the condition settings page used to draw',
 );
 
