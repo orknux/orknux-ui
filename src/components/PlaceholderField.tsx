@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 
 import type { FieldOption } from './FieldPicker';
@@ -16,8 +16,6 @@ export interface PlaceholderFieldProps {
   placeholder?: string;
 }
 
-/** How many suggestions are offered at once; the rest are found by typing more. */
-const SHOWN = 8;
 
 /** A workspace variable rather than a field the run carries: stored by id, shown by name. */
 function isVariable(option: FieldOption): boolean {
@@ -88,11 +86,18 @@ export function PlaceholderField({ id, value, onChange, options, placeholder }: 
     const containing = options.filter(
       (option) => !starting.includes(option) && said(option).some((one) => one.includes(typed)),
     );
-    return [...starting, ...containing].slice(0, SHOWN);
+    // Every match, in a list that scrolls: a cap cut the variables off below a trigger's own fields.
+    return [...starting, ...containing];
   }, [opened, options]);
 
   const showing = opened !== null && opened.start !== dismissed && rows.length > 0;
   const current = Math.min(at, Math.max(rows.length - 1, 0));
+
+  // The row the arrows are on stays in view as the list scrolls.
+  useEffect(() => {
+    if (!showing) return;
+    document.getElementById(`${id}-placeholder-${current}`)?.scrollIntoView({ block: 'nearest' });
+  }, [showing, current, id]);
 
   useLayoutEffect(() => {
     const field = area.current;
