@@ -54,6 +54,7 @@ import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
 import { t, tf } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface DesignImageEditorPageProps {
   session: SessionUser;
@@ -1428,10 +1429,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 autoFocus
                 data-testid="magic-prompt"
               />
-              <select
+              <Select
                 className={`${form.input} ${form.select}`}
                 value={editModelId}
-                onChange={(event) => setEditModelId(event.target.value)}
+                onChange={(picked) => setEditModelId(picked)}
                 aria-label={t('Edit model')}
                 title={t('Edit model')}
                 data-testid="magic-model"
@@ -1441,7 +1442,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     {one.name} · {one.providerName}
                   </option>
                 ))}
-              </select>
+              </Select>
               <div className={styles.askActions}>
                 <button type="button" className={form.ghost} onClick={forget}>
                   {t('Cancel')}
@@ -1529,13 +1530,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <div className={form.field}>
             <label className={form.label} htmlFor="image-model">{t('Model')}</label>
             <div className={form.inputWrapper}>
-              <select
+              <Select
                 id="image-model"
                 className={`${form.input} ${form.select}`}
                 value={modelId}
-                onChange={(event) => {
+                onChange={(picked) => {
                   remember();
-                  setModelId(event.target.value);
+                  setModelId(picked);
                 }}
                 disabled={models === null || models.length === 0}
               >
@@ -1545,7 +1546,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     {one.name} · {one.providerName}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             {models !== null && models.length === 0 && (
               <Link className={styles.configureLink} to={`/workspace/${workspaceId}/models`} data-testid="editor-models-link">
@@ -1596,12 +1597,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 </div>
                 {presets.length > 0 && (
                   <div className={form.inputWrapper}>
-                    <select
+                    <Select
                       className={`${form.input} ${form.select}`}
                       aria-label={t('Preset')}
                       value=""
-                      onChange={(event) => {
-                        const picked = presets.find((preset) => preset.id === event.target.value);
+                      onChange={(id) => {
+                        const picked = presets.find((preset) => preset.id === id);
                         if (picked === undefined) return;
                         remember();
                         setAsked({ ...asked, size: `${picked.width}x${picked.height}` });
@@ -1613,7 +1614,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                           {preset.name} ({preset.width}×{preset.height})
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 )}
               </div>
@@ -1621,20 +1622,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               <div key={one.name} className={form.field} data-testid={`image-${one.name}`}>
                 <label className={form.label} htmlFor={`image-${one.name}`}>{labelOf(one.name)}</label>
                 <div className={form.inputWrapper}>
-                  <select
+                  <Select
                     id={`image-${one.name}`}
                     className={`${form.input} ${form.select}`}
                     value={asked[one.name as keyof Asked] ?? ''}
-                    onChange={(event) => {
+                    onChange={(picked) => {
                       remember();
-                      setAsked({ ...asked, [one.name]: event.target.value });
+                      setAsked({ ...asked, [one.name]: picked });
                     }}
                   >
                     <option value="">{t('Model default')}</option>
                     {one.choices.map((choice) => (
                       <option key={choice} value={choice}>{choice}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
             ),

@@ -28,6 +28,7 @@ import { DependantLinks } from '../../components/UsedBy';
 import { shellUser } from '../../session/user';
 import styles from './AdminLibrariesPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface AdminLibrariesPageProps {
   session: SessionUser;
@@ -645,18 +646,18 @@ export function AdminLibrariesPage({ session, onSignOut }: AdminLibrariesPagePro
               <label className={styles.planLabel} htmlFor="bundle-entry">
                 {t('Entered by')}
               </label>
-              <select
+              <Select
                 id="bundle-entry"
                 className={styles.planEntry}
                 value={entry}
-                onChange={(event) => setEntry(event.target.value)}
+                onChange={(picked) => setEntry(picked)}
               >
                 {chosen.map((file) => (
                   <option key={pathOf(file)} value={pathOf(file)}>
                     {pathOf(file)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )
         }

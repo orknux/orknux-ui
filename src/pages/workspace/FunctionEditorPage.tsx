@@ -66,6 +66,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './FunctionEditorPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface FunctionEditorPageProps {
   session: SessionUser;
@@ -1781,13 +1782,13 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                           {t('Type')}
                         </label>
                       <span className={styles.typeSelect}>
-                        <select
+                        <Select
                           id={`param-type-${index}`}
                           className={`${styles.typeBadge} ${styles.typeField}`}
                           value={param.type}
                           aria-label={`Parameter ${index + 1} type`}
-                          onChange={(event) => {
-                            const type = event.target.value as ValueType;
+                          onChange={(picked) => {
+                            const type = picked as ValueType;
                             setParams((current) =>
                               current.map((row, at) =>
                                 at === index
@@ -1810,6 +1811,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                             );
                             setSaved(false);
                           }}
+                          chevron={false}
                         >
                           {VALUE_TYPES.map((type) => (
                             <option
@@ -1821,7 +1823,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                               {valueTypeLabel(type)}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <img src={chevronDown12Icon} alt="" width={12} height={12} />
                       </span>
                       </span>
@@ -1851,25 +1853,26 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                     {namesObject(param.type) && (
                       <div className={styles.paramObjectLine}>
                         <div className={styles.paramObjectRow}>
-                          <select
+                          <Select
                             className={`${styles.paramObject} ${styles.inputMono}`}
                             value={param.objectId ?? ''}
                             aria-label={`Object for ${param.name || `parameter ${index + 1}`}`}
-                            onChange={(event) => {
+                            onChange={(picked) => {
                               setParams((current) =>
                                 current.map((row, at) =>
-                                  at === index ? { ...row, objectId: event.target.value } : row,
+                                  at === index ? { ...row, objectId: picked } : row,
                                 ),
                               );
                               setSaved(false);
                             }}
+                            chevron={false}
                           >
                             {objects.map((held) => (
                               <option key={held.id} value={held.id}>
                                 {held.name} · {held.propertyCount} fields
                               </option>
                             ))}
-                          </select>
+                          </Select>
                           <img src={chevronDown12Icon} alt="" width={12} height={12} />
                         </div>
                         {/*
@@ -1936,7 +1939,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                     const held = variables.find((candidate) => candidate.id === variableId);
                     return (
                       <div key={`${variableId}-${index}`} className={styles.paramRow}>
-                        <select
+                        <Select
                           className={`${styles.paramName} ${styles.inputMono}`}
                           value={variableId}
                           aria-label={`External parameter ${index + 1}`}
@@ -1947,9 +1950,9 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                           */
                           onMouseDown={refreshVariables}
                           onFocus={refreshVariables}
-                          onChange={(event) => {
+                          onChange={(picked) => {
                             setExternals((current) =>
-                              current.map((row, at) => (at === index ? event.target.value : row)),
+                              current.map((row, at) => (at === index ? picked : row)),
                             );
                             setSaved(false);
                           }}
@@ -1959,7 +1962,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                               {variable.name} · {variable.catalogName}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <span className={styles.typeBadge}>
                           {held === undefined ? '—' : VARIABLE_TYPE_LABEL[held.type]}
                         </span>
@@ -2062,18 +2065,18 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                 <div className={styles.paramList}>
                   {imports.map((held, index) => (
                     <div key={index} className={styles.paramRow}>
-                      <select
+                      <Select
                         className={`${styles.paramName} ${styles.inputMono}`}
                         value={held.functionId}
                         aria-label={`Import ${index + 1} function`}
-                        onChange={(event) => {
-                          const chosen = importable.find((fn) => fn.id === event.target.value);
+                        onChange={(picked) => {
+                          const chosen = importable.find((fn) => fn.id === picked);
                           setImports((current) =>
                             current.map((row, at) =>
                               at === index
                                 ? {
                                     ...row,
-                                    functionId: event.target.value,
+                                    functionId: picked,
                                     /*
                                      * Only ever filled in, never rewritten. The name
                                      * is what the code below already says, and moving
@@ -2103,7 +2106,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                             {fn.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <input
                         className={`${styles.paramName} ${styles.inputMono}`}
                         type="text"
@@ -2184,18 +2187,18 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                 <div className={styles.paramList}>
                   {libraries.map((held, index) => (
                     <div key={index} className={styles.paramRow}>
-                      <select
+                      <Select
                         className={`${styles.paramName} ${styles.inputMono}`}
                         value={held.libraryId}
                         aria-label={`Library ${index + 1}`}
-                        onChange={(event) => {
-                          const picked = loadable.find((one) => one.id === event.target.value);
+                        onChange={(id) => {
+                          const picked = loadable.find((one) => one.id === id);
                           setLibraries((current) =>
                             current.map((row, at) =>
                               at === index
                                 ? {
                                     ...row,
-                                    libraryId: event.target.value,
+                                    libraryId: id,
                                     library: null,
                                     /*
                                      * Only ever filled in, never rewritten - the
@@ -2229,7 +2232,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                             {one.key}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <input
                         className={`${styles.paramName} ${styles.inputMono}`}
                         type="text"
@@ -2296,12 +2299,12 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   </FieldHint>
                 </span>
                 <div className={styles.selectWrapper}>
-                  <select
+                  <Select
                     className={`${styles.input} ${styles.inputMono}`}
                     value={returnType}
                     aria-label={t('Return type')}
-                    onChange={(event) => {
-                      const type = event.target.value as ValueType;
+                    onChange={(picked) => {
+                      const type = picked as ValueType;
                       setReturnType(type);
                       // Same rule as a parameter's: naming an object means naming one.
                       const object = namesObject(type) ? (returnObjectId ?? objects[0]?.id ?? null) : null;
@@ -2312,13 +2315,14 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                       );
                       setSaved(false);
                     }}
+                    chevron={false}
                   >
                     {RETURN_TYPES.map((type) => (
                       <option key={type} value={type} disabled={namesObject(type) && objects.length === 0}>
                         {valueTypeLabel(type)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
 
@@ -2327,23 +2331,24 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                      reaching an object's definition, wherever this panel names one. */
                   <div className={styles.paramObjectLine}>
                     <div className={styles.selectWrapper}>
-                      <select
+                      <Select
                         className={`${styles.input} ${styles.inputMono}`}
                         value={returnObjectId ?? ''}
                         aria-label={t('Returned object')}
-                        onChange={(event) => {
-                          setReturnObjectId(event.target.value);
-                          const named = objects.find((held) => held.id === event.target.value)?.name;
+                        onChange={(picked) => {
+                          setReturnObjectId(picked);
+                          const named = objects.find((held) => held.id === picked)?.name;
                           setSource((current) => withReturnType(current, returnType, named));
                           setSaved(false);
                         }}
+                        chevron={false}
                       >
                         {objects.map((held) => (
                           <option key={held.id} value={held.id}>
                             {held.name} · {held.propertyCount} fields
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <img src={chevronDown12Icon} alt="" width={12} height={12} />
                     </div>
                     {returnObjectId !== null && returnObjectId !== '' && (

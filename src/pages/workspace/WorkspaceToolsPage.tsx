@@ -33,6 +33,7 @@ import { useSieve } from '../../components/sieve';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceToolsPageProps {
   session: SessionUser;
@@ -234,12 +235,12 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
         </div>
         <div className={transferStyles.headerActions}>
           {/* One origin, or both - the same sieve the functions list wears. */}
-          <select
+          <Select
             className={styles.sourceFilter}
             aria-label={t('Which tools to list')}
             value={source}
-            onChange={(event) => {
-              setSource(event.target.value);
+            onChange={(picked) => {
+              setSource(picked);
               // Which page somebody is on means nothing in another sieve.
               setPage(1);
             }}
@@ -253,7 +254,7 @@ export function WorkspaceToolsPage({ session, onSignOut }: WorkspaceToolsPagePro
                 {plugin}
               </option>
             ))}
-          </select>
+          </Select>
           <ImportComponentsButton workspaceId={workspaceId} onImported={load} />
           <UseTemplateButton workspaceId={workspaceId} kind="TOOL" onImported={load} />
           <button type="button" className={styles.createButton} onClick={() => setCreating(true)}>{t('+ Create Tool')}</button>

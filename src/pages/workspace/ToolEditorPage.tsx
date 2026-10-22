@@ -56,6 +56,7 @@ import { useWorkspaceVariables } from './workspaceVariables';
 import { shellUser } from '../../session/user';
 import styles from './EditorPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 /** The whole of a workspace's shapes fits the picker. */
 const OBJECT_PAGE_SIZE = 100;
@@ -1058,13 +1059,13 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                               {t('Type')}
                             </label>
                             <span className={styles.paramTypeSelect}>
-                              <select
+                              <Select
                                 id={`param-type-${index}`}
                                 className={styles.typeBadge}
                                 value={param.type}
                                 aria-label={`Parameter ${index + 1} type`}
-                                onChange={(event) => {
-                                  const type = event.target.value as ValueType;
+                                onChange={(picked) => {
+                                  const type = picked as ValueType;
                                   setParams((current) =>
                                     current.map((row, at) =>
                                       at === index
@@ -1085,6 +1086,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                                   );
                                   setSaved(false);
                                 }}
+                                chevron={false}
                               >
                                 {VALUE_TYPES.map((type) => (
                                   <option
@@ -1096,7 +1098,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                                     {valueTypeLabel(type)}
                                   </option>
                                 ))}
-                              </select>
+                              </Select>
                               <img src={chevronDown12Icon} alt="" width={12} height={12} />
                             </span>
                           </span>
@@ -1123,25 +1125,26 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                         {namesObject(param.type) && (
                           <div className={styles.paramObjectLine}>
                             <div className={styles.paramObjectRow}>
-                              <select
+                              <Select
                                 className={`${styles.paramObject} ${styles.inputMono}`}
                                 value={param.objectId ?? ''}
                                 aria-label={`Object for ${param.name || `parameter ${index + 1}`}`}
-                                onChange={(event) => {
+                                onChange={(picked) => {
                                   setParams((current) =>
                                     current.map((row, at) =>
-                                      at === index ? { ...row, objectId: event.target.value } : row,
+                                      at === index ? { ...row, objectId: picked } : row,
                                     ),
                                   );
                                   setSaved(false);
                                 }}
+                                chevron={false}
                               >
                                 {objects.map((held) => (
                                   <option key={held.id} value={held.id}>
                                     {held.name} · {held.propertyCount} fields
                                   </option>
                                 ))}
-                              </select>
+                              </Select>
                               <img src={chevronDown12Icon} alt="" width={12} height={12} />
                             </div>
                             {param.objectId !== null && param.objectId !== undefined && param.objectId !== '' && (
@@ -1208,7 +1211,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                         {/* One line, like an import's: the × belongs beside its
                             fields, and this box's own class stacks children. */}
                         <div className={styles.paramTopLine}>
-                          <select
+                          <Select
                             className={`${styles.paramName} ${styles.inputMono}`}
                             value={variableId}
                             aria-label={`External parameter ${index + 1}`}
@@ -1219,9 +1222,9 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                             */
                             onMouseDown={refreshVariables}
                             onFocus={refreshVariables}
-                            onChange={(event) => {
+                            onChange={(picked) => {
                               setExternals((current) =>
-                                current.map((row, at) => (at === index ? event.target.value : row)),
+                                current.map((row, at) => (at === index ? picked : row)),
                               );
                               setSaved(false);
                             }}
@@ -1231,7 +1234,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                                 {variable.name} · {variable.catalogName}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                           <span className={styles.typeBadge}>
                             {held === undefined ? '—' : VARIABLE_TYPE_LABEL[held.type]}
                           </span>
@@ -1318,18 +1321,18 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                   {imports.map((held, index) => (
                     <div key={index} className={styles.paramRow}>
                       <div className={styles.paramTopLine}>
-                        <select
+                        <Select
                           className={`${styles.paramName} ${styles.inputMono}`}
                           value={held.functionId}
                           aria-label={`Import ${index + 1} function`}
-                          onChange={(event) => {
-                            const chosen = importable.find((fn) => fn.id === event.target.value);
+                          onChange={(picked) => {
+                            const chosen = importable.find((fn) => fn.id === picked);
                             setImports((current) =>
                               current.map((row, at) =>
                                 at === index
                                   ? {
                                       ...row,
-                                      functionId: event.target.value,
+                                      functionId: picked,
                                       /*
                                        * Only ever filled in, never rewritten. The
                                        * name is what the code below already says,
@@ -1359,7 +1362,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                               {fn.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <input
                           className={`${styles.paramName} ${styles.inputMono}`}
                           type="text"
@@ -1442,18 +1445,18 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                   {libraries.map((held, index) => (
                     <div key={index} className={styles.paramRow}>
                       <div className={styles.paramTopLine}>
-                        <select
+                        <Select
                           className={`${styles.paramName} ${styles.inputMono}`}
                           value={held.libraryId}
                           aria-label={`Library ${index + 1}`}
-                          onChange={(event) => {
-                            const picked = loadable.find((one) => one.id === event.target.value);
+                          onChange={(id) => {
+                            const picked = loadable.find((one) => one.id === id);
                             setLibraries((current) =>
                               current.map((row, at) =>
                                 at === index
                                   ? {
                                       ...row,
-                                      libraryId: event.target.value,
+                                      libraryId: id,
                                       library: null,
                                       /*
                                        * Only ever filled in, never rewritten - the
@@ -1487,7 +1490,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
                               {one.key}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <input
                           className={`${styles.paramName} ${styles.inputMono}`}
                           type="text"

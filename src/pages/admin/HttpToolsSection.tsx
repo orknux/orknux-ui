@@ -11,6 +11,7 @@ import { t, tf } from '../../i18n';
 import page from './AdminSettingsPage.module.css';
 import type { PendingWrite } from './LogLevelsSection';
 import styles from './HttpToolsSection.module.css';
+import { Select } from '../../components/Select';
 
 export interface HttpToolsSectionProps {
   /** Told whether the policy on screen differs from the server's, so the page's Save can send it. */
@@ -305,11 +306,11 @@ export function HttpToolsSection({ onPending }: HttpToolsSectionProps) {
               </span>
             </h3>
             <form className={styles.testRow} onSubmit={(event) => void test(event)}>
-              <select
+              <Select
                 id="http-tools-test-method"
                 className={styles.testMethod}
                 value={testMethod}
-                onChange={(event) => setTestMethod(event.target.value)}
+                onChange={(picked) => setTestMethod(picked)}
                 aria-label={t('Method to test')}
               >
                 {methods.map((method) => (
@@ -317,7 +318,7 @@ export function HttpToolsSection({ onPending }: HttpToolsSectionProps) {
                     {method}
                   </option>
                 ))}
-              </select>
+              </Select>
               <input
                 id="http-tools-test-url"
                 className={styles.testInput}

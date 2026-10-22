@@ -10,6 +10,7 @@ import { t } from '../i18n';
 import { FieldHint } from './FieldHint';
 import table from './WorkspaceMembers.module.css';
 import styles from './WorkspaceSharing.module.css';
+import { Select } from './Select';
 
 interface Choice {
   id: string;
@@ -203,9 +204,9 @@ function Picker({ label, value, onChange, children, testId }: {
     <label className={styles.field}>
       <span className={styles.label}>{label}</span>
       <span className={table.pickerBox}>
-        <select className={table.picker} value={value} onChange={(event) => onChange(event.target.value)} data-testid={testId}>
+        <Select className={table.picker} value={value} onChange={(picked) => onChange(picked)} data-testid={testId} chevron={false}>
           {children}
-        </select>
+        </Select>
         <img className={table.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
       </span>
     </label>

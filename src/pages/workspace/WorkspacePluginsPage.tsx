@@ -32,6 +32,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './WorkspacePluginsPage.module.css';
 import { t, tf } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspacePluginsPageProps {
   session: SessionUser;
@@ -939,13 +940,13 @@ function ParameterRow({
          * then refused.
          */
         <div className={styles.inputWrapper}>
-          <select
+          <Select
             id={fieldId}
             className={`${styles.input} ${styles.parameterValue}`}
             value={draft ?? parameter.literal ?? ''}
             disabled={busy}
-            onChange={(event) => {
-              if (event.target.value !== '') onTyped(event.target.value, false);
+            onChange={(picked) => {
+              if (picked !== '') onTyped(picked, false);
             }}
           >
             <option value="" disabled>
@@ -967,7 +968,7 @@ function ParameterRow({
                 {`#${parameter.literal} (no longer in this workspace)`}
               </option>
             )}
-          </select>
+          </Select>
         </div>
       ) : parameter.options.length > 0 ? (
         /*
@@ -980,13 +981,13 @@ function ParameterRow({
          * cannot be chosen.
          */
         <div className={styles.inputWrapper}>
-          <select
+          <Select
             id={fieldId}
             className={`${styles.input} ${styles.parameterValue}`}
             value={draft ?? parameter.literal ?? ''}
             disabled={busy}
-            onChange={(event) => {
-              if (event.target.value !== '') onTyped(event.target.value, false);
+            onChange={(picked) => {
+              if (picked !== '') onTyped(picked, false);
             }}
           >
             <option value="" disabled>
@@ -1008,7 +1009,7 @@ function ParameterRow({
                 {`${parameter.literal} (no longer offered)`}
               </option>
             )}
-          </select>
+          </Select>
         </div>
       ) : (
         <div className={styles.inputWrapper}>

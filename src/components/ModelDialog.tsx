@@ -13,6 +13,7 @@ import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { FieldHint } from './FieldHint';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface ModelDialogProps {
   open: boolean;
@@ -315,19 +316,20 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
           <div className={styles.field}>
             <label className={styles.label} htmlFor="model-kind">{t('Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="model-kind"
                 name="kind"
                 className={`${styles.input} ${styles.select}`}
                 value={kind}
-                onChange={(event) => setKind(event.target.value as ModelKind)}
+                onChange={(picked) => setKind(picked as ModelKind)}
+                chevron={false}
               >
                 {MODEL_KINDS.map((candidate) => (
                   <option key={candidate} value={candidate}>
                     {modelKindLabel(candidate)}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
@@ -343,9 +345,9 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
                   </FieldHint>
                 </span>
                 <div className={styles.inputWrapper}>
-                  <select id="model-api" className={`${styles.input} ${styles.select}`} value="OPENAI" disabled>
+                  <Select id="model-api" className={`${styles.input} ${styles.select}`} value="OPENAI" disabled chevron={false}>
                     <option value="OPENAI">OpenAI API</option>
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
@@ -391,20 +393,21 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
             <div className={styles.field}>
               <label className={styles.label} htmlFor="model-provider">{t('Provider')}<span className={styles.required} aria-hidden="true"> *</span></label>
               <div className={styles.inputWrapper}>
-                <select
+                <Select
                   id="model-provider"
                   name="providerId"
                   className={`${styles.input} ${styles.select}`}
                   value={providerId}
-                  onChange={(event) => setProviderId(event.target.value)}
+                  onChange={(picked) => setProviderId(picked)}
                   required
+                  chevron={false}
                 >
                   {usable.map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.name} ({providerTypeLabel(provider.type)})
                     </option>
                   ))}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </div>
             </div>
@@ -487,12 +490,13 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
             )}
             {offered !== null && offered.length > 0 && (
               <div className={styles.inputWrapper}>
-                <select
+                <Select
                   id="model-offered"
                   className={`${styles.input} ${styles.select}`}
                   value=""
-                  onChange={(event) => choose(event.target.value)}
+                  onChange={(picked) => choose(picked)}
                   aria-label={t('Models the provider offers')}
+                  chevron={false}
                 >
                   <option value="">Choose from {offered.length} the provider offers…</option>
                   {offered.map((candidate) => (
@@ -501,7 +505,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
                       {candidate.added ? ' — already added' : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </div>
             )}

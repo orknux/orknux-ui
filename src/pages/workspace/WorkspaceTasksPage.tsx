@@ -23,6 +23,7 @@ import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceTasksPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceTasksPageProps {
   session: SessionUser;
@@ -172,12 +173,13 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
             </span>
           </label>
           <span className={styles.selectWrapper}>
-            <select
+            <Select
               id="task-worker"
               className={styles.select}
               value={worker}
-              onChange={(event) => setWorker(event.target.value)}
+              onChange={(picked) => setWorker(picked)}
               disabled={agents !== null && agents.length === 0}
+              chevron={false}
             >
               <option value="">{t('Choose…')}</option>
               {(agents ?? []).map((one) => (
@@ -185,7 +187,7 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
                   {one.name}
                 </option>
               ))}
-            </select>
+            </Select>
             <img src={chevronDown12Icon} alt="" width={12} height={12} />
           </span>
 
@@ -236,11 +238,12 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
         <div className={styles.sortRow}>
           <label className={styles.sortLabel} htmlFor="task-status">{t('State')}</label>
           <span className={styles.selectWrapper}>
-            <select
+            <Select
               id="task-status"
               className={styles.sortSelect}
               value={status}
-              onChange={(event) => setStatus(event.target.value as TaskStatus | '')}
+              onChange={(picked) => setStatus(picked as TaskStatus | '')}
+              chevron={false}
             >
               <option value="">{t('All')}</option>
               {TASK_STATUSES.map((one) => (
@@ -248,7 +251,7 @@ export function WorkspaceTasksPage({ session, onSignOut }: WorkspaceTasksPagePro
                   {TASK_STATUS_LABEL[one]}
                 </option>
               ))}
-            </select>
+            </Select>
             <img src={chevronDown12Icon} alt="" width={12} height={12} />
           </span>
         </div>

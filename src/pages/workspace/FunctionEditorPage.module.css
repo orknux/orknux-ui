@@ -462,7 +462,7 @@
   pointer-events: none;
 }
 
-.selectWrapper select {
+.selectWrapper [data-select] {
   appearance: none;
   /*
    * `.input` asks for `--color-background`, which is not a token and resolves
@@ -493,7 +493,7 @@
   pointer-events: none;
 }
 
-.typeSelect > select {
+.typeSelect > [data-select] {
   padding-right: var(--space-20);
 }
 

@@ -35,6 +35,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './ProviderSettingsPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface ProviderSettingsPageProps {
   session: SessionUser;
@@ -546,18 +547,19 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                   Provider Type <span className={styles.required}>*</span>
                 </label>
                 <div className={styles.selectWrapper}>
-                  <select
+                  <Select
                     id="provider-type"
                     className={`${styles.input} ${styles.select}`}
                     value={type}
-                    onChange={(event) => setType(event.target.value as ProviderType)}
+                    onChange={(picked) => setType(picked as ProviderType)}
+                    chevron={false}
                   >
                     {PROVIDER_TYPES.map((option) => (
                       <option key={option} value={option}>
                         {providerTypeLabel(option)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
@@ -657,15 +659,18 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                     </FieldHint>
                   </span>
                   <div className={styles.selectWrapper}>
-                    <select
+                    <Select
                       id="chat-api"
                       className={`${styles.input} ${styles.select}`}
                       value={chatApi}
-                      onChange={(event) => setChatApi(event.target.value as ChatApi)}
+                      onChange={(picked) => setChatApi(picked as ChatApi)}
+                      chevron={false}
                     >
                       <option value="RESPONSES">{t('Responses')}</option>
-                      <option value="CHAT_COMPLETIONS">{t('Chat completions (legacy)')}</option>
-                    </select>
+                      <option value="CHAT_COMPLETIONS" data-hint={t('The older API, kept for servers that predate Responses.')}>
+                        {t('Chat completions')}
+                      </option>
+                    </Select>
                     <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
                   </div>
                 </div>
@@ -687,19 +692,23 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                     </FieldHint>
                   </span>
                   <div className={styles.selectWrapper}>
-                    <select
+                    <Select
                       id="edit-mask"
                       className={`${styles.input} ${styles.select}`}
                       value={editMask}
-                      onChange={(event) => setEditMask(event.target.value as EditMask | '')}
+                      onChange={(picked) => setEditMask(picked as EditMask | '')}
                       data-testid="edit-mask"
+                      chevron={false}
                     >
-                      <option value="">
-                        {type === 'STABLE_DIFFUSION_CPP' ? t("The type's: white marks the change") : t("The type's: transparent marks the change")}
+                      <option
+                        value=""
+                        data-hint={type === 'STABLE_DIFFUSION_CPP' ? t('White marks the change') : t('Transparent marks the change')}
+                      >
+                        {t("The type's default")}
                       </option>
                       <option value="TRANSPARENT">{t('Transparent marks the change')}</option>
                       <option value="WHITE">{t('White marks the change')}</option>
-                    </select>
+                    </Select>
                     <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
                   </div>
                 </div>

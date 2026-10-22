@@ -17,6 +17,7 @@ import { t, tf } from '../../i18n';
 import page from './AdminSettingsPage.module.css';
 import styles from './LogLevelsSection.module.css';
 import { zoned } from '../../session/timeZone';
+import { Select } from '../../components/Select';
 
 /** A write the page's one Save sends, alongside its own numbers. */
 export type PendingWrite = () => Promise<void>;
@@ -211,11 +212,11 @@ export function LogLevelsSection({ onPending }: LogLevelsSectionProps) {
                 <option key={name} value={name} />
               ))}
             </datalist>
-            <select
+            <Select
               id="log-logger-level"
               className={styles.select}
               value={addLevel}
-              onChange={(event) => setAddLevel(event.target.value)}
+              onChange={(picked) => setAddLevel(picked)}
               disabled={busy}
               aria-label={t('Level for the new logger')}
             >
@@ -224,7 +225,7 @@ export function LogLevelsSection({ onPending }: LogLevelsSectionProps) {
                   {level === 'INHERIT' ? t('Inherit') : level}
                 </option>
               ))}
-            </select>
+            </Select>
             <button
               type="button"
               className={styles.secondaryButton}
@@ -332,11 +333,11 @@ function LevelSelect({
   onChoose: (level: string) => void;
 }) {
   return (
-    <select
+    <Select
       id={id}
       className={styles.select}
       value={logger.level ?? ''}
-      onChange={(event) => onChoose(event.target.value)}
+      onChange={(picked) => onChoose(picked)}
       disabled={disabled}
       aria-label={tf('Level of {name}', { name: logger.name })}
     >
@@ -346,6 +347,6 @@ function LevelSelect({
           {level === 'INHERIT' ? t('Inherit') : level}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

@@ -26,6 +26,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './MemoryEditorPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface MemoryEditorPageProps {
   session: SessionUser;
@@ -311,21 +312,22 @@ function MemoryEditorView({ session, onSignOut, onDiscard }: MemoryEditorPagePro
               <div className={styles.field}>
                 <label className={styles.fieldLabel} htmlFor="memory-catalog">{t('Catalog')}</label>
                 <div className={styles.selectWrapper}>
-                  <select
+                  <Select
                     id="memory-catalog"
                     className={styles.select}
                     value={catalogId}
-                    onChange={(event) => {
-                      setCatalogId(event.target.value);
+                    onChange={(picked) => {
+                      setCatalogId(picked);
                       setSaved(false);
                     }}
+                    chevron={false}
                   >
                     {catalogs.map((catalog) => (
                       <option key={catalog.id} value={catalog.id}>
                         {catalog.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={8} height={8} />
                 </div>
               </div>

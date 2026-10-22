@@ -106,6 +106,7 @@ import {
 } from '../../session/shortcut';
 import styles from './PreferencesPage.module.css';
 import { t, tf } from '../../i18n';
+import { Select } from '../../components/Select';
 
 /** The shortcuts this page sets, by the name a draft is kept under. */
 type ShortcutKey =
@@ -716,12 +717,12 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   {t('Every date and time is shown in it. Kept with your account, so it follows you to another machine.')}
                 </FieldHint>
               </span>
-              <select
+              <Select
                 id="preferences-time-zone"
                 className={styles.input}
                 value={zone}
                 disabled={saving}
-                onChange={(event) => setZone(event.target.value)}
+                onChange={(picked) => setZone(picked)}
               >
                 <option value="">{tf('This browser\'s ({zone})',{ zone: browserTimeZone() })}</option>
                 {timeZones().map((one) => (
@@ -729,7 +730,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                     {one}
                   </option>
                 ))}
-              </select>
+              </Select>
               {zoneError !== null && (
                 <p className={styles.error} role="alert">
                   {zoneError}

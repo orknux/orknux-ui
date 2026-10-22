@@ -162,7 +162,7 @@
   color: var(--color-text-muted);
 }
 
-.told select,
+.told [data-select],
 .told input {
   min-width: 0;
   padding: var(--space-2) var(--space-6);

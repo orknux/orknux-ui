@@ -44,6 +44,7 @@ import { shellUser } from '../../session/user';
 import styles from './WorkspaceMemoryPage.module.css';
 import table from './WorkspaceVariablesPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceVariablesPageProps {
   session: SessionUser;
@@ -901,10 +902,10 @@ function VariableTable({
             return (
               <label key={parameter.name}>
                 {t('in')}{' '}
-                <select
+                <Select
                   value={held}
                   aria-label={`${parameter.name} for ${label}`}
-                  onChange={(event) => set(event.target.value)}
+                  onChange={(picked) => set(picked)}
                 >
                   <option value="">{parameter.required ? t('choose a connection') : t('the configured one')}</option>
                   {candidates.map((one) => (
@@ -912,7 +913,7 @@ function VariableTable({
                       {one.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             );
           }
@@ -995,16 +996,16 @@ function VariableTable({
     }
     if (draft.type === 'BOOLEAN') {
       return (
-        <select
+        <Select
           className={classes}
           value={draft.value === 'true' || draft.value === 'false' ? draft.value : ''}
           aria-label={label}
-          onChange={(event) => change({ value: event.target.value })}
+          onChange={(picked) => change({ value: picked })}
         >
           <option value="">{placeholder}</option>
           <option value="true">true</option>
           <option value="false">false</option>
-        </select>
+        </Select>
       );
     }
     if (offer !== null) {
@@ -1166,14 +1167,15 @@ function VariableTable({
               />
 
               <span className={`${table.colType} ${table.typeCell}`}>
-                <select
+                <Select
                   className={`${table.cellInput} ${table.mono}`}
                   value={choiceOf(draft)}
                   aria-label={`Type of ${variable.name}`}
-                  onChange={(event) => edit(variable, fromChoice(event.target.value, types, draft))}
+                  onChange={(picked) => edit(variable, fromChoice(picked, types, draft))}
+                  chevron={false}
                 >
                   {typeOptions}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </span>
 
@@ -1273,16 +1275,17 @@ function VariableTable({
               }}
             />
             <span className={`${table.colType} ${table.typeCell}`}>
-              <select
+              <Select
                 className={`${table.cellInput} ${table.mono}`}
                 value={choiceOf(adding)}
                 aria-label={t('New type')}
-                onChange={(event) =>
-                  setAdding((held) => ({ ...(held ?? EMPTY), ...fromChoice(event.target.value, types, held ?? EMPTY) }))
+                onChange={(picked) =>
+                  setAdding((held) => ({ ...(held ?? EMPTY), ...fromChoice(picked, types, held ?? EMPTY) }))
                 }
+                chevron={false}
               >
                 {typeOptions}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </span>
             <span className={table.colActions}>

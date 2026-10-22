@@ -3,6 +3,7 @@ import { fetchWorkspaceSearch, saveWorkspaceSearch, type WorkspaceSearch } from 
 import { FieldHint } from '../../components/FieldHint';
 import { t } from '../../i18n';
 import styles from './SearchSettings.module.css';
+import { Select } from '../../components/Select';
 
 /**
  * What this workspace searches the web with. Issue #510.
@@ -78,17 +79,17 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
           <label className={styles.label} htmlFor="search-engine">{t('Engine')}</label>
           {chosen !== undefined && <FieldHint label={t('Engine')}>{chosen.description}</FieldHint>}
         </span>
-        <select
+        <Select
           id="search-engine"
           className={styles.select}
           value={held.engine}
           disabled={saving}
-          onChange={(event) => void save({ engine: event.target.value })}
+          onChange={(picked) => void save({ engine: picked })}
         >
           {held.engines.map((one) => (
             <option key={one.name} value={one.name}>{one.name}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className={styles.field}>

@@ -7,6 +7,7 @@ import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { FieldHint } from './FieldHint';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface ConnectionDialogProps {
   /** True to add a default; a connection to edit the one given. */
@@ -155,13 +156,14 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
           <div className={styles.field}>
             <label className={styles.label} htmlFor="connection-type">{t('Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="connection-type"
                 name="connectionType"
                 className={`${styles.input} ${styles.select}`}
                 value={type}
-                onChange={(event) => setType(event.target.value as ConnectionType | '')}
+                onChange={(picked) => setType(picked as ConnectionType | '')}
                 required
+                chevron={false}
               >
                 <option value="" disabled>{t('Select type...')}</option>
                 {TYPES.map((candidate) => (
@@ -169,7 +171,7 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
                     {TYPE_LABELS[candidate]}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>

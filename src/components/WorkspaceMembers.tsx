@@ -7,6 +7,7 @@ import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import styles from './WorkspaceMembers.module.css';
 import { t, tf } from '../i18n';
+import { Select } from './Select';
 
 export interface WorkspaceMembersProps {
   workspaceId: string;
@@ -88,17 +89,18 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
                         <span className={styles.fixed} data-member-role="fixed">{t('Installation admin')}</span>
                       ) : (
                         <span className={styles.pickerBox}>
-                          <select
+                          <Select
                             className={shown === 'ADMIN' ? `${styles.picker} ${styles.pickerAdmin}` : styles.picker}
                             value={shown}
                             aria-label={tf('Role of {name} here', { name: member.displayName })}
                             data-member-role={shown}
                             data-member-unsaved={shown === member.role ? undefined : ''}
-                            onChange={(event) => choose(member, event.target.value as WorkspaceMemberRole)}
+                            onChange={(picked) => choose(member, picked as WorkspaceMemberRole)}
+                            chevron={false}
                           >
                             <option value="USER">{t('User')}</option>
                             <option value="ADMIN">{t('Workspace admin')}</option>
-                          </select>
+                          </Select>
                           <img className={styles.chevron} src={chevronDown12Icon} alt="" width={12} height={12} />
                         </span>
                       )}

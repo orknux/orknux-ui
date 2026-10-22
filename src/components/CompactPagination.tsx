@@ -1,6 +1,7 @@
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './CompactPagination.module.css';
 import { t, tf } from '../i18n';
+import { Select } from './Select';
 
 export interface CompactPaginationProps {
   /** 1-based page number. */
@@ -52,18 +53,19 @@ export function CompactPagination({
             <label className={styles.perPage}>
               {t('Show')}
               <span className={styles.selectWrapper}>
-                <select
+                <Select
                   className={styles.perPageSelect}
                   value={pageSize}
                   aria-label={`How many ${unit} to show at once`}
-                  onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                  onChange={(picked) => onPageSizeChange(Number(picked))}
+                  chevron={false}
                 >
                   {pageSizes.map((size) => (
                     <option key={size} value={size}>
                       {size}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </span>
             </label>

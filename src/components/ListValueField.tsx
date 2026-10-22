@@ -2,6 +2,7 @@ import type { ScalarType } from '../api/variables';
 import { TypedValueField } from './TypedValueField';
 import own from './TypedValueField.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface ListValueFieldProps {
   /** The stored text: a JSON array, or whatever was there before it was a list. */
@@ -58,17 +59,17 @@ export function ListValueField({
       {elements.map((one, at) => (
         <div key={at} className={own.listRow}>
           {elementType === 'BOOLEAN' ? (
-            <select
+            <Select
               className={className}
               value={one === 'true' || one === 'false' ? one : ''}
               aria-label={`${ariaLabel} ${at + 1}`}
               disabled={readOnly}
-              onChange={(event) => set(at, event.target.value)}
+              onChange={(picked) => set(at, picked)}
             >
               <option value="">{t('—')}</option>
               <option value="true">true</option>
               <option value="false">false</option>
-            </select>
+            </Select>
           ) : customType !== null ? (
             <TypedValueField
               className={className}

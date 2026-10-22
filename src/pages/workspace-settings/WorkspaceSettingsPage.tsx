@@ -21,6 +21,7 @@ import { forgetWorkspaces } from '../../session/workspaces';
 import { SearchSettings } from './SearchSettings';
 import styles from './WorkspaceSettingsPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceSettingsPageProps {
   session: SessionUser;
@@ -226,12 +227,12 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
                   {roleIds.map((roleId, index) => (
                     <div key={`${roleId}-${index}`} className={styles.roleRow}>
                       <div className={styles.selectWrapper}>
-                        <select
+                        <Select
                           className={styles.roleSelect}
                           value={roleId}
                           aria-label={`Role ${index + 1}`}
-                          onChange={(event) => {
-                            const chosen = event.target.value;
+                          onChange={(picked) => {
+                            const chosen = picked;
                             setRoleIds((held) =>
                               held.map((id, at) => (at === index ? chosen : id)),
                             );
@@ -239,6 +240,7 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
                             // ticked was ticked about the old one.
                             setAdminRoleIds((held) => held.filter((id) => id !== roleId));
                           }}
+                          chevron={false}
                         >
                           {roles.map((role) => (
                             <option
@@ -251,7 +253,7 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
                               {role.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <img src={chevronDown12Icon} alt="" width={12} height={12} />
                       </div>
                       {/*

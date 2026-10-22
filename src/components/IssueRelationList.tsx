@@ -14,6 +14,7 @@ import {
 import type { Issue, IssueRef, IssueRelation, IssueRelationKind, IssueStatusDefinition } from '../api/issues';
 import styles from './IssueRelationList.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 /** How long typing has to pause before the list is asked again. */
 const SEARCH_PAUSE_MS = 200;
@@ -165,18 +166,18 @@ export function IssueRelationList({
             search that follows it is a lookup. Reversed, somebody picks an
             issue and then has to remember which way round they meant it.
           */}
-          <select
+          <Select
             className={styles.kind}
             value={kind}
             aria-label={t('How they are linked')}
-            onChange={(event) => setKind(event.target.value as IssueRelationKind)}
+            onChange={(picked) => setKind(picked as IssueRelationKind)}
           >
             {ISSUE_RELATION_KINDS.map((one) => (
               <option key={one} value={one}>
                 {ISSUE_RELATION_LABEL[one]}
               </option>
             ))}
-          </select>
+          </Select>
 
           <input
             className={styles.search}

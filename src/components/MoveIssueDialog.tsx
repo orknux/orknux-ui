@@ -8,6 +8,7 @@ import type { Workspace } from '../api/workspaces';
 import { FieldHint } from './FieldHint';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 /**
  * How many workspaces the list offers.
@@ -64,7 +65,7 @@ export function MoveIssueDialog({ issue, onClose, onMoved }: MoveIssueDialogProp
        * asked for, over the field it is about. React's `autoFocus` is not
        * enough on its own: it focuses on mount, and `showModal()` runs after.
        */
-      dialog.querySelector('select')?.focus();
+      dialog.querySelector<HTMLElement>('[data-select]')?.focus();
     } else if (issue === null && dialog.open) {
       dialog.close();
     }
@@ -139,12 +140,13 @@ export function MoveIssueDialog({ issue, onClose, onMoved }: MoveIssueDialogProp
               row of fields the page had drawn itself.
             */}
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="move-issue-workspace"
                 className={`${styles.input} ${styles.select}`}
                 value={chosen}
-                onChange={(event) => setChosen(event.target.value)}
+                onChange={(picked) => setChosen(picked)}
                 disabled={submitting}
+                chevron={false}
               >
                 <option value="">{t('Choose a workspace…')}</option>
                 {workspaces.map((workspace) => (
@@ -152,7 +154,7 @@ export function MoveIssueDialog({ issue, onClose, onMoved }: MoveIssueDialogProp
                     {workspace.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>

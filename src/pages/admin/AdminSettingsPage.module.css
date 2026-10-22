@@ -244,7 +244,7 @@
 }
 
 /* A choice whose words are longer than a number's digits. */
-.retention select.input {
+.retention [data-select].input {
   width: 9rem;
 }
 

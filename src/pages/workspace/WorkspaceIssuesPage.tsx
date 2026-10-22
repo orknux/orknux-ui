@@ -33,6 +33,7 @@ import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceIssuesPage.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceIssuesPageProps {
   session: SessionUser;
@@ -422,11 +423,11 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
             most on a tracker that predates types.
           */}
           {types.length > 0 && (
-            <select
+            <Select
               className={styles.typeFilter}
               aria-label={t('Filter by type')}
               value={typeParam ?? ''}
-              onChange={(event) => filterBy({ type: event.target.value === '' ? null : event.target.value })}
+              onChange={(picked) => filterBy({ type: picked === '' ? null : picked })}
             >
               <option value="">{t('Any type')}</option>
               {types.map((type) => (
@@ -435,7 +436,7 @@ export function WorkspaceIssuesPage({ session, onSignOut }: WorkspaceIssuesPageP
                 </option>
               ))}
               <option value="untyped">{t('Untyped')}</option>
-            </select>
+            </Select>
           )}
 
           <div className={styles.searchRow}>

@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
-  authTypeLabel, secretPlaceholder,
+  authTypeHint, authTypeLabel, secretPlaceholder,
   connectionKindLabel,
   connectionTypeLabel,
   disconnectWorkspaceConnection,
@@ -51,6 +51,7 @@ import dialog from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
 import { zoned } from '../../session/timeZone';
 import { ConnectionGuide } from '../../components/ConnectionGuide';
+import { Select } from '../../components/Select';
 
 export interface ConnectionSettingsPageProps {
   session: SessionUser;
@@ -720,12 +721,12 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="connection-type">{t('Type')}</label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="connection-type"
                     name="type"
                     className={styles.input}
                     value={typeChoice}
-                    onChange={(event) => chooseType(event.target.value)}
+                    onChange={(picked) => chooseType(picked)}
                   >
                     {CONNECTION_TYPES.map((candidate) => (
                       <option key={candidate} value={candidate}>
@@ -753,7 +754,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                         {tf('{kind} (no longer offered)', { kind: connection.pluginType })}
                       </option>
                     )}
-                  </select>
+                  </Select>
                 </div>
               </div>
             )}
@@ -798,19 +799,20 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
             <div className={styles.field}>
               <label className={styles.label} htmlFor="connection-auth">{t('Auth Type')}</label>
               <div className={styles.inputWrapper}>
-                <select
+                <Select
                   id="connection-auth"
                   name="authType"
                   className={`${styles.input} ${styles.select}`}
                   value={authType}
-                  onChange={(event) => setAuthType(event.target.value as AuthType)}
+                  onChange={(picked) => setAuthType(picked as AuthType)}
+                  chevron={false}
                 >
                   {AUTH_TYPES.map((candidate) => (
-                    <option key={candidate} value={candidate}>
+                    <option key={candidate} value={candidate} data-hint={authTypeHint(candidate)}>
                       {authTypeLabel(candidate)}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <img src={chevronDown12Icon} alt="" width={12} height={12} />
               </div>
             </div>
@@ -845,19 +847,20 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                     {t('Security')}
                   </label>
                   <div className={styles.inputWrapper}>
-                    <select
+                    <Select
                       id="connection-smtp-security"
                       name="smtpSecurity"
                       className={`${styles.input} ${styles.select}`}
                       value={smtpSecurity}
-                      onChange={(event) => changeSecurity(event.target.value as MailSecurity)}
+                      onChange={(picked) => changeSecurity(picked as MailSecurity)}
+                      chevron={false}
                     >
                       {SECURITY.map((candidate) => (
                         <option key={candidate.value} value={candidate.value}>
                           {candidate.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <img src={chevronDown12Icon} alt="" width={12} height={12} />
                   </div>
                 </div>

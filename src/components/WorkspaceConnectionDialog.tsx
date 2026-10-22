@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import {
-  authTypeLabel, secretPlaceholder,
+  authTypeHint, authTypeLabel, secretPlaceholder,
   createWorkspaceConnection,
   testNewWorkspaceConnection,
   type ConnectionDraftCheck,
@@ -27,6 +27,7 @@ import type { SecretFieldHandle, SecretSource } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
 import { ConnectionGuide } from './ConnectionGuide';
+import { Select } from './Select';
 
 export interface WorkspaceConnectionDialogProps {
   open: boolean;
@@ -375,13 +376,14 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
           <div className={styles.field}>
             <label className={styles.label} htmlFor="workspace-connection-type">{t('Type')}</label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="workspace-connection-type"
                 name="connectionType"
                 className={`${styles.input} ${styles.select}`}
                 value={choice}
-                onChange={(event) => setChoice(event.target.value)}
+                onChange={(picked) => setChoice(picked)}
                 required
+                chevron={false}
               >
                 <option value="" disabled>{t('Select type...')}</option>
                 {TYPES.map((candidate) => (
@@ -404,7 +406,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                     ))}
                   </optgroup>
                 )}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>
@@ -440,19 +442,20 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                   {t('Security')}
                 </label>
                 <div className={styles.inputWrapper}>
-                  <select
+                  <Select
                     id="workspace-connection-security"
                     name="smtpSecurity"
                     className={`${styles.input} ${styles.select}`}
                     value={smtpSecurity}
-                    onChange={(event) => changeSecurity(event.target.value as MailSecurity)}
+                    onChange={(picked) => changeSecurity(picked as MailSecurity)}
+                    chevron={false}
                   >
                     {SECURITY.map((candidate) => (
                       <option key={candidate.value} value={candidate.value}>
                         {candidate.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={12} height={12} />
                 </div>
               </div>
@@ -609,19 +612,20 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
               {t('Auth Type')}
             </label>
             <div className={styles.inputWrapper}>
-              <select
+              <Select
                 id="workspace-connection-auth"
                 name="authType"
                 className={`${styles.input} ${styles.select}`}
                 value={authType}
-                onChange={(event) => setAuthType(event.target.value as AuthType)}
+                onChange={(picked) => setAuthType(picked as AuthType)}
+                chevron={false}
               >
                 {AUTH_TYPES.map((candidate) => (
-                  <option key={candidate} value={candidate}>
+                  <option key={candidate} value={candidate} data-hint={authTypeHint(candidate)}>
                     {authTypeLabel(candidate)}
                   </option>
                 ))}
-              </select>
+              </Select>
               <img src={chevronDown12Icon} alt="" width={12} height={12} />
             </div>
           </div>

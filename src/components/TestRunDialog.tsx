@@ -17,6 +17,7 @@ import styles from './Dialog.module.css';
  */
 import runStyles from '../pages/workspace/FunctionEditorPage.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface TestRunDialogProps {
   open: boolean;
@@ -268,20 +269,21 @@ export function TestRunDialog({
                   </label>
                   {param.type === 'BOOLEAN' ? (
                     <div className={styles.inputWrapper}>
-                      <select
+                      <Select
                         id={`run-arg-${param.name}`}
                         className={`${styles.select} ${styles.inputMono}`}
                         value={values[param.name] ?? ''}
                         aria-label={`Argument ${param.name}`}
-                        onChange={(event) =>
-                          setValues((current) => ({ ...current, [param.name]: event.target.value }))
+                        onChange={(picked) =>
+                          setValues((current) => ({ ...current, [param.name]: picked }))
                         }
+                        chevron={false}
                       >
                         {/* Blank is a real answer: it is the `null` an unmapped node passes. */}
                         <option value="">nothing</option>
                         <option value="true">true</option>
                         <option value="false">false</option>
-                      </select>
+                      </Select>
                       <img src={chevronDown12Icon} alt="" width={12} height={12} />
                     </div>
                   ) : param.type === 'CONNECTION' ? (
@@ -306,14 +308,15 @@ export function TestRunDialog({
                         assertions, every one of them about the DOM, did not.
                       */}
                       <div className={styles.inputWrapper}>
-                        <select
+                        <Select
                           id={`run-arg-${param.name}`}
                           className={`${styles.select} ${styles.inputMono}`}
                           value={values[param.name] ?? ''}
                           aria-label={`Argument ${param.name}`}
-                          onChange={(event) =>
-                            setValues((current) => ({ ...current, [param.name]: event.target.value }))
+                          onChange={(picked) =>
+                            setValues((current) => ({ ...current, [param.name]: picked }))
                           }
+                          chevron={false}
                         >
                           <option value="">nothing</option>
                           {connections.map((held) => (
@@ -321,7 +324,7 @@ export function TestRunDialog({
                               {held.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <img src={chevronDown12Icon} alt="" width={12} height={12} />
                       </div>
                       {connectionsFailed && (
@@ -376,19 +379,20 @@ export function TestRunDialog({
                   </label>
                   {one.type === 'BOOLEAN' ? (
                     <div className={styles.inputWrapper}>
-                      <select
+                      <Select
                         id={`run-external-${one.name}`}
                         className={`${styles.select} ${styles.inputMono}`}
                         value={instead[one.name] ?? ''}
                         aria-label={`Instead of ${one.name}`}
-                        onChange={(event) =>
-                          setInstead((current) => ({ ...current, [one.name]: event.target.value }))
+                        onChange={(picked) =>
+                          setInstead((current) => ({ ...current, [one.name]: picked }))
                         }
+                        chevron={false}
                       >
                         <option value="">{t('the stored value')}</option>
                         <option value="true">true</option>
                         <option value="false">false</option>
-                      </select>
+                      </Select>
                       <img src={chevronDown12Icon} alt="" width={12} height={12} />
                     </div>
                   ) : (

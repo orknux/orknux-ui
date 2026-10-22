@@ -1,6 +1,7 @@
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './SortControl.module.css';
 import { t } from '../i18n';
+import { Select } from './Select';
 
 export interface SortChoice<Order extends string> {
   /** What somebody reading the list would call this order. */
@@ -65,18 +66,19 @@ export function SortControl<Order extends string>({
     <div className={styles.sortRow}>
       <label className={styles.sortLabel} htmlFor={id}>{t('Sort')}</label>
       <span className={styles.selectWrapper}>
-        <select
+        <Select
           id={id}
           className={styles.sortSelect}
           value={order}
-          onChange={(event) => onOrderChange(event.target.value as Order)}
+          onChange={(picked) => onOrderChange(picked as Order)}
+          chevron={false}
         >
           {options.map((one) => (
             <option key={one.order} value={one.order}>
               {one.label}
             </option>
           ))}
-        </select>
+        </Select>
         <img src={chevronDown12Icon} alt="" width={12} height={12} />
       </span>
       {/*

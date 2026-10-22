@@ -32,6 +32,7 @@ import { useTableSort } from '../../components/tableSort';
 import { shellUser } from '../../session/user';
 import styles from './CatalogueTable.module.css';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceObjectsPageProps {
   session: SessionUser;
@@ -160,11 +161,11 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
           placeholder={t('Search objects...')}
         />
         {/* One origin, or both - the same sieve the tools list wears. */}
-        <select
+        <Select
           className={styles.sourceFilter}
           aria-label={t('Which objects to list')}
           value={source}
-          onChange={(event) => setSource(event.target.value)}
+          onChange={(picked) => setSource(picked)}
         >
           <option value="">{t('All sources')}</option>
           <option value="WORKSPACE">{t('The workspace\'s own')}</option>
@@ -175,7 +176,7 @@ export function WorkspaceObjectsPage({ session, onSignOut }: WorkspaceObjectsPag
               {plugin}
             </option>
           ))}
-        </select>
+        </Select>
       </SearchRow>
 
       {error !== null && (

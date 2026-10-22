@@ -738,7 +738,7 @@
   pointer-events: none;
 }
 
-.selectWrapper > select {
+.selectWrapper > [data-select] {
   padding-right: var(--space-32);
 }
 
@@ -1033,7 +1033,7 @@
   pointer-events: none;
 }
 
-.paramTypeSelect > select {
+.paramTypeSelect > [data-select] {
   padding-right: var(--space-20);
 }
 

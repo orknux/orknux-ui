@@ -36,6 +36,7 @@ import styles from './WorkspaceMemoryPage.module.css';
 import { DuplicateButton } from '../../components/ComponentTransfer';
 import { duplicateMemory } from '../../api/transfer';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface WorkspaceMemoryPageProps {
   session: SessionUser;
@@ -316,14 +317,15 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                 </div>
                 <div className={styles.selectBox}>
                   <img src={slidersIcon} alt="" width={14} height={14} />
-                  <select
+                  <Select
                     className={styles.select}
                     value={author}
-                    onChange={(event) => {
-                      setAuthor(event.target.value);
+                    onChange={(picked) => {
+                      setAuthor(picked);
                       setPage(0);
                     }}
                     aria-label={t('Filter by author')}
+                    chevron={false}
                   >
                     <option value="">{t('All Authors')}</option>
                     {authors.map((name) => (
@@ -331,7 +333,7 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                         {name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={chevronDown12Icon} alt="" width={10} height={10} />
                 </div>
                 <Link
@@ -348,21 +350,22 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                 </p>
                 <div className={styles.sortBy}>
                   <span className={styles.statsText}>{t('Sort by:')}</span>
-                  <select
+                  <Select
                     className={styles.sortSelect}
                     value={sort}
-                    onChange={(event) => {
-                      setSort(event.target.value as MemorySort);
+                    onChange={(picked) => {
+                      setSort(picked as MemorySort);
                       setPage(0);
                     }}
                     aria-label={t('Sort memories')}
+                    chevron={false}
                   >
                     {SORTS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <img src={arrowDownIcon} alt="" width={10} height={10} />
                 </div>
               </div>

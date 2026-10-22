@@ -7,6 +7,7 @@ import type { Model } from '../../api/models';
 import styles from '../../components/Dialog.module.css';
 import { FieldHint } from '../../components/FieldHint';
 import { t } from '../../i18n';
+import { Select } from '../../components/Select';
 
 export interface DesignHarmonizeDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ const MOST = 0.9;
  */
 export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelId, prompt, onClose, onHarmonize }: DesignHarmonizeDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const modelRef = useRef<HTMLSelectElement>(null);
+  const modelRef = useRef<HTMLButtonElement>(null);
   const [modelId, setModelId] = useState('');
   const [described, setDescribed] = useState('');
   const [options, setOptions] = useState<HarmonizeOptions | null>(null);
@@ -130,12 +131,12 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
           <div className={styles.fields}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="harmonize-model">{t('Model')}</label>
-              <select
+              <Select
                 id="harmonize-model"
                 ref={modelRef}
                 className={`${styles.input} ${styles.select}`}
                 value={modelId}
-                onChange={(event) => setModelId(event.target.value)}
+                onChange={(picked) => setModelId(picked)}
                 data-testid="harmonize-model"
               >
                 {models.map((one) => (
@@ -143,7 +144,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
                     {one.name} · {one.providerName}
                   </option>
                 ))}
-              </select>
+              </Select>
               {unreachable !== null && (
                 <p className={styles.error} role="alert" data-testid="harmonize-unreachable">
                   {unreachable}
@@ -153,11 +154,11 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
             {webUi && options.checkpoints.length > 0 && (
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="harmonize-checkpoint">{t('Checkpoint')}</label>
-                <select
+                <Select
                   id="harmonize-checkpoint"
                   className={`${styles.input} ${styles.select}`}
                   value={checkpoint}
-                  onChange={(event) => setCheckpoint(event.target.value)}
+                  onChange={(picked) => setCheckpoint(picked)}
                   data-testid="harmonize-checkpoint"
                 >
                   {options.checkpoints.map((title) => (
@@ -165,7 +166,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
                       {title}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
             <div className={styles.field}>
