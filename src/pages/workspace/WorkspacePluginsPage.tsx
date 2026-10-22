@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useReadsSecrets } from './readsSecrets';
 import { useParams } from 'react-router-dom';
 
 import {
@@ -683,6 +684,7 @@ function ParameterRow({
   picked,
   workspaceId,
 }: ParameterRowProps) {
+  const readsSecrets = useReadsSecrets(workspaceId);
   const [typed, setTyped] = useState(parameter.literal ?? '');
 
   // The stored value is the one to edit whenever it changes underneath, which it
@@ -1000,7 +1002,7 @@ function ParameterRow({
             />
           )}
           {/* And over a stored one, which the server shows when asked. */}
-          {parameter.secret && parameter.secretSet && (typed === '' || revealed) && (draft ?? '') === '' && (
+          {parameter.secret && parameter.secretSet && readsSecrets && (typed === '' || revealed) && (draft ?? '') === '' && (
             <RevealToggle shown={revealed} label={parameter.name} onToggle={() => void toggleStored()} />
           )}
         </div>

@@ -52,6 +52,10 @@ if (withSecret === undefined) {
   });
   if (await drawn(page, 'the connection form')) {
     await page.waitForSelector('#connection-secret', { timeout: 20_000 });
+    // Offered once the page knows the person may read secrets here, which it asks after drawing.
+    await page
+      .waitForFunction(() => document.querySelector('#connection-secret')?.parentElement?.querySelector('button') != null, null, { timeout: 10_000 })
+      .catch(() => {});
 
     const hidden = await control('#connection-secret');
     record(hidden !== null, `the connection's credential offers a control: ${JSON.stringify(hidden)}`);

@@ -382,6 +382,9 @@ const PL: Record<string, string> = {
   SignInRequired: 'Zaloguj się, aby to zobaczyć',
   AdminRequired: 'Ta czynność wymaga roli administratora',
   WorkspaceForbidden: 'To nie istnieje albo nie masz do tego dostępu',
+  SecretReadForbidden:
+    'Odczytanie sekretów przestrzeni {name} wymaga roli, która odczytuje tam sekrety, albo roli, która nią ' +
+    'administruje. Używanie ich - w połączeniu, funkcji czy agencie - tego nie wymaga.',
   WorkspaceAdminRequired:
     'Ta czynność wymaga roli administrującej przestrzenią {name}. Móc widzieć przestrzeń roboczą ' +
     'to nie to samo co ją prowadzić, a rola administrująca inną przestrzenią nie administruje tą.',

@@ -22,6 +22,8 @@ export interface Workspace {
    * workspaces for the same person - which is what the role is for.
    */
   administered: boolean;
+  /** Whether the caller may read this workspace's secrets back: administering it, or a role that reads secrets here. */
+  readsSecrets: boolean;
   /**
    * The model used for the workspace's own small jobs — naming a chat from what
    * was said. Null means those jobs do not happen.
@@ -213,7 +215,7 @@ export interface Workspace {
 }
 
 const WORKSPACE_FIELDS =
-  'id name description roles { id name } adminRoles { id name } administered ' +
+  'id name description roles { id name } adminRoles { id name } administered readsSecrets ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +

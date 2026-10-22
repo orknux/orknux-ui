@@ -2001,6 +2001,8 @@ export const PL: Record<string, string> = {
   "People": "Osoby",
   "in {count} sessions": "w {count} sesjach",
   "{name} reviewed this chat": "{name} ocenia ten czat",
+  "Reads secrets": "Odczytuje sekrety",
+  "Reveals the secrets of the workspaces this role is assigned to. Administrators of a workspace do without it.": "Odsłania sekrety przestrzeni, do których przypisano tę rolę. Administratorzy przestrzeni nie potrzebują jej.",
   "Basic (username:password)": "Basic (użytkownik:hasło)",
   "username:password": "użytkownik:hasło",
   "Shared from {workspace}": "Udostępnione z {workspace}",

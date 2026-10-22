@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useReadsSecrets } from './readsSecrets';
 import { useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
@@ -601,6 +602,8 @@ function VariableTable({
   onChanged: (made?: Variable) => Promise<void>;
   onError: (message: string | null) => void;
 }) {
+  // Reveal is offered to whoever may read this workspace's secrets back, and to nobody else.
+  const readsSecrets = useReadsSecrets(workspaceId);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   /**
    * What each uncovered secret turned out to hold.
@@ -1101,7 +1104,7 @@ function VariableTable({
                   log records; covering it again is only this screen's business,
                   so anything typed in the meantime stays.
                 */}
-                {kind === 'SECRET' && variable.valueSet && (
+                {kind === 'SECRET' && variable.valueSet && readsSecrets && (
                   <RevealToggle
                     shown={readable}
                     label={variable.name}

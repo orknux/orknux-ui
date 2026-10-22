@@ -2,7 +2,7 @@ import { graphql } from './client';
 import { t } from '../i18n';
 
 /** What a role lets somebody do, beyond the workspaces it is assigned to. */
-export type RoleScope = 'ADMIN' | 'USER';
+export type RoleScope = 'ADMIN' | 'USER' | 'SECRETS';
 
 /**
  * A role this installation defines.
@@ -37,16 +37,18 @@ export interface RoleInput {
   matches?: string[];
 }
 
-export const ROLE_SCOPES: RoleScope[] = ['ADMIN', 'USER'];
+export const ROLE_SCOPES: RoleScope[] = ['ADMIN', 'USER', 'SECRETS'];
 
 export const ROLE_SCOPE_LABEL: Record<RoleScope, string> = {
   ADMIN: 'Administrator',
   USER: 'User',
+  SECRETS: t('Reads secrets'),
 };
 
 export const ROLE_SCOPE_HINT: Record<RoleScope, string> = {
   ADMIN: t('Sees the Admin section and every workspace, whatever else is assigned.'),
   USER: t('Signs in, and sees the workspaces this role is assigned to.'),
+  SECRETS: t('Reveals the secrets of the workspaces this role is assigned to. Administrators of a workspace do without it.'),
 };
 
 const ROLE_FIELDS = 'id name description scopes matches builtin lastModifiedAt lastModifiedBy';

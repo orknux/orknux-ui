@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useReadsSecrets } from './readsSecrets';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -140,6 +141,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
   const [namedSaved, setNamedSaved] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [authType, setAuthType] = useState<AuthType>('NONE');
+  const readsSecrets = useReadsSecrets(workspaceId);
   /**
    * The kind being chosen, which is not always the kind that is stored.
    *
@@ -921,7 +923,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
               onSource={(next) => chooseSource(secret, next)}
               onValue={touched}
               onVariable={touched}
-              onReveal={() => void handleReveal()}
+              onReveal={readsSecrets ? () => void handleReveal() : undefined}
               broken={
                 connection?.secretVariableMissing === true
                   ? `The workspace secret this ${secretLabel(kind).toLowerCase()} was read from is gone, so this connection has nothing to authenticate with. Its address is fine. Point this field at another secret, or give it a value of its own.`
@@ -951,7 +953,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                 onSource={(next) => chooseSource(appToken, next)}
                 onValue={touched}
                 onVariable={touched}
-                onReveal={() => void handleRevealAppToken()}
+                onReveal={readsSecrets ? () => void handleRevealAppToken() : undefined}
                 broken={
                   connection.appTokenVariableMissing
                     ? t('The workspace secret this app-level token was read from is gone, so this connection cannot listen. Point this field at another secret, or give it a value of its own.')
@@ -983,7 +985,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                 onSource={(next) => chooseSource(userToken, next)}
                 onValue={touched}
                 onVariable={touched}
-                onReveal={() => void handleRevealUserToken()}
+                onReveal={readsSecrets ? () => void handleRevealUserToken() : undefined}
                 broken={
                   connection.userTokenVariableMissing
                     ? t('The workspace secret this user token was read from is gone, so this connection cannot search. Point this field at another secret, or give it a value of its own.')
