@@ -1,7 +1,8 @@
 import type { ComponentBinding, ComponentExclusion, ComponentRename, ComponentKind, ExportDepth, ImportPlan } from './transfer';
 import { PLAN_FIELDS } from './transfer';
 import { graphql } from './client';
-import { t } from '../i18n';
+import { t, tf } from '../i18n';
+import { currentLanguage } from '../session/language';
 
 /**
  * The installation's component templates.
@@ -34,6 +35,10 @@ export interface ComponentTemplate {
   kinds: ComponentKind[];
   componentCount: number;
   contents: TemplateComponent[];
+  /** A template of models rather than components: its `contents` are empty and `models` says what it holds. */
+  ofModels: boolean;
+  /** For a template of models, each as name (provider). */
+  models: string[];
   /** False when the stored envelope is from a version this cannot read. */
   usable: boolean;
   /** Why not, in words, when `usable` is false. */
@@ -54,7 +59,7 @@ export interface ComponentTemplateInput {
 const TEMPLATE_FIELDS = `
   id name description formatVersion producedBy depth kinds componentCount
   usable problem createdAt createdBy lastModifiedAt lastModifiedBy
-  contents { kind name }
+  contents { kind name } ofModels models
 `;
 
 /** Every template, or only the ones carrying a kind. */
@@ -194,6 +199,12 @@ export async function deleteComponentTemplate(id: string): Promise<boolean> {
  * deciding whether to press Use.
  */
 export function contentsSummary(template: ComponentTemplate): string {
+  if (template.ofModels) {
+    // In the plural form the language in force wants for the number, as the usage report counts sessions.
+    const count = template.models.length;
+    const form = new Intl.PluralRules(currentLanguage()).select(count);
+    return count === 1 ? tf('{count} model', { count }, form) : tf('{count} models', { count }, form);
+  }
   if (template.contents.length === 0) return t('Nothing this installation can read');
   const counted = new Map<ComponentKind, number>();
   template.contents.forEach((held) => counted.set(held.kind, (counted.get(held.kind) ?? 0) + 1));

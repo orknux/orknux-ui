@@ -39,9 +39,22 @@ try {
   record((await dialog.getByText('Everything it uses').count()) === 0, 'the dialog asks for no depth: a model travels with its provider');
   await dialog.getByRole('button', { name: 'Publish template' }).click();
   await dialog.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => undefined);
-  const { modelTemplates: held } = await graphql('query { modelTemplates { name models } }');
+  const { modelTemplates: held } = await graphql('query { modelTemplates { id name models } }');
   const made = held.find((one) => one.name === TEMPLATE);
   record(made !== undefined && made.models.length === 1, `the row's template button publishes that model (${JSON.stringify(made)})`);
+
+  // Reported: its page on Admin > Templates said "Nothing this installation can read" over an empty list.
+  if (made !== undefined) {
+    await page.goto(`${BASE}/admin/templates/${made.id}`, { waitUntil: 'domcontentloaded' });
+    const inside = page.locator('[data-template-model]');
+    await inside.first().waitFor({ timeout: 15_000 }).catch(() => undefined);
+    const listed = (await inside.allTextContents()).map((one) => one.replace(/\s+/g, ' ').trim());
+    const page_ = (await page.locator('main').textContent()) ?? '';
+    record(
+      listed.length === 1 && listed[0].includes(`Talker (${PROVIDER})`) && !page_.includes('Nothing this installation can read') && page_.includes('1 model'),
+      `its template page lists the model inside and counts it (${JSON.stringify(listed)})`,
+    );
+  }
 
   await page.goto(`${BASE}/workspace/${into}/models`, { waitUntil: 'domcontentloaded' });
   await page.getByTestId('models-use-template').waitFor({ timeout: 20_000 });

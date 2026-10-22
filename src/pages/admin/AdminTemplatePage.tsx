@@ -275,6 +275,13 @@ function AdminTemplateView({ session, onSignOut, onDiscard }: AdminTemplatePageP
                           <span className={styles.contentName}>{held.name}</span>
                         </li>
                       ))}
+                      {/* A template of models holds no components; what it holds is its models, each with its provider. */}
+                      {template.ofModels && template.models.map((model) => (
+                        <li className={styles.content} key={`model:${model}`} data-template-model="">
+                          <span className={styles.contentKind}>{t('Model')}</span>
+                          <span className={styles.contentName}>{model}</span>
+                        </li>
+                      ))}
                     </ul>
                     <p className={styles.meta}>
                       <span>{contentsSummary(template)}</span>
