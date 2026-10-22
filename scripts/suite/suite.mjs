@@ -647,7 +647,7 @@ export const TESTS = [
   },
   {
     name: 'docs-search-typing-check',
-    what: 'typing into the manual search shows every letter at once, and choosing a hit lands on a marked word',
+    what: 'searching the manual on a CPU four times slower: every letter at once, no task over 200 ms while typing, pausing or choosing, and a chosen hit lands on a marked word',
     needs: [],
   },
   {
