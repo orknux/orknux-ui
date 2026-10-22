@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
   createProvider,
+  fetchModels,
   fetchProvider,
   providerStatusLabel,
   providerTypeLabel,
@@ -23,6 +24,7 @@ import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { UsedBy } from '../../components/UsedBy';
 import { Loader } from '../../components/Loader';
@@ -174,6 +176,10 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  /** The Danger Zone's Remove, asked about first; null while nobody has pressed it. */
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  /** The models reached through the provider, named in that question; null until read. */
+  const [goingModels, setGoingModels] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   /** What Test found on the form as it stands; cleared by a save, which the stored status then speaks for. */
@@ -456,19 +462,29 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
     }
   }
 
-  async function handleDiscard() {
-    // Abandoning a create leaves nothing behind: Test saves nothing.
-    const remove = adding ? undefined : providerId;
-    if (remove === undefined) {
+  function handleDiscard() {
+    // Abandoning a create leaves nothing behind: Test saves nothing, so there is nothing to ask about.
+    if (adding || providerId === undefined) {
       navigate(`/workspace/${workspaceId}/models`);
       return;
     }
-    try {
-      await removeProvider(remove);
-      navigate(`/workspace/${workspaceId}/models`);
-    } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : t('Could not remove the provider.'));
-    }
+    /*
+     * Asked first: removing a provider takes every model reached through it,
+     * and the question names them - read now rather than held, so it is the
+     * list as it stands when the press is made.
+     */
+    setGoingModels(null);
+    setConfirmingRemove(true);
+    fetchModels(workspaceId)
+      .then((models) => setGoingModels(models.filter((model) => model.providerId === providerId).map((model) => model.name)))
+      .catch(() => setGoingModels(null));
+  }
+
+  async function confirmRemove() {
+    if (providerId === undefined) return;
+    await removeProvider(providerId);
+    setConfirmingRemove(false);
+    navigate(`/workspace/${workspaceId}/models`);
   }
 
 
@@ -605,8 +621,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
               <div className={styles.fieldRow}>
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="deployment-name">
-                    {/* Never required: a blank one is the model's id, and the v1 surface names models directly. */}
-                    {t('Deployment Name')} <span className={styles.optional}>{t('optional')}</span>
+                    {/* Never required, so no asterisk: a blank one is the model's id, and the v1 surface names models directly. */}
+                    {t('Deployment Name')}
                   </label>
                   <input
                     id="deployment-name"
@@ -618,7 +634,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="region">
-                    {t('Region')} <span className={styles.optional}>{t('optional')}</span>
+                    {t('Region')}
                   </label>
                   <input
                     id="region"
@@ -1135,7 +1151,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                 : t('Remove this provider, and every model reached through it')}
             </span>
           </div>
-          <button type="button" className={styles.dangerButton} onClick={() => void handleDiscard()}>
+          <button type="button" className={styles.dangerButton} onClick={handleDiscard}>
             {adding ? 'Discard' : t('Remove Provider')}
           </button>
         </div>
@@ -1144,6 +1160,21 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
       {loadError === null && (adding || provider !== null) && (
         <SaveBar>
           <DiscardButton onDiscard={discard} disabled={saving || !changed} />
+      <ConfirmDialog
+        subject={confirmingRemove ? (provider?.name ?? name) : null}
+        kind="removeProvider"
+        detail={
+          goingModels === null ? undefined : (
+            <span>
+              {goingModels.length === 0
+                ? t('No model is reached through it.')
+                : `${t('Goes with it:')} ${goingModels.join(', ')}`}
+            </span>
+          )
+        }
+        onClose={() => setConfirmingRemove(false)}
+        onConfirm={confirmRemove}
+      />
           <button type="submit" form={formId} className={styles.primaryButton} disabled={saving || !changed}>
             {saving ? t('Saving…') : adding ? 'Create' : t('Save Changes')}
           </button>

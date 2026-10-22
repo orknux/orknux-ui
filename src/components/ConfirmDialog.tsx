@@ -22,7 +22,10 @@ export type ConfirmKind =
   | 'resetLogLevels'
   | 'updateServer'
   | 'switchServerRelease'
-  | 'removeServerRelease';
+  | 'removeServerRelease'
+  | 'removeProvider'
+  | 'removeModel'
+  | 'removeCertificate';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -42,6 +45,9 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeIssueStatus',
   'removeImageSizePreset',
   'removeServerRelease',
+  'removeProvider',
+  'removeModel',
+  'removeCertificate',
 ]);
 
 export interface ConfirmDialogProps {
@@ -249,6 +255,30 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
     removeServerRelease: {
       title: t('Remove release'),
       message: <>{t('The release and its jar leave the database, and it can no longer be gone back to:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    /*
+     * A Danger Zone's Remove, which used to act on the press. The provider's
+     * models go with it, and the page names them in `detail`.
+     */
+    removeProvider: {
+      title: t('Remove provider'),
+      message: <>{t('The provider leaves this workspace, and every model reached through it goes with it:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeModel: {
+      title: t('Remove model'),
+      message: <>{t('The model leaves this workspace, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeCertificate: {
+      title: t('Stop trusting this authority'),
+      message: (
+        <>
+          {t('From the next connection, anything reached only because of this certificate stops being reachable:')}{' '}
+          {name}
+        </>
+      ),
       button: submitting ? t('Removing…') : t('Remove'),
     },
     removeScratchpad: {

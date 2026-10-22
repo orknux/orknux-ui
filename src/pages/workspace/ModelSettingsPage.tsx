@@ -15,6 +15,7 @@ import type { SessionUser } from '../../api/session';
 import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { BackLink } from '../../components/BackLink';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { UsedBy } from '../../components/UsedBy';
 import { Loader } from '../../components/Loader';
@@ -65,6 +66,8 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
   const [asked, setAsked] = useState<{ from: string; to: string }>({ from: '', to: '' });
   const [usageError, setUsageError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  /** The Danger Zone's Remove, asked about before anything is removed. */
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   /*
    * The metrics are their own request, for two reasons: the settings should
@@ -100,15 +103,16 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
     void form.save();
   }
 
+  /** Asked first; a refusal - the model still in use - is shown in the dialog that asked. */
   async function handleRemove() {
     if (model === null || removing) return;
     setRemoving(true);
     try {
       await removeModel(model.id);
+      setConfirmingRemove(false);
       navigate(`/workspace/${workspaceId}/models`);
-    } catch (cause) {
+    } finally {
       setRemoving(false);
-      form.setSaveError(cause instanceof Error ? cause.message : t('Could not remove the model.'));
     }
   }
 
@@ -391,13 +395,19 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
               <button
                 type="button"
                 className={styles.dangerButton}
-                onClick={() => void handleRemove()}
+                onClick={() => setConfirmingRemove(true)}
                 disabled={removing}
               >
                 {removing ? t('Removing…') : t('Remove Model')}
               </button>
             </div>
           </section>
+          <ConfirmDialog
+            subject={confirmingRemove ? model.name : null}
+            kind="removeModel"
+            onClose={() => setConfirmingRemove(false)}
+            onConfirm={handleRemove}
+          />
         </>
       )}
       {/* Save floats at the foot of the window, in view wherever the reader has scrolled to - and above the AI button. */}

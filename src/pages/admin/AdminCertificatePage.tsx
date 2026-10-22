@@ -14,6 +14,7 @@ import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
 import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
@@ -57,6 +58,8 @@ function AdminCertificateView({ session, onSignOut, onDiscard }: AdminCertificat
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The Danger Zone's Remove, asked about before the authority stops being trusted. */
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   useEffect(() => {
     if (adding) return;
@@ -125,14 +128,11 @@ function AdminCertificateView({ session, onSignOut, onDiscard }: AdminCertificat
     }
   }
 
+  /** Answered from the dialog, which shows a refusal itself. */
   async function remove() {
-    setError(null);
-    try {
-      await untrustCertificate(certificateId);
-      navigate('/admin/networking');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('That could not be removed.'));
-    }
+    await untrustCertificate(certificateId);
+    setConfirmingRemove(false);
+    navigate('/admin/networking');
   }
 
   /*
@@ -259,12 +259,18 @@ function AdminCertificateView({ session, onSignOut, onDiscard }: AdminCertificat
                     {t('Takes effect on the next connection, not the next restart. Anything reached only because of this certificate stops being reachable.')}
                   </p>
                 </div>
-                <button type="button" className={styles.dangerButton} onClick={() => void remove()}>
+                <button type="button" className={styles.dangerButton} onClick={() => setConfirmingRemove(true)}>
                   {t('Remove')}
                 </button>
               </div>
             </section>
           )}
+          <ConfirmDialog
+            subject={confirmingRemove ? name : null}
+            kind="removeCertificate"
+            onClose={() => setConfirmingRemove(false)}
+            onConfirm={remove}
+          />
         </>
       )}
     </AppShell>

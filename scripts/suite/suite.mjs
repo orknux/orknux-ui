@@ -615,6 +615,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'remove-asks-first-check',
+    what: "a provider's, a model's and a trusted authority's Remove asks first, Cancel keeps it, and only the dialog removes it",
+    needs: ['workspace'],
+    /* Makes its own provider, model and a scratch authority whose key was thrown away, and sweeps them by name. */
+  },
+  {
     name: 'editor-agent-save-check',
     what: "the workflow editor's Save also saves an agent edited in the panel beside the canvas",
     needs: ['workspace'],
