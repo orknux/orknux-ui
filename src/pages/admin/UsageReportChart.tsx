@@ -6,8 +6,28 @@ import type { UsageDay } from '../../api/usage';
 import { t, tf } from '../../i18n';
 import styles from './UsageReportChart.module.css';
 
-/** What the chart plots: tokens and money have different units, so they never share an axis. */
-export type UsageMeasure = 'TOKENS' | 'COST';
+/**
+ * What the chart plots: tokens, money, and how busy a day was - the sessions
+ * that made a call and the calls made. Different units, so they never share
+ * an axis.
+ */
+export type UsageMeasure = 'TOKENS' | 'COST' | 'SESSIONS' | 'CALLS';
+
+const MEASURES: readonly UsageMeasure[] = ['TOKENS', 'COST', 'SESSIONS', 'CALLS'];
+
+/** The switch's word for a measure, and the chart's heading for it. */
+function named(measure: UsageMeasure): { option: string; heading: string } {
+  switch (measure) {
+    case 'TOKENS':
+      return { option: t('Tokens'), heading: t('Tokens per day') };
+    case 'COST':
+      return { option: t('Cost'), heading: t('Cost per day') };
+    case 'SESSIONS':
+      return { option: t('Sessions'), heading: t('Sessions per day') };
+    case 'CALLS':
+      return { option: t('Model calls'), heading: t('Model calls per day') };
+  }
+}
 
 const HEIGHT = 180;
 /** Room on the left for the axis labels, and under the plot for the days. */
@@ -21,7 +41,7 @@ const SEGMENT_GAP = 2;
 const MAX_DAY_LABELS = 7;
 
 interface Segment {
-  key: 'fresh' | 'cached' | 'output' | 'cost';
+  key: 'fresh' | 'cached' | 'output' | 'cost' | 'sessions' | 'calls';
   label: string;
   value: number;
   className: string;
@@ -55,11 +75,16 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
           { key: 'cached', label: t('Input, cached'), value: day.cachedInputTokens, className: styles.cached },
           { key: 'output', label: t('Output'), value: day.outputTokens, className: styles.output },
         ]
-      : [{ key: 'cost', label: t('Cost'), value: day.cost === null ? 0 : Number(day.cost), className: styles.cost }];
+      : measure === 'COST'
+        ? [{ key: 'cost', label: t('Cost'), value: day.cost === null ? 0 : Number(day.cost), className: styles.cost }]
+        : measure === 'SESSIONS'
+          ? [{ key: 'sessions', label: t('Sessions'), value: day.sessions, className: styles.count }]
+          : [{ key: 'calls', label: t('Model calls'), value: day.calls, className: styles.count }];
 
   const totals = series.map((day) => segmentsOf(day).reduce((sum, one) => sum + one.value, 0));
   const top = niceCeiling(Math.max(...totals, 0));
-  const say = (value: number) => (value === 0 ? '0' : measure === 'TOKENS' ? shortTokens(value) : costAmount(value));
+  const say = (value: number) =>
+    value === 0 ? '0' : measure === 'TOKENS' ? shortTokens(value) : measure === 'COST' ? costAmount(value) : String(Math.round(value));
 
   const plotWidth = Math.max(0, width - AXIS_WIDTH);
   const slot = series.length === 0 ? 0 : plotWidth / series.length;
@@ -72,7 +97,7 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
   return (
     <div className={styles.chartBlock} data-testid="usage-chart" data-measure={measure}>
       <div className={styles.head}>
-        <h3 className={styles.heading}>{measure === 'TOKENS' ? t('Tokens per day') : t('Cost per day')}</h3>
+        <h3 className={styles.heading}>{named(measure).heading}</h3>
         {measure === 'TOKENS' && (
           <ul className={styles.legend} aria-label={t('Legend')}>
             {segmentsOf(series[0] ?? EMPTY_DAY).map((one) => (
@@ -84,7 +109,7 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
           </ul>
         )}
         <div className={styles.switch} role="group" aria-label={t('Show')}>
-          {(['TOKENS', 'COST'] as const).map((one) => (
+          {MEASURES.map((one) => (
             <button
               key={one}
               type="button"
@@ -93,7 +118,7 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
               onClick={() => setMeasure(one)}
               data-measure-option={one}
             >
-              {one === 'TOKENS' ? t('Tokens') : t('Cost')}
+              {named(one).option}
             </button>
           ))}
         </div>
@@ -107,7 +132,7 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
             height={HEADROOM + HEIGHT + DAYS_HEIGHT}
             role="img"
             aria-label={tf('{what} per day, up to {peak}', {
-              what: measure === 'TOKENS' ? t('Tokens') : t('Cost'),
+              what: named(measure).option,
               peak: say(Math.max(...totals, 0)),
             })}
           >
@@ -192,10 +217,19 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
                 <span className={styles.tooltipValue} title={measure === 'TOKENS' ? tokenCount(one.value) : undefined}>
                   {measure === 'TOKENS'
                     ? shortTokens(one.value)
-                    : active.cost === null ? '—' : `${costAmount(one.value)}${active.partlyUnpriced ? '+' : ''}`}
+                    : measure === 'COST'
+                      ? active.cost === null ? '—' : `${costAmount(one.value)}${active.partlyUnpriced ? '+' : ''}`
+                      : say(one.value)}
                 </span>
               </span>
             ))}
+            {/* How busy, either way round: the other count beside the one drawn. */}
+            {(measure === 'SESSIONS' || measure === 'CALLS') && (
+              <span className={styles.tooltipRow}>
+                <span className={styles.tooltipLabel}>{measure === 'SESSIONS' ? t('Model calls') : t('Sessions')}</span>
+                <span className={styles.tooltipValue}>{measure === 'SESSIONS' ? active.calls : active.sessions}</span>
+              </span>
+            )}
             {measure === 'TOKENS' && (
               <span className={`${styles.tooltipRow} ${styles.tooltipTotal}`}>
                 <span className={styles.tooltipLabel}>{t('Total')}</span>
@@ -209,7 +243,7 @@ export function UsageReportChart({ series }: { series: UsageDay[] }) {
   );
 }
 
-const EMPTY_DAY: UsageDay = { day: '', inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, cost: null, partlyUnpriced: false };
+const EMPTY_DAY: UsageDay = { day: '', inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, cost: null, partlyUnpriced: false, sessions: 0, calls: 0 };
 
 /** A bar from its foot up, rounded only at its free end - the top of the stack. */
 function barPath(x: number, top: number, width: number, height: number, roundTop: boolean): string {

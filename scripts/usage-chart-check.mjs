@@ -18,7 +18,7 @@ const pad = (n) => String(n).padStart(2, '0');
 const dayOf = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 const filter = { from: dayOf(new Date(Date.now() - 29 * 86_400_000)), to: dayOf(new Date()) };
 const { usageSeries: series } = await graphql(
-  'query($filter: UsageReportFilter) { usageSeries(filter: $filter) { day inputTokens cachedInputTokens outputTokens cost partlyUnpriced } }',
+  'query($filter: UsageReportFilter) { usageSeries(filter: $filter) { day inputTokens cachedInputTokens outputTokens cost partlyUnpriced sessions calls } }',
   { filter },
 );
 record(series.length === 30, `the server answers every day of the period (${series.length} of 30)`);
@@ -103,6 +103,23 @@ if (busy.length === 0) {
   record(pricedDrawn === priced.length, `a bar for each day something was priced (${pricedDrawn} of ${priced.length})`);
   const heading = (await chart.locator('h3').textContent())?.trim();
   record(heading === 'Cost per day', `the heading says what is plotted (${heading})`);
+
+  /* ---- sessions and calls: how busy each day was ---- */
+
+  for (const [option, key, heading, field] of [
+    ['Sessions', 'sessions', 'Sessions per day', 'sessions'],
+    ['Model calls', 'calls', 'Model calls per day', 'calls'],
+  ]) {
+    await chart.getByRole('button', { name: option, exact: true }).click();
+    const said = (await chart.locator('h3').textContent())?.trim();
+    record(said === heading, `${option} plots its own measure (${said})`);
+    const bars = await measure();
+    const drawnKeys = new Set(bars.flatMap((bar) => bar.segments.map((one) => one.key)));
+    record([...drawnKeys].every((one) => one === key), `only ${key} is drawn (${[...drawnKeys].join(', ') || 'nothing'})`);
+    const busy = series.filter((day) => day[field] > 0).length;
+    const drawnDays = bars.filter((bar) => bar.segments.length > 0).length;
+    record(drawnDays === busy, `a bar for each day with any (${drawnDays} of ${busy})`);
+  }
 
   await chart.getByRole('button', { name: 'Tokens' }).click();
 }

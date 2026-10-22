@@ -170,13 +170,17 @@ export interface UsageDay {
   outputTokens: number;
   cost: string | null;
   partlyUnpriced: boolean;
+  /** How many sessions made a model call that day. */
+  sessions: number;
+  /** How many model calls were made that day. */
+  calls: number;
 }
 
 /** The report day by day, every day of the period, under the same filter as the totals. */
 export async function fetchUsageSeries(filter: UsageFilter): Promise<UsageDay[]> {
   const data = await graphql<{ usageSeries: UsageDay[] }>(
     `query($filter: UsageReportFilter) {
-       usageSeries(filter: $filter) { day inputTokens cachedInputTokens outputTokens cost partlyUnpriced }
+       usageSeries(filter: $filter) { day inputTokens cachedInputTokens outputTokens cost partlyUnpriced sessions calls }
      }`,
     { filter },
   );
