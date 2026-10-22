@@ -142,9 +142,10 @@ export interface ExecutionDetail extends Execution {
   steps: ExecutionStep[];
   /**
    * The graph the run went through. The branch is on it because a line the run
-   * could only take on a failure is worth drawing as one.
+   * could only take on a failure is worth drawing as one, and the option because
+   * which of a decision's lines the run took is read off the step that chose.
    */
-  edges: Array<{ source: string; target: string; branch: EdgeBranch | null }>;
+  edges: Array<{ source: string; target: string; branch: EdgeBranch | null; option?: string | null }>;
   logs: ExecutionLogLine[];
   /**
    * Temporal's own screen for this run: every attempt behind what is shown
@@ -346,7 +347,7 @@ const EXECUTION_DETAIL_FIELDS = `
   version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
   parameters { nodeKey name value reference expression }
   steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption childExecutionId attempts carriedOver x y }
-  edges { source target branch }
+  edges { source target branch option }
   logs { id nodeKey at level message }
   pictures { id nodeKey url prompt filename contentType }
   speeches { id nodeKey url said filename contentType }

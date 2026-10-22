@@ -34,7 +34,7 @@ import type {
 } from '../../api/executions';
 import { NODE_KIND_LABEL, fetchWorkflowGraph } from '../../api/graph';
 import { fetchAction } from '../../api/actions';
-import type { NodeKind } from '../../api/graph';
+import type { EdgeBranch, NodeKind } from '../../api/graph';
 import type { SessionUser } from '../../api/session';
 import clockIcon from '../../assets/clock.svg';
 import downloadIcon from '../../assets/download.svg';
@@ -138,6 +138,37 @@ function outcomeOf(
   if (step.status === 'RUNNING') return 'running';
   if (step.status === 'WAITING') return 'waiting';
   return 'done';
+}
+
+/**
+ * Whether this run went along a line: the step it leaves finished and chose it,
+ * and the step it arrives at was reached.
+ *
+ * Which line a step chose is the server's rule (`BranchGate.follow`) read off
+ * what the step recorded as its way out - every unmarked line out of a step
+ * that completed, only the branch a condition answered or the option a decision
+ * picked, and only the failure line of a step that failed onto it. No line is
+ * recorded as taken, so that is as close to a recorded fact as the run has; the
+ * target's status alone would paint a line from a skipped step into one that
+ * ran. A line into a step still running counts, which is the run going along it
+ * now. A step carried over from an earlier run was not reached by this one.
+ */
+function travelled(
+  edge: { source: string; target: string; branch: EdgeBranch | null; option?: string | null },
+  steps: Map<string, ExecutionStep>,
+): boolean {
+  const from = steps.get(edge.source);
+  const to = steps.get(edge.target);
+  if (from === undefined || to === undefined || to.carriedOver) return false;
+  if (to.status === 'PENDING' || to.status === 'SKIPPED') return false;
+  const chose = from.branch;
+  if (from.status === 'FAILED') return chose === 'FAILURE' && edge.branch === 'FAILURE';
+  if (from.status !== 'COMPLETED') return false;
+  if (chose === 'FAILURE') return edge.branch === 'FAILURE';
+  if (edge.branch === 'FAILURE') return false;
+  if (edge.branch === null || edge.branch === undefined) return true;
+  if (chose === 'OPTION') return edge.branch === 'OPTION' && edge.option === from.branchOption;
+  return edge.branch === chose;
 }
 
 const OUTCOME_LABEL: Record<StepOutcome, string> = {
@@ -669,9 +700,12 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
         outcomeOf(step, runEnded, run?.stoppedAtNodeKey ?? null),
       ]),
     );
+    const steps = new Map((run?.steps ?? []).map((step) => [step.key, step]));
     return (run?.edges ?? []).map((edge) => {
       // A path the run never took is drawn as one it never took.
       const notTaken = outcomes.get(edge.target) === 'skipped';
+      // And one it did, in the green of the trigger's bar. See `travelled`.
+      const taken = travelled(edge, steps);
       /*
        * The line a run can only take on a failure, in the colour it is drawn in
        * the editor. Two lines leave a node that handles its own failure and
@@ -686,7 +720,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
         source: edge.source,
         target: edge.target,
         animated: outcomes.get(edge.target) === 'running',
-        className: notTaken ? styles.edgeSkipped : undefined,
+        className: notTaken ? styles.edgeSkipped : taken ? styles.edgeTravelled : undefined,
         style: failure ? { stroke: 'var(--color-danger)', strokeWidth: 2 } : undefined,
       };
     });

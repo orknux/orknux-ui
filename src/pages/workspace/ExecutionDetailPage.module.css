@@ -1020,6 +1020,11 @@ a.summaryStopped:focus-visible {
   opacity: 0.5;
 }
 
+/* An edge this run went along: the green the trigger's status bar is painted in. A failure line keeps its red, which says more. */
+.edgeTravelled :global(.react-flow__edge-path) {
+  stroke: var(--color-success-solid);
+}
+
 /* ---- A step this run did not perform ----
  *
  * Carried over is not a status of its own, so it borrows the language already

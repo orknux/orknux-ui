@@ -3556,6 +3556,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'run-travelled-lines-check',
+    what: "on a run's canvas the lines the run travelled are green, in both themes, and a branch it did not take stays grey",
+    needs: [],
+    /* Makes a condition and a workflow of its own, runs it, and removes both. */
+  },
+  {
     name: 'issue-types-check',
     what: 'a workspace adds a type, the list filters by it and by Untyped, and one in use will not delete',
     needs: ['workspace'],
