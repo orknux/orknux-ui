@@ -1782,6 +1782,12 @@ export const TESTS = [
     /* Answers the plan itself. */
   },
   {
+    name: 'import-dialog-size-check',
+    what: 'the import dialog opens wide enough for its plan on one line a row, and is dragged to a size from any edge or corner, which it keeps',
+    needs: ['workspace'],
+    /* Answers the plan itself. */
+  },
+  {
     name: 'model-dialog-required-check',
     what: 'Add Model marks with a red star the fields it cannot be sent without',
     needs: ['workspace'],

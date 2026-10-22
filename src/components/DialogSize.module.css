@@ -1,0 +1,75 @@
+/*
+ * The strips a dialog is dragged by: along each edge, and a square at each
+ * corner over where two strips meet. Drawn as nothing - the dialog's own border
+ * is the edge - and found by the cursor, which says which way it will go.
+ */
+.edge {
+  position: absolute;
+  z-index: 2;
+  /* Or a touch drag is taken as a scroll and the dialog never moves. */
+  touch-action: none;
+}
+
+.n,
+.s {
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.n {
+  top: 0;
+}
+
+.s {
+  bottom: 0;
+}
+
+.e,
+.w {
+  top: 10px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.e {
+  right: 0;
+}
+
+.w {
+  left: 0;
+}
+
+.ne,
+.nw,
+.se,
+.sw {
+  width: 12px;
+  height: 12px;
+}
+
+.ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}

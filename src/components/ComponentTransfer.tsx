@@ -39,6 +39,7 @@ import { FieldHint } from './FieldHint';
 import dialogStyles from './Dialog.module.css';
 import styles from './ComponentTransfer.module.css';
 import { t, tf } from '../i18n';
+import { DialogEdges, useDialogSize } from './DialogSize';
 
 /**
  * Export and Import for a workspace's catalogue.
@@ -427,6 +428,8 @@ function ImportDialog({
    */
   const [importing, setImporting] = useState(false);
 
+  /* Wide enough that a row's kind, name, badge and buttons share a line; dragged bigger from any edge. */
+  const sizing = useDialogSize({ storageKey: 'orknux.dialog.import-plan.size', open, minWidth: 420, minHeight: 240 });
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog === null) return;
@@ -585,7 +588,15 @@ function ImportDialog({
   );
 
   return (
-    <dialog ref={dialogRef} className={`${dialogStyles.dialog} ${dialogStyles.dialogWide} ${dialogStyles.dialogResizable}`} onCancel={onClose} onClose={onClose}>
+    <dialog
+      ref={dialogRef}
+      className={`${dialogStyles.dialog} ${dialogStyles.dialogPlan} ${dialogStyles.dialogResizable}`}
+      style={sizing.style}
+      data-sized={sizing.sized || undefined}
+      onCancel={onClose}
+      onClose={onClose}
+    >
+      <DialogEdges {...sizing.edgeProps} />
       <div className={dialogStyles.body}>
         <header className={dialogStyles.header}>
           <h2 className={dialogStyles.title}>{title}</h2>
@@ -1059,6 +1070,7 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
   const [ticked, setTicked] = useState<string[]>([]);
 
   useEffect(() => {
+  const sizing = useDialogSize({ storageKey: 'orknux.dialog.template-picker.size', open, minWidth: 360, minHeight: 200 });
     const dialog = dialogRef.current;
     if (dialog === null) return;
     if (open && !dialog.open) dialog.showModal();
@@ -1076,9 +1088,12 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
       className={`${dialogStyles.dialog} ${dialogStyles.dialogWide} ${dialogStyles.dialogResizable}`}
       onCancel={onClose}
       onClose={onClose}
+      style={sizing.style}
+      data-sized={sizing.sized || undefined}
     >
       <div className={dialogStyles.body}>
         <header className={dialogStyles.header}>
+      <DialogEdges {...sizing.edgeProps} />
           <span className={dialogStyles.titleRow}>
             <h2 className={dialogStyles.title}>{t('Use a template')}</h2>
             <FieldHint label={t('Use a template')}>
