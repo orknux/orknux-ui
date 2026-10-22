@@ -49,8 +49,8 @@ docker run -d --name orknux -p 8080:8080 -v orknux-data:/var/lib/orknux orknux/o
 It writes its own encryption key on the first start and prints an
 administrator's password in the log. Use it to try Orknux, to develop against
 and to show somebody - and not for work whose runs matter, because there is no
-Temporal in it: nothing is retried, nothing resumes, and a restart in the middle
-of a run strands that run. It has no directory and no single sign-on either.
+Temporal in it: a restart in the middle of a run fails the step it was on — an
+agent answering a message apart, which is asked again — and nothing else resumes. It has no directory and no single sign-on either.
 This manual describes the product rather than that container, so the pages that
 follow are true of it except where they are about those things; `deploy/README.md`
 sets out the whole trade.
@@ -197,10 +197,28 @@ workspace you can see. The interface is in English and in Polish; what the
 server refuses is said in the same language, because a form that asks in one
 and refuses in another is worse than one that asks in English throughout.
 
+**Time Zone** decides the zone every date and time in the interface is drawn
+in: the runs, the session lines, the hover on a watcher's next check. It is kept
+with your account, so it follows you to another machine; left unset, your
+browser's own zone is used.
+
+**A change here is held until you press Save**, beside the title, which counts
+what is waiting. Each one used to take effect the moment it was made - a
+shortcut recorded, a theme pressed, a language chosen - with nothing to press
+and nothing to say whether it had taken, which is not how any other settings
+page here reads.
+
+**Access Tokens** is where somebody with an account made on this installation
+makes, sees and revokes their own tokens, without asking an administrator. A
+directory or single sign-on account gets no such section: its token would
+outlive whatever the provider later decides about that person. See *Access
+tokens* under Administration.
+
 Every keystroke this application listens for is set here too: **Quick
-Actions**, **Save**, **Format**, **Turn Node**, **Add Node**, **Undo**,
-**Redo**, **Duplicate Node** and **Publish**.
-Each is changed by
+Actions**, **Recently Opened**, **Save**, **Format**, **Turn Node**, **Add
+Node**, **Undo**, **Redo**, **Duplicate Node**, **Publish** and **Voice Mute**,
+which mutes your microphone in voice mode and is `Alt`+`M` unless you choose
+another. Each is changed by
 pressing the keys you want rather than by picking from a list, because which
 keys are free depends on your browser and your machine and not on this
 application. All of them but Turn Node and Add Node have to carry a modifier: a

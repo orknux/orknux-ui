@@ -79,6 +79,10 @@ again starts it straight.
   They are ignored while a caret is in a text box, where the browser's own undo
   is the right one.
 - **Save** is `Ctrl`+`S`, and the button says which key it is listening for.
+- **Refresh** reads the graph and the lists its nodes pick from again, so a
+  trigger or an agent made in another tab - or a workflow an agent changed
+  meanwhile - appears without leaving the editor. With unsaved changes it asks
+  first, in Discard's words, because what it reads replaces them.
 - **Run** stands between Save and Publish and starts the workflow as it is on
   screen, saving first if there is anything unsaved, and then opening the new
   run's page. That page is where the steps, their inputs and the log are, which
@@ -156,6 +160,19 @@ gives each of them a conversation of its own, and a run a week later that
 computes the same key carries on where the last one left off. An agent with no
 session node beside it answers and forgets. What is kept is on the workspace's
 Sessions page, described under AI.
+
+**An agent node hands on everything its agent wrote**, not only its last
+message: what it said beside its tool calls, round by round, then its answer,
+each separated by a blank line - across every pass of a step that slept and was
+woken, and in what a watcher's follow-up hands on. Its thinking, its tool calls
+and its notes are left out. So a workflow that posts an agent's output to Slack
+posts its progress remarks too; an agent that should send only its conclusion
+has to be told, in its instructions, to write nothing beside its calls.
+
+An agent step that sets a **watcher** does not wait for it. The step completes
+with the agent's answer and the run goes on; when the watcher fires, the agent
+is woken in the same session and its new answer runs the nodes after it again,
+so a reply reaches the same Slack thread. See *Watchers* under AI.
 
 An image node keeps its prompt where you typed it, and passes the picture on
 **beside** what reached the node rather than in place of it — so a node after it
@@ -364,6 +381,27 @@ until somebody saves the form. One that no longer reads as JSON is not silently
 dropped: the form says so and keeps the text, because a request that quietly
 sends no headers at all is worse than one that says it cannot.
 
+## Finding a connection from code
+
+A function, a JavaScript tool or a plugin can ask which connections its
+workspace has with `orknux.connections.query({ type, name })`, both filters
+optional. It answers `{ connections: [...] }`, each with its id, name, kind,
+plugin type, address, how it authenticates, its status and the *names* of its
+headers — and for SMTP its port, username, from-address and security.
+
+**It never answers a credential.** What crosses is built from a list of fields
+that may, rather than from a connection with the secrets taken out, so a field
+added to a connection later stays on this side until somebody decides
+otherwise. The address loses any `user:password@`, its query string and its
+fragment, because a token in a query parameter is exactly the shape an
+incoming-webhook URL takes, and nothing here can tell that parameter from a
+harmless one.
+
+The answer is the run's own workspace and no other: the script cannot name one,
+and a call made outside any workspace is refused. A workspace's own functions
+and tools may call it as they are; a plugin needs `CONNECTIONS_QUERY` granted by
+an administrator. A new function's stub names it.
+
 ## Values and references
 
 Every parameter is either **written** or **referenced**. There are no
@@ -375,6 +413,14 @@ References are paths — `trigger.threadTs`, `classify.output.label` — and the
 picker only offers paths that exist at that point in the graph. This is why the
 graph knows which fields travel along which edge, and why it can tell you before
 you run it that a node is reading something nothing produces.
+
+The picker also has a **Workspace variables** group: a parameter can read one
+of the workspace's values, and it is read when the step runs, so changing the
+variable changes the next run without touching the workflow. **Secrets are not
+offered, and never resolve there.** A parameter is handed on as text - into a
+message, into a prompt - and a secret referenced into one would be published.
+A secret belongs in a function's external parameters or a credential field,
+where it is used rather than shown; see Variables.
 
 ## Objects
 
@@ -430,6 +476,12 @@ what it said will be refused the same way in ten seconds; only the failures that
 might come out differently — a timeout, a rate limit, a connection that dropped —
 are asked again. Worth knowing before you turn retries on for an agent: **every
 attempt is another call you are billed for**, and nothing here caps that.
+
+A rate limit is waited out before any of that, and spends no attempt: the call
+is made again after the time the provider asked for, or after a short doubling
+wait where it names none. That includes the one Azure sends *inside* an answer
+it has already begun streaming with a 200, which used to be read as a settled
+refusal — so an agent step failed on the first rate limit of a busy hour.
 
 **When it fails** is the other one. Off, a failure ends the run. On, the node
 grows a second handle and the run carries on down whatever is wired to it, drawn

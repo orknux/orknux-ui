@@ -186,8 +186,11 @@ again from the directory, as though it had never been set.
 ## Access tokens
 
 A token is a way of being a user without a browser: it is what an agent, a
-script or the MCP endpoint uses. They are made on a user's page under **Access
-Tokens**, named for what they are for, and the secret is shown once.
+script or the MCP endpoint uses. An administrator makes them on a user's page
+under **Access Tokens**, and anybody with an internal account makes their own
+under the same name in **Preferences**. Each is named for what it is for, and
+the secret is shown once, with a copy button beside it. Making and revoking one
+is written to the organisation audit log.
 
 - It begins `orkx_`, so one that has leaked is recognisable on sight in a log or
   a paste.
@@ -244,11 +247,10 @@ There are two, and the difference matters.
 
 - The **organisation audit log** records what happened to the organisation:
   workspaces created, renamed and removed, their directory group and
-  description changed, installation-wide switches pressed, and the proxy rules
-  and shells configured below.
+  description changed, installation-wide switches pressed, access tokens made
+  and revoked, and the proxy rules and boxes configured below.
 - Each workspace's own **audit log** records everything that happened inside
-  it — workflows, agents, models, memory, objects, integrations, chats, issues,
-  and every command an agent ran on a shell.
+  it — workflows, agents, models, memory, objects, integrations, chats and issues.
 
 Both can be filtered by user and by period, and searched.
 
@@ -269,12 +271,26 @@ What this installation allows, for every workspace in it.
   files put on an issue as well, whatever the label says, and both use the same
   storage and the same size limit.
 
+Under **Chat** too are the numbers that bound a conversation with a model:
+**Tool Rounds** (100), **Note Length** and **Notes Per Conversation** for what an
+agent writes to itself, **Empty Answer Retries** and **Unusable Reply
+Retries**, **Model Answer Time Limit** (an hour), how often the *Writing…* line
+is updated and how long it is believed, **Reading Progress Shown After** for a
+llama.cpp server, **Widgets Per Chat** and **Longest Chat Timer**, and **Session
+Value Size** (8 MB, up to 256) and **Session Store Keys** (200) for what an agent
+keeps in its session's store - large enough for an exported project to be
+handed to an upload tool.
+
 The rest of the page is in sections, each reachable from Quick actions: **Agents**
-(how long one may sleep, how many others it may ask and at once), **Tool calls**
-(how many per reply, and when a repeated call counts as a loop), **Tool list**,
-**Sessions** (when a long one is summarised, how much of each value a transcript
-keeps, and whether a conversation can be removed at all), **Scratchpads** (how
-much text and how much in files a session keeps), **Drawing** and **Commands**.
+(how long one may sleep, how many others it may ask and at once, and how long to
+wait out a rate limit that names no time), **Tool calls** (how many per reply,
+and when a repeated call counts as a loop), **Tool list**, **HTTP tools**
+(whether agents may make requests at all, and where to), **Watchers**,
+**Bulkheads**, **Sessions** (when a long one is summarised, how much of each
+value a transcript keeps, and whether a conversation can be removed at all),
+**Scratchpads** (how much text and how much in files a session keeps),
+**Boxes**, **Drawing**, **Commands**, and further down the ones about the
+installation itself - runs, history, plugins, logging and **Server updates**.
 
 Below each switch, in grey, is what the operator set in the configuration file:
 where attachments are written, what storage they use, and how large one file may
@@ -331,6 +347,101 @@ A finished run is kept with its steps, and swept once it is older than the
 number set here — ninety days until somebody changes it. A deleted workspace
 takes its runs with it whatever this says.
 
+### HTTP tools
+
+An agent granted `http_get`, `http_request` or `http_download` may fetch any
+address this server can reach, and whether that is acceptable is the
+installation's decision rather than each agent's author's. **This section is
+where it is made**, for every agent in every workspace at once.
+
+**The switch** takes the three tools away from every agent. Nobody's grant is
+touched — the agent's Tools list goes on showing them, and says why they do
+nothing — so switching them back on puts each agent back exactly where it was,
+rather than leaving somebody to remember who had held what.
+
+**Where they may go** is **Allow any URL** or **Allow list**. Under an allow
+list a request is made only when a rule's regular expression matches the
+**whole** URL and the rule lists the request's method; `http_get` and
+`http_download` are GET. Unlike a proxy rule, which is matched anywhere in the
+address, this one is held to all of it, because a fence that `example.com`
+satisfies from inside `example.com.attacker.net` is not a fence. An allow list
+with no rules allows nothing, and the page says so.
+
+Redirects are not followed, and never were: a `Location` is a new address, so
+it is a new request and meets the same check. A list that allows one host
+cannot be walked off by a server that answers with somewhere else.
+
+**Whether an address may be requested** is the tester. It asks the rules as
+they are on the page, before they are saved, and answers which rule allows the
+address, or that none matches, or that one matches but not for that method —
+and it shows the sentence an agent would be told, because that sentence is
+what the agent has to work with when it is refused.
+
+An agent holding any of the three is also given `http_allowList`, which answers
+the policy and how to read it. Asked where it may send requests, an agent used
+to answer from whatever tool descriptions it had happened to see; each HTTP
+tool now says that the destinations are the installation's decision and that
+`http_allowList` is where to ask, and it is carried with them even where they
+are found by search rather than sent up front.
+
+**What this does not cover.** Functions, JavaScript tools and plugins calling
+`orknux.http` are untouched: they are code somebody in the workspace wrote and
+saved, not a model choosing an address while it answers. The proxy rules under
+Networking still apply to everything, these tools included.
+
+### Watchers
+
+A watcher calls an agent's tool on an interval until the result matches, and
+each call is a call to whatever that tool reaches; see *Watchers* under AI.
+**This section bounds what one may cost**: **The longest a watcher may run** (a
+week), **The shortest interval between two checks** (15 seconds), **The
+shortest interval between two looks by the agent** (five minutes - each look is
+a turn on a model), and **How many watchers one agent may have running** (10,
+across all its conversations). Zero there switches watchers off, and agents are
+then not offered the tools at all. The longest run is fixed when a watcher is
+set, so lowering it does not end the ones already going.
+
+**Agent's watcher looks** are the backoff an agent's own looks follow when it
+asked for no interval of its own: **First look after** (five minutes), **Each
+wait multiplied by** (2 doubles every wait, 1 keeps the first delay as a fixed
+interval) and **Longest wait** (a day). Under them, **When the agent would
+look** works the three numbers out for watchers from ten minutes to a week - *1h
+watcher: 3 looks, at 5m, 15m, 35m* - because a backoff is another of those
+things nobody works out in their head.
+
+`ORKNUX_WATCHER_MAX_SECONDS`, `ORKNUX_WATCHER_MIN_INTERVAL_SECONDS`,
+`ORKNUX_WATCHER_MIN_AGENT_CHECK_SECONDS`, `ORKNUX_WATCHER_LOOK_INITIAL_SECONDS`,
+`ORKNUX_WATCHER_LOOK_MULTIPLIER`, `ORKNUX_WATCHER_LOOK_MAX_SECONDS` and
+`ORKNUX_WATCHER_MAX_PER_AGENT` are what a fresh installation starts at.
+
+### Bulkheads
+
+**Walls that keep one agent turn from taking the server down.** An agent turn
+holds every tool result it gathered and sends them all again each round, and a
+few of them at once on a modest heap is how a server used to run out of memory
+and limp on half-broken. Each wall has its own switch, and switching one off
+restores exactly what happened before it existed; changes apply to the next
+turn, without a restart.
+
+- **Limit agent turns at once** — **Agent turns at once** (4) counts workflow
+  agent steps, chats and tasks together; a turn past it waits **How long a turn
+  waits for a place** (two minutes) and is then refused with a sentence saying
+  why, which a workflow step's retry policy then deals with. A subagent runs
+  inside the turn that asked for it. A fat turn holds a few hundred megabytes at
+  its peak, so a 2 GB heap takes about four.
+- **Stop turns when memory is short** — before a turn starts and before each
+  round, the heap is read as the last garbage collection left it, and above
+  **Heap after a collection, at most** (85%) the turn stops with a message
+  instead of carrying on into running out.
+- **Bound what one turn holds** — **Tool results one turn may hold** (48 MB)
+  drops the oldest results first, each leaving a line saying so, and **The
+  longest single tool result kept** (512 KB) cuts one result and tells the model
+  how much was left out and to ask for less.
+
+All three are on by default. Raise them, or switch one off, where a busy
+installation on a large heap needs more. The section says how many turns are
+running now and what the heap was after the last collection.
+
 ### One Save, at the top
 
 Every number on this page is written by the one Save in its header, and it wakes
@@ -362,6 +473,33 @@ task is a durable workflow, the looking still happens and starts the workflow
 again where there is none running, and how long it waits comes from the
 configuration file: recovering a stuck task is Temporal's business, and a number
 this screen could change would be claiming otherwise.
+
+### When a server dies in the middle of a step
+
+A server that is killed says nothing, so whatever step it was working on is
+noticed only by something looking for it. **Workflow runs** has the two numbers
+that decide how soon, one for each engine.
+
+**Step heartbeat** is Temporal's. A step reports that it is still being worked
+on while it works, and one that falls silent for this long is handed to a
+server that is alive — thirty seconds until somebody changes it. Without it a
+dead server was noticed only when the whole step timeout ran out, which for an
+agent step was five minutes of a message going unanswered. A run already going
+takes a change up from its next step. Zero turns the heartbeat off. Between 0
+and 600 seconds; `ORKNUX_TEMPORAL_STEP_HEARTBEAT_SECONDS` is the starting value.
+
+**Agent step goes after a restart** is the inline engine's. There a step a
+restart cut short is failed, because nothing can say how far it got — with one
+exception: **an agent answering a message is asked again**, since a message
+nobody answers is the failure people notice, and the run used to end Failed
+until somebody pressed Rerun. This is how many goes it gets in all, the one
+that died included, because the step itself may be what is killing the server
+and a loop of restarts is worse than a failed run. Three until somebody changes
+it, between 1 and 10; `ORKNUX_INLINE_RESTART_ATTEMPTS` is the starting value.
+
+On either engine an agent step asked a second time does not write its question
+into the session again, so the model is not shown it twice and the transcript
+does not say it was asked twice.
 
 ## Monitoring
 
@@ -438,8 +576,11 @@ typing a value or by pointing at one of that workspace's variables.
 A workspace that has not answered something a plugin needs is marked on that
 page, in the list and against the parameter itself, and a run that reaches one
 of the plugin's functions stops saying which parameter is missing. A parameter
-the plugin declared as a secret cannot be typed in at all - the only way to
-answer one is a variable, which is encrypted at rest and never shown back.
+the plugin declared as a secret is encrypted at rest. It can be typed in, with
+an eye on the box that shows what is being typed, or answered by a variable;
+once stored, the eye beside it shows it again, and **every time somebody does,
+the workspace's audit log says so** - a secret that can be read back is one
+whose readers should be on the record. Saving the box empty clears it.
 
 What a plugin can reach is exactly that list and nothing else. There is no way
 for one to ask the server for anything it was not given, which is why declaring
@@ -649,85 +790,124 @@ saved - a proxy is where the connection actually lands, so a rule pointing at a
 link-local address would turn every address it matched into a request to this
 machine's own metadata service.
 
+An agent's HTTP tools meet one more check before any of this: the policy under
+Settings, *HTTP tools*, decides whether the request is made at all, and only a
+request it allows reaches these rules.
+
 Administrators only, and every change is written to the organisation audit log.
 
-## Shell
+## Boxes
 
-![The machines an agent can be given, and whether each one answers](/screens/shell.png)
+![The boxes agents may open sessions on: the local box built into the server,
+its health, and how many sessions it holds](/screens/boxes.png)
 
-An agent can be given a machine to run commands on. **Shell** is where an
-administrator says which machine, and it is the one thing on this platform that
-acts outside it.
+A **box** is a sandbox an agent can open a session in - a working directory of
+its own and a way to run commands in it - and **Boxes** is where an
+administrator says which there are. They replace shells, which are gone: agents
+can no longer open a shell on a machine over SSH, and the shell definitions an
+upgraded installation had stay in the database, untouched and unused. What an
+agent does in one is set out under AI, in *Letting an agent work in a box*.
 
-A shell is an SSH target: a name, a host, a port, the account to log in as, and
-a **private key**, with a passphrase if it has one. There is no password field,
-deliberately. A password is a thing a person types; this is one machine talking
-to another, and a key can be issued and withdrawn for one account on one host
-without anybody having to change what they know. The key and its passphrase are
-encrypted at rest with every other credential here, and no query reads either
-back.
+The list shows each box's **Type**, **Health**, **Active sessions** - split into
+working and idle - **Free sessions** of the most it takes, and its **Label**,
+and reloads itself on the shared refresh interval. A box's own page adds what
+it reports about itself - its version, runtime, operating system, default image
+and limits - and the sessions open on it now, with the agent that opened each.
 
-The machine's own host key is remembered the first time it is seen and checked
-on every connection afterwards, so a host answering with a different key is
-refused rather than trusted quietly. Rebuilding a machine means saying to forget
-the old key on purpose.
+**The label is what an agent is granted**, on its **Boxes** setting. Several
+boxes may share one, and an agent holding it may be given any of them, so a
+second build box under a label already granted is used without anybody editing
+an agent. No agent holds any label until somebody gives it one.
 
-The status against a shell is a real connection - the handshake, the key
-accepted, and a command actually run - so a host that answers on port 22 and
-refuses every account reads as unreachable rather than as fine.
+### The local box
 
-### Giving one to an agent
+One box is built into the server: **local**, labelled `local`, on by default and
+configured under **Boxes** in Admin Settings rather than here - **Local box**
+switches it, **Local box location** is where its sessions' directories live,
+and **Local box runtime** is what a session runs in:
 
-The switch is on the agent, and it is called **Shells**, plural. From where an
-agent sits the question is "may I run a command somewhere", not "may I run one
-on build-box-3": which machine a session lands on is decided when it opens, and
-the answer names it. Off for every agent until somebody turns it on, and turning
-it on or off is written to the workspace's audit log.
+- **Local** runs commands as processes of this server, **under its own
+  account**, in a directory of their own. There is no isolation at all: a
+  command can read whatever the server can, its configuration and its data
+  included.
+- **Docker** runs each session in a container of its own, thrown away with the
+  session, from the `orknux/orkbox-toolchain` image. The server needs the
+  `docker` command and a daemon it can reach.
 
-An agent that has it gets three tools: **open a session**, **run a command in
-it**, and **close it**. Opening one gives the agent an empty working directory
-of its own on that machine and tells it what the operating system is. Closing
-destroys that directory and everything in it.
+**Local box sessions at most** (50), **Local session lifetime** (two hours) and
+its longest, **Local session idle timeout** and **Local box output kept** finish
+it. Only working sessions count against the most - one being made or running a
+command. An idle session takes no place until it starts a command, and is
+refused while none is free.
 
-Nothing is held open between commands. A session is a row in the database and a
-directory on the far side, and each command opens its own connection, so a
-restart loses a socket and nothing else. A session nobody closed is swept after
-two hours idle and its directory removed - which also catches the ones a
-previous process would have swept had it lived. A command that has not finished
-in ten minutes is stopped and says so, and says plainly that the process may
-still be running, because closing a channel does not kill one. Output past
-256 KiB has its **middle** removed rather than its end - the beginning and the
-end both survive, and a line in the gap says how many bytes went. That way round
-because the answer is at one end or the other and almost never in between: a
-build prints its banners and its downloads first and `cannot find symbol` last,
-and an assistant handed only the beginning cannot tell a build that failed from
-one whose output stopped. A non-zero exit is a result rather than a failure:
-`grep` finding nothing exits 1, and an assistant told "that failed" would
-apologise for a search that worked.
+### A standalone orkbox
 
-Those two numbers are the installation's, and a machine can be given its own
-under **Limits** on its page. A box built to compile things wants longer and
-more than a switch that answers `show interfaces` does - the first build on a
-machine that has cached nothing is minutes rather than seconds, and a build that
-fails says a great deal more than one that works. Left empty, a machine runs on
-whatever the installation says, so changing that afterwards moves every machine
-that never asked for anything different.
+**orkbox** is the same sandbox as a service of its own, a separate open-source
+project (Apache 2.0) whose server speaks an HTTP Session API: create a session,
+read and write its files, run commands, read their output and its log, delete
+it. It runs no agents and talks to no model; it holds no credentials of yours
+and no prompts, only the environment an agent's commands run in.
 
-**Every command an agent runs is in the workspace's audit log**, under the
-agent's own name, with what it exited with.
+**Run one when the box should not be the machine holding everybody's
+credentials.** The local box with the Local runtime is fine for one person
+trying things, and the Docker runtime contains a session's commands, but both
+put the work on the server's own host, competing with it for memory and CPU. A
+standalone orkbox goes on a host of its own, sized for builds, and can be
+hardened there without touching the server:
+
+- each session is an ephemeral container with CPU, memory, process and
+  optionally disk limits, a lifetime and an idle timeout, and optionally no
+  network;
+- its default image, `orknux/orkbox-toolchain`, builds Maven, Gradle, Node.js,
+  C and C++ projects as it stands, and dependency caches can be shared between
+  sessions so a build does not download everything again;
+- stronger isolation is a Docker runtime away - gVisor or Kata Containers -
+  with no change to orkbox;
+- an Ansible playbook in its repository installs it on Debian or Ubuntu as a
+  systemd service, with Docker, Java and the image.
+
+A default session may take 2 CPUs and 4 GB of memory, and the image is about
+1.7 GB, so a host for two sessions working at once wants about 4 cores, 8 GB and
+30 GB free.
+
+Add one with **Add box**: a **Name**, the **Address** it answers at with its
+scheme (`http://sandbox.internal:8090`, reached through the proxy rules under
+Networking like anything else this server calls), its **API token** - stored
+encrypted, and shown by the eye - and a **Label**. **Test connection** asks it.
+Its own limits - how many sessions work at once, how long one lives, which
+images it allows - are its configuration, on its host, not settings here.
+
+### What every box is held to
+
+The rest of the **Boxes** section in Admin Settings applies to every box, local
+or remote:
+
+| Setting | What it does |
+| --- | --- |
+| Command wait | How long a box tool waits for a command to finish before handing the agent its output so far, with the command still running (300 seconds) |
+| Command timeout | How long one command may run at all before it is stopped (30 minutes) |
+| Command output kept | How much of what a command prints is handed back to the agent; the rest is cut and the agent is told so |
+| Box output shown | How much of one command's output a session's Box tab reads and holds |
+| Box request timeout | How long this server waits for a box to answer one request (30 seconds) |
+| Box edit undo steps | How many edits `orkbox_undo` can take back per session (10); held in memory, so a restart forgets them, and 0 keeps none |
+| Box session idle timeout | How long a session an agent opens may go with no command before its box stops it (two hours), unless the agent asks for another. Waiting for a person counts as idle |
+| Box ports per session | How many ports one session may have asked for or open at once (5); 0 lets an agent ask for none |
+| Box port check interval / wait | How often, and how long, whether something answers on an exposed port is looked at |
+
+**A port is forwarded only once a person allows it**, in the chat or on the
+session page. A box forwards it through `docker exec`, so it works on Docker
+Desktop too, and it listens on `ORKBOX_PUBLISH_HOST` - every interface unless
+that is set; `127.0.0.1` keeps forwards to the box's own machine.
 
 ### What contains this
 
-The machine, and nothing in this application.
-
-There is no list of forbidden commands and no classifier deciding which are
-safe, deliberately: reading a shell command and saying what it will do is not a
-problem that can be solved, and a denylist that is nearly right is worse than
-none, because it tells an administrator they are protected while a command that
-downloads its own instructions walks past it.
-
-Point a shell at a virtual machine or a container you are willing to lose, give
-the account the least privilege that is useful, and read the audit log.
+The box. Nothing in this application decides which commands are safe, and
+there is no list of forbidden ones, deliberately: reading a command and saying
+what it will do cannot be done reliably, and a list that is nearly right tells
+an administrator they are protected while a command that downloads its own
+instructions walks past it. Give the Local runtime only to agents you would give
+a shell on the server; for anything else use containers, and for anything
+untrusted a standalone orkbox on a host you are willing to lose.
 
 Administrators only, and every change here is written to the organisation audit
 log.
@@ -749,7 +929,7 @@ a file having nobody to authenticate to.
 one person or one team: no second container, no database server to keep, and a
 backup that is one file. Everything works on both - signing in, workspaces,
 issues, agents, workflows, runs, chat, the MCP endpoint, attachments, password
-resets, proxy rules and the shells above - and the tests are run against both.
+resets and proxy rules - and the tests are run against both.
 What differs is underneath.
 
 **One writer at a time.** SQLite takes a single write lock for the whole
@@ -759,7 +939,8 @@ database to run a busy installation on.
 
 **One machine.** The file is the installation. Two servers pointed at one file
 over a network share will corrupt it, so SQLite means exactly one process: no
-second node, and no rolling restart.
+second node, and no rolling restart. Postgres is what several servers share;
+see *Running more than one server*, below.
 
 **No time zones.** SQLite has no zoned timestamp type. The moment is kept and
 compares correctly; the offset it was originally written with is not. Nothing in
@@ -774,6 +955,67 @@ Two things when pointing it at a file. The directory has to exist already - the
 server makes the database, not the folder holding it, and says which path is
 missing rather than failing with a connection error. And Temporal is a separate
 question: choosing SQLite removes Orknux's own database server, not Temporal's.
+
+## Running more than one server
+
+Several servers can share one Postgres. **They work when Temporal runs the
+workflows and tasks, the attachments directory is one volume every server
+mounts, and the load balancer keeps one browser on one server** by cookie
+affinity. The last is required rather than advised: a chat's Stop button and a
+workspace copy's progress are held by the server doing the work, and a request
+that lands on another finds nothing to stop.
+
+Some work must happen once, not once per server: the sweeps that tidy runs,
+history and scratchpads, the checks on model providers, connections and MCP
+servers, reminders coming due, and the Slack sockets that listen for mentions.
+**One server holds a lease in the database and does all of that**; the others
+serve requests and wait. When the holder dies, nobody renews the lease, and
+another server takes it over within one lease. **Cluster lease**, under Workflow
+runs in Admin Settings, is how long that is - thirty seconds unless
+`ORKNUX_CLUSTER_LEASE_SECONDS` says otherwise, between 5 and 600. Shorter fails
+over sooner and writes the row more often; it has to stay well above the
+longest pause a server takes, a full garbage collection or a stalled disk, or
+two servers can both believe they hold it for the length of that pause.
+
+The Doctor's **Replicas** check says which server holds the lease, and a Slack
+connection seen from another says that another server listens to it rather
+than that it is not connected.
+
+**SQLite is one process, and so is the inline engine.** A second server started
+on the inline engine's database refuses to start, saying another server holds
+the lease and that more than one needs Temporal; a server restarted after a
+crash waits up to forty seconds for the old lease to run out. That refusal is
+the point: the inline engine carries a run on the thread of the process that
+started it, and a second process would take that work for abandoned and do it
+again.
+
+What is not shared yet: the sign-in pauses and a provider's concurrency and
+rate limits are counted per server, so two servers allow twice of each; and an
+activated update restarts every server together rather than one at a time.
+`docs/horizontal-scaling.md` in the server repository goes through every place
+this was looked at.
+
+## Updating the server
+
+**Updates**, in the admin section, is where an installation run from the image
+takes a new release: from the official server, from an uploaded jar, or from a
+URL. **Update** and **Fetch** answer at once, and the jar downloads in the
+background, with a progress bar, each step - downloading, verifying, storing -
+and the reason if one fails. A broken download resumes where it stopped rather
+than starting again. The releases already kept can be rolled back to.
+
+**Server updates** in Admin Settings decides how stubborn that is: **Longest a
+jar download may go silent** (60 seconds - how long a connection may go without
+a byte, not how long the whole download may take), **Broken attempts before a
+download is given up** (5, counted in a row and only attempts that brought
+nothing), and **First wait before resuming a download** (2 seconds), which
+doubles to **Longest wait before resuming a download** (60). The same section
+holds how many releases are kept, how many starts a new release gets before the
+previous one runs again, and how quickly the other servers follow an update.
+
+**A script calling `installServerRelease` or `installServerReleaseFromUrl` must
+now poll.** Both answer a `ServerReleaseDownload` straight away, and
+`serverReleaseDownload` is asked until it says `DONE` or `FAILED`.
 
 ## Configuration
 
@@ -804,3 +1046,37 @@ from, and the first administrator's two variables are configuration too, and are
 in their own sections above - each is next to the thing it decides rather than
 in a list of everything. Each has an `ORKNUX_` environment variable as well,
 which is how a container is usually told.
+
+### Memory, and finding out what used it
+
+A few variables exist for the day a server is struggling, and are worth knowing
+before that day.
+
+**The images exit when the JVM runs out of heap**, so the container is restarted
+rather than limping on half-broken. `ORKNUX_EXIT_ON_OOM=false`
+keeps it running, which is what you want for long enough to take a heap dump
+and not otherwise.
+
+**The database pool** is `ORKNUX_DB_POOL_SIZE` connections (10), and a request
+waits `ORKNUX_DB_POOL_WAIT_MS` for one (30 seconds) before it fails.
+`ORKNUX_DB_POOL_LEAK_MS`, off by default, logs whoever holds a connection longer
+than that, with where it was taken.
+
+**A GraphQL request slower than `ORKNUX_GRAPHQL_LOG_SLOW_MS`** (3 seconds) is
+logged by its name, its time and its size, never its content - so a page that
+takes the server down says which of its requests did it. `ORKNUX_GRAPHQL_LOG_LARGE_KB`
+does the same for an answer past a size, and is off by default; 0 switches
+either off.
+
+**Temporal's worker** keeps `ORKNUX_TEMPORAL_WORKFLOW_CACHE` runs in memory
+between steps (50) and holds up to `ORKNUX_TEMPORAL_WORKFLOW_THREADS` workflow
+threads (100), where Temporal's own defaults are 600 of each. A cached run keeps
+its input, every step's output and a thread of its own, and one that parks stays
+cached for hours, so an idle server used to fill its heap. A run that is not
+cached replays from history at its next step, which costs a moment and nothing
+else.
+
+**A plugin bigger than `ORKNUX_PLUGIN_SHARED_ENGINE_MAX_KB`** of code (1 MB) gets
+a JavaScript engine of its own for each call, thrown away after it, instead of
+the shared engine that keeps every script it parses - a 4 MB bundle held 340 MB
+that way from its first call.

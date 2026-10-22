@@ -24,11 +24,12 @@ Somebody typing "slack" means any of the three, and asking which of the three
 they meant is a question with no useful answer. It does not look inside
 comments.
 
-The labels in use in the workspace are listed under the filters. A label is a
-search somebody has already typed, so clicking one puts it in the box and
-clicking it again takes it out. That is also why only one applies at a time:
-there is one search, not a search and a label filter arguing about the same
-list.
+The labels in use in the workspace are listed under the filters, and clicking
+one shows **exactly the issues carrying it**; clicking it again takes it off.
+A label used to be put into the search box, which also found every issue whose
+description merely mentioned the word - an issue saying "fixed in `0.9.9.12`"
+came back under the label `0.9.9.12`. Now the two combine: a label narrows the
+list, the search narrows it further, and several labels mean every one of them.
 
 Beside the states is a **type** box: **Any type**, one of the workspace's own
 types, or **Untyped**. A select rather than the chips the labels get, because a
@@ -64,6 +65,7 @@ Everything else is in the address:
 | --- | --- |
 | `status` | one of the workspace's status keys - `OPEN`, `IN_PROGRESS`, `REVIEW`, `CLOSED` until it changes them - or `all`; absent means the first |
 | `q` | what is in the search box |
+| `label` | a label the list is narrowed to, once for each |
 | `order` | `NUMBER`, `TITLE`, `UPDATED` or `LAST_COMMENT` |
 | `dir` | `asc`; anything else is descending |
 | `page` | which page, counting from one |

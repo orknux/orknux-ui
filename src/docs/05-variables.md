@@ -44,6 +44,17 @@ parameter — it is never spliced into the body as text.
 
 A variable in use cannot be deleted; the error says what is still using it.
 
+A workflow node's parameter can read a **value** directly, from the
+**Workspace variables** group of its Reference picker, when the step runs. A
+secret cannot: a parameter is handed on as text, and a secret in one would be
+published. See *Values and references* under Workflows.
+
+An agent can be granted variables by catalog - **Secret Catalogs** and
+**Variable Catalogs** on its settings - to hand to a command it runs in a box.
+It reads the values; it never sees the secrets, which reach the command as
+environment variables and read `***` wherever the output is shown. See *Letting
+an agent work in a box* under AI.
+
 A plugin's parameters read variables the same way. On the workspace's **Plugins**
 page, a parameter can be answered either with a value typed in or with one of
 these variables, and a parameter the plugin declared as a secret can only be

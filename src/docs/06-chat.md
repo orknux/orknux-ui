@@ -54,11 +54,71 @@ Only the answer the conversation ends on can be asked again. Anything earlier
 has been answered on top of, and a different answer there would rewrite what the
 turns after it were replying to.
 
+A chat that ends on your own message with nothing under it - the turn died, was
+stopped, or the page lost it - offers **Answer this** under the message, rather
+than making you type it again.
+
+## While it works
+
+You do not have to wait for the answer to say something else. **A message
+written while the agent is working goes to the turn that is running**, and the
+agent reads it at its next step - between two tool calls, not at the end. Until
+then it says *Queued - the agent reads it at its next step*, and afterwards
+*Read by the agent*, and it is drawn where the agent read it, after the calls it
+made before reading it. That is the difference between correcting a piece of
+work half way through and stopping it to start again with a better prompt.
+
+What the agent writes beside its tool calls - how it reports progress - appears
+as it is written, and every agent is told to say what it is about to do and to
+post a line every few calls, so a long turn reads as work going on rather than a
+spinner. While a model writes a long tool call or its answer, the chat says
+*Writing the answer…* or which tool it is writing, and how much has arrived.
+Its thinking is drawn in red, apart from the answer, with how long it took.
+
+A question an agent asks you - whether to expose a port of a box, for one - sits
+at the bottom of the chat until you answer it, then moves to where it was asked,
+between the calls around it.
+
+**Every chat is answered in a session**, and the mark in its header opens it in
+a tab of its own from the moment the first turn starts: the whole transcript,
+every tool call, the thinking, the box sessions, the to-do list and the notes
+the agent keeps, and what the chat has cost. See *Sessions* under AI. A chat's
+agent has the same session tools as a workflow step or a task - notes to self,
+the to-do list, the clock, scratchpads, reminders and watchers.
+
+With **Answer Cost** on in your Preferences, the chat also keeps a running
+total of what it has read and written, and says how much of it the provider
+reused from its cache where the provider reports that. Every round sends the
+whole conversation again, so without the second number a long chat on a local
+server reads as millions of tokens it mostly never read twice.
+
+A chat whose model gives no usable title is named from its first words, and says
+for a moment that the model could not name it. Chat rows in the sidebar carry no
+icon, and a chat nothing was said in sorts by when it was made.
+
+## Timers above the message box
+
+An agent can put **widgets** above the message box: timers and stopwatches that
+tick as you watch, appearing mid-turn without a reload. "Give me five minutes
+for the tea" is then a timer you can see rather than a promise. You can
+**Pause**, **Resume**, **Reset**, **Lap** and **Remove** them yourself, and the
+agent is told to look at how they stand before it acts on one. A timer the agent asked to
+be woken by tells it when it ends.
+
+A timer **chimes** when it reaches nought in the chat that is open. That is the
+workspace's **Chat timers sound when they end**, under Chat in its settings, on
+by default; an agent makes one timer sound or stay silent only when you tell it
+to. **Widgets Per Chat** (8) and **Longest Chat Timer** (a day) are Admin
+settings. Widgets belong to a chat - a workflow step has no message box to draw
+one over.
+
 ## Attachments
 
-The **+** to the left of the composer attaches files — several at once. They
-are stored on the server, in a directory of their own per workspace, and can be
-opened from the message they were sent with. A chat's files are as private as
+The **+** to the left of the composer attaches files — several at once — and a
+picture pasted into the composer is attached the same way. A message may carry
+only an attachment, with nothing typed. Files are stored on the server, in a
+directory of their own per workspace, and are shown **under the message they
+came with**: yours, or the answer of the turn that drew or filed them. A chat's files are as private as
 the chat: they are readable by whoever the conversation belongs to rather than
 by everybody who can see the workspace, and one still sitting in a composer
 belongs to whoever uploaded it until the message carrying it is sent. An issue's
@@ -104,7 +164,7 @@ against a fixed loudness, so a quiet voice in a quiet room is still a voice. A
 microphone nothing else has closed gives up after ten minutes, which is a fuse
 for one left open in an empty room and not a limit on how much you may say.
 
-A workspace can move all three, under **Workspace Settings → Voice**, because
+A workspace can move all of these, under **Workspace Settings → Voice**, because
 none of them is a fact about audio that one answer settles — it is a room, a
 microphone and a person, and those differ:
 
@@ -113,9 +173,10 @@ boxes voice mode is governed by](/screens/workspace-settings.png)
 
 | Setting | What it does |
 | --- | --- |
-| Pause before it answers | How long you can go quiet before it answers. Raise it if it cuts in while you are still talking; lower it if it sits there after you have finished |
-| Voice above the room | How far above the room's own noise a sound has to stand to count as a voice. Turn it down if it stops while you are still talking, or if you speak quietly; up where a fan or a conversation behind you is heard as you and the turn never ends |
-| Unattended microphone | How long an open microphone stays open where no pause ever comes |
+| Pause Before It Answers | How long you can go quiet before it answers. Raise it if it cuts in while you are still talking; lower it if it sits there after you have finished |
+| Voice Above The Room | How far above the room's own noise a sound has to stand to count as a voice. Turn it down if it stops while you are still talking, or if you speak quietly; up where a fan or a conversation behind you is heard as you and the turn never ends |
+| Unattended Microphone | How long an open microphone stays open where no pause ever comes |
+| Talking Over The Answer | How long you keep talking over an answer before it stops and listens. A length rather than a loudness, because what has to be kept out is a short noise - a cough, a door, the application's own voice getting past echo cancellation. 0 where the answer stops on nothing |
 
 Each box is empty until somebody sets it, and empty is voice mode's own value —
 what the empty box says. Emptying one again puts it back rather than leaving it
@@ -137,7 +198,20 @@ when the turn comes round — the panel shows it under the circle, marked
 **Waiting**, so you can see it was caught. A second thing said while one is
 already waiting is added to it, since both were said to the same turn. Cutting
 in with the circle throws the waiting message away: it means "listen to me now",
-and answering what you had already moved on from is not that.
+and answering what you had already moved on from is not that. **Cancel** beside
+a waiting message throws it away without cutting in.
+
+**Talking while it thinks stops it too.** Talking for as long as *Talking Over
+The Answer* asks, while the model is still working out its answer, stops it and
+listens, as talking over the answer does, and what you said is the next turn.
+That is the workspace's **Talking while it thinks stops it too**, on by default;
+off, the model is left to finish and what you said waits for the turn after.
+
+**Mute** on the panel - or your **Voice Mute Shortcut**, `Alt`+`M` unless you
+chose another in Preferences - stops it hearing you. Muted, nothing you say is
+heard, transcribed or sent, and the answer being read aloud goes on; the panel
+says *Muted* and which keys speak again, so the conversation stays open while
+you are not part of it.
 
 You can type as well as speak. The message box stays live while the panel is
 open, and what is sent from it is a turn like any other — held by the same rules
@@ -163,7 +237,8 @@ Reading starts on the first sentences rather than on the whole answer, so a long
 one begins about as quickly as a short one; the rest is made while what you are
 hearing plays. The button says it is working until sound actually starts,
 because a control that looks inert gets pressed twice. Only one answer is read
-at a time.
+at a time, and while it is read a bar and a percentage beside the speaker - and
+under voice mode's caption - say how much of it has been heard.
 
 What is read is what the answer *renders to*, not the markdown it is written in:
 no asterisks, no backticks, no hashes in front of a heading, and a link is read
@@ -177,12 +252,12 @@ speaker appears only once the workspace has a speech model.
 
 ## Attachments, previewed
 
-A picture the agent drew is a picture like any other: it is in the **Files**
-strip above the composer as soon as it is drawn, and clicking it in the thread
-opens it over the conversation.
+A picture the agent drew is a picture like any other: it is under the answer
+that drew it as soon as it is drawn, without a reload, and clicking it opens it
+over the conversation. There is no longer a strip of files above the composer.
 
 ![A chat that drew twice - a snowy pine forest, then a harbour town at dusk - with
-both in the thread and in the Files strip](/screens/chat-pictures.png)
+each picture under the answer that drew it](/screens/chat-pictures.png)
 
 Clicking a picture in a chat opens it over the conversation rather than in a new
 tab, with the arrow keys stepping between the pictures in the same group.
