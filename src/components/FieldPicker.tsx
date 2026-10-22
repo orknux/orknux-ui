@@ -52,6 +52,15 @@ export interface FieldPickerProps {
   /** Names the control for anyone who cannot see what it sits under. */
   label?: string;
   labels?: FieldPickerLabels;
+  /**
+   * Takes the reference off, offered as a × beside a chosen one.
+   *
+   * Without it the only way out of a reference was the other half of the
+   * switch beside the picker, and on a page whose switch only redrew the
+   * controls that was no way out at all. Left out, nothing is drawn: a caller
+   * that cannot store "no reference" must not offer to.
+   */
+  onClear?: () => void;
 }
 
 /**
@@ -65,7 +74,7 @@ export interface FieldPickerProps {
  * Searchable because a graph of any size produces more fields than fit on a
  * screen, and the one you want is usually known by name.
  */
-export function FieldPicker({ options, value, onChange, label, labels = FIELD_LABELS }: FieldPickerProps) {
+export function FieldPicker({ options, value, onChange, label, labels = FIELD_LABELS, onClear }: FieldPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [at, setAt] = useState(0);
@@ -197,37 +206,54 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
 
   return (
     <div className={styles.box} ref={boxRef}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={styles.trigger}
-        onClick={() => {
-          setSearch('');
-          setOpen((showing) => !showing);
-        }}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={label}
-        data-field-value={value}
-      >
-        {chosen !== undefined ? (
-          <span className={styles.chosen}>
-            <span className={styles.chosenGroup}>{chosen.groupName}</span>
-            <span className={styles.chosenField}>{chosen.field}</span>
+      <div className={styles.control}>
+        <button
+          ref={triggerRef}
+          type="button"
+          className={styles.trigger}
+          onClick={() => {
+            setSearch('');
+            setOpen((showing) => !showing);
+          }}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={label}
+          data-field-value={value}
+        >
+          {chosen !== undefined ? (
+            <span className={styles.chosen}>
+              <span className={styles.chosenGroup}>{chosen.groupName}</span>
+              <span className={styles.chosenField}>{chosen.field}</span>
+            </span>
+          ) : value !== '' ? (
+            // A reference whose source has gone: still shown, so it can be seen
+            // and repointed rather than silently reading nothing.
+            <span className={styles.missing}>
+              {value} — {labels.gone}
+            </span>
+          ) : (
+            <span className={styles.empty}>{labels.empty}</span>
+          )}
+          <span className={styles.caret} aria-hidden="true">
+            ▾
           </span>
-        ) : value !== '' ? (
-          // A reference whose source has gone: still shown, so it can be seen
-          // and repointed rather than silently reading nothing.
-          <span className={styles.missing}>
-            {value} — {labels.gone}
-          </span>
-        ) : (
-          <span className={styles.empty}>{labels.empty}</span>
+        </button>
+        {onClear !== undefined && value !== '' && (
+          <button
+            type="button"
+            className={styles.clear}
+            title={t('Remove the reference')}
+            aria-label={label === undefined ? t('Remove the reference') : `${t('Remove the reference')}: ${label}`}
+            data-reference-clear=""
+            onClick={() => {
+              setOpen(false);
+              onClear();
+            }}
+          >
+            ×
+          </button>
         )}
-        <span className={styles.caret} aria-hidden="true">
-          ▾
-        </span>
-      </button>
+      </div>
 
       {open && (
         <div className={styles.menu} data-field-menu="">

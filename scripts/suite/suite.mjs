@@ -2238,6 +2238,12 @@ export const TESTS = [
     /* Loads a plugin of its own with an options parameter, and unloads it. */
   },
   {
+    name: 'reference-unset-check',
+    what: "a reference to a variable is taken off by Value or by the picker's clear, and that saves - a plugin parameter and an MCP server's token",
+    needs: ['workspace'],
+    /* Loads a plugin of its own and makes a catalog, two variables and an MCP server, and removes them all. */
+  },
+  {
     name: 'workflow-variable-reference-check',
     what: 'a node parameter can reference a plain workspace variable, and a secret is not offered',
     needs: ['workspace'],

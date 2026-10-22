@@ -69,6 +69,8 @@ export interface SecretFieldHandle {
   choose: (next: SecretSource) => void;
   type: (next: string) => void;
   point: (at: string) => void;
+  /** Takes the reference off: its own value again, empty where nothing of its own is stored. */
+  unpoint: () => void;
   show: (what: string) => void;
   hide: () => void;
   reset: (found: { stored: boolean; variable: string | null }) => void;
@@ -137,6 +139,19 @@ export function useSecretField({ stored: startsStored = false }: UseSecretFieldO
     },
     point(at) {
       setVariableId(at);
+    },
+    /*
+     * The picker's clear. Where the field held a reference there is nothing of
+     * its own stored, so the box comes back empty and a save sends the empty
+     * value - which the server takes as "neither", the one way back to a field
+     * with nothing configured. Where a copy of its own *is* stored, the
+     * reference was only ever a draft, and taking it off leaves that copy alone.
+     */
+    unpoint() {
+      setSource('OWN');
+      setVariableId('');
+      setValue(stored ? null : '');
+      setShownValue(null);
     },
     show(what) {
       setValue(what);
@@ -324,18 +339,36 @@ export function SecretField({
       )}
 
       {reading ? (
-        <DefinitionPicker
-          id={pickerId}
-          value={field.variableId}
-          options={options}
-          onChoose={(chosen) => {
-            field.point(chosen);
-            onVariable?.();
-          }}
-          placeholder={options.length === 0 ? t('This workspace has no secrets yet') : t('Choose a secret…')}
-          searchPlaceholder={t("Search secrets…")}
-          ariaLabel={`Search workspace secrets for the ${label}`}
-        />
+        <div className={styles.pickRow}>
+          <DefinitionPicker
+            id={pickerId}
+            value={field.variableId}
+            options={options}
+            onChoose={(chosen) => {
+              field.point(chosen);
+              onVariable?.();
+            }}
+            placeholder={options.length === 0 ? t('This workspace has no secrets yet') : t('Choose a secret…')}
+            searchPlaceholder={t("Search secrets…")}
+            ariaLabel={`Search workspace secrets for the ${label}`}
+          />
+          {/* Taking the reference off, rather than only pointing it elsewhere. */}
+          {field.variableId !== '' && (
+            <button
+              type="button"
+              className={styles.clear}
+              title={t('Remove the reference')}
+              aria-label={`${t('Remove the reference')}: ${label}`}
+              data-reference-clear=""
+              onClick={() => {
+                field.unpoint();
+                onVariable?.();
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
       ) : (
         <div className={styles.row}>
           <input

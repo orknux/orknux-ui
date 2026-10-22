@@ -115,6 +115,11 @@ function WorkspacePluginsView({ session, onSignOut, onDiscard }: WorkspacePlugin
    * the pickers used to store the moment they changed while the boxes beside
    * them waited, so whether a change needed saving depended on which kind of
    * control it was made in.
+   *
+   * The empty string is a reference taken off: Value pressed, or the picker's
+   * clear, on a parameter the server holds as a reference. It used to be
+   * nothing at all - the switch redrew the controls and told the page
+   * nothing, so Save stayed off and the reference outlived every reload.
    */
   const [references, setReferences] = useState<Record<string, Record<string, string>>>({});
   const [page, setPage] = useState(1);
@@ -224,25 +229,21 @@ function WorkspacePluginsView({ session, onSignOut, onDiscard }: WorkspacePlugin
   const unsaved = (plugins ?? []).flatMap((entry) =>
     entry.parameters
       .filter((parameter) => {
+        const picked = references[entry.plugin.id]?.[parameter.name];
+        // A variable picked, or a stored reference taken off.
+        if (picked !== undefined && picked !== (parameter.variableId ?? '')) return true;
         const draft = drafts[entry.plugin.id]?.[parameter.name];
         if (draft === undefined) return false;
         // Emptied where the box showed what is stored: a change, which saving makes by clearing it.
         if (draft.trim() === '') return clearing.has(`${entry.plugin.id}/${parameter.name}`);
         return draft.trim() !== (parameter.literal ?? '');
       })
-      .map((parameter) => ({ pluginId: entry.plugin.id, name: parameter.name, variableId: null as string | null }))
-      .concat(
-        entry.parameters
-          .filter((parameter) => {
-            const picked = references[entry.plugin.id]?.[parameter.name];
-            return picked !== undefined && picked !== parameter.variableId;
-          })
-          .map((parameter) => ({
-            pluginId: entry.plugin.id,
-            name: parameter.name,
-            variableId: references[entry.plugin.id]?.[parameter.name] ?? null,
-          })),
-      ),
+      .map((parameter) => ({
+        pluginId: entry.plugin.id,
+        name: parameter.name,
+        // Null where the answer is whatever is typed, which may be nothing.
+        variableId: references[entry.plugin.id]?.[parameter.name] || null,
+      })),
   );
 
   /**
@@ -266,6 +267,7 @@ function WorkspacePluginsView({ session, onSignOut, onDiscard }: WorkspacePlugin
         continue;
       }
       const typed = (drafts[one.pluginId]?.[one.name] ?? '').trim();
+      // A reference taken off with nothing typed in its place is a parameter cleared.
       const stored = typed === ''
         ? await onClear(one.pluginId, one.name)
         : await onSet(one.pluginId, one.name, { literal: typed });
@@ -277,6 +279,11 @@ function WorkspacePluginsView({ session, onSignOut, onDiscard }: WorkspacePlugin
        */
       if (stored) {
         setDrafts((held) => {
+          const mine = { ...(held[one.pluginId] ?? {}) };
+          delete mine[one.name];
+          return { ...held, [one.pluginId]: mine };
+        });
+        setReferences((held) => {
           const mine = { ...(held[one.pluginId] ?? {}) };
           delete mine[one.name];
           return { ...held, [one.pluginId]: mine };
@@ -509,11 +516,43 @@ function WorkspacePluginsView({ session, onSignOut, onDiscard }: WorkspacePlugin
                             });
                           }}
                           onClear={() => void onClear(entry.plugin.id, parameter.name)}
-                          onTyped={(value, clears) => {
-                            // And a value typed or chosen replaces a reference picked.
+                          onSource={(source) =>
+                            /*
+                             * Value on a stored reference takes it off, and
+                             * waits for Save like everything else here. Back
+                             * on Reference, what is stored is shown again.
+                             */
                             setReferences((held) => {
                               const mine = { ...(held[entry.plugin.id] ?? {}) };
+                              if (source === 'VALUE' && parameter.variableId !== null) mine[parameter.name] = '';
+                              else if (source === 'REFERENCE' && mine[parameter.name] === '') delete mine[parameter.name];
+                              return { ...held, [entry.plugin.id]: mine };
+                            })
+                          }
+                          onUnpoint={() => {
+                            // The picker's clear: no reference, and nothing typed in its place.
+                            setReferences((held) => {
+                              const mine = { ...(held[entry.plugin.id] ?? {}) };
+                              if (parameter.variableId !== null) mine[parameter.name] = '';
+                              else delete mine[parameter.name];
+                              return { ...held, [entry.plugin.id]: mine };
+                            });
+                            setDrafts((held) => {
+                              const mine = { ...(held[entry.plugin.id] ?? {}) };
                               delete mine[parameter.name];
+                              return { ...held, [entry.plugin.id]: mine };
+                            });
+                          }}
+                          onTyped={(value, clears) => {
+                            /*
+                             * And a value typed or chosen replaces a reference
+                             * picked - kept as taken off where one is stored,
+                             * so emptying the box again still saves as cleared.
+                             */
+                            setReferences((held) => {
+                              const mine = { ...(held[entry.plugin.id] ?? {}) };
+                              if (parameter.variableId !== null) mine[parameter.name] = '';
+                              else delete mine[parameter.name];
                               return { ...held, [entry.plugin.id]: mine };
                             });
                             setDrafts((held) => ({
@@ -631,6 +670,10 @@ interface ParameterRowProps {
   busy: boolean;
   /** A variable chosen under Reference, held until Save like anything typed. */
   onPicked: (variableId: string) => void;
+  /** The switch pressed: Value on a stored reference takes it off at Save. */
+  onSource: (source: Answer) => void;
+  /** The reference picker's clear: no reference and no value, at Save. */
+  onUnpoint: () => void;
   onClear: () => void;
   /**
    * What is in the box right now, reported as it is typed.
@@ -645,7 +688,7 @@ interface ParameterRowProps {
   onSubmit: () => void;
   /** What is typed and not yet stored, or undefined once it has been - which puts the box back to what is stored. */
   draft?: string;
-  /** The variable picked under Reference and not yet saved. */
+  /** The variable picked under Reference and not yet saved; empty for a reference taken off. */
   picked?: string;
   workspaceId: string;
 }
@@ -677,6 +720,8 @@ function ParameterRow({
   connections,
   busy,
   onPicked,
+  onSource,
+  onUnpoint,
   onClear,
   onTyped,
   onSubmit,
@@ -752,7 +797,9 @@ function ParameterRow({
    * the box says it is set - and one pointing at a variable opens on
    * Reference, like everything else.
    */
-  const stored: Answer = parameter.variableId !== null ? 'REFERENCE' : 'VALUE';
+  const stored: Answer = parameter.variableId !== null && picked !== '' ? 'REFERENCE' : 'VALUE';
+  /** Whether the reference the server holds is still the one this row is answered by. */
+  const reads = parameter.variableName !== null && (picked === undefined || picked === parameter.variableId);
   const [mode, setMode] = useState<Answer>(stored);
   /*
    * Whether what is being typed is readable. Issue #366.
@@ -844,7 +891,10 @@ function ParameterRow({
                   ? t('A connection is picked from the workspace\'s connections, never read from a variable')
                   : undefined
               }
-              onClick={() => setMode(option)}
+              onClick={() => {
+                setMode(option);
+                onSource(option);
+              }}
             >
               {option === 'VALUE' ? 'Value' : 'Reference'}
             </button>
@@ -874,6 +924,10 @@ function ParameterRow({
             label={`${parameter.name} reference`}
             labels={VARIABLE_LABELS}
             onChange={(option) => onPicked(option.expression)}
+            onClear={() => {
+              setMode('VALUE');
+              onUnpoint();
+            }}
           />
         </div>
       ) : takesConnection ? (
@@ -1028,7 +1082,7 @@ function ParameterRow({
         </p>
       )}
 
-      {parameter.variableName !== null && (
+      {reads && (
         <p className={styles.parameterNote}>
           Reads {parameter.variableName} when the plugin runs, so changing that variable changes what the
           plugin is handed.

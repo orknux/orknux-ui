@@ -167,6 +167,8 @@ export function HeaderRowsEditor({
                   label={`Header ${index + 1} variable`}
                   labels={VARIABLE_LABELS}
                   onChange={(option) => update(index, { variableId: option.expression, value: '' })}
+                  // No reference and an empty value: the row as Value with nothing typed.
+                  onClear={() => update(index, { variableId: null, value: '' })}
                 />
               </div>
             ) : (
