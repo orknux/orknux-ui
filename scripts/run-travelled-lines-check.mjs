@@ -146,12 +146,12 @@ try {
     document.body.appendChild(probe);
     const grey = getComputedStyle(probe).color;
     probe.remove();
-    return { color: style.borderTopColor, grey, style: style.borderTopStyle, opacity: style.opacity };
+    return { color: style.borderTopColor, grey, style: style.borderTopStyle, width: style.borderTopWidth, opacity: style.opacity };
   });
   // Bright: the silver itself, and the card not faded, which would fade the border with it.
   record(
-    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === skippedBorder.grey && skippedBorder.opacity === '1',
-    `a skipped step is drawn with a grey border (${JSON.stringify(skippedBorder)})`,
+    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === skippedBorder.grey && skippedBorder.width === '2px' && skippedBorder.opacity === '1',
+    `a skipped step is drawn with a grey border, two pixels thick as every step's is (${JSON.stringify(skippedBorder)})`,
   );
 
   for (const theme of ['light', 'dark']) {
