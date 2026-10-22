@@ -139,6 +139,12 @@
   color: var(--color-danger-solid);
 }
 
+/* A field left blank on purpose: the default is used. */
+.optional {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
 .input {
   width: 100%;
   padding: var(--space-10) var(--space-14);

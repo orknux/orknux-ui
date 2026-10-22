@@ -3166,4 +3166,6 @@ export const PL: Record<string, string> = {
   "Use": "Użyj",
   "Filter models": "Filtruj modele",
   "No model matches": "Żaden model nie pasuje",
+  "Deployment Name": "Nazwa wdrożenia",
+  "Region": "Region",
 };

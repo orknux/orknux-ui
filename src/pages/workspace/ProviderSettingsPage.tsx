@@ -605,7 +605,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
               <div className={styles.fieldRow}>
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="deployment-name">
-                    Deployment Name <span className={styles.required}>*</span>
+                    {/* Never required: a blank one is the model's id, and the v1 surface names models directly. */}
+                    {t('Deployment Name')} <span className={styles.optional}>{t('optional')}</span>
                   </label>
                   <input
                     id="deployment-name"
@@ -617,7 +618,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="region">
-                    Region <span className={styles.required}>*</span>
+                    {t('Region')} <span className={styles.optional}>{t('optional')}</span>
                   </label>
                   <input
                     id="region"
