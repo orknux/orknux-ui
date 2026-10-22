@@ -5608,6 +5608,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     return () => window.removeEventListener('keydown', onKey, true);
   });
 
+  /**
    * Publishing from the keyboard, Ctrl+Enter until somebody changes it in
    * Preferences - issue #233.
    *
@@ -6094,6 +6095,7 @@ Change the keystroke in Preferences.`}
           >
             <PasteIcon />
           </ToolButton>
+          {/*
             Beside Duplicate, because it is the same gesture at a longer range:
             one makes a second copy on this canvas, the other makes one that can
             leave the installation. It was on the workflows list and nowhere

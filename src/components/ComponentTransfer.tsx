@@ -1069,8 +1069,9 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [ticked, setTicked] = useState<string[]>([]);
 
-  useEffect(() => {
   const sizing = useDialogSize({ storageKey: 'orknux.dialog.template-picker.size', open, minWidth: 360, minHeight: 200 });
+
+  useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog === null) return;
     if (open && !dialog.open) dialog.showModal();
@@ -1086,14 +1087,14 @@ function TemplatePicker({ open, templates, error, onChoose, onClose }: TemplateP
     <dialog
       ref={dialogRef}
       className={`${dialogStyles.dialog} ${dialogStyles.dialogWide} ${dialogStyles.dialogResizable}`}
-      onCancel={onClose}
-      onClose={onClose}
       style={sizing.style}
       data-sized={sizing.sized || undefined}
+      onCancel={onClose}
+      onClose={onClose}
     >
+      <DialogEdges {...sizing.edgeProps} />
       <div className={dialogStyles.body}>
         <header className={dialogStyles.header}>
-      <DialogEdges {...sizing.edgeProps} />
           <span className={dialogStyles.titleRow}>
             <h2 className={dialogStyles.title}>{t('Use a template')}</h2>
             <FieldHint label={t('Use a template')}>
@@ -1169,13 +1170,13 @@ export interface SaveAsTemplateButtonProps extends Omit<ExportComponentButtonPro
   kind?: ComponentKind;
   /** Renders nothing when false: publishing is installation-wide. */
   canPublish: boolean;
-}
   /**
    * How to publish something that is not a component - a model, whose template
    * carries its provider and is published by its own mutation. Given, the
    * dialog offers no depth: what travels is decided by the thing itself.
    */
   save?: (input: { name: string; description: string | null }) => Promise<unknown>;
+}
 
 /**
  * The row action that publishes this component for the whole installation.
@@ -1196,8 +1197,8 @@ export function SaveAsTemplateButton({
   name,
   className,
   canPublish,
-}: SaveAsTemplateButtonProps) {
   save,
+}: SaveAsTemplateButtonProps) {
   const [open, setOpen] = useState(false);
 
   if (!canPublish) return null;
