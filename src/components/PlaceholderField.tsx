@@ -19,6 +19,11 @@ export interface PlaceholderFieldProps {
 /** How many suggestions are offered at once; the rest are found by typing more. */
 const SHOWN = 8;
 
+/** A workspace variable rather than a field the run carries: stored by id, shown by name. */
+function isVariable(option: FieldOption): boolean {
+  return option.expression.startsWith('variables.');
+}
+
 /** A dotted name being typed after `{{`, and nothing that could not be one. */
 const TYPING = /^\s*([A-Za-z0-9_.]*)$/;
 
@@ -70,17 +75,18 @@ export function PlaceholderField({ id, value, onChange, options, placeholder }: 
   const opened = caret === null ? null : openedAt(value, caret);
 
   /*
-   * A variable is offered by the Reference tab and refused as a placeholder,
-   * so it is not offered here: a suggestion that turns red the moment it is
-   * taken is worse than none.
+   * A workspace variable is offered too, found and shown by its name and put
+   * in as `variables.<id>` - the id is what survives a rename, and the name is
+   * what anybody types. The list holds no secrets; the save refuses one.
    */
   const rows = useMemo(() => {
     if (opened === null) return [];
     const typed = opened.typed.toLowerCase();
-    const usable = options.filter((option) => !option.expression.startsWith('variables.'));
-    const starting = usable.filter((option) => option.expression.toLowerCase().startsWith(typed));
-    const containing = usable.filter(
-      (option) => !starting.includes(option) && option.expression.toLowerCase().includes(typed),
+    const said = (option: FieldOption) =>
+      [option.expression, ...(isVariable(option) ? [option.field] : [])].map((one) => one.toLowerCase());
+    const starting = options.filter((option) => said(option).some((one) => one.startsWith(typed)));
+    const containing = options.filter(
+      (option) => !starting.includes(option) && said(option).some((one) => one.includes(typed)),
     );
     return [...starting, ...containing].slice(0, SHOWN);
   }, [opened, options]);
@@ -218,7 +224,7 @@ export function PlaceholderField({ id, value, onChange, options, placeholder }: 
               onMouseMove={() => setAt(index)}
               onClick={() => take(option)}
             >
-              <span className={own.optionField}>{option.expression}</span>
+              <span className={own.optionField}>{isVariable(option) ? option.field : option.expression}</span>
               <span className={own.optionGroup}>{option.groupName}</span>
             </button>
           ))}
