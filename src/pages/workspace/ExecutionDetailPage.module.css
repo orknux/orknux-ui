@@ -984,7 +984,11 @@ a.summaryStopped:focus-visible {
 /* Never reached: there, but plainly not part of what ran. */
 /* Skipped: a silver border, so a step the run passed by reads as a state of its own rather than as an unlit card. */
 .outcome-skipped {
-  border-color: rgb(192 192 200 / 75%);
+  border-color: rgb(216 216 224);
+}
+
+/* What is inside is faded, not the card: fading the card faded its silver border with it. */
+.outcome-skipped > * {
   opacity: 0.55;
 }
 
