@@ -10,7 +10,7 @@ import {
   removeProvider,
   revealProviderSecret,
   offersAllByDefault,
-  testProvider,
+  checkProviderDraft,
   TYPE_TOOL_CAPS,
   updateProvider,
 } from '../../api/models';
@@ -176,15 +176,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  /**
-   * The provider this page created, before anyone pressed Create.
-   *
-   * Test Connection has to save first — a check runs against what is stored, not
-   * against what is typed — but saving is not finishing. Remembering the id here
-   * keeps the page in the create it is in the middle of: the button still says
-   * Create, and pressing it updates that row rather than making a second one.
-   */
-  const [createdId, setCreatedId] = useState<string | null>(null);
+  /** What Test found on the form as it stands; cleared by a save, which the stored status then speaks for. */
+  const [checked, setChecked] = useState<{ connected: boolean; message: string } | null>(null);
 
   useEffect(() => {
     if (providerId === undefined) return;
@@ -416,15 +409,14 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
     setSaved(false);
     try {
       if (adding) {
-        // Created, or finished off the one Test Connection had to save.
-        if (createdId === null) await createProvider(workspaceId, values());
-        else await updateProvider(createdId, values());
+        await createProvider(workspaceId, values());
         // Back to the list it was started from: the provider is made, and the
         // form has nothing left to say.
         navigate(`/workspace/${workspaceId}/models`);
         return;
       }
       apply(await updateProvider(providerId, values()));
+      setChecked(null);
       setSaved(true);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : t('Could not save the provider.'));
@@ -433,10 +425,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
     }
   }
 
-  /**
-   * A check runs against what is stored, so an unsaved provider is saved first
-   * rather than checked against something it no longer is.
-   */
+  /** Checks what the form holds, without saving it: Test is not Save. */
   async function handleTest() {
     if (testing) return;
 
@@ -448,24 +437,9 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
 
     setTesting(true);
     setSaveError(null);
+    setSaved(false);
     try {
-      const target = adding
-        ? createdId === null
-          ? await createProvider(workspaceId, values())
-          : await updateProvider(createdId, values())
-        : await updateProvider(providerId, values());
-      const checked = await testProvider(target.id);
-      /*
-       * The provider as it now stands, for its status - and not the form.
-       * Filling the fields from this answer emptied the key somebody had just
-       * typed, since an answer never carries a secret, and on a create took
-       * Create away with it: what is in the boxes is what was just saved, so
-       * there is nothing in them to put back.
-       */
-      setProvider(checked);
-      // Stay on the form. Navigating to the saved provider here is what turned
-      // a half-finished create into an edit, and the button into Save Changes.
-      if (adding) setCreatedId(checked.id);
+      setChecked(await checkProviderDraft(workspaceId, values(), adding ? null : providerId));
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : t('Could not check the provider.'));
     } finally {
@@ -483,10 +457,9 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
   }
 
   async function handleDiscard() {
-    // Abandoning a create leaves nothing behind — including the row Test
-    // Connection had to save to have something to check.
-    const remove = adding ? createdId : providerId;
-    if (remove === undefined || remove === null) {
+    // Abandoning a create leaves nothing behind: Test saves nothing.
+    const remove = adding ? undefined : providerId;
+    if (remove === undefined) {
       navigate(`/workspace/${workspaceId}/models`);
       return;
     }
@@ -682,8 +655,12 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
               </div>
             )}
 
-            {/* How the server reads a picture edit's mask: a property of the server, so it sits by its address. */}
-            {(type === 'OPENAI' || type === 'STABLE_DIFFUSION_CPP') && (
+            {/*
+              How the server reads a picture edit's mask: a property of the server, so it sits by its address.
+              Every type that can draw edits through the same standard interface, so every one of them asks;
+              it was offered on two, and could not be set on a WebUI, llama.cpp, Ollama or Azure provider.
+            */}
+            {type !== 'ANTHROPIC' && type !== 'SYSTEM_ONE' && (
               <div className={styles.fieldRow}>
                 <div className={styles.field}>
                   <span className={styles.labelWithHint}>
@@ -1077,6 +1054,13 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                 <span className={styles.statusFailed} role="alert">
                   {saveError}
                 </span>
+              ) : checked !== null ? (
+                <>
+                  <span className={`${styles.dot} ${checked.connected ? styles.dotConnected : styles.dotFailed}`} aria-hidden="true" />
+                  <span className={checked.connected ? styles.statusConnected : styles.statusFailed} data-testid="provider-check">
+                    {checked.message}
+                  </span>
+                </>
               ) : provider !== null ? (
                 <>
                   <span

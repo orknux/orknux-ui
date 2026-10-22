@@ -19,7 +19,7 @@ const GROUPS: Array<{ heading: string; parts: Array<{ part: WorkspaceCopyPart; l
   {
     heading: t('What it knows'),
     parts: [
-      { part: 'VARIABLES', label: t('Variables'), hint: t('Values come; secrets come empty') },
+      { part: 'VARIABLES', label: t('Variables'), hint: t('Secrets come with their values') },
       { part: 'MEMORIES', label: t('Memories'), hint: t('Every catalog and what is in it') },
     ],
   },
@@ -34,7 +34,7 @@ const GROUPS: Array<{ heading: string; parts: Array<{ part: WorkspaceCopyPart; l
       { part: 'ACTIONS', label: t('Actions'), hint: '' },
       { part: 'AGENTS', label: t('Agents'), hint: '' },
       { part: 'TRIGGERS', label: t('Triggers'), hint: t('Arrive switched off') },
-      { part: 'WORKFLOWS', label: t('Workflows'), hint: t('Arrive as drafts') },
+      { part: 'WORKFLOWS', label: t('Workflows'), hint: t('Arrive published') },
     ],
   },
 ];

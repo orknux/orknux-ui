@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { exportModels, fetchModels, fetchProviders, importModels, modelKindLabel, providerStatusLabel, providerTypeLabel, setModelEnabled } from '../../api/models';
-import type { Model, ModelProvider, ProviderStatus } from '../../api/models';
+import type { Model, ModelImport, ModelProvider, ProviderStatus } from '../../api/models';
 import { createAgentForModel } from '../../api/agents';
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
@@ -15,6 +15,8 @@ import { ColumnHeader } from '../../components/ColumnHeader';
 import { FilterSelect } from '../../components/FilterSelect';
 import { Loader } from '../../components/Loader';
 import { ModelDialog } from '../../components/ModelDialog';
+import { ModelTemplatesDialog } from '../../components/ModelTemplatesDialog';
+import type { ModelTemplatesMode } from '../../components/ModelTemplatesDialog';
 import { CompactPagination } from '../../components/CompactPagination';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { useSearch } from '../../components/useSearch';
@@ -211,14 +213,21 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
     }
   }
 
+  /** Use a template, or publish the listed models as one; null while neither is open. */
+  const [templating, setTemplating] = useState<ModelTemplatesMode | null>(null);
+
+  /** What an import or a used template brought, in the line under the heading. */
+  function noteImported(done: ModelImport) {
+    const parts = [tf('{count} models added', { count: done.models.length })];
+    if (done.skipped.length > 0) parts.push(tf('{count} already here', { count: done.skipped.length }));
+    if (done.needsKey.length > 0) parts.push(tf('add a key to {providers}', { providers: done.needsKey.join(', ') }));
+    setTransferNote({ error: false, text: parts.join(' · ') });
+  }
+
   async function importFile(file: File) {
     setTransferNote(null);
     try {
-      const done = await importModels(workspaceId, await file.text());
-      const parts = [tf('{count} models added', { count: done.models.length })];
-      if (done.skipped.length > 0) parts.push(tf('{count} already here', { count: done.skipped.length }));
-      if (done.needsKey.length > 0) parts.push(tf('add a key to {providers}', { providers: done.needsKey.join(', ') }));
-      setTransferNote({ error: false, text: parts.join(' · ') });
+      noteImported(await importModels(workspaceId, await file.text()));
       load();
     } catch (cause) {
       setTransferNote({ error: true, text: cause instanceof Error ? cause.message : t('Could not import the models.') });
@@ -494,6 +503,27 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             >
               {t('Export')}
             </button>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => setTemplating({ kind: 'use' })}
+              title={t('Add models and their providers from a template')}
+              data-testid="models-use-template"
+            >
+              {t('Use a template')}
+            </button>
+            {session.admin && (
+              <button
+                type="button"
+                className={styles.ghostButton}
+                onClick={() => setTemplating({ kind: 'publish', modelIds: (arrangedModels ?? []).map((model) => model.id) })}
+                disabled={(arrangedModels ?? []).length === 0}
+                title={t('Publish the models listed below as a template every workspace can use')}
+                data-testid="models-publish-template"
+              >
+                {t('Publish as template')}
+              </button>
+            )}
           </span>
           {/* A model belongs to a provider, so there is nothing to add without one. */}
           <button
@@ -503,6 +533,20 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
             disabled={providers === null || providers.length === 0}
           >{t('+ Add Model')}</button>
         </div>
+        <ModelTemplatesDialog
+          workspaceId={workspaceId}
+          mode={templating}
+          onClose={() => setTemplating(null)}
+          onUsed={(done) => {
+            setTemplating(null);
+            noteImported(done);
+            load();
+          }}
+          onPublished={(made) => {
+            setTemplating(null);
+            setTransferNote({ error: false, text: tf('Published as template {name}', { name: made.name }) });
+          }}
+        />
         {transferNote !== null && (
           <p className={transferNote.error ? styles.transferError : styles.transferNote} role="status" data-testid="models-transfer-note">
             {transferNote.text}

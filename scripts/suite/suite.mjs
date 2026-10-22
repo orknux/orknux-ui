@@ -590,6 +590,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'model-template-check',
+    what: "models are published as a template on one workspace's Models page and used on another's",
+    needs: ['session'],
+  },
+  {
+    name: 'provider-edit-mask-check',
+    what: 'the edit mask is offered and saved on every provider type that edits pictures',
+    needs: ['workspace'],
+  },
+  {
     name: 'editor-agent-save-check',
     what: "the workflow editor's Save also saves an agent edited in the panel beside the canvas",
     needs: ['workspace'],

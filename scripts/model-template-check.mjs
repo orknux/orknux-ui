@@ -1,0 +1,60 @@
+/**
+ * Models as templates: published from one workspace's Models page, used on
+ * another's.
+ *
+ * Asked for as "add ability to expose model as template". A model is not a
+ * component, so the component templates could not carry one; a template of
+ * models holds the models file Export writes - providers and models, no key -
+ * and Use reads it in the way Import does.
+ */
+import { BASE, open, record, finish } from './suite/harness.mjs';
+
+const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
+const stamp = Date.now();
+const TEMPLATE = `zz model template ${stamp}`;
+const PROVIDER = `zzTplLab ${stamp}`;
+
+const workspace = async (name) =>
+  (await graphql('mutation($input: CreateWorkspaceInput!) { createWorkspace(input: $input) { id } }', { input: { name } })).createWorkspace.id;
+const from = await workspace(`zz tpl from ${stamp}`);
+const into = await workspace(`zz tpl into ${stamp}`);
+
+try {
+  const provider = (await graphql(
+    'mutation($input: CreateModelProviderInput!) { createModelProvider(input: $input) { id } }',
+    { input: { workspaceId: from, name: PROVIDER, type: 'OPENAI', endpoint: 'http://lab.invalid/v1', secret: 'sk-secret' } },
+  )).createModelProvider.id;
+  await graphql('mutation($input: CreateModelInput!) { createModel(input: $input) { id } }', {
+    input: { providerId: provider, name: 'Talker', modelId: 'talker-id', kind: 'CHAT' },
+  });
+
+  await page.goto(`${BASE}/workspace/${from}/models`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('models-publish-template').waitFor({ timeout: 20_000 });
+  await page.getByTestId('models-publish-template').click();
+  await page.locator('#model-template-name').fill(TEMPLATE);
+  await page.getByTestId('model-templates-dialog').getByRole('button', { name: 'Publish' }).click();
+  const published = await page.getByTestId('models-transfer-note').innerText({ timeout: 10_000 }).catch(() => '');
+  record(published.includes(TEMPLATE), `Publish as template publishes the listed models (${published})`);
+
+  await page.goto(`${BASE}/workspace/${into}/models`, { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('models-use-template').waitFor({ timeout: 20_000 });
+  await page.getByTestId('models-use-template').click();
+  const row = page.getByTestId('model-templates').locator('li', { hasText: TEMPLATE });
+  await row.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const shown = (await row.innerText().catch(() => '')).replace(/\s+/g, ' ');
+  record(shown.includes(`Talker (${PROVIDER})`), `another workspace is offered it, naming what is in it (${shown})`);
+  await row.getByRole('button', { name: `Use ${TEMPLATE}` }).click();
+  const used = await page.getByTestId('models-transfer-note').innerText({ timeout: 10_000 }).catch(() => '');
+  record(used.includes('1 models added') && used.includes(PROVIDER), `Use reads it in, and says the provider needs a key (${used})`);
+
+  const { modelProviders } = await graphql('query($w: ID!) { modelProviders(workspaceId: $w) { name } }', { w: into }).catch(() => ({ modelProviders: [] }));
+  record((modelProviders ?? []).some((one) => one.name === PROVIDER), 'the provider is there');
+} finally {
+  const { modelTemplates } = await graphql('query { modelTemplates { id name } }').catch(() => ({ modelTemplates: [] }));
+  for (const one of (modelTemplates ?? []).filter((held) => held.name === TEMPLATE)) {
+    await graphql('mutation($id: ID!) { deleteComponentTemplate(id: $id) }', { id: one.id }).catch(() => undefined);
+  }
+  for (const id of [from, into]) await graphql('mutation($id: ID!) { deleteWorkspace(id: $id) }', { id }).catch(() => undefined);
+}
+
+await finish(browser);

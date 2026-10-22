@@ -33,7 +33,7 @@ const sweep = async () => {
 
 /** Mutations a Test sends, answered with a refusal so nothing is stored; the names seen are kept. */
 const captured = [];
-const CAPTURE = /\b(testModelProvider|updateModelProvider|testWorkspaceConnection|checkMcpServer|testBoxConnection)\b/;
+const CAPTURE = /\b(checkModelProviderDraft|testModelProvider|updateModelProvider|testWorkspaceConnection|checkMcpServer|testBoxConnection)\b/;
 let capturing = true;
 await page.route('**/graphql', async (route) => {
   const query = route.request().postDataJSON()?.query ?? '';
@@ -108,7 +108,7 @@ try {
   record(kept === 'sk-strip-check-key', `after Test, the API key typed is still in its box (${JSON.stringify(kept)})`);
   const create = page.getByTestId('save-bar').getByRole('button', { name: 'Create' });
   record(await create.isEnabled(), 'and Create is still on, so the provider can be finished');
-  // Discard removes the row Test had to save.
+  // Test saved nothing: there is no row to discard.
   await page.getByTestId('save-bar-discard').click();
   await page.waitForURL(/\/models(\b|$|#|\?)/, { timeout: 15_000 }).catch(() => undefined);
   capturing = true;
@@ -118,7 +118,7 @@ try {
   const provider = modelProviders.find((one) => !one.name.startsWith(PREFIX));
   if (provider !== undefined) {
     await page.goto(`${BASE}/workspace/${WORKSPACE}/models/providers/${provider.id}`, { waitUntil: 'domcontentloaded' });
-    await pressed('a provider', await placed('a provider'), 'updateModelProvider');
+    await pressed('a provider', await placed('a provider'), 'checkModelProviderDraft');
   }
 
   // A connection.

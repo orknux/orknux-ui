@@ -124,14 +124,15 @@ await page.screenshot({ path: shot('provider-check-switch.png') });
  * would not be "do not poll this", it would be "this provider is off" - and
  * there is already a way to say that, which is to remove it. The endpoint is
  * unreachable, so what is asserted is that the check *ran*, not that it passed:
- * a failed answer written to the row is the button having worked.
+ * what it found, on the status line, is the button having worked. It checks
+ * the form and saves nothing, so the row is not where to look.
  */
 await page.getByRole('button', { name: 'Test Connection', exact: true }).click();
-await page.waitForTimeout(4000);
+const drawnCheck = await page.getByTestId("provider-check").innerText({ timeout: 30_000 }).catch(() => '');
 const checked = await stored();
 record(
-  checked !== null && checked.status !== 'NOT_CHECKED',
-  `Test Connection still calls a provider the sweep is not allowed to (status ${checked?.status})`,
+  drawnCheck.trim() !== "",
+  `Test Connection still calls a provider the sweep is not allowed to, and says what it found ("${drawnCheck.trim()}")`,
 );
 record(
   checked !== null && checked.checkEnabled === false,

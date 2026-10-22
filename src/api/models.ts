@@ -665,3 +665,55 @@ export async function importModels(workspaceId: string, content: string): Promis
   );
   return data.importModels;
 }
+
+/** A template of models: the installation's, offered on every workspace's Models page. */
+export interface ModelTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Each model in it, as "name (provider)". */
+  models: string[];
+}
+
+/** The templates of models, by name. */
+export async function fetchModelTemplates(): Promise<ModelTemplate[]> {
+  const data = await graphql<{ modelTemplates: ModelTemplate[] }>(`query ModelTemplates { modelTemplates { id name description models } }`);
+  return data.modelTemplates;
+}
+
+/** Publishes the given models, under their providers and without any key, as a template. Administrators. */
+export async function publishModelTemplate(workspaceId: string, modelIds: string[], name: string, description: string | null): Promise<ModelTemplate> {
+  const data = await graphql<{ publishModelTemplate: ModelTemplate }>(
+    `mutation PublishModelTemplate($workspaceId: ID!, $modelIds: [ID!]!, $name: String!, $description: String) {
+       publishModelTemplate(workspaceId: $workspaceId, modelIds: $modelIds, name: $name, description: $description) { id name description models }
+     }`,
+    { workspaceId, modelIds, name, description },
+  );
+  return data.publishModelTemplate;
+}
+
+/** Reads a template of models into the workspace, as importing its file would. */
+export async function applyModelTemplate(workspaceId: string, id: string): Promise<ModelImport> {
+  const data = await graphql<{ useModelTemplate: ModelImport }>(
+    `mutation UseModelTemplate($workspaceId: ID!, $id: ID!) { useModelTemplate(workspaceId: $workspaceId, id: $id) { providers needsKey models skipped } }`,
+    { workspaceId, id },
+  );
+  return data.useModelTemplate;
+}
+
+/** What Test found on the provider form. */
+export interface ProviderCheck {
+  connected: boolean;
+  message: string;
+}
+
+/** Test on the provider form: what it holds, checked without saving. With `id`, a blank key is the stored one. */
+export async function checkProviderDraft(workspaceId: string, input: ProviderInput, id?: string | null): Promise<ProviderCheck> {
+  const data = await graphql<{ checkModelProviderDraft: ProviderCheck }>(
+    `mutation CheckModelProviderDraft($input: CreateModelProviderInput!, $id: ID) {
+       checkModelProviderDraft(input: $input, id: $id) { connected message }
+     }`,
+    { input: { workspaceId, ...input }, id: id ?? null },
+  );
+  return data.checkModelProviderDraft;
+}

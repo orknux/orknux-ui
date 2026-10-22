@@ -108,7 +108,7 @@ if (record(await modelButton.waitFor({ timeout: 20_000 }).then(() => true).catch
     'models: the copy is drawn as "(copy)"',
   );
 }
-/* A provider's row copies it with its models, so the copy's model is drawn among the models too. */
+/* A provider's row copies the provider alone: its models stay with the original. */
 const providerButton = page.locator('[data-duplicate="aaa dup provider"]').first();
 if (record(await providerButton.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), 'providers: its row has a Duplicate button')) {
   await providerButton.click();
@@ -120,7 +120,7 @@ if (record(await providerButton.waitFor({ timeout: 20_000 }).then(() => true).ca
   const copy = held.find((one) => one.name === 'aaa dup provider (copy)');
   const carried = copy === undefined ? [] : (await q(`query($w: ID!) { models(workspaceId: $w) { name providerId } }`)).models
     .filter((one) => one.providerId === copy.id).map((one) => one.name);
-  record(carried.includes('aaa dup model'), `providers: the copy carries its models (${carried.join(', ') || 'none'})`);
+  record(carried.length === 0, `providers: the copy comes without its models (${carried.join(', ') || 'none'})`);
   if (copy !== undefined) await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: copy.id }).catch(() => undefined);
 }
 await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: provider.id }).catch(() => undefined);
