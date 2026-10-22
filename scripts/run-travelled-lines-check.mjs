@@ -80,6 +80,9 @@ try {
           },
           { key: 'yes', kind: 'OBJECT', name: 'Went', x: 600, y: 0, mappings: [{ name: 'said', expression: 'yes', mode: 'VALUE' }] },
           { key: 'no', kind: 'OBJECT', name: 'Stayed', x: 600, y: 300, mappings: [{ name: 'said', expression: 'no', mode: 'VALUE' }] },
+          // Switched off: skipped, and the run passes through it to what follows.
+          { key: 'off', kind: 'OBJECT', name: 'Off', enabled: false, x: 900, y: 0, mappings: [{ name: 'said', expression: 'off', mode: 'VALUE' }] },
+          { key: 'after', kind: 'OBJECT', name: 'After', x: 1200, y: 0, mappings: [{ name: 'said', expression: 'after', mode: 'VALUE' }] },
         ],
         edges: [
           { source: 'start', target: 'gate' },
@@ -87,6 +90,8 @@ try {
           { source: 'gate', target: 'no', branch: 'NO' },
           // Into a step that ran, from one that did not.
           { source: 'no', target: 'yes' },
+          { source: 'yes', target: 'off' },
+          { source: 'off', target: 'after' },
         ],
       },
     },
@@ -111,6 +116,10 @@ try {
     steps.find((one) => one.key === 'yes')?.status === 'COMPLETED' && steps.find((one) => one.key === 'no')?.status !== 'COMPLETED',
     'the condition answered yes: the YES side ran and the NO side did not',
   );
+  record(
+    steps.find((one) => one.key === 'off')?.status === 'SKIPPED' && steps.find((one) => one.key === 'after')?.status === 'COMPLETED',
+    `the switched-off node was skipped and the run went on past it (${status.off} then ${status.after})`,
+  );
 
   await page.goto(`${BASE}/workspace/${WORKSPACE}/executions/${run}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.react-flow__edge-path', { timeout: 30_000 }).catch(() => {});
@@ -121,6 +130,9 @@ try {
     'gate-YES->yes': true,
     'gate-NO->no': false,
     'no-plain->yes': false,
+    // Reported: the line into and out of a switched-off node the run went through stayed grey.
+    'yes-plain->off': true,
+    'off-plain->after': true,
   };
 
   for (const theme of ['light', 'dark']) {
