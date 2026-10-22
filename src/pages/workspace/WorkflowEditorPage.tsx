@@ -3009,6 +3009,8 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   const [agents, setAgents] = useState<Agent[]>([]);
+  /** What saves the agent open in the panel, while it holds an edit. */
+  const agentEdit = useRef<(() => void) | null>(null);
   const [objects, setObjects] = useState<WorkflowObject[]>([]);
   /*
    * The shape the selected node points at, in full, and its fields as rows.
@@ -4782,6 +4784,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   /** @returns whether the graph is now on the server. */
   async function handleSave(): Promise<boolean> {
     if (!fitToSave()) return false;
+    // An agent edited in the panel beside the canvas is saved with the workflow, not left behind in it.
+    agentEdit.current?.();
+    agentEdit.current = null;
     setBusy(true);
     setError(null);
     try {
@@ -8089,7 +8094,11 @@ Change the keystroke in Preferences.`}
         open={building?.kind === 'AGENT'}
         workspaceId={workspaceId}
         agent={beingBuilt('AGENT', agents)}
-        onClose={() => setBuilding(null)}
+        pendingSave={agentEdit}
+        onClose={() => {
+          agentEdit.current = null;
+          setBuilding(null);
+        }}
         onCreated={(agent) => {
           setAgents((all) => withDefinition(all, agent));
           /*

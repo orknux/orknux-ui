@@ -590,6 +590,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'editor-agent-save-check',
+    what: "the workflow editor's Save also saves an agent edited in the panel beside the canvas",
+    needs: ['workspace'],
+  },
+  {
     name: 'workspace-copy-parts-check',
     what: 'the copy dialog asks what to take, the copy carries only that, and the choice is kept',
     needs: [],

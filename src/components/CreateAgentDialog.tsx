@@ -34,6 +34,13 @@ export interface CreateAgentDialogProps {
   onClose: () => void;
   /** What was made, or what was saved. */
   onCreated: (agent: Agent) => void;
+  /**
+   * Set, while an agent's settings are open and edited, to what saves them -
+   * so a page with a Save of its own (the workflow editor) saves the agent
+   * beside it too, rather than leaving the edit in a panel nobody pressed
+   * Save in. Null while nothing here is edited.
+   */
+  pendingSave?: { current: (() => void) | null };
 }
 
 /** The dialog's own names for what the form needs. */
@@ -67,7 +74,7 @@ const FORM_STYLES: AgentFormStyles = {
  * reading an agent there is the node in front of them, and a page would take
  * that off the screen to show a form this one already holds.
  */
-export function CreateAgentDialog({ open, workspaceId, agent = null, onClose, onCreated, placement = 'modal' }: CreateAgentDialogProps) {
+export function CreateAgentDialog({ open, workspaceId, agent = null, onClose, onCreated, placement = 'modal', pendingSave }: CreateAgentDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -110,7 +117,15 @@ export function CreateAgentDialog({ open, workspaceId, agent = null, onClose, on
     <dialog ref={dialogRef} className={`${styles.dialog} ${styles.dialogWide} ${placement === 'panel' ? styles.dialogPanel : ''}`} onCancel={onClose} onClose={onClose} onKeyDown={panelEscape(placement, onClose)}>
       <DrawerEdge placement={placement} />
       {agent !== null ? (
-        <div className={styles.body}>
+        <div
+          className={styles.body}
+          // Edited: what saves it is offered to the page; the form itself is the one Save.
+          onInputCapture={(event) => {
+            if (pendingSave === undefined) return;
+            const form = (event.target as HTMLElement).closest('form');
+            pendingSave.current = form === null ? null : () => form.requestSubmit();
+          }}
+        >
           <header className={styles.header}>
             <h2 className={styles.title}>{t('Agent Settings')}</h2>
             <OpenFullPageLink to={`/workspace/${workspaceId}/agents/${agent.id}/settings`} />
@@ -129,7 +144,10 @@ export function CreateAgentDialog({ open, workspaceId, agent = null, onClose, on
               workspaceId={workspaceId}
               agent={agent}
               styles={FORM_STYLES}
-              onSaved={onCreated}
+              onSaved={(saved) => {
+                if (pendingSave !== undefined) pendingSave.current = null;
+                onCreated(saved);
+              }}
               onCancel={onClose}
             />
           )}
