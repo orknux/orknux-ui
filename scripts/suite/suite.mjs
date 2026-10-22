@@ -2242,6 +2242,27 @@ export const TESTS = [
      */
   },
   {
+    name: 'action-headers-check',
+    what: "an HTTP action's headers as rows, an old JSON column read as rows, and a variable's value nowhere a reference to it is drawn",
+    needs: ['workspace'],
+    /*
+     * Written and never registered, so it went stale unseen: the picker's rows
+     * became options with #582, the save button moved to the strip outside the
+     * form, and the reference picker grew a clear button sharing its label.
+     * Makes its own catalog, secret variable and two actions, and removes them.
+     */
+  },
+  {
+    name: 'search-settings-check',
+    what: "a workspace's search key is write-only: set, said to be set, and never drawn or answered back",
+    needs: ['workspace'],
+    /*
+     * Issue #510. Sets a key of its own on the fixture's workspace and clears it
+     * again; where that workspace already holds a real key, which nothing can
+     * put back once overwritten, it runs only the half that reads and says so.
+     */
+  },
+  {
     name: 'definition-jump-check',
     what: "the way out of a function's object parameter to that object's editor",
     needs: ['workspace'],

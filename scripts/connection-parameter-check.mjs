@@ -227,7 +227,7 @@ try {
     `and it arrives naming the default rather than looking unfilled: ${JSON.stringify(before)}`,
   );
 
-  const formSays = await page.locator('form').innerText();
+  const formSays = await page.locator('form:has(#action-name)').innerText();
   check(
     !formSays.includes('/*') && !formSays.includes('*/'),
     'and neither does the form, for the same reason',

@@ -145,14 +145,21 @@ try {
     .getByRole('button', { name: 'Reference' })
     .click();
 
-  // The picker's trigger is a button carrying the label, and each option is a
-  // button naming the variable beside its type - so the option is matched on the
-  // name rather than on the whole accessible string.
-  await form.getByRole('button', { name: `Header ${before + 2} variable` }).click();
-  await form.getByRole('button', { name: new RegExp(variableName) }).first().click();
+  // The picker's trigger is a button carrying the label, and each row is an
+  // option (since the picker learnt the keyboard, #582) naming the variable
+  // beside its type - so it is matched on the name rather than on the whole
+  // accessible string.
+  await form.getByRole('button', { name: `Header ${before + 2} variable`, exact: true }).click();
+  /*
+   * Narrowed first, as somebody with a workspace of variables would: the list
+   * opens at the foot of the form, its lower rows sit under the floating save
+   * strip, and the page cannot scroll them out from under it.
+   */
+  await form.locator('[data-field-menu] [role="combobox"]').fill(variableName);
+  await form.getByRole('option', { name: new RegExp(variableName) }).first().click();
 
   record(
-    (await form.getByRole('button', { name: `Header ${before + 2} variable` }).innerText()).includes(variableName),
+    (await form.getByRole('button', { name: `Header ${before + 2} variable`, exact: true }).innerText()).includes(variableName),
     'the picker closes on the variable it was pointed at',
   );
 
@@ -171,7 +178,8 @@ try {
 
   await page.screenshot({ path: shot('action-headers-rows.png') });
 
-  const submit = form.getByRole('button', { name: /^(Create Action|Save Changes)$/ });
+  // In the save strip at the foot of the window, which is outside the form it submits.
+  const submit = page.getByRole('button', { name: /^(Create Action|Save Changes)$/ });
   record(await submit.isEnabled(), 'the form is complete enough to save');
   await submit.click();
   // Saving goes back to the list, which is what taking the form off the screen

@@ -29,8 +29,17 @@ import { BASE, WORKSPACE, open, record, drawn, finish, shot, chosenOption } from
 
 const { browser, page, graphql } = await open();
 
-const FIXTURE = `zz settled run check ${WORKSPACE}`;
-const WAIT_SECONDS = 12;
+/*
+ * Long enough to outlast the page being opened twice and watched for three
+ * seconds before the tab is hidden. It was twelve, and under the development
+ * server each of the two loads takes four or five seconds - every module is
+ * its own request - so the run had often ended before the tab was hidden, the
+ * page rightly stopped asking, and "shown again, it asks at once" read 0. The
+ * seconds are in the name so a changed wait is a new workflow rather than the
+ * old one found again.
+ */
+const WAIT_SECONDS = 30;
+const FIXTURE = `zz settled run check ${WORKSPACE} ${WAIT_SECONDS}s`;
 
 /* ----------------------------------------------------------------- fixture */
 
@@ -129,6 +138,10 @@ if (runId !== null) {
   if (await drawn(page, 'the run page', { still: 0 })) {
     const going = await askedIn(3_000);
     record(going >= 2, `while the run is going the page asks about once a second: ${going} times in 3s`);
+
+    // What follows is about a run still going; one that has ended already is the last assertion's business.
+    const stillGoing = (await page.getByRole('button', { name: 'Stop', exact: true }).count()) === 1;
+    record(stillGoing, 'the run is still going when the tab is hidden, so what follows measures a live page');
 
     await hidden(true);
     const behind = await askedIn(3_000);

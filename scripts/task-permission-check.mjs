@@ -104,20 +104,25 @@ const taskId = page.url().split('/').pop();
  * thinking before it acts spends more than a minute on its first turn alone.
  */
 let parked = null;
+/** How the task ended, where it ended without stopping: a provider refusing reads differently from a model that answered. */
+let ended = null;
 for (let look = 0; look < 300 && parked === null; look += 1) {
   const found = await gql(
-    `query($id: ID!) { task(id: $id) { status requests { id kind capability subject asks decision } } }`,
+    `query($id: ID!) { task(id: $id) { status endedBecause requests { id kind capability subject asks decision } } }`,
     { id: taskId },
   );
   if (found.task.status === 'WAITING') parked = found.task;
-  else if (['DONE', 'FAILED', 'STOPPED'].includes(found.task.status)) break;
+  else if (['DONE', 'FAILED', 'STOPPED'].includes(found.task.status)) {
+    ended = `${found.task.status}: ${found.task.endedBecause ?? 'no reason given'}`;
+    break;
+  }
   else await page.waitForTimeout(1000);
 }
 
 check(
   parked !== null,
   'the task stopped rather than inventing an answer it had no way to get',
-  'the task never stopped for permission - it either finished or failed instead',
+  `the task never stopped for permission - it ended ${ended ?? 'without saying how'}`,
 );
 
 if (parked !== null) {

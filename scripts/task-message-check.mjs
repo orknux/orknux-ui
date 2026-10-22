@@ -156,7 +156,7 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks`, { waitUntil: 'domcontent
 await page.waitForSelector('h1:text("Tasks")', { timeout: 20_000 });
 await page.locator('#task-prompt').fill(PROMPT);
 await chooseOption(page, '#task-worker', String(worker.id));
-await page.locator('button:text("Start")').click();
+await page.getByRole('button', { name: 'Start', exact: true }).click();
 await page.waitForURL(/\/tasks\/\d+$/, { timeout: 20_000 });
 const taskId = page.url().split('/').pop();
 await page.waitForSelector('[data-testid="task-log"]', { timeout: 20_000 });

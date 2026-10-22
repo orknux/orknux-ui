@@ -61,7 +61,7 @@
  * relayed. `TaskStreamAPI` hands the connection back every four minutes, so
  * anything only relayed would be gone at the next stint.
  */
-import { BASE, WORKSPACE, open, check, record, shot, finish, chooseOption } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, record, shot, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 /** Where something that thinks out loud is, as the *server* sees it. */
 const STUB = process.env.ORKNUX_REASONING_STUB ?? 'http://localhost:8198';
@@ -184,7 +184,7 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks`, { waitUntil: 'domcontent
 await page.waitForSelector('h1:text("Tasks")', { timeout: 20_000 });
 await page.locator('#task-prompt').fill(PROMPT);
 await chooseOption(page, '#task-worker', String(worker.id));
-await page.locator('button:text("Start")').click();
+await page.getByRole('button', { name: 'Start', exact: true }).click();
 await page.waitForURL(/\/tasks\/\d+$/, { timeout: 20_000 });
 const taskId = page.url().split('/').pop();
 await page.waitForSelector('[data-testid="task-log"]', { timeout: 20_000 });
@@ -221,16 +221,22 @@ await page.evaluate(() => {
 // --- there is no refresh control, and that matters ---------------------------
 
 /*
- * Asserted rather than assumed. If an AutoRefresh came back, the growth this
- * check measures below could be a poll rather than the stream, and the check
- * would go on passing while testing nothing - which is the failure mode the
- * whole suite is written against.
+ * Asserted rather than assumed. If the page were polling, the growth this check
+ * measures below could be a poll rather than the stream, and the check would go
+ * on passing while testing nothing - which is the failure mode the whole suite
+ * is written against.
+ *
+ * The control has been back since 4a9a1ba, for a stream that has gone quiet
+ * without saying so, and it starts Off. This used to count it and demand none,
+ * which passed only because a native select never carried `data-select`; once
+ * the control became the application's own, the count found it. What makes a
+ * poll impossible is the interval, so the interval is what is read.
  */
-const refreshers = await page.locator('[data-select][aria-label="Refresh automatically"]').count();
+const refreshEvery = await chosenOption(page, '[aria-label="Refresh automatically"]').catch(() => null);
 check(
-  refreshers === 0,
-  'the page has no refresh control, so nothing on it can be arriving by poll',
-  'a refresh control is on the page, and anything arriving could be a poll rather than the stream',
+  refreshEvery === null || refreshEvery === '0',
+  `the page is not refreshing on a timer (${refreshEvery === null ? 'no control' : 'Off'}), so nothing on it can be arriving by poll`,
+  `the page refreshes every ${refreshEvery}s, and anything arriving could be a poll rather than the stream`,
 );
 
 // --- the model thinking, drawn while it thinks -------------------------------
@@ -282,12 +288,23 @@ check(
  * the count moves once a second and one second could straddle a single tick and
  * read the same value twice for honest reasons.
  */
+/*
+ * Read first once it is there. The block draws no count until a second has
+ * passed - there is nothing to say at nought - and the block is read the moment
+ * it appears, so the reading above is usually from inside that first second.
+ */
+await page
+  .locator('[data-testid="thinking"][data-live="true"] [data-testid="thinking-elapsed"]')
+  .first()
+  .waitFor({ state: 'visible', timeout: 5_000 })
+  .catch(() => undefined);
+const counted = await readPage();
 await page.waitForTimeout(2200);
 const later = await readPage();
 check(
-  midRun.elapsed !== '' && later.elapsed !== '' && midRun.elapsed !== later.elapsed && !OVER.includes(later.state),
-  `the count of how long it has been thinking moves while the task runs (${midRun.elapsed} then ${later.elapsed})`,
-  `the count read ${JSON.stringify(midRun.elapsed)} then ${JSON.stringify(later.elapsed)} ` +
+  counted.elapsed !== '' && later.elapsed !== '' && counted.elapsed !== later.elapsed && !OVER.includes(later.state),
+  `the count of how long it has been thinking moves while the task runs (${counted.elapsed} then ${later.elapsed})`,
+  `the count read ${JSON.stringify(counted.elapsed)} then ${JSON.stringify(later.elapsed)} ` +
     `on a task reading "${later.state}"`,
 );
 

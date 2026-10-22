@@ -22,7 +22,7 @@ const WHEN = process.env.ORKNUX_SHOTS ?? 'after';
 const SHOTS = SHOT_DIR;
 mkdirSync(SHOTS, { recursive: true });
 
-const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
+const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
 /**
  * The first link on a list page that looks like the page under test.
@@ -47,9 +47,20 @@ async function findLink(listPath, pattern) {
 
 const agent = await findLink(`/workspace/${WORKSPACE}/agents`, /\/agents\/[^/]+\/settings$/);
 const workflow = await findLink(`/workspace/${WORKSPACE}`, /\/workflows\/[^/]+\/settings$/);
+/*
+ * A Slack connection's, not the list's first: the sentence listed below is the
+ * App-Level Token's, drawn only on a Slack connection, and the first row is
+ * whatever sorts first - a plugin's HTTP connection called Anki, on the
+ * developer database.
+ */
+const { workspaceConnections } = await graphql(
+  'query($w: ID!) { workspaceConnections(workspaceId: $w) { id type } }',
+  { w: WORKSPACE },
+);
+const slackIds = workspaceConnections.filter((one) => one.type === 'SLACK').map((one) => one.id);
 const connection = await findLink(
   `/workspace/${WORKSPACE}/integrations`,
-  /\/integrations\/connections\/[^/]+$/,
+  new RegExp(`/integrations/connections/(${slackIds.join('|') || 'none'})$`),
 );
 const provider = await findLink(`/workspace/${WORKSPACE}/models`, /\/models\/providers\/[^/]+$/);
 const trigger = await findLink(`/workspace/${WORKSPACE}/triggers`, /\/triggers\/[^/]+$/);
@@ -99,7 +110,8 @@ const pages = [
     gone: [
       'External tool servers this agent can connect to',
       'a loop nothing here breaks',
-      'can do whatever that account can',
+      // Shells went (fa145d3) and boxes took their place; the (?) beside Boxes says the same of a box.
+      'can do whatever that box allows',
     ],
     kept: [],
   },

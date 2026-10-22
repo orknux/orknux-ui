@@ -86,6 +86,15 @@ await page.goto(
   { waitUntil: 'domcontentloaded' },
 );
 await page.waitForSelector('[data-grants="tools"] [data-grant-rows]', { timeout: 20_000 });
+/*
+ * The list draws the built-ins and the workspace's own first and the plugins'
+ * tools a wave later - seconds, on the development server - so it is read once
+ * the proxy row is there, or after twenty seconds without it.
+ */
+await page
+  .locator(`[data-grants="tools"] [data-grant-rows] > [data-grant-name="${KEY}_fronted"]`)
+  .waitFor({ timeout: 20_000 })
+  .catch(() => undefined);
 await page.waitForTimeout(500);
 
 const rows = await page.locator('[data-grants="tools"] [data-grant-rows] > [data-grant-name]').evaluateAll(
@@ -130,7 +139,13 @@ record(
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tools`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-select][aria-label="Which tools to list"]', { timeout: 20_000 });
 await chooseOption(page, '[data-select][aria-label="Which tools to list"]', 'PLUGIN');
-await page.waitForTimeout(800);
+/*
+ * Narrowed to this plugin's key as well: the list is paged, and an installation
+ * with a few plugins loaded - the developer's has sixty-nine tools of theirs -
+ * puts a name beginning with t on a later page than the first.
+ */
+await page.getByPlaceholder('Search tools...').fill(KEY);
+await page.locator('main').getByText(`${KEY}_fronted`).first().waitFor({ timeout: 10_000 }).catch(() => undefined);
 const toolsPage = await page.locator('main, body').first().innerText();
 record(toolsPage.includes(`${KEY}_fronted`), 'the tools browser lists what the plugin offers');
 record(toolsPage.includes(`${KEY}_standalone`), 'the standalone tool included');
@@ -146,9 +161,13 @@ record(oneToolPlugin.includes(`${KEY}_fronted`), 'the sieve narrows the tools to
 await page.goto(`${BASE}/workspace/${WORKSPACE}/functions`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-select][aria-label="Which functions to list"]', { timeout: 20_000 });
 await chooseOption(page, '[data-select][aria-label="Which functions to list"]', 'PLUGIN');
-await page.waitForTimeout(800);
+// Narrowed to the key for the same reason as the tools: the list is paged.
+await page.getByPlaceholder('Search functions...').fill(KEY);
+await page.locator('main').getByText(`${KEY}_workflowOnly`).first().waitFor({ timeout: 10_000 }).catch(() => undefined);
 const functionsPage = await page.locator('main, body').first().innerText();
 record(functionsPage.includes(`${KEY}_workflowOnly`), "the functions browser sieves to the plugins' rows");
+// Cleared first: a search answers across both origins on purpose (FunctionAPI.workspaceFunctions), whatever the sieve.
+await page.getByPlaceholder('Search functions...').fill('');
 await chooseOption(page, '[data-select][aria-label="Which functions to list"]', 'WORKSPACE');
 await page.waitForTimeout(800);
 const ownOnly = await page.locator('main, body').first().innerText();

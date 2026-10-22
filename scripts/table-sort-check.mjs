@@ -68,7 +68,7 @@ record(await drawn(page, 'the actions list'), 'the actions list is on screen');
  */
 const firstDrawn = () => page.locator('a[class*="_nameLink_"]').first().innerText().then((text) => text.trim());
 
-const nameHead = page.locator('button', { hasText: /^Name/ }).first();
+const nameHead = page.locator('[aria-sort] button', { hasText: /^Name/ }).first();
 await nameHead.waitFor({ timeout: 20_000 });
 
 /*
@@ -167,7 +167,7 @@ for (const list of LISTS) {
     continue;
   }
 
-  const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
+  const head = page.locator('[aria-sort] button', { hasText: new RegExp(`^${list.column}`) }).first();
   const pressable = await head
     .waitFor({ timeout: 20_000 })
     .then(() => true)
@@ -277,7 +277,7 @@ for (const list of [
     continue;
   }
 
-  const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
+  const head = page.locator('[aria-sort] button', { hasText: new RegExp(`^${list.column}`) }).first();
   const pressable = await head
     .waitFor({ timeout: 20_000 })
     .then(() => true)
@@ -351,7 +351,7 @@ for (const list of [
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tools`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the tools list'), 'the tools list is on screen');
 
-const toolHead = page.locator('button', { hasText: /^Name/ }).first();
+const toolHead = page.locator('[aria-sort] button', { hasText: /^Name/ }).first();
 await toolHead.waitFor({ timeout: 20_000 });
 /*
  * Read off the row rather than out of a link: this table draws two origins, and
@@ -409,7 +409,7 @@ for (const list of [
     continue;
   }
 
-  const head = page.locator('button', { hasText: new RegExp(`^${list.column}`) }).first();
+  const head = page.locator('[aria-sort] button', { hasText: new RegExp(`^${list.column}`) }).first();
   const pressable = await head
     .waitFor({ timeout: 20_000 })
     .then(() => true)
