@@ -881,6 +881,11 @@ export function authLabel(authType: AuthType, secretSet: boolean): string {
   return secretSet ? `${name} ••••` : name;
 }
 
+/** What the secret field holds for this kind of auth: Basic is sent as the base64 of username:password. */
+export function secretPlaceholder(authType: AuthType): string {
+  return authType === 'BASIC' ? t('username:password') : t('Enter token or key...');
+}
+
 export function authTypeLabel(authType: AuthType): string {
   switch (authType) {
     case 'NONE':
@@ -890,6 +895,6 @@ export function authTypeLabel(authType: AuthType): string {
     case 'BEARER_TOKEN':
       return t('Bearer Token');
     case 'BASIC':
-      return 'Basic';
+      return t('Basic (username:password)');
   }
 }

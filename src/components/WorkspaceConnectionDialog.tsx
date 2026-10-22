@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import {
-  authTypeLabel,
+  authTypeLabel, secretPlaceholder,
   createWorkspaceConnection,
   testNewWorkspaceConnection,
   type ConnectionDraftCheck,
@@ -634,7 +634,7 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
               field={secret}
               options={secrets}
               variablesPath={`/workspace/${workspaceId}/variables`}
-              placeholder={t('Enter token or key...')}
+              placeholder={secretPlaceholder(authType)}
               hint={t("Whatever the endpoint expects, sent the way the authentication method above says.")}
               onSource={(next) => chooseSource(secret, next)}
               onValue={() => setError(null)}

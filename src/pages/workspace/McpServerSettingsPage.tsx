@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
-  authTypeLabel,
+  authTypeLabel, secretPlaceholder,
   checkMcpServer,
   fetchMcpServer,
   removeMcpServer,
@@ -337,7 +337,7 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
                 field={secret}
                 options={offered}
                 variablesPath={`/workspace/${workspaceId}/variables`}
-                placeholder={t('Enter token or key...')}
+                placeholder={secretPlaceholder(authType)}
                 hint={t("Whatever the server expects, sent the way the authentication method above says.")}
                 onSource={chooseSource}
                 onValue={touched}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { authTypeLabel, createMcpServer } from '../api/integrations';
+import { authTypeLabel, secretPlaceholder, createMcpServer } from '../api/integrations';
 import type { AuthType, HttpHeader, McpServer } from '../api/integrations';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './Dialog.module.css';
@@ -175,7 +175,7 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
               field={secret}
               options={secrets}
               variablesPath={`/workspace/${workspaceId}/variables`}
-              placeholder={t('Enter token or key...')}
+              placeholder={secretPlaceholder(authType)}
               hint={t("Whatever the server expects, sent the way the authentication method above says.")}
               onSource={(next) => {
                 secret.choose(next);

@@ -2001,6 +2001,8 @@ export const PL: Record<string, string> = {
   "People": "Osoby",
   "in {count} sessions": "w {count} sesjach",
   "{name} reviewed this chat": "{name} ocenia ten czat",
+  "Basic (username:password)": "Basic (użytkownik:hasło)",
+  "username:password": "użytkownik:hasło",
   "Shared from {workspace}": "Udostępnione z {workspace}",
   "Name this node {name}": "Nazwij ten węzeł {name}",
   "Use the definition's name as the node name": "Użyj nazwy definicji jako nazwy węzła",

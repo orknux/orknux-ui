@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
-  authTypeLabel,
+  authTypeLabel, secretPlaceholder,
   connectionKindLabel,
   connectionTypeLabel,
   disconnectWorkspaceConnection,
@@ -916,7 +916,7 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                 connection?.secretVariableCatalog ?? null,
               )}
               variablesPath={`/workspace/${workspaceId}/variables`}
-              placeholder={mail ? t('Enter password...') : t('Enter token or key...')}
+              placeholder={mail ? t('Enter password...') : secretPlaceholder(authType)}
               hint={secretHint(kind)}
               onSource={(next) => chooseSource(secret, next)}
               onValue={touched}
