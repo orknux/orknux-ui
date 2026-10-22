@@ -206,6 +206,21 @@ const READING_LINE = 120;
 /** How long typing pauses before the term is marked across the manual. */
 const MARK_AFTER_MS = 250;
 
+/** How long one slice of marking may hold the page before it lets a frame through. */
+const MARK_SLICE_MS = 12;
+
+/** How often, and how many times, a jump to a match looks whether it has arrived. */
+const SEAT_EVERY_MS = 200;
+const SEAT_TRIES = 15;
+
+/** The names the marks are registered under, which the stylesheet paints by. */
+const MARKS = 'docs-search';
+const CURRENT_MARK = 'docs-search-current';
+
+/** Whether this browser paints ranges by name; where it does not, the matches are still stepped through. */
+function canPaintRanges(): boolean {
+  return typeof Highlight === 'function' && typeof CSS !== 'undefined' && 'highlights' in CSS;
+}
 
 
 /**
@@ -223,28 +238,21 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
   const all = useMemo(() => pages(language), [language]);
   const [typed, setTyped] = useState('');
   /*
-   * What is searched for, a step behind what is typed. Marking the term means
-   * rendering the whole manual again, which took over a second a letter - and
-   * the box waited for it, so typing froze. Deferred, the box shows each letter
-   * at once and the manual catches up when there is time, the render it starts
-   * being dropped for a newer one whenever another key comes first.
+   * What is searched for, a step behind what is typed, so the box shows each
+   * letter at once and the list of hits catches up when there is time.
    */
   const query = useDeferredValue(typed);
   const prepared = useMemo(() => searchable(all), [all]);
   const hits = useMemo(() => search(prepared, query), [prepared, query]);
   /*
-   * And the marks in the manual, once typing pauses. A page's markdown is drawn
-   * in one piece that nothing can interrupt, so even deferred, marking every
-   * page between two letters held each letter back by a quarter of a second.
-   * The list of hits above is cheap and follows every letter; the marks follow
-   * the word.
+   * And the marks in the manual, once typing pauses. The list of hits above is
+   * cheap and follows every letter; the marks follow the word.
    */
   const [marked, setMarked] = useState('');
   useEffect(() => {
     const settle = window.setTimeout(() => setMarked(query), MARK_AFTER_MS);
     return () => window.clearTimeout(settle);
   }, [query]);
-  const searching = marked.trim() !== '';
   /** Whether the contents show hits rather than every page: from the first letter, not the pause. */
   const looking = query.trim() !== '';
   const current = all.find((one) => one.slug === page);
@@ -274,8 +282,16 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
    * moves the view, so nothing can move it out from under somebody who is reading.
    */
   const landed = useRef(false);
+  /** The page a chosen result is taking the reader to a word on, which the arrival below leaves alone. */
+  const jumping = useRef<string | null>(null);
   useEffect(() => {
     if (page === undefined) return;
+    if (jumping.current === page) {
+      jumping.current = null;
+      setReading(page);
+      return;
+    }
+    jumping.current = null;
     const scroller = document.querySelector<HTMLElement>('main');
     const section = sections.current.get(page);
     if (scroller === null || section === undefined) return;
@@ -325,43 +341,101 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     return () => document.removeEventListener('scroll', onScroll, { capture: true });
   }, [all]);
-  /** The marks on the page being read, in the order they appear in it. */
-  const [matches, setMatches] = useState<HTMLElement[]>([]);
+  /** Every occurrence of the term in the manual, in the order they appear in it. */
+  const [matches, setMatches] = useState<Range[]>([]);
   const [at, setAt] = useState(0);
+  /** A result chosen before its marks were made: where to start once they are. */
+  const wanted = useRef<string | null>(null);
+  /** The term whose marks are all made, as against one still being walked. */
+  const done = useRef('');
 
   /*
-   * Collected from the page rather than counted in the text, so what can be
-   * stepped through is exactly what is drawn. The marks are made while the
-   * markdown renders, so this has to run after that: an effect, not a memo.
+   * The term is marked on the drawn page, not in the markdown. It used to be
+   * marked by drawing the manual again with the term in it - every page parsed,
+   * highlighted and reconciled in one piece nothing could interrupt, which
+   * measured 0.9 s with nothing else running and 3.5 to 6.7 s on a CPU four to
+   * six times slower, after every pause in typing. The text is already on the
+   * page; finding the term in it and naming the ranges is a walk over its text,
+   * done a slice at a time so a frame gets through between slices, and painted
+   * by the browser through `::highlight` with no element added or redrawn.
+   *
+   * Collected from the page rather than counted in the source, so what can be
+   * stepped through is exactly what is drawn. Not on which page is being read:
+   * left as a dependency it would recollect every time scrolling crossed a
+   * heading, and the effect below would take the reader back to the first match.
    */
   useEffect(() => {
-    const found =
-      article.current === null || !searching
-        ? []
-        : Array.from(article.current.querySelectorAll<HTMLElement>('[data-search-match]'));
-    setMatches(found);
-    setAt(0);
-    /*
-     * Not on which page is being read. It used to be, because only that page was
-     * rendered and its marks arrived with it; now the whole manual is on screen and
-     * the marks are all there at once. Left as a dependency it would recollect every
-     * time scrolling crossed a heading, and the effect below would take the reader
-     * back to the first match — a search that fought anyone trying to read past it.
-     */
-  }, [searching, marked]);
+    const root = article.current;
+    const needle = marked.trim().toLowerCase();
+    const paints = canPaintRanges();
+    if (paints) {
+      CSS.highlights.delete(MARKS);
+      CSS.highlights.delete(CURRENT_MARK);
+    }
+    done.current = '';
+    if (root === null || needle === '') {
+      setMatches([]);
+      setAt(0);
+      return;
+    }
+
+    const painted = paints ? new Highlight() : null;
+    if (painted !== null) CSS.highlights.set(MARKS, painted);
+    const found: Range[] = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let timer = 0;
+
+    const slice = () => {
+      const until = performance.now() + MARK_SLICE_MS;
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        const text = (node.nodeValue ?? '').toLowerCase();
+        for (let index = text.indexOf(needle); index !== -1; index = text.indexOf(needle, index + needle.length)) {
+          const range = document.createRange();
+          range.setStart(node, index);
+          range.setEnd(node, index + needle.length);
+          found.push(range);
+          painted?.add(range);
+        }
+        if (performance.now() > until) {
+          timer = window.setTimeout(slice);
+          return;
+        }
+      }
+
+      done.current = marked;
+      const slug = wanted.current;
+      wanted.current = null;
+      const section = slug === null ? undefined : sections.current.get(slug);
+      const first = section === undefined ? -1 : found.findIndex((range) => section.contains(range.startContainer));
+      // A result whose page holds the term only in its title: the page, then.
+      if (section !== undefined && first === -1) section.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      setMatches(found);
+      setAt(Math.max(first, 0));
+    };
+    slice();
+
+    return () => {
+      window.clearTimeout(timer);
+      if (paints) {
+        CSS.highlights.delete(MARKS);
+        CSS.highlights.delete(CURRENT_MARK);
+      }
+    };
+  }, [marked]);
 
   /*
-   * The current match is set on the element rather than rendered, because
-   * stepping through matches must not re-render the page: the marks are put
-   * there by a plugin over the parsed document, and reparsing a manual page on
-   * every press of Enter to move a ring by one word is work for nothing.
+   * The current match is painted by a second name rather than rendered, so
+   * stepping through the matches draws nothing again.
    */
   useEffect(() => {
-    matches.forEach((mark, index) => {
-      if (index === at) mark.setAttribute('data-current', 'true');
-      else mark.removeAttribute('data-current');
-    });
-    matches[at]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const range = matches[at];
+    if (range === undefined) return;
+    if (canPaintRanges()) {
+      const current = new Highlight(range);
+      current.priority = 1;
+      CSS.highlights.set(CURRENT_MARK, current);
+    }
+    toRange(range);
   }, [matches, at]);
 
   /** Enter and the arrows walk the matches; Shift reverses. Wraps at both ends. */
@@ -374,6 +448,44 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
     setAt((was) => (was + (forward ? 1 : -1) + matches.length) % matches.length);
   }
 
+  /** The occurrence the view is being taken to, until it is there. */
+  const seating = useRef(0);
+  useEffect(() => () => window.clearTimeout(seating.current), []);
+
+  /*
+   * Takes the reader to one occurrence of the term, by the element it is in: a
+   * range cannot be scrolled to, and the words around it are what the reader is
+   * being brought to read anyway.
+   *
+   * In a task of its own, after whatever chose it has drawn, so the two do not
+   * add up into one long stall. And kept there until it is: the pages between
+   * here and there have not been laid out, so a smooth scroll aims at where the
+   * word would be if they were all the size they are guessed to be, and stops a
+   * long way short once they turn out not to be. Once the view stops short, it
+   * is put there directly. Bounded, so a reader who scrolls away is let go.
+   */
+  function toRange(range: Range) {
+    window.clearTimeout(seating.current);
+    const element = range.startContainer.parentElement;
+    const scroller = document.querySelector<HTMLElement>('main');
+    if (element === null || scroller === null) return;
+
+    let tries = 0;
+    let was = -1;
+    const seat = () => {
+      const word = range.getBoundingClientRect();
+      const view = scroller.getBoundingClientRect();
+      if (word.height > 0 && word.top >= view.top && word.bottom <= view.bottom) return;
+      if (scroller.scrollTop === was) element.scrollIntoView({ block: 'center' });
+      was = scroller.scrollTop;
+      if (++tries < SEAT_TRIES) seating.current = window.setTimeout(seat, SEAT_EVERY_MS);
+    };
+    seating.current = window.setTimeout(() => {
+      element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      seating.current = window.setTimeout(seat, SEAT_EVERY_MS);
+    });
+  }
+
   /*
    * Choosing a result goes to the first match on it, whether the title or the
    * line beside it was clicked. Landing at the top of a page and being left to
@@ -381,14 +493,31 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
    */
   function toFirstMatch(slug: string) {
     const section = sections.current.get(slug);
-    const first = section?.querySelector<HTMLElement>('[data-search-match]');
-    if (first === null || first === undefined) return;
+    if (section === undefined) return;
+    // The address changes with the click; arriving there must not undo this.
+    jumping.current = slug;
+
+    // Chosen before typing paused: mark now, and start from this page when done.
+    if (marked !== query) {
+      wanted.current = slug;
+      setMarked(query);
+      return;
+    }
+    if (done.current !== marked) {
+      wanted.current = slug;
+      return;
+    }
 
     // Which of the marks this is, so stepping on with Enter carries on from here
     // rather than starting again at the top of the manual.
-    const index = matches.indexOf(first);
-    setAt(index === -1 ? 0 : index);
-    first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const index = matches.findIndex((range) => section.contains(range.startContainer));
+    if (index === -1) {
+      section.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
+    // The effect above scrolls when the match changes; choosing the same one again has to ask.
+    if (index === at) toRange(matches[index]);
+    else setAt(index);
   }
 
   // An address that names no page — an old link, a typo — goes to the first one
@@ -403,6 +532,7 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
       user={shellUser(session)}
       onSignOut={onSignOut}
       scrollContent
+      contentKey="docs"
       sidebar={
         <>
           <div className={styles.search}>
@@ -482,7 +612,6 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
           <DocsSection
             key={one.slug}
             page={one}
-            highlight={searching ? marked : undefined}
             onElement={(element) => {
               if (element === null) sections.current.delete(one.slug);
               else sections.current.set(one.slug, element);
@@ -495,17 +624,15 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
 }
 
 /**
- * One page of the manual, drawn again only when its own text or the term
- * changes - not on every render of the page around it, which happens as the
- * reader scrolls and the contents' highlight moves.
+ * One page of the manual, drawn once - not on every render of the page around
+ * it, which happens on every letter typed and as the reader scrolls and the
+ * contents' highlight moves. The term is marked over it, not in it.
  */
 const DocsSection = memo(function DocsSection({
   page,
-  highlight,
   onElement,
 }: {
   page: DocPage;
-  highlight: string | undefined;
   onElement: (element: HTMLElement | null) => void;
 }) {
   return (
@@ -516,9 +643,9 @@ const DocsSection = memo(function DocsSection({
         at 1440 and drawn into a column half that: `zoomImages` is what makes
         clicking one open it at the size it was taken (issue #217).
       */}
-      <Markdown highlight={highlight} zoomImages>
+      <Markdown zoomImages>
         {page.body}
       </Markdown>
     </section>
   );
-}, (before, after) => before.page === after.page && before.highlight === after.highlight);
+}, (before, after) => before.page === after.page);

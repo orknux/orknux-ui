@@ -108,6 +108,13 @@ export interface AppShellProps {
    * riding up out of view.
    */
   scrollContent?: boolean;
+  /**
+   * What the content is keyed by instead of the path, for a page whose paths
+   * are places in one document rather than pages of their own. The manual's
+   * `/docs/<page>` is a place to scroll to; keyed by the path, choosing one
+   * threw the whole manual away and drew it again, a freeze of seconds.
+   */
+  contentKey?: string;
   onSignOut?: () => void;
   children: ReactNode;
 }
@@ -259,6 +266,7 @@ export function AppShell({
   hideSidebar = false,
   fills = false,
   scrollContent = false,
+  contentKey,
   showAdmin,
   title,
   onSignOut,
@@ -512,7 +520,7 @@ export function AppShell({
           makes it measure the wrong thing.
         */}
         <main
-          key={hideSidebar ? undefined : pathname}
+          key={hideSidebar ? undefined : (contentKey ?? pathname)}
           className={
             [
               styles.content,
