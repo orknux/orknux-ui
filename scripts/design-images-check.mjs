@@ -231,16 +231,19 @@ await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefin
 // Queued and answered at once: while it draws, one Orknux mark and the word Drawing, and nothing that turns up later beside it.
 const waiting = page.getByTestId('editor-drawing');
 await waiting.waitFor({ timeout: 3_000 }).catch(() => undefined);
+// The wait's words are the mark's own; Stop beside them is a control (316ef78), read on its own.
 const early = {
   marks: await waiting.locator('svg').count(),
-  text: (await waiting.innerText().catch(() => '')).trim(),
+  text: (await waiting.locator('[role="status"]').innerText().catch(() => '')).trim(),
+  stop: await waiting.getByTestId('editor-stop').count(),
   side: Math.round((await waiting.locator('svg').first().boundingBox().catch(() => null))?.width ?? 0),
 };
 record((await page.getByRole('button', { name: 'Generate' }).isEnabled()), 'Generate stays free while it draws, so more can be queued');
 await page.waitForTimeout(2_500);
-const late = { marks: await waiting.locator('svg').count(), text: (await waiting.innerText().catch(() => '')).trim() };
+const late = { marks: await waiting.locator('svg').count(), text: (await waiting.locator('[role="status"]').innerText().catch(() => '')).trim() };
 record(early.marks === 1 && early.text === 'Drawing…' && early.side >= 64 && late.marks === 1 && late.text === 'Drawing…',
   `while drawing, one large mark and "Drawing…" from the start to the end (${JSON.stringify({ early, late })})`);
+record(early.stop === 1, `and Stop beside it (${early.stop})`);
 await page.waitForURL(new RegExp(`/design/images/${DRAWN.id}/edit$`), { timeout: 10_000 }).catch(() => undefined);
 const sent = drawRequests[0] ?? {};
 record(sent.prompt === 'zz a drawn lighthouse' && sent.modelId === '9191' && sent.quality === 'hd' && sent.size === null && sent.name === 'Harbour at dusk',
@@ -337,9 +340,10 @@ await page.getByTestId('editor-drawing').waitFor({ timeout: 10_000 }).catch(() =
 const opened = {
   url: page.url(),
   prompt: await page.locator('#image-prompt').inputValue().catch(() => null),
-  waits: (await page.getByTestId('editor-drawing').innerText().catch(() => '')).trim(),
+  waits: (await page.getByTestId('editor-drawing').locator('[role="status"]').innerText().catch(() => '')).trim(),
+  stop: await page.getByTestId('editor-drawing').getByTestId('editor-stop').count(),
 };
-record(opened.url.endsWith(`/design/images/new?job=${WAITING.id}`) && opened.prompt === WAITING.prompt && opened.waits === 'Queued, 1 ahead…',
+record(opened.url.endsWith(`/design/images/new?job=${WAITING.id}`) && opened.prompt === WAITING.prompt && opened.waits === 'Queued, 1 ahead…' && opened.stop === 1,
   `a queued picture opens in the editor, waiting there (${JSON.stringify(opened)})`);
 
 // Remove, left of Edit, deletes the picture once confirmed and goes back to the gallery.

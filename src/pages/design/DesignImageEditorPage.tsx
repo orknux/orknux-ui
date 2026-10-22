@@ -61,6 +61,33 @@ export interface DesignImageEditorPageProps {
   onSignOut?: () => void;
 }
 
+/** Marks the editor's own move to New - undo back past a drawing - which is not somebody asking for a new picture. */
+const OWN_MOVE = 'orknuxEditorMove';
+
+/**
+ * The editor as the routes hold it: a fresh page where somebody arrives at New
+ * from anywhere else, and the same page across the editor's own moves.
+ *
+ * Both halves matter. A picture's editor left for New must not carry that
+ * picture's state, which is why New used to be keyed in the routes; but the
+ * editor moves itself between the two addresses - a picture drawn on New moves
+ * the address to its own, and undoing it moves it back - and a key on one route
+ * remounted the page on every such move, so a drawn picture took its undo, and
+ * everything else on the page, with it. So the page is renewed here, by what
+ * moved the address, rather than by which route it is on.
+ */
+export function DesignImageEditorRoute(props: DesignImageEditorPageProps) {
+  const location = useLocation();
+  const [seen, setSeen] = useState(location.pathname);
+  const [generation, setGeneration] = useState(0);
+  if (seen !== location.pathname) {
+    setSeen(location.pathname);
+    const own = (location.state as Record<string, unknown> | null)?.[OWN_MOVE] === true;
+    if (location.pathname.endsWith('/design/images/new') && !own) setGeneration((held) => held + 1);
+  }
+  return <DesignImageEditorPage key={generation} {...props} />;
+}
+
 type Asked = { size: string; quality: string; style: string };
 const NOTHING: Asked = { size: '', quality: '', style: '' };
 
@@ -352,7 +379,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         ? // A version is shown at the picture it is a version of: Save then moves nothing, and the leave guard's history holds.
           `/workspace/${workspaceId}/design/images/${next.picture.versionOf ?? next.picture.id}/edit`
         : `/workspace/${workspaceId}/design/images/new`;
-    navigate(path, { replace: true });
+    navigate(path, { replace: true, state: { [OWN_MOVE]: true } });
   };
   const restore = (to: Snapshot) => {
     setPrompt(to.prompt);
