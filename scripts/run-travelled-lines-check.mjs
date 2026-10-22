@@ -144,7 +144,7 @@ try {
   });
   // Bright: the silver itself, and the card not faded, which would fade the border with it.
   record(
-    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === 'rgb(216, 216, 224)' && skippedBorder.opacity === '1',
+    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === 'rgb(242, 242, 248)' && skippedBorder.opacity === '1',
     `a skipped step is drawn with a bright silver border (${JSON.stringify(skippedBorder)})`,
   );
 
