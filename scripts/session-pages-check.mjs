@@ -53,7 +53,7 @@
  * stay: runs of a workflow that no longer exists, on no list of it.
  * ---------------------------------------------------------------------------
  */
-import { BASE, WORKSPACE, open, record, drawn, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, shot, finish, chooseOption } from './suite/harness.mjs';
 import { anyOf } from './suite/named.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
@@ -485,7 +485,7 @@ if (await drawn(page, 'the session transcript')) {
 
   /* ------------------------------------------------------ Time, and then Kind */
 
-  const order = page.locator('select#event-order');
+  const order = page.locator('#event-order[data-select]');
 
   /*
    * Put the page oldest-first before comparing it with the server.
@@ -502,14 +502,14 @@ if (await drawn(page, 'the session transcript')) {
     await page.waitForTimeout(600);
   }
 
-  await order.selectOption('AT');
+  await chooseOption(page, order, 'AT');
   const inTime = await settlesOn(drawnOrder, timeOrder);
   record(
     JSON.stringify(inTime) === JSON.stringify(timeOrder),
     `sorted by Time: drawn in the order the server was asked for (${inTime.join(' ')})`,
   );
 
-  await order.selectOption('KIND');
+  await chooseOption(page, order, 'KIND');
   const inKind = await settlesOn(drawnOrder, kindOrder);
   record(
     JSON.stringify(inKind) === JSON.stringify(kindOrder),
@@ -522,7 +522,7 @@ if (await drawn(page, 'the session transcript')) {
 
   /* -------------------------------------- and the direction switch reverses it */
 
-  await order.selectOption('AT');
+  await chooseOption(page, order, 'AT');
 
   /*
    * Whichever way the page opens, pressing the direction turns it round.
@@ -567,7 +567,7 @@ if (await drawn(page, 'the session to refresh')) {
   });
 
   const refresh = page.getByRole('button', { name: 'Refresh', exact: true });
-  const auto = page.locator('select[aria-label="Refresh automatically"]');
+  const auto = page.locator('[data-select][aria-label="Refresh automatically"]');
   record((await refresh.count()) === 1, 'the session offers one Refresh');
   record((await auto.count()) === 1, 'and an interval to refresh itself at');
 
@@ -577,7 +577,7 @@ if (await drawn(page, 'the session to refresh')) {
    * transcript on, and the setting is shared with every other screen - so one
    * left at five seconds elsewhere must not poll this one.
    */
-  await auto.selectOption('0');
+  await chooseOption(page, auto, '0');
   await page.waitForTimeout(500);
   fetches = 0;
   await page.waitForTimeout(7_000);
@@ -593,7 +593,7 @@ if (await drawn(page, 'the session to refresh')) {
    * is "more than none" rather than an exact count, because a check that
    * pins the number is a check that goes red on a slow machine.
    */
-  await auto.selectOption('5');
+  await chooseOption(page, auto, '5');
   fetches = 0;
   await page.waitForTimeout(12_000);
   record(fetches >= 1, `at five seconds the page refreshes itself (${fetches} calls in 12s)`);
@@ -603,7 +603,7 @@ if (await drawn(page, 'the session to refresh')) {
    * that offers it, and a check that walks away having switched polling on for
    * the whole product has changed something it was only supposed to measure.
    */
-  await auto.selectOption('0');
+  await chooseOption(page, auto, '0');
   await page.waitForTimeout(300);
 }
 

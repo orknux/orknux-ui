@@ -12,7 +12,7 @@
  * On the action page, which is a form of its own. Makes a function under a name
  * of its own and deletes it again.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 const FUNCTION = `zzNewFnPanel${Date.now()}`;
@@ -38,7 +38,7 @@ try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/actions/new`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#action-name', { timeout: 20_000 });
   await page.waitForTimeout(1000);
-  await page.selectOption('#action-subtype', 'FUNCTION');
+  await chooseOption(page, '#action-subtype', 'FUNCTION');
   await page.waitForTimeout(300);
   const before = (await picker.innerText()).trim();
 
@@ -102,7 +102,7 @@ try {
   await page.waitForTimeout(400);
   await page.getByRole('option', { name: /^Custom/ }).first().click();
   await page.waitForTimeout(400);
-  await page.locator('select').filter({ has: page.locator('option', { hasText: 'Function' }) }).first().selectOption({ label: 'Function' });
+  await chooseOption(page, '#action-subtype', { label: 'Function' });
   await page.waitForTimeout(400);
   await chooseNew();
   const drawn = await panel.boundingBox();

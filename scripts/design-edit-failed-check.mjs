@@ -5,7 +5,7 @@
  * The picture, the models and the queue are answered here, as in
  * design-magic-edit-check; the edit is answered as failed.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -105,7 +105,7 @@ const selected = await page.getByTestId('magic-selection').boundingBox().catch((
 // The box measured includes the outline's glow, a few pixels each side.
 const ask = page.getByTestId('magic-ask');
 await ask.waitFor({ timeout: 3_000 }).catch(() => undefined);
-await ask.getByTestId('magic-model').selectOption('9292');
+await chooseOption(page, ask.getByTestId('magic-model'), '9292');
 await ask.getByTestId('magic-prompt').fill('a red barn');
 await ask.getByTestId('magic-change').click();
 await page.waitForTimeout(600);

@@ -20,7 +20,7 @@
  * it. So those three moved, and this file follows them rather than pinning the
  * old answer in place. What is left in `stayed` is units and readings of state.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, context, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -110,7 +110,7 @@ await moved(
 await moved('Content', 'Sent exactly as written. Leave it empty and each node says what to send.');
 
 console.log('--- Create Action, send email');
-await page.selectOption('#action-subtype', 'SEND_EMAIL');
+await chooseOption(page, '#action-subtype', 'SEND_EMAIL');
 await page.waitForTimeout(400);
 await moved(
   'Mail Server',
@@ -120,7 +120,7 @@ await moved('To', 'Sent exactly as written. Leave it empty and each node says wh
 await moved('Body', 'Plain text. Leave it empty and each node says what the mail says.');
 
 console.log('--- Create Action, function');
-await page.selectOption('#action-subtype', 'FUNCTION');
+await chooseOption(page, '#action-subtype', 'FUNCTION');
 await page.waitForTimeout(400);
 await moved(
   'Parameters Mapping',
@@ -128,9 +128,9 @@ await moved(
 );
 
 console.log('--- Create Action, wait on a condition');
-await page.selectOption('#action-type', 'WAIT');
+await chooseOption(page, '#action-type', 'WAIT');
 await page.waitForTimeout(300);
-await page.selectOption('#action-subtype', 'CONDITION');
+await chooseOption(page, '#action-subtype', 'CONDITION');
 await page.waitForTimeout(400);
 await moved(
   'Condition',
@@ -140,12 +140,12 @@ await stayed('the timeout unit', 'Timeout in seconds');
 await stayed('the retry unit', 'Seconds between condition checks');
 
 console.log('--- Create Action, wait on an expression');
-await page.selectOption('#action-subtype', 'INLINE_CONDITION');
+await chooseOption(page, '#action-subtype', 'INLINE_CONDITION');
 await page.waitForTimeout(400);
 await moved('Expression', 'JavaScript over what the previous node produced.');
 
 console.log('--- Create Action, wait for a time');
-await page.selectOption('#action-subtype', 'TIME');
+await chooseOption(page, '#action-subtype', 'TIME');
 await page.waitForTimeout(400);
 await stayed('the duration unit', 'How long to wait, in seconds');
 
@@ -156,7 +156,7 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/integrations`, { waitUntil: 'dom
 await page.locator('button', { hasText: /^\+ Add Connection$/ }).click();
 await page.waitForSelector('#workspace-connection-name', { timeout: 20_000 });
 await page.waitForTimeout(600);
-await page.selectOption('#workspace-connection-type', 'SMTP');
+await chooseOption(page, '#workspace-connection-type', 'SMTP');
 await page.waitForTimeout(400);
 await moved(
   'From Address',
@@ -171,7 +171,7 @@ await moved(
 );
 
 console.log('--- Add Connection, Slack');
-await page.selectOption('#workspace-connection-type', 'SLACK');
+await chooseOption(page, '#workspace-connection-type', 'SLACK');
 await page.waitForTimeout(400);
 await moved(
   'Bot token',

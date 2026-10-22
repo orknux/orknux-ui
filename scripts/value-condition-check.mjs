@@ -9,7 +9,7 @@
  *
  * Makes a condition and a workflow, and removes them.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const PREFIX = 'zzValueCond';
 const STAMP = Date.now();
@@ -43,7 +43,7 @@ const clean = async () => {
 await page.goto(`${BASE}/workspace/${WORKSPACE}/conditions/new`, { waitUntil: 'domcontentloaded' });
 record(await drawn(page, 'the condition form'), 'the condition form is on screen');
 
-await page.locator('#condition-type').selectOption('VALUE');
+await chooseOption(page, '#condition-type', 'VALUE');
 record(
   await page.locator('#condition-property').count().then((many) => many === 0),
   'a value condition asks for no property - the node picks the value',
@@ -52,7 +52,7 @@ record(
   await page.locator('[data-value-note]').count().then((many) => many === 1),
   'and says so where the property would have been',
 );
-const checks = await page.locator('#condition-check option').evaluateAll((all) => all.map((one) => one.value));
+const checks = (await optionsOffered(page, '#condition-check')).map((one) => one.value);
 console.log(`checks: ${JSON.stringify(checks)}`);
 record(
   JSON.stringify(checks) === JSON.stringify(['IN_LIST', 'EQUALS', 'CONTAINS', 'MATCHES']),

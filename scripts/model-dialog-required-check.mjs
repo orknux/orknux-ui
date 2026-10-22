@@ -6,7 +6,7 @@
  * the red star the product marks a required field with; the rest - limits,
  * prices, a voice, an optional key - carry none.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -32,7 +32,7 @@ record(JSON.stringify(chat.map((one) => one.text)) === JSON.stringify(['Provider
 record(chat.every((one) => /^rgb\((2[0-9]{2}), \d+, \d+\)$/.test(one.colour) && Number(one.colour.match(/\d+/)[0]) > 150),
   `in red (${JSON.stringify(chat.map((one) => one.colour))})`);
 
-await dialog.locator('#model-kind').selectOption('SPEECH');
+await chooseOption(page, dialog.locator('#model-kind'), 'SPEECH');
 await page.waitForTimeout(200);
 const speech = (await starred()).map((one) => one.text);
 record(JSON.stringify(speech) === JSON.stringify(['Server URL', 'Name', 'Model ID']),

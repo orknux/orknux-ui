@@ -3,7 +3,7 @@
  *
  * Reported: "edit mask can't be changed in provider edit".
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 /*
@@ -23,8 +23,8 @@ for (const type of ['OPENAI', 'STABLE_DIFFUSION_CPP', 'STABLE_DIFFUSION_WEBUI', 
     const shown = await mask.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
     record(shown, `a ${type} provider offers the edit mask`);
     if (shown) {
-      await mask.selectOption('WHITE');
-      const picked = await mask.inputValue();
+      await chooseOption(page, mask, 'WHITE');
+      const picked = await chosenOption(page, mask);
       record(picked === 'WHITE', `${type}: the choice takes (${picked})`);
       const save = page.getByTestId('save-bar').getByRole('button', { name: /Save/ });
       const enabled = await save.isEnabled().catch(() => false);
@@ -35,7 +35,7 @@ for (const type of ['OPENAI', 'STABLE_DIFFUSION_CPP', 'STABLE_DIFFUSION_WEBUI', 
       record(modelProvider?.editMask === 'WHITE', `${type}: and it is saved (${modelProvider?.editMask})`);
       await page.reload({ waitUntil: 'domcontentloaded' });
       await mask.waitFor({ timeout: 20_000 });
-      record((await mask.inputValue()) === 'WHITE', `${type}: and the page opens on it`);
+      record((await chosenOption(page, mask)) === 'WHITE', `${type}: and the page opens on it`);
     }
   } finally {
     await graphql('mutation($id: ID!) { removeModelProvider(id: $id) }', { id: made.id }).catch(() => undefined);

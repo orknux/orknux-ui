@@ -42,7 +42,7 @@
  * Its own two connections, made and removed over GraphQL, and swept at the
  * start in case an earlier run was killed before it could remove them.
  */
-import { BASE, WORKSPACE, drawn, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, drawn, open, record, finish, chooseOption, chosenOption, selectControl } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -223,10 +223,34 @@ async function freshConnection(id) {
   return data.workspaceConnection;
 }
 
-const options = async (selector) =>
-  page.locator(`${selector} option`).evaluateAll((all) =>
-    all.map((one) => ({ value: one.value, text: one.textContent.trim(), group: one.parentElement.label ?? null })),
-  );
+/** The rows a Type menu offers, each with the group heading it sits under; read open and closed again. */
+const options = async (selector) => {
+  const control = await selectControl(page, selector);
+  if ((await control.getAttribute('aria-expanded')) !== 'true') await control.click();
+  const menu = page.locator(`[id="${await control.getAttribute('aria-controls')}"]`);
+  await menu.waitFor({ timeout: 5000 });
+  const rows = await menu.evaluate((list) => {
+    let group = null;
+    const out = [];
+    for (const row of list.children) {
+      if (row.getAttribute('role') === 'presentation') group = row.textContent.trim();
+      else if (row.getAttribute('role') === 'option') out.push({ value: row.getAttribute('data-value') ?? '', text: row.textContent.trim(), group });
+    }
+    return out;
+  });
+  await control.focus();
+  await page.keyboard.press('Escape');
+  await menu.waitFor({ state: 'detached', timeout: 5000 }).catch(() => undefined);
+  return rows;
+};
+
+/** Waits until a Type menu offers a value - the plugins' kinds arrive after the core ones. */
+const offers = async (selector, value) => {
+  for (let tries = 0; tries < 20; tries += 1) {
+    if ((await options(selector)).some((one) => one.value === value)) return;
+    await page.waitForTimeout(500);
+  }
+};
 
 try {
   /* ------------------------------------------------------------- fixture */
@@ -307,10 +331,7 @@ try {
     /* the dialog */
     await page.locator('button', { hasText: /^\+ Add Connection$/ }).click();
     await page.waitForSelector('#workspace-connection-name', { timeout: 20_000 });
-    await page.locator('#workspace-connection-type option[value="prometheus/server"]').waitFor({
-      state: 'attached',
-      timeout: 10_000,
-    });
+    await offers('#workspace-connection-type', 'prometheus/server');
     const offered = await options('#workspace-connection-type');
     const texts = Object.fromEntries(offered.map((one) => [one.value, one.text]));
     record(
@@ -328,7 +349,7 @@ try {
       'dialog: the kinds sit under a From plugins heading',
     );
 
-    await page.selectOption('#workspace-connection-type', 'prometheus/server');
+    await chooseOption(page, '#workspace-connection-type', 'prometheus/server');
     await page.waitForTimeout(400);
     const url = page.locator('#workspace-connection-url');
     record((await url.count()) === 1, 'dialog: choosing a kind shows the URL box');
@@ -345,10 +366,10 @@ try {
       guideOpen && guideText.includes('Setting up Prometheus server') && (await guide.locator('strong', { hasText: 'server root' }).count()) === 1,
       `dialog: the kind's setup guide is shown open, as markdown (${guideText.slice(0, 80)})`,
     );
-    await page.selectOption('#workspace-connection-type', 'confluence/wiki');
+    await chooseOption(page, '#workspace-connection-type', 'confluence/wiki');
     await page.waitForTimeout(300);
     record((await page.getByTestId('connection-guide').count()) === 0, 'dialog: a kind that brings no guide shows none');
-    await page.selectOption('#workspace-connection-type', 'prometheus/server');
+    await chooseOption(page, '#workspace-connection-type', 'prometheus/server');
     await page.waitForTimeout(300);
     record((await page.locator('#workspace-connection-secret').count()) === 1, 'dialog: and the Token / Key, as HTTP does');
     record(
@@ -357,17 +378,17 @@ try {
       'dialog: and nothing of Slack or SMTP',
     );
 
-    await page.selectOption('#workspace-connection-type', 'confluence/wiki');
+    await chooseOption(page, '#workspace-connection-type', 'confluence/wiki');
     await page.waitForTimeout(300);
     record(
       (await url.getAttribute('placeholder')) === 'https://',
       `dialog: a kind without a placeholder falls back to https:// (${await url.getAttribute('placeholder')})`,
     );
-    await page.selectOption('#workspace-connection-type', 'prometheus/server');
+    await chooseOption(page, '#workspace-connection-type', 'prometheus/server');
 
     await page.fill('#workspace-connection-name', `${PREFIX} sent ${STAMP}`);
     await page.fill('#workspace-connection-url', 'http://prometheus.example.invalid:9090');
-    await page.selectOption('#workspace-connection-auth', 'NONE');
+    await chooseOption(page, '#workspace-connection-auth', 'NONE');
     await page.waitForTimeout(300);
     const submit = page.locator('dialog[open] button[type="submit"]');
     record(await submit.isEnabled(), 'dialog: a name, a kind and a URL are enough to add it');
@@ -393,11 +414,11 @@ try {
     waitUntil: 'domcontentloaded',
   });
   await page.locator('#connection-type').waitFor({ state: 'visible', timeout: 20_000 });
-  await page.locator('#connection-type option[value="prometheus/server"]').waitFor({ state: 'attached', timeout: 10_000 });
+  await offers('#connection-type', 'prometheus/server');
   await page.waitForTimeout(400);
   record(
-    (await page.locator('#connection-type').inputValue()) === 'prometheus/server',
-    `page: the Type menu stands on the label the connection wears (${await page.locator('#connection-type').inputValue()})`,
+    (await chosenOption(page, '#connection-type')) === 'prometheus/server',
+    `page: the Type menu stands on the label the connection wears (${await chosenOption(page, '#connection-type')})`,
   );
   const pageOffered = await options('#connection-type');
   record(
@@ -408,7 +429,7 @@ try {
   record((await page.locator('#connection-auth').count()) === 1, 'page: a labelled connection keeps the HTTP Auth Type');
   record((await page.locator('#connection-url-override').count()) === 1, 'page: and the URL Override');
 
-  await page.selectOption('#connection-type', 'HTTP');
+  await chooseOption(page, '#connection-type', 'HTTP');
   await page.waitForTimeout(300);
   // The page's one Save, in the strip at the foot of the window.
   await page.getByTestId('save-bar').getByRole('button', { name: 'Save Changes', exact: true }).click();

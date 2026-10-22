@@ -17,7 +17,7 @@
  * earlier run left behind is swept at the start, because a `finally` cannot
  * clean up after the suite's own timeout.
  */
-import { BASE, WORKSPACE, open, check, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const stamp = Date.now();
 const NAME = `zz Scratch Action ${stamp}`;
@@ -70,9 +70,9 @@ check(crumb > 0, 'the page carries a breadcrumb back to Actions', 'no breadcrumb
 // A wait on a fixed time: the one subtype that names nothing else.
 await page.waitForSelector('#action-name', { timeout: 20_000 });
 await page.locator('#action-name').fill(NAME);
-await page.locator('#action-type').selectOption('WAIT');
+await chooseOption(page, '#action-type', 'WAIT');
 await page.waitForTimeout(300);
-await page.locator('#action-subtype').selectOption('TIME');
+await chooseOption(page, '#action-subtype', 'TIME');
 await page.waitForTimeout(300);
 await page.locator('#action-duration').fill('5');
 

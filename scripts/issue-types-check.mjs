@@ -27,7 +27,7 @@
  * through leaves rows behind, and the sweep at the top is what makes the next
  * run honest.
  */
-import { BASE, WORKSPACE, open, drawn, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -114,7 +114,7 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/issues?q=${MARK}`, { waitUntil: 
 if (await drawn(page, 'the issue list')) {
   // The filter is only drawn once the workspace's types have been fetched, and
   // the rows once the search has: both after `drawn` is satisfied by the shell.
-  const filter = page.locator('select[aria-label="Filter by type"]');
+  const filter = page.locator('[data-select][aria-label="Filter by type"]');
   await filter.waitFor({ timeout: 15_000 }).catch(() => undefined);
   record((await filter.count()) === 1, 'list: there is a type filter beside the states');
 
@@ -152,7 +152,7 @@ if (await drawn(page, 'the issue list')) {
       .catch(() => undefined);
 
   if ((await filter.count()) === 1 && mine !== undefined) {
-    await filter.selectOption(mine.id);
+    await chooseOption(page, filter, mine.id);
     await page.waitForTimeout(500);
     await settled();
     const only = await rows.allInnerTexts();
@@ -164,7 +164,7 @@ if (await drawn(page, 'the issue list')) {
 
     // The half a nullable id could not have asked for, and the half that
     // matters most on a tracker older than its types.
-    await filter.selectOption('untyped');
+    await chooseOption(page, filter, 'untyped');
     await page.waitForTimeout(500);
     await settled();
     const none = await rows.allInnerTexts();

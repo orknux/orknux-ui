@@ -25,7 +25,7 @@
  * deleted and a check that made one every time would grow the database for
  * ever; the runs it leaves are one per run of the suite.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, shot, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open();
 
@@ -151,7 +151,7 @@ if (runId !== null) {
     await page.waitForTimeout(1_500);
     const after = await askedIn(4_000);
     record(after === 0, `once the run has ended the page stops asking: ${after} times in 4s`);
-    const auto = await page.getByLabel('Refresh automatically').inputValue().catch(() => '');
+    const auto = await chosenOption(page, page.getByLabel('Refresh automatically')).catch(() => '');
     record(auto === '1', `and the interval is still 1s, for the next run somebody opens: "${auto}"`);
     await page.screenshot({ path: shot('refresh-settled.png') });
   }

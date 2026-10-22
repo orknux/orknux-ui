@@ -19,7 +19,7 @@
  * Everything it makes it removes, and it sweeps what a killed run left behind.
  * The settings it changes it puts back.
  */
-import { BASE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, open, record, drawn, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 const SCRATCH = 'boxesCheckScratch_';
 const ADDRESS = 'http://boxes-check.invalid:8090';
@@ -94,19 +94,19 @@ await rows.first().waitFor({ timeout: 20_000 }).catch(() => {});
 record((await rows.count()) === listed.length, `a row per box the server lists (${await rows.count()} of ${listed.length})`);
 
 /* It reloads by itself on the shared interval, so health and sessions stay current without a reload. */
-const auto = page.locator('select[aria-label="Refresh automatically"]').first();
+const auto = page.locator('[data-select][aria-label="Refresh automatically"]').first();
 record(await auto.isVisible({ timeout: 5_000 }).catch(() => false), 'the boxes list offers automatic refresh');
-const chosen = await auto.inputValue().catch(() => null);
+const chosen = await chosenOption(page, auto).catch(() => null);
 let asked = 0;
 const counting = (request) => {
   if (request.url().includes('/graphql') && (request.postData() ?? '').includes('query Boxes')) asked += 1;
 };
 page.on('request', counting);
-await auto.selectOption('1').catch(() => {});
+await chooseOption(page, auto, '1').catch(() => {});
 await page.waitForTimeout(3_500);
 page.off('request', counting);
 record(asked >= 2, `and at a second it asks for the boxes again by itself (${asked} times in 3.5s)`);
-if (chosen !== null) await auto.selectOption(chosen).catch(() => {});
+if (chosen !== null) await chooseOption(page, auto, chosen).catch(() => {});
 
 /* The columns, left to right in the order asked for. */
 const HEADINGS = ['Name', 'Type', 'Health', 'Active sessions', 'Free sessions', 'Label'];
@@ -320,8 +320,8 @@ record(
   (await page.locator('#local-box-enabled').getAttribute('aria-checked').catch(() => null)) === String(held.localBoxEnabled),
   'the local box switch says what the server holds',
 );
-record((await page.locator('#local-box-runtime').inputValue().catch(() => null)) === held.localBoxRuntime, 'and so does the runtime');
-const options = await page.locator('#local-box-runtime option').evaluateAll((all) => all.map((one) => one.value));
+record((await chosenOption(page, '#local-box-runtime').catch(() => null)) === held.localBoxRuntime, 'and so does the runtime');
+const options = (await optionsOffered(page, '#local-box-runtime').catch(() => [])).map((one) => one.value);
 record(JSON.stringify(options) === JSON.stringify(['local', 'docker']), `which offers local and docker (${options.join(', ')})`);
 const location = page.locator('#local-box-location');
 record((await location.getAttribute('placeholder').catch(() => null)) === held.localBoxLocationConfigured, 'the location shows its default as the placeholder');

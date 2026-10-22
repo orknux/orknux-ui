@@ -12,7 +12,7 @@
  * clearing the box brings everything back - under each sieve setting, because
  * the bug was one setting working and the others not.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -80,7 +80,7 @@ async function look(what) {
 
 /** Puts the sieve on one of its settings and waits for that list. */
 async function sieve(value) {
-  await page.selectOption('select[aria-label="Which tools to list"]', value);
+  await chooseOption(page, '[data-select][aria-label="Which tools to list"]', value);
   await page.waitForTimeout(400);
   await settled();
 }

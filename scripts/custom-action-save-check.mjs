@@ -18,7 +18,7 @@
  * So what is measured is the second write. Choose Function, let it save, then
  * choose a function and reload the page: the function has to still be there.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -133,9 +133,9 @@ await page.waitForTimeout(400);
 
 // Function, which is the subtype the report was about: it is the one whose
 // settings are filled in *after* the form first becomes valid.
-const subtype = page.locator('select').filter({ has: page.locator('option', { hasText: 'Function' }) }).first();
+const subtype = page.locator('#action-subtype');
 record((await subtype.count()) > 0, 'the Custom form offers a settings picker');
-await subtype.selectOption({ label: 'Function' });
+await chooseOption(page, subtype, { label: 'Function' });
 
 // Long enough for the panel's own debounce, and then some.
 await page.waitForTimeout(1600);
@@ -218,12 +218,12 @@ await page.waitForTimeout(1200);
 
 const shown = await page.evaluate(() => {
   const picker = document.querySelector('#action-function');
-  const type = [...document.querySelectorAll('select')].find(
+  const type = [...document.querySelectorAll('[data-select]')].find(
     (one) => (one.getAttribute('aria-label') ?? one.id) === 'Execute Type' || one.id === 'action-subtype',
   );
   return {
     function: picker?.textContent?.replace(/\s+/g, ' ').trim() ?? 'no picker',
-    subtype: type?.selectedOptions[0]?.textContent?.trim() ?? '',
+    subtype: type?.querySelector('[data-select-label]')?.textContent?.trim() ?? '',
   };
 });
 record(
@@ -242,7 +242,7 @@ await page.waitForTimeout(400);
 await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
 await page.waitForTimeout(500);
 const second2 = page.locator('#action-subtype');
-await second2.selectOption({ label: 'HTTP Request' });
+await chooseOption(page, second2, { label: 'HTTP Request' });
 await page.locator('#action-url').fill('https://example.invalid/ping');
 await page.waitForTimeout(1800);
 
@@ -319,7 +319,7 @@ await page.waitForTimeout(400);
 await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
 await page.waitForTimeout(1200);
 // Function, and stop there: no function chosen.
-await page.locator('#action-subtype').selectOption({ label: 'Function' });
+await chooseOption(page, '#action-subtype', { label: 'Function' });
 await page.waitForTimeout(1800);
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2200);
@@ -337,7 +337,7 @@ const nodes = await page.locator('.react-flow__node').count();
 await page.locator('.react-flow__node').nth(nodes - 1).click();
 await page.waitForTimeout(1200);
 const back = await page.evaluate(() => ({
-  subtype: document.querySelector('#action-subtype')?.selectedOptions?.[0]?.textContent?.trim() ?? 'no form',
+  subtype: document.querySelector('#action-subtype [data-select-label]')?.textContent?.trim() ?? 'no form',
   // Whatever the page says about what is unfinished, wherever it says it.
   // Wherever on the page the unfinished things are listed.
   problems: document.body.innerText.replace(/\s+/g, ' '),

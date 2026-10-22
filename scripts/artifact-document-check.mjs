@@ -14,7 +14,7 @@
  * The artifact is made through the API rather than by asking an agent to write
  * one: what is measured here is the page and the headers, not a model.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -112,9 +112,9 @@ await page.waitForTimeout(600);
  * the foot is the page's own way of asking for more, and pressing it is what
  * somebody looking for the file would do.
  */
-const showAll = page.locator('select[aria-label*="How many"], footer select, select').last();
+const showAll = page.locator('[data-select][aria-label*="How many"], footer [data-select], [data-select]').last();
 if (await showAll.count() > 0) {
-  await showAll.selectOption({ label: '100' }).catch(() => undefined);
+  await chooseOption(page, showAll, { label: '100' }).catch(() => undefined);
   await page.waitForTimeout(1200);
 }
 

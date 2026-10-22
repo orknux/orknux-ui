@@ -19,7 +19,7 @@
  * and a workflow with one image node and no model, and takes them away again
  * with the model it made.
  */
-import { BASE, WORKSPACE, open, record, selectNode, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, selectNode, shot, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 const PREFIX = 'zzModelNew';
 const NAME = `${PREFIX} made`;
@@ -132,12 +132,12 @@ try {
     record(new URL(page.url()).pathname.endsWith(`/workflows/${WORKFLOW}/editor`), 'and the editor is still where it was');
     const kind = drawer().locator('#new-model-kind');
     record(
-      (await kind.inputValue().catch(() => '')) === 'IMAGE' && (await kind.isDisabled().catch(() => false)),
-      `the type is fixed to Image (${await kind.inputValue().catch(() => '')})`,
+      (await chosenOption(page, kind).catch(() => '')) === 'IMAGE' && (await kind.isDisabled().catch(() => false)),
+      `the type is fixed to Image (${await chosenOption(page, kind).catch(() => '')})`,
     );
     const providers = drawer().locator('#new-model-provider');
     record(
-      (await providers.locator(`option[value="${provider.id}"]`).count()) === 1,
+      (await optionsOffered(page, providers).catch(() => [])).filter((one) => one.value === provider.id).length === 1,
       "the fixture's provider is offered",
     );
     record(
@@ -148,7 +148,7 @@ try {
     await page.screenshot({ path: shot('image-model-new-form.png') });
 
     const quick = { timeout: 5_000 };
-    await providers.selectOption(provider.id, quick).catch(() => undefined);
+    await chooseOption(page, providers, provider.id).catch(() => undefined);
     await drawer().locator('#new-model-name').fill(NAME, quick).catch(() => undefined);
     await drawer().locator('#new-model-id').fill(MODEL_ID, quick).catch(() => undefined);
     await drawer().locator('button[type="submit"]').click(quick).catch(() => undefined);

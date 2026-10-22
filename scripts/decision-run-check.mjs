@@ -18,7 +18,7 @@
  *
  * Makes its own provider, model and workflow, and removes them.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, selectNode } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, selectNode, chooseOption } from './suite/harness.mjs';
 
 const PREFIX = 'zzDecisionRun';
 const STAMP = Date.now();
@@ -52,7 +52,7 @@ const clean = async () => {
 const NAME = `${PREFIX} decision server ${STAMP}`;
 await page.goto(`${BASE}/workspace/${WORKSPACE}/models/providers/new`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#provider-type', { timeout: 30_000 });
-await page.locator('#provider-type').selectOption('SYSTEM_ONE', { timeout: 5_000 }).catch(() => undefined);
+await chooseOption(page, '#provider-type', 'SYSTEM_ONE').catch(() => undefined);
 await page.locator('#provider-name').fill(NAME);
 await page.locator('#provider-endpoint').fill(STUB);
 await page.getByRole('button', { name: /test connection/i }).click();

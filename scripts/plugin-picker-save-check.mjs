@@ -9,7 +9,7 @@
  *
  * Loads a plugin of its own with a parameter that has options, and unloads it.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1100 } });
 
@@ -64,14 +64,14 @@ await page.locator(`button[aria-controls="plugin-parameters-${before.plugin.id}"
 await page.waitForTimeout(500);
 
 const picker = page.locator(`#plugin-parameter-${before.plugin.id}-region`);
-await picker.selectOption('us');
+await chooseOption(page, picker, 'us');
 await page.waitForTimeout(1000);
 
 const unsavedNote = page.locator('[class*="_pageUnsaved_"]');
 const save = page.locator('[class*="_pageSave_"]');
 record((await unsavedNote.textContent().catch(() => '')) === '1 unsaved', 'a choice made counts as 1 unsaved');
 record((await stored())?.parameters[0]?.literal === null, 'and the server has not been told yet');
-record((await picker.inputValue()) === 'us', 'while the picker shows the choice');
+record((await chosenOption(page, picker)) === 'us', 'while the picker shows the choice');
 
 await save.click();
 await page.waitForTimeout(1500);

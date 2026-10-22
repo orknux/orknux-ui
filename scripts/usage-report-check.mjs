@@ -109,7 +109,7 @@ const centred = await page.evaluate(() => {
   // Two columns of one shape: the heading on the labels' line, the search box level with the picker boxes.
   const head = heading?.closest('[class*="reportHead"]');
   const label = head?.querySelector('[class*="pickerLabel"]');
-  const box = head?.querySelector('[class*="filters"] select');
+  const box = head?.querySelector('[class*="filters"] [data-select]');
   const search = head?.querySelector('input[type="search"]')?.parentElement;
   if (!heading || !label || !box || !search) return null;
   const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
@@ -118,7 +118,7 @@ const centred = await page.evaluate(() => {
 record(centred !== null && Math.abs(centred.heading) <= 2, `the heading is on the picker labels' line (${centred?.heading}px off)`);
 record(centred !== null && Math.abs(centred.search) <= 2, `and the search box is level with the picker boxes (${centred?.search}px off)`);
 
-const pickers = await page.locator('select').count();
+const pickers = await page.locator('[data-select]').count();
 record(pickers >= 3, `period, workspace and source can be chosen (${pickers} pickers)`);
 
 const { usageReport } = await graphql(

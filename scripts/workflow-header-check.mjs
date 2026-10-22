@@ -55,7 +55,7 @@ try {
 
   const controls = (
     await Promise.all([
-      centre('Auto', 'select[aria-label="Refresh automatically"]'),
+      centre('Auto', '[data-select][aria-label="Refresh automatically"]'),
       centre('Import', 'button:has-text("Import")'),
       centre('Use template', 'button:has-text("Use template")'),
       centre('Create Workflow', 'button:has-text("Create Workflow")'),
@@ -91,7 +91,7 @@ try {
    * A second row that happened to overlap would pass the measurement above.
    */
   const inHeader = await page.evaluate(() =>
-    document.querySelector('main section > header')?.contains(document.querySelector('select[aria-label="Refresh automatically"]')) ?? false,
+    document.querySelector('main section > header')?.contains(document.querySelector('[data-select][aria-label="Refresh automatically"]')) ?? false,
   );
   record(inHeader, 'and it is in the header element, not a row that lines up with one');
 

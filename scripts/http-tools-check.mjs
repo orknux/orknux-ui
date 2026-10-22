@@ -13,7 +13,7 @@
  * Everything it changes is installation-wide, so it is put back however the
  * run ends.
  */
-import { BASE, open, record, drawn, shot, finish } from './suite/harness.mjs';
+import { BASE, open, record, drawn, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1280, height: 1000 } });
 
@@ -34,7 +34,7 @@ async function box(locator) {
 
 /** Asks the tester, and waits for its answer to be drawn. */
 async function ask(method, url) {
-  await page.locator('#http-tools-test-method').selectOption(method);
+  await chooseOption(page, '#http-tools-test-method', method);
   await page.locator('#http-tools-test-url').fill(url);
   await page.locator('#http-tools-test').click();
   const outcome = page.locator('[data-http-test-outcome]');

@@ -4930,6 +4930,23 @@ export const TESTS = [
      */
   },
 
+  {
+    name: 'no-native-select-check',
+    what: "no screen draws a native select, and the application's own one is driven by the keyboard alone",
+    needs: ['workspace', 'workflow'],
+    /*
+     * The operating system draws a native select's menu outside the theme, so
+     * every one became `Select`. Walks a spread of the screens that held them,
+     * counts what is drawn, and opens one control to drive it by keys. Changes
+     * an agent's progress level in the form and saves nothing.
+     */
+  },
+  {
+    name: 'select-option-hint-check',
+    what: "a choice's name is its name, and what it means is a hint beside its row, under the pointer and under the arrows",
+    needs: ['workspace'],
+    // Opens Add Server on Integrations and its auth type list, and cancels.
+  },
   // --- the two languages -----------------------------------------------------
   {
     name: 'catalogue-check',

@@ -451,7 +451,7 @@ try {
     );
 
     // The size control, which every footer carries now, takes the same word.
-    const sized = page.locator(`select[aria-label^="How many"]`);
+    const sized = page.locator(`[data-select][aria-label^="How many"]`);
     if (record((await sized.count()) > 0, `${list.title}: the size control is beside the footer`)) {
       const asked = await sized.first().getAttribute('aria-label');
       record(

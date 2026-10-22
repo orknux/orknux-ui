@@ -6,11 +6,11 @@
  * watching a run had to switch it on every time. The interval is still one
  * choice shared by every page - once chosen, the chosen one wins everywhere.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1500, height: 1000 } });
 
-const auto = () => page.locator('select[aria-label="Refresh automatically"]').first();
+const auto = () => page.locator('[data-select][aria-label="Refresh automatically"]').first();
 const forget = () => page.evaluate(() => window.localStorage.removeItem('orknux.refreshSeconds'));
 
 // Asked of the API with the page's own session: a list's links depend on its filters and paging.
@@ -35,7 +35,7 @@ await forget();
 // A list, with nothing chosen: Off.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/executions`, { waitUntil: 'domcontentloaded' });
 await auto().waitFor({ timeout: 20_000 });
-record((await auto().inputValue()) === '0', 'the list of runs starts at Off');
+record((await chosenOption(page, auto())) === '0', 'the list of runs starts at Off');
 
 for (const [what, path] of [['a run', run], ['a session', session]]) {
   if (path === null) continue;
@@ -43,17 +43,17 @@ for (const [what, path] of [['a run', run], ['a session', session]]) {
   await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' });
   record(await drawn(page, what), `${what} is on screen`);
   await auto().waitFor({ timeout: 20_000 });
-  record((await auto().inputValue()) === '1', `${what} starts at a second (${await auto().inputValue()})`);
+  record((await chosenOption(page, auto())) === '1', `${what} starts at a second (${await chosenOption(page, auto())})`);
 }
 
 // Once chosen, the choice is everybody's - Off included.
 if (run !== null) {
   await page.goto(`${BASE}${run}`, { waitUntil: 'domcontentloaded' });
   await auto().waitFor({ timeout: 20_000 });
-  await auto().selectOption('0');
+  await chooseOption(page, auto(), '0');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await auto().waitFor({ timeout: 20_000 });
-  record((await auto().inputValue()) === '0', 'and a run somebody set to Off stays Off');
+  record((await chosenOption(page, auto())) === '0', 'and a run somebody set to Off stays Off');
 }
 
 await forget();

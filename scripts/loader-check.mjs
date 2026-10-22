@@ -11,7 +11,7 @@
  * The API is held back deliberately: against a local server these loads finish
  * in well under 200ms, and at that speed staying quiet is the correct behaviour.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 /** Long enough to clear the loader's three-second quiet period. */
 const HELD_MS = 4000;
@@ -131,7 +131,7 @@ let runs = 0;
 if (!filtersDrew) {
   record(false, 'executions list: the Date range filter never drew, so the rows could not be asked for');
 } else {
-  await range.selectOption('');
+  await chooseOption(page, range, '');
   const anyRuns = await seen(page.locator('a[href*="/executions/"]'))
     .then(() => true)
     .catch(() => false);

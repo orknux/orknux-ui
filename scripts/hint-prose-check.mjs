@@ -228,6 +228,24 @@ const IN_THE_OPEN = [
     because: 'status',
     why: 'an empty list of releases kept in the database',
   },
+  {
+    file: 'src/components/WorkspaceMenu.tsx',
+    says: 'No workspace by that name.',
+    because: 'status',
+    why: 'the workspace menu narrowed to nothing by what was typed into its box',
+  },
+  {
+    file: 'src/pages/design/DesignImageEditorPage.tsx',
+    says: 'Describe a picture on the right and generate it.',
+    because: 'status',
+    why: 'the empty canvas before the first picture, saying what fills it',
+  },
+  {
+    file: 'src/components/NotificationBell.tsx',
+    says: 'Notifications could not be loaded. Open the bell again to retry.',
+    because: 'error',
+    why: 'the bell whose list failed to load, saying so where the list would be',
+  },
   // ---- Lists with nothing in them, and lists a search emptied ------------
   //
   // Eleven of these arrived together: the plugins screens and the three
@@ -637,33 +655,15 @@ const IN_THE_OPEN = [
   // ---- A reading of what a form is looking at ----------------------------
   {
     file: 'src/components/ActionForm.tsx',
-    says: 'Created with this action, taking nothing and returning a map.',
-    because: 'status',
-    why: 'what saving is about to create, once somebody has chosen to create it',
-  },
-  {
-    file: 'src/components/ActionForm.tsx',
     says: 'This function takes no arguments.',
     because: 'status',
     why: 'a reading of the function just chosen',
-  },
-  {
-    file: 'src/components/ConditionForm.tsx',
-    says: 'Created with this condition, saying no to everything.',
-    because: 'status',
-    why: 'what saving is about to create. Pinned as kept by scripts/hint-forms-check.mjs',
   },
   {
     file: 'src/components/TriggerForm.tsx',
     says: 'This one has no fields yet, so any JSON matches it.',
     because: 'status',
     why: 'a reading of the shape just chosen. Pinned as kept by scripts/hint-forms-check.mjs',
-  },
-  {
-    file: 'src/components/TriggerForm.tsx',
-    says: 'Created with this trigger, turning every caller away.',
-    because: 'status',
-    why: 'what saving is about to create',
   },
   {
     file: 'src/components/TriggerForm.tsx',
@@ -1269,7 +1269,7 @@ if (process.env.ORKNUX_SOURCE_ONLY !== '1') {
        */
       const printed = await page.evaluate((least) => {
         const said = [];
-        for (const control of document.querySelectorAll('main input, main select, main textarea')) {
+        for (const control of document.querySelectorAll('main input, main [data-select], main textarea')) {
           /*
            * The field this control stands in: the nearest ancestor that holds a
            * label, climbed to only while this is still the only control inside.
@@ -1283,7 +1283,7 @@ if (process.env.ORKNUX_SOURCE_ONLY !== '1') {
            */
           let field = control.parentElement;
           while (field !== null) {
-            if (field.querySelectorAll('input, select, textarea').length > 1) {
+            if (field.querySelectorAll('input, [data-select], textarea').length > 1) {
               field = null;
               break;
             }

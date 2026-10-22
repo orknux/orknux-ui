@@ -414,3 +414,110 @@ export async function modelsOffered(page, field, within = 15_000) {
   await page.keyboard.press('Escape');
   return rows;
 }
+
+/**
+ * The application's own select - `Select`, which replaced every native one, so
+ * `selectOption` and `inputValue` have nothing to act on. These are their
+ * stand-ins.
+ *
+ * `field` is a selector or a locator for the control itself (its id,
+ * data-testid and aria-label are on the button) or for anything around it, in
+ * which case the one control inside is meant.
+ */
+export async function selectControl(page, field) {
+  const located = typeof field === 'string' ? page.locator(field) : field;
+  await located.first().waitFor({ state: 'attached', timeout: 10_000 }).catch(() => undefined);
+  const isControl = await located
+    .first()
+    .evaluate((one) => one.matches('[role="combobox"][data-select]'))
+    .catch(() => false);
+  return isControl ? located.first() : located.locator('[role="combobox"][data-select]').first();
+}
+
+/** The open list of a control, opening it first if it is closed. */
+async function openedList(page, control) {
+  if ((await control.getAttribute('aria-expanded')) !== 'true') await control.click();
+  const id = await control.getAttribute('aria-controls');
+  const menu = page.locator(`[id="${id}"]`);
+  await menu.waitFor({ timeout: 5000 });
+  return menu;
+}
+
+/**
+ * Picks a row, the way `selectOption` did: `wanted` is a value or a label -
+ * the value first - or `{ value }` / `{ label }` to say which.
+ */
+export async function chooseOption(page, field, wanted, within = 10_000) {
+  const control = await selectControl(page, field);
+  const want = typeof wanted === 'object' && wanted !== null ? wanted : { value: String(wanted), label: String(wanted) };
+  const upTo = Date.now() + within;
+  // As selectOption did, wait for a row that has not arrived yet: the list is read again until it holds it.
+  for (;;) {
+    const menu = await openedList(page, control);
+    let row = null;
+    if (want.value !== undefined) {
+      const byValue = menu.locator(`[role="option"][data-value=${JSON.stringify(String(want.value))}]`);
+      if ((await byValue.count()) > 0) row = byValue.first();
+    }
+    if (row === null && want.label !== undefined) {
+      const byLabel = menu.getByRole('option', { name: String(want.label), exact: true });
+      if ((await byLabel.count()) > 0) row = byLabel.first();
+    }
+    if (row !== null) {
+      await row.click();
+      await menu.waitFor({ state: 'detached', timeout: 5000 }).catch(() => undefined);
+      return;
+    }
+    await control.focus().catch(() => undefined);
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached', timeout: 5000 }).catch(() => undefined);
+    if (Date.now() >= upTo) throw new Error(`no row ${JSON.stringify(wanted)} to choose in ${within / 1000}s`);
+    await page.waitForTimeout(300);
+  }
+}
+
+/** The value a control holds, as `inputValue` read a native select's. */
+export async function chosenOption(page, field) {
+  const control = await selectControl(page, field);
+  return (await control.getAttribute('data-value')) ?? '';
+}
+
+/** The label a control shows for what it holds. */
+export async function chosenLabel(page, field) {
+  const control = await selectControl(page, field);
+  return ((await control.locator('[data-select-label]').textContent()) ?? '').trim();
+}
+
+/** How many rows a control holds, read off the closed button. */
+export async function optionCount(page, field) {
+  const control = await selectControl(page, field);
+  return Number((await control.getAttribute('data-option-count')) ?? 0);
+}
+
+/** Waits, without opening it, until a control holds at least `atLeast` rows; true when it did. */
+export async function optionsArrived(page, field, atLeast = 1, within = 20_000) {
+  const upTo = Date.now() + within;
+  for (;;) {
+    if ((await optionCount(page, field).catch(() => 0)) >= atLeast) return true;
+    if (Date.now() >= upTo) return false;
+    await page.waitForTimeout(200);
+  }
+}
+
+/** Every row a control offers - `{ value, label, disabled, group }` - read with it open and closed again after. */
+export async function optionsOffered(page, field) {
+  const control = await selectControl(page, field);
+  const menu = await openedList(page, control);
+  const rows = await menu.locator('[role="option"]').evaluateAll((all) =>
+    all.map((one) => ({
+      value: one.getAttribute('data-value') ?? '',
+      label: (one.textContent ?? '').trim(),
+      disabled: one.getAttribute('aria-disabled') === 'true',
+      group: one.getAttribute('data-group'),
+    })),
+  );
+  await control.focus().catch(() => undefined);
+  await page.keyboard.press('Escape');
+  await menu.waitFor({ state: 'detached', timeout: 5000 }).catch(() => undefined);
+  return rows;
+}

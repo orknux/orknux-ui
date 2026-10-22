@@ -48,7 +48,7 @@
  *      what was asked in the prompt, which is the whole point of the feature and
  *      the only assertion here about the *work* rather than about the machinery.
  */
-import { BASE, WORKSPACE, open, check, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, check, shot, finish, chooseOption } from './suite/harness.mjs';
 
 /** Where a model that works slowly is, as the *server* sees it. */
 const STUB = process.env.ORKNUX_MESSAGE_STUB ?? 'http://localhost:8199';
@@ -155,7 +155,7 @@ const readPage = () =>
 await page.goto(`${BASE}/workspace/${WORKSPACE}/tasks`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('h1:text("Tasks")', { timeout: 20_000 });
 await page.locator('#task-prompt').fill(PROMPT);
-await page.locator('#task-worker').selectOption(String(worker.id));
+await chooseOption(page, '#task-worker', String(worker.id));
 await page.locator('button:text("Start")').click();
 await page.waitForURL(/\/tasks\/\d+$/, { timeout: 20_000 });
 const taskId = page.url().split('/').pop();

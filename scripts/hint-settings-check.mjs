@@ -16,7 +16,7 @@
  */
 import { mkdirSync } from 'node:fs';
 
-import { BASE, WORKSPACE, open, record, SHOT_DIR, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, SHOT_DIR, finish, chooseOption } from './suite/harness.mjs';
 
 const WHEN = process.env.ORKNUX_SHOTS ?? 'after';
 const SHOTS = SHOT_DIR;
@@ -378,7 +378,7 @@ if (WHEN !== 'before' && only === null) {
   if (!chooserDrew) {
     record(false, 'new provider (Azure): the form never drew its type chooser');
   } else {
-    await page.selectOption('#provider-type', 'AZURE_OPENAI');
+    await chooseOption(page, '#provider-type', 'AZURE_OPENAI');
     await page.waitForTimeout(600);
     const azureHints = await page.locator('[data-hint]').evaluateAll((all) =>
       all.map((one) => one.getAttribute('data-hint')),

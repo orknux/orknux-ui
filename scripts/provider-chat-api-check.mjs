@@ -19,7 +19,7 @@
  * Its own providers, under scratch names, pointed at hosts that cannot resolve,
  * removed at both ends of the run in case one was killed halfway.
  */
-import { BASE, WORKSPACE, open, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, shot, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 /** Nobody's provider is called this. The sweep is by prefix. */
 const SCRATCH = 'providerChatApiCheck';
@@ -87,8 +87,8 @@ await load(azure.id);
 await select.waitFor({ state: 'visible', timeout: 20_000 });
 const box = await select.boundingBox();
 record(box !== null && box.width > 0 && box.height > 0, `an Azure provider's page draws the API select (${JSON.stringify(box)})`);
-record((await select.inputValue()) === 'RESPONSES', `and it opens on what the provider holds (${await select.inputValue()})`);
-const offered = await select.locator('option').evaluateAll((options) => options.map((option) => option.value));
+record((await chosenOption(page, select)) === 'RESPONSES', `and it opens on what the provider holds (${await chosenOption(page, select)})`);
+const offered = (await optionsOffered(page, select)).map((option) => option.value);
 record(
   JSON.stringify(offered) === JSON.stringify(['RESPONSES', 'CHAT_COMPLETIONS']),
   `offering Responses and chat completions (${offered.join(', ')})`,
@@ -96,7 +96,7 @@ record(
 
 /* ------------------------------------------------ the old road, saved */
 
-await select.selectOption('CHAT_COMPLETIONS');
+await chooseOption(page, select, 'CHAT_COMPLETIONS');
 await saveIt();
 
 const back = await stored(azure.id);
@@ -108,15 +108,15 @@ record(
 await load(azure.id);
 await select.waitFor({ state: 'visible', timeout: 20_000 });
 record(
-  (await select.inputValue()) === 'CHAT_COMPLETIONS',
-  `and the page comes back with it chosen (${await select.inputValue()})`,
+  (await chosenOption(page, select)) === 'CHAT_COMPLETIONS',
+  `and the page comes back with it chosen (${await chosenOption(page, select)})`,
 );
 
 await page.screenshot({ path: shot('provider-chat-api.png') });
 
 /* ------------------------------------------------ and forward again */
 
-await select.selectOption('RESPONSES');
+await chooseOption(page, select, 'RESPONSES');
 await saveIt();
 const forward = await stored(azure.id);
 record(forward !== null && forward.chatApi === 'RESPONSES', `it goes back to Responses the same way (${forward?.chatApi})`);

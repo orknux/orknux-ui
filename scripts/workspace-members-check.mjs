@@ -9,7 +9,7 @@
  * workspace admin from the picker and put back, and the server is asked each
  * time whether it agrees - the picker's own colour is not evidence of a save.
  */
-import { BASE, WORKSPACE, USER, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, USER, open, drawn, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -77,11 +77,11 @@ try {
     'the installation administrator wears a tag, not a picker',
   );
 
-  const pickerOf = () => section.locator(`[data-username="${guinea.username}"] select`);
+  const pickerOf = () => section.locator(`[data-username="${guinea.username}"] [data-select]`);
   const saveButton = page.getByRole('button', { name: 'Save Changes' });
-  record((await pickerOf().inputValue()) === was, `${guinea.username}'s picker says what the server has (${was})`);
+  record((await chosenOption(page, pickerOf())) === was, `${guinea.username}'s picker says what the server has (${was})`);
   // A choice is a draft until the page's Save Changes, like every other field on the page.
-  await pickerOf().selectOption(flipped);
+  await chooseOption(page, pickerOf(), flipped);
   await page.waitForTimeout(300);
   const drafted = (await members()).find((one) => one.username === guinea.username);
   record(drafted?.role === was, `choosing ${flipped} writes nothing yet (server says ${drafted?.role})`);
@@ -93,8 +93,8 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await drawn(page, 'Members');
   await pickerOf().waitFor({ timeout: 10_000 });
-  record((await pickerOf().inputValue()) === flipped, 'and a reload still shows it');
-  await pickerOf().selectOption(was);
+  record((await chosenOption(page, pickerOf())) === flipped, 'and a reload still shows it');
+  await chooseOption(page, pickerOf(), was);
   await saveButton.click();
   await page.getByText('Saved.').waitFor({ timeout: 10_000 });
   const restored = (await members()).find((one) => one.username === guinea.username);

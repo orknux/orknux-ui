@@ -22,7 +22,7 @@
  * The artifact list and the drawing are answered here, so the check does not
  * depend on the installation having drawn anything or holding an image model.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -215,7 +215,7 @@ const canvas = await page.getByTestId('editor-canvas').boundingBox().catch(() =>
 const panel = await page.getByTestId('editor-panel').boundingBox().catch(() => null);
 record(canvas !== null && panel !== null && panel.x >= canvas.x + canvas.width - 1 && canvas.width > panel.width * 2,
   `the canvas fills the page and the panel stands at its right (${JSON.stringify({ canvas, panel })})`);
-await page.locator('#image-model').selectOption('9191').catch(() => undefined);
+await chooseOption(page, '#image-model', '9191').catch(() => undefined);
 await page.getByTestId('image-quality').waitFor({ timeout: 5_000 }).catch(() => undefined);
 const fields = await page.getByTestId('editor-panel').locator('label').allInnerTexts();
 record(['Prompt', 'Model', 'Quality'].every((one) => fields.includes(one)), `the panel asks for the prompt, the model and its parameters (${fields.join(', ')})`);
@@ -226,7 +226,7 @@ await page.getByTestId('editor-name-input').fill('Harbour at dusk');
 await page.getByTestId('editor-name-input').press('Enter');
 record((await page.getByTestId('editor-name').innerText().catch(() => '')).trim() === 'Harbour at dusk', 'a new picture is named in the top bar before it is drawn');
 await page.locator('#image-prompt').fill('zz a drawn lighthouse');
-await page.locator('#image-quality').selectOption('hd').catch(() => undefined);
+await chooseOption(page, '#image-quality', 'hd').catch(() => undefined);
 await page.getByRole('button', { name: 'Generate' }).click().catch(() => undefined);
 // Queued and answered at once: while it draws, one Orknux mark and the word Drawing, and nothing that turns up later beside it.
 const waiting = page.getByTestId('editor-drawing');
@@ -273,12 +273,12 @@ const undone = { url: page.url(), picture: await page.getByTestId('editor-pictur
 record(undone.url.endsWith('/design/images/new') && undone.picture === 0, `Ctrl+Z undoes the drawing (${JSON.stringify(undone)})`);
 await page.getByTestId('editor-undo').click().catch(() => undefined);
 await page.waitForTimeout(300);
-const quality = await page.locator('#image-quality').inputValue().catch(() => null);
+const quality = await chosenOption(page, '#image-quality').catch(() => null);
 record(quality === '', `and the undo button the quality chosen before it (${quality})`);
 await page.getByTestId('editor-redo').click().catch(() => undefined);
 await page.keyboard.press('Control+Shift+z');
 await page.waitForTimeout(400);
-record(page.url().endsWith(`/design/images/${DRAWN.id}/edit`) && (await page.locator('#image-quality').inputValue().catch(() => null)) === 'hd',
+record(page.url().endsWith(`/design/images/${DRAWN.id}/edit`) && (await chosenOption(page, '#image-quality').catch(() => null)) === 'hd',
   `redo puts both back (${page.url()})`);
 
 // The top bar says what the picture is called, and clicking it renames it.
@@ -323,8 +323,8 @@ await page.getByTestId('image-quality').waitFor({ timeout: 5_000 }).catch(() => 
 await page.waitForTimeout(500);
 const carried = {
   prompt: await page.locator('#image-prompt').inputValue().catch(() => null),
-  model: await page.locator('#image-model').inputValue().catch(() => null),
-  quality: await page.locator('#image-quality').inputValue().catch(() => null),
+  model: await chosenOption(page, '#image-model').catch(() => null),
+  quality: await chosenOption(page, '#image-quality').catch(() => null),
 };
 record(carried.prompt === DRAWN.prompt && carried.model === '9191' && carried.quality === 'hd',
   `Open in editor fills in the prompt, model and parameters it was drawn with (${JSON.stringify(carried)})`);

@@ -9,7 +9,7 @@
  * Canned: the dependants of one function this workspace has are answered here,
  * twenty-three of them, so the check needs no fixture of its own.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -47,7 +47,7 @@ await panel.getByRole('button', { name: 'Next' }).click();
 const second = await names();
 record(second[0] === 'Dependant 11' && second.length === 10, `Next shows the next ten (${second[0]} ...)`);
 
-await panel.locator('select').selectOption('25');
+await chooseOption(page, panel.locator('[data-select]'), '25');
 record((await rows.count()) === 23, `the size control shows them all at 25 (${await rows.count()})`);
 
 // Ten or fewer: nothing to page, so no pager.

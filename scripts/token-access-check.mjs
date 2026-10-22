@@ -9,7 +9,7 @@
  *
  * Makes a token and revokes it.
  */
-import { BASE, USER, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, USER, open, record, drawn, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, context, page, graphql } = await open({ viewport: { width: 1400, height: 1000 } });
 const name = `token-access-check ${Date.now()}`;
@@ -48,7 +48,7 @@ record(Math.abs(drawnAs.picker - drawnAs.box) <= 1, `and is as tall as the name 
 await page.screenshot({ path: '/tmp/token-access.png', clip: await section.boundingBox() });
 
 await section.getByLabel('Token name').fill(name);
-await section.getByTestId('token-access').selectOption('read');
+await chooseOption(page, section.getByTestId('token-access'), 'read');
 await section.getByRole('button', { name: 'Generate Token' }).click();
 await page.getByTestId('token-secret').waitFor({ timeout: 10_000 });
 const secret = ((await page.getByTestId('token-secret').locator('code').textContent()) ?? '').trim();

@@ -7,7 +7,7 @@
  * is checked twice: the rows drawn all show that source, and their number is
  * what the server answers for the same sieve. Reads the workspace as it is.
  */
-import { BASE, WORKSPACE, open, drawn, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, drawn, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -24,11 +24,11 @@ if (sources.length < 2) {
   record((await filter.count()) === 0, 'one source only, so no sieve is drawn');
 } else {
   await filter.waitFor({ timeout: 10_000 });
-  const offered = await filter.locator('select option').evaluateAll((all) => all.map((one) => one.value).filter((one) => one !== ''));
+  const offered = (await optionsOffered(page, filter)).map((one) => one.value).filter((one) => one !== '');
   record(JSON.stringify(offered) === JSON.stringify(sources.map((one) => one.value)), `the sieve offers the sources in use (${offered.join(', ')})`);
 
   for (const source of sources) {
-    await filter.locator('select').selectOption(source.value);
+    await chooseOption(page, filter, source.value);
     await page.waitForTimeout(400);
     await drawn(page, 'Triggers');
     const seen = await page.locator('[class*="colSource"]').evaluateAll((all) => all.slice(1).map((one) => one.textContent?.trim()));
@@ -42,7 +42,7 @@ if (sources.length < 2) {
       `${source.label}: ${seen.length} row(s) drawn, all of it, and the server counts ${workspaceTriggers.totalElements}`,
     );
   }
-  await filter.locator('select').selectOption('');
+  await chooseOption(page, filter, '');
 }
 
 await finish(browser);

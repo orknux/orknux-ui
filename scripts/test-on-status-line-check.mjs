@@ -67,7 +67,7 @@ const placed = async (what) => {
       const box = one.getBoundingClientRect();
       return Math.abs(box.top + box.height / 2 - middle) < 10;
     });
-    const fields = [...document.querySelectorAll('main input:not([type=hidden]), main select, main textarea')]
+    const fields = [...document.querySelectorAll('main input:not([type=hidden]), main [data-select], main textarea')]
       .filter((field) => field.getBoundingClientRect().height > 0
         && (field.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING));
     const below = fields.every((field) => field.getBoundingClientRect().bottom <= own.top + 1);

@@ -33,7 +33,7 @@
  * It removes what it made, because a library left behind is one the next check
  * finds in a list it was reading.
  */
-import { BASE, open, record, drawn, finish, shot } from './suite/harness.mjs';
+import { BASE, open, record, drawn, finish, shot, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const KEY = 'zzBundled';
 
@@ -99,7 +99,7 @@ record(
 
 const entry = page.locator('#bundle-entry');
 await entry.waitFor({ state: 'visible', timeout: 20_000 });
-const offered = await entry.locator('option').allTextContents();
+const offered = (await optionsOffered(page, entry)).map((one) => one.label);
 record(offered.length === 2, `which file it is entered by is asked, with both on it (${JSON.stringify(offered)})`);
 record(
   offered.some((one) => one.includes(`${KEY}.js`)),
@@ -124,8 +124,8 @@ await picker.setInputFiles([
   { name: 'parse.js', mimeType: 'text/javascript', buffer: Buffer.from(FILES[1]) },
 ]);
 await page.locator('#bundle-entry').waitFor({ state: 'visible', timeout: 20_000 });
-await page.locator('#bundle-entry').selectOption(`${KEY}.js`);
-await page.locator('dialog[open] button:has-text("Bundle")').click();
+await chooseOption(page, '#bundle-entry', `${KEY}.js`);
+await page.locator('dialog[open] button:not([data-select]):has-text("Bundle")').click();
 await page.waitForTimeout(2000);
 
 const after = (await graphql(`query { scriptLibraries { id key bundledFrom { name } } }`)).scriptLibraries;

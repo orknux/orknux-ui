@@ -10,7 +10,7 @@
  * A scratch tool of its own, created and deleted through the API, so the
  * workspace's own tools are not edited to prove a point.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const NAME = 'signatureCheck140';
 
@@ -56,11 +56,11 @@ try {
   // Renamed and retyped, then a second one added: the two things the function
   // editor can do to a signature and this one could not.
   await firstName.fill('city');
-  await page.getByLabel('Parameter 1 type').selectOption('STRING');
+  await chooseOption(page, page.getByLabel('Parameter 1 type'), 'STRING');
   await page.getByRole('button', { name: 'Add Parameter' }).click();
   await page.waitForTimeout(300);
   await page.getByLabel('Parameter 2 name').fill('days');
-  await page.getByLabel('Parameter 2 type').selectOption('NUMBER');
+  await chooseOption(page, page.getByLabel('Parameter 2 type'), 'NUMBER');
   await page.waitForTimeout(600);
 
   await page.getByRole('button', { name: 'Save Changes' }).click();
@@ -82,9 +82,9 @@ try {
 
   const reloaded = [
     await page.getByLabel('Parameter 1 name').inputValue(),
-    await page.getByLabel('Parameter 1 type').inputValue(),
+    await chosenOption(page, page.getByLabel('Parameter 1 type')),
     await page.getByLabel('Parameter 2 name').inputValue(),
-    await page.getByLabel('Parameter 2 type').inputValue(),
+    await chosenOption(page, page.getByLabel('Parameter 2 type')),
   ];
   check(
     `after a reload the editor still says ${reloaded.join(' ')}`,

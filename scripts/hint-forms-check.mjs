@@ -22,7 +22,7 @@
  */
 import { mkdirSync } from 'node:fs';
 
-import { BASE, WORKSPACE, open, record, SHOT_DIR, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, SHOT_DIR, finish, chooseOption } from './suite/harness.mjs';
 
 const WHEN = process.env.ORKNUX_SHOTS ?? 'after';
 const SHOTS = SHOT_DIR;
@@ -165,7 +165,7 @@ const screens = [
     hints: 7,
     async drive() {
       await pick('trigger-object', shapeless.name);
-      await page.selectOption('#trigger-auth', 'FUNCTION');
+      await chooseOption(page, '#trigger-auth', 'FUNCTION');
       await page.waitForTimeout(400);
     },
     gone: ['Handed the request by name'],
@@ -193,7 +193,7 @@ const screens = [
     path: `/workspace/${WORKSPACE}/conditions/new`,
     hints: 2,
     async drive() {
-      await page.selectOption('#condition-type', 'FUNCTION');
+      await chooseOption(page, '#condition-type', 'FUNCTION');
       await page.waitForTimeout(400);
     },
     gone: ['Only functions that return a boolean can answer a condition'],

@@ -15,7 +15,7 @@
  * sentence rather than losing one: the form was asserted to survive opening a
  * second tab, and now the address it is at is asserted with it.
  */
-import { BASE, WORKSPACE, open, record, shot, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, shot, finish, chooseOption } from './suite/harness.mjs';
 
 const { browser, context, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -129,7 +129,7 @@ await page.screenshot({ path: shot('action-jump-connection.png') });
 
 // ---- Mail server, on a send email ----
 
-await page.selectOption('#action-subtype', 'SEND_EMAIL');
+await chooseOption(page, '#action-subtype', 'SEND_EMAIL');
 await page.waitForTimeout(500);
 // The connection chosen for Slack is not one a mail can go through, so the
 // field shows nothing - and a link to what is not selected would be a lie.
@@ -156,7 +156,7 @@ if (mailLabel === null) {
 
 // ---- Function ----
 
-await page.selectOption('#action-subtype', 'FUNCTION');
+await chooseOption(page, '#action-subtype', 'FUNCTION');
 await page.waitForTimeout(500);
 record(
   (await jumpFor("Open the function's definition").count()) === 0,
@@ -187,9 +187,9 @@ record(
 
 // ---- Condition, on a wait ----
 
-await page.selectOption('#action-type', 'WAIT');
+await chooseOption(page, '#action-type', 'WAIT');
 await page.waitForTimeout(400);
-await page.selectOption('#action-subtype', 'CONDITION');
+await chooseOption(page, '#action-subtype', 'CONDITION');
 await page.waitForTimeout(500);
 record(
   (await jumpFor("Open the condition's definition").count()) === 0,

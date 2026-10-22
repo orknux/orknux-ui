@@ -11,7 +11,7 @@
  */
 import { readFileSync } from 'node:fs';
 
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -58,13 +58,14 @@ const seen = await page.evaluate(() => {
     );
     const held = label?.htmlFor ? document.getElementById(label.htmlFor) : null;
     if (held === null || held === undefined) return null;
-    return {
-      tag: held.tagName,
-      options: held.tagName === 'SELECT' ? [...held.options].map((o) => o.textContent?.trim()) : null,
-    };
+    // The application's own select is a button; it is still the picker a select was.
+    return { tag: held.matches('[data-select]') ? 'SELECT' : held.tagName, id: held.id };
   };
   return { backend: field('backend'), region: field('region') };
 });
+if (seen.backend?.tag === 'SELECT') {
+  seen.backend.options = (await optionsOffered(page, `[id="${seen.backend.id}"]`)).map((one) => one.label);
+}
 
 record(seen.backend?.tag === 'SELECT', `the named one is a picker (${seen.backend?.tag ?? 'missing'})`);
 record(
@@ -80,10 +81,10 @@ record(seen.region?.tag === 'INPUT', `the one that named none is still typed (${
 // Choosing and saving stores it: a choice waits for Save like anything typed.
 // Whatever is stored first moves away from 'brave', so a value left by an
 // earlier run cannot pass this on its own.
-await page.selectOption('select[id$="-backend"]', 'tavily');
+await chooseOption(page, '[data-select][id$="-backend"]', 'tavily');
 await page.locator('[class*="_pageSave_"]').click().catch(() => {});
 await page.waitForTimeout(1200);
-await page.selectOption('select[id$="-backend"]', 'brave');
+await chooseOption(page, '[data-select][id$="-backend"]', 'brave');
 await page.locator('[class*="_pageSave_"]').click();
 await page.waitForTimeout(1500);
 await page.reload({ waitUntil: 'domcontentloaded' });
@@ -91,7 +92,7 @@ await page.waitForTimeout(2500);
 await page.getByText('picked', { exact: false }).first().click().catch(() => {});
 await page.waitForTimeout(1000);
 record(
-  (await page.locator('select[id$="-backend"]').first().inputValue()) === 'brave',
+  (await chosenOption(page, page.locator('[data-select][id$="-backend"]').first())) === 'brave',
   'and a choice is kept',
 );
 

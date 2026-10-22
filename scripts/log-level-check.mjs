@@ -7,7 +7,7 @@
  * its confirmation, and the row has to be gone from the page and from the
  * server alike. A logger of its own, so turning it up makes nothing louder.
  */
-import { BASE, open, record, drawn, shot, finish } from './suite/harness.mjs';
+import { BASE, open, record, drawn, shot, finish, chooseOption, chosenOption } from './suite/harness.mjs';
 
 const LOGGER = 'io.mszymanski.orknux.loglevelcheck';
 
@@ -39,7 +39,7 @@ if (await drawn(page, 'the settings page')) {
 
   // Add the logger at DEBUG.
   await page.locator('#log-logger-name').fill(LOGGER);
-  await page.locator('#log-logger-level').selectOption('DEBUG');
+  await chooseOption(page, '#log-logger-level', 'DEBUG');
   await page.getByRole('button', { name: 'Add logger' }).click();
   const row = page.locator(`[data-logger="${LOGGER}"]`);
   const added = await row.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true).catch(() => false);
@@ -51,7 +51,7 @@ if (await drawn(page, 'the settings page')) {
   const back = await row.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true).catch(() => false);
   record(back, 'after a reload the row is still there');
   if (back) {
-    const chosen = await row.locator('select').inputValue();
+    const chosen = await chosenOption(page, row.locator('[data-select]'));
     record(chosen === 'DEBUG', `and its level reads DEBUG: "${chosen}"`);
     const effective = (await row.textContent()) ?? '';
     record(effective.includes('DEBUG'), 'and it says it logs at DEBUG');
