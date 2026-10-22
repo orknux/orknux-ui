@@ -151,24 +151,42 @@ function outcomeOf(
  * recorded as taken, so that is as close to a recorded fact as the run has; the
  * target's status alone would paint a line from a skipped step into one that
  * ran. A line into a step still running counts, which is the run going along it
- * now. A step carried over from an earlier run was not reached by this one.
+ * now. A step carried over from an earlier run was not reached by this one. A
+ * switched-off node the run passed through counts as reached, and so does the
+ * way out of it.
  */
-function travelled(
-  edge: { source: string; target: string; branch: EdgeBranch | null; option?: string | null },
-  steps: Map<string, ExecutionStep>,
-): boolean {
-  const from = steps.get(edge.source);
+type RunEdge = { source: string; target: string; branch: EdgeBranch | null; option?: string | null };
+
+function travelled(edge: RunEdge, steps: Map<string, ExecutionStep>, edges: readonly RunEdge[] = []): boolean {
+  /*
+   * A switched-off node is skipped and the run goes through it unchanged: it
+   * was reached when a line into it was chosen, and the way out of it is every
+   * line but a failure one, which nothing skipped takes.
+   */
+  const passedThrough = (key: string, seen: Set<string>): boolean => {
+    const step = steps.get(key);
+    if (step === undefined || step.enabled || step.status !== 'SKIPPED' || step.carriedOver || seen.has(key)) return false;
+    const deeper = new Set(seen).add(key);
+    return edges.some((into) => into.target === key && chose(into, deeper));
+  };
+  // Whether the step a line leaves finished and went that way.
+  const chose = (line: RunEdge, seen: Set<string>): boolean => {
+    const from = steps.get(line.source);
+    if (from === undefined) return false;
+    if (from.status === 'SKIPPED') return line.branch !== 'FAILURE' && passedThrough(line.source, seen);
+    const way = from.branch;
+    if (from.status === 'FAILED') return way === 'FAILURE' && line.branch === 'FAILURE';
+    if (from.status !== 'COMPLETED') return false;
+    if (way === 'FAILURE') return line.branch === 'FAILURE';
+    if (line.branch === 'FAILURE') return false;
+    if (line.branch === null || line.branch === undefined) return true;
+    if (way === 'OPTION') return line.branch === 'OPTION' && line.option === from.branchOption;
+    return line.branch === way;
+  };
   const to = steps.get(edge.target);
-  if (from === undefined || to === undefined || to.carriedOver) return false;
-  if (to.status === 'PENDING' || to.status === 'SKIPPED') return false;
-  const chose = from.branch;
-  if (from.status === 'FAILED') return chose === 'FAILURE' && edge.branch === 'FAILURE';
-  if (from.status !== 'COMPLETED') return false;
-  if (chose === 'FAILURE') return edge.branch === 'FAILURE';
-  if (edge.branch === 'FAILURE') return false;
-  if (edge.branch === null || edge.branch === undefined) return true;
-  if (chose === 'OPTION') return edge.branch === 'OPTION' && edge.option === from.branchOption;
-  return edge.branch === chose;
+  if (to === undefined || to.carriedOver || to.status === 'PENDING') return false;
+  if (to.status === 'SKIPPED' && (to.enabled || !chose(edge, new Set()))) return false;
+  return chose(edge, new Set());
 }
 
 const OUTCOME_LABEL: Record<StepOutcome, string> = {
@@ -703,9 +721,9 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
     const steps = new Map((run?.steps ?? []).map((step) => [step.key, step]));
     return (run?.edges ?? []).map((edge) => {
       // A path the run never took is drawn as one it never took.
-      const notTaken = outcomes.get(edge.target) === 'skipped';
       // And one it did, in the green of the trigger's bar. See `travelled`.
-      const taken = travelled(edge, steps);
+      const taken = travelled(edge, steps, run?.edges ?? []);
+      const notTaken = !taken && outcomes.get(edge.target) === 'skipped';
       /*
        * The line a run can only take on a failure, in the colour it is drawn in
        * the editor. Two lines leave a node that handles its own failure and

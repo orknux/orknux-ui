@@ -109,6 +109,8 @@ export interface ExecutionStep {
    * that earlier run's, so the page has to say where they came from.
    */
   carriedOver: boolean;
+  /** Whether its node was switched on; off, it was skipped and the run passed through it. */
+  enabled: boolean;
   x: number;
   y: number;
 }
@@ -346,7 +348,7 @@ const EXECUTION_DETAIL_FIELDS = `
   stoppedAtNodeKey stoppedReason startedFrom parentExecutionId
   version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
   parameters { nodeKey name value reference expression }
-  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption childExecutionId attempts carriedOver x y }
+  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption childExecutionId attempts carriedOver enabled x y }
   edges { source target branch option }
   logs { id nodeKey at level message }
   pictures { id nodeKey url prompt filename contentType }
