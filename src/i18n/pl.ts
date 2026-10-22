@@ -1454,8 +1454,6 @@ export const PL: Record<string, string> = {
   "Could not remove that library.": "Nie udało się usunąć tej biblioteki.",
   "Could not remove the attachment.": "Nie udało się usunąć załącznika.",
   "Could not remove the link.": "Nie udało się usunąć odnośnika.",
-  "Could not remove the model.": "Nie udało się usunąć modelu.",
-  "Could not remove the provider.": "Nie udało się usunąć dostawcy.",
   "Could not remove the role.": "Nie udało się usunąć roli.",
   "Could not rename the connection.": "Nie udało się zmienić nazwy połączenia.",
   "Could not unload that plugin.": "Nie udało się wyładować tej wtyczki.",
@@ -3194,3 +3192,12 @@ export const PL: Record<string, string> = {
   "Deployment Name": "Nazwa wdrożenia",
   "Region": "Region",
 };
+  // A Danger Zone's Remove asks first: a provider, a model, a trusted authority.
+  "Remove provider": "Usuń dostawcę",
+  "Remove model": "Usuń model",
+  "The provider leaves this workspace, and every model reached through it goes with it:": "Dostawca opuszcza tę przestrzeń roboczą, a z nim każdy model dostępny przez niego:",
+  "The model leaves this workspace, and there is no way back from this one:": "Model opuszcza tę przestrzeń roboczą i nie da się tego cofnąć:",
+  "From the next connection, anything reached only because of this certificate stops being reachable:": "Od następnego połączenia wszystko, co było osiągalne tylko dzięki temu certyfikatowi, przestaje być osiągalne:",
+  "Stop trusting this authority": "Przestań ufać temu urzędowi",
+  "Goes with it:": "Odchodzi razem z nim:",
+  "No model is reached through it.": "Żaden model nie jest przez niego dostępny.",
