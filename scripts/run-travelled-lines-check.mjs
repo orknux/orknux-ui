@@ -140,11 +140,12 @@ try {
     const card = document.querySelector('.react-flow__node[data-id="off"] [class*="outcome-skipped"]');
     if (card === null) return null;
     const style = getComputedStyle(card);
-    return { color: style.borderTopColor, style: style.borderTopStyle };
+    return { color: style.borderTopColor, style: style.borderTopStyle, opacity: style.opacity };
   });
+  // Bright: the silver itself, and the card not faded, which would fade the border with it.
   record(
-    skippedBorder !== null && skippedBorder.style === 'solid' && /rgba?\(192, 192, 200/.test(skippedBorder.color),
-    `a skipped step is drawn with a silver border (${JSON.stringify(skippedBorder)})`,
+    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === 'rgb(216, 216, 224)' && skippedBorder.opacity === '1',
+    `a skipped step is drawn with a bright silver border (${JSON.stringify(skippedBorder)})`,
   );
 
   for (const theme of ['light', 'dark']) {
