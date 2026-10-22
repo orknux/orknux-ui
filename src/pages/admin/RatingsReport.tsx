@@ -15,6 +15,7 @@ import { useSearch } from '../../components/useSearch';
 import { t } from '../../i18n';
 import styles from './AdminReportsPage.module.css';
 import { RecordingOff } from './RecordingOff';
+import { RatingsChart } from './RatingsChart';
 import { dayOf, formatDate, Picker, Tile } from './reportParts';
 
 const PER_PAGE = 25;
@@ -138,6 +139,8 @@ export function RatingsReport() {
             </Tile>
           </div>
         )}
+
+        {report !== null && report.days.length > 0 && <RatingsChart series={report.days} />}
 
         {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
         {report === null && error === null && <p className={styles.notice}><Loader /></p>}

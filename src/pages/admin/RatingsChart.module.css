@@ -1,0 +1,28 @@
+/* A score's colour says how it went: low in the danger red, middling in amber, high in the success green. */
+.low {
+  background: var(--color-danger-solid);
+  fill: var(--color-danger-solid);
+}
+
+.middling {
+  background: var(--color-amber);
+  fill: var(--color-amber);
+}
+
+.high {
+  background: var(--color-success-solid);
+  fill: var(--color-success-solid);
+}
+
+/* The mean, as a line through the days that had a review. */
+.line {
+  fill: none;
+  stroke: var(--color-chart-1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.dot {
+  fill: var(--color-chart-1);
+}

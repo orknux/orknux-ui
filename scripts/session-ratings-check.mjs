@@ -216,6 +216,16 @@ if (chat === undefined) {
   const cells = await drawnRow.first().locator('td').allTextContents();
   const workspace = (await drawnRow.first().locator('[data-rating-workspace]').textContent())?.trim() ?? '';
   record(workspace !== '' && !cells.at(-2).includes(workspace), `the workspace has a column of its own, not the session's (${JSON.stringify(cells.slice(-2))})`);
+
+  // The charts: reviews per day stacked by how they went, and, switched, the day's mean.
+  const chart = page.getByTestId('ratings-chart');
+  await chart.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const slots = await chart.locator('[data-day]').count();
+  const today = await chart.locator('[data-bar-day] path[data-segment="low"]').count();
+  record(slots === 30 && today > 0, `a chart draws the last 30 days, the review just sent among the low scores (${slots} days, ${today} low segments)`);
+  await chart.locator('[data-measure-option="AVERAGE"]').click();
+  const points = await chart.locator('[data-average-day]').count();
+  record(points > 0, `switched to Average, it draws the day's mean score (${points} points)`);
 }
 } finally {
   // Back as it was, however the run ended.
