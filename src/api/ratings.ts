@@ -20,11 +20,20 @@ export interface SessionRating {
   personName: string | null;
 }
 
+/** One day of the ratings chart: how many gave each score, 1 to 5, and the mean; null on a day with none. */
+export interface RatingDay {
+  day: string;
+  counts: number[];
+  average: number | null;
+}
+
 export interface SessionRatingReport {
   total: number;
   average: number | null;
   /** How many gave each score, 1 to 5. */
   counts: number[];
+  /** Every day of the period, oldest first, quiet days included. */
+  days: RatingDay[];
   rows: SessionRating[];
 }
 
@@ -70,6 +79,7 @@ export async function fetchSessionRatings(
     `query($filter: UsageReportFilter, $page: Int, $size: Int, $order: String, $ascending: Boolean) {
        sessionRatings(filter: $filter, page: $page, size: $size, order: $order, ascending: $ascending) {
          total average counts
+         days { day counts average }
          rows { id at score review sessionId sessionTitle workspaceId workspaceName agentName source personKey personName }
        }
      }`,
