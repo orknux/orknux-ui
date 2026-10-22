@@ -960,7 +960,13 @@ const TurnNode = createContext<(() => void) | null>(null);
  * puts a joint there - and which key, held through a drag of a point, drops
  * a new joint rather than moving the one held.
  */
-const JointTool = createContext<{ on: boolean; key: string; picked: ReadonlySet<string> }>({ on: false, key: 'J', picked: new Set() });
+const JointTool = createContext<{
+  on: boolean;
+  key: string;
+  picked: ReadonlySet<string>;
+  /** A joint clicked: picked instead of what was, or beside it with Ctrl or Cmd held - Shift starts a rectangle. */
+  pick: (joint: string, beside: boolean) => void;
+}>({ on: false, key: 'J', picked: new Set(), pick: () => undefined });
 
 /** How a joint is named among those a rectangle picked: its line, and its place on it. */
 function jointId(edgeId: string, at: number): string {
@@ -1131,8 +1137,16 @@ function CarriedEdge({
      * A press that did not move picks the point: it takes the focus, is drawn
      * picked, and Delete or Backspace takes it off. The press's default was
      * held back so the canvas would not pan, which also held back the focus.
+     * Picked as a rectangle picks it too, so Cut and the toolbar - which takes
+     * the focus away - find it: a dot on a line not yet bent is no joint.
      */
-    if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 3) event.currentTarget.focus();
+    if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 3) {
+      event.currentTarget.focus();
+      // The dot, not the label, which is pressed through the same handlers.
+      if (event.currentTarget.tagName === 'BUTTON' && drag.at < points.length) {
+        joints.pick(jointId(id, drag.at), event.shiftKey || event.ctrlKey || event.metaKey);
+      }
+    }
   };
 
   /**
@@ -4202,11 +4216,28 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   /**
-  /** The nodes Copy and Cut take: what the canvas has selected, or the one the panel is on. */
+  /**
+   * The nodes Copy and Cut take: what the canvas has selected, or the one the
+   * panel is on - unless joints are picked and no node is, when the joints are
+   * the selection and the panel's node is not part of it.
+   */
   function chosenKeys(): string[] {
     const picked = nodes.filter((node) => node.selected).map((node) => node.id);
     if (picked.length > 0) return picked;
+    if (jointsByLine().size > 0) return [];
     return selectedKey !== null && nodes.some((node) => node.id === selectedKey) ? [selectedKey] : [];
+  }
+
+  /** The picked joints still on their lines, by line. */
+  function jointsByLine(): Map<string, Set<number>> {
+    const byLine = new Map<string, Set<number>>();
+    pickedJoints.forEach((one) => {
+      const cut = one.lastIndexOf('|');
+      const line = one.slice(0, cut);
+      const at = Number(one.slice(cut + 1));
+      if (at < (edgePoints[line]?.length ?? 0)) byLine.set(line, (byLine.get(line) ?? new Set()).add(at));
+    });
+    return byLine;
   }
 
   /**
@@ -4273,14 +4304,23 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * The selected nodes copied as Copy copies them, then taken off the canvas as
    * Delete takes them: with every line joined to them, and their joints. One
    * change to the graph, so Undo puts all of it back in one step.
+   *
+   * Picked joints are taken off their lines as Delete takes them. A joint on a
+   * line between two cut nodes has gone onto the clipboard with its line
+   * already; one on a line that stays has nowhere to go, and a Cut that left
+   * it picked and in place would look like a Cut that did nothing - so with no
+   * node selected, Cut is exactly Delete for the joints, and Copy is nothing.
    */
   function cutSelection() {
+    const joints = jointsByLine();
     const keys = copySelection();
+    if (keys === null && joints.size === 0) return;
+    joints.forEach((ats, line) => setPoints(line, (edgePoints[line] ?? []).filter((_, at) => !ats.has(at))));
+    setPickedJoints(new Set());
     if (keys === null) return;
     const gone = new Set(keys);
     setNodes((current) => current.filter((node) => !gone.has(node.id)));
     setEdges((current) => current.filter((edge) => !gone.has(edge.source) && !gone.has(edge.target)));
-    setPickedJoints(new Set());
     if (selectedKey !== null && gone.has(selectedKey)) {
       setFieldEdit(null);
       setSelectedKey(null);
@@ -5144,7 +5184,40 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    */
   const [pickedJoints, setPickedJoints] = useState<ReadonlySet<string>>(() => new Set());
   const marqueeFrom = useRef<{ x: number; y: number } | null>(null);
-  const jointTool = useMemo(() => ({ on: jointing, key: jointKey, picked: pickedJoints }), [jointing, jointKey, pickedJoints]);
+  const pickJoint = useCallback((joint: string, beside: boolean) => {
+    setPickedJoints((held) => {
+      if (!beside) return new Set([joint]);
+      const next = new Set(held);
+      if (next.has(joint)) next.delete(joint);
+      else next.add(joint);
+      return next;
+    });
+  }, []);
+  const jointTool = useMemo(
+    () => ({ on: jointing, key: jointKey, picked: pickedJoints, pick: pickJoint }),
+    [jointing, jointKey, pickedJoints, pickJoint],
+  );
+  /*
+   * A joint is picked by its place on its line, so a line that gains or loses
+   * one - a double-click, an Undo - lets go of what was picked on it rather
+   * than leave the pick on whichever joint has moved up into that place.
+   */
+  const jointCounts = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const before = jointCounts.current;
+    jointCounts.current = Object.fromEntries(Object.entries(edgePoints).map(([line, held]) => [line, held.length]));
+    setPickedJoints((held) => {
+      const kept = [...held].filter((one) => {
+        const line = one.slice(0, one.lastIndexOf('|'));
+        return (before[line] ?? 0) === (edgePoints[line]?.length ?? 0);
+      });
+      return kept.length === held.size ? held : new Set(kept);
+    });
+  }, [edgePoints]);
+  // What the toolbar's Cut and Copy would take, read as the keys read it.
+  const jointsHeld = jointsByLine().size > 0;
+  const nothingToCopy = selectedCount === 0 && (selectedKey === null || jointsHeld);
+  const nothingToCut = nothingToCopy && !jointsHeld;
   useEffect(() => {
     if (pickedJoints.size === 0) return;
     function onKey(event: KeyboardEvent) {
@@ -5524,7 +5597,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         paste();
         return;
       }
-      if (chosenKeys().length === 0) return;
+      if (chosenKeys().length === 0 && (asked !== 'cut' || jointsByLine().size === 0)) return;
       event.preventDefault();
       if (asked === 'cut') cutSelection();
       else copySelection();
@@ -5996,18 +6069,18 @@ Change the keystroke in Preferences.`}
           <ToolButton
             label={t('Cut')}
             shortcut={cutKey}
-            note={selectedKey === null && selectedCount === 0 ? t('Select nodes to cut them.') : t('Change the keystroke in Preferences.')}
+            note={nothingToCut ? t('Select nodes to cut them.') : t('Change the keystroke in Preferences.')}
             onClick={() => cutSelection()}
-            disabled={selectedKey === null && selectedCount === 0}
+            disabled={nothingToCut}
           >
             <CutIcon />
           </ToolButton>
           <ToolButton
             label={t('Copy')}
             shortcut={copyNodesKey}
-            note={selectedKey === null && selectedCount === 0 ? t('Select nodes to copy them.') : t('Change the keystroke in Preferences.')}
+            note={nothingToCopy ? t('Select nodes to copy them.') : t('Change the keystroke in Preferences.')}
             onClick={() => void copySelection()}
-            disabled={selectedKey === null && selectedCount === 0}
+            disabled={nothingToCopy}
           >
             <CopyIcon />
           </ToolButton>
@@ -6245,7 +6318,11 @@ Change the keystroke in Preferences.`}
                * already selected, which changes no selection. Said here rather than in an
                * effect on the selection, which Fast Refresh and a restored step re-run.
                */
-              onNodeClick={() => showPanel(true)}
+              onNodeClick={(event) => {
+                showPanel(true);
+                // A plain click is a new selection, of the node alone; with a modifier it is added to the joints too.
+                if (!event.shiftKey && !event.ctrlKey && !event.metaKey) setPickedJoints(new Set());
+              }}
               // What is being dragged, so it and its lines wobble by how fast and which way it moves.
               onNodeDragStart={(event, __, moving) => {
                 setDragging(new Set(moving.map((one) => one.id)));

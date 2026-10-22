@@ -12,6 +12,11 @@
  *   elsewhere  a cut in one workflow pastes into another, lines and all, and
  *              saves there
  *   typing     Ctrl+X inside the node's name is the text box's, not the canvas's
+ *   joints     a joint picked by a click, or by a selection rectangle, comes
+ *              off its line on Ctrl+X and on the toolbar's Cut, and one Ctrl+Z
+ *              puts it back; Copy of joints alone is nothing; cut with a node,
+ *              a joint on a line that stays comes off, and one on a line
+ *              between two cut nodes is pasted back with its line
  *
  * Makes its own two workflows and removes them.
  */
@@ -56,6 +61,17 @@ const FIRST = await made(
   ],
 );
 const SECOND = await made([{ key: 'begin', kind: 'TRIGGER', name: 'Begin', x: 0, y: 0 }], []);
+const THIRD = await made(
+  [
+    { key: 'start', kind: 'TRIGGER', name: 'Start', x: 0, y: 0 },
+    { key: 'make', kind: 'OBJECT', name: 'Make', x: 350, y: 0, outputName: 'made', mappings: [] },
+    { key: 'read', kind: 'OBJECT', name: 'Read', x: 700, y: 0, mappings: [] },
+  ],
+  [
+    { source: 'start', target: 'make' },
+    { source: 'make', target: 'read' },
+  ],
+);
 
 /** Every node on the canvas by the name it shows, and every line by its two ends. */
 const canvas = () =>
@@ -209,6 +225,160 @@ try {
   record(
     JSON.stringify(savedNames) === JSON.stringify(['Begin', 'Make', 'Read']) && JSON.stringify(savedLines) === JSON.stringify(['Make->Read']),
     `and saves there (${savedNames.join(', ')}; ${savedLines.join(', ')})`,
+  );
+
+  /* ---- joints ---- */
+
+  // Two joints on Start->Make and one on Make->Read, put where the editor keeps them, below each line.
+  const BENDS = `orknux.edge-labels.${THIRD}`;
+  await page.evaluate((key) => localStorage.removeItem(key), BENDS);
+  await openEditor(THIRD);
+  const lineIds = await page.evaluate(() =>
+    [...document.querySelectorAll('.react-flow__edge')]
+      .map((edge) => edge.getAttribute('data-id') ?? '')
+      .filter((id) => !id.startsWith('reads:') && !id.startsWith('saves:')),
+  );
+  const START_MAKE = lineIds.find((id) => id.startsWith('start-'));
+  const MAKE_READ = lineIds.find((id) => id.startsWith('make-'));
+  await page.evaluate(
+    ([key, first, second]) =>
+      localStorage.setItem(
+        key,
+        JSON.stringify({ [first]: { x: -40, y: 90, more: [{ x: 40, y: 90 }] }, [second]: { x: 0, y: 90 } }),
+      ),
+    [BENDS, START_MAKE, MAKE_READ],
+  );
+  await openEditor(THIRD);
+  /** The joints a line holds, as the editor keeps them; Make->Read by its two names, since a paste renames it. */
+  const pointsOn = (edge) =>
+    page.evaluate(
+      ([key, id]) => {
+        const bend = JSON.parse(localStorage.getItem(key) ?? '{}')[id];
+        return bend === undefined ? 0 : 1 + (bend.more?.length ?? 0);
+      },
+      [BENDS, edge],
+    );
+  const joint = (edge, at) => page.locator(`button[data-edge="${edge}"][data-point="${at}"]`);
+  const clickJoint = async (edge, at, modifiers = []) => {
+    const box = await joint(edge, at).boundingBox();
+    for (const key of modifiers) await page.keyboard.down(key);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    for (const key of modifiers) await page.keyboard.up(key);
+    await page.waitForTimeout(200);
+  };
+  const isPicked = (edge, at) => joint(edge, at).evaluate((one) => one.className.includes('edgePointPicked'));
+  const counts = async () => `${await pointsOn(START_MAKE)}+${await pointsOn(MAKE_READ)}`;
+  record((await counts()) === '2+1', `the lines are drawn bent (${await counts()} joints)`);
+
+  // A click picks one joint; Ctrl+X takes that one off and keeps the line and the nodes.
+  await clickJoint(START_MAKE, 1);
+  record(await isPicked(START_MAKE, 1), 'a click picks a joint, drawn as picked');
+  await page.keyboard.press('Control+x');
+  await settle();
+  const clicked = await canvas();
+  record(
+    (await counts()) === '1+1' && clicked.names.length === 3 && clicked.lines.length === 2,
+    `Ctrl+X takes the clicked joint off its line, and leaves the lines and nodes (${await counts()} joints; ${clicked.names.length} nodes, ${clicked.lines.length} lines)`,
+  );
+  await page.keyboard.press('Control+z');
+  await settle();
+  record((await counts()) === '2+1', `one Ctrl+Z puts the joint back (${await counts()} joints)`);
+
+  // A rectangle round both joints of Start->Make picks them; Ctrl+X takes both off in one step.
+  const one = await joint(START_MAKE, 0).boundingBox();
+  const two = await joint(START_MAKE, 1).boundingBox();
+  await page.keyboard.down('Shift');
+  await page.mouse.move(one.x - 20, one.y - 20);
+  await page.mouse.down();
+  await page.mouse.move(two.x + two.width + 20, two.y + two.height + 20, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  await page.waitForTimeout(200);
+  record(
+    (await isPicked(START_MAKE, 0)) && (await isPicked(START_MAKE, 1)) && (await page.locator('.react-flow__node.selected').count()) === 0,
+    'a selection rectangle picks both joints and no node',
+  );
+  await page.keyboard.press('Control+x');
+  await settle();
+  record(
+    (await counts()) === '0+1' && (await canvas()).lines.length === 2,
+    `Ctrl+X takes the rectangle's joints off, and the line stays (${await counts()} joints)`,
+  );
+  await page.keyboard.press('Control+z');
+  await settle();
+  record((await counts()) === '2+1', `one Ctrl+Z puts both back (${await counts()} joints)`);
+
+  // Copy of joints alone is nothing, and says so by being grey; Cut is offered and works from the toolbar.
+  const clipBefore = await page.evaluate(() => localStorage.getItem('orknux.workflowClipboard'));
+  await clickJoint(MAKE_READ, 0);
+  const copyButton = page.locator('button[aria-label^="Copy"]').first();
+  record(await cutButton.isEnabled(), 'the toolbar offers Cut while a joint is picked');
+  record(!(await copyButton.isEnabled()), 'and not Copy, which has nothing to take');
+  await page.keyboard.press('Control+c');
+  await settle();
+  record(
+    (await page.evaluate(() => localStorage.getItem('orknux.workflowClipboard'))) === clipBefore && (await counts()) === '2+1',
+    'Ctrl+C on joints alone leaves the clipboard and the joints as they were',
+  );
+  await clickJoint(MAKE_READ, 0);
+  await cutButton.click();
+  await settle();
+  record((await counts()) === '2+0', `the toolbar's Cut takes the joint off (${await counts()} joints)`);
+  await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press('Control+z');
+  await settle();
+  record((await counts()) === '2+1', `and one Ctrl+Z puts it back (${await counts()} joints)`);
+
+  // A node and a joint on a line that stays: the node goes, and the joint comes off its line.
+  await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
+  await node('Read').click({ position: { x: 12, y: 12 } });
+  await page.waitForTimeout(300);
+  await clickJoint(START_MAKE, 0, ['Control']);
+  record(
+    (await page.locator('.react-flow__node.selected').count()) === 1 && (await isPicked(START_MAKE, 0)),
+    `Read and a joint on Start->Make are selected together (${await page.locator('.react-flow__node.selected').count()} node, joint ${(await isPicked(START_MAKE, 0)) ? '' : 'not '}picked)`,
+  );
+  await page.keyboard.press('Control+x');
+  await settle();
+  const mixed = await canvas();
+  record(
+    JSON.stringify(mixed.names) === JSON.stringify(['Make', 'Start']) &&
+      JSON.stringify(mixed.lines) === JSON.stringify(['Start->Make']) &&
+      (await pointsOn(START_MAKE)) === 1,
+    `Ctrl+X takes Read and its line, and the joint off the line that stays (${mixed.names.join(', ')}; ${mixed.lines.join(', ')}; ${await pointsOn(START_MAKE)} joint left)`,
+  );
+  await page.keyboard.press('Control+z');
+  await settle();
+  const back = await canvas();
+  record(
+    back.names.length === 3 && back.lines.length === 2 && (await counts()) === '2+1',
+    `one Ctrl+Z puts the node, its line and the joint back (${back.names.length} nodes, ${back.lines.length} lines, ${await counts()} joints)`,
+  );
+
+  // Two nodes cut with the line between them: its joint goes onto the clipboard and comes back with it.
+  await selectPair();
+  await page.keyboard.press('Control+x');
+  await settle();
+  await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press('Control+v');
+  await settle();
+  const pastedLine = await page.evaluate(() => {
+    const named = new Map(
+      [...document.querySelectorAll('.react-flow__node')].map((one) => [
+        one.getAttribute('data-id'),
+        one.querySelector('[class*="nodeName"]')?.textContent?.trim(),
+      ]),
+    );
+    return [...document.querySelectorAll('.react-flow__edge')]
+      .map((edge) => edge.getAttribute('data-id') ?? '')
+      .find((id) => {
+        const [from, to] = id.split('->');
+        return named.get(from.slice(0, from.lastIndexOf('-'))) === 'Make' && named.get(to) === 'Read';
+      });
+  });
+  record(
+    pastedLine !== undefined && (await pointsOn(pastedLine)) === 1,
+    `a joint on the line between two cut nodes is pasted back with it (${pastedLine === undefined ? 'no line' : `${await pointsOn(pastedLine)} joint`})`,
   );
 } finally {
   await sweep();
