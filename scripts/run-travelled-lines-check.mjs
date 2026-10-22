@@ -135,17 +135,23 @@ try {
     'off-plain->after': true,
   };
 
-  // Reported: a skipped step should be marked by its border - silver at first, then the magenta of the image node.
+  // Reported: a skipped step should be marked by its border - silver, then magenta, and settled on grey.
   const skippedBorder = await page.evaluate(() => {
     const card = document.querySelector('.react-flow__node[data-id="off"] [class*="outcome-skipped"]');
     if (card === null) return null;
     const style = getComputedStyle(card);
-    return { color: style.borderTopColor, style: style.borderTopStyle, opacity: style.opacity };
+    // The grey the page's muted text is drawn in, resolved through an element as the stroke check does.
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--color-text-muted)';
+    document.body.appendChild(probe);
+    const grey = getComputedStyle(probe).color;
+    probe.remove();
+    return { color: style.borderTopColor, grey, style: style.borderTopStyle, opacity: style.opacity };
   });
   // Bright: the silver itself, and the card not faded, which would fade the border with it.
   record(
-    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === 'rgb(236, 72, 153)' && skippedBorder.opacity === '1',
-    `a skipped step is drawn with a magenta border (${JSON.stringify(skippedBorder)})`,
+    skippedBorder !== null && skippedBorder.style === 'solid' && skippedBorder.color === skippedBorder.grey && skippedBorder.opacity === '1',
+    `a skipped step is drawn with a grey border (${JSON.stringify(skippedBorder)})`,
   );
 
   for (const theme of ['light', 'dark']) {
