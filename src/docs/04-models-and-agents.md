@@ -344,11 +344,19 @@ called `<server>_mcp`, listed and loaded like any other skill, and `skill_load`
 passes the arguments a prompt takes. Nothing has to be granted for either
 beyond the server itself.
 
-How an MCP server - or a connection - signs in is its **Auth** setting. *Bearer
-Token* sends `Authorization: Bearer <secret>`, *API Key* sends the secret as the
-`Authorization` header as it is, and *Basic* takes `username:password` typed
-plainly: Orknux encodes it to base64 and sends `Authorization: Basic …`. One
-already encoded by hand is recognised and sent as it is.
+How an MCP server - or a connection - signs in is its **Auth** setting:
+
+| Auth | Type into the secret | What is sent |
+|---|---|---|
+| Bearer Token | the token, `abc123` | `Authorization: Bearer abc123` |
+| API Key | the header's whole value, `Token abc123` | `Authorization: Token abc123` |
+| Basic | `username:password`, plainly: `alice:s3cret` | `Authorization: Basic YWxpY2U6czNjcmV0` |
+
+For *Basic* do not encode anything yourself: Orknux turns `alice:s3cret` into
+its base64, `YWxpY2U6czNjcmV0`, on every request. A secret that was encoded by
+hand anyway - base64 that decodes to something with a colon in it - is
+recognised and sent as it is rather than encoded a second time, so either works;
+the plain form is the one to type, because it is the one you can read back.
 
 ## Keeping what they were
 
