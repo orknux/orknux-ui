@@ -47,7 +47,7 @@ const before = await gql(
   `query($workspaceId: ID!) {
      workspaceTasks(workspaceId: $workspaceId, page: 0, size: 200) { content { id title status } }
      workspaceAgents(workspaceId: $workspaceId, page: 0, size: 200) { content { id name } }
-     models(workspaceId: $workspaceId) { id name enabled kind }
+     models(workspaceId: $workspaceId) { id name modelId enabled kind }
    }`,
   { workspaceId: WORKSPACE },
 );
@@ -61,7 +61,18 @@ for (const old of before.workspaceAgents.content.filter((row) => row.name.starts
   await gql(`mutation($id: ID!) { deleteAgent(id: $id) }`, { id: old.id }).catch(() => undefined);
 }
 
-const model = before.models.find((one) => one.enabled && one.kind === 'CHAT');
+/*
+ * A model that answers: this check needs a real one, and the first enabled
+ * chat model on an installation may be one whose provider refuses. So the one
+ * named in ORKNUX_CHECK_MODEL is preferred - gemma4:31b, the local one, unless
+ * set - and the first enabled chat model only where that is not there.
+ */
+const WANTED = process.env.ORKNUX_CHECK_MODEL ?? 'gemma4:31b';
+const chat = before.models.filter((one) => one.enabled && one.kind === 'CHAT');
+// Matched without punctuation or case, so gemma4:31b finds gemma-4-31B-it-Q4_K_M as llama.cpp names it.
+const squeeze = (text) => (text ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const model = chat.find((one) => squeeze(one.modelId).includes(squeeze(WANTED)) || squeeze(one.name).includes(squeeze(WANTED))) ?? chat[0];
+console.log(`model: ${model?.name ?? 'none'} (${model?.modelId ?? '-'})`);
 if (model === undefined) {
   record(false, 'this workspace has no model that answers, and this check cannot be run without one');
   await finish(browser);
