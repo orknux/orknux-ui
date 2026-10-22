@@ -217,7 +217,7 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
           </p>
         )}
 
-        {/* Test at the end of the status line it updates, as on the saved server's page. */}
+        {/* What the last Test found, the width of the dialog; Test itself is beside Add Server, which it comes before. */}
         <div className={status.statusRow} data-testid="mcp-draft-check">
           <span
             className={`${status.statusDot} ${
@@ -234,19 +234,19 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
           >
             {tested === null ? t('Ask the server whether it answers, before adding it.') : tested.detail}
           </span>
-          <button
-            type="button"
-            className={`${styles.ghost} ${status.statusAction}`}
-            onClick={() => void handleTest()}
-            disabled={address.trim() === '' || testing || submitting}
-          >
-            {testing ? t('Testing…') : t('Test')}
-          </button>
         </div>
 
         <div className={styles.actions}>
           <button type="button" className={styles.ghost} onClick={onClose} disabled={submitting}>
             {t('Cancel')}
+          </button>
+          <button
+            type="button"
+            className={styles.ghost}
+            onClick={() => void handleTest()}
+            disabled={address.trim() === '' || testing || submitting}
+          >
+            {testing ? t('Testing…') : t('Test')}
           </button>
           <button type="submit" className={styles.filled} disabled={!complete || submitting}>
             {submitting ? t('Adding…') : t('Add Server')}
