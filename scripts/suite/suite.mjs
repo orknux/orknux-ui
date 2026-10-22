@@ -636,6 +636,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'variables-catalog-url-check',
+    what: "the variables page keeps its catalog in the address, and a row's move and bin are one size and level, as on skills and memory",
+    needs: [],
+  },
+  {
     name: 'workspace-menu-check',
     what: 'the workspace menu in the top bar: every workspace, the current one ticked, a readable highlight, keys that move and close',
     needs: ['workspace'],
