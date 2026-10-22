@@ -346,6 +346,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'remove-dialog-wording-check',
+    what: 'removing a saved file or a picture asks in its own words, not a workflow's; only reads the dialog and cancels it',
+    needs: [],
+  },
+  {
     name: 'errors-report-check',
     what: 'Admin > Reports offers Errors: how many runs, agents and quick chats failed, what failed most often, a row per failure linking to its run or conversation, narrowed by source',
     needs: [],

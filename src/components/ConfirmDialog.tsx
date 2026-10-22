@@ -25,7 +25,9 @@ export type ConfirmKind =
   | 'removeServerRelease'
   | 'removeProvider'
   | 'removeModel'
-  | 'removeCertificate';
+  | 'removeCertificate'
+  | 'removeArtifact'
+  | 'removeImage';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -48,6 +50,8 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeProvider',
   'removeModel',
   'removeCertificate',
+  'removeArtifact',
+  'removeImage',
 ]);
 
 export interface ConfirmDialogProps {
@@ -279,6 +283,17 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
           {name}
         </>
       ),
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    /* A file an agent saved, and a picture drawn or uploaded on the Design page: neither is a workflow, so neither borrows its words. */
+    removeArtifact: {
+      title: t('Remove file'),
+      message: <>{t('The file is deleted from this workspace, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeImage: {
+      title: t('Remove picture'),
+      message: <>{t('The picture is deleted from this workspace, and there is no way back from this one:')} {name}</>,
       button: submitting ? t('Removing…') : t('Remove'),
     },
     removeScratchpad: {

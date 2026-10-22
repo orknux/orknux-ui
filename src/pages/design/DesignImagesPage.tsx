@@ -434,7 +434,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
 
       <ConfirmDialog
         subject={removing?.filename ?? null}
-        kind="remove"
+        kind="removeImage"
         detail={removing === null ? undefined : <span>{t('The file is deleted from disk as well as from this list.')}</span>}
         onClose={() => setRemoving(null)}
         onConfirm={async () => {

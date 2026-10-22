@@ -525,7 +525,7 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
 
       <ConfirmDialog
         subject={removing?.filename ?? null}
-        kind="remove"
+        kind="removeArtifact"
         detail={
           removing === null ? undefined : (
             <span>{t('The file is deleted from disk as well as from this list.')}</span>
