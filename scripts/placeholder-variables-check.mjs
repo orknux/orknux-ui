@@ -36,7 +36,7 @@ try {
 
   made.triggerId = (await graphql(
     `mutation($input: CreateTriggerInput!) { createTrigger(input: $input) { id } }`,
-    { input: { workspaceId: WORKSPACE, name: `zz placeholder vars clock ${STAMP}`, type: 'SCHEDULED', cron: '0 2 * * *', payload: '{"user":"alice"}' } },
+    { input: { workspaceId: WORKSPACE, name: `zz placeholder vars clock ${STAMP}`, type: 'SCHEDULED', cron: '0 2 * * *', payload: '{"user":"alice","a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8}' } },
   )).createTrigger.id;
   const fname = `zzPlaceholderVars${STAMP}`;
   made.functionId = (await graphql(
@@ -73,6 +73,15 @@ try {
   await page.locator('[data-mapping-name="order"]').getByRole('button', { name: 'Value', exact: true }).click();
   await page.waitForTimeout(300);
   const value = page.locator('#node-mapping-order');
+  // Reported: with nothing typed after {{, a trigger's own fields filled the list and the variables were cut off.
+  await value.fill('');
+  await value.pressSequentially('{{');
+  await page.waitForTimeout(400);
+  const bare = await page.getByTestId('placeholder-suggestions').getByRole('option').evaluateAll((all) => all.map((one) => one.getAttribute('data-expression')));
+  record(bare.includes(`variables.${greeteeId}`) && bare.filter((one) => one.startsWith('trigger.')).length >= 9,
+    `{{ alone offers the variables as well as every trigger field (${bare.length} offered)`);
+  await value.press('Escape');
+
   await value.fill('Hello ');
   await value.press('End');
   await value.pressSequentially('{{zzGreetee');
