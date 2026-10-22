@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
@@ -131,11 +131,27 @@ function plain(line: string): string {
  * The whole manual is already in memory, so this is a scan rather than a
  * request: there is nothing to wait for and nothing to debounce.
  */
-function search(all: DocPage[], text: string): Hit[] {
+/** A page's searchable lines, cleaned once rather than on every keystroke. */
+interface Searchable {
+  page: DocPage;
+  lines: { text: string; lower: string }[];
+  title: string;
+}
+
+function search(all: Searchable[], text: string): Hit[] {
   const needle = text.trim().toLowerCase();
   if (needle === '') return [];
 
-  return all.flatMap((page) => {
+  return all.flatMap(({ page, lines: every, title }) => {
+    const lines = every.filter((line) => line.lower.includes(needle)).map((line) => line.text);
+    if (lines.length === 0 && !title.includes(needle)) return [];
+    return [{ page, line: lines[0] ?? null, count: lines.length }];
+  });
+}
+
+/** Cleans every page's lines for [search] - the expensive half, done once when the manual is loaded. */
+function searchable(all: DocPage[]): Searchable[] {
+  return all.map((page) => {
     /*
      * The pictures come out first, and before the split rather than after it.
      *
@@ -149,16 +165,10 @@ function search(all: DocPage[], text: string): Hit[] {
     const lines = prose
       .split('\n')
       .map(plain)
-      .filter(
-        (line) =>
-          line !== '' &&
-          // The page's own heading is already the label on the result.
-          line !== page.title &&
-          line.toLowerCase().includes(needle),
-      );
-
-    if (lines.length === 0 && !page.title.toLowerCase().includes(needle)) return [];
-    return [{ page, line: lines[0] ?? null, count: lines.length }];
+      // The page's own heading is already the label on the result.
+      .filter((line) => line !== '' && line !== page.title)
+      .map((text) => ({ text, lower: text.toLowerCase() }));
+    return { page, lines, title: page.title.toLowerCase() };
   });
 }
 
@@ -193,6 +203,9 @@ function Marked({ text, needle }: { text: string; needle: string }) {
  */
 const READING_LINE = 120;
 
+/** How long typing pauses before the term is marked across the manual. */
+const MARK_AFTER_MS = 250;
+
 
 
 /**
@@ -208,9 +221,32 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
   const { page } = useParams();
   const language = currentLanguage();
   const all = useMemo(() => pages(language), [language]);
-  const [query, setQuery] = useState('');
-  const hits = useMemo(() => search(all, query), [all, query]);
-  const searching = query.trim() !== '';
+  const [typed, setTyped] = useState('');
+  /*
+   * What is searched for, a step behind what is typed. Marking the term means
+   * rendering the whole manual again, which took over a second a letter - and
+   * the box waited for it, so typing froze. Deferred, the box shows each letter
+   * at once and the manual catches up when there is time, the render it starts
+   * being dropped for a newer one whenever another key comes first.
+   */
+  const query = useDeferredValue(typed);
+  const prepared = useMemo(() => searchable(all), [all]);
+  const hits = useMemo(() => search(prepared, query), [prepared, query]);
+  /*
+   * And the marks in the manual, once typing pauses. A page's markdown is drawn
+   * in one piece that nothing can interrupt, so even deferred, marking every
+   * page between two letters held each letter back by a quarter of a second.
+   * The list of hits above is cheap and follows every letter; the marks follow
+   * the word.
+   */
+  const [marked, setMarked] = useState('');
+  useEffect(() => {
+    const settle = window.setTimeout(() => setMarked(query), MARK_AFTER_MS);
+    return () => window.clearTimeout(settle);
+  }, [query]);
+  const searching = marked.trim() !== '';
+  /** Whether the contents show hits rather than every page: from the first letter, not the pause. */
+  const looking = query.trim() !== '';
   const current = all.find((one) => one.slug === page);
 
   const article = useRef<HTMLElement>(null);
@@ -312,7 +348,7 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
      * time scrolling crossed a heading, and the effect below would take the reader
      * back to the first match — a search that fought anyone trying to read past it.
      */
-  }, [searching, query]);
+  }, [searching, marked]);
 
   /*
    * The current match is set on the element rather than rendered, because
@@ -375,8 +411,8 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
               className={styles.searchField}
               type="search"
               placeholder="Search the docs"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
               onKeyDown={step}
               aria-label="Search the documentation"
             />
@@ -388,9 +424,9 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
             )}
           </div>
 
-          {searching && hits.length === 0 && <p className={styles.noHits}>Nothing found.</p>}
+          {looking && hits.length === 0 && <p className={styles.noHits}>Nothing found.</p>}
 
-          {searching
+          {looking
             ? hits.map((hit) => (
                 <div
                   key={hit.page.slug}
@@ -443,30 +479,46 @@ export function DocsPage({ session, onSignOut }: DocsPageProps) {
           scrolling is how you get there.
         */}
         {all.map((one) => (
-          <section
+          <DocsSection
             key={one.slug}
-            id={one.slug}
-            className={styles.section}
-            ref={(element) => {
+            page={one}
+            highlight={searching ? marked : undefined}
+            onElement={(element) => {
               if (element === null) sections.current.delete(one.slug);
               else sections.current.set(one.slug, element);
             }}
-          >
-            {one.untranslated && (
-              <p className={styles.notTranslated}>{t('This page is not translated yet.')}</p>
-            )}
-            {/*
-              The manual is where a picture is a picture of this application,
-              taken at 1440 and drawn into a column half that: `zoomImages` is
-              what makes clicking one open it at the size it was taken (issue
-              #217).
-            */}
-            <Markdown highlight={searching ? query : undefined} zoomImages>
-              {one.body}
-            </Markdown>
-          </section>
+          />
         ))}
       </article>
     </AppShell>
   );
 }
+
+/**
+ * One page of the manual, drawn again only when its own text or the term
+ * changes - not on every render of the page around it, which happens as the
+ * reader scrolls and the contents' highlight moves.
+ */
+const DocsSection = memo(function DocsSection({
+  page,
+  highlight,
+  onElement,
+}: {
+  page: DocPage;
+  highlight: string | undefined;
+  onElement: (element: HTMLElement | null) => void;
+}) {
+  return (
+    <section id={page.slug} className={styles.section} ref={onElement}>
+      {page.untranslated && <p className={styles.notTranslated}>{t('This page is not translated yet.')}</p>}
+      {/*
+        The manual is where a picture is a picture of this application, taken
+        at 1440 and drawn into a column half that: `zoomImages` is what makes
+        clicking one open it at the size it was taken (issue #217).
+      */}
+      <Markdown highlight={highlight} zoomImages>
+        {page.body}
+      </Markdown>
+    </section>
+  );
+}, (before, after) => before.page === after.page && before.highlight === after.highlight);

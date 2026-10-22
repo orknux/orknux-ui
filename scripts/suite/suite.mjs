@@ -590,6 +590,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'docs-search-typing-check',
+    what: 'typing into the manual search shows every letter at once, and choosing a hit lands on a marked word',
+    needs: [],
+  },
+  {
     name: 'mcp-draft-check-check',
     what: 'Test in the Add MCP Server dialog: a server is asked before it is added, and asking adds nothing',
     needs: ['workspace'],

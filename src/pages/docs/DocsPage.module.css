@@ -160,6 +160,17 @@
  * between two pages is the one place a reader needs to be told that the subject
  * changed. The first has none — nothing changed before the beginning.
  */
+/*
+ * A page off screen is not laid out or painted. The whole manual is one column,
+ * so without this every letter typed into the search - which changes the
+ * contents beside it - laid the entire manual out again. Its size is remembered
+ * once it has been drawn, so the scrollbar and the jump to a match stay true.
+ */
+.section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2400px;
+}
+
 .section + .section {
   margin-top: var(--space-40);
   padding-top: var(--space-40);
