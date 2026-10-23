@@ -57,7 +57,8 @@ try {
   const saveButtons = await first.locator('button', { hasText: /^Save$/ }).count() + await first.getByRole('button', { name: 'Save', exact: true }).count();
   record(saveButtons === 0, 'the editor has no Save button');
   record((await first.getByRole('button', { name: 'Discard', exact: true }).count()) === 0, 'nor a Discard one');
-  record(await settled(first), `it says the graph is saved (${await first.getByTestId('save-state').textContent()})`);
+  record(await settled(first), 'the graph is saved');
+  record((await first.getByTestId('save-state').textContent()).trim() === '', 'and the toolbar says nothing about it: only a failed save is worth a word');
 
   // Each sees the other.
   const seen = await second.getByTestId('presence').locator('[data-login]').count().catch(() => 0);
@@ -89,6 +90,25 @@ try {
     .then(() => true)
     .catch(() => false);
   record(moved, 'and the other tab redraws it where it went, without a reload');
+
+  // Seen while it happens: a slow drag reaches the other tab before the mouse is let go.
+  {
+    const was = (await node(second, 'Left one').boundingBox()).x;
+    const box = await node(first, 'Left one').boundingBox();
+    await first.mouse.move(box.x + 30, box.y + 12);
+    await first.mouse.down();
+    const started = Date.now();
+    let seenAt = null;
+    for (let step = 1; step <= 20 && seenAt === null; step++) {
+      await first.mouse.move(box.x + 30 + step * 8, box.y + 12);
+      await first.waitForTimeout(100);
+      const now = (await node(second, 'Left one').boundingBox()).x;
+      if (Math.abs(now - was) > 20) seenAt = Date.now() - started;
+    }
+    await first.mouse.up();
+    record(seenAt !== null, `the other tab sees the drag while it is still going (after ${seenAt ?? 'never'} ms of a 2 s drag)`);
+    await settled(first);
+  }
 
   // Both at once: neither move is lost.
   const leftWas = await xOf('left');

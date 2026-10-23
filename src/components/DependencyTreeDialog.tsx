@@ -289,6 +289,8 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
               </div>
               <div className={own.canvas} data-testid="dependency-tree">
                 <ReactFlow
+                  // A new middle is a new picture: drawn afresh, so it is fitted and centred again.
+                  key={root}
                   nodes={nodes}
                   edges={drawn.edges}
                   nodeTypes={nodeTypes}

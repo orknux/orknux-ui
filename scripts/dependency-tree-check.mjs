@@ -103,10 +103,25 @@ await dialog.locator('[data-tree-name="Provider P"]').first().click();
 const href = await dialog.getByTestId('dependency-tree-selection').getByRole('link').getAttribute('href');
 record(href === `/workspace/${WORKSPACE}/models/providers/9001`, `a box chosen opens its part (${href})`);
 
-// Show graph: the chosen part becomes the middle of its own graph.
+// Show graph: the chosen part becomes the middle of its own graph. Panned away first, as a reader looking around has.
+{
+  const pane = await dialog.getByTestId('dependency-tree').boundingBox();
+  await page.mouse.move(pane.x + 20, pane.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(pane.x + 20 + pane.width * 0.6, pane.y + 20 + pane.height * 0.6, { steps: 8 });
+  await page.mouse.up();
+}
 await dialog.getByTestId('dependency-tree-follow').click();
 await page.waitForTimeout(800);
 record((await dialog.locator('[data-tree-side="root"]').innerText()).includes('Provider P'), 'Show graph draws the chosen part in the middle');
+{
+  // And centres the new picture in the window, rather than leaving it where the old one was panned to.
+  const pane = await dialog.getByTestId('dependency-tree').boundingBox();
+  const middle = await dialog.locator('[data-tree-side="root"]').boundingBox();
+  const off = Math.abs(middle.x + middle.width / 2 - (pane.x + pane.width / 2));
+  const inside = middle.x >= pane.x && middle.x + middle.width <= pane.x + pane.width && middle.y >= pane.y && middle.y + middle.height <= pane.y + pane.height;
+  record(inside && off < pane.width / 4, `with the new graph fitted into the window (its middle ${Math.round(off)}px from the window's)`);
+}
 
 // Dragged bigger from its corner, the canvas grows with it.
 const before = await dialog.getByTestId('dependency-tree').boundingBox();

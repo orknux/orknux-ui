@@ -2276,7 +2276,6 @@ export const PL: Record<string, string> = {
   "Removing…": "Usuwanie…",
   "Saving…": "Zapisywanie…",
   "Not saved": "Nie zapisano",
-  "Saved": "Zapisano",
   "Workflow Autosave": "Autozapis przepływu",
   "How long the workflow editor waits after the last change before it saves, so the others looking at the workflow see it. Between 200 and 10000 milliseconds.": "Jak długo edytor przepływu czeka po ostatniej zmianie, zanim zapisze, żeby inni oglądający przepływ ją zobaczyli. Od 200 do 10000 milisekund.",
   "Sending…": "Wysyłanie…",

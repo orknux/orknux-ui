@@ -5543,14 +5543,26 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * Saving as it is edited. Issue #645.
    *
    * There is no Save button: what is drawn is the draft everybody else in the
-   * room sees, so it is sent once it has been still for the installation's
-   * pause - Admin Settings, Workflow Autosave - and every change restarts the
-   * wait, so a drag is one save rather than one per frame. A save the server
-   * refused waits for the next change rather than asking again and again.
+   * room sees, so it is sent within the installation's pause - Admin Settings,
+   * Workflow Autosave - of the first change not yet saved. Counted from that
+   * change and not the last: waiting for the canvas to go still meant a drag or
+   * a name being typed reached nobody until it stopped, and three seconds of
+   * editing was three seconds the others saw nothing. A save the server refused
+   * waits for the next change rather than asking again and again.
    */
+  const unsavedSince = useRef<number | null>(null);
   useEffect(() => {
-    if (!unsaved || autosaveMillis === null || !graphArrived || loadError !== null) return;
-    const timer = window.setTimeout(() => void now.current.handleSave(), autosaveMillis);
+    if (!unsaved || autosaveMillis === null || !graphArrived || loadError !== null) {
+      if (!unsaved) unsavedSince.current = null;
+      return;
+    }
+    const since = unsavedSince.current ?? Date.now();
+    unsavedSince.current = since;
+    const timer = window.setTimeout(() => {
+      // Changes made while this save is on its way wait their own pause, from now.
+      unsavedSince.current = Date.now();
+      void now.current.handleSave();
+    }, Math.max(0, since + autosaveMillis - Date.now()));
     return () => window.clearTimeout(timer);
   }, [unsaved, drawnNow, autosaveMillis, graphArrived, loadError]);
 
@@ -6466,7 +6478,13 @@ Change the keystroke in Preferences.`}
               // Read out as it changes; not role="status", which this application uses for "still loading".
               aria-live="polite"
             >
-              {saving || (unsaved && error === null) ? t('Saving…') : unsaved ? t('Not saved') : t('Saved')}
+              {/*
+                Only a failure is said. Saving is what the editor always does,
+                so "Saving…" and "Saved" were a label flickering between two
+                words that mean nothing is wrong; the state stays on the
+                element for whatever reads it.
+              */}
+              {!saving && unsaved && error !== null ? t('Not saved') : null}
             </span>
           )}
           {/*
