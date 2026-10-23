@@ -54,6 +54,10 @@ import {
   setMetricsAnonymous,
   setChatMaxRounds,
   setChatRetitleEvery,
+  setChatCompletionContextTurns,
+  setChatCompletionMaxTokens,
+  setChatCompletionTimeoutMillis,
+  setChatCompletionPauseMillis,
   setObjectMaxDepth,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
@@ -152,6 +156,11 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [rounds, setRounds] = useState('');
   /** After how many exchanges a chat a model named is named again; 0 never. */
   const [retitle, setRetitle] = useState('');
+  /** Sentence completion's four numbers, as typed. Issue #649. */
+  const [completionTurns, setCompletionTurns] = useState('');
+  const [completionTokens, setCompletionTokens] = useState('');
+  const [completionTimeout, setCompletionTimeout] = useState('');
+  const [completionPause, setCompletionPause] = useState('');
   const [objectDepth, setObjectDepth] = useState('');
   /** How long one note to self may be, as typed. */
   const [noteLength, setNoteLength] = useState('');
@@ -281,6 +290,10 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
 
   /** The Boxes section's boxes, from what the server holds. */
   const fillBoxes = useCallback((held: InstallationSettings) => {
+    setCompletionTurns(String(held.chatCompletionContextTurns));
+    setCompletionTokens(String(held.chatCompletionMaxTokens));
+    setCompletionTimeout(String(held.chatCompletionTimeoutMillis));
+    setCompletionPause(String(held.chatCompletionPauseMillis));
     setBoxLocation(held.localBoxLocation ?? '');
     setBoxRuntime(held.localBoxRuntime);
     setBoxMaxSessions(String(held.localBoxMaxSessions));
@@ -407,6 +420,10 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: pluginWait, held: settings.pluginTimeoutSeconds, write: setPluginTimeoutSeconds },
         { typed: rounds, held: settings.chatMaxRounds, write: setChatMaxRounds },
         { typed: retitle, held: settings.chatRetitleEvery, write: setChatRetitleEvery },
+        { typed: completionTurns, held: settings.chatCompletionContextTurns, write: setChatCompletionContextTurns },
+        { typed: completionTokens, held: settings.chatCompletionMaxTokens, write: setChatCompletionMaxTokens },
+        { typed: completionTimeout, held: settings.chatCompletionTimeoutMillis, write: setChatCompletionTimeoutMillis },
+        { typed: completionPause, held: settings.chatCompletionPauseMillis, write: setChatCompletionPauseMillis },
         { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
@@ -763,6 +780,119 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   data-testid="chat-retitle-every"
                 />
                 <span className={styles.retentionUnit}>{t('exchanges')}</span>
+              </div>
+            </div>
+
+            {/*
+              Sentence completion in the composer, issue #649 - on only in a
+              workspace that chose a Completion model. Four numbers, because each
+              is paid for on every pause in somebody's typing.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Completion Context')}</p>
+                  <FieldHint label={t('Completion Context')}>
+                    {t('How many of the chat’s latest messages the completion model is shown, so a suggestion reads as a reply. Between 0 and 50.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-completion-context-turns"
+                  name="chatCompletionContextTurns"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={completionTurns}
+                  onChange={(event) => setCompletionTurns(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Completion Context')}
+                  data-testid="chat-completion-context-turns"
+                />
+                <span className={styles.retentionUnit}>{t('messages')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Completion Length')}</p>
+                  <FieldHint label={t('Completion Length')}>
+                    {t('The most tokens one suggestion may be. Between 1 and 500.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-completion-max-tokens"
+                  name="chatCompletionMaxTokens"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={completionTokens}
+                  onChange={(event) => setCompletionTokens(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Completion Length')}
+                  data-testid="chat-completion-max-tokens"
+                />
+                <span className={styles.retentionUnit}>{t('tokens')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Completion Time Limit')}</p>
+                  <FieldHint label={t('Completion Time Limit')}>
+                    {t('How long a suggestion may take before it is given up on and nothing is shown. Between 200 and 60000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-completion-timeout-millis"
+                  name="chatCompletionTimeoutMillis"
+                  className={styles.input}
+                  type="number"
+                  min={200}
+                  max={60000}
+                  value={completionTimeout}
+                  onChange={(event) => setCompletionTimeout(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Completion Time Limit')}
+                  data-testid="chat-completion-timeout-millis"
+                />
+                <span className={styles.retentionUnit}>ms</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Completion Pause')}</p>
+                  <FieldHint label={t('Completion Pause')}>
+                    {t('How long the chat waits after the last keystroke before asking for a suggestion. Between 100 and 10000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-completion-pause-millis"
+                  name="chatCompletionPauseMillis"
+                  className={styles.input}
+                  type="number"
+                  min={100}
+                  max={10000}
+                  value={completionPause}
+                  onChange={(event) => setCompletionPause(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Completion Pause')}
+                  data-testid="chat-completion-pause-millis"
+                />
+                <span className={styles.retentionUnit}>ms</span>
               </div>
             </div>
 

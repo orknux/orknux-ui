@@ -37,6 +37,7 @@ import {
   setWorkspaceUnsafeBuiltInTools,
   setWorkspaceCommandMarker,
   setWorkspaceQuickChatModel,
+  setWorkspaceCompletionModel,
   setWorkspaceChatTimestamps,
   setWorkspaceVoiceButtonHidden,
   setWorkspaceWidgetTimerSound,
@@ -421,6 +422,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
    * see yourself building.
    */
   const [companion, setCompanion] = useState('');
+  /** The model that suggests how a sentence typed in a chat goes on; empty is off. Issue #649. */
+  const [completion, setCompletion] = useState('');
   const [transcription, setTranscription] = useState('');
   const [speech, setSpeech] = useState('');
   const [image, setImage] = useState('');
@@ -535,6 +538,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setBargeThinking(found?.voiceBargeInWhileThinking ?? false);
         setChunking(found?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
         setCompanion(found?.companionModelId ?? '');
+        setCompletion(found?.completionModelId ?? '');
         setTranscription(found?.transcriptionModelId ?? '');
         setSpeech(found?.speechModelId ?? '');
         setImage(found?.imageModelId ?? '');
@@ -755,6 +759,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('companion')) {
         latest = await setWorkspaceCompanionModel(workspaceId, asNull(companion));
       }
+      if (touched.has('completion')) {
+        latest = await setWorkspaceCompletionModel(workspaceId, asNull(completion));
+      }
       if (touched.has('transcription')) {
         latest = await setWorkspaceTranscriptionModel(workspaceId, asNull(transcription));
       }
@@ -870,6 +877,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
     setToolTimeout(held.toolTimeoutSeconds === null ? '' : String(held.toolTimeoutSeconds));
     setCompanion(held.companionModelId ?? '');
+    setCompletion(held.completionModelId ?? '');
     setTranscription(held.transcriptionModelId ?? '');
     setSpeech(held.speechModelId ?? '');
     setImage(held.imageModelId ?? '');
@@ -1947,6 +1955,30 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         <div className={styles.sectionTitle}>
           <h2 id="chat" className={styles.sectionHeading}>{t('Chat')}</h2>
           <div className={styles.rule} />
+        </div>
+
+        {/*
+          Sentence completion, issue #649. A chat model only: it is asked to
+          continue text. None is the composer exactly as it always was.
+        */}
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="completion-model">{t('Completion Model')}</label>
+            <FieldHint label={t('Completion Model')}>
+              {t('Suggests how a sentence goes on while somebody types in a chat, shown after the caret for Tab to take. It is asked on every pause in the typing, so a small, fast model is the right choice.')}
+            </FieldHint>
+          </span>
+          <div className={styles.inputWrapper}>
+            <ModelPicker
+              id="completion-model"
+              className={`${styles.input} ${styles.select}`}
+              value={completion}
+              models={models.filter((model) => model.kind === 'CHAT')}
+              onChange={(next) => { touch('completion'); setCompletion(next); }}
+              none={t('None — nothing is suggested')}
+              disabled={workspace === null}
+            />
+          </div>
         </div>
 
         <div className={styles.field}>

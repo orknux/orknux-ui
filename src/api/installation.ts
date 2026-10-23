@@ -84,6 +84,18 @@ export interface InstallationSettings {
   /** After how many exchanges a chat a model named is named again; 0 never. */
   chatRetitleEvery: number;
   chatRetitleEveryConfigured: number;
+  /** Sentence completion in the chat composer, issue #649: how many earlier messages it is shown. */
+  chatCompletionContextTurns: number;
+  chatCompletionContextTurnsConfigured: number;
+  /** The most tokens a suggestion may be. */
+  chatCompletionMaxTokens: number;
+  chatCompletionMaxTokensConfigured: number;
+  /** How long a suggestion may take before it is given up on, in milliseconds. */
+  chatCompletionTimeoutMillis: number;
+  chatCompletionTimeoutMillisConfigured: number;
+  /** How long the composer waits after the last keystroke before asking, in milliseconds. */
+  chatCompletionPauseMillis: number;
+  chatCompletionPauseMillisConfigured: number;
   /** How deep an object's shape may go; Admin > Settings. */
   objectMaxDepth: number;
   objectMaxDepthConfigured: number;
@@ -357,7 +369,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured chatCompletionContextTurns chatCompletionContextTurnsConfigured chatCompletionMaxTokens chatCompletionMaxTokensConfigured chatCompletionTimeoutMillis chatCompletionTimeoutMillisConfigured chatCompletionPauseMillis chatCompletionPauseMillisConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -559,6 +571,38 @@ export async function setChatRetitleEvery(exchanges: number): Promise<Installati
     { exchanges },
   );
   return data.setChatRetitleEvery;
+}
+
+export async function setChatCompletionContextTurns(turns: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatCompletionContextTurns: InstallationSettings }>(
+    `mutation SetChatCompletionContextTurns($turns: Int!) { setChatCompletionContextTurns(turns: $turns) { ${FIELDS} } }`,
+    { turns },
+  );
+  return data.setChatCompletionContextTurns;
+}
+
+export async function setChatCompletionMaxTokens(tokens: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatCompletionMaxTokens: InstallationSettings }>(
+    `mutation SetChatCompletionMaxTokens($tokens: Int!) { setChatCompletionMaxTokens(tokens: $tokens) { ${FIELDS} } }`,
+    { tokens },
+  );
+  return data.setChatCompletionMaxTokens;
+}
+
+export async function setChatCompletionTimeoutMillis(millis: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatCompletionTimeoutMillis: InstallationSettings }>(
+    `mutation SetChatCompletionTimeoutMillis($millis: Int!) { setChatCompletionTimeoutMillis(millis: $millis) { ${FIELDS} } }`,
+    { millis },
+  );
+  return data.setChatCompletionTimeoutMillis;
+}
+
+export async function setChatCompletionPauseMillis(millis: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatCompletionPauseMillis: InstallationSettings }>(
+    `mutation SetChatCompletionPauseMillis($millis: Int!) { setChatCompletionPauseMillis(millis: $millis) { ${FIELDS} } }`,
+    { millis },
+  );
+  return data.setChatCompletionPauseMillis;
 }
 
 export async function setChatMaxRounds(rounds: number): Promise<InstallationSettings> {

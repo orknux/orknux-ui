@@ -378,6 +378,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-completion-check',
+    what: "a pause in typing draws the completion model's suggestion in grey after the caret, Tab takes it, and typing or Escape puts it away",
+    needs: ['workspace'],
+    // The suggestion and the workspace's Completion model are answered by the check; nothing reaches a model.
+  },
+  {
     name: 'chat-review-taken-check',
     what: 'a review taken back stays in the chat marked as such, with a line where it was taken back',
     needs: ['workspace'],

@@ -248,6 +248,11 @@ const PL: Record<string, string> = {
   ModelAnswerLimitOutOfRange: '{minutes} to nie jest liczba minut na odpowiedź modelu. Wybierz od 1 do 1440.',
   WritingProgressIntervalOutOfRange: '{millis} to nie jest liczba milisekund między raportami pisania. Wybierz od 200 do 10000.',
   WidgetsPerChatOutOfRange: '{widgets} to nie jest liczba widżetów jednego czatu. Wybierz od 1 do 50.',
+  // Sentence completion in the chat composer, #649.
+  CompletionContextTurnsOutOfRange: '{turns} to nie jest liczba wiadomości pokazywanych przy podpowiedzi. Wybierz od 0 do 50.',
+  CompletionMaxTokensOutOfRange: '{tokens} to nie jest długość podpowiedzi w tokenach. Wybierz od 1 do 500.',
+  CompletionTimeoutOutOfRange: '{millis} to nie jest limit czasu podpowiedzi w milisekundach. Wybierz od 200 do 60000.',
+  CompletionPauseOutOfRange: '{millis} to nie jest przerwa w pisaniu w milisekundach. Wybierz od 100 do 10000.',
   WidgetTimerLimitOutOfRange: '{seconds} to nie jest liczba sekund minutnika w czacie. Wybierz od 60 do 604800.',
   ChatWidgetNotFound: 'Ten czat nie ma widżetu {id}.',
   WorkflowAutosaveOutOfRange: '{millis} to nie jest liczba milisekund, które edytor przepływu odczekuje przed zapisem. Wybierz od 200 do 10000.',
