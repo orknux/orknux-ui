@@ -4,6 +4,9 @@ import type { UsageFilter } from './usage';
 /** What failed: a workflow run, an agent's answer, or the quick chat's model. */
 export type ErrorSource = 'RUN' | 'AGENT' | 'MODEL';
 
+/** A column of the errors table the rows can be put in the order of. */
+export type ErrorOrder = 'AT' | 'SOURCE' | 'SUBJECT' | 'MESSAGE' | 'WORKSPACE';
+
 /** One thing that failed, as it was recorded when it happened. */
 export interface ErrorRecord {
   id: string;
@@ -50,10 +53,12 @@ export async function fetchErrorReport(
   source: ErrorSource | null,
   page: number,
   size: number,
+  order: ErrorOrder = 'AT',
+  ascending = false,
 ): Promise<ErrorReport> {
   const data = await graphql<{ errorReport: ErrorReport }>(
-    `query($filter: UsageReportFilter, $source: ErrorSource, $page: Int, $size: Int) {
-       errorReport(filter: $filter, source: $source, page: $page, size: $size) {
+    `query($filter: UsageReportFilter, $source: ErrorSource, $page: Int, $size: Int, $order: ErrorOrder, $ascending: Boolean) {
+       errorReport(filter: $filter, source: $source, page: $page, size: $size, order: $order, ascending: $ascending) {
          total
          counts { source count }
          often { source subject count last }
@@ -61,7 +66,7 @@ export async function fetchErrorReport(
          rows { id at workspaceId workspaceName source subject executionId sessionId message }
        }
      }`,
-    { filter: { ...filter, source: undefined }, source, page, size },
+    { filter: { ...filter, source: undefined }, source, page, size, order, ascending },
   );
   return data.errorReport;
 }

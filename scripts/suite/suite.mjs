@@ -361,6 +361,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'errors-sort-check',
+    what: "the errors report's rows and what failed most often are put in the order of a pressed heading",
+    needs: [],
+  },
+  {
     name: 'editor-hover-hint-check',
     what: "a line's and a joint's hint in the editor is the application's own box beside the pointer, not a native title",
     needs: [],

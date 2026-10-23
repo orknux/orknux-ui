@@ -2,13 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { fetchErrorReport } from '../../api/errors';
-import type { ErrorRecord, ErrorReport, ErrorSource } from '../../api/errors';
+import type { ErrorOrder, ErrorRecord, ErrorReport, ErrorSource, ErrorSubject } from '../../api/errors';
 import type { UsageFilter } from '../../api/usage';
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
+import { ColumnHeader } from '../../components/ColumnHeader';
 import { CompactPagination } from '../../components/CompactPagination';
 import { Loader } from '../../components/Loader';
 import { SearchBox } from '../../components/SearchBox';
+import { useTableSort } from '../../components/tableSort';
 import { useSearch } from '../../components/useSearch';
 import { t } from '../../i18n';
 import styles from './AdminReportsPage.module.css';
@@ -25,6 +27,20 @@ function sourceName(source: ErrorSource): string {
   return t('Quick chat');
 }
 
+/** What a heading of the most-often table orders by; the five are all there is, so they are ordered here. */
+type OftenOrder = 'SUBJECT' | 'SOURCE' | 'COUNT' | 'LAST';
+
+function oftenSorted(often: ErrorSubject[], order: OftenOrder, ascending: boolean): ErrorSubject[] {
+  const text = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+  const by = (a: ErrorSubject, b: ErrorSubject) => {
+    if (order === 'SUBJECT') return text(a.subject, b.subject);
+    if (order === 'SOURCE') return text(sourceName(a.source), sourceName(b.source));
+    if (order === 'COUNT') return a.count - b.count;
+    return a.last.localeCompare(b.last);
+  };
+  return [...often].sort((a, b) => (ascending ? by(a, b) : by(b, a)));
+}
+
 /**
  * What failed over a period, as it was recorded when it failed: a workflow run
  * that ended failed, an agent that could not answer, the quick chat's model.
@@ -38,6 +54,9 @@ export function ErrorsReport() {
   const [typed, setTyped, searching] = useSearch();
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(PER_PAGE);
+  /* Newest first until a heading is pressed; dates and counts start biggest-first. */
+  const [order, ascending, sortBy] = useTableSort<ErrorOrder>('errors-report', 'AT', false, ['AT']);
+  const [oftenOrder, oftenAscending, sortOftenBy] = useTableSort<OftenOrder>('errors-often', 'COUNT', false, ['COUNT', 'LAST']);
   const [report, setReport] = useState<ErrorReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,16 +74,16 @@ export function ErrorsReport() {
   };
   const filterKey = JSON.stringify(filter);
 
-  useEffect(() => setPage(1), [days, workspaceId, source, searching]);
+  useEffect(() => setPage(1), [days, workspaceId, source, searching, order, ascending]);
 
   const load = useCallback(() => {
-    fetchErrorReport(JSON.parse(filterKey) as UsageFilter, source || null, page - 1, size)
+    fetchErrorReport(JSON.parse(filterKey) as UsageFilter, source || null, page - 1, size, order, ascending)
       .then((held) => {
         setReport(held);
         setError(null);
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the report.')));
-  }, [filterKey, source, page, size]);
+  }, [filterKey, source, page, size, order, ascending]);
 
   useEffect(load, [load]);
 
@@ -121,14 +140,27 @@ export function ErrorsReport() {
             <caption className={styles.caption}>{t('Failed most often')}</caption>
             <thead>
               <tr>
-                <th>{t('What')}</th>
-                <th>{t('Source')}</th>
-                <th className={styles.number}>{t('Times')}</th>
-                <th>{t('Last')}</th>
+                {([
+                  ['SUBJECT', t('What'), false],
+                  ['SOURCE', t('Source'), false],
+                  ['COUNT', t('Times'), true],
+                  ['LAST', t('Last'), false],
+                ] as const).map(([column, label, numeric]) => (
+                  <th key={column} className={numeric ? styles.number : undefined}>
+                    <ColumnHeader
+                      label={label}
+                      order={column}
+                      current={oftenOrder}
+                      ascending={oftenAscending}
+                      onSort={sortOftenBy}
+                      className={numeric ? styles.headRight : styles.headLeft}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {report.often.map((one) => (
+              {oftenSorted(report.often, oftenOrder, oftenAscending).map((one) => (
                 <tr key={`${one.source}:${one.subject}`}>
                   <td>{one.subject}</td>
                   <td className={styles.muted}>{sourceName(one.source)}</td>
@@ -146,11 +178,24 @@ export function ErrorsReport() {
           <table className={styles.table} data-testid="errors-table">
             <thead>
               <tr>
-                <th>{t('When')}</th>
-                <th>{t('Source')}</th>
-                <th>{t('What')}</th>
-                <th>{t('Error')}</th>
-                <th>{t('Workspace')}</th>
+                {([
+                  ['AT', t('When')],
+                  ['SOURCE', t('Source')],
+                  ['SUBJECT', t('What')],
+                  ['MESSAGE', t('Error')],
+                  ['WORKSPACE', t('Workspace')],
+                ] as const).map(([column, label]) => (
+                  <th key={column}>
+                    <ColumnHeader
+                      label={label}
+                      order={column}
+                      current={order}
+                      ascending={ascending}
+                      onSort={sortBy}
+                      className={styles.headLeft}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
