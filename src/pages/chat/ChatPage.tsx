@@ -154,6 +154,9 @@ const anyWorking = (working: Working) =>
 /** How long typing has to stop before what was said is worth asking about. */
 const SEARCH_PAUSE_MS = 300;
 
+/** A line that is nothing but one picture: what a tool's drawing is kept in the thread as. */
+const PICTURE_ONLY = /^\s*!\[[^\]]*\]\([^)\s]+\)\s*$/;
+
 export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[] | null>(null);
@@ -1192,6 +1195,25 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       ? answeredRequests.filter((request) => Date.parse(request.createdAt) > Date.parse(lastAsked))
       : [];
   /** Each review before the first line said after it, or at the end. */
+  /*
+   * A picture a tool drew is kept in the thread as an assistant line of its
+   * own, written the moment it was drawn and before the answer the turn went
+   * on to give. Drawn as that, it was a second message from the agent - and
+   * one above the tool call that made it. So a line that is only a picture is
+   * drawn inside the answer that follows it, after that answer's working, and
+   * not as a message of its own. The thread is left as it is: what is stored,
+   * a reload and a regenerate all still see the picture's own line.
+   */
+  const carried = new Set<number>();
+  const picturesFor = new Map<number, string[]>();
+  messages.forEach((message, index) => {
+    if (message.role !== 'assistant' || !PICTURE_ONLY.test(message.content)) return;
+    const home = messages.findIndex((later, at) => at > index && (later.role === 'assistant' || later.role === 'user'));
+    if (home === -1 || messages[home].role !== 'assistant' || PICTURE_ONLY.test(messages[home].content)) return;
+    carried.add(index);
+    picturesFor.set(home, [...(picturesFor.get(home) ?? []), message.content]);
+  });
+
   /** Each review where it was sent, and - for one taken back - a line where it was taken back. */
   const placedReviews = new Map<number, { review: ChatReview; taken: boolean }[]>();
   const place = (when: string, entry: { review: ChatReview; taken: boolean }) => {
@@ -3552,7 +3574,7 @@ ${named}`;
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : carried.has(index) ? null : (
                 <div className={styles.assistantRow} data-find={findMark(index)}>
                   <span className={styles.assistantAvatar} aria-hidden="true">
                     <img src={cpuIcon} alt="" width={16} height={16} />
@@ -3759,6 +3781,9 @@ ${named}`;
                       outcome have said `zoomImages` all along; this is the one
                       place a picture is actually *made*.
                     */}
+                    {(picturesFor.get(index) ?? []).map((picture, at) => (
+                      <Markdown key={`picture-${at}`} pictureLinks zoomImages>{picture}</Markdown>
+                    ))}
                     <Markdown pictureLinks zoomImages>{shownTake(index, message)}</Markdown>
                     {filesOf(filesUnder(message), 'assistant')}
                     {/*

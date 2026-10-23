@@ -1,5 +1,5 @@
 /**
- * A picture a tool drew is shown once while the answer streams. It is put in
+ * A picture a tool drew is shown once while the answer streams, and inside that answer. It is put in
  * the thread as its own line and filed against the chat, and the page also
  * listed the filed copy under the answer - so it showed twice until a reload.
  */
@@ -77,6 +77,12 @@ if (await drawn(page, 'the chat log')) {
   await page.waitForTimeout(2500);
   const shown = await page.locator('img[src*="/api/attachments/90210"]').count();
   record(shown === 1, `the picture is shown once, not again under the answer (${shown})`);
+  // And inside the answer the turn gave, not as a message of its own above it.
+  // The message row the picture is drawn in is the one holding the answer's words.
+  const together = await page.locator('img[src*="/api/attachments/90210"]').first().evaluate(
+    (picture) => (picture.closest('[class*="assistantRow"]')?.textContent ?? '').includes('A sunset.'),
+  );
+  record(together, 'and is drawn in the answer that goes with it, not as a message of its own');
 }
 
 await finish(browser);
