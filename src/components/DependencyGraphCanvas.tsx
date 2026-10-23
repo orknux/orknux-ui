@@ -12,11 +12,8 @@ import styles from './DependencyGraphCanvas.module.css';
 import { t } from '../i18n';
 
 /**
- * The columns, left to right: what uses things on the left, what is used on
- * the right. An arrow mostly runs rightwards, so a chain reads like a sentence -
- * a workflow runs an agent that thinks with a model reached through a provider
- * that reads a variable. Arrows inside a column (an agent asking another, a
- * function importing one) are the exception and are drawn as such.
+ * The order kinds are stacked in within a column: users before what they use,
+ * so a workflow sits above the agent it runs and a model above its provider.
  */
 const COLUMNS: DependencyKind[][] = [
   ['WORKFLOW', 'WORKSPACE'],
@@ -138,31 +135,21 @@ export interface DependencyGraphCanvasProps {
   /** The part chosen; its chain is lit and the rest dimmed. */
   selectedKey: string | null;
   onSelect: (key: string | null) => void;
-  /** Dims every part whose name does not hold it. */
-  search?: string;
   /** A class for the frame, which sets its height. */
   className?: string;
-  /** Draws the graph as this part's chain, in columns by distance from it rather than by kind. */
-  focusKey?: string;
+  /** The part whose chain this is; the columns are distances from it. */
+  focusKey: string;
 }
 
-/**
- * A workspace's parts and what uses what, drawn as one graph.
- *
- * Shared by the Dependencies page, which draws all of it, and the dialog a Used
- * by panel opens, which hands over one part's chain - so the two draw a part,
- * an arrow and a lit chain the same way.
- */
-export function DependencyGraphCanvas({ graph, workspaceId, selectedKey, onSelect, search = '', className, focusKey }: DependencyGraphCanvasProps) {
+/** One part's chain - what uses it and what it uses, on down both ways - drawn as a graph. */
+export function DependencyGraphCanvas({ graph, workspaceId, selectedKey, onSelect, className, focusKey }: DependencyGraphCanvasProps) {
   const chain = useMemo(() => (selectedKey !== null ? chainOf(selectedKey, graph) : null), [graph, selectedKey]);
-  const needle = search.trim().toLowerCase();
 
   const nodes: Node<PartData>[] = useMemo(() => {
-    const distance = focusKey === undefined ? null : distancesFrom(focusKey, graph);
-    const nearest = distance === null ? 0 : Math.min(0, ...distance.values());
-    const columnCount = distance === null ? COLUMNS.length : Math.max(0, ...distance.values()) - nearest + 1;
-    const column = (node: DependencyGraphNode) =>
-      distance === null ? columnOf(node.kind) : (distance.get(node.key) ?? 0) - nearest;
+    const distance = distancesFrom(focusKey, graph);
+    const nearest = Math.min(0, ...distance.values());
+    const columnCount = Math.max(0, ...distance.values()) - nearest + 1;
+    const column = (node: DependencyGraphNode) => (distance.get(node.key) ?? 0) - nearest;
     const order = (node: DependencyGraphNode) => columnOf(node.kind) * 100 + COLUMNS[columnOf(node.kind)].indexOf(node.kind);
     const sorted = [...graph.nodes].sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
     const columns = Array.from({ length: columnCount }, (_, at) => at);
@@ -181,8 +168,7 @@ export function DependencyGraphCanvas({ graph, workspaceId, selectedKey, onSelec
       const at = column(node);
       const index = placed[at]++;
       const across = Math.floor(index / tall[at]);
-      const row = index % tall[at] + (distance === null ? 0 : (tallest - tall[at]) / 2);
-      const matches = needle === '' || node.name.toLowerCase().includes(needle);
+      const row = index % tall[at] + (tallest - tall[at]) / 2;
       return {
         id: node.key,
         type: 'part',
@@ -196,11 +182,11 @@ export function DependencyGraphCanvas({ graph, workspaceId, selectedKey, onSelec
         data: {
           name: node.name,
           kind: dependantLabel(asDependant(node, workspaceId)),
-          dimmed: !matches || (chain !== null && !chain.has(node.key)),
+          dimmed: chain !== null && !chain.has(node.key),
         },
       };
     });
-  }, [graph, needle, chain, selectedKey, workspaceId, focusKey]);
+  }, [graph, chain, selectedKey, workspaceId, focusKey]);
 
   const edges: Edge[] = useMemo(() => {
     const present = new Set(graph.nodes.map((node) => node.key));

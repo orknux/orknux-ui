@@ -1,7 +1,4 @@
-/*
- * The dependency graph, wherever it is drawn: the Dependencies page and the
- * dialog a Used by panel opens. One stylesheet, so a part looks the same in both.
- */
+/* One part's dependency graph, drawn in the dialog a Used by panel opens. */
 .selection {
   display: flex;
   align-items: center;

@@ -373,11 +373,6 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
-    name: 'dependency-graph-check',
-    what: "a workspace's Dependencies page draws its parts and what uses what, and choosing one lights its chain with a link to open it",
-    needs: ['workspace'],
-  },
-  {
     name: 'used-by-graph-check',
     what: "a part's Used by panel opens its dependency graph: the part's chain alone, laid out by distance so no line runs behind a box",
     needs: ['workspace'],

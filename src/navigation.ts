@@ -30,7 +30,6 @@ import puzzleIcon from './assets/puzzle.svg';
 import radarIcon from './assets/radar.svg';
 import templateIcon from './assets/layers.svg';
 import settingsIcon from './assets/settings.svg';
-import shareIcon from './assets/share-2.svg';
 import slidersIcon from './assets/sliders-horizontal.svg';
 import toolIcon from './assets/tool.svg';
 import { t } from './i18n';
@@ -425,11 +424,6 @@ export const PAGES = [
     path: '/workspace/:workspaceId/audit',
     access: 'signed-in',
     goTo: { label: t('Audit Log'), where: 'Workspace', icon: clipboardListIcon, also: 'activity history' },
-  },
-  {
-    path: '/workspace/:workspaceId/dependencies',
-    access: 'signed-in',
-    goTo: { label: t('Dependencies'), where: 'Workspace', icon: shareIcon, also: 'graph uses used by map what depends' },
   },
   {
     path: '/workspace/:workspaceId/integrations',
