@@ -36,10 +36,19 @@ await page.waitForTimeout(800);
 /* ---- the list ---- */
 const rows = await page.evaluate(() =>
   [...document.querySelectorAll('[class*="_sessionButton_"]')].slice(0, 8).map((button) => {
+    /*
+     * What the row starts with: its title, or on a pinned chat the dot that
+     * says so - kept on purpose when the icon went ("A pinned one keeps its
+     * dot, which does"), so its title starts past the dot and not at the
+     * padding. The dot is not an icon (no img, no svg), and it is what has to
+     * start at the padding there; a developer's database with a pinned chat
+     * failed this on a title 30px in while nothing had changed.
+     */
     const title = button.querySelector('[class*="_sessionTitle_"]');
+    const first = button.querySelector('[class*="_pinDot_"]') ?? title;
     return {
       images: button.querySelectorAll('img, svg').length,
-      offset: title ? Math.round(title.getBoundingClientRect().left - button.getBoundingClientRect().left) : null,
+      offset: first ? Math.round(first.getBoundingClientRect().left - button.getBoundingClientRect().left) : null,
       height: Math.round(button.getBoundingClientRect().height),
     };
   }),
@@ -47,7 +56,7 @@ const rows = await page.evaluate(() =>
 record(rows.length > 0 && rows.every((one) => one.images === 0), `a chat's row draws no icon (${JSON.stringify(rows.map((one) => one.images))})`);
 record(
   rows.length > 0 && rows.every((one) => one.offset !== null && one.offset <= 16),
-  `and its title starts at the row's padding (${JSON.stringify(rows.map((one) => one.offset))})`,
+  `and its title, or a pinned chat's dot, starts at the row's padding (${JSON.stringify(rows.map((one) => one.offset))})`,
 );
 
 /* ---- the "+" menu ---- */
