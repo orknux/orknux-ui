@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { costAmount, readingShare, startChat, tokenCount, writingParts } from '../../api/chat';
 import { fetchWorkspace } from '../../api/workspaces';
+import { formatLatency, formatSpeed } from '../../api/models';
+import type { ModelSpeed } from '../../api/models';
 import { FoldToggle } from '../../components/FoldToggle';
 import { fetchInstallationSettings } from '../../api/installation';
 import {
@@ -725,6 +727,37 @@ function SpendMeter({ spent }: { spent: SessionSpend }) {
           {cost ?? '—'}
           {cost !== null && spent.partlyUnpriced && <span className={styles.spendShare}>{t('partial')}</span>}
         </span>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * How fast the provider says it read the prompts and wrote the answers here,
+ * beside what the session cost: every token over every millisecond of the
+ * calls that reported, not a mean of their rates. Drawn only where a call
+ * reported - llama.cpp does, OpenAI and vLLM do not - and never worked out
+ * from how long a call took, which is the network and the queue as well.
+ */
+function SpeedMeter({ speed }: { speed: ModelSpeed }) {
+  return (
+    <div
+      className={styles.spendMeter}
+      data-session-speed=""
+      aria-label={t('How fast the provider read and wrote')}
+      title={
+        speed.calls === 1
+          ? t('From the one call whose provider reported its speed')
+          : tf('Averaged by tokens over {count} calls whose provider reported its speed', { count: speed.calls })
+      }
+    >
+      <span className={styles.spendStat} data-speed="prompt">
+        <span className={styles.spendLabel}>{t('Prompt speed')}</span>
+        <span className={styles.spendValue}>{formatSpeed(speed.promptTokensPerSecond)}</span>
+      </span>
+      <span className={styles.spendStat} data-speed="generated">
+        <span className={styles.spendLabel}>{t('Generation speed')}</span>
+        <span className={styles.spendValue}>{formatSpeed(speed.generatedTokensPerSecond)}</span>
       </span>
     </div>
   );
@@ -1604,6 +1637,7 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
               spend was recorded, and on any whose provider reported nothing.
             */}
             {held !== null && costShown && held.spent != null && <SpendMeter spent={held.spent} />}
+            {held !== null && held.speed != null && <SpeedMeter speed={held.speed} />}
             {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
           </>
         )}
@@ -2455,6 +2489,40 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           </ul>
         )}
       </aside>
+      {/*
+        Each model call whose provider reported its speed, newest first: how
+        fast it read the prompt and wrote the answer, as the provider measured
+        it. Not drawn at all where no call reported - a panel saying "none"
+        on every session behind OpenAI would read as something missing.
+      */}
+      {held !== null && (held.modelCalls ?? []).length > 0 && (
+        <aside className={styles.scratchpads} aria-label={t('Model call speeds in this session')} data-session-speeds="">
+          <span className={styles.familyTitleRow}>
+            <p className={styles.familyTitle}>{t('Speeds')}</p>
+            <FieldHint label={t('Speeds')}>{t('How fast the provider says each call read the prompt and wrote the answer, newest first.')}</FieldHint>
+          </span>
+          <ul className={styles.familyList}>
+            {(held.modelCalls ?? []).map((one) => (
+              <li key={one.id} className={styles.noteRow} title={moment(one.at)} data-session-speed-call={one.id}>
+                <span className={styles.todoText} data-session-speed-rates="">
+                  {tf('{prompt} read · {generated} written', {
+                    prompt: formatSpeed(one.promptTokensPerSecond),
+                    generated: formatSpeed(one.generatedTokensPerSecond),
+                  })}
+                </span>
+                <span className={styles.todoNote}>
+                  {tf('{input} in · {output} out · {time} · {when}', {
+                    input: tokenCount(one.inputTokens),
+                    output: tokenCount(one.outputTokens),
+                    time: formatLatency(one.millis),
+                    when: timeAgo(one.at),
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
       {/*
         The reminders this session's agent set: waiting ones first, soonest
         first, each with its note and when it comes up; then the ones that rang.

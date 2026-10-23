@@ -1,5 +1,7 @@
 import { graphql } from './client';
 import type { ExecutionStatus } from './executions';
+import { MODEL_SPEED_FIELDS } from './models';
+import type { ModelSpeed } from './models';
 
 /**
  * A conversation an agent kept, found by the key whoever ran it computed.
@@ -35,6 +37,24 @@ export interface LlmSession {
   notes?: LlmSessionNote[];
   /** What every model call made into it was charged; asked for by the session page only. */
   spent?: SessionSpend | null;
+  /** How fast the provider says it read and wrote, over every call that reported; null where none did. */
+  speed?: ModelSpeed | null;
+  /** The newest calls whose provider reported timings, newest first; asked for by the session page only. */
+  modelCalls?: SessionModelCall[];
+}
+
+/** One model call made into a session, with the timings its provider reported. */
+export interface SessionModelCall {
+  id: string;
+  at: string;
+  inputTokens: number;
+  outputTokens: number;
+  /** The whole call as the server waited for it. */
+  millis: number;
+  promptTokens: number | null;
+  promptTokensPerSecond: number | null;
+  generatedTokens: number | null;
+  generatedTokensPerSecond: number | null;
 }
 
 /** What a session has cost, in tokens and - where the models are priced - money. */
@@ -175,7 +195,9 @@ const SESSION_FIELDS =
   'id workspaceId key keyPrefix eventCount createdAt lastEventAt active subagentCount spent { inputTokens outputTokens cachedInputTokens cost partlyUnpriced }';
 
 /** What one opened session adds, and a row of the list does not. Issue #371. */
-const ONE_SESSION_FIELDS = `${SESSION_FIELDS} notes { id note writtenBy writtenAt }`;
+const ONE_SESSION_FIELDS =
+  `${SESSION_FIELDS} notes { id note writtenBy writtenAt } speed { ${MODEL_SPEED_FIELDS} } ` +
+  'modelCalls(timedOnly: true) { id at inputTokens outputTokens millis promptTokens promptTokensPerSecond generatedTokens generatedTokensPerSecond }';
 
 /** What an AGENT_DETAILS line carries, and the rest carry as null. Issue #441. */
 const AGENT_DETAILS_FIELDS =
