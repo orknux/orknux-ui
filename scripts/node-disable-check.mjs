@@ -82,6 +82,9 @@ await graphql(
         objectNode('last', 680),
       ],
       edges: [
+        // A run begins only at a trigger since the server's 3ebe545e: without
+        // this line `first` is a detached path and nothing in the chain runs.
+        { source: 'start', target: 'first' },
         { source: 'first', target: 'middle' },
         { source: 'middle', target: 'last' },
       ],
