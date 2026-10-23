@@ -8,6 +8,7 @@ import {
   chooseChatAgent,
   deleteChat,
   fetchChatMessages,
+  fetchChatCompletion,
   postChatMessageDuringTurn,
   fetchChatSession,
   fetchChatSessions,
@@ -1306,6 +1307,16 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const voiceWhyClosing = useRef<number | null>(null);
   /** Whether the workspace shows when each message was sent. Issue #323. */
   const [showTimestamps, setShowTimestamps] = useState(false);
+  /**
+   * How long a pause in the typing asks for a sentence completion, or null
+   * where the workspace chose no Completion model and nothing is ever asked.
+   * Issue #649.
+   */
+  const [completionPause, setCompletionPause] = useState<number | null>(null);
+  /** The words the completion model suggested, and the text they follow. */
+  const [suggestion, setSuggestion] = useState<{ after: string; words: string } | null>(null);
+  /** The grey copy of the composer the suggestion is drawn in. */
+  const ghostRef = useRef<HTMLDivElement>(null);
   /** Whether a chat timer sounds when it ends, where its agent chose nothing: the workspace's setting. */
   const [timerSound, setTimerSound] = useState(true);
   /*
@@ -1384,6 +1395,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setVoiceHidden(held?.voiceButtonHidden ?? false);
         setVoiceKnown(true);
         setShowTimestamps(held?.chatShowTimestamps ?? true);
+        setCompletionPause(held?.completionModelId == null ? null : held.completionPauseMillis);
         setTimerSound(held?.widgetTimerSound ?? true);
         setWorkspaceMarker(held === null ? null : (held.commandMarker ?? held.commandMarkerDefault));
         setChunking(held?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
@@ -2601,6 +2613,60 @@ ${named}`;
   }, [draft]);
 
   /*
+   * Sentence completion, issue #649.
+   *
+   * Asked after a pause in the typing, only with the caret at the end of
+   * something typed, and never while a menu is open or a message is going: a
+   * suggestion is for the sentence being written and nothing else. The timer
+   * and the request are both thrown away when anything changes, so typing is
+   * never waited on and an answer for text that is no longer there is never
+   * drawn. A request that fails shows nothing - the person asked for nothing.
+   */
+  const menuOpen = offered.length > 0 || skillsOffered.length > 0;
+  useEffect(() => {
+    if (completionPause === null || currentId === null || sending || menuOpen) return;
+    if (draft.trim() === '' || caret !== draft.length) return;
+    const asked = draft;
+    const chatAsked = currentId;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetchChatCompletion(chatAsked, asked, controller.signal)
+        .then((words) => {
+          if (controller.signal.aborted || words === null || words.trim() === '') return;
+          setSuggestion({ after: asked, words });
+        })
+        .catch(() => undefined);
+    }, completionPause);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [completionPause, currentId, sending, menuOpen, draft, caret]);
+
+  /** What is drawn after the caret: only for the text it was asked for, with the caret still at its end. */
+  const ghost =
+    suggestion !== null && suggestion.after === draft && caret === draft.length && !menuOpen && !sending
+      ? suggestion.words
+      : null;
+
+  /*
+   * The grey copy laid exactly over the box, so the suggestion starts where the
+   * typed text ends - including where that is part way along a wrapped line.
+   * Measured off the textarea rather than styled to match it, because its
+   * height and scroll are written by the layout effect that grows it.
+   */
+  useLayoutEffect(() => {
+    const box = composerRef.current;
+    const over = ghostRef.current;
+    if (box === null || over === null) return;
+    over.style.left = `${box.offsetLeft}px`;
+    over.style.top = `${box.offsetTop}px`;
+    over.style.width = `${box.clientWidth}px`;
+    over.style.height = `${box.clientHeight}px`;
+    over.scrollTop = box.scrollTop;
+  }, [ghost, draft]);
+
+  /*
    * The row the arrows reached, kept in sight. The menus scroll past eight or
    * so rows, and a highlight moved below the fold is a choice nobody can see.
    */
@@ -2670,6 +2736,26 @@ ${named}`;
         completeSkill(skillChosen);
         return;
       }
+    }
+
+    /*
+     * A suggestion is taken with Tab and put away with Escape, the way the
+     * menus above complete and close. Anything else typed simply carries on
+     * writing, which changes the text and takes the suggestion away with it.
+     */
+    if (ghost !== null && event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      const taken = draft + ghost;
+      setDraft(taken);
+      caretAfter.current = taken.length;
+      setCaret(taken.length);
+      setSuggestion(null);
+      return;
+    }
+    if (ghost !== null && event.key === 'Escape') {
+      event.preventDefault();
+      setSuggestion(null);
+      return;
     }
 
     // Enter sends, shift+enter is a new line: what a chat box is expected to do.
@@ -4227,6 +4313,14 @@ ${named}`;
                       {one.description !== null && <span className={styles.commandDetail}>{one.description}</span>}
                     </button>
                   ))}
+                </div>
+              )}
+              {ghost !== null && (
+                <div ref={ghostRef} className={styles.composerGhost} aria-hidden="true" data-testid="chat-composer-ghost">
+                  <span className={styles.composerGhostTyped}>{draft}</span>
+                  <span className={styles.composerGhostWords} data-testid="chat-composer-suggestion">
+                    {ghost}
+                  </span>
                 </div>
               )}
               <textarea

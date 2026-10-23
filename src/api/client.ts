@@ -69,12 +69,18 @@ interface GraphQlResponse<T> {
  * server is down or something between them gave up waiting (#602). Status 0
  * says the same to code that wants to tell.
  */
-export async function graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+export async function graphql<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  /** For a caller that gives up on the answer, as the composer's suggestion does when the text changes. */
+  signal?: AbortSignal,
+): Promise<T> {
   let response: Response;
   try {
     response = await request('/graphql', {
       method: 'POST',
       body: JSON.stringify({ query, variables }),
+      signal,
     });
   } catch {
     throw new ApiError(t('The server could not be reached, or the connection to it broke before it answered.'), 0);

@@ -65,6 +65,13 @@ export interface Workspace {
    */
   quickChatModelId: string | null;
   /**
+   * The model that suggests how a sentence typed in a chat goes on. Null means
+   * nothing is suggested. Issue #649.
+   */
+  completionModelId: string | null;
+  /** How long a chat waits after the last keystroke before asking for a suggestion; the installation's. */
+  completionPauseMillis: number;
+  /**
    * Whether the quick chat may start things, or only look them up. False by
    * default, including for a workspace that has already chosen a model.
    */
@@ -217,6 +224,7 @@ export interface Workspace {
 const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered readsSecrets ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
+  'completionModelId completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
@@ -348,6 +356,20 @@ export async function setWorkspaceQuickChatModel(
     { workspaceId, modelId },
   );
   return data.setWorkspaceQuickChatModel;
+}
+
+/** Chooses the model that suggests how a sentence typed in a chat goes on; null turns suggestions off. */
+export async function setWorkspaceCompletionModel(
+  workspaceId: string,
+  modelId: string | null,
+): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceCompletionModel: Workspace }>(
+    `mutation SetWorkspaceCompletionModel($workspaceId: ID!, $modelId: ID) {
+       setWorkspaceCompletionModel(workspaceId: $workspaceId, modelId: $modelId) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, modelId },
+  );
+  return data.setWorkspaceCompletionModel;
 }
 
 /** Whether the quick chat may start things, or only look them up. */

@@ -3245,4 +3245,17 @@ export const PL: Record<string, string> = {
   "Uses": "Używa",
   "Or answer in your own words": "Albo odpowiedz własnymi słowami",
   "Your own answer": "Twoja odpowiedź",
+  // Sentence completion in the chat composer, #649.
+  "Completion Model": "Model podpowiedzi",
+  "Suggests how a sentence goes on while somebody types in a chat, shown after the caret for Tab to take. It is asked on every pause in the typing, so a small, fast model is the right choice.": "Podpowiada dalszy ciąg zdania podczas pisania w czacie, pokazany za kursorem do przyjęcia klawiszem Tab. Jest pytany przy każdej przerwie w pisaniu, więc najlepszy jest mały, szybki model.",
+  "None — nothing is suggested": "Brak — nic nie jest podpowiadane",
+  "Completion Context": "Kontekst podpowiedzi",
+  "How many of the chat’s latest messages the completion model is shown, so a suggestion reads as a reply. Between 0 and 50.": "Ile ostatnich wiadomości czatu widzi model podpowiedzi, żeby podpowiedź pasowała do rozmowy. Od 0 do 50.",
+  "messages": "wiadomości",
+  "Completion Length": "Długość podpowiedzi",
+  "The most tokens one suggestion may be. Between 1 and 500.": "Najwięcej tokenów, ile może mieć jedna podpowiedź. Od 1 do 500.",
+  "Completion Time Limit": "Limit czasu podpowiedzi",
+  "How long a suggestion may take before it is given up on and nothing is shown. Between 200 and 60000.": "Jak długo może trwać podpowiedź, zanim zostanie porzucona i nic nie zostanie pokazane. Od 200 do 60000.",
+  "Completion Pause": "Przerwa przed podpowiedzią",
+  "How long the chat waits after the last keystroke before asking for a suggestion. Between 100 and 10000.": "Jak długo czat czeka po ostatnim naciśnięciu klawisza, zanim poprosi o podpowiedź. Od 100 do 10000.",
 };

@@ -1097,6 +1097,34 @@
 }
 
 /*
+ * A suggested continuation, issue #649: a copy of the box laid over it, the
+ * typed text drawn invisible so the suggestion starts exactly where it ends.
+ * Every property that decides where a glyph lands is the textarea's - font,
+ * size, line-height, wrapping - or the suggestion drifts from the caret; its
+ * position and size are measured off the textarea in ChatPage.tsx. It takes no
+ * pointer, so a click still lands in the box underneath.
+ */
+.composerGhost {
+  position: absolute;
+  overflow: hidden;
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--text-base);
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  pointer-events: none;
+}
+
+.composerGhostTyped {
+  color: transparent;
+}
+
+.composerGhostWords {
+  color: var(--color-text-muted);
+}
+
+/*
  * What has already been sent with this chat, above the composer.
  *
  * A row rather than something inside a message, because nothing records which

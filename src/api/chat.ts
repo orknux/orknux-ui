@@ -225,6 +225,20 @@ export async function fetchChatsMentioning(workspaceId: string, text: string): P
   return data.chatsMentioning;
 }
 
+/**
+ * How the sentence being typed in a chat might go on: only the words that
+ * would follow `text`, or null where there is nothing to suggest. Issue #649.
+ * Nothing is written into the chat.
+ */
+export async function fetchChatCompletion(chatId: string, text: string, signal?: AbortSignal): Promise<string | null> {
+  const data = await graphql<{ chatCompletion: string | null }>(
+    'query ChatCompletion($chatId: ID!, $text: String!) { chatCompletion(chatId: $chatId, text: $text) }',
+    { chatId, text },
+    signal,
+  );
+  return data.chatCompletion;
+}
+
 export async function fetchChatMessages(id: string): Promise<ChatMessage[]> {
   const data = await graphql<{ chatMessages: ChatMessage[] }>(
     'query ChatMessages($id: ID!) { chatMessages(id: $id) { role content actor takes thinking thinkingMillis at attachments { id filename contentType sizeBytes } } }',
