@@ -63,6 +63,9 @@ await page.route('**/api/chats/*/stream', async (route) => {
   const frames = [
     'event: drew', 'data: {"markdown":"![](/api/attachments/90210)"}', '',
     'event: filed', 'data: {"id":"90210","filename":"svg-draw.png","contentType":"image/png","sizeBytes":68}', '',
+    // A second picture straight after: a run of two, both of which belong to the answer.
+    'event: drew', 'data: {"markdown":"![](/api/attachments/90211)"}', '',
+    'event: filed', 'data: {"id":"90211","filename":"charts-render.png","contentType":"image/png","sizeBytes":68}', '',
     'event: chunk', 'data: {"text":"A sunset."}', '',
     'event: done', 'data: {"millis":120,"thinkingMillis":0,"inputTokens":3,"outputTokens":4,"cost":null}', '', '',
   ].join(String.fromCharCode(10));
@@ -83,6 +86,14 @@ if (await drawn(page, 'the chat log')) {
     (picture) => (picture.closest('[class*="assistantRow"]')?.textContent ?? '').includes('A sunset.'),
   );
   record(together, 'and is drawn in the answer that goes with it, not as a message of its own');
+  // Every picture of a run, not only the last: the first one's home used to be the next picture.
+  const second = await page.locator('img[src*="/api/attachments/90211"]').first().evaluate(
+    (picture) => (picture.closest('[class*="assistantRow"]')?.textContent ?? '').includes('A sunset.'),
+  ).catch(() => false);
+  const rows = await page.locator('[class*="assistantRow"]').evaluateAll(
+    (all) => all.filter((row) => row.querySelector('img[src*="/api/attachments/9021"]') !== null).length,
+  );
+  record(second && rows === 1, `two pictures drawn in a row are both in the answer, one message (${rows} rows hold them)`);
 }
 
 await finish(browser);

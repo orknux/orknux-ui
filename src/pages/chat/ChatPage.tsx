@@ -1221,13 +1221,20 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * drawn inside the answer that follows it, after that answer's working, and
    * not as a message of its own. The thread is left as it is: what is stored,
    * a reload and a regenerate all still see the picture's own line.
+   *
+   * Every picture of a run goes to the answer after the run, not only the last:
+   * the home was the next assistant line, which for all but the last picture is
+   * another picture, so a turn that drew four drew three of them as messages.
    */
   const carried = new Set<number>();
   const picturesFor = new Map<number, string[]>();
   messages.forEach((message, index) => {
     if (message.role !== 'assistant' || !PICTURE_ONLY.test(message.content)) return;
-    const home = messages.findIndex((later, at) => at > index && (later.role === 'assistant' || later.role === 'user'));
-    if (home === -1 || messages[home].role !== 'assistant' || PICTURE_ONLY.test(messages[home].content)) return;
+    const home = messages.findIndex(
+      (later, at) =>
+        at > index && (later.role === 'user' || (later.role === 'assistant' && !PICTURE_ONLY.test(later.content))),
+    );
+    if (home === -1 || messages[home].role !== 'assistant') return;
     carried.add(index);
     picturesFor.set(home, [...(picturesFor.get(home) ?? []), message.content]);
   });
