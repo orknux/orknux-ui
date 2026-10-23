@@ -30,7 +30,13 @@ try {
 
   await dialog.getByRole('button', { name: 'None', exact: true }).click();
   await dialog.locator('[data-copy-part="AGENTS"]').check();
+  // The copy commits the workspace before its parts, so its name shows before they are in it.
+  const answered = page.waitForResponse(
+    (response) => response.url().includes('/graphql') && (response.request().postData() ?? '').includes('duplicateWorkspace'),
+    { timeout: 60_000 },
+  );
   await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
+  await answered;
 
   // The copy is named by the server; found by its name once it lands.
   let copy = null;

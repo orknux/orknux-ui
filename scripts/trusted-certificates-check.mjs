@@ -164,7 +164,8 @@ if (added) {
 
   await page.click(`text=${RENAMED}`);
   await page.waitForSelector('text=Danger Zone', { timeout: 20_000 }).catch(() => undefined);
-  await page.click('text=Remove');
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await page.locator('dialog[open]').getByRole('button', { name: 'Remove', exact: true }).click();
   await page.waitForURL('**/admin/networking', { timeout: 20_000 }).catch(() => undefined);
 
   const after = await graphql(`query { trustedCertificates { name } }`);

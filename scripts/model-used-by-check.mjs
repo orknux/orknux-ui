@@ -56,6 +56,7 @@ try {
 
   // Removing the provider is refused while its model is in use, and the page says why.
   await page.getByRole('button', { name: 'Remove Provider' }).click();
+  await page.locator('dialog[open]').getByRole('button', { name: 'Remove', exact: true }).click();
   const refusal = page.getByText(/while its models are in use|dopóki używane są jego modele/);
   await refusal.first().waitFor({ timeout: 10_000 }).catch(() => undefined);
   record((await refusal.count()) > 0, 'removing the provider is refused while its model is in use, on the page');

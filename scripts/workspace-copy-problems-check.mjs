@@ -41,6 +41,7 @@ await page.waitForLoadState('networkidle');
 const duplicate = page.locator('button[aria-label^="Duplicate "]').first();
 record(await duplicate.isVisible().catch(() => false), 'a workspace can be duplicated from the list');
 await duplicate.click();
+await page.getByTestId('copy-workspace-dialog').getByRole('button', { name: 'Copy', exact: true }).click();
 
 const summary = page.locator('details summary', { hasText: '40 parts were not copied' });
 await summary.waitFor({ timeout: 10000 }).catch(() => {});

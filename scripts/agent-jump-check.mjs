@@ -217,7 +217,8 @@ async function measure(root, where) {
      * its functions. A row whose mark goes *anywhere else* is the bug this is
      * written for.
      */
-    const elsewhere = [`/workspace/${WORKSPACE}/functions/`, '/admin/plugins'];
+    // A plugin tool with a run of its own has no page; it opens the Tools list searched for it.
+    const elsewhere = [`/workspace/${WORKSPACE}/functions/`, '/admin/plugins', `/workspace/${WORKSPACE}/tools?q=`];
     const astray = marked.filter(
       (row) => !row.href.startsWith(route) && !elsewhere.some((one) => row.href.startsWith(one)),
     );
