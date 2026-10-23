@@ -378,8 +378,8 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
-    name: 'used-by-graph-check',
-    what: "a part's Used by panel opens its dependency graph: the part's chain alone, laid out by distance so no line runs behind a box",
+    name: 'dependency-tree-check',
+    what: "a part's Used by panel opens its dependency tree: what it uses and what uses it, followed to the end, a part met again marked rather than repeated",
     needs: ['workspace'],
   },
   {

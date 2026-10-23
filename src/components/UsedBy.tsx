@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { dependantLabel, dependantPath, fetchDependants } from '../api/dependants';
 import type { Dependant, DependencyKind } from '../api/dependants';
-import { DependencyGraphDialog } from './DependencyGraphDialog';
+import { DependencyTreeDialog } from './DependencyTreeDialog';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
@@ -182,10 +182,10 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
   const [entries, setEntries] = useState<Dependant[] | null>(null);
   const [hidden, setHidden] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [graphOpen, setGraphOpen] = useState(false);
-  // The graph is a workspace's, so it is offered where there is one: not for a library, which is the installation's.
+  const [treeOpen, setTreeOpen] = useState(false);
+  // The tree is read off a workspace's graph, so it is offered where there is one: not for a library, which is the installation's.
   const { workspaceId } = useParams();
-  const graphable = workspaceId !== undefined && componentId !== '' && kind !== 'LIBRARY';
+  const treeable = workspaceId !== undefined && componentId !== '' && kind !== 'LIBRARY';
 
   const load = useCallback(() => {
     // Nothing saved yet is used by nothing, and a page drawing this while
@@ -222,9 +222,9 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
             this is what points at it now.
           </FieldHint>
         </span>
-        {graphable && (
-          <button type="button" className={styles.graphButton} onClick={() => setGraphOpen(true)} data-dependency-graph-open="">
-            {t('Dependency graph')}
+        {treeable && (
+          <button type="button" className={styles.treeButton} onClick={() => setTreeOpen(true)} data-dependency-tree-open="">
+            {t('Dependency tree')}
           </button>
         )}
       </h2>
@@ -238,10 +238,10 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
       ) : (
         <DependantList entries={entries} hidden={hidden} showWorkspace={kind === 'LIBRARY'} />
       )}
-      {graphable && (
-        <DependencyGraphDialog
-          open={graphOpen}
-          onClose={() => setGraphOpen(false)}
+      {treeable && (
+        <DependencyTreeDialog
+          open={treeOpen}
+          onClose={() => setTreeOpen(false)}
           workspaceId={workspaceId}
           kind={kind}
           componentId={componentId}

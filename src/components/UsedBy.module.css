@@ -155,8 +155,8 @@
   color: var(--color-accent-brand);
 }
 
-/* The same answer drawn as a graph, followed past the first step both ways. */
-.graphButton {
+/* The same answer as a tree, followed past the first step both ways. */
+.treeButton {
   flex: none;
   padding: var(--space-2) var(--space-8);
   background: none;
@@ -169,7 +169,7 @@
   cursor: pointer;
 }
 
-.graphButton:hover {
+.treeButton:hover {
   border-color: var(--color-accent-brand);
   color: var(--color-accent-brand);
 }
