@@ -43,7 +43,7 @@ const watched = page.locator('.react-flow__node').filter({ hasText: WATCHED }).f
 if (!(await selectNode(page, watched, WATCHED))) await finish(browser);
 await page.waitForTimeout(500);
 const portsBefore = await portsOf('.react-flow__node.selected');
-await page.getByLabel('Node name').click();
+await page.locator('#node-name').click();
 await page.keyboard.type('!', { delay: 50 });
 // Longer than the preview's debounce, so its answer has landed.
 await page.waitForTimeout(1500);

@@ -130,7 +130,7 @@ if (CANNED) {
 
 await sweep();
 if (!CANNED) {
-  await imageModel('OPENAI', 'http://localhost:8199', 'dall-e-3', 'DALL-E');
+  await imageModel('OPENAI', 'http://dall-e.invalid', 'dall-e-3', 'DALL-E');
   await imageModel('OLLAMA', 'http://localhost:11434', 'sdxl', 'Hosted');
 }
 

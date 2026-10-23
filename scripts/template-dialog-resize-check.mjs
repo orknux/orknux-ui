@@ -19,8 +19,9 @@ await page.waitForTimeout(500);
 const before = await dialog.boundingBox();
 record(before !== null, 'Use a template opens');
 if (before !== null) {
-  // The resize grip is the bottom-right corner, a few pixels in.
-  await page.mouse.move(before.x + before.width - 3, before.y + before.height - 3);
+  // The bottom-right corner's own handle, at its middle: its outermost pixels are outside the rounded corner.
+  const grip = await dialog.locator('[data-edge="se"]').boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
   await page.mouse.move(before.x + before.width + 200, before.y + before.height + 150, { steps: 10 });
   await page.mouse.up();
@@ -28,7 +29,7 @@ if (before !== null) {
   const after = await dialog.boundingBox();
   record(after !== null && after.width > before.width + 100, `dragging its corner makes it wider (${before.width} -> ${after?.width})`);
   record(after !== null && after.height > before.height + 50, `and taller (${before.height} -> ${after?.height})`);
-  record(after !== null && after.x < before.x, `growing to the left as well, since it stays centred (${before.x} -> ${after?.x})`);
+  record(after !== null && after.x === before.x && after.y === before.y, `the left and top edges stay where they were (${before.x} -> ${after?.x})`);
 }
 
 await finish(browser);

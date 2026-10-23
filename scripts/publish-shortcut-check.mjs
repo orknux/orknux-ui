@@ -121,7 +121,7 @@ page.on('request', (request) => {
 });
 
 const publish = page.locator('button[aria-label^="Publish"]');
-const badge = page.locator('[class*="_badge_"]').first();
+const badge = page.locator('[class*="_toolbar_"] span[class*="_badge_"]').first();
 
 async function openEditor() {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, { waitUntil: 'domcontentloaded' });

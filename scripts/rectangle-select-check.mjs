@@ -36,12 +36,13 @@ try {
   await page.locator('.react-flow__node').nth(2).waitFor({ timeout: 20_000 });
   await page.waitForTimeout(1000);
 
-  // The button is on the toolbar, right before Add, off by default.
+  // The button is on the toolbar, right before Joint and Add, off by default.
   const add = await page.getByRole('button', { name: /^Add node/ }).boundingBox();
+  const joint = await page.getByRole('button', { name: /^Joint/ }).boundingBox();
   const button = await toggle().boundingBox();
   record(
-    add !== null && button !== null && Math.abs(button.y - add.y) < 2 && button.x < add.x && add.x - (button.x + button.width) < 16,
-    `the switch is on the toolbar before Add (${button && add ? `${Math.round(add.x - (button.x + button.width))}px before it` : 'missing'})`,
+    add !== null && joint !== null && button !== null && Math.abs(button.y - add.y) < 2 && button.x < joint.x && joint.x < add.x && joint.x - (button.x + button.width) < 16,
+    `the switch is on the toolbar, before Joint and Add (${button && joint ? `${Math.round(joint.x - (button.x + button.width))}px before Joint` : 'missing'})`,
   );
   record(!(await pressed()), 'it starts off');
 

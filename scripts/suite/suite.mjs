@@ -930,7 +930,7 @@ export const TESTS = [
   },
   {
     name: 'template-dialog-resize-check',
-    what: 'Use a template grows from its corner, to both sides and both ways',
+    what: 'Use a template grows from the corner dragged, both ways, and the opposite edges stay',
     needs: ['workspace'],
     // Opens Use template on the agents list and closes the page.
   },

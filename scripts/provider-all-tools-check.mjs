@@ -87,7 +87,7 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/models/providers/${ollama.id}`, 
 const fresh = await drawnAs();
 record(fresh.on, `the Ollama provider's page opens with the switch on (aria-checked ${fresh.on})`);
 record(/default/i.test(fresh.said), `and says it is the type's default ("${fresh.said}")`);
-record(fresh.cap === '' && fresh.placeholder === '128', `its cap is empty, showing the type's 128 (${fresh.cap} / ${fresh.placeholder})`);
+record(fresh.cap === '' && fresh.placeholder === '200', `its cap is empty, showing the type's 200 (${fresh.cap} / ${fresh.placeholder})`);
 
 /* --------------------------------------------- pressed, and a cap typed */
 

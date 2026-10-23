@@ -91,7 +91,7 @@ if (switched) {
 record(new URL(page.url()).search === '', 'the address is bare until something is chosen');
 
 await page.getByRole('tab', { name: 'Catalog' }).click();
-await page.waitForSelector('text=Marketplace', { timeout: 10_000 });
+await page.waitForSelector('nav[aria-label="Catalog"] button', { timeout: 10_000 });
 
 /*
  * Where somebody is, kept in the address: a link lands where it was sent
