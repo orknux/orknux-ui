@@ -50,10 +50,19 @@ if (await drawn(page, 'the chat log')) {
       one.className.includes('userBubble'),
     );
     const b = button.getBoundingClientRect();
+    /*
+     * The row of controls the copy button is in, rather than the button alone:
+     * since 0e1489f a chat ending on the person's own message offers "Answer
+     * this" beside it, so the copy button is no longer the last control and its
+     * own right edge sits one control short of the bubble's (1366 against 1400).
+     * The row is what is placed under the bubble; the buttons line up in it.
+     */
+    const row = button.closest('[class*="rowActions"]');
+    const r = (row ?? button).getBoundingClientRect();
     const u = bubble.getBoundingClientRect();
     return {
       top: Math.round(b.top),
-      right: Math.round(b.right),
+      right: Math.round(r.right),
       bubbleBottom: Math.round(u.bottom),
       bubbleRight: Math.round(u.right),
       bubbleLeft: Math.round(u.left),
@@ -68,7 +77,7 @@ if (await drawn(page, 'the chat log')) {
   );
   record(
     placed.right === placed.bubbleRight,
-    `it shares the bubble's right edge: control ${placed.right}, bubble ${placed.bubbleRight} ` +
+    `its row of controls shares the bubble's right edge: controls ${placed.right}, bubble ${placed.bubbleRight} ` +
       `(the bubble's left edge is ${placed.bubbleLeft}, so a control aligned to the column would not match)`,
   );
   record(
