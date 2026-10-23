@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import { dependantLabel, dependantPath, fetchDependants } from '../api/dependants';
 import type { Dependant, DependencyKind } from '../api/dependants';
+import { DependencyGraphDialog } from './DependencyGraphDialog';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
@@ -181,6 +182,10 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
   const [entries, setEntries] = useState<Dependant[] | null>(null);
   const [hidden, setHidden] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [graphOpen, setGraphOpen] = useState(false);
+  // The graph is a workspace's, so it is offered where there is one: not for a library, which is the installation's.
+  const { workspaceId } = useParams();
+  const graphable = workspaceId !== undefined && componentId !== '' && kind !== 'LIBRARY';
 
   const load = useCallback(() => {
     // Nothing saved yet is used by nothing, and a page drawing this while
@@ -217,6 +222,11 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
             this is what points at it now.
           </FieldHint>
         </span>
+        {graphable && (
+          <button type="button" className={styles.graphButton} onClick={() => setGraphOpen(true)} data-dependency-graph-open="">
+            {t('Dependency graph')}
+          </button>
+        )}
       </h2>
       {error !== null && (
         <p className={styles.error} role="alert">
@@ -227,6 +237,15 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
         <Loader />
       ) : (
         <DependantList entries={entries} hidden={hidden} showWorkspace={kind === 'LIBRARY'} />
+      )}
+      {graphable && (
+        <DependencyGraphDialog
+          open={graphOpen}
+          onClose={() => setGraphOpen(false)}
+          workspaceId={workspaceId}
+          kind={kind}
+          componentId={componentId}
+        />
       )}
     </section>
   );

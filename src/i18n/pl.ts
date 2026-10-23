@@ -3229,6 +3229,7 @@ export const PL: Record<string, string> = {
   "Goes with it:": "Odchodzi razem z nim:",
   "No model is reached through it.": "Żaden model nie jest przez niego dostępny.",
   "Dependencies": "Zależności",
+  "Dependency graph": "Graf zależności",
   "What uses what in this workspace": "Co czego używa w tym obszarze roboczym",
   "Could not load the dependencies.": "Nie udało się wczytać zależności.",
   "Search the dependencies": "Szukaj w zależnościach",

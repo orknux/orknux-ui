@@ -378,6 +378,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'used-by-graph-check',
+    what: "a part's Used by panel opens its dependency graph: the part's chain alone, laid out by distance so no line runs behind a box",
+    needs: ['workspace'],
+  },
+  {
     name: 'reports-url-check',
     what: 'Admin > Reports keeps the report it shows in the address, through a pick and a reload',
     needs: [],
