@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchWorkflowPublications, restoreWorkflowPublication } from '../api/revisions';
 import type { WorkflowPublication } from '../api/revisions';
 import { timeAgo } from '../api/tools';
+import { CompactPagination } from './CompactPagination';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import styles from './RevisionHistory.module.css';
@@ -14,6 +15,10 @@ export interface PublicationHistoryProps {
   /** Told after a restore, so the page can say what the badge is now. */
   onRestored?: (status: string) => void;
 }
+
+/** How many publications a page holds, and the sizes offered - the ones every other pager here offers. */
+const PUBLICATION_PAGE_SIZES = [5, 10, 25];
+const PUBLICATION_PAGE_SIZE = 10;
 
 /**
  * Every publication of a workflow: its versions.
@@ -35,12 +40,16 @@ export function PublicationHistory({ workspaceId, workflowId, onRestored }: Publ
   const [publications, setPublications] = useState<WorkflowPublication[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PUBLICATION_PAGE_SIZE);
 
   const load = useCallback(() => {
     if (workspaceId === '' || workflowId === '') return;
     fetchWorkflowPublications(workspaceId, workflowId)
       .then((held) => {
         setPublications(held);
+        // Back to the first page, where the live one is - after a restore too.
+        setPage(1);
         setError(null);
       })
       .catch((cause: unknown) => {
@@ -109,7 +118,7 @@ export function PublicationHistory({ workspaceId, workflowId, onRestored }: Publ
         <p className={styles.empty}>{t('Never published.')}</p>
       ) : (
         <ul className={styles.list}>
-          {publications.map((publication) => (
+          {publications.slice((page - 1) * pageSize, page * pageSize).map((publication) => (
             <li key={publication.id} className={styles.item}>
               <div className={styles.publicationRow}>
                 <span className={styles.when}>{timeAgo(publication.publishedAt)}</span>
@@ -133,6 +142,21 @@ export function PublicationHistory({ workspaceId, workflowId, onRestored }: Publ
             </li>
           ))}
         </ul>
+      )}
+      {/* Paged where it runs long: a workflow published every day for a month is thirty rows of one page. */}
+      {publications !== null && publications.length > PUBLICATION_PAGE_SIZE && (
+        <CompactPagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={publications.length}
+          onPageChange={setPage}
+          unit={t('Publications')}
+          pageSizes={PUBLICATION_PAGE_SIZES}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
       )}
 
       {publications !== null && publications.length > 0 && (

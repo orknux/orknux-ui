@@ -383,6 +383,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'publications-paging-check',
+    what: "a workflow's publications on its settings page are paged, ten to a page",
+    needs: ['workspace'],
+  },
+  {
     name: 'workflow-title-check',
     what: 'a long workflow name in a narrow editor is cut on one line with its whole name on the title, and the toolbar keeps its height',
     needs: ['workspace'],
