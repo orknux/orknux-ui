@@ -929,6 +929,9 @@ function ParameterRow({
               setMode('VALUE');
               onUnpoint();
             }}
+            openHref={(option) =>
+              `/workspace/${workspaceId}/variables?catalog=${encodeURIComponent(option.groupKey)}&variable=${encodeURIComponent(option.field)}`
+            }
           />
         </div>
       ) : takesConnection ? (

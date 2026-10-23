@@ -366,6 +366,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'variable-goto-check',
+    what: 'a field that reads a variable links to it, and the variables page opens on that variable searched for',
+    needs: ['workspace'],
+    // Makes a catalog and a variable of its own; points only a parameter nobody answered, and clears it again.
+  },
+  {
     name: 'errors-sort-check',
     what: "the errors report's rows and what failed most often are put in the order of a pressed heading",
     needs: [],

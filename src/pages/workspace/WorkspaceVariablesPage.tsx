@@ -177,7 +177,12 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
     [workspaceId],
   );
   const [variables, setVariables] = useState<PageOf<Variable> | null>(null);
-  const [search, setSearch] = useState('');
+  /*
+   * A link to one variable - `?variable=<name>`, from a field that reads it -
+   * arrives with it searched for, so the row it was sent to see is the one on
+   * screen. Read once, on arrival; typing afterwards is the page's own.
+   */
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('variable') ?? '');
   /**
    * The order the rows are held in, by id.
    *

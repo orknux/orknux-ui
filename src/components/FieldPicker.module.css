@@ -17,6 +17,8 @@
 }
 
 .clear {
+  display: inline-flex;
+  align-items: center;
   flex: none;
   padding: 0 var(--space-8);
   background: var(--color-bg);

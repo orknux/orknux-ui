@@ -1,3 +1,5 @@
+import { useParams } from 'react-router-dom';
+
 import type { Variable } from '../api/variables';
 import type { HttpHeader } from '../api/integrations';
 import plusIcon from '../assets/plus.svg';
@@ -53,6 +55,8 @@ export function HeaderRowsEditor({
   heading = t('Custom Headers'),
   variables,
 }: HeaderRowsEditorProps) {
+  const { workspaceId = '' } = useParams();
+
   function update(index: number, patch: Partial<HeaderRow>) {
     onChange(headers.map((header, at) => (at === index ? { ...header, ...patch } : header)));
   }
@@ -169,6 +173,11 @@ export function HeaderRowsEditor({
                   onChange={(option) => update(index, { variableId: option.expression, value: '' })}
                   // No reference and an empty value: the row as Value with nothing typed.
                   onClear={() => update(index, { variableId: null, value: '' })}
+                  openHref={(option) =>
+                    workspaceId === ''
+                      ? null
+                      : `/workspace/${workspaceId}/variables?catalog=${encodeURIComponent(option.groupKey)}&variable=${encodeURIComponent(option.field)}`
+                  }
                 />
               </div>
             ) : (

@@ -1,5 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
+import { Link } from 'react-router-dom';
+
+import externalLinkIcon from '../assets/external-link.svg';
 import styles from './FieldPicker.module.css';
 import { t } from '../i18n';
 
@@ -61,6 +64,12 @@ export interface FieldPickerProps {
    * that cannot store "no reference" must not offer to.
    */
   onClear?: () => void;
+  /**
+   * Where the chosen option is kept - a variable's own row - or null where it
+   * has no page. Given, an open link sits beside the clear, so what a field
+   * reads is one press away rather than a search through another page.
+   */
+  openHref?: (option: FieldOption) => string | null;
 }
 
 /**
@@ -74,7 +83,7 @@ export interface FieldPickerProps {
  * Searchable because a graph of any size produces more fields than fit on a
  * screen, and the one you want is usually known by name.
  */
-export function FieldPicker({ options, value, onChange, label, labels = FIELD_LABELS, onClear }: FieldPickerProps) {
+export function FieldPicker({ options, value, onChange, label, labels = FIELD_LABELS, onClear, openHref }: FieldPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [at, setAt] = useState(0);
@@ -253,6 +262,24 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
             ×
           </button>
         )}
+        {(() => {
+          const href = chosen === undefined || openHref === undefined ? null : openHref(chosen);
+          if (href === null || chosen === undefined) return null;
+          return (
+            // A tab of its own, so whatever is half-typed on this page stays.
+            <Link
+              to={href}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.clear}
+              title={`${t('Open')} ${chosen.field}`}
+              aria-label={`${t('Open')} ${chosen.field}`}
+              data-reference-open=""
+            >
+              <img src={externalLinkIcon} alt="" width={12} height={12} />
+            </Link>
+          );
+        })()}
       </div>
 
       {open && (
