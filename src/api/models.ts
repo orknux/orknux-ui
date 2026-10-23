@@ -640,6 +640,40 @@ export function formatLatency(millis: number): string {
   return `${Math.round(millis)}ms`;
 }
 
+/**
+ * How fast a provider read prompts and wrote answers, as it reported, over
+ * some calls: every token over every millisecond, not a mean of rates.
+ *
+ * Only a provider that reports timings has one - llama.cpp does, OpenAI, vLLM
+ * and the rest do not - and where none did the server answers null rather than
+ * a speed worked out from how long a call took.
+ */
+export interface ModelSpeed {
+  /** How many calls that reported timings these are over. */
+  calls: number;
+  /** Null where the milliseconds add up to nothing, as a prompt served whole from cache does. */
+  promptTokensPerSecond: number | null;
+  generatedTokensPerSecond: number | null;
+}
+
+export const MODEL_SPEED_FIELDS = 'calls promptTokensPerSecond generatedTokensPerSecond';
+
+/** A model's speed over its newest calls that reported one, as many as Admin Settings says; null where none did. */
+export async function fetchModelSpeed(id: string): Promise<ModelSpeed | null> {
+  const data = await graphql<{ model: { speed: ModelSpeed | null } | null }>(
+    `query ModelSpeed($id: ID!) { model(id: $id) { speed { ${MODEL_SPEED_FIELDS} } } }`,
+    { id },
+  );
+  return data.model?.speed ?? null;
+}
+
+/** 2666.67 -> "2,667 tok/s", 66.67 -> "66.7 tok/s"; a dash where there is no figure. */
+export function formatSpeed(perSecond: number | null): string {
+  if (perSecond === null) return '—';
+  const shown = perSecond >= 100 ? Math.round(perSecond).toLocaleString('en-US') : perSecond.toFixed(1);
+  return `${shown} tok/s`;
+}
+
 /** 0.082 -> "+8.2%"; null when there was no earlier window to compare with. */
 export function formatChange(fraction: number | null): string | null {
   if (fraction === null) return null;

@@ -3,14 +3,16 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
+  fetchModelSpeed,
   fetchModelUsage,
   formatChange,
   formatCompact,
   formatLatency,
+  formatSpeed,
   formatTokens,
   removeModel,
 } from '../../api/models';
-import type { ModelUsage } from '../../api/models';
+import type { ModelSpeed, ModelUsage } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
@@ -31,7 +33,7 @@ import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import { UsageChart } from './UsageChart';
 import styles from './ModelSettingsPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface ModelSettingsPageProps {
   session: SessionUser;
@@ -96,6 +98,27 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
       abandoned = true;
     };
   }, [modelId, asked]);
+
+  /*
+   * How fast the provider says it read and wrote, over the model's newest
+   * calls - its own request, since it is not about the date window and a
+   * failure here is no reason to lose the rest. Null, and nothing drawn,
+   * where the provider reports no timings.
+   */
+  const [speed, setSpeed] = useState<ModelSpeed | null>(null);
+  useEffect(() => {
+    let abandoned = false;
+    fetchModelSpeed(modelId)
+      .then((held) => {
+        if (!abandoned) setSpeed(held);
+      })
+      .catch(() => {
+        if (!abandoned) setSpeed(null);
+      });
+    return () => {
+      abandoned = true;
+    };
+  }, [modelId]);
 
   /** Enter in any box on any of the three cards is the same press as the header's Save. */
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -248,6 +271,21 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
                 </button>
               )}
             </div>
+
+            {/*
+              The provider's own speeds, over the newest calls that reported
+              them rather than over the dates above: drawn only for a provider
+              that reports timings, and never worked out from latency.
+            */}
+            {speed !== null && (
+              <div data-model-speed="">
+                <p className={styles.chartTitle}>{speed.calls === 1 ? t('Speed over the last call') : tf('Speed over the last {count} calls', { count: speed.calls })}</p>
+                <div className={styles.statsRow}>
+                  <Stat label={t('Prompt speed')} value={formatSpeed(speed.promptTokensPerSecond)} change={null} good />
+                  <Stat label={t('Generation speed')} value={formatSpeed(speed.generatedTokensPerSecond)} change={null} good />
+                </div>
+              </div>
+            )}
 
             {usageError !== null ? (
               <p className={styles.emptyMetrics}>{usageError}</p>

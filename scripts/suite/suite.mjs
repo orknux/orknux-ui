@@ -933,6 +933,12 @@ export const TESTS = [
     /* The session and the workspace's switch are stubbed; the fields are asked of the running server. */
   },
   {
+    name: 'model-speed-check',
+    what: "A session page and a model page show the prompt and generation speeds the provider reported, and nothing where it reported none",
+    needs: ['workspace'],
+    /* The session and the model's speed are stubbed; the fields are asked of the running server. Takes any chat model. */
+  },
+  {
     name: 'session-timers-check',
     what: "A session page's Timers panel lists the reminders its agent set, waiting first and soonest first, with each note and when it comes up",
     needs: ['workspace'],
