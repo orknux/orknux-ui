@@ -101,7 +101,8 @@ try {
   const serverRow = page.getByTestId('integration-templates').locator(`[data-integration-template="${SERVER_TEMPLATE}"]`);
   await serverRow.waitFor({ timeout: 10_000 }).catch(() => undefined);
   await serverRow.getByRole('button', { name: `Use ${SERVER_TEMPLATE}` }).click();
-  const serverNote = page.getByTestId('integrations-template-note');
+  // The connection's note is still up for a moment after Use; wait for the server's own.
+  const serverNote = page.getByTestId('integrations-template-note').filter({ hasText: 'MCP servers added' });
   const serverSaid = (await serverNote.innerText({ timeout: 10_000 }).catch(() => '')).replace(/\s+/g, ' ');
   record(serverSaid.includes('1 MCP servers added') && serverSaid.includes(SERVER), `Use makes the server and asks for its credential (${serverSaid})`);
   const serverHref = (await serverNote.locator(`[data-needs-credential="${SERVER}"]`).getAttribute('href').catch(() => null)) ?? '';
