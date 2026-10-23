@@ -4417,6 +4417,19 @@ export const TESTS = [
      */
   },
   {
+    name: 'provider-status-dirty-check',
+    what: "an edit on a provider's page stays an edit, and Save stays on, when the check a save set off lands",
+    needs: ['workspace'],
+    /*
+     * Issue #652. The page polls for the check a save sets off and replaced its
+     * copy of the provider with the answer, which is what "changed" was
+     * measured from - so an edit made in those seconds read as saved and Save
+     * went grey. provider-credential-check met it in CI only, where the runner
+     * was slow enough for the answer to land between a choice and its save;
+     * here the answer is timed by the check rather than by the runner.
+     */
+  },
+  {
     name: 'slack-reconnect-check',
     what: "a Slack connection's socket state on one line, with a Reconnect button that redraws it from the server's answer",
     needs: ['workspace'],

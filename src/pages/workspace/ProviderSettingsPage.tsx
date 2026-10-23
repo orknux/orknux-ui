@@ -182,6 +182,15 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
   /** The models reached through the provider, named in that question; null until read. */
   const [goingModels, setGoingModels] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
+  /*
+   * How many times the boxes were filled from a stored provider - a load, a
+   * save, a Discard. What "changed" is measured from moves with this and not
+   * with `provider`, because the check a save sets off lands seconds later and
+   * replaces `provider` to show its status while the boxes keep what is being
+   * typed: measured from that, an edit made in those seconds read as already
+   * saved, and Save went grey under it.
+   */
+  const [loaded, setLoaded] = useState(0);
   const [testing, setTesting] = useState(false);
   /** What Test found on the form as it stands; cleared by a save, which the stored status then speaks for. */
   const [checked, setChecked] = useState<{ connected: boolean; message: string } | null>(null);
@@ -270,6 +279,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
 
   function apply(found: ModelProvider) {
     setProvider(found);
+    setLoaded((held) => held + 1);
     setName(found.name);
     setType(found.type);
     setEndpoint(found.endpoint);
@@ -499,7 +509,7 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
    * long as the create lasts: the row Test has to save is not the create
    * finished, so Create stays on.
    */
-  const changed = useDirty(values(), [adding ? null : provider]);
+  const changed = useDirty(values(), [adding ? null : loaded]);
 
   return (
     <AppShell
