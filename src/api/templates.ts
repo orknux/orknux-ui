@@ -39,6 +39,12 @@ export interface ComponentTemplate {
   ofModels: boolean;
   /** For a template of models, each as name (provider). */
   models: string[];
+  /** A template of connections and MCP servers rather than components; `connections` and `mcpServers` say what it holds. */
+  ofIntegrations: boolean;
+  /** For a template of integrations, its connections by name. */
+  connections: string[];
+  /** For a template of integrations, its MCP servers by name. */
+  mcpServers: string[];
   /** False when the stored envelope is from a version this cannot read. */
   usable: boolean;
   /** Why not, in words, when `usable` is false. */
@@ -59,7 +65,7 @@ export interface ComponentTemplateInput {
 const TEMPLATE_FIELDS = `
   id name description formatVersion producedBy depth kinds componentCount
   usable problem createdAt createdBy lastModifiedAt lastModifiedBy
-  contents { kind name } ofModels models
+  contents { kind name } ofModels models ofIntegrations connections mcpServers
 `;
 
 /** Every template, or only the ones carrying a kind. */
@@ -205,6 +211,8 @@ export function contentsSummary(template: ComponentTemplate): string {
     const form = new Intl.PluralRules(currentLanguage()).select(count);
     return count === 1 ? tf('{count} model', { count }, form) : tf('{count} models', { count }, form);
   }
+  // Named rather than counted: one is made from one row, and its name is what somebody is looking for.
+  if (template.ofIntegrations && template.usable) return [...template.connections, ...template.mcpServers].join(', ');
   if (template.contents.length === 0) return t('Nothing this installation can read');
   const counted = new Map<ComponentKind, number>();
   template.contents.forEach((held) => counted.set(held.kind, (counted.get(held.kind) ?? 0) + 1));

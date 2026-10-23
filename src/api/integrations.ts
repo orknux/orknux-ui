@@ -812,6 +812,83 @@ export async function revealMcpServerSecret(id: string): Promise<string | null> 
   return data.revealMcpServerSecret;
 }
 
+/**
+ * A template of connections and MCP servers: the installation's, offered on
+ * every workspace's Integrations page. Issue #646. Made from a row, as a
+ * template of models is, and holding the settings without the credentials.
+ */
+export interface IntegrationTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  /** The connections in it, by name. */
+  connections: string[];
+  /** The MCP servers in it, by name. */
+  mcpServers: string[];
+}
+
+/** Which of the two an integration is. */
+export type IntegrationKind = 'CONNECTION' | 'MCP_SERVER';
+
+/** A row a used template made without the credential it held where it came from. */
+export interface IntegrationNeed {
+  kind: IntegrationKind;
+  id: string;
+  name: string;
+}
+
+/** What using a template made, and what it left alone. */
+export interface IntegrationImport {
+  connections: string[];
+  mcpServers: string[];
+  needsCredential: IntegrationNeed[];
+  /** Names left alone because the workspace already has one. */
+  skipped: string[];
+}
+
+const INTEGRATION_TEMPLATE_FIELDS = 'id name description connections mcpServers';
+
+/** The templates of connections and MCP servers, by name. */
+export async function fetchIntegrationTemplates(): Promise<IntegrationTemplate[]> {
+  const data = await graphql<{ integrationTemplates: IntegrationTemplate[] }>(
+    `query IntegrationTemplates { integrationTemplates { ${INTEGRATION_TEMPLATE_FIELDS} } }`,
+  );
+  return data.integrationTemplates;
+}
+
+/** Publishes one connection, without its credentials, as a template. Administrators. */
+export async function saveConnectionAsTemplate(workspaceId: string, id: string, name: string, description: string | null): Promise<IntegrationTemplate> {
+  const data = await graphql<{ saveConnectionAsTemplate: IntegrationTemplate }>(
+    `mutation SaveConnectionAsTemplate($workspaceId: ID!, $id: ID!, $name: String!, $description: String) {
+       saveConnectionAsTemplate(workspaceId: $workspaceId, id: $id, name: $name, description: $description) { ${INTEGRATION_TEMPLATE_FIELDS} }
+     }`,
+    { workspaceId, id, name, description },
+  );
+  return data.saveConnectionAsTemplate;
+}
+
+/** Publishes one MCP server, without its credential, as a template. Administrators. */
+export async function saveMcpServerAsTemplate(workspaceId: string, id: string, name: string, description: string | null): Promise<IntegrationTemplate> {
+  const data = await graphql<{ saveMcpServerAsTemplate: IntegrationTemplate }>(
+    `mutation SaveMcpServerAsTemplate($workspaceId: ID!, $id: ID!, $name: String!, $description: String) {
+       saveMcpServerAsTemplate(workspaceId: $workspaceId, id: $id, name: $name, description: $description) { ${INTEGRATION_TEMPLATE_FIELDS} }
+     }`,
+    { workspaceId, id, name, description },
+  );
+  return data.saveMcpServerAsTemplate;
+}
+
+/** Reads a template of integrations into the workspace; a name already there is left alone. */
+export async function applyIntegrationTemplate(workspaceId: string, id: string): Promise<IntegrationImport> {
+  const data = await graphql<{ useIntegrationTemplate: IntegrationImport }>(
+    `mutation UseIntegrationTemplate($workspaceId: ID!, $id: ID!) {
+       useIntegrationTemplate(workspaceId: $workspaceId, id: $id) { connections mcpServers skipped needsCredential { kind id name } }
+     }`,
+    { workspaceId, id },
+  );
+  return data.useIntegrationTemplate;
+}
+
 /** How the status column reads. */
 export function statusLabel(status: ConnectionStatus): string {
   switch (status) {

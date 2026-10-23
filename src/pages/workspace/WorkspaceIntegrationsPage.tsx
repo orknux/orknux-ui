@@ -7,9 +7,13 @@ import {
   fetchMcpServers,
   fetchPluginConnectionTypes,
   fetchWorkspaceConnections,
+  saveConnectionAsTemplate,
+  saveMcpServerAsTemplate,
   statusLabel,
 } from '../../api/integrations';
-import type { ConnectionStatus, McpServer, PluginConnectionType, WorkspaceConnection } from '../../api/integrations';
+import type { ConnectionStatus, IntegrationImport, IntegrationKind, McpServer, PluginConnectionType, WorkspaceConnection } from '../../api/integrations';
+import { SaveAsTemplateButton } from '../../components/ComponentTransfer';
+import { IntegrationTemplatesDialog } from '../../components/IntegrationTemplatesDialog';
 import type { SessionUser } from '../../api/session';
 import settingsIcon from '../../assets/settings-14.svg';
 import { AppShell } from '../../components/AppShell';
@@ -28,7 +32,7 @@ import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceIntegrationsPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface WorkspaceIntegrationsPageProps {
   session: SessionUser;
@@ -186,6 +190,49 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
   const shownConnections = slice<WorkspaceConnection>(arrangedConnections, connectionPage, connectionSize);
   const [addingServer, setAddingServer] = useState(false);
   const [addingConnection, setAddingConnection] = useState(false);
+  /** Which card's Use a template dialog is open, if either. Issue #646. */
+  const [templating, setTemplating] = useState<IntegrationKind | null>(null);
+  /** What a used template made, under the card that used it, with what now needs a credential. */
+  const [used, setUsed] = useState<{ kind: IntegrationKind; done: IntegrationImport } | null>(null);
+
+  /**
+   * The line a used template leaves under its card: how many arrived, how many
+   * were already here, and a link to each row whose credential stayed behind -
+   * which is the page asking for it.
+   */
+  function usedNote(kind: IntegrationKind) {
+    if (used === null || used.kind !== kind) return null;
+    const { done } = used;
+    const parts = [
+      kind === 'CONNECTION'
+        ? tf('{count} connections added', { count: done.connections.length })
+        : tf('{count} MCP servers added', { count: done.mcpServers.length }),
+    ];
+    if (done.skipped.length > 0) parts.push(tf('{count} already here', { count: done.skipped.length }));
+    return (
+      <p className={styles.transferNote} role="status" data-testid="integrations-template-note">
+        {parts.join(' · ')}
+        {done.needsCredential.length > 0 && (
+          <>
+            {' · '}
+            {t('add a credential to')}{' '}
+            {done.needsCredential.map((need, at) => (
+              <span key={`${need.kind}:${need.id}`}>
+                {at > 0 && ', '}
+                <Link
+                  className={styles.noteLink}
+                  to={`/workspace/${workspaceId}/integrations/${need.kind === 'CONNECTION' ? 'connections' : 'servers'}/${need.id}`}
+                  data-needs-credential={need.name}
+                >
+                  {need.name}
+                </Link>
+              </span>
+            ))}
+          </>
+        )}
+      </p>
+    );
+  }
 
   const load = useCallback(() => {
     if (workspaceId === '') return;
@@ -235,8 +282,20 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <h2 id="mcp-servers" className={styles.cardTitle}>{t('MCP Servers')}</h2>
-          <button type="button" className={styles.addButton} onClick={() => setAddingServer(true)}>{t('+ Add Server')}</button>
+          <span className={styles.headerButtons}>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => setTemplating('MCP_SERVER')}
+              title={t('Add MCP servers from a template')}
+              data-testid="mcp-servers-use-template"
+            >
+              {t('Use a template')}
+            </button>
+            <button type="button" className={styles.addButton} onClick={() => setAddingServer(true)}>{t('+ Add Server')}</button>
+          </span>
         </div>
+        {usedNote('MCP_SERVER')}
         <SearchRow inset>
           <SearchBox
             value={serverTyped}
@@ -311,6 +370,17 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
               {reachableLabel(server.reachable)}
             </span>
             <span className={styles.colActions}>
+              {/* As a model's row makes one: this server, with its settings and without its credential. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <SaveAsTemplateButton
+                  workspaceId={workspaceId}
+                  id={server.id}
+                  name={server.name}
+                  className={styles.rowAction}
+                  canPublish={session.admin}
+                  save={(input) => saveMcpServerAsTemplate(workspaceId, server.id, input.name, input.description)}
+                />
+              </span>
               <Link
                 className={styles.rowAction}
                 to={`/workspace/${workspaceId}/integrations/servers/${server.id}`}
@@ -348,8 +418,20 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
               {t('Connections inherited from admin defaults. Override credentials per connection.')}
             </p>
           </div>
-          <button type="button" className={styles.addButton} onClick={() => setAddingConnection(true)}>{t('+ Add Connection')}</button>
+          <span className={styles.headerButtons}>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              onClick={() => setTemplating('CONNECTION')}
+              title={t('Add connections from a template')}
+              data-testid="connections-use-template"
+            >
+              {t('Use a template')}
+            </button>
+            <button type="button" className={styles.addButton} onClick={() => setAddingConnection(true)}>{t('+ Add Connection')}</button>
+          </span>
         </div>
+        {usedNote('CONNECTION')}
 
         <SearchRow inset>
           <SearchBox
@@ -448,6 +530,17 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
               {statusLabel(connection.status)}
             </span>
             <span className={styles.colActions}>
+              {/* This connection, with its settings and without its credentials. */}
+              <span onClick={(event) => event.stopPropagation()}>
+                <SaveAsTemplateButton
+                  workspaceId={workspaceId}
+                  id={connection.id}
+                  name={connection.name}
+                  className={styles.rowAction}
+                  canPublish={session.admin}
+                  save={(input) => saveConnectionAsTemplate(workspaceId, connection.id, input.name, input.description)}
+                />
+              </span>
               <Link
                 className={styles.rowAction}
                 to={`/workspace/${workspaceId}/integrations/connections/${connection.id}`}
@@ -480,6 +573,17 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
         onClose={() => setAddingServer(false)}
         onCreated={() => {
           setAddingServer(false);
+          load();
+        }}
+      />
+      <IntegrationTemplatesDialog
+        workspaceId={workspaceId}
+        kind={templating ?? 'CONNECTION'}
+        open={templating !== null}
+        onClose={() => setTemplating(null)}
+        onUsed={(done) => {
+          setUsed({ kind: templating ?? 'CONNECTION', done });
+          setTemplating(null);
           load();
         }}
       />

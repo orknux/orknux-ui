@@ -79,6 +79,39 @@
   cursor: pointer;
 }
 
+/* Use a template beside Add, as the Models page has it. Issue #646. */
+.headerButtons {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-8);
+}
+
+.ghostButton {
+  padding: var(--space-8) var(--space-14);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* What a used template made, under the card that used it. */
+.transferNote {
+  margin: 0;
+  padding: var(--space-8) var(--space-24) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* A row whose credential stayed behind, linked so it can be given one. */
+.noteLink {
+  color: var(--color-accent-brand);
+  text-decoration: underline;
+}
+
 /* ---- Tables ---- */
 
 .tableHeader,
@@ -131,6 +164,7 @@
 .colActions {
   display: flex;
   flex-shrink: 0;
+  gap: var(--space-8);
   justify-content: flex-end;
   width: 80px;
 }
