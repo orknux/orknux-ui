@@ -1,0 +1,40 @@
+/*
+ * Admin -> Settings -> Limits. Issue #453. The rows borrow the page's own
+ * `.setting` card and number box; what is here is the group heading and the
+ * way back to the configured default.
+ */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.groupHeading {
+  margin: 0;
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.reset {
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.reset:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger-solid);
+}

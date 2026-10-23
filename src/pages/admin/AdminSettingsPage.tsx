@@ -114,6 +114,7 @@ import { SchedulesSection } from './SchedulesSection';
 import { AddressSection } from './AddressSection';
 import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
+import { TunablesSection } from './TunablesSection';
 import type { PendingWrite } from './LogLevelsSection';
 import { ReportSwitches } from './ReportSwitches';
 import { t } from '../../i18n';
@@ -259,6 +260,9 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   // Admin -> Settings -> Bulkheads, its numbers sent with the page's Save. Issue #616.
   const [bulkheadPending, setBulkheadPending] = useState<PendingWrite[]>([]);
   const takeBulkheadPending = useCallback((writes: PendingWrite[]) => setBulkheadPending(writes), []);
+  /** What the Limits section holds that differs from the server, sent with the rest. Issue #453. */
+  const [tuningPending, setTuningPending] = useState<PendingWrite[]>([]);
+  const takeTuningPending = useCallback((writes: PendingWrite[]) => setTuningPending(writes), []);
   const [downloadSeconds, setDownloadSeconds] = useState('');
   /** How a broken server jar download is retried. Issue #602. */
   const [downloadAttempts, setDownloadAttempts] = useState('');
@@ -567,7 +571,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     watcherPending.length > 0 ||
     schedulePending.length > 0 ||
     addressPending.length > 0 ||
-    bulkheadPending.length > 0;
+    bulkheadPending.length > 0 ||
+    tuningPending.length > 0;
 
   /**
    * Every changed number, one call each, in the order they appear.
@@ -598,6 +603,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
       for (const write of schedulePending) await write();
       for (const write of addressPending) await write();
       for (const write of bulkheadPending) await write();
+      for (const write of tuningPending) await write();
       setSettings(held);
       setMarker(held.commandMarker);
       setRetention(String(held.revisionRetentionDays));
@@ -3004,6 +3010,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                 <span className={styles.retentionUnit}>{t('levels')}</span>
               </div>
             </div>
+            {/* Every other number the server behaves by, as the server lists them. Issue #453. */}
+            <TunablesSection onPending={takeTuningPending} />
 
             <h2 id="plugins" className={styles.sectionHeading}>{t('Plugins')}</h2>
 

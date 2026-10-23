@@ -3592,6 +3592,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'limits-check',
+    what: 'Admin Settings draws a box for every number the server lists under Limits, saves one, refuses out of range and goes back to the default',
+    needs: ['session'],
+    /*
+     * Issue #453. The list is the server's, so the box count is measured
+     * against what it answers rather than a number written here. Leaves the
+     * number it changes as it found it.
+     */
+  },
+  {
     name: 'sessions-list-columns-check',
     what: 'the sessions list shows a green dot for an active session, a count of the subagents each fanned out into, and catches up on Refresh and Auto',
     needs: ['workspace'],
