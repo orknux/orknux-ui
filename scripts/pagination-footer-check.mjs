@@ -220,6 +220,8 @@ const LISTS = [
   { file: 'AdminIntegrationsPage.tsx', path: null, title: 'Integrations', unit: 'default connections', sourceOnly: true, column: null },
   { file: 'AdminReportsPage.tsx', path: null, title: 'Reports', unit: 'people', sourceOnly: true, column: null },
   { file: 'RatingsReport.tsx', path: null, title: 'Reports', unit: 'reviews', sourceOnly: true, column: null },
+  // The Errors report beside it, one failed run, agent or quick chat a row.
+  { file: 'ErrorsReport.tsx', path: null, title: 'Reports', unit: 'errors', sourceOnly: true, column: null },
   { file: 'WorkspaceSchedulesPage.tsx', path: null, title: 'Schedules', unit: 'schedules', sourceOnly: true, column: null },
   { file: 'AdminBoxPage.tsx', path: null, title: 'Box', unit: 'sessions', sourceOnly: true, column: null },
   {
