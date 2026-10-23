@@ -1155,8 +1155,13 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       .then(setReviews)
       .catch(() => setReviews([]));
   }, [currentId]);
-  // Again as answers land: rate_session sends one from inside a turn.
-  useEffect(loadReviews, [loadReviews, messages.length]);
+  /*
+   * Again as answers land, and as each of the agent's calls comes back:
+   * rate_session sends one from inside a turn, after the answer's own line is
+   * already on the page, so the count of messages does not move and the
+   * review waited for a reload. And once more when the turn is over.
+   */
+  useEffect(loadReviews, [loadReviews, messages.length, finishedCalls, sending]);
 
   const loadRequests = useCallback(() => {
     if (requestsSession === null) {
@@ -4605,9 +4610,12 @@ function ReviewLine({ review, taken }: { review: ChatReview; taken: boolean }) {
     return (
       <div className={styles.reviewRow}>
         <div className={`${styles.reviewCard} ${styles.reviewTaken}`} data-testid="chat-review-taken">
-          <span className={styles.reviewWho}>
-            {tf('{name} took back their review ({score} out of 5)', { name: review.personName ?? '', score: String(review.score) })}
-          </span>
+          {/* In the card's head, which is what sets the line's size: on its own it took the page's. */}
+          <div className={styles.reviewHead}>
+            <span className={styles.reviewWho}>
+              {tf('{name} took back their review ({score} out of 5)', { name: review.personName ?? '', score: String(review.score) })}
+            </span>
+          </div>
         </div>
       </div>
     );

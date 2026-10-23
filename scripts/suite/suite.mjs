@@ -373,6 +373,11 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
+    name: 'chat-review-live-check',
+    what: 'a review the agent sends from inside a turn is drawn in the chat at once, not after a reload',
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-review-taken-check',
     what: 'a review taken back stays in the chat marked as such, with a line where it was taken back',
     needs: ['workspace'],

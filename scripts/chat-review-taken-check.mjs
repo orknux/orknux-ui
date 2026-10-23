@@ -34,5 +34,11 @@ record(((await card.first().textContent()) ?? '').includes('taken back'), 'and s
 const line = page.getByTestId('chat-review-taken');
 record((await line.count()) === 1, 'a line says where it was taken back');
 record(((await line.first().textContent()) ?? '').includes('alice took back their review (4 out of 5)'), `in words (${await line.first().textContent().catch(() => '')})`);
+// The same size as the card it stands for, not the page's.
+const sizes = await page.evaluate(() => ['chat-review-taken', 'chat-review'].map((id) => {
+  const words = document.querySelector(`[data-testid="${id}"] [class*="reviewHead"] > span:last-child`);
+  return words === null ? 0 : parseFloat(getComputedStyle(words).fontSize);
+}));
+record(sizes[0] > 0 && sizes[0] === sizes[1], `in the same size as the review's own line (${sizes.join(' / ')}px)`);
 
 await finish(browser);
