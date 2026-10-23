@@ -780,6 +780,12 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-question-in-answer-check',
+    what: 'an answered question is drawn inside the answer of the turn that asked it',
+    needs: ['workspace'],
+  },
+
+  {
     name: 'chat-thinking-split-check',
     what: 'thinking after a tool call is a folded section of its own, in its place among the calls',
     needs: ['workspace'],

@@ -1265,6 +1265,19 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     true,
     false,
   );
+  /*
+   * A question placed just before an answer was asked during the turn that
+   * answer ends - the answer is dated when it lands, after the question - so it
+   * is drawn inside that answer, under the agent's name, rather than as a card
+   * between the person's message and the agent's reply, where it read as
+   * nobody's.
+   */
+  const requestsInAnswer = new Map<number, typeof answeredRequests>();
+  for (const [at, placed] of [...placedRequests]) {
+    if (messages[at]?.role !== 'assistant') continue;
+    requestsInAnswer.set(at, placed);
+    placedRequests.delete(at);
+  }
   /** The questions of the turn on screen, each before the first call the page heard of after it was asked. */
   const requestsBefore = (seenAt: number | undefined, drawn: Set<string>) =>
     turnRequests.filter((request) => {
@@ -3949,6 +3962,11 @@ ${named}`;
                       outcome have said `zoomImages` all along; this is the one
                       place a picture is actually *made*.
                     */}
+                    {(requestsInAnswer.get(index) ?? []).map((request) => (
+                      <div key={`request-${request.id}`} className={styles.requestInTurn} data-request-in-answer="">
+                        <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                      </div>
+                    ))}
                     {(picturesFor.get(index) ?? []).map((picture, at) => (
                       <Markdown key={`picture-${at}`} pictureLinks zoomImages>{picture}</Markdown>
                     ))}
