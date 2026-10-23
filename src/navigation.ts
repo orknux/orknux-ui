@@ -649,6 +649,7 @@ export const PAGES = [
       { label: t('Run history'), at: '#run-history', also: 'executions retention sweep' },
       { label: t('Queued tasks'), at: '#queued-tasks', also: 'sweep temporal interval' },
       { label: t('Logging'), at: '#logging', also: 'log level debug trace logger root' },
+      { label: t('Limits'), at: '#limits', also: 'timeout retry retry-after throttle cap http search pictures trigger npm' },
       { label: t('Plugins'), at: '#plugins', also: 'source size timeout' },
       { label: t('Workspace copies'), at: '#workspace-copies', also: 'duplicate lock wait' },
       { label: t('Server updates'), at: '#server-updates', also: 'releases kept rollback restart' },
