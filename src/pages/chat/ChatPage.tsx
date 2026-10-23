@@ -1192,12 +1192,17 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       ? answeredRequests.filter((request) => Date.parse(request.createdAt) > Date.parse(lastAsked))
       : [];
   /** Each review before the first line said after it, or at the end. */
-  const placedReviews = new Map<number, ChatReview[]>();
-  for (const review of reviews) {
-    const sent = Date.parse(review.at);
+  /** Each review where it was sent, and - for one taken back - a line where it was taken back. */
+  const placedReviews = new Map<number, { review: ChatReview; taken: boolean }[]>();
+  const place = (when: string, entry: { review: ChatReview; taken: boolean }) => {
+    const sent = Date.parse(when);
     const before = messages.findIndex((message) => message.at !== null && Date.parse(message.at) > sent);
     const at = before === -1 ? messages.length : before;
-    placedReviews.set(at, [...(placedReviews.get(at) ?? []), review]);
+    placedReviews.set(at, [...(placedReviews.get(at) ?? []), entry]);
+  };
+  for (const review of reviews) {
+    place(review.at, { review, taken: false });
+    if (review.withdrawnAt !== null) place(review.withdrawnAt, { review, taken: true });
   }
   const placedRequests = placeRequests(
     messages,
@@ -3453,7 +3458,9 @@ ${named}`;
 
             {messages.map((message, index) => (
               <Fragment key={index}>
-              {(placedReviews.get(index) ?? []).map((review) => <ReviewLine key={`review-${review.id}`} review={review} />)}
+              {(placedReviews.get(index) ?? []).map(({ review, taken }) => (
+                <ReviewLine key={`review-${review.id}-${taken}`} review={review} taken={taken} />
+              ))}
               {(placedRequests.get(index) ?? []).map((request) => (
                 <div key={`request-${request.id}`} className={styles.requestRow}>
                   <InteractionCard request={request} onAnswered={() => loadRequests()} />
@@ -3901,7 +3908,9 @@ ${named}`;
 
               </Fragment>
             ))}
-            {(placedReviews.get(messages.length) ?? []).map((review) => <ReviewLine key={`review-${review.id}`} review={review} />)}
+            {(placedReviews.get(messages.length) ?? []).map(({ review, taken }) => (
+                <ReviewLine key={`review-${review.id}-${taken}`} review={review} taken={taken} />
+              ))}
             {(placedRequests.get(messages.length) ?? []).map((request) => (
               <div key={`request-${request.id}`} className={styles.requestRow}>
                 <InteractionCard request={request} onAnswered={() => loadRequests()} />
@@ -4565,10 +4574,28 @@ function SessionRow({
 }
 
 /** A review of this chat, where it was sent: a card with its stars, who sent it, and what they wrote. */
-function ReviewLine({ review }: { review: ChatReview }) {
+function ReviewLine({ review, taken }: { review: ChatReview; taken: boolean }) {
+  // Where it was taken back: one line saying so, in the place it happened.
+  if (taken) {
+    return (
+      <div className={styles.reviewRow}>
+        <div className={`${styles.reviewCard} ${styles.reviewTaken}`} data-testid="chat-review-taken">
+          <span className={styles.reviewWho}>
+            {tf('{name} took back their review ({score} out of 5)', { name: review.personName ?? '', score: String(review.score) })}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  const withdrawn = review.withdrawnAt !== null;
   return (
     <div className={styles.reviewRow}>
-      <div className={styles.reviewCard} data-testid="chat-review" data-score={review.score}>
+      <div
+        className={withdrawn ? `${styles.reviewCard} ${styles.reviewTaken}` : styles.reviewCard}
+        data-testid="chat-review"
+        data-score={review.score}
+        data-withdrawn={withdrawn ? '' : undefined}
+      >
         <div className={styles.reviewHead}>
           <span className={styles.reviewStars} role="img" aria-label={tf('{score} out of 5', { score: String(review.score) })}>
             {[1, 2, 3, 4, 5].map((star) => (
@@ -4584,7 +4611,10 @@ function ReviewLine({ review }: { review: ChatReview }) {
               </svg>
             ))}
           </span>
-          <span className={styles.reviewWho}>{tf('{name} reviewed this chat', { name: review.personName ?? '' })}</span>
+          <span className={styles.reviewWho}>
+            {tf('{name} reviewed this chat', { name: review.personName ?? '' })}
+            {withdrawn && ` · ${t('taken back')}`}
+          </span>
         </div>
         {review.review !== null && <div className={styles.reviewWords} data-review-words="">{review.review}</div>}
       </div>

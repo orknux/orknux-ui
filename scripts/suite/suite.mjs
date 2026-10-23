@@ -373,6 +373,11 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
+    name: 'chat-review-taken-check',
+    what: 'a review taken back stays in the chat marked as such, with a line where it was taken back',
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-drawn-once-check',
     what: 'a picture a tool drew into a chat is shown once while the answer streams, not again under the answer',
     needs: ['workspace'],

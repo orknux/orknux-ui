@@ -109,12 +109,14 @@ export interface ChatReview {
   score: number;
   review: string | null;
   personName: string | null;
+  /** When it was taken back; null while it stands. */
+  withdrawnAt: string | null;
 }
 
 /** The reviews of the person's own chat, oldest first: from its menu and through rate_session alike. */
 export async function fetchChatReviews(chatId: string): Promise<ChatReview[]> {
   const data = await graphql<{ chatReviews: ChatReview[] }>(
-    'query($chatId: ID!) { chatReviews(chatId: $chatId) { id at score review personName } }',
+    'query($chatId: ID!) { chatReviews(chatId: $chatId) { id at score review personName withdrawnAt } }',
     { chatId },
   );
   return data.chatReviews;

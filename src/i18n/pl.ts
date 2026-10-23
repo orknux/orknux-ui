@@ -2016,6 +2016,8 @@ export const PL: Record<string, string> = {
   "People": "Osoby",
   "in {count} sessions": "w {count} sesjach",
   "{name} reviewed this chat": "{name} ocenia ten czat",
+  "{name} took back their review ({score} out of 5)": "{name}: recenzja wycofana ({score} na 5)",
+  "taken back": "wycofana",
   "{score} out of 5": "{score} na 5",
   "optional": "opcjonalne",
   "copy": "kopia",

@@ -2014,6 +2014,11 @@ button.attachmentName {
 }
 
 /* A review of the chat, in the thread where it was sent: a card, not a turn. */
+/* A review taken back: still there to read, quieter, and said where it happened. */
+.reviewTaken {
+  opacity: 0.6;
+}
+
 .reviewRow {
   max-width: calc(80ch + 48px);
   padding: var(--space-8) 0 var(--space-8) 48px;
