@@ -683,6 +683,11 @@ export const TESTS = [
     needs: ['session'],
   },
   {
+    name: 'integration-template-check',
+    what: "a connection and an MCP server are published as templates from their rows on Integrations and used on another workspace's, which asks for the credentials left behind",
+    needs: ['session'],
+  },
+  {
     name: 'provider-edit-mask-check',
     what: 'the edit mask is offered and saved on every provider type that edits pictures',
     needs: ['workspace'],

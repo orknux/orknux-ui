@@ -282,6 +282,19 @@ function AdminTemplateView({ session, onSignOut, onDiscard }: AdminTemplatePageP
                           <span className={styles.contentName}>{model}</span>
                         </li>
                       ))}
+                      {/* And a template of integrations holds connections and MCP servers, without their credentials. */}
+                      {template.ofIntegrations && template.connections.map((name) => (
+                        <li className={styles.content} key={`connection:${name}`} data-template-connection="">
+                          <span className={styles.contentKind}>{t('Connection')}</span>
+                          <span className={styles.contentName}>{name}</span>
+                        </li>
+                      ))}
+                      {template.ofIntegrations && template.mcpServers.map((name) => (
+                        <li className={styles.content} key={`server:${name}`} data-template-mcp-server="">
+                          <span className={styles.contentKind}>{t('MCP server')}</span>
+                          <span className={styles.contentName}>{name}</span>
+                        </li>
+                      ))}
                     </ul>
                     <p className={styles.meta}>
                       <span>{contentsSummary(template)}</span>
