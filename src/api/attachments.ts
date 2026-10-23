@@ -91,6 +91,16 @@ export function isPlayable(contentType: string): boolean {
   return ['video/mp4', 'video/webm', 'video/ogg'].includes(contentType.toLowerCase());
 }
 
+/**
+ * Whether the chat may play it under the message in an `<audio>`.
+ *
+ * The three sounds the server serves inline - and sends a model that takes
+ * audio; MIDI is notes rather than sound, and stays a chip.
+ */
+export function isAudible(contentType: string): boolean {
+  return ['audio/mpeg', 'audio/flac', 'audio/wav'].includes(contentType.toLowerCase());
+}
+
 /** "2.4 MB", for a chip that has to fit beside a filename. */
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

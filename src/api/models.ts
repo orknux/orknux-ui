@@ -185,6 +185,12 @@ export interface Model {
    * whose chat parameters list `takesVideo` lets it be switched on.
    */
   takesVideo: boolean;
+  /**
+   * Whether a sound attached to a chat message - mp3, wav, flac - is sent to
+   * this model. Off, a message carrying one is refused before the model is
+   * asked; only a provider whose chat parameters list `takesAudio` offers it.
+   */
+  takesAudio: boolean;
 }
 
 /** A model the provider says it can run; `added` when the catalogue has it already. */
@@ -236,7 +242,7 @@ export const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute answerLimitMinutes answerLimitMinutesInherited throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion voice skipEmptyLines ' +
-  'imageCostPerImage takesVideo';
+  'imageCostPerImage takesVideo takesAudio';
 const USAGE_FIELDS =
   'modelId days from to empty requests inputTokens outputTokens cachedInputTokens totalTokens averageLatencyMillis ' +
   'costEstimate requestsChange tokensChange latencyChange periodStart periodTokens ' +
@@ -248,7 +254,7 @@ const USAGE_FIELDS =
  * nothing else; a provider that reads none answers [].
  */
 export interface ChatParameterSpec {
-  name: 'temperature' | 'topP' | 'topK' | 'minP' | 'repeatPenalty' | 'reasoningEffort' | 'takesVideo' | string;
+  name: 'temperature' | 'topP' | 'topK' | 'minP' | 'repeatPenalty' | 'reasoningEffort' | 'takesVideo' | 'takesAudio' | string;
   kind: 'NUMBER' | 'CHOICE' | 'SWITCH';
   /** What a CHOICE may be; empty for a NUMBER. */
   choices: string[];
@@ -470,6 +476,8 @@ export interface ModelDetailsInput {
   imageCostPerImage?: number | null;
   /** Whether a video attached to a chat is sent to it; left out, it stays as it is. */
   takesVideo?: boolean;
+  /** Whether a sound attached to a chat is sent to it; left out, it stays as it is. */
+  takesAudio?: boolean;
   /** The provider to move it to, in the same workspace; left out, it stays where it is. */
   providerId?: string;
 }

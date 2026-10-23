@@ -45,6 +45,7 @@ import { fetchSkillOffers, reachableSkills } from '../../api/skills';
 import type { SkillOffer } from '../../api/skills';
 import {
   attachmentUrl,
+  isAudible,
   isPlayable,
   isShowable,
   formatSize,
@@ -1276,7 +1277,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const chatFiles = messages.flatMap((message) => message.attachments ?? []);
   /**
    * The files under one message: a picture as itself, opening in the viewer,
-   * anything else as a chip that downloads. The same drawing the strip above
+   * a video or a sound playing where it is, anything else as a chip that
+   * downloads. The same drawing the strip above
    * the composer used, which said nothing about which message a file came with.
    */
   const filesOf = (files: Attachment[], side: 'user' | 'assistant') =>
@@ -1304,6 +1306,17 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
               title={file.filename}
               data-message-file={file.id}
               data-message-video=""
+            />
+          ) : isAudible(file.contentType) ? (
+            <audio
+              key={file.id}
+              className={styles.chatAudio}
+              src={attachmentUrl(file.id)}
+              controls
+              preload="metadata"
+              title={file.filename}
+              data-message-file={file.id}
+              data-message-audio=""
             />
           ) : (
             <a

@@ -1797,6 +1797,18 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-audio-check',
+    what: "a sound attached in a chat plays as an <audio> under its message, read back and sent, a MIDI file stays a chip, and a model's page offers Takes audio on OpenAI's own host and on an OpenAI-shaped server, not Ollama - and Save stores it",
+    needs: ['workspace'],
+    /*
+     * The chat half stubs the history, the upload and one turn's stream in the
+     * page; the model half makes its own providers on .invalid hosts, and one on
+     * api.openai.com that is never called, and removes them. Whether a model is
+     * sent the sound, and refused it, is ChatAudioTest's.
+     */
+  },
+
+  {
     name: 'chat-video-check',
     what: "a video attached in a chat plays as a <video> under its message, read back and sent, and a model's page offers Takes video where its provider carries one - a llama.cpp or vLLM host, not Ollama - and Save stores it",
     needs: ['workspace'],

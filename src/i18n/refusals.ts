@@ -261,6 +261,15 @@ const PL: Record<string, string> = {
   ChatVideoTooLarge:
     '{filename} ma {megabytes} MB, a wideo wysyłane do modelu może mieć najwyżej {limit} MB. ' +
     'Wyślij krótsze albo podnieś Limit załącznika wideo w ustawieniach administratora.',
+  // Sound in the chat.
+  ChatAudioNotTaken: '{model} nie przyjmuje dźwięku. Włącz Przyjmuje dźwięk na stronie modelu albo wybierz model, który go przyjmuje.',
+  ChatAudioNotCarried:
+    '{model} działa przez {provider}, którego API nie przyjmuje dźwięku. Wybierz model u dostawcy, który go przyjmuje.',
+  ChatAudioFormatNotTaken:
+    '{provider} przyjmuje dźwięk w formatach {formats}, nie {format}. Wyślij go w jednym z nich albo wybierz model na serwerze, który czyta {format}.',
+  ChatAudioTooLarge:
+    '{filename} ma {megabytes} MB, a dźwięk wysyłany do modelu może mieć najwyżej {limit} MB. ' +
+    'Wyślij krótszy albo podnieś limit dźwięku w sekcji Limity ustawień administratora.',
   WidgetTimerLimitOutOfRange: '{seconds} to nie jest liczba sekund minutnika w czacie. Wybierz od 60 do 604800.',
   ChatWidgetNotFound: 'Ten czat nie ma widżetu {id}.',
   WorkflowAutosaveOutOfRange: '{millis} to nie jest liczba milisekund, które edytor przepływu odczekuje przed zapisem. Wybierz od 200 do 10000.',
