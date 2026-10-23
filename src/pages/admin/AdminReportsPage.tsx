@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { tokenCount } from '../../api/chat';
 import type { SessionUser } from '../../api/session';
@@ -56,26 +56,49 @@ const SESSION_PAGE_SIZES = [5, 10, 25];
 
 type ReportKind = 'usage' | 'ratings' | 'errors';
 
+/** A report the address names, or null for one it does not. */
+function reportOf(named: string | null): ReportKind | null {
+  return named === 'usage' || named === 'ratings' || named === 'errors' ? named : null;
+}
+
 /**
- * Admin > Reports: one report at a time, picked at the top - the usage report
- * unless somebody picked another, which is remembered as a list's order is.
+ * Admin > Reports: one report at a time, picked at the top.
+ *
+ * The one showing is in the address, `?report=errors`, so a link or a reload
+ * opens it - the way the plugins page keeps its tab. An address naming none
+ * opens the one last picked here, remembered as a list's order is, and the
+ * usage report before anything has been. Replaced rather than pushed, for the
+ * plugins page's reason: switching reports is looking around one screen, and
+ * Back should leave it.
  */
 export function AdminReportsPage({ session, onSignOut }: AdminReportsPageProps) {
-  const [kind, setKind] = useState<ReportKind>(() => {
-    try {
-      const held = window.localStorage.getItem(REPORT_KEY);
-      return held === 'ratings' || held === 'errors' ? held : 'usage';
-    } catch {
-      return 'usage';
-    }
-  });
+  const [addressed, setAddressed] = useSearchParams();
+  const kind: ReportKind =
+    reportOf(addressed.get('report')) ??
+    (() => {
+      try {
+        return reportOf(window.localStorage.getItem(REPORT_KEY)) ?? 'usage';
+      } catch {
+        return 'usage';
+      }
+    })();
+
+  // Arriving without one, the report shown is written in, so the address always says.
+  useEffect(() => {
+    if (addressed.get('report') === kind) return;
+    const held = new URLSearchParams(addressed);
+    held.set('report', kind);
+    setAddressed(held, { replace: true });
+  }, [addressed, kind, setAddressed]);
 
   function pick(next: ReportKind) {
-    setKind(next);
+    const held = new URLSearchParams(addressed);
+    held.set('report', next);
+    setAddressed(held, { replace: true });
     try {
       window.localStorage.setItem(REPORT_KEY, next);
     } catch {
-      // Remembering is a convenience; the pick still holds for this visit.
+      // Remembering is a convenience; the address still says which.
     }
   }
 

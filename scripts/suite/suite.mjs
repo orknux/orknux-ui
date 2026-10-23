@@ -361,6 +361,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'reports-url-check',
+    what: 'Admin > Reports keeps the report it shows in the address, through a pick and a reload',
+    needs: [],
+  },
+  {
     name: 'errors-sort-check',
     what: "the errors report's rows and what failed most often are put in the order of a pressed heading",
     needs: [],
