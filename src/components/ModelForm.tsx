@@ -107,6 +107,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
   /** Whether a video attached to a chat is sent to this model; offered only where the provider carries one. */
   const [takesVideo, setTakesVideo] = useState(false);
+  /** Whether a sound attached to a chat is sent to this model; offered only where the provider carries one. */
+  const [takesAudio, setTakesAudio] = useState(false);
   const [imageCost, setImageCost] = useState('');
   const [inputCost, setInputCost] = useState('');
   const [outputCost, setOutputCost] = useState('');
@@ -225,6 +227,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     setVoice(found.voice ?? '');
     setSkipEmptyLines(found.skipEmptyLines);
     setTakesVideo(found.takesVideo);
+    setTakesAudio(found.takesAudio);
     setImageCost(found.imageCostPerImage === null ? '' : String(found.imageCostPerImage));
     setInputCost(found.inputCostPerMillion === null ? '' : String(found.inputCostPerMillion));
     setOutputCost(found.outputCostPerMillion === null ? '' : String(found.outputCostPerMillion));
@@ -338,6 +341,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
         imageCostPerImage: draws ? toNumber(imageCost) : model.imageCostPerImage,
         // As stored until the provider's settings are known; off where it carries no video, which the server requires.
         takesVideo: chatParameters === null ? model.takesVideo : offered('takesVideo') ? takesVideo : false,
+        takesAudio: chatParameters === null ? model.takesAudio : offered('takesAudio') ? takesAudio : false,
         providerId,
       });
       await updateModelQuotas(model.id, {
@@ -366,7 +370,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const changed = useDirty(
     {
       name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
-      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, takesVideo, imageCost, inputCost, outputCost, cachedCost, writeCost,
+      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, takesVideo, takesAudio, imageCost, inputCost, outputCost, cachedCost, writeCost,
       tokenLimit, resetInterval, requestsPerMinute, answerLimit, throttleTokens, throttleRequests, retryAfter,
     },
     [model],
@@ -407,6 +411,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
       voice, setVoice,
       skipEmptyLines, setSkipEmptyLines,
       takesVideo, setTakesVideo,
+      takesAudio, setTakesAudio,
       imageCost, setImageCost,
       inputCost, setInputCost,
       outputCost, setOutputCost,
@@ -741,6 +746,24 @@ export function ModelWindowFields({ form }: SectionProps) {
                 </label>
                 <FieldHint label={t('Takes video')}>
                   {t('Send a video attached in a chat to this model itself; off, a message with a video is refused.')}
+                </FieldHint>
+              </span>
+            </div>
+          )}
+          {offered('takesAudio') && (
+            <div className={styles.field}>
+              <span className={styles.checkboxWithHint}>
+                <label className={styles.checkboxField}>
+                  <input
+                    type="checkbox"
+                    checked={fields.takesAudio}
+                    onChange={(event) => fields.setTakesAudio(event.target.checked)}
+                    data-testid="model-takes-audio"
+                  />
+                  <span>{t('Takes audio')}</span>
+                </label>
+                <FieldHint label={t('Takes audio')}>
+                  {t('Send an mp3, wav or flac attached in a chat to this model itself; off, a message with one is refused.')}
                 </FieldHint>
               </span>
             </div>

@@ -3289,4 +3289,7 @@ export const PL: Record<string, string> = {
   "{input} in · {output} out · {time} · {when}": "{input} wejście · {output} wyjście · {time} · {when}",
   "Speed over the last call": "Szybkość z ostatniego wywołania",
   "Speed over the last {count} calls": "Szybkość z ostatnich {count} wywołań",
+  // Sound in the chat.
+  "Takes audio": "Przyjmuje dźwięk",
+  "Send an mp3, wav or flac attached in a chat to this model itself; off, a message with one is refused.": "Wysyłaj temu modelowi sam plik mp3, wav lub flac dołączony w czacie; wyłączone, wiadomość z takim plikiem zostaje odrzucona.",
 };
