@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { answerRequest, type InteractionRequest } from '../api/interactions';
+import { answerRequest, answerRequestWith, type InteractionRequest } from '../api/interactions';
 import { t } from '../i18n';
 import styles from './InteractionCard.module.css';
 
@@ -18,13 +18,25 @@ interface InteractionCardProps {
 export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ticked, setTicked] = useState<string[]>([]);
+  const [words, setWords] = useState('');
   const open = request.chosen === null;
+  /*
+   * A menu rather than a row of buttons where there is more to it than which
+   * button: a line under each option, several to tick, or the person's own
+   * words. An agent's ask_person question is all three; Allow / Reject is none.
+   */
+  const menu = request.multiple || request.allowsText || request.options.some((option) => Boolean(option.description));
 
-  async function choose(option: string) {
+  function choose(option: string) {
+    void send(() => answerRequest(request.id, option));
+  }
+
+  async function send(answering: () => Promise<InteractionRequest>) {
     setBusy(true);
     setError(null);
     try {
-      onAnswered?.(await answerRequest(request.id, option));
+      onAnswered?.(await answering());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not send the answer.'));
     } finally {
@@ -57,7 +69,65 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
           ))}
         </ul>
       )}
-      {open ? (
+      {open && menu ? (
+        <form
+          className={styles.menu}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void send(() => answerRequestWith(request.id, ticked, words.trim() === '' ? null : words.trim()));
+          }}
+        >
+          <div className={styles.choices} role={request.multiple ? 'group' : undefined}>
+            {request.options.map((option) => {
+              const on = ticked.includes(option.id);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={on ? `${styles.choice} ${styles.ticked}` : styles.choice}
+                  disabled={busy}
+                  aria-pressed={request.multiple ? on : undefined}
+                  onClick={() =>
+                    request.multiple
+                      ? setTicked((held) => (on ? held.filter((id) => id !== option.id) : [...held, option.id]))
+                      : choose(option.id)
+                  }
+                  data-interaction-option={option.id}
+                >
+                  {request.multiple && <span className={styles.box} aria-hidden="true" />}
+                  <span className={styles.choiceText}>
+                    <span className={styles.choiceLabel}>{option.label}</span>
+                    {Boolean(option.description) && <span className={styles.choiceDescription}>{option.description}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {(request.allowsText || request.multiple) && (
+            <div className={styles.answerRow}>
+              {request.allowsText && (
+                <input
+                  className={styles.words}
+                  value={words}
+                  onChange={(event) => setWords(event.target.value)}
+                  placeholder={t('Or answer in your own words')}
+                  aria-label={t('Your own answer')}
+                  disabled={busy}
+                  data-interaction-text=""
+                />
+              )}
+              <button
+                type="submit"
+                className={`${styles.option} ${styles.primary}`}
+                disabled={busy || (ticked.length === 0 && words.trim() === '')}
+                data-interaction-send=""
+              >
+                {t('Send')}
+              </button>
+            </div>
+          )}
+        </form>
+      ) : open ? (
         <div className={styles.options}>
           {request.options.map((option) => (
             <button

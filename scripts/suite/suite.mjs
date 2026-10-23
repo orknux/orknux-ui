@@ -367,6 +367,12 @@ export const TESTS = [
     // Makes a workflow of its own and removes it again.
   },
   {
+    name: 'ask-person-check',
+    what: "an agent's ask_person question: options with what each means, several to tick, the person's own words, and what is sent is what was chosen",
+    needs: ['workspace'],
+    // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
+  },
+  {
     name: 'dependency-graph-check',
     what: "a workspace's Dependencies page draws its parts and what uses what, and choosing one lights its chain with a link to open it",
     needs: ['workspace'],

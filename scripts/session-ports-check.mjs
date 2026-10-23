@@ -87,7 +87,7 @@ await page.route('**/graphql', async (route) => {
       sent.push({ mutation, ...variables });
       if (mutation === 'answerRequest') {
         request = { ...request, chosen: variables.option, chosenBy: 'alice', outcome: 'Allowed - http://localhost:49002/' };
-        return answer(route, { answerRequest: request });
+        return answer(route, { answerRequest: { items: [], ...request } });
       }
       if (mutation === 'deleteBoxPort') return answer(route, { deleteBoxPort: variables.id });
       const one = ports.find((each) => each.id === variables.id);
@@ -95,7 +95,7 @@ await page.route('**/graphql', async (route) => {
     }
   }
   if (body.includes('sessionBoxPorts')) return answer(route, { sessionBoxPorts: ports });
-  if (body.includes('sessionRequests')) return answer(route, { sessionRequests: [request] });
+  if (body.includes('sessionRequests')) return answer(route, { sessionRequests: [{ items: [], ...request }] });
   if (body.includes('sessionTodos')) return answer(route, { sessionTodos: [] });
   if (body.includes('sessionBoxes')) return answer(route, { sessionBoxes: [] });
   if (body.includes('sessionScratchpads')) return answer(route, { sessionScratchpads: [] });

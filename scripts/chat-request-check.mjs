@@ -73,7 +73,7 @@ await context.addInitScript((stub) => {
         return json({ answerRequest: window.__stub.requests.find((one) => one.id === variables.id) });
       }
       if (body.includes('chatMessages(')) return json({ chatMessages: window.__stub.messages });
-      if (body.includes('sessionRequests(')) return json({ sessionRequests: window.__stub.requests });
+      if (body.includes('sessionRequests(')) return json({ sessionRequests: window.__stub.requests.map((one) => ({ items: [], ...one })) });
       if (body.includes('chatSessions(')) {
         // A real chat, given a session to hold the requests in.
         const answer = await real(input, init);

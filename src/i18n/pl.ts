@@ -3235,4 +3235,6 @@ export const PL: Record<string, string> = {
   "Hide unconnected": "Ukryj niepołączone",
   "Uses": "Używa",
   "Nothing in this workspace yet.": "W tym obszarze roboczym nic jeszcze nie ma.",
+  "Or answer in your own words": "Albo odpowiedz własnymi słowami",
+  "Your own answer": "Twoja odpowiedź",
 };

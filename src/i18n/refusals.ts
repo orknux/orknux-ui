@@ -378,6 +378,7 @@ const PL: Record<string, string> = {
   InteractionRequestNotFound: 'Nie ma pytania {id}.',
   InteractionOptionUnknown: '{option} nie jest jedną z odpowiedzi na to pytanie.',
   InteractionAlreadyAnswered: 'Na pytanie {id} już odpowiedziano.',
+  InteractionAnswerInvalid: 'Ta odpowiedź nie pasuje do pytania.',
   BoxSessionIdleOutOfRange: '{seconds} to nie jest liczba sekund bezczynności sesji w skrzynce. Wybierz od 60 do 86400.',
   BoxEditUndoStepsOutOfRange: '{steps} to nie jest liczba zmian w skrzynce do cofnięcia. Wybierz od 0 do 100.',
 

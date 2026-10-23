@@ -119,3 +119,101 @@
   font-size: var(--text-sm);
   color: var(--color-danger);
 }
+
+/* An agent's question: an option per row with what it means under it, and room for the person's own words. */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.choice:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ticked {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft);
+}
+
+.box {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  background: var(--color-surface);
+}
+
+.ticked .box {
+  background: var(--color-accent-brand);
+  border-color: var(--color-accent-brand);
+}
+
+.choiceText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.choiceLabel {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.choiceDescription {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.answerRow {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.words {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-6) var(--space-10);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.words:focus {
+  outline: none;
+  border-color: var(--color-accent-brand);
+}
