@@ -81,6 +81,16 @@ export function isShowable(contentType: string): boolean {
   );
 }
 
+/**
+ * Whether the chat may play it under the message in a `<video>`.
+ *
+ * The containers the server serves inline, and every browser's media element
+ * plays; anything else is still a chip that downloads.
+ */
+export function isPlayable(contentType: string): boolean {
+  return ['video/mp4', 'video/webm', 'video/ogg'].includes(contentType.toLowerCase());
+}
+
 /** "2.4 MB", for a chip that has to fit beside a filename. */
 export function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

@@ -3258,4 +3258,9 @@ export const PL: Record<string, string> = {
   "How long a suggestion may take before it is given up on and nothing is shown. Between 200 and 60000.": "Jak długo może trwać podpowiedź, zanim zostanie porzucona i nic nie zostanie pokazane. Od 200 do 60000.",
   "Completion Pause": "Przerwa przed podpowiedzią",
   "How long the chat waits after the last keystroke before asking for a suggestion. Between 100 and 10000.": "Jak długo czat czeka po ostatnim naciśnięciu klawisza, zanim poprosi o podpowiedź. Od 100 do 10000.",
+  // Videos in the chat.
+  "Takes video": "Przyjmuje wideo",
+  "Send a video attached in a chat to this model itself; off, a message with a video is refused.": "Wysyłaj temu modelowi samo wideo dołączone w czacie; wyłączone, wiadomość z wideo zostaje odrzucona.",
+  "Video Attachment Limit": "Limit załącznika wideo",
+  "The largest video a chat message may send to a model that takes video. Between 1 and 1024.": "Największe wideo, jakie wiadomość w czacie może wysłać modelowi przyjmującemu wideo. Od 1 do 1024.",
 };
