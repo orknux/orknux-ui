@@ -1105,9 +1105,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * DOM and the browser painting it, so a line is never drawn at the old height
    * first.
    */
-  useLayoutEffect(() => {
-    const box = composerRef.current;
-    if (box === null) return;
+  /**
+   * Sizes the box to what it holds, or to [atLeast] where something drawn over
+   * it - a suggested continuation - needs more, never past the room the log
+   * can give up.
+   */
+  const fitComposer = (box: HTMLTextAreaElement, atLeast = 0) => {
     const log = logRef.current;
     const around = log === null ? null : window.getComputedStyle(log);
     const yields =
@@ -1119,12 +1122,20 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     // below one line, whatever the log is doing.
     const room = box.clientHeight + yields;
     box.style.height = 'auto';
-    const wanted = box.scrollHeight;
+    const wanted = Math.max(box.scrollHeight, atLeast);
     const height = Math.min(wanted, room);
     box.style.height = `${height}px`;
     // Only when it has stopped growing, so the scrollbar is not drawn over a
     // box that had room for the line all along.
     box.style.overflowY = wanted > height ? 'auto' : 'hidden';
+  };
+
+  useLayoutEffect(() => {
+    const box = composerRef.current;
+    if (box === null) return;
+    fitComposer(box);
+    // fitComposer reads only refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, attached, currentId]);
 
   const current = sessions?.find((entry) => entry.id === currentId) ?? null;
@@ -2655,15 +2666,36 @@ ${named}`;
    * Measured off the textarea rather than styled to match it, because its
    * height and scroll are written by the layout effect that grows it.
    */
+  const grewForGhost = useRef(false);
   useLayoutEffect(() => {
     const box = composerRef.current;
     const over = ghostRef.current;
-    if (box === null || over === null) return;
+    if (box === null) return;
+    if (over === null) {
+      // The suggestion is gone: back to the height of what is typed.
+      if (grewForGhost.current) {
+        grewForGhost.current = false;
+        fitComposer(box);
+      }
+      return;
+    }
+    over.style.width = `${box.clientWidth}px`;
+    /*
+     * A suggestion longer than the lines typed so far would be cut off at the
+     * box's edge, so the box grows to show it - within the room it may take -
+     * and gives the room back when the suggestion goes.
+     */
+    over.style.height = 'auto';
+    if (over.scrollHeight > box.clientHeight) {
+      fitComposer(box, over.scrollHeight);
+      grewForGhost.current = true;
+    }
     over.style.left = `${box.offsetLeft}px`;
     over.style.top = `${box.offsetTop}px`;
-    over.style.width = `${box.clientWidth}px`;
     over.style.height = `${box.clientHeight}px`;
     over.scrollTop = box.scrollTop;
+    // fitComposer reads only refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ghost, draft]);
 
   /*

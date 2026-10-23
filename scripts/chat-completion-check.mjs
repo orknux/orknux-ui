@@ -24,6 +24,8 @@ if (chat === undefined) {
 }
 
 const SUGGESTED = ' to Friday morning';
+/** What the stub answers; long for the case of a suggestion wider than the box. */
+let answer = SUGGESTED;
 /** Whether the workspace is answered as having a Completion model. */
 let completing = true;
 /** The texts the page asked a completion for, in order. */
@@ -36,7 +38,7 @@ await page.route('**/graphql', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { chatCompletion: SUGGESTED } }),
+      body: JSON.stringify({ data: { chatCompletion: answer } }),
     });
     return;
   }
@@ -105,6 +107,30 @@ if (await drawn(page, 'the chat log')) {
   await page.keyboard.press('Escape');
   record((await ghost.count()) === 0, 'Escape takes the suggestion away');
   record((await box.inputValue()) === 'Is the build green?', 'Escape leaves what was typed as it was');
+
+  // A suggestion running over several lines is shown whole: the box grows for it, and gives the room back when it goes.
+  await box.fill('');
+  const oneLine = (await box.boundingBox()).height;
+  answer = ' and then ' + 'the release notes, the migration plan and the rollback steps '.repeat(4);
+  await box.pressSequentially('Please send the summary', { delay: 20 });
+  await ghost.waitFor({ timeout: 5_000 }).catch(() => {});
+  const whole = await page.evaluate(() => {
+    const words = document.querySelector('[data-testid="chat-composer-suggestion"]');
+    const area = document.querySelector('#chat-composer');
+    if (words === null || area === null) return null;
+    const range = document.createRange();
+    range.selectNodeContents(words);
+    const rects = [...range.getClientRects()];
+    const last = rects[rects.length - 1];
+    const frame = area.getBoundingClientRect();
+    return { lines: rects.length, lastBottom: Math.round(last.bottom), boxBottom: Math.round(frame.bottom) };
+  });
+  record(whole !== null && whole.lines > 1 && whole.lastBottom <= whole.boxBottom, `a long suggestion is shown to its last line (${JSON.stringify(whole)})`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const after = (await box.boundingBox()).height;
+  record(after <= oneLine + 1, `and the box goes back to its size when it goes (${Math.round(oneLine)} -> ${Math.round(after)})`);
+  answer = SUGGESTED;
 
   // A workspace with no Completion model asks for nothing.
   completing = false;
