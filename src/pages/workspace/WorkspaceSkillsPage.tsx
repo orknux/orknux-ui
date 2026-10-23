@@ -63,6 +63,25 @@ const PLUGIN_PREFIX = 'plugin:';
 const PAGE_SIZE = 50;
 
 /**
+ * Whether a skill answers what was typed in the search box.
+ *
+ * Its content too, and not only the name and description on the card: what
+ * somebody remembers of a skill is often a phrase from inside it. One rule for
+ * both kinds of catalog, so the box finds the same things whichever is open.
+ * Issue #642.
+ */
+function matchesSearch(
+  skill: { name: string; description: string | null; content: string },
+  search: string,
+): boolean {
+  const wanted = search.trim().toLowerCase();
+  if (wanted === '') return true;
+  return `${skill.name}
+${skill.description ?? ''}
+${skill.content}`.toLowerCase().includes(wanted);
+}
+
+/**
  * The workspace's skills: catalogs on the left, what is in the selected one on
  * the right.
  *
@@ -225,11 +244,9 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
 
   // Filtered here rather than by the server: a catalog is a page's worth, and
   // the box is for finding one you can already see.
-  const showing = (skills?.content ?? []).filter((skill) =>
-    search.trim() === ''
-      ? true
-      : `${skill.name} ${skill.description ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const showing = (skills?.content ?? []).filter((skill) => matchesSearch(skill, search));
+  // A plugin's catalog arrived whole with the rail, so it is filtered the same way.
+  const showingPlugin = (currentPlugin?.skills ?? []).filter((skill) => matchesSearch(skill, search));
 
   return (
     <AppShell
@@ -360,6 +377,22 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
               </header>
               <div className={styles.rule} />
 
+              {/* The same box as a workspace catalog's, without the buttons beside it: nothing can be added here. */}
+              <div className={styles.toolbar}>
+                <div className={styles.searchBox}>
+                  <img src={searchIcon} alt="" width={14} height={14} />
+                  <input
+                    className={styles.searchInput}
+                    type="search"
+                    placeholder={t('Search skills...')}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    aria-label={t('Search skills')}
+                    data-skill-search
+                  />
+                </div>
+              </div>
+
               <div className={styles.stats}>
                 {/* One line, and the whole of what is different here: where
                     it came from, and that it is granted like any other. */}
@@ -372,8 +405,11 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                 {currentPlugin.skills.length === 0 && (
                   <p className={styles.empty}>{t('This plugin brings no skills.')}</p>
                 )}
-                {currentPlugin.skills.map((skill) => (
-                  <article key={skill.name} className={styles.card}>
+                {currentPlugin.skills.length > 0 && showingPlugin.length === 0 && (
+                  <p className={styles.empty}>{t('Nothing here matches that.')}</p>
+                )}
+                {showingPlugin.map((skill) => (
+                  <article key={skill.name} className={styles.card} data-skill-card={skill.name}>
                     <header className={styles.cardHeader}>
                       <h2 className={styles.cardTitle}>{skill.name}</h2>
                     </header>
@@ -435,6 +471,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     aria-label={t('Search skills')}
+                    data-skill-search
                   />
                 </div>
                 <ImportComponentsButton
@@ -464,7 +501,8 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
 
               <div className={styles.stats}>
                 <p className={styles.statsText}>
-                  {showing.length === 0
+                  {/* Empty is the catalog's own count: a search that matches nothing has not emptied it. */}
+                  {(skills?.content.length ?? 0) === 0
                     ? `Nothing in ${current.name} yet`
                     : `Showing ${showing.length} ${showing.length === 1 ? 'skill' : 'skills'} in ${current.name}`}
                 </p>
@@ -477,7 +515,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                   </p>
                 )}
                 {showing.map((skill) => (
-                  <article key={skill.id} className={styles.card}>
+                  <article key={skill.id} className={styles.card} data-skill-card={skill.name}>
                     <header className={styles.cardHeader}>
                       <h2 className={styles.cardTitle}>
                         <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/skills/${skill.id}`}>

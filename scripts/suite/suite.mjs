@@ -408,6 +408,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'skill-catalogue-search-check',
+    what: "a skill catalogue's search box, a plugin's and a workspace's, narrows its skills as you type by name, description and content, says when nothing matches, and gives them all back when cleared",
+    needs: ['workspace'],
+    // Both catalogues are stubbed; makes nothing and removes nothing.
+  },
+  {
     name: 'reports-url-check',
     what: 'Admin > Reports keeps the report it shows in the address, through a pick and a reload',
     needs: [],
