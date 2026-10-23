@@ -235,6 +235,27 @@ try {
 
   await mapper.click();
   await page.waitForTimeout(300);
+  /*
+   * Every row of the list it opens is clear of the Save strip.
+   *
+   * This field is the last on the form, and its list opened downwards under
+   * the strip fixed along the window's foot: in CI the row this check wants
+   * was drawn behind Save and the click below went to the strip instead
+   * (`save-bar intercepts pointer events`), and a person could not reach it
+   * either, since the list hangs over the page and scrolling does not bring it
+   * out. Measured rather than left to the click, because whether the click
+   * lands depends on a few pixels of font and fixture.
+   */
+  const clear = await page.evaluate(() => {
+    const strip = document.querySelector('[data-testid="save-bar"]')?.getBoundingClientRect();
+    const floor = strip === undefined ? window.innerHeight : Math.min(window.innerHeight, strip.top);
+    const rows = [...document.querySelectorAll('[role="listbox"] [role="option"]')].map((row) => row.getBoundingClientRect());
+    return { floor: Math.round(floor), lowest: Math.round(Math.max(...rows.map((row) => row.bottom))), highest: Math.round(Math.min(...rows.map((row) => row.top))), rows: rows.length };
+  });
+  check(
+    clear.rows > 0 && clear.lowest <= clear.floor && clear.highest >= 0,
+    `the list opened at the foot of the form is clear of the Save strip: its rows run ${clear.highest}-${clear.lowest}, the strip starts at ${clear.floor}`,
+  );
   await page.locator('[role="option"]', { hasText: new RegExp(`^${CONNECTION}`) }).first().click();
   await page.waitForTimeout(300);
   const after = (await mapper.innerText()).trim().split('\n')[0].trim();

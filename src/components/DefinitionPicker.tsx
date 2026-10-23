@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import styles from './DefinitionPicker.module.css';
@@ -205,6 +205,36 @@ export function DefinitionPicker({
     setAt(rows.length === 0 ? -1 : 0);
   }, [open, rows]);
 
+  /** Whether the list opens above the box rather than below it. */
+  const [up, setUp] = useState(false);
+
+  /*
+   * Above the box when there is no room for the list below it.
+   *
+   * The page's Save strip is fixed along the foot of the window since 1401b3d,
+   * over whatever is under it, and a field at the foot of a form opened its
+   * list straight under the strip: the last rows were drawn behind Save, and
+   * the page could not be scrolled to bring them out because the list hangs
+   * over the page rather than lengthening it. So the floor is the strip's top
+   * where there is one, the window's foot where there is not, and the list goes
+   * up when it does not fit beneath and there is more room above - measured
+   * before paint, so it never flashes on the wrong side.
+   */
+  useLayoutEffect(() => {
+    if (!open) {
+      setUp(false);
+      return;
+    }
+    const trigger = box.current?.getBoundingClientRect();
+    const list = menu.current;
+    if (trigger === undefined || list === null) return;
+    const strip = document.querySelector<HTMLElement>('[data-save-bar]')?.getBoundingClientRect();
+    const floor = strip !== undefined && strip.height > 0 ? Math.min(window.innerHeight, strip.top) : window.innerHeight;
+    const below = floor - trigger.bottom;
+    const above = trigger.top;
+    setUp(list.offsetHeight > below && above > below);
+  }, [open]);
+
   /*
    * The whole list brought into view as it opens.
    *
@@ -287,7 +317,7 @@ export function DefinitionPicker({
       </button>
 
       {open && (
-        <div className={styles.menu} role="listbox" ref={menu}>
+        <div className={up ? `${styles.menu} ${styles.menuUp}` : styles.menu} role="listbox" ref={menu} data-opens={up ? 'up' : 'down'}>
           <input
             className={styles.search}
             type="search"

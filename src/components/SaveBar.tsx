@@ -122,7 +122,7 @@ export function SaveBar({ children, slot }: SaveBarProps) {
         data-save-bar-spacer=""
       />
       {createPortal(
-        <div ref={bar} className={styles.bar} data-testid="save-bar" style={style}>
+        <div ref={bar} className={styles.bar} data-testid="save-bar" data-save-bar="" style={style}>
           <div className={styles.row} ref={slot}>
             {children}
           </div>
