@@ -314,6 +314,11 @@
   text-align: right;
 }
 
+/* Says nothing until a save fails, and takes no room while it says nothing. */
+.saveState:empty {
+  display: none;
+}
+
 .saveState[data-state='failed'] {
   color: var(--color-danger);
 }

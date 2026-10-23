@@ -1995,6 +1995,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           if (at < 0 || present[at].role !== 'assistant') return present;
           const last = present[at];
           if ((last.attachments ?? []).some((held) => held.id === file.id)) return present;
+          // A picture drawn into the thread is already on the screen as its own line; listed under the answer too, it showed twice.
+          if (present.some((one) => one.content.includes(`/api/attachments/${file.id})`))) return present;
           return [...present.slice(0, at), { ...last, attachments: [...(last.attachments ?? []), file] }];
         }),
       onCalled: (answer) =>

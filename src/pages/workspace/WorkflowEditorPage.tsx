@@ -6149,23 +6149,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           >{t('Workflows')}</Link>
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.workflowName} title={name} data-testid="workflow-name">{name}</span>
-          {/* Who else has it open, by login, in the colour their pointer is drawn in. Issue #645. */}
-          {others.length > 0 && (
-            <span className={styles.presence} data-testid="presence">
-              {others.map((one) => (
-                <span
-                  key={one.login}
-                  className={styles.presenceDot}
-                  style={{ borderColor: colourOf(one.login) }}
-                  title={one.login}
-                  aria-label={one.login}
-                  data-login={one.login}
-                >
-                  {one.login.slice(0, 2).toUpperCase()}
-                </span>
-              ))}
-            </span>
-          )}
           <Link
             to={`/workspace/${workspaceId}/workflows/${workflowId}/settings`}
             className={styles.renameButton}
@@ -6226,6 +6209,23 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
                 void switchTo(true);
               }}
             >{enabled ? t('Switched on') : t('Switched off')}</button>
+          )}
+          {/* Who else has it open, by login, in the colour their pointer is drawn in. Issue #645. */}
+          {others.length > 0 && (
+            <span className={styles.presence} data-testid="presence">
+              {others.map((one) => (
+                <span
+                  key={one.login}
+                  className={styles.presenceDot}
+                  style={{ borderColor: colourOf(one.login) }}
+                  title={one.login}
+                  aria-label={one.login}
+                  data-login={one.login}
+                >
+                  {one.login.slice(0, 2).toUpperCase()}
+                </span>
+              ))}
+            </span>
           )}
           {error !== null && (
             <span className={styles.error} role="alert">

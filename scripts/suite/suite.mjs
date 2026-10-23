@@ -373,6 +373,11 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
+    name: 'chat-drawn-once-check',
+    what: 'a picture a tool drew into a chat is shown once while the answer streams, not again under the answer',
+    needs: ['workspace'],
+  },
+  {
     name: 'workflow-title-check',
     what: 'a long workflow name in a narrow editor is cut on one line with its whole name on the title, and the toolbar keeps its height',
     needs: ['workspace'],

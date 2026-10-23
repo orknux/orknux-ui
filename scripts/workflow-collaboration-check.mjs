@@ -59,6 +59,8 @@ try {
   record((await first.getByRole('button', { name: 'Discard', exact: true }).count()) === 0, 'nor a Discard one');
   record(await settled(first), 'the graph is saved');
   record((await first.getByTestId('save-state').textContent()).trim() === '', 'and the toolbar says nothing about it: only a failed save is worth a word');
+  const room = await first.getByTestId('save-state').evaluate((el) => el.getBoundingClientRect().width);
+  record(room === 0, `and takes no room while it says nothing (${room}px)`);
 
   // Each sees the other.
   const seen = await second.getByTestId('presence').locator('[data-login]').count().catch(() => 0);
