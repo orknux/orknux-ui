@@ -318,3 +318,58 @@
 :root[data-theme='light'] img:not([data-keeps-colour]) {
   filter: brightness(0.42);
 }
+
+/*
+ * The accent a person chose on Preferences, over the brand's moss. One colour
+ * per theme, each picked to carry white text and to stand on that theme's
+ * background, rather than one colour lightened by arithmetic. Soft is the same
+ * colour thinned, as moss's is.
+ */
+:root[data-accent='blue'] {
+  --color-accent-brand: #4f7fc4;
+  --color-accent-brand-soft: color-mix(in srgb, #4f7fc4 15%, transparent);
+}
+:root[data-theme='light'][data-accent='blue'] {
+  --color-accent-brand: #2f5f9e;
+  --color-accent-brand-soft: color-mix(in srgb, #2f5f9e 12%, transparent);
+}
+:root[data-accent='teal'] {
+  --color-accent-brand: #3f8f8a;
+  --color-accent-brand-soft: color-mix(in srgb, #3f8f8a 15%, transparent);
+}
+:root[data-theme='light'][data-accent='teal'] {
+  --color-accent-brand: #2a6b67;
+  --color-accent-brand-soft: color-mix(in srgb, #2a6b67 12%, transparent);
+}
+:root[data-accent='violet'] {
+  --color-accent-brand: #8069c4;
+  --color-accent-brand-soft: color-mix(in srgb, #8069c4 15%, transparent);
+}
+:root[data-theme='light'][data-accent='violet'] {
+  --color-accent-brand: #5f4aa0;
+  --color-accent-brand-soft: color-mix(in srgb, #5f4aa0 12%, transparent);
+}
+:root[data-accent='rose'] {
+  --color-accent-brand: #b85c74;
+  --color-accent-brand-soft: color-mix(in srgb, #b85c74 15%, transparent);
+}
+:root[data-theme='light'][data-accent='rose'] {
+  --color-accent-brand: #93425a;
+  --color-accent-brand-soft: color-mix(in srgb, #93425a 12%, transparent);
+}
+:root[data-accent='amber'] {
+  --color-accent-brand: #b07f34;
+  --color-accent-brand-soft: color-mix(in srgb, #b07f34 15%, transparent);
+}
+:root[data-theme='light'][data-accent='amber'] {
+  --color-accent-brand: #86601f;
+  --color-accent-brand-soft: color-mix(in srgb, #86601f 12%, transparent);
+}
+:root[data-accent='slate'] {
+  --color-accent-brand: #6b7a90;
+  --color-accent-brand-soft: color-mix(in srgb, #6b7a90 15%, transparent);
+}
+:root[data-theme='light'][data-accent='slate'] {
+  --color-accent-brand: #4b5868;
+  --color-accent-brand-soft: color-mix(in srgb, #4b5868 12%, transparent);
+}

@@ -163,6 +163,55 @@ for (const viewport of SIZES) {
   await context.close();
 }
 
+
+/*
+ * The accent colour: chosen on a swatch, applied on Save, kept over a reload,
+ * and each swatch drawn in the very colour its accent gives the page, in both
+ * themes - the discs hold their own copy of the values, so this is what keeps
+ * the two from drifting apart.
+ */
+{
+  const context = await signIn(await browser.newContext({ viewport: { width: 1440, height: 900 } }));
+  const page = await context.newPage();
+  await page.goto(`${BASE}/preferences`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-testid="accent"]', { timeout: 20_000 });
+  const save = page.locator('[class*="_pageSave_"]');
+  const brand = () => page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--color-accent-brand)';
+    document.body.append(probe);
+    const said = getComputedStyle(probe).color;
+    probe.remove();
+    return said;
+  });
+  const disc = (name) => page.evaluate((one) => getComputedStyle(document.querySelector(`[data-swatch="${one}"]`)).backgroundColor, name);
+  const moss = await brand();
+
+  record((await page.locator('[data-accent-option]').count()) >= 5, 'Preferences offers a row of accent colours');
+  await page.getByRole('radio', { name: 'Blue' }).click();
+  record((await brand()) === moss, 'a swatch picked is not applied before Save');
+  await save.click();
+  await page.waitForTimeout(300);
+  const blue = await brand();
+  record(blue !== moss, `Save applies it (${moss} -> ${blue})`);
+  record(blue === (await disc('blue')), `the Blue swatch is the colour Blue gives the page (${await disc('blue')})`);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-testid="accent"]', { timeout: 20_000 });
+  record((await brand()) === blue, 'and it is kept over a reload');
+  record((await page.getByRole('radio', { name: 'Blue' }).getAttribute('aria-checked')) === 'true', 'with Blue shown as chosen');
+  // The other theme: its own blue, and the disc still the same as the page.
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  const lightBlue = await brand();
+  record(lightBlue !== blue && lightBlue === (await disc('blue')), `in the light theme too (${lightBlue} / ${await disc('blue')})`);
+  await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+
+  // Put back.
+  await page.getByRole('radio', { name: 'Moss' }).click();
+  await save.click();
+  await page.waitForTimeout(300);
+  record((await brand()) === moss, 'and Moss puts the brand colour back');
+  await context.close();
+}
 // Everything above is recorded; `ok` is only what the log says out loud.
 console.log(ok ? 'both window sizes are right' : 'see the failures above');
 await finish(browser);

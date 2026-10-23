@@ -8,7 +8,7 @@
 
 .edge {
   fill: none;
-  stroke: #5f8467;
+  stroke: var(--color-accent-brand);
   stroke-width: 8;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -22,7 +22,7 @@
 }
 
 .node {
-  fill: #5f8467;
+  fill: var(--color-accent-brand);
   transform-box: fill-box;
   transform-origin: center;
   animation: pulse 1.15s ease-in-out infinite;

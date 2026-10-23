@@ -68,8 +68,8 @@ export function Loader({ label = t('Loading…'), size = 28, delay = QUIET_MS }:
       <svg width={size} height={size} viewBox="0 0 200 200" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id={moss} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#668A6B" />
-            <stop offset="100%" stopColor="#4A6B52" />
+            <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--color-accent-brand) 85%, white)' }} />
+            <stop offset="100%" style={{ stopColor: 'var(--color-accent-brand)' }} />
           </linearGradient>
           {/* A knockout rather than a disc in the background colour, so the
               mark sits on either theme. */}

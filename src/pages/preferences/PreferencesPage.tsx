@@ -13,6 +13,8 @@ import type { Language } from '../../session/language';
 import { currentDragEffect, rememberDragEffect } from '../../session/dragEffect';
 import type { DragEffect } from '../../session/dragEffect';
 import { applyTheme, currentTheme, rememberTheme } from '../../session/theme';
+import { ACCENTS, applyAccent, currentAccent, rememberAccent } from '../../session/accent';
+import type { Accent } from '../../session/accent';
 import { adoptTimeZone, browserTimeZone, chosenTimeZone, timeZones } from '../../session/timeZone';
 import type { Theme } from '../../session/theme';
 import { shellUser } from '../../session/user';
@@ -409,6 +411,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const [costError, setCostError] = useState<string | null>(null);
 
   const [savedTheme, setSavedTheme] = useState<Theme>(currentTheme);
+  const [accent, setAccent] = useState<Accent>(currentAccent);
+  const [savedAccent, setSavedAccent] = useState<Accent>(currentAccent);
   const [dragEffect, setDragEffect] = useState<DragEffect>(currentDragEffect);
   const [savedDragEffect, setSavedDragEffect] = useState<DragEffect>(currentDragEffect);
 
@@ -422,6 +426,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     costShown !== savedCost,
     zone !== savedZone,
     theme !== savedTheme,
+    accent !== savedAccent,
     dragEffect !== savedDragEffect,
     pickedLanguage !== language,
   ].filter(Boolean).length + shortcutsUnsaved.length;
@@ -474,6 +479,11 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       applyTheme(theme);
       rememberTheme(theme);
       setSavedTheme(theme);
+    }
+    if (accent !== savedAccent) {
+      applyAccent(accent);
+      rememberAccent(accent);
+      setSavedAccent(accent);
     }
     if (dragEffect !== savedDragEffect) {
       rememberDragEffect(dragEffect);
@@ -768,6 +778,34 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   <img src={sunIcon} alt="" width={14} height={14} />
                   {t('Light Mode')}
                 </button>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="interface-accent">
+                  {t('Accent Colour')}
+                </span>
+                <FieldHint label={t('Accent Colour')}>
+                  {t('The colour of buttons, your messages and what is selected. Kept in this browser.')}
+                </FieldHint>
+              </span>
+              <div className={styles.swatches} role="radiogroup" aria-labelledby="interface-accent" data-testid="accent">
+                {ACCENTS.map((one) => (
+                  <button
+                    key={one}
+                    type="button"
+                    role="radio"
+                    aria-checked={accent === one}
+                    aria-label={accentName(one)}
+                    title={accentName(one)}
+                    className={accent === one ? `${styles.swatch} ${styles.swatchCurrent}` : styles.swatch}
+                    data-accent-option={one}
+                    onClick={() => setAccent(one)}
+                  >
+                    <span className={styles.swatchColour} data-swatch={one} />
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1548,4 +1586,24 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
 export function PreferencesPage(props: PreferencesPageProps) {
   const [discards, setDiscards] = useState(0);
   return <PreferencesView key={discards} {...props} onDiscard={() => setDiscards((held) => held + 1)} />;
+}
+
+/** What an accent is called where it is chosen. */
+function accentName(accent: Accent): string {
+  switch (accent) {
+    case 'moss':
+      return t('Moss');
+    case 'blue':
+      return t('Blue');
+    case 'teal':
+      return t('Teal');
+    case 'violet':
+      return t('Violet');
+    case 'rose':
+      return t('Rose');
+    case 'amber':
+      return t('Amber');
+    case 'slate':
+      return t('Slate');
+  }
 }

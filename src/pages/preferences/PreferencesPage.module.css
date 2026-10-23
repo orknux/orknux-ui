@@ -289,3 +289,50 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* The accent colours, each a disc of itself; the chosen one ringed. */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.swatch {
+  display: inline-flex;
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.swatch:hover {
+  border-color: var(--color-border);
+}
+
+.swatchCurrent,
+.swatchCurrent:hover {
+  border-color: var(--color-text-primary);
+}
+
+.swatchColour {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+/* Each disc in its accent's colour for the theme on screen - the values tokens.css gives the accent. */
+.swatchColour[data-swatch='moss'] { background: #5f8467; }
+:root[data-theme='light'] .swatchColour[data-swatch='moss'] { background: #4a6b52; }
+.swatchColour[data-swatch='blue'] { background: #4f7fc4; }
+:root[data-theme='light'] .swatchColour[data-swatch='blue'] { background: #2f5f9e; }
+.swatchColour[data-swatch='teal'] { background: #3f8f8a; }
+:root[data-theme='light'] .swatchColour[data-swatch='teal'] { background: #2a6b67; }
+.swatchColour[data-swatch='violet'] { background: #8069c4; }
+:root[data-theme='light'] .swatchColour[data-swatch='violet'] { background: #5f4aa0; }
+.swatchColour[data-swatch='rose'] { background: #b85c74; }
+:root[data-theme='light'] .swatchColour[data-swatch='rose'] { background: #93425a; }
+.swatchColour[data-swatch='amber'] { background: #b07f34; }
+:root[data-theme='light'] .swatchColour[data-swatch='amber'] { background: #86601f; }
+.swatchColour[data-swatch='slate'] { background: #6b7a90; }
+:root[data-theme='light'] .swatchColour[data-swatch='slate'] { background: #4b5868; }

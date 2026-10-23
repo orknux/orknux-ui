@@ -14,10 +14,12 @@ import './styles/global.css';
 import { App } from './App';
 import { applyLanguage, currentLanguage } from './session/language';
 import { applyTheme, currentTheme } from './session/theme';
+import { applyAccent, currentAccent } from './session/accent';
 import { t } from './i18n';
 
 // Before the first paint, so a light interface never flashes dark on its way in.
 applyTheme(currentTheme());
+applyAccent(currentAccent());
 // And the same for the language, so `lang` is right for the first screen drawn
 // rather than corrected once the session has been read.
 applyLanguage(currentLanguage());
