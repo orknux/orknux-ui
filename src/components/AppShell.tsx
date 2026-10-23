@@ -9,7 +9,7 @@ import { cachedWorkspaces, loadWorkspaces, onWorkspacesChanged } from '../sessio
 import bookIcon from '../assets/book.svg';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import doorOpenIcon from '../assets/door-open.svg';
-import orknuxMark from '../assets/orknux-mark.svg';
+import { OrknuxMark } from './OrknuxMark';
 import settingsIcon from '../assets/settings.svg';
 import shieldIcon from '../assets/shield.svg';
 import { rememberWorkspace, useLastWorkspaceId } from '../session/lastWorkspace';
@@ -360,7 +360,7 @@ export function AppShell({
         <a className={styles.brand} href={WEBSITE} target="_blank" rel="noreferrer noopener">
           <span className={styles.logoIcon}>
             {/* 24x20 is the mark's own ratio, and the size the website header uses. */}
-            <img src={orknuxMark} alt="" width={24} height={20} />
+            <OrknuxMark width={24} height={20} />
           </span>
           <p className={styles.wordmark}>ORKNUX</p>
         </a>

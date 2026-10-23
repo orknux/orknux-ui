@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { SHORTEST_PASSWORD, completePasswordReset } from '../../api/passwordReset';
 import eyeIcon from '../../assets/eye.svg';
-import orknuxMark from '../../assets/orknux-mark.svg';
+import { OrknuxMark } from '../../components/OrknuxMark';
 import { Attribution } from '../../components/Attribution';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
@@ -77,7 +77,7 @@ export function ResetPasswordPage({ version = `v${__APP_VERSION__}` }: ResetPass
         <header className={styles.header}>
           <div className={styles.logomark}>
             <span className={styles.logoIcon}>
-              <img src={orknuxMark} alt="" />
+              <OrknuxMark />
             </span>
             <p className={styles.wordmark}>ORKNUX</p>
             <span className={styles.versionBadge}>{version}</span>

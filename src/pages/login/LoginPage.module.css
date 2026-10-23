@@ -46,7 +46,7 @@
   border-radius: var(--radius-6);
 }
 
-.logoIcon img {
+.logoIcon svg {
   /* The mark's own ratio, matching the website header. A square here would
      squash it. */
   width: 24px;

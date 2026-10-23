@@ -195,6 +195,13 @@ for (const viewport of SIZES) {
   const blue = await brand();
   record(blue !== moss, `Save applies it (${moss} -> ${blue})`);
   record(blue === (await disc('blue')), `the Blue swatch is the colour Blue gives the page (${await disc('blue')})`);
+  // The logo too: its triad is the accent, not the moss a file behind an <img> kept.
+  const mark = await page.evaluate(() => {
+    const node = document.querySelector('[data-orknux-mark] circle');
+    return node === null ? null : getComputedStyle(node).fill;
+  });
+  record(mark === blue, `the logo in the shell is drawn in it (${mark})`);
+  await page.screenshot({ path: 'screenshots/accent-blue.png', clip: { x: 0, y: 0, width: 420, height: 120 } });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-testid="accent"]', { timeout: 20_000 });
   record((await brand()) === blue, 'and it is kept over a reload');

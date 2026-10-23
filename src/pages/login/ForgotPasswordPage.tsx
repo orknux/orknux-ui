@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
 import { requestPasswordReset } from '../../api/passwordReset';
-import orknuxMark from '../../assets/orknux-mark.svg';
+import { OrknuxMark } from '../../components/OrknuxMark';
 import { Attribution } from '../../components/Attribution';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
@@ -55,7 +55,7 @@ export function ForgotPasswordPage({ version = `v${__APP_VERSION__}` }: ForgotPa
         <header className={styles.header}>
           <div className={styles.logomark}>
             <span className={styles.logoIcon}>
-              <img src={orknuxMark} alt="" />
+              <OrknuxMark />
             </span>
             <p className={styles.wordmark}>ORKNUX</p>
             <span className={styles.versionBadge}>{version}</span>

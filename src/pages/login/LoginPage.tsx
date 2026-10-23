@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { authMethod } from '../../api/session';
 import type { AuthMethodInfo, Credentials } from '../../api/session';
 import eyeIcon from '../../assets/eye.svg';
-import orknuxMark from '../../assets/orknux-mark.svg';
+import { OrknuxMark } from '../../components/OrknuxMark';
 import { Attribution } from '../../components/Attribution';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
@@ -81,7 +81,7 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
         <header className={styles.header}>
           <div className={styles.logomark}>
             <span className={styles.logoIcon}>
-              <img src={orknuxMark} alt="" />
+              <OrknuxMark />
             </span>
             <p className={styles.wordmark}>ORKNUX</p>
             <span className={styles.versionBadge}>{version}</span>
