@@ -175,6 +175,15 @@
   border-color: var(--color-accent-brand);
 }
 
+.choiceNumber {
+  flex-shrink: 0;
+  min-width: 2ch;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
 .choiceText {
   display: flex;
   flex-direction: column;

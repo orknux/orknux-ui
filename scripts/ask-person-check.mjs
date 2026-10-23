@@ -71,6 +71,21 @@ try {
   const row = (await one.locator('[data-interaction-option="2"]').innerText().catch(() => '')).replace(/\s+/g, ' ');
   record(/Workspace parts/.test(row) && /Workflow to agents, functions and models/.test(row), `each option says what it means (${row})`);
   record((await one.locator('[data-interaction-text]').count()) === 1, 'with a box for the person\'s own words');
+  // Numbered in order, the number before the label on the label's line, so an answer in words can say "the second".
+  const numbers = await one.evaluate((card) =>
+    [...card.querySelectorAll('[data-interaction-option]')].map((button) => {
+      const number = button.querySelector('[data-choice-number]');
+      const label = number?.nextElementSibling?.firstElementChild;
+      if (number == null || label == null) return null;
+      const a = number.getBoundingClientRect();
+      const b = label.getBoundingClientRect();
+      return { said: number.textContent, before: a.right <= b.left, sameLine: Math.abs(a.top - b.top) < 4 };
+    }),
+  );
+  record(
+    numbers.length > 1 && numbers.every((n, i) => n !== null && n.said === `${i + 1}.` && n.before && n.sameLine),
+    `each option is numbered, before its label (${JSON.stringify(numbers)})`,
+  );
   await one.screenshot({ path: '/tmp/ask-person.png' });
 
   // One to choose: a click is the answer.

@@ -78,7 +78,7 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
           }}
         >
           <div className={styles.choices} role={request.multiple ? 'group' : undefined}>
-            {request.options.map((option) => {
+            {request.options.map((option, index) => {
               const on = ticked.includes(option.id);
               return (
                 <button
@@ -95,6 +95,8 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
                   data-interaction-option={option.id}
                 >
                   {request.multiple && <span className={styles.box} aria-hidden="true" />}
+                  {/* Numbered, so an answer in words can say "the second one". */}
+                  <span className={styles.choiceNumber} data-choice-number>{index + 1}.</span>
                   <span className={styles.choiceText}>
                     <span className={styles.choiceLabel}>{option.label}</span>
                     {Boolean(option.description) && <span className={styles.choiceDescription}>{option.description}</span>}
