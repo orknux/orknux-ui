@@ -43,10 +43,10 @@
  *      away under the same connection; not a target on the Reference tab, whose
  *      value arrives at run time from elsewhere in the graph, so there is
  *      nothing to check before the run and the name being read is not a channel
- *      name; and not a target on a node whose action sends through a mail
- *      server, because a node binds where a message goes but never which
- *      connection it goes through. Each of those is silence rather than an
- *      empty box, and none of them is a question put to the server.
+ *      name. Each of those is silence rather than an empty box, and none of
+ *      them is a question put to the server. (A node whose action sends through
+ *      a mail server was the third; since the server's d1ed8ce4 no such action
+ *      can be saved, and the refusal is asserted instead.)
  *
  * ---------------------------------------------------------------------------
  * And the suggesting half, which is the rest of #176
@@ -589,10 +589,24 @@ try {
   /* ------------------------------ nothing is asked about a connection that is
                                     not Slack, or about an empty field       */
 
-  await choose('action-connection', MAIL);
-  await type('general');
-  await page.waitForTimeout(900);
-  record((await box().count()) === 0, 'nothing is said under the field about a connection that is not Slack');
+  /*
+   * A connection that is not Slack cannot be put in front of this field on the
+   * form any more: since ed5ccc7 an action that sends a message is offered
+   * only the workspace's Slack connections, so the mail server is not in the
+   * picker to be chosen - which is the stronger form of "nothing is asked
+   * about it". Asserted as that, rather than waiting thirty seconds for a row
+   * that is not there. The panel's half, a node whose action sends through
+   * the mail server, is still driven below.
+   */
+  await page.locator('#action-connection').click();
+  await page.waitForTimeout(300);
+  const offered = await page.locator('[role="option"]').allInnerTexts();
+  record(
+    offered.some((one) => one.startsWith(SLACK)) && !offered.some((one) => one.startsWith(MAIL)),
+    `the form offers the Slack connection and not the mail server, so nothing is asked about a connection that is not Slack (${JSON.stringify(offered.map((one) => one.split(String.fromCharCode(10))[0]))})`,
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
   await choose('action-connection', SLACK);
   await page.fill('#action-target-name', '');
@@ -1219,26 +1233,36 @@ try {
    */
 
   /*
-   * A send with the same `target` parameter, through the mail server. Nothing
-   * about a node says which connection it goes through - it binds where the
-   * message goes and what it says, and the connection stays the definition's -
-   * so this is how a panel that read the parameter's name and nothing else
-   * would be caught.
+   * A send with the same `target` parameter, through the mail server, used to
+   * be made here so that a panel reading only the parameter's name would be
+   * caught answering about it. Since the server's d1ed8ce4 ("Refuse a message
+   * action on a connection that cannot send one") such an action cannot exist:
+   * a message goes through Slack or is refused on save. So what is asserted is
+   * the refusal - the reason there is no non-Slack `target` for a panel to be
+   * asked about - and the panel's half of it below went with the action.
    */
-  mailActionId = (
-    await call(`mutation ($input: CreateActionInput!) { createAction(input: $input) { id } }`, {
-      input: {
-        workspaceId: WORKSPACE,
-        name: MAIL_ACTION,
-        type: 'EXECUTE',
-        subtype: 'OUTGOING_CONNECTION',
-        connectionId: mailId,
-        connectionAction: 'SEND_MESSAGE',
-        content: 'Something to say.',
-        targetName: 'general',
-      },
-    })
-  ).createAction.id;
+  const refused = await call(`mutation ($input: CreateActionInput!) { createAction(input: $input) { id } }`, {
+    input: {
+      workspaceId: WORKSPACE,
+      name: MAIL_ACTION,
+      type: 'EXECUTE',
+      subtype: 'OUTGOING_CONNECTION',
+      connectionId: mailId,
+      connectionAction: 'SEND_MESSAGE',
+      content: 'Something to say.',
+      targetName: 'general',
+    },
+  }).then(
+    (made) => {
+      mailActionId = made.createAction.id;
+      return null;
+    },
+    (failure) => String(failure.message ?? failure),
+  );
+  record(
+    refused !== null && /Slack connection/.test(refused),
+    `a send through the mail server is refused, so no node can bind a target that is not Slack's (${refused ?? 'it was saved'})`,
+  );
 
   workflowId = (
     await call(`mutation ($input: CreateWorkflowInput!) { createWorkflow(input: $input) { id } }`, {
@@ -1655,25 +1679,6 @@ try {
   record((await page.inputValue(FIELD)) === 'halfblind', 'and the field carries on as the plain text it is');
   await page.screenshot({ path: shot('slack-suggest-node-halfblind.png') });
 
-  /* ------------------------------ a target that is not a Slack target */
-
-  /*
-   * The same parameter, called the same thing, on a node whose action sends
-   * through the mail server. The panel has to read the action behind the node
-   * to know whether there is anybody to ask, and here there is not: nothing is
-   * said and nothing is asked, because a sentence about some other connection
-   * under this field would be worse than silence.
-   */
-  asked = [];
-  suggested = [];
-  await bind(MAIL_ACTION);
-  await page.fill(FIELD, '');
-  await page.locator(FIELD).pressSequentially('general', { delay: 30 });
-  await page.waitForTimeout(1200);
-  record((await box().count()) === 0, 'a send through a connection that is not Slack is not answered about');
-  record(asked.length === 0, `and nothing is asked about it either (${JSON.stringify(asked)})`);
-  record((await list().count()) === 0, 'and offered nothing - there is no Slack here to offer anything from');
-  record(suggested.length === 0, `nor asked for a list (${JSON.stringify(suggested)})`);
 } finally {
   await page.unroute('**/graphql').catch(() => {});
   for (const [query, variables] of [
