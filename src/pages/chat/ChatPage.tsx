@@ -1047,8 +1047,22 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     const grew = new ResizeObserver(toBottom);
     grew.observe(log);
     for (const child of Array.from(log.children)) grew.observe(child);
+    /*
+     * And what is added between the renders this effect follows. A question an
+     * agent asks arrives with its own fetch, after the turn that asked it was
+     * drawn, as a new row nothing above was watching - so the log stayed where
+     * it was and the question sat below the fold.
+     */
+    const added = new MutationObserver((changes) => {
+      for (const change of changes) {
+        for (const node of Array.from(change.addedNodes)) if (node instanceof Element) grew.observe(node);
+      }
+      toBottom();
+    });
+    added.observe(log, { childList: true });
 
     return () => {
+      added.disconnect();
       cancelAnimationFrame(frame);
       log.removeEventListener('scroll', onScroll);
       log.removeEventListener('wheel', onWheel);

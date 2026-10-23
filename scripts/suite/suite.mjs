@@ -373,6 +373,11 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
+    name: 'question-scroll-check',
+    what: 'a question an agent asks, arriving after its turn was drawn, is followed down to rather than left below the fold',
+    needs: ['workspace'],
+  },
+  {
     name: 'used-by-graph-check',
     what: "a part's Used by panel opens its dependency graph: the part's chain alone, laid out by distance so no line runs behind a box",
     needs: ['workspace'],
