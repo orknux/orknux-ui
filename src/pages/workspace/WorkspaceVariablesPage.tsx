@@ -299,7 +299,6 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
     void guard(() => loadCatalogs());
   }, [loadCatalogs]);
 
-  useEffect(() => {
   /*
    * The open catalog is in the address, `?catalog=<id>`, the way the skills and
    * memory pages are opened by, so a reload or a link someone was sent opens the
@@ -331,6 +330,7 @@ export function WorkspaceVariablesPage({ session, onSignOut }: WorkspaceVariable
     navigate({ pathname: location.pathname, search: `?${next.toString()}`, hash: location.hash }, { replace: true });
   }, [asked, selected, catalogs, setSelected, navigate, location.pathname, location.search, location.hash]);
 
+  useEffect(() => {
     void guard(() => loadVariables());
   }, [loadVariables]);
 
