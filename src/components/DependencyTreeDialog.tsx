@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Background, Controls, Handle, Position, ReactFlow } from '@xyflow/react';
+import type { Edge, Node, NodeProps } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 import { dependantLabel, dependantPath } from '../api/dependants';
 import type { Dependant, DependencyKind } from '../api/dependants';
@@ -20,13 +23,18 @@ export interface DependencyTreeDialogProps {
   componentId: string;
 }
 
-/** One row of a branch, and the rows under it. */
+/** One box of a branch, and the boxes under it. */
 export interface TreeBranch {
   node: DependencyGraphNode;
   children: TreeBranch[];
-  /** Already drawn higher up this branch's tree: named, and not followed again. */
+  /** Already drawn elsewhere in this branch's tree: named, and not followed again. */
   repeat: boolean;
 }
+
+const BOX_WIDTH = 220;
+const BOX_HEIGHT = 44;
+const LEVEL_GAP = 56;
+const SIBLING_GAP = 14;
 
 /** The key a part goes by on the graph: the server's `KIND:id`. */
 function graphKey(kind: DependencyKind, id: string): string {
@@ -51,7 +59,7 @@ function asDependant(node: DependencyGraphNode, workspaceId: string): Dependant 
  *
  * A graph is not a tree: two things can use one part, and a part can come back
  * round to itself. So each part is followed the first time it is reached, and
- * any later time it is a row marked as shown above - which keeps the tree as
+ * any later time it is a box marked as shown elsewhere - which keeps the tree as
  * large as the graph and no larger, and ends every loop.
  */
 export function branchesOf(root: string, graph: DependencyGraph, uses: boolean): TreeBranch[] {
@@ -72,89 +80,106 @@ export function branchesOf(root: string, graph: DependencyGraph, uses: boolean):
   return grow(root);
 }
 
-interface BranchProps {
-  branch: TreeBranch;
-  workspaceId: string;
-  onOpen: () => void;
+interface BoxData extends Record<string, unknown> {
+  name: string;
+  kind: string;
+  root: boolean;
+  repeat: boolean;
+  side: 'root' | 'uses' | 'used-by';
 }
 
-function Branch({ branch, workspaceId, onOpen }: BranchProps) {
-  const [expanded, setExpanded] = useState(true);
-  const dependant = asDependant(branch.node, workspaceId);
-  const parent = branch.children.length > 0;
+function TreeBox({ data, selected }: NodeProps<Node<BoxData>>) {
+  const classes = [own.box, data.root ? own.boxRoot : '', data.repeat ? own.boxRepeat : '', selected ? own.boxSelected : ''];
   return (
-    <li
-      role="treeitem"
-      aria-expanded={parent ? expanded : undefined}
-      className={own.item}
-      data-tree-name={branch.node.name}
-      data-tree-repeat={branch.repeat ? '' : undefined}
+    <div
+      className={classes.join(' ')}
+      data-tree-name={data.name}
+      data-tree-side={data.side}
+      data-tree-repeat={data.repeat ? '' : undefined}
     >
-      <div className={own.row}>
-        {parent ? (
-          <button
-            type="button"
-            className={own.toggle}
-            onClick={() => setExpanded(!expanded)}
-            aria-label={expanded ? t('Collapse') : t('Expand')}
-          >
-            <span className={expanded ? own.chevronOpen : own.chevron} aria-hidden="true">
-              ▸
-            </span>
-          </button>
-        ) : (
-          <span className={own.leaf} aria-hidden="true" />
-        )}
-        <Link className={own.link} to={dependantPath(dependant)} onClick={onOpen}>
-          <span className={own.name}>{branch.node.name}</span>
-          <span className={own.kind}>{dependantLabel(dependant)}</span>
-          {branch.repeat && <span className={own.repeat}>{t('shown above')}</span>}
-          <span className={own.mark}>
-            <OpenDefinitionIcon />
-          </span>
-        </Link>
-      </div>
-      {parent && expanded && (
-        <ul role="group" className={own.children}>
-          {branch.children.map((child) => (
-            <Branch key={child.node.key} branch={child} workspaceId={workspaceId} onOpen={onOpen} />
-          ))}
-        </ul>
-      )}
-    </li>
+      <Handle type="target" position={Position.Left} className={own.handle} isConnectable={false} />
+      <span className={own.boxName}>{data.name}</span>
+      <span className={own.boxKind}>
+        {data.kind}
+        {data.repeat && <span className={own.repeat}> · {t('shown elsewhere')}</span>}
+      </span>
+      <Handle type="source" position={Position.Right} className={own.handle} isConnectable={false} />
+    </div>
   );
 }
 
-interface SideProps {
-  title: string;
-  empty: string;
-  branches: TreeBranch[];
-  workspaceId: string;
-  onOpen: () => void;
-  side: string;
-}
+const nodeTypes = { box: TreeBox };
 
-function Side({ title, empty, branches, workspaceId, onOpen, side }: SideProps) {
-  return (
-    <section className={own.side} data-tree-side={side}>
-      <h3 className={own.sideTitle}>{title}</h3>
-      {branches.length === 0 ? (
-        <p className={own.empty}>{empty}</p>
-      ) : (
-        <ul role="tree" aria-label={title} className={own.tree}>
-          {branches.map((branch) => (
-            <Branch key={branch.node.key} branch={branch} workspaceId={workspaceId} onOpen={onOpen} />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+interface Drawn {
+  nodes: Node<BoxData>[];
+  edges: Edge[];
+  /** Box id to the part it shows. */
+  parts: Map<string, DependencyGraphNode>;
 }
 
 /**
- * One part's dependencies as a tree: what it uses, followed down, and what uses
- * it, followed up - the Used by list followed to the end, with the other
- * direction beside it.
+ * The tree laid out: the part in the middle, what uses it branching out to the
+ * left and what it uses to the right, a column per step. Each branch is as tall
+ * as the leaves under it and its box sits at the middle of them, so a parent is
+ * always level with its children and no two branches cross. Arrows run from a
+ * user to what it uses - rightwards on both sides.
+ */
+function layOut(part: DependencyGraphNode, uses: TreeBranch[], usedBy: TreeBranch[], workspaceId: string): Drawn {
+  const nodes: Node<BoxData>[] = [];
+  const edges: Edge[] = [];
+  const parts = new Map<string, DependencyGraphNode>();
+  const pitch = BOX_HEIGHT + SIBLING_GAP;
+  const leaves = (branch: TreeBranch): number =>
+    branch.children.length === 0 ? 1 : branch.children.reduce((sum, child) => sum + leaves(child), 0);
+
+  const box = (id: string, node: DependencyGraphNode, x: number, y: number, data: { root: boolean; repeat: boolean; side: BoxData['side'] }) => {
+    parts.set(id, node);
+    nodes.push({
+      id,
+      type: 'box',
+      position: { x, y },
+      initialWidth: BOX_WIDTH,
+      initialHeight: BOX_HEIGHT,
+      measured: { width: BOX_WIDTH, height: BOX_HEIGHT },
+      draggable: false,
+      connectable: false,
+      data: { name: node.name, kind: dependantLabel(asDependant(node, workspaceId)), ...data },
+    });
+  };
+
+  box('root', part, 0, 0, { root: true, repeat: false, side: 'root' });
+
+  const side = (branches: TreeBranch[], direction: 1 | -1, name: 'uses' | 'used-by') => {
+    const place = (list: TreeBranch[], parent: string, depth: number, top: number) => {
+      let at = top;
+      list.forEach((branch, index) => {
+        // By side and path, so the two sides' first boxes are not both root/0.
+        const id = `${parent === 'root' ? name : parent}/${index}`;
+        const span = leaves(branch);
+        box(id, branch.node, direction * depth * (BOX_WIDTH + LEVEL_GAP), (at + (span - 1) / 2) * pitch, {
+          root: false,
+          repeat: branch.repeat,
+          side: name,
+        });
+        // A user points at what it uses: on the right that is parent to child, on the left child to parent.
+        const [source, target] = direction === 1 ? [parent, id] : [id, parent];
+        edges.push({ id: `${source}->${target}`, source, target, type: 'smoothstep', className: own.edge });
+        place(branch.children, id, depth + 1, at);
+        at += span;
+      });
+    };
+    const total = branches.reduce((sum, branch) => sum + leaves(branch), 0);
+    place(branches, 'root', 1, -(total - 1) / 2);
+  };
+  side(uses, 1, 'uses');
+  side(usedBy, -1, 'used-by');
+  return { nodes, edges, parts };
+}
+
+/**
+ * One part's dependencies drawn as a tree: what it uses, followed out to the
+ * right, and what uses it, followed out to the left - the Used by list
+ * followed to the end, with the other direction beside it.
  *
  * The workspace's whole graph is fetched and walked here, so this and every
  * Used by list answer from the same rows and cannot disagree.
@@ -163,6 +188,7 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [graph, setGraph] = useState<DependencyGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState('root');
   const root = graphKey(kind, componentId);
 
   useEffect(() => {
@@ -176,16 +202,23 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
     if (!open) return;
     setGraph(null);
     setError(null);
+    setSelected('root');
     fetchDependencyGraph(workspaceId)
       .then(setGraph)
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the dependencies.')));
   }, [open, workspaceId]);
 
-  const tree = useMemo(() => {
+  const drawn = useMemo(() => {
     const part = graph?.nodes.find((node) => node.key === root);
     if (graph === null || part === undefined) return null;
-    return { part, uses: branchesOf(root, graph, true), usedBy: branchesOf(root, graph, false) };
-  }, [graph, root]);
+    return layOut(part, branchesOf(root, graph, true), branchesOf(root, graph, false), workspaceId);
+  }, [graph, root, workspaceId]);
+
+  const nodes = useMemo(
+    () => drawn?.nodes.map((node) => ({ ...node, selected: node.id === selected })) ?? [],
+    [drawn, selected],
+  );
+  const chosen = drawn?.parts.get(selected) ?? null;
 
   return (
     <dialog
@@ -208,37 +241,48 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
           {/*
             At once rather than after the house quiet period: somebody has just
             pressed for this, and an empty dialog for three seconds reads as one
-            that has nothing to show.
+            that has nothing to show. In a frame the tree's size, so it does not
+            jump when the tree lands.
           */}
           {error === null && graph === null && (
-            <div className={own.waiting} data-testid="dependency-tree-loading">
+            <div className={`${own.canvas} ${own.waiting}`} data-testid="dependency-tree-loading">
               <Loader delay={0} />
             </div>
           )}
-          {graph !== null && tree === null && <p className={own.empty}>{t('Nothing uses this yet.')}</p>}
-          {tree !== null && (
+          {graph !== null && drawn === null && <p className={own.empty}>{t('Nothing uses this yet.')}</p>}
+          {drawn !== null && (
             <>
-              <p className={own.root} data-testid="dependency-tree-root">
-                <span className={own.rootName}>{tree.part.name}</span>
-                <span className={own.kind}>{dependantLabel(asDependant(tree.part, workspaceId))}</span>
-              </p>
-              <div className={own.sides}>
-                <Side
-                  side="uses"
-                  title={t('Uses')}
-                  empty={t('Uses nothing.')}
-                  branches={tree.uses}
-                  workspaceId={workspaceId}
-                  onOpen={onClose}
-                />
-                <Side
-                  side="used-by"
-                  title={t('Used by')}
-                  empty={t('Nothing uses this yet.')}
-                  branches={tree.usedBy}
-                  workspaceId={workspaceId}
-                  onOpen={onClose}
-                />
+              <div className={own.legend}>
+                <span>
+                  ← {t('Used by')} · {t('Uses')} →
+                </span>
+                {chosen !== null && (
+                  <span className={own.selection} data-testid="dependency-tree-selection">
+                    <span className={own.selectionName}>{chosen.name}</span>
+                    <Link className={own.open} to={dependantPath(asDependant(chosen, workspaceId))} onClick={onClose}>
+                      {t('Open')}
+                      <OpenDefinitionIcon />
+                    </Link>
+                  </span>
+                )}
+              </div>
+              <div className={own.canvas} data-testid="dependency-tree">
+                <ReactFlow
+                  nodes={nodes}
+                  edges={drawn.edges}
+                  nodeTypes={nodeTypes}
+                  onNodeClick={(_, node) => setSelected(node.id)}
+                  nodesDraggable={false}
+                  nodesConnectable={false}
+                  fitView
+                  // Readable rather than whole: a deep tree is panned, not shrunk until its names cannot be read.
+                  fitViewOptions={{ maxZoom: 1, minZoom: 0.75 }}
+                  minZoom={0.1}
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background />
+                  <Controls className={own.controls} showInteractive={false} />
+                </ReactFlow>
               </div>
             </>
           )}

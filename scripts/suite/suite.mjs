@@ -379,7 +379,7 @@ export const TESTS = [
   },
   {
     name: 'dependency-tree-check',
-    what: "a part's Used by panel opens its dependency tree: what it uses and what uses it, followed to the end, a part met again marked rather than repeated",
+    what: "a part's Used by panel draws its dependency tree: what uses it branching left, what it uses right, a column per step, a part met again a marked box rather than a second branch",
     needs: ['workspace'],
   },
   {

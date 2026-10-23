@@ -1,172 +1,135 @@
-/* Two trees side by side, each with room for a few levels of indent. */
+/* Wide, because the tree runs out both ways from the part in the middle. */
 .treeDialog {
-  width: 960px;
+  width: 1200px;
 }
 
 .body {
   gap: var(--space-16);
 }
 
-.root {
+/* Which way is which, and the box chosen with a way to it. */
+.legend {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-8);
-  margin: 0;
-}
-
-.rootName {
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-/* Uses on the left, Used by on the right; one above the other where there is no room. */
-.sides {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-24);
-  max-height: 65vh;
-  overflow: auto;
-}
-
-@media (max-width: 760px) {
-  .sides {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  min-width: 0;
-}
-
-.sideTitle {
-  margin: 0;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.55px;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.tree,
-.children {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Each level in by one toggle's width, with a rule down the side so a long branch reads as one. */
-.children {
-  margin-left: 9px;
-  padding-left: var(--space-12);
-  border-left: 1px solid var(--color-border);
-}
-
-.item {
-  min-width: 0;
-}
-
-.row {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.toggle {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.toggle:hover {
-  color: var(--color-text-primary);
-}
-
-.chevron,
-.chevronOpen {
-  display: inline-block;
-  font-size: var(--text-xs);
-  transition: transform 120ms;
-}
-
-.chevronOpen {
-  transform: rotate(90deg);
-}
-
-.leaf {
-  flex: none;
-  width: 18px;
-}
-
-.link {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-6);
-  min-width: 0;
-  padding: var(--space-2) 0;
+  justify-content: space-between;
+  gap: var(--space-12);
   font-size: var(--text-sm);
-  color: var(--color-text-primary);
-  text-decoration: none;
+  color: var(--color-text-muted);
 }
 
-.link:hover {
-  color: var(--color-accent-brand);
+.selection {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-10);
+  min-width: 0;
 }
 
-.name {
+.selectionName {
   overflow: hidden;
   font-weight: 600;
+  color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.kind {
-  flex: none;
-  color: var(--color-text-secondary);
+.open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-accent-brand);
+  text-decoration: none;
+}
+
+/* A window onto the tree; it pans and zooms inside. */
+.canvas {
+  width: 100%;
+  height: 65vh;
+  min-height: 360px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  overflow: hidden;
+}
+
+.waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 220px;
+  height: 44px;
+  padding: 0 var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+/* The part the tree is about. */
+.boxRoot {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft);
+}
+
+/* Met again: drawn where it is reached, followed where it was first. */
+.boxRepeat {
+  border-style: dashed;
+}
+
+.boxSelected {
+  box-shadow: 0 0 0 2px var(--color-accent-brand-soft);
+  border-color: var(--color-accent-brand);
+}
+
+.boxName {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boxKind {
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .repeat {
-  flex: none;
   font-style: italic;
-  color: var(--color-text-muted);
 }
 
-.mark {
-  display: inline-flex;
-  flex: none;
-  align-self: center;
-  color: var(--color-text-muted);
+.handle {
+  opacity: 0;
+  pointer-events: none;
 }
 
-.link:hover .mark {
-  color: var(--color-accent-brand);
+.edge :global(.react-flow__edge-path) {
+  stroke: var(--color-text-muted);
+}
+
+.controls button {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  fill: currentColor;
+}
+
+.controls button:hover {
+  background: var(--color-surface-raised);
 }
 
 .empty {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-}
-
-/* Where the tree will be, while it is fetched. */
-.waiting {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 240px;
 }

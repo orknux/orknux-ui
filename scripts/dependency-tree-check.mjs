@@ -1,8 +1,8 @@
 /**
- * A part's Used by panel opens its dependency tree: what it uses followed down
- * and what uses it followed up, each part drawn once and met again marked as
- * shown above, a loop ended rather than followed, a branch folding away, and
- * every row opening its part.
+ * A part's Used by panel draws its dependency tree: what uses it branching out
+ * to the left and what it uses to the right, a column per step, each part
+ * followed once and met again as a marked box, a loop ended rather than
+ * followed, and a box chosen opening its part.
  *
  * The page is a real model's; the graph it is handed is drawn here, because a
  * fixture's graph has no part reached two ways and no loop, and those are the
@@ -60,45 +60,48 @@ const dialog = page.getByTestId('dependency-tree-dialog');
 await page.waitForTimeout(300);
 record(await dialog.getByTestId('dependency-tree-loading').locator('[role="status"]').isVisible().catch(() => false), 'while it is fetched, the loader is drawn at once');
 
-await dialog.getByTestId('dependency-tree-root').waitFor({ timeout: 30_000 });
-record((await dialog.getByTestId('dependency-tree-root').innerText()).includes(model.name), 'the part is at the top');
-
-const rows = async (side) =>
-  dialog.locator(`[data-tree-side="${side}"] [data-tree-name]`).evaluateAll((items) =>
-    items.map((item) => {
-      let depth = 0;
-      for (let at = item.parentElement; at !== null && at.getAttribute('role') !== 'tree'; at = at.parentElement) {
-        if (at.getAttribute('role') === 'group') depth += 1;
-      }
-      return `${'  '.repeat(depth)}${item.dataset.treeName}${item.dataset.treeRepeat !== undefined ? ' (shown above)' : ''}`;
-    }),
-  );
-
-const uses = await rows('uses');
-record(
-  JSON.stringify(uses) === JSON.stringify(['Provider P', '  Key K', '    Agent A', `      ${model.name} (shown above)`]),
-  `uses: followed down to the end, nesting by step (${uses.join(' | ')})`,
+await dialog.getByTestId('dependency-tree').waitFor({ timeout: 30_000 });
+await page.waitForTimeout(800);
+record((await dialog.locator('[data-tree-side="root"]').innerText()).includes(model.name), 'the part is in the middle of its tree');
+const boxes = await dialog.locator('[data-tree-name]').evaluateAll((items) =>
+  items.map((item) => {
+    const box = item.getBoundingClientRect();
+    return { name: item.dataset.treeName, side: item.dataset.treeSide, repeat: item.dataset.treeRepeat !== undefined, x: box.x, y: box.y, w: box.width, h: box.height };
+  }),
 );
-const usedBy = await rows('used-by');
+const middle = boxes.find((box) => box.side === 'root');
+const step = Math.min(...boxes.filter((box) => box.side !== 'root').map((box) => Math.abs(box.x - middle.x)));
+/** The boxes of one side, as "depth name" sorted, a repeat starred. */
+const levels = (side) =>
+  boxes
+    .filter((box) => box.side === side)
+    .map((box) => `${Math.round(Math.abs(box.x - middle.x) / step)} ${box.name}${box.repeat ? '*' : ''}`)
+    .sort();
+const right = levels('uses');
 record(
-  JSON.stringify(usedBy) ===
-    JSON.stringify(['Agent A', '  Flow F', '  Key K', '    Provider P', `      ${model.name} (shown above)`, 'Agent B', '  Flow F (shown above)']),
-  `used by: a part reached twice is followed once and marked the second time (${usedBy.join(' | ')})`,
+  JSON.stringify(right) === JSON.stringify(['1 Provider P', '2 Key K', '3 Agent A', `4 ${model.name}*`]),
+  `what it uses branches out to the right, a column per step (${right.join(' | ')})`,
+);
+const left = levels('used-by');
+record(
+  JSON.stringify(left) === JSON.stringify(['1 Agent A', '1 Agent B', '2 Flow F', '2 Flow F*', '2 Key K', '3 Provider P', `4 ${model.name}*`]),
+  `what uses it branches out to the left, a part met again a marked box (${left.join(' | ')})`,
 );
 record(
-  uses.concat(usedBy).filter((row) => row.trim().startsWith(model.name)).every((row) => row.endsWith('(shown above)')),
-  'a loop back to the part is named and not followed into it again',
+  boxes.filter((box) => box.side === 'uses').every((box) => box.x > middle.x) &&
+    boxes.filter((box) => box.side === 'used-by').every((box) => box.x < middle.x),
+  'used by on the left of the part, uses on the right',
 );
+const lines = await dialog.locator('.react-flow__edge-path').count();
+record(lines === boxes.length - 1, `a tree: one line into every box but the part (${lines} lines, ${boxes.length} boxes)`);
+const overlap = boxes.some((one, i) =>
+  boxes.some((two, j) => j > i && one.x < two.x + two.w - 1 && two.x < one.x + one.w - 1 && one.y < two.y + two.h - 1 && two.y < one.y + one.h - 1),
+);
+record(!overlap, 'no two boxes overlap');
 
-// A branch folds away and opens again.
-const item = dialog.locator('[data-tree-side="uses"] [role="treeitem"][aria-expanded]').first();
-await item.locator('button').first().click();
-record((await item.getAttribute('aria-expanded')) === 'false' && (await rows('uses')).length === 1, 'a branch folds away');
-await item.locator('button').first().click();
-record((await rows('uses')).length === 4, 'and opens again');
-
-const href = await dialog.locator('[data-tree-name="Provider P"] a').first().getAttribute('href');
-record(href === `/workspace/${WORKSPACE}/models/providers/9001`, `a row opens its part (${href})`);
+await dialog.locator('[data-tree-name="Provider P"]').first().click();
+const href = await dialog.getByTestId('dependency-tree-selection').getByRole('link').getAttribute('href');
+record(href === `/workspace/${WORKSPACE}/models/providers/9001`, `a box chosen opens its part (${href})`);
 
 await page.screenshot({ path: '/tmp/dependency-tree.png' });
 await page.keyboard.press('Escape');
