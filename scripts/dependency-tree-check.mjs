@@ -8,7 +8,7 @@
  * fixture's graph has no part reached two ways and no loop, and those are the
  * two things that make a graph not a tree.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, WORKFLOW, open, record, finish } from './suite/harness.mjs';
 
 const { browser, context, page } = await open({ viewport: { width: 1500, height: 1000 } });
 
@@ -103,9 +103,31 @@ await dialog.locator('[data-tree-name="Provider P"]').first().click();
 const href = await dialog.getByTestId('dependency-tree-selection').getByRole('link').getAttribute('href');
 record(href === `/workspace/${WORKSPACE}/models/providers/9001`, `a box chosen opens its part (${href})`);
 
+// Show graph: the chosen part becomes the middle of its own graph.
+await dialog.getByTestId('dependency-tree-follow').click();
+await page.waitForTimeout(800);
+record((await dialog.locator('[data-tree-side="root"]').innerText()).includes('Provider P'), 'Show graph draws the chosen part in the middle');
+
+// Dragged bigger from its corner, the canvas grows with it.
+const before = await dialog.getByTestId('dependency-tree').boundingBox();
+const corner = await dialog.locator('[data-edge="se"]').boundingBox();
+await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+await page.mouse.down();
+await page.mouse.move(corner.x + 120, corner.y + 60, { steps: 6 });
+await page.mouse.up();
+await page.waitForTimeout(300);
+const after = await dialog.getByTestId('dependency-tree').boundingBox();
+record(after.width > before.width + 50 && after.height > before.height + 20, `dragging the corner makes it bigger (${Math.round(before.width)}x${Math.round(before.height)} to ${Math.round(after.width)}x${Math.round(after.height)})`);
+
 await page.screenshot({ path: '/tmp/dependency-tree.png' });
 await page.keyboard.press('Escape');
 await page.waitForTimeout(300);
 record(!(await dialog.isVisible()), 'Escape closes it');
+
+// A workflow's own settings page says what uses it, with the same way into the graph.
+await page.unroute('**/graphql');
+await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/settings`, { waitUntil: 'domcontentloaded' });
+await page.locator('section[aria-label="Used by"]').waitFor({ timeout: 30_000 });
+record(await page.locator('[data-dependency-tree-open]').isVisible(), "a workflow's settings page has Used by, with its dependency graph");
 
 await finish(browser);

@@ -11,6 +11,7 @@ import { useDirty } from '../../components/useDirty';
 import { BackLink } from '../../components/BackLink';
 import { Loader } from '../../components/Loader';
 import { PublicationHistory } from '../../components/PublicationHistory';
+import { UsedBy } from '../../components/UsedBy';
 import { FieldHint } from '../../components/FieldHint';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -237,6 +238,11 @@ function WorkflowSettingsView({ session, onSignOut, onDiscard }: WorkflowSetting
                     'so the workflow reads as a draft until it is published again.'}
               </p>
             )}
+          </section>
+
+          {/* The workflows that run this one from a node, as every other part's page says what uses it. */}
+          <section className={styles.card}>
+            <UsedBy kind="WORKFLOW" componentId={workflowId} />
           </section>
 
           <section className={`${styles.card} ${styles.dangerCard}`}>

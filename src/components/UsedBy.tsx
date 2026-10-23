@@ -224,7 +224,7 @@ export function UsedBy({ kind, componentId }: UsedByProps) {
         </span>
         {treeable && (
           <button type="button" className={styles.treeButton} onClick={() => setTreeOpen(true)} data-dependency-tree-open="">
-            {t('Dependency tree')}
+            {t('Dependency graph')}
           </button>
         )}
       </h2>

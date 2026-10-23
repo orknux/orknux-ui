@@ -8,6 +8,7 @@ import { dependantLabel, dependantPath } from '../api/dependants';
 import type { Dependant, DependencyKind } from '../api/dependants';
 import { fetchDependencyGraph } from '../api/dependencyGraph';
 import type { DependencyGraph, DependencyGraphNode } from '../api/dependencyGraph';
+import { DialogEdges, useDialogSize } from './DialogSize';
 import { Loader } from './Loader';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { PanelClose } from './PanelClose';
@@ -189,7 +190,10 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
   const [graph, setGraph] = useState<DependencyGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState('root');
-  const root = graphKey(kind, componentId);
+  /** The part the graph is drawn around: the page's own, or one chosen in it to follow from. */
+  const [root, setRoot] = useState(graphKey(kind, componentId));
+  // Dragged bigger from any edge or corner, and remembered: a large workspace's graph wants the room.
+  const sizing = useDialogSize({ storageKey: 'orknux.dialog.dependency-graph.size', open, minWidth: 480, minHeight: 320 });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -203,10 +207,11 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
     setGraph(null);
     setError(null);
     setSelected('root');
+    setRoot(graphKey(kind, componentId));
     fetchDependencyGraph(workspaceId)
       .then(setGraph)
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load the dependencies.')));
-  }, [open, workspaceId]);
+  }, [open, workspaceId, kind, componentId]);
 
   const drawn = useMemo(() => {
     const part = graph?.nodes.find((node) => node.key === root);
@@ -223,18 +228,21 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
   return (
     <dialog
       ref={dialogRef}
-      className={`${styles.dialog} ${own.treeDialog}`}
+      className={`${styles.dialog} ${styles.dialogResizable} ${own.treeDialog}`}
+      style={sizing.style}
+      data-sized={sizing.sized || undefined}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
-      aria-label={t('Dependency tree')}
+      aria-label={t('Dependency graph')}
       data-testid="dependency-tree-dialog"
     >
+      <DialogEdges {...sizing.edgeProps} />
       {open && (
         <div className={`${styles.body} ${own.body}`}>
           <header className={styles.header}>
-            <h2 className={styles.title}>{t('Dependency tree')}</h2>
+            <h2 className={styles.title}>{t('Dependency graph')}</h2>
             <PanelClose onClose={onClose} />
           </header>
           {error !== null && <p className={styles.error}>{error}</p>}
@@ -259,6 +267,19 @@ export function DependencyTreeDialog({ open, onClose, workspaceId, kind, compone
                 {chosen !== null && (
                   <span className={own.selection} data-testid="dependency-tree-selection">
                     <span className={own.selectionName}>{chosen.name}</span>
+                    {selected !== 'root' && (
+                      <button
+                        type="button"
+                        className={own.follow}
+                        onClick={() => {
+                          setRoot(chosen.key);
+                          setSelected('root');
+                        }}
+                        data-testid="dependency-tree-follow"
+                      >
+                        {t('Show graph')}
+                      </button>
+                    )}
                     <Link className={own.open} to={dependantPath(asDependant(chosen, workspaceId))} onClick={onClose}>
                       {t('Open')}
                       <OpenDefinitionIcon />
