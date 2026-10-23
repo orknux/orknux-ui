@@ -126,6 +126,21 @@
   --color-chart-2: #d95926;
   --color-chart-3: #199e70;
 
+  /*
+   * The people in a workflow's editor, each drawn in one of these by their
+   * login: a pointer, its name tag, and the ring of their initials. Six, as
+   * far apart as a dark surface lets them be; a seventh person shares one.
+   * Issue #645.
+   */
+  --color-presence-1: #f472b6;
+  --color-presence-2: #38bdf8;
+  --color-presence-3: #fbbf24;
+  --color-presence-4: #a78bfa;
+  --color-presence-5: #34d399;
+  --color-presence-6: #fb923c;
+  /* What is written on a name tag in one of those. */
+  --color-presence-text: #111111;
+
   /* Typography */
   --font-sans: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', monospace;
@@ -265,6 +280,14 @@
   --color-chart-1: #2a78d6;
   --color-chart-2: #eb6834;
   --color-chart-3: #1baf7a;
+  /* The same six, deep enough to read against a light canvas. */
+  --color-presence-1: #db2777;
+  --color-presence-2: #0284c7;
+  --color-presence-3: #b45309;
+  --color-presence-4: #7c3aed;
+  --color-presence-5: #059669;
+  --color-presence-6: #ea580c;
+  --color-presence-text: #ffffff;
 
   /* Audit badges: the same hues, light enough to read dark text on. */
   --color-badge-workflow: #e9d5ff;

@@ -18,7 +18,7 @@
  * So what is measured is the second write. Choose Function, let it save, then
  * choose a function and reload the page: the function has to still be there.
  */
-import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, autosaved } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -207,7 +207,7 @@ record(
  * saved when somebody saves it - so this is the gesture a person makes, not a
  * shortcut around one.
  */
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(1500);
 
 // And it is there on the way back, which is what somebody actually notices.
@@ -283,7 +283,7 @@ await page.waitForTimeout(400);
 await page.locator('[role="option"]').filter({ hasText: /^Custom/ }).first().click();
 await page.waitForTimeout(1400);
 
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2000);
 
 const graph = await graphql(
@@ -321,7 +321,7 @@ await page.waitForTimeout(1200);
 // Function, and stop there: no function chosen.
 await chooseOption(page, '#action-subtype', { label: 'Function' });
 await page.waitForTimeout(1800);
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2200);
 
 const half = (await owned()).find((one) => one.subtype === 'FUNCTION' && one.functionId === null);

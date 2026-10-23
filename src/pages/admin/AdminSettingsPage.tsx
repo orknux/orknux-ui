@@ -21,6 +21,7 @@ import {
   setWritingForgottenSeconds,
   setReadingShownAfterSeconds,
   setWorkflowStepsAtOnce,
+  setWorkflowAutosaveMillis,
   setWorkflowCallCheckSeconds,
   setWorkflowStepHeartbeatSeconds,
   setWorkflowRestartAttempts,
@@ -188,6 +189,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [backoff, setBackoff] = useState('');
   /** How many steps of one workflow run may be running at once. Issue #285. */
   const [stepsAtOnce, setStepsAtOnce] = useState('');
+  /** How long the workflow editor waits after the last change before it saves, as typed. Issue #645. */
+  const [autosave, setAutosave] = useState('');
   const [callCheck, setCallCheck] = useState('');
   /** How a step a dead server was in the middle of is recovered. Issue #601. */
   const [stepHeartbeat, setStepHeartbeat] = useState('');
@@ -340,6 +343,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         setAtOnce(String(held.agentMaxSubagentsAtOnce));
         setBackoff(String(held.rateLimitBackoffSeconds));
         setStepsAtOnce(String(held.workflowStepsAtOnce));
+        setAutosave(String(held.workflowAutosaveMillis));
         setCallCheck(String(held.workflowCallCheckSeconds));
         setStepHeartbeat(String(held.workflowStepHeartbeatSeconds));
         setRestartAttempts(String(held.workflowRestartAttempts));
@@ -423,6 +427,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: atOnce, held: settings.agentMaxSubagentsAtOnce, write: setAgentMaxSubagentsAtOnce },
         { typed: backoff, held: settings.rateLimitBackoffSeconds, write: setRateLimitBackoffSeconds },
         { typed: stepsAtOnce, held: settings.workflowStepsAtOnce, write: setWorkflowStepsAtOnce },
+        { typed: autosave, held: settings.workflowAutosaveMillis, write: setWorkflowAutosaveMillis },
         { typed: callCheck, held: settings.workflowCallCheckSeconds, write: setWorkflowCallCheckSeconds },
         { typed: stepHeartbeat, held: settings.workflowStepHeartbeatSeconds, write: setWorkflowStepHeartbeatSeconds },
         { typed: restartAttempts, held: settings.workflowRestartAttempts, write: setWorkflowRestartAttempts },
@@ -2583,6 +2588,33 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   aria-label={t('Steps running at once')}
                 />
                 <span className={styles.retentionUnit}>{t('at once')}</span>
+              </div>
+            </div>
+
+            {/* The editor has no Save button: it saves this long after the last change. Issue #645. */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Workflow Autosave')}</p>
+                  <FieldHint label={t('Workflow Autosave')}>
+                    {t('How long the workflow editor waits after the last change before it saves, so the others looking at the workflow see it. Between 200 and 10000 milliseconds.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="workflow-autosave-millis"
+                  name="workflowAutosaveMillis"
+                  className={styles.input}
+                  type="number"
+                  min={200}
+                  max={10000}
+                  value={autosave}
+                  onChange={(event) => setAutosave(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Workflow Autosave')}
+                />
+                <span className={styles.retentionUnit}>ms</span>
               </div>
             </div>
 

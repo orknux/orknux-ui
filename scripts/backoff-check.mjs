@@ -16,7 +16,7 @@
  * first rather than assuming it, and the last thing this does is hand the node
  * back as it found it.
  */
-import { BASE, WORKSPACE, WORKFLOW, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, WORKFLOW, open, record, finish, autosaved } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1100 } });
 
@@ -49,7 +49,7 @@ async function type(box, value) {
 }
 
 async function save() {
-  await page.locator('button[aria-label^="Save"]').click();
+  await autosaved(page); // the editor saves as it goes (#645)
   await page.waitForTimeout(1500);
 }
 

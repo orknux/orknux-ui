@@ -10,7 +10,7 @@
  * Adds a node it never saves, so the fixture's graph is left as found; the
  * one save it presses is the refused one.
  */
-import { BASE, WORKSPACE, WORKFLOW, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, WORKFLOW, open, record, finish, autosaved } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -39,7 +39,7 @@ record(
 /* Written, and wrong: the save is refused on this node, in words. */
 await row.fill('zz-no-such-skill');
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /^save\b/i }).click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2500);
 const said = await page.locator('[role=alert]').allTextContents().catch(() => []);
 record(

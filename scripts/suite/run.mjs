@@ -68,6 +68,7 @@ import { fileURLToPath } from 'node:url';
 import { TESTS, inCi } from './suite.mjs';
 import { fixtureTrouble } from './fixture-check.mjs';
 import { fixtureEnv } from './fixture.mjs';
+import { workflowKeeper } from './workflow-keeper.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPTS = resolve(HERE, '..');
@@ -383,6 +384,8 @@ async function toItself(test, at) {
 
 let next = 0;
 async function worker(at) {
+  // The fixture workflow as this worker found it, put back after any check that saved over it.
+  const keeper = await workflowKeeper(shards.length === 0 ? process.env : { ...process.env, ...shards[at] });
   for (;;) {
     if (stoppedAt !== null) return;
     while (holding && stoppedAt === null) await new Promise((wake) => setTimeout(wake, 100));
@@ -402,6 +405,11 @@ async function worker(at) {
       } finally {
         running -= 1;
       }
+    }
+    try {
+      if (await keeper.restore()) result.output += '\n(the fixture workflow was put back as it was)\n';
+    } catch (unkept) {
+      result.output += `\nThe fixture workflow could not be put back: ${unkept.message}\n`;
     }
     done.push(result);
     report(result, at);

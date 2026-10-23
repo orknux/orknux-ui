@@ -16,7 +16,7 @@
  *
  * Makes a workflow with one Object node in it and removes it again.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, autosaved } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -135,7 +135,7 @@ record((await says()) === 'number', `the type chosen is the one shown (${JSON.st
 
 /* ---- saved with the graph, and held by the server ---- */
 
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2500);
 
 const held = await stored();
@@ -158,7 +158,7 @@ record(
 
 await page.locator('button[aria-pressed]', { hasText: 'List' }).first().click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2500);
 
 const asList = await stored();
@@ -187,7 +187,7 @@ await page.locator('button', { hasText: '+ Add Property' }).last().click();
 const street = page.locator('#node-field-0-shape-name-0');
 await street.waitFor({ timeout: 5_000 });
 await street.fill('street');
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2500);
 const { workflowGraph: withFields } = await graphql(
   `query($w: ID!, $f: ID!) { workflowGraph(workspaceId: $w, workflowId: $f) { nodes { key mappings { name fieldKind fieldRefObjectId fieldProperties { name kind } } } } }`,
@@ -207,7 +207,7 @@ record((await says()) === 'object' && (await page.locator('#node-field-0-shape-n
 
 // A single object defined in place shows its own field on the node, by its dotted name.
 await page.locator('button[aria-pressed]', { hasText: 'Single' }).first().click();
-await page.getByRole('button', { name: /^Save/ }).first().click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2500);
 // Folded under it: the field is drawn, the one inside it only once it is unfolded, as `street` set in beneath it.
 const drawnNode = page.locator('.react-flow__node').first();

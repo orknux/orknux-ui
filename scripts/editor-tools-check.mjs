@@ -17,7 +17,7 @@
  *
  * Makes its own workflow and removes it.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish, selectNode } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, selectNode, autosaved } from './suite/harness.mjs';
 
 const PREFIX = 'zzEditorTools';
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1000 } });
@@ -250,7 +250,7 @@ try {
   );
   await page.locator('#node-shape [data-shape-choice="HEXAGON"]').click();
   record((await page.locator('#node-shape [data-shape-choice="HEXAGON"]').getAttribute('aria-checked')) === 'true', 'pressing Hexagon checks it');
-  await page.getByRole('button', { name: /^save\b/i }).click();
+  await autosaved(page); // the editor saves as it goes (#645)
   await page.waitForTimeout(2000);
   await page.locator('.react-flow__node [data-shape="HEXAGON"]').waitFor({ timeout: 8000 }).catch(() => {});
   const shaped = await page.locator('.react-flow__node [data-shape="HEXAGON"]').count();

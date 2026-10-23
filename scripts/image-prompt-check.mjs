@@ -18,7 +18,7 @@
  * has its own test: what was never covered is that the two agree - which is
  * exactly where it broke, twice with a green server suite.
  */
-import { BASE, WORKSPACE, WORKFLOW, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, WORKFLOW, open, record, finish, autosaved } from './suite/harness.mjs';
 
 /*
  * The node this check adds is taken off the fixture's graph before and after.
@@ -104,7 +104,7 @@ await page.waitForTimeout(300);
  * their keystroke in the accessible name ("Save (Ctrl+S)"), so an anchored
  * match finds nothing.
  */
-await page.getByRole('button', { name: /^save\b/i }).click();
+await autosaved(page); // the editor saves as it goes (#645)
 await page.waitForTimeout(2500);
 
 /*

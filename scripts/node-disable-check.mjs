@@ -26,7 +26,7 @@
  * and removes it. Object nodes are the smallest thing that runs to completion
  * with no model behind them.
  */
-import { BASE, WORKSPACE, open, record, finish, selectNode } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, selectNode, autosaved } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
 
@@ -137,7 +137,7 @@ async function openEditor() {
 }
 
 async function save() {
-  await page.locator('button[aria-label^="Save"]').click();
+  await autosaved(page); // the editor saves as it goes (#645)
   await page.waitForTimeout(2000);
 }
 

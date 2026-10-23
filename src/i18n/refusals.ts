@@ -250,6 +250,8 @@ const PL: Record<string, string> = {
   WidgetsPerChatOutOfRange: '{widgets} to nie jest liczba widżetów jednego czatu. Wybierz od 1 do 50.',
   WidgetTimerLimitOutOfRange: '{seconds} to nie jest liczba sekund minutnika w czacie. Wybierz od 60 do 604800.',
   ChatWidgetNotFound: 'Ten czat nie ma widżetu {id}.',
+  WorkflowAutosaveOutOfRange: '{millis} to nie jest liczba milisekund, które edytor przepływu odczekuje przed zapisem. Wybierz od 200 do 10000.',
+  WorkflowGraphMoved: 'Ktoś inny zapisał ten przepływ, odkąd go odczytano. Odczytaj go ponownie i scal przed zapisem',
   ReadingShownAfterOutOfRange: '{seconds} to nie jest liczba sekund czytania promptu przed jego pokazaniem. Wybierz od 0 do 120.',
   WritingForgottenOutOfRange: '{seconds} to nie jest liczba sekund ważności raportu pisania. Wybierz od 5 do 600.',
   UnusableReplyRetriesOutOfRange: '{retries} to nie jest liczba ponowień po nieużytecznej odpowiedzi. Wybierz od 0 do 10.',

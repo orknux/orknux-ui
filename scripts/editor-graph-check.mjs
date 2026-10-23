@@ -210,10 +210,9 @@ for (let go = 1; go <= DISCARDS; go += 1) {
     window.__graphFrom = window.__graphFrames.length;
   });
 
-  // The bar's Discard, then the dialog's - which is the same word, so they are
-  // told apart by where they are rather than by what they say.
-  await page.locator('button[data-tip^="Discard changes"]').click();
-  await page.locator('dialog').getByRole('button', { name: 'Discard' }).click();
+  // Refresh reads the graph again and rebuilds every node - what Discard did
+  // until the editor saved as it goes (#645).
+  await page.getByRole('button', { name: /^Refresh/ }).click();
   // The read, the re-render, and enough frames after it to see a recovery.
   await page.waitForTimeout(2000);
 

@@ -261,6 +261,9 @@ export interface InstallationSettings {
   /** How long a prompt is read, in seconds, before the page is told it is being read; 0 tells at once. */
   readingShownAfterSeconds: number;
   readingShownAfterSecondsConfigured: number;
+  /** How long the workflow editor waits after the last change before it saves, in milliseconds. Issue #645. */
+  workflowAutosaveMillis: number;
+  workflowAutosaveMillisConfigured: number;
   /** How many widgets one chat may hold at once. */
   widgetsPerChat: number;
   widgetsPerChatConfigured: number;
@@ -360,7 +363,7 @@ const FIELDS =
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
   'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
-  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured reviewsPerSession reviewsPerSessionConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured readingShownAfterSeconds readingShownAfterSecondsConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
+  'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured reviewsPerSession reviewsPerSessionConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured readingShownAfterSeconds readingShownAfterSecondsConfigured workflowAutosaveMillis workflowAutosaveMillisConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
   'localBoxMaxTtlSeconds localBoxMaxTtlSecondsConfigured localBoxIdleTimeoutSeconds localBoxIdleTimeoutSecondsConfigured ' +
@@ -929,6 +932,14 @@ export async function setWritingForgottenSeconds(seconds: number): Promise<Insta
     { seconds },
   );
   return data.setWritingForgottenSeconds;
+}
+
+export async function setWorkflowAutosaveMillis(millis: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setWorkflowAutosaveMillis: InstallationSettings }>(
+    `mutation ($millis: Int!) { setWorkflowAutosaveMillis(millis: $millis) { ${FIELDS} } }`,
+    { millis },
+  );
+  return data.setWorkflowAutosaveMillis;
 }
 
 export async function setReadingShownAfterSeconds(seconds: number): Promise<InstallationSettings> {

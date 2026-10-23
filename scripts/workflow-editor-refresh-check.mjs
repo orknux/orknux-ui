@@ -1,16 +1,16 @@
 /**
  * The workflow editor's Refresh reads the graph and the pickers' lists again,
- * and does not throw away unsaved work without asking.
+ * and never throws away work: what has not been sent yet is saved first.
  *
  * Something made elsewhere - an agent in another tab, a trigger an agent created
  * through the orknux tools - is not in a picker read before it existed, and a
  * graph saved from somewhere else is not on a canvas loaded before it was. So:
  * pressing Refresh on a clean canvas asks the server for the graph and for the
- * agents again; with a node added and not saved, it asks for the lists but not
- * the graph, and opens the Discard confirmation instead; cancelling keeps the
- * new node.
+ * agents again; with a node added and not saved yet, it saves it and then reads
+ * the graph back with the node in it. There is no Discard to ask about any more:
+ * the editor saves as it goes (#645).
  *
- * Reads the workspace's workflow; saves nothing.
+ * Adds a node to the workspace's workflow; the runner puts the workflow back.
  */
 import { BASE, WORKSPACE, WORKFLOW, open, record, drawn, finish } from './suite/harness.mjs';
 
@@ -42,7 +42,7 @@ record(count('graph') > graphs, `the graph is read again (${graphs} -> ${count('
 record(count('agents') > agents, `and the agents a node picks from (${agents} -> ${count('agents')})`);
 record(!(await page.getByRole('dialog').isVisible().catch(() => false)), 'nothing is asked when nothing is unsaved');
 
-/* Unsaved work: the lists, not the graph, and a question. */
+/* Work not sent yet: saved first, then read back with it. */
 const before = await page.locator('.react-flow__node').count();
 await page.getByRole('button', { name: /^Add node/ }).click();
 await page.getByRole('menuitem', { name: 'Action', exact: true }).click();
@@ -53,14 +53,10 @@ record(added === before + 1, `a node is added and not saved (${before} -> ${adde
 graphs = count('graph');
 agents = count('agents');
 await refresh.click();
-await page.waitForTimeout(1500);
-const dialog = page.getByRole('dialog');
-record(await dialog.isVisible().catch(() => false), 'with unsaved work, Refresh asks before throwing it away');
-record(count('graph') === graphs, 'and has not read the graph over it');
-record(count('agents') > agents, 'while the lists are read again regardless');
-
-await dialog.getByRole('button', { name: 'Cancel' }).click();
-await page.waitForTimeout(500);
-record((await page.locator('.react-flow__node').count()) === added, 'cancelling keeps the new node');
+await page.waitForTimeout(2500);
+record(!(await page.getByRole('dialog').isVisible().catch(() => false)), 'Refresh asks nothing: there is nothing to throw away');
+record(count('graph') > graphs, `it reads the graph again (${graphs} -> ${count('graph')})`);
+record(count('agents') > agents, 'and the lists');
+record((await page.locator('.react-flow__node').count()) === added, 'and the new node is still there, saved before the read');
 
 await finish(browser);

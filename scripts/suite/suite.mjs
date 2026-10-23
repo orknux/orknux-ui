@@ -361,6 +361,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'workflow-collaboration-check',
+    what: 'two tabs in one workflow editor: no Save button, each sees the other and its pointer, a move saves itself and redraws in the other, and two moves at once both stay',
+    needs: ['workspace'],
+    // Makes a workflow of its own and removes it again.
+  },
+  {
     name: 'reports-url-check',
     what: 'Admin > Reports keeps the report it shows in the address, through a pick and a reload',
     needs: [],
@@ -3540,12 +3546,9 @@ export const TESTS = [
   },
   {
     name: 'workflow-editor-refresh-check',
-    what: "the workflow editor's Refresh reads the graph and the pickers again, and asks before throwing away unsaved work",
+    what: "the workflow editor's Refresh reads the graph and the pickers again, saving what was not sent yet first",
     needs: ['workspace'],
-    /*
-     * Reads the workspace's workflow and adds a node it never saves; cancelling
-     * the question leaves the canvas as it was. Changes nothing on the server.
-     */
+    // Adds a node to the workspace's workflow; the runner puts the workflow back after it.
   },
   {
     name: 'sessions-spend-columns-check',

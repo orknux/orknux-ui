@@ -26,6 +26,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useViewport,
   useUpdateNodeInternals,
   useStore,
 } from '@xyflow/react';
@@ -41,6 +42,7 @@ import {
   saveWorkflowGraph,
 } from '../../api/graph';
 import type {
+  GraphEdge,
   GraphNode,
   GraphPort,
   GraphProblem,
@@ -50,6 +52,11 @@ import type {
   NodeMapping,
   WorkflowStatus,
 } from '../../api/graph';
+import { ApiError } from '../../api/client';
+import { colourOf, joinWorkflow, newViewer, pointerSender } from '../../api/workflowLive';
+import type { Pointer, Viewer } from '../../api/workflowLive';
+import { mergeGraphs } from './graphMerge';
+import type { DrawnGraph } from './graphMerge';
 import type { SessionUser } from '../../api/session';
 import { createAction, fetchPluginActions, fetchWorkflowOwnedActions, fetchWorkspaceActions } from '../../api/actions';
 import type { PluginAction } from '../../api/actions';
@@ -94,7 +101,6 @@ import redoIcon from '../../assets/redo.svg';
 import marqueeIcon from '../../assets/marquee.svg';
 import jointIcon from '../../assets/joint.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
-import saveIcon from '../../assets/save.svg';
 import undoIcon from '../../assets/undo.svg';
 import { ActionDialog } from '../../components/ActionDialog';
 import { ActionForm } from '../../components/ActionForm';
@@ -613,6 +619,200 @@ function editShape(nodes: Node<NodeData>[], edges: Edge[], points: Record<string
 function typingText(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
+}
+
+/**
+ * What a node of the graph the server holds carries on the canvas.
+ *
+ * Half of the round trip a node makes - [drawnNodeOf] is the other - kept off
+ * the page so a graph can be put in the shape a save sends without putting it
+ * on the canvas, which is the shape the merge compares in. Issue #645.
+ */
+function nodeDataOf(node: GraphNode): NodeData {
+  return {
+    kind: node.kind,
+    name: node.name,
+    description: node.description,
+    yesLabel: node.yesLabel ?? null,
+    noLabel: node.noLabel ?? null,
+    fallbackEnabled: node.fallbackEnabled ?? false,
+    streamOutput: node.streamOutput ?? true,
+    retryAttempts: node.retryAttempts ?? null,
+    retryBackoffSeconds: node.retryBackoffSeconds ?? null,
+    retryMultiplier: node.retryMultiplier ?? null,
+    retryMaxWaitSeconds: node.retryMaxWaitSeconds ?? null,
+    retryJitter: node.retryJitter ?? null,
+    retryBudgetSeconds: node.retryBudgetSeconds ?? null,
+    enabled: node.enabled ?? true,
+    agentId: node.agentId,
+    triggerId: node.triggerId,
+    actionId: node.actionId,
+    conditionId: node.conditionId,
+    objectId: node.objectId ?? null,
+    outputObjectId: node.outputObjectId ?? null,
+    outputNodeKey: node.outputNodeKey ?? null,
+    imageModelId: node.imageModelId ?? null,
+    imageSize: node.imageSize ?? null,
+    imageQuality: node.imageQuality ?? null,
+    imageStyle: node.imageStyle ?? null,
+    decisionModelId: node.decisionModelId ?? null,
+    decisionQuestions: node.decisionQuestions ?? [],
+    decisionBranchQuestion: node.decisionBranchQuestion ?? null,
+    decisionThreshold: node.decisionThreshold ?? null,
+    calledWorkflowId: node.calledWorkflowId ?? null,
+    outputName: node.outputName ?? null,
+    icon: node.icon ?? null,
+    orientation: node.orientation ?? null,
+    shape: node.shape ?? null,
+    mappings: node.mappings ?? [],
+  };
+}
+
+/** The handle a stored edge leaves its source by: which answer it carries. */
+function handleOf(edge: GraphEdge): string | null {
+  return (
+    edge.branch === 'YES'
+      ? 'yes'
+      : edge.branch === 'NO'
+        ? 'no'
+        : edge.branch === 'FAILURE'
+          ? 'fail'
+          : edge.branch === 'OPTION'
+            ? optionHandle(edge.option ?? '')
+            : edge.branch === 'UNSURE'
+              ? UNSURE_HANDLE
+              : null
+  );
+}
+
+/**
+ * A node on the canvas as a save sends it: the other half of [nodeDataOf]'s
+ * round trip, so a graph read from the server and the one on the canvas can be
+ * compared field by field. Issue #645.
+ */
+function drawnNodeOf(key: string, position: { x: number; y: number }, data: NodeData): GraphNode {
+  return {
+    key,
+    kind: data.kind,
+    name: data.name,
+    description: data.description,
+    agentId: data.agentId,
+    triggerId: data.triggerId,
+    actionId: data.actionId,
+    conditionId: data.conditionId,
+    objectId: data.objectId,
+    outputObjectId: data.outputObjectId,
+    outputNodeKey: data.outputNodeKey,
+    imageModelId: data.imageModelId,
+    imageSize: data.imageSize,
+    imageQuality: data.imageQuality,
+    imageStyle: data.imageStyle,
+    decisionModelId: data.decisionModelId ?? null,
+    decisionQuestions: data.kind === 'DECISION' ? (data.decisionQuestions ?? []) : [],
+    decisionBranchQuestion: data.decisionBranchQuestion ?? null,
+    decisionThreshold: data.decisionThreshold ?? null,
+    calledWorkflowId: data.kind === 'WORKFLOW' ? (data.calledWorkflowId ?? null) : null,
+    outputName: data.outputName,
+    icon: data.icon,
+    orientation: data.orientation ?? null,
+    shape: data.shape ?? null,
+    yesLabel: data.yesLabel ?? null,
+    noLabel: data.noLabel ?? null,
+    fallbackEnabled: data.fallbackEnabled ?? false,
+    streamOutput: data.kind === 'AGENT' ? (data.streamOutput ?? true) : undefined,
+    retryAttempts: data.retryAttempts ?? null,
+    /*
+     * Nothing to wait between one attempt. The panel already refuses to
+     * take a wait without a second attempt to put it before; this is the
+     * same rule where it is written down, so a policy taken away leaves
+     * no orphaned number behind on the node.
+     */
+    retryBackoffSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBackoffSeconds ?? null) : null,
+    // Same rule, same reason, for the whole of the backoff: every one of
+    // these describes the gap between two attempts, and with one attempt
+    // there is no gap for any of them to describe.
+    retryMultiplier: (data.retryAttempts ?? 1) > 1 ? (data.retryMultiplier ?? null) : null,
+    // And a ceiling only under a curve that can reach it: over a wait that
+    // never grows it does not bound the wait, it shortens it.
+    retryMaxWaitSeconds:
+      (data.retryAttempts ?? 1) > 1 && (data.retryMultiplier ?? 1) > 1
+        ? (data.retryMaxWaitSeconds ?? null)
+        : null,
+    retryJitter: (data.retryAttempts ?? 1) > 1 ? (data.retryJitter ?? null) : null,
+    retryBudgetSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBudgetSeconds ?? null) : null,
+    // Always on for a trigger, whatever the data says: the server refuses
+    // a disabled one, and the panel offers no switch to make one.
+    enabled: data.kind === 'TRIGGER' ? true : (data.enabled ?? true),
+    mappings: data.mappings,
+    x: position.x,
+    y: position.y,
+  };
+}
+
+/** A line on the canvas as a save sends it. */
+function drawnEdgeOf(edge: { source: string; target: string; sourceHandle?: string | null }): GraphEdge {
+  return {
+    source: edge.source,
+    target: edge.target,
+    // The handle it leaves from is the answer it carries.
+    branch:
+      edge.sourceHandle === 'yes'
+        ? 'YES'
+        : edge.sourceHandle === 'no'
+          ? 'NO'
+          : edge.sourceHandle === 'fail'
+            ? 'FAILURE'
+            : optionOf(edge.sourceHandle) !== null
+              ? 'OPTION'
+              : edge.sourceHandle === UNSURE_HANDLE
+                ? 'UNSURE'
+                : null,
+    option: optionOf(edge.sourceHandle),
+  };
+}
+
+/**
+ * A graph the server holds, as a save would send it back: through the canvas's
+ * own round trip, so it compares equal to an untouched canvas. Issue #645.
+ */
+function canonical(graph: { nodes: GraphNode[]; edges: GraphEdge[] }): DrawnGraph {
+  return {
+    nodes: graph.nodes.map((node) => drawnNodeOf(node.key, { x: node.x, y: node.y }, nodeDataOf(node))),
+    edges: graph.edges.map((edge) => drawnEdgeOf({ source: edge.source, target: edge.target, sourceHandle: handleOf(edge) })),
+  };
+}
+
+/** Two pictures of a graph, compared as a save would send them. */
+function sameGraph(a: DrawnGraph, b: DrawnGraph): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * The others in the room, drawn on the canvas where they are pointing: an
+ * arrow in their colour and their login beside it. Inside React Flow, so it
+ * follows the canvas as it is panned and zoomed. Issue #645.
+ */
+function Pointers({ pointers }: { pointers: Pointer[] }) {
+  const { x, y, zoom } = useViewport();
+  return (
+    <div className={styles.pointers} aria-hidden="true">
+      {pointers.map((one) =>
+        one.x === null || one.y === null ? null : (
+          <div
+            key={one.viewer}
+            className={styles.pointer}
+            data-pointer={one.login}
+            style={{ transform: `translate(${one.x * zoom + x}px, ${one.y * zoom + y}px)`, color: colourOf(one.login) }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M1 1 L1 13 L4.5 9.5 L7 15 L9 14 L6.5 8.5 L11.5 8.5 Z" fill="currentColor" stroke="var(--color-bg)" strokeWidth="1" />
+            </svg>
+            <span className={styles.pointerName} style={{ background: colourOf(one.login) }}>{one.login}</span>
+          </div>
+        ),
+      )}
+    </div>
+  );
 }
 
 /**
@@ -2514,13 +2714,29 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  /*
+   * Working together on one draft. Issue #645.
+   *
+   * There is no Save: what is drawn is saved a moment after it stops changing,
+   * against the revision the canvas was drawn over, so a save made from an
+   * older picture than the server holds is refused and merged instead of
+   * writing over somebody else's work. `viewer` is this tab's name in the
+   * workflow's room, `base` the graph as last read or saved - the picture a
+   * merge measures what was changed here against.
+   */
+  const viewer = useMemo(newViewer, []);
+  const revision = useRef<number | null>(null);
+  const base = useRef<DrawnGraph | null>(null);
+  const [autosaveMillis, setAutosaveMillis] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [pointers, setPointers] = useState<Record<string, Pointer>>({});
   const [removing, setRemoving] = useState(false);
   /** The depth choice is open, on its way to a downloaded file. */
   const [exporting, setExporting] = useState(false);
   /** A run is being started, and the editor is on its way to it. */
   const [running, setRunning] = useState(false);
   const [browsingIcons, setBrowsingIcons] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
   /*
    * Whether the Add menu is open.
    *
@@ -3369,6 +3585,66 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }
 
   /**
+   * A graph put on the canvas: its nodes and its lines, and nothing else. Read
+   * by the load, and by a graph somebody else saved arriving while this one is
+   * open - which is why it is not part of the load. Issue #645.
+   */
+  const putGraph = useCallback(
+    (graph: { nodes: GraphNode[]; edges: GraphEdge[] }) => {
+      setNodes((current) => {
+        /*
+         * The measurement of the box that is already on the screen, handed
+         * back to the object that replaces it - issue #259, on the other page
+         * that mounts a canvas.
+         *
+         * React Flow keeps where a node's handles are in bookkeeping of its
+         * own, and it keeps it across a rebuild only for a node whose object
+         * carries `measured`. An edge is two handle positions, so every line
+         * on this canvas went out for a frame on every Discard. Handing the
+         * measurement back is what the other rebuild paths here already do by
+         * spreading what is there; this one has to say it, and it says the
+         * measurement rather than a size of its own, because these nodes are
+         * resizable and their real height is whatever they hold. Empty on the
+         * first load, which is the one that has nothing to hand back.
+         */
+        const measured = new Map(current.map((node) => [node.id, node.measured]));
+        // What is picked stays picked when somebody else's save redraws the canvas.
+        const picked = new Set(current.filter((node) => node.selected).map((node) => node.id));
+        return graph.nodes.map((node) => ({
+          id: node.key,
+          type: 'graphNode',
+          position: { x: node.x, y: node.y },
+          // What a node is at least, before anything has measured it, so that
+          // this rebuild cannot leave the canvas blank. See above.
+          initialWidth: NODE_MIN_WIDTH,
+          initialHeight: NODE_MIN_HEIGHT,
+          measured: measured.get(node.key),
+          selected: picked.has(node.key),
+          data: nodeDataOf(node),
+        }));
+      });
+      setEdges(
+        graph.edges.map((edge) => {
+          const sourceHandle = handleOf(edge);
+          return {
+            /*
+             * Named from the handle, not from the branch as it is stored. The
+             * two differ only in case, but a loaded `-YES->` and a drawn
+             * `-yes->` are two ids for one line, and the editor would let the
+             * same wiring be drawn twice without noticing.
+             */
+            id: edgeName({ source: edge.source, sourceHandle, target: edge.target }),
+            source: edge.source,
+            target: edge.target,
+            sourceHandle,
+          };
+        }),
+      );
+    },
+    [setNodes, setEdges],
+  );
+
+  /**
    * The saved graph, put on the canvas.
    *
    * Named because two things ask for it: opening the editor, and discarding —
@@ -3393,102 +3669,14 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         setSteps({ back: 0, forward: 0 });
         setName(graph.name);
         setStatus(graph.status);
-        setEnabled(graph.enabled);      setAssignmentId(graph.assignmentId);        setAssignmentId(graph.assignmentId);
-        setNodes((current) => {
-          /*
-           * The measurement of the box that is already on the screen, handed
-           * back to the object that replaces it - issue #259, on the other page
-           * that mounts a canvas.
-           *
-           * React Flow keeps where a node's handles are in bookkeeping of its
-           * own, and it keeps it across a rebuild only for a node whose object
-           * carries `measured`. An edge is two handle positions, so every line
-           * on this canvas went out for a frame on every Discard. Handing the
-           * measurement back is what the other rebuild paths here already do by
-           * spreading what is there; this one has to say it, and it says the
-           * measurement rather than a size of its own, because these nodes are
-           * resizable and their real height is whatever they hold. Empty on the
-           * first load, which is the one that has nothing to hand back.
-           */
-          const measured = new Map(current.map((node) => [node.id, node.measured]));
-          return graph.nodes.map((node) => ({
-            id: node.key,
-            type: 'graphNode',
-            position: { x: node.x, y: node.y },
-            // What a node is at least, before anything has measured it, so that
-            // this rebuild cannot leave the canvas blank. See above.
-            initialWidth: NODE_MIN_WIDTH,
-            initialHeight: NODE_MIN_HEIGHT,
-            measured: measured.get(node.key),
-            data: {
-              kind: node.kind,
-              name: node.name,
-              description: node.description,
-              yesLabel: node.yesLabel ?? null,
-              noLabel: node.noLabel ?? null,
-              fallbackEnabled: node.fallbackEnabled ?? false,
-              streamOutput: node.streamOutput ?? true,
-              retryAttempts: node.retryAttempts ?? null,
-              retryBackoffSeconds: node.retryBackoffSeconds ?? null,
-              retryMultiplier: node.retryMultiplier ?? null,
-              retryMaxWaitSeconds: node.retryMaxWaitSeconds ?? null,
-              retryJitter: node.retryJitter ?? null,
-              retryBudgetSeconds: node.retryBudgetSeconds ?? null,
-              enabled: node.enabled ?? true,
-              agentId: node.agentId,
-              triggerId: node.triggerId,
-              actionId: node.actionId,
-              conditionId: node.conditionId,
-              objectId: node.objectId ?? null,
-              outputObjectId: node.outputObjectId ?? null,
-              outputNodeKey: node.outputNodeKey ?? null,
-              imageModelId: node.imageModelId ?? null,
-              imageSize: node.imageSize ?? null,
-              imageQuality: node.imageQuality ?? null,
-              imageStyle: node.imageStyle ?? null,
-              decisionModelId: node.decisionModelId ?? null,
-              decisionQuestions: node.decisionQuestions ?? [],
-              decisionBranchQuestion: node.decisionBranchQuestion ?? null,
-              decisionThreshold: node.decisionThreshold ?? null,
-              calledWorkflowId: node.calledWorkflowId ?? null,
-              outputName: node.outputName ?? null,
-              icon: node.icon ?? null,
-              orientation: node.orientation ?? null,
-              shape: node.shape ?? null,
-              mappings: node.mappings ?? [],
-            },
-          }));
-        });
+        setEnabled(graph.enabled);
+        setAssignmentId(graph.assignmentId);
+        putGraph(graph);
+        revision.current = graph.revision;
+        base.current = canonical(graph);
+        setAutosaveMillis(graph.autosaveMillis);
         setProblems(graph.problems);
         setPorts(Object.fromEntries(graph.nodes.map((node) => [node.key, { inputs: node.inputs, outputs: node.outputs }])));
-        setEdges(
-          graph.edges.map((edge) => {
-            const sourceHandle =
-              edge.branch === 'YES'
-                ? 'yes'
-                : edge.branch === 'NO'
-                  ? 'no'
-                  : edge.branch === 'FAILURE'
-                    ? 'fail'
-                    : edge.branch === 'OPTION'
-                      ? optionHandle(edge.option ?? '')
-                      : edge.branch === 'UNSURE'
-                        ? UNSURE_HANDLE
-                        : null;
-            return {
-              /*
-               * Named from the handle, not from the branch as it is stored. The
-               * two differ only in case, but a loaded `-YES->` and a drawn
-               * `-yes->` are two ids for one line, and the editor would let the
-               * same wiring be drawn twice without noticing.
-               */
-              id: edgeName({ source: edge.source, sourceHandle, target: edge.target }),
-              source: edge.source,
-              target: edge.target,
-              sourceHandle,
-            };
-          }),
-        );
         // Freshly loaded is in step with the server, which is what `saved`
         // means to the buttons. Leaving it false lights Publish on a graph
         // nobody has touched.
@@ -3589,16 +3777,14 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   }, [loadCatalogues]);
 
   /*
-   * Refresh: the pickers always, and the graph when nothing on the canvas is
-   * unsaved. With unsaved work it asks first, in Discard's words, because
-   * reading the graph again is putting it back as it was last saved.
+   * Refresh: the pickers, and the graph read again. What is on the canvas is
+   * saved first - there is no unsaved work to throw away now that the editor
+   * saves as it goes, only a save that may not have been sent yet. A save the
+   * server refuses stops it here with the reason showing.
    */
-  function refresh() {
+  async function refresh() {
     loadCatalogues();
-    if (unsaved) {
-      setDiscarding(true);
-      return;
-    }
+    if (unsaved && !(await handleSave())) return;
     setSelectedKey(null);
     setDraft(null);
     setDraftFor(null);
@@ -4919,7 +5105,15 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
    * straight into the graph — so what is unsaved is never the panel, it is the
    * graph.
    */
-  const unsaved = !saved;
+  /*
+   * And what the canvas holds now, as a save would send it, against what was
+   * last read or saved. `saved` is cleared by the edits that know they are
+   * edits; a field changed in the panel goes into the draft and nowhere else,
+   * so it is this comparison that tells the editor there is something to save.
+   * Issue #645.
+   */
+  const drawnNow = useMemo(() => JSON.stringify(toGraph()), [nodes, edges, draft, selectedKey]);
+  const unsaved = !saved || (base.current !== null && drawnNow !== JSON.stringify(base.current));
 
   /*
    * Whether pressing Publish would do anything: either there are edits the
@@ -4945,81 +5139,9 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           node.id === selectedKey && draft !== null
             ? { ...(node.data as NodeData), ...named(draft) }
             : (node.data as NodeData);
-        return {
-          key: node.id,
-          kind: data.kind,
-          name: data.name,
-          description: data.description,
-          agentId: data.agentId,
-          triggerId: data.triggerId,
-          actionId: data.actionId,
-          conditionId: data.conditionId,
-          objectId: data.objectId,
-          outputObjectId: data.outputObjectId,
-          outputNodeKey: data.outputNodeKey,
-          imageModelId: data.imageModelId,
-          imageSize: data.imageSize,
-          imageQuality: data.imageQuality,
-          imageStyle: data.imageStyle,
-          decisionModelId: data.decisionModelId ?? null,
-          decisionQuestions: data.kind === 'DECISION' ? (data.decisionQuestions ?? []) : [],
-          decisionBranchQuestion: data.decisionBranchQuestion ?? null,
-          decisionThreshold: data.decisionThreshold ?? null,
-          calledWorkflowId: data.kind === 'WORKFLOW' ? (data.calledWorkflowId ?? null) : null,
-          outputName: data.outputName,
-          icon: data.icon,
-          orientation: data.orientation ?? null,
-          shape: data.shape ?? null,
-          yesLabel: data.yesLabel ?? null,
-          noLabel: data.noLabel ?? null,
-          fallbackEnabled: data.fallbackEnabled ?? false,
-          streamOutput: data.kind === 'AGENT' ? (data.streamOutput ?? true) : undefined,
-          retryAttempts: data.retryAttempts ?? null,
-          /*
-           * Nothing to wait between one attempt. The panel already refuses to
-           * take a wait without a second attempt to put it before; this is the
-           * same rule where it is written down, so a policy taken away leaves
-           * no orphaned number behind on the node.
-           */
-          retryBackoffSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBackoffSeconds ?? null) : null,
-          // Same rule, same reason, for the whole of the backoff: every one of
-          // these describes the gap between two attempts, and with one attempt
-          // there is no gap for any of them to describe.
-          retryMultiplier: (data.retryAttempts ?? 1) > 1 ? (data.retryMultiplier ?? null) : null,
-          // And a ceiling only under a curve that can reach it: over a wait that
-          // never grows it does not bound the wait, it shortens it.
-          retryMaxWaitSeconds:
-            (data.retryAttempts ?? 1) > 1 && (data.retryMultiplier ?? 1) > 1
-              ? (data.retryMaxWaitSeconds ?? null)
-              : null,
-          retryJitter: (data.retryAttempts ?? 1) > 1 ? (data.retryJitter ?? null) : null,
-          retryBudgetSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBudgetSeconds ?? null) : null,
-          // Always on for a trigger, whatever the data says: the server refuses
-          // a disabled one, and the panel offers no switch to make one.
-          enabled: data.kind === 'TRIGGER' ? true : (data.enabled ?? true),
-          mappings: data.mappings,
-          x: node.position.x,
-          y: node.position.y,
-        };
+        return drawnNodeOf(node.id, node.position, data);
       }),
-      edges: edges.map((edge) => ({
-        source: edge.source,
-        target: edge.target,
-        // The handle it leaves from is the answer it carries.
-        branch:
-          edge.sourceHandle === 'yes'
-            ? 'YES'
-            : edge.sourceHandle === 'no'
-              ? 'NO'
-              : edge.sourceHandle === 'fail'
-                ? 'FAILURE'
-                : optionOf(edge.sourceHandle) !== null
-                  ? 'OPTION'
-                  : edge.sourceHandle === UNSURE_HANDLE
-                    ? 'UNSURE'
-                    : null,
-        option: optionOf(edge.sourceHandle),
-      })),
+      edges: edges.map(drawnEdgeOf),
     };
   }
 
@@ -5293,33 +5415,191 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     return false;
   }
 
-  /** @returns whether the graph is now on the server. */
-  async function handleSave(): Promise<boolean> {
-    if (!fitToSave()) return false;
+  /**
+   * The newest of what a render can see, for work that outlives the render it
+   * started in: a save waiting its turn behind another, or one somebody
+   * else's save set off, would otherwise send the canvas as it was several
+   * renders ago.
+   */
+  const now = useRef({ toGraph, applyGraphFeedback, fitToSave, handleSave, selectedKey });
+  now.current = { toGraph, applyGraphFeedback, fitToSave, handleSave, selectedKey };
+
+  /** The save or catch-up under way, which the next waits for rather than racing it. */
+  const inFlight = useRef<Promise<unknown> | null>(null);
+
+  async function exclusively<T>(work: () => Promise<T>): Promise<T> {
+    while (inFlight.current !== null) await inFlight.current.catch(() => undefined);
+    const running = work();
+    inFlight.current = running;
+    try {
+      return await running;
+    } finally {
+      if (inFlight.current === running) inFlight.current = null;
+    }
+  }
+
+  /**
+   * Reads the draft somebody else saved and puts what was changed here onto
+   * it - see `mergeGraphs` for which side wins what. Somebody else's change is
+   * not one to undo from here, so the history starts again from the merge.
+   *
+   * @returns whether anything here is still to be saved on top of theirs.
+   */
+  async function catchUp(): Promise<boolean> {
+    const graph = await fetchWorkflowGraph(workspaceId, workflowId);
+    const theirs = canonical(graph);
+    const mine = now.current.toGraph();
+    const merged = mergeGraphs(base.current ?? theirs, mine, theirs);
+    revision.current = graph.revision;
+    base.current = theirs;
+    if (!sameGraph(merged, mine)) {
+      putGraph(merged);
+      back.current = [];
+      forward.current = [];
+      settled.current = null;
+      setSteps({ back: 0, forward: 0 });
+      /*
+       * The panel is the truth of the node it shows, so one changed underneath
+       * it is shown again - or its old fields would be written straight back
+       * over the change on the next save, as an undo would without goTo's care.
+       */
+      const key = now.current.selectedKey;
+      const held = merged.nodes.find((node) => node.key === key);
+      const shown = mine.nodes.find((node) => node.key === key);
+      if (key !== null && held === undefined) {
+        setSelectedKey(null);
+        setDraft(null);
+        setDraftFor(null);
+      } else if (key !== null && held !== undefined && JSON.stringify(held) !== JSON.stringify(shown)) {
+        setDraft(nodeDataOf(held));
+        setDraftFor(key);
+        setFieldEdit(null);
+      }
+    }
+    setStatus(graph.status);
+    setEnabled(graph.enabled);
+    setAssignmentId(graph.assignmentId);
+    setAutosaveMillis(graph.autosaveMillis);
+    // A preview still on its way describes a graph that is no longer on screen.
+    asked.current += 1;
+    if (sameGraph(merged, theirs)) {
+      now.current.applyGraphFeedback(graph);
+      setSaved(true);
+      return false;
+    }
+    setSaved(false);
+    return true;
+  }
+
+  /** Sends the canvas over the revision it was drawn on, catching up and trying again while somebody else got there first. */
+  async function sync(): Promise<boolean> {
+    if (!now.current.fitToSave()) return false;
     // An agent edited in the panel beside the canvas is saved with the workflow, not left behind in it.
     agentEdit.current?.();
     agentEdit.current = null;
-    setBusy(true);
+    setSaving(true);
     setError(null);
     try {
-      const graph = await saveWorkflowGraph(workspaceId, workflowId, toGraph());
-      setStatus(graph.status);
-      setEnabled(graph.enabled);      setAssignmentId(graph.assignmentId);
-      // What is left to fix is decided by the server, and saving is when it
-      // decides again. Keeping the list from the last load means the panel
-      // describes a graph that is no longer on screen. The save is the newest
-      // word on the graph, so any preview still in flight is out of date.
-      asked.current += 1;
-      applyGraphFeedback(graph);
-      setSaved(true);
-      return true;
+      for (;;) {
+        const mine = now.current.toGraph();
+        try {
+          const graph = await saveWorkflowGraph(workspaceId, workflowId, {
+            ...mine,
+            baseRevision: revision.current ?? undefined,
+            viewer,
+          });
+          revision.current = graph.revision;
+          base.current = mine;
+          setStatus(graph.status);
+          setEnabled(graph.enabled);
+          setAssignmentId(graph.assignmentId);
+          // What is left to fix is decided by the server, and saving is when it
+          // decides again; any preview still in flight is out of date.
+          asked.current += 1;
+          now.current.applyGraphFeedback(graph);
+          // Changed again while it was on its way: still to save, and the pause starts over.
+          setSaved(sameGraph(now.current.toGraph(), mine));
+          return true;
+        } catch (cause) {
+          if (!(cause instanceof ApiError && cause.code === 'WorkflowGraphMoved')) throw cause;
+          // Somebody else saved first: theirs, with this on top, and again.
+          if (!(await catchUp())) return true;
+        }
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the workflow.'));
       return false;
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   }
+
+  /** @returns whether the graph is now on the server. */
+  async function handleSave(): Promise<boolean> {
+    return exclusively(sync);
+  }
+
+  /*
+   * Saving as it is edited. Issue #645.
+   *
+   * There is no Save button: what is drawn is the draft everybody else in the
+   * room sees, so it is sent once it has been still for the installation's
+   * pause - Admin Settings, Workflow Autosave - and every change restarts the
+   * wait, so a drag is one save rather than one per frame. A save the server
+   * refused waits for the next change rather than asking again and again.
+   */
+  useEffect(() => {
+    if (!unsaved || autosaveMillis === null || !graphArrived || loadError !== null) return;
+    const timer = window.setTimeout(() => void now.current.handleSave(), autosaveMillis);
+    return () => window.clearTimeout(timer);
+  }, [unsaved, drawnNow, autosaveMillis, graphArrived, loadError]);
+
+  /*
+   * The room: who else has this workflow open, where they point, and their
+   * saves - each of which is caught up with the moment it lands. Issue #645.
+   */
+  useEffect(() => {
+    if (workspaceId === '' || workflowId === '') return;
+    setViewers([]);
+    setPointers({});
+    const follow = () => {
+      if (base.current === null) return;
+      void exclusively(catchUp).catch(() => undefined);
+    };
+    return joinWorkflow(workspaceId, workflowId, viewer, {
+      // Saved by somebody between the load and the stream opening.
+      onHello: (at) => {
+        if (revision.current !== null && at > revision.current) follow();
+      },
+      onViewers: (here) => {
+        setViewers(here);
+        const present = new Set(here.map((one) => one.viewer));
+        setPointers((held) => Object.fromEntries(Object.entries(held).filter(([one]) => present.has(one))));
+      },
+      onPointer: (at) =>
+        setPointers((held) => {
+          const next = { ...held };
+          if (at.x === null || at.y === null) delete next[at.viewer];
+          else next[at.viewer] = at;
+          return next;
+        }),
+      onGraph: (moved) => {
+        if (moved.viewer === viewer || revision.current === null || moved.revision <= revision.current) return;
+        follow();
+      },
+    });
+    // catchUp reads what it needs through `now`; the room is joined once per workflow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, workflowId, viewer]);
+
+  /** Everybody else in the room, once per login, for the row of initials. */
+  const others = useMemo(() => {
+    const seen = new Map<string, Viewer>();
+    viewers.filter((one) => one.viewer !== viewer).forEach((one) => seen.set(one.login, one));
+    return [...seen.values()];
+  }, [viewers, viewer]);
+
+  const sendPointer = useMemo(() => pointerSender(workspaceId, workflowId, viewer), [workspaceId, workflowId, viewer]);
 
   /*
    * Saving from the keyboard.
@@ -5816,7 +6096,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
     setBusy(true);
     setError(null);
     try {
-      await saveWorkflowGraph(workspaceId, workflowId, toGraph());
+      if (!(await handleSave())) return;
       const graph = await publishWorkflow(workspaceId, workflowId);
       setStatus(graph.status);
       setEnabled(graph.enabled);      setAssignmentId(graph.assignmentId);
@@ -5857,6 +6137,23 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           >{t('Workflows')}</Link>
           <span className={styles.crumbSeparator}>/</span>
           <span className={styles.workflowName}>{name}</span>
+          {/* Who else has it open, by login, in the colour their pointer is drawn in. Issue #645. */}
+          {others.length > 0 && (
+            <span className={styles.presence} data-testid="presence">
+              {others.map((one) => (
+                <span
+                  key={one.login}
+                  className={styles.presenceDot}
+                  style={{ borderColor: colourOf(one.login) }}
+                  title={one.login}
+                  aria-label={one.login}
+                  data-login={one.login}
+                >
+                  {one.login.slice(0, 2).toUpperCase()}
+                </span>
+              ))}
+            </span>
+          )}
           <Link
             to={`/workspace/${workspaceId}/workflows/${workflowId}/settings`}
             className={styles.renameButton}
@@ -6136,29 +6433,10 @@ Change the keystroke in Preferences.`}
           <ToolButton label={t('Redo')} shortcut={redoKey} onClick={() => redo()} disabled={steps.forward === 0}>
             <img src={redoIcon} alt="" width={16} height={16} />
           </ToolButton>
-          {/*
-            The one that keeps its word.
-
-            Discard throws away everything drawn since the last save, and its
-            dialog says there is no way back from it - not a thing to find out
-            about by pressing the button to see. And the picture it would take,
-            an arrow curling backwards, is already the picture beside it: undo
-            and back-to-saved are two sizes of the same gesture, and as two small
-            squares side by side they would be a coin toss. The word costs 76px
-            and removes the doubt, which is the one place on this bar where the
-            width is worth spending.
-          */}
-          <button
-            type="button"
-            className={styles.ghostButton}
-            onClick={() => setDiscarding(true)}
-            disabled={busy}
-            data-tip={'Discard changes\nPuts the graph back as it was last saved.'}
-          >{t('Discard')}</button>
           <ToolButton
             label={t('Refresh')}
             note={t('Reads the graph and the lists its nodes pick from again.')}
-            onClick={refresh}
+            onClick={() => void refresh()}
             disabled={busy}
           >
             <img src={refreshIcon} alt="" width={16} height={16} />
@@ -6174,17 +6452,22 @@ Change the keystroke in Preferences.`}
             happening right now, and that is news worth the width for as long as
             it lasts.
           */}
+          {/*
+            Where the save is, in place of the button that made one: the editor
+            saves as it goes, so what is left to say is whether it has. Issue #645.
+          */}
           {busy ? (
             <span className={styles.working}>{t('Working…')}</span>
           ) : (
-            <ToolButton
-              label={t('Save')}
-              shortcut={save}
-              note={t("Change the keystroke in Preferences.")}
-              onClick={() => void handleSave()}
+            <span
+              className={styles.saveState}
+              data-testid="save-state"
+              data-state={saving || (unsaved && error === null) ? 'saving' : unsaved ? 'failed' : 'saved'}
+              // Read out as it changes; not role="status", which this application uses for "still loading".
+              aria-live="polite"
             >
-              <img src={saveIcon} alt="" width={16} height={16} />
-            </ToolButton>
+              {saving || (unsaved && error === null) ? t('Saving…') : unsaved ? t('Not saved') : t('Saved')}
+            </span>
           )}
           {/*
             Running from the editor, and then watching it: the run's own page is
@@ -6249,7 +6532,17 @@ Change the keystroke in Preferences.`}
       </div>
 
       <div className={styles.editor} ref={watchEditor}>
-        <div className={styles.canvas}>
+        <div
+          className={styles.canvas}
+          onMouseMove={(event) => {
+            if (others.length === 0) return;
+            const at = screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
+            sendPointer(at.x, at.y);
+          }}
+          onMouseLeave={() => {
+            if (others.length > 0) sendPointer(null, null);
+          }}
+        >
           {!graphArrived && loadError === null && (
             <div className={styles.canvasWaiting}>
               <Loader />
@@ -6355,6 +6648,7 @@ Change the keystroke in Preferences.`}
                 zoomable
               />
               <Controls className={styles.controls} showInteractive={false} />
+              <Pointers pointers={Object.values(pointers)} />
             </ReactFlow>
             </SpeakingActions.Provider>
             </JointTool.Provider>
@@ -8544,20 +8838,6 @@ Change the keystroke in Preferences.`}
         presets={imagePresets}
         onChange={setImagePresets}
         onClose={() => setManagingPresets(false)}
-      />
-
-      <ConfirmDialog
-        subject={discarding ? name : null}
-        kind="discard"
-        onClose={() => {
-          setDiscarding(false);
-        }}
-        onConfirm={async () => {
-          setSelectedKey(null);
-          setDraft(null);
-          setDiscarding(false);
-          loadGraph();
-        }}
       />
 
       <DrawerWidth.Provider value={drawerWidth}>

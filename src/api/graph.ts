@@ -274,6 +274,10 @@ export interface WorkflowGraph {
   edges: GraphEdge[];
   /** What the graph is missing, worst first; empty when it holds together. */
   problems: GraphProblem[];
+  /** How many times the draft has been saved; what the editor saves against. Issue #645. */
+  revision: number;
+  /** How long the editor waits after the last change before it saves, in milliseconds. */
+  autosaveMillis: number;
 }
 
 /* A node field's own fields, in the input's shape, as deep as the server reads. */
@@ -299,6 +303,8 @@ const GRAPH_FIELDS = `
   }
   edges { source target branch option }
   problems { severity nodeKey message }
+  revision
+  autosaveMillis
 `;
 
 const GRAPH_QUERY = `
@@ -333,7 +339,14 @@ export async function fetchWorkflowGraph(workspaceId: string, workflowId: string
 export async function saveWorkflowGraph(
   workspaceId: string,
   workflowId: string,
-  input: { nodes: GraphNode[]; edges: GraphEdge[] },
+  input: {
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+    /** The revision this was drawn over; refused as WorkflowGraphMoved when the draft has moved on. */
+    baseRevision?: number;
+    /** The open editor saving it, as it named itself on the live channel. */
+    viewer?: string;
+  },
 ): Promise<WorkflowGraph> {
   const data = await graphql<{ saveWorkflowGraph: WorkflowGraph }>(SAVE_GRAPH_MUTATION, {
     workspaceId,

@@ -223,6 +223,34 @@ export function failures() {
  *
  *   if (!(await drawn(page, 'admin settings'))) continue;
  */
+/**
+ * Waits for the workflow editor to have saved what was just done to it.
+ *
+ * The editor has no Save button (issue #645): a change is sent a moment after
+ * it stops, and the toolbar's `save-state` says `saving`, then `saved` - or
+ * `failed`, with the server's reason beside the name. The change is given a
+ * moment to be seen first, because straight after a click the editor may not
+ * have drawn it yet and still says `saved` about the graph before it.
+ *
+ * @returns what it settled on: 'saved' or 'failed', or null if it never did.
+ */
+export async function autosaved(page, { within = 15_000 } = {}) {
+  await page
+    .waitForFunction(() => document.querySelector('[data-testid="save-state"]')?.getAttribute('data-state') !== 'saved', null, { timeout: 2_000 })
+    .catch(() => undefined);
+  return page
+    .waitForFunction(
+      () => {
+        const state = document.querySelector('[data-testid="save-state"]')?.getAttribute('data-state');
+        return state === 'saved' || state === 'failed' ? state : null;
+      },
+      null,
+      { timeout: within },
+    )
+    .then((handle) => handle.jsonValue())
+    .catch(() => null);
+}
+
 export async function drawn(page, name, options = {}) {
   const { within = 20_000, atLeast = 1, where = 'body', still = 400 } = options;
   const upTo = Date.now() + within;

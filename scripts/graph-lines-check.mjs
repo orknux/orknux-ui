@@ -166,7 +166,8 @@ for (let read = 1; read <= READS; read += 1) {
 /* -------------------------------------------------------------- the editor */
 
 /*
- * The other canvas, where the same rebuild is Discard. Its nodes are resizable,
+ * The other canvas, where the same rebuild is Refresh - it was Discard, until
+ * the editor saved as it goes and there was nothing left to discard (#645). Its nodes are resizable,
  * so what it hands back is the measurement React Flow already made rather than a
  * size of its own - a claim about a box's height that the box could contradict
  * is not worth making on a canvas where somebody can drag one taller.
@@ -187,22 +188,20 @@ await watch();
 const DISCARDS = 3;
 for (let go = 1; go <= DISCARDS; go += 1) {
   await from();
-  // The bar's Discard, then the dialog's - which is the same word, so they are
-  // told apart by where they are rather than by what they say.
-  await page.locator('button[data-tip^="Discard changes"]').click();
-  await page.locator('dialog').getByRole('button', { name: 'Discard' }).click();
+  // Refresh reads the graph again and rebuilds every node from the answer.
+  await page.getByRole('button', { name: /^Refresh/ }).click();
   await page.waitForTimeout(2000);
 
   const during = await since();
   record(during.frames > 0, `putting the graph back: the canvas was watched while it happened (${during.frames} frames)`);
   record(
     during.fewest === drawnGraph.lines,
-    `Discard never takes the lines off the canvas (discard ${go}: fewest ${during.fewest} of ` +
+    `Refresh never takes the lines off the canvas (refresh ${go}: fewest ${during.fewest} of ` +
       `${drawnGraph.lines} drawn in any frame)`,
   );
   record(
     during.ended !== null && during.ended.lines === drawnGraph.lines && during.ended.hidden === 0,
-    `and it ends with the whole graph drawn (discard ${go}: ${JSON.stringify(during.ended)})`,
+    `and it ends with the whole graph drawn (refresh ${go}: ${JSON.stringify(during.ended)})`,
   );
 }
 

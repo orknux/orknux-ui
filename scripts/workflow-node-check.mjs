@@ -12,7 +12,7 @@
  *
  * Makes two workflows of its own and removes them.
  */
-import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, drawn, finish, autosaved } from './suite/harness.mjs';
 
 const PREFIX = 'zzWorkflowNode';
 const STAMP = Date.now();
@@ -82,7 +82,7 @@ try {
   await name.fill('who');
   await page.waitForTimeout(200);
 
-  await page.getByRole('button', { name: /^save\b/i }).click();
+  await autosaved(page); // the editor saves as it goes (#645)
   await page.waitForTimeout(2500);
 
   const { workflowGraph } = await graphql(
