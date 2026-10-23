@@ -73,7 +73,17 @@ export function DependencyGraphDialog({ open, onClose, workspaceId, kind, compon
             <PanelClose onClose={onClose} />
           </header>
           {error !== null && <p className={styles.error}>{error}</p>}
-          {error === null && graph === null && <Loader />}
+          {/*
+            At once rather than after the house quiet period: somebody has just
+            pressed for this, and an empty dialog for three seconds reads as one
+            that has nothing to show. In a frame the graph's size, so it does not
+            jump when the graph lands.
+          */}
+          {error === null && graph === null && (
+            <div className={own.waiting} data-testid="dependency-graph-loading">
+              <Loader delay={0} />
+            </div>
+          )}
           {graph !== null && chain === null && <p className={own.notice}>{t('Nothing uses this yet.')}</p>}
           {chain !== null && (
             <>

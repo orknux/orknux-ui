@@ -42,8 +42,18 @@ const button = page.locator('[data-dependency-graph-open]');
 await button.waitFor({ timeout: 30_000 });
 record(await button.isVisible(), 'the Used by panel offers the dependency graph');
 
+// The graph is held back a moment, so the wait is visible: the loader is drawn at once, in a frame the graph's size.
+await page.route('**/graphql', async (route) => {
+  if ((route.request().postDataJSON()?.query ?? '').includes('workspaceDependencyGraph')) await new Promise((done) => setTimeout(done, 1500));
+  return route.continue();
+});
 await button.click();
 const dialog = page.getByTestId('dependency-graph-dialog');
+const waiting = dialog.getByTestId('dependency-graph-loading');
+await page.waitForTimeout(300);
+const waitBox = await waiting.boundingBox();
+record(await waiting.locator('svg, [role="status"]').first().isVisible().catch(() => false), 'while the graph is fetched, the loader is drawn at once');
+record(waitBox !== null && waitBox.height >= 300, `in a frame the graph's size (${Math.round(waitBox?.height ?? 0)}px tall)`);
 await dialog.getByTestId('dependency-graph').waitFor({ timeout: 30_000 });
 await page.waitForTimeout(1500);
 
