@@ -62,6 +62,22 @@ record(asked.ended.includes(true) && (await page.getByText('No schedule has ende
 // The bounds, in Admin Settings.
 await page.goto(`${BASE}/admin/settings#schedules`, { waitUntil: 'domcontentloaded' });
 await page.locator('#schedule-min-interval').waitFor({ timeout: 20_000 }).catch(() => undefined);
+/*
+ * The boxes are drawn empty and disabled until the server's numbers arrive,
+ * and enabled once they have. Read as soon as they were attached, they were
+ * read before the answer - "" for one and "10" for the other in CI - so wait
+ * for the section to have heard from the server, and then read what it holds.
+ */
+await page
+  .waitForFunction(
+    () => ['schedule-min-interval', 'schedule-max-per-agent'].every((id) => {
+      const box = document.getElementById(id);
+      return box instanceof HTMLInputElement && !box.disabled;
+    }),
+    undefined,
+    { timeout: 20_000 },
+  )
+  .catch(() => undefined);
 const bounds = {
   interval: await page.locator('#schedule-min-interval').inputValue().catch(() => ''),
   perAgent: await page.locator('#schedule-max-per-agent').inputValue().catch(() => ''),
