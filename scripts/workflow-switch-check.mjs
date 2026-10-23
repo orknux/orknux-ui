@@ -55,7 +55,9 @@ const stored = async () =>
 
 /* -------------------------------------------------------------------- drive */
 
-const switchControl = () => page.getByRole('button', { name: /^Switched (on|off)$/ });
+const switchControl = () => page.getByTestId('workflow-enabled');
+/** 'Switched on' or 'Switched off', as the switch says it to a screen reader. */
+const said = async () => ((await switchControl().getAttribute('aria-checked').catch(() => null)) === 'true' ? 'Switched on' : 'Switched off');
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows/${WORKFLOW}/editor`, { waitUntil: 'domcontentloaded' });
 if (!(await drawn(page, 'the editor', { within: 30_000, still: 0 }))) await clean();
@@ -63,8 +65,9 @@ if (!(await drawn(page, 'the editor', { within: 30_000, still: 0 }))) await clea
 await switchControl().waitFor({ state: 'visible', timeout: 20_000 }).catch(() => undefined);
 
 record(await switchControl().isVisible().catch(() => false), 'the editor offers the switch');
+record((await switchControl().getAttribute('role')) === 'switch' && (await switchControl().locator('img').count()) === 1, 'drawn as the green toggle the rest of the app uses');
 record(
-  (await switchControl().innerText().catch(() => '')).trim() === 'Switched on',
+  (await said()) === 'Switched on',
   'and says a new workflow is switched on',
 );
 
@@ -86,7 +89,7 @@ if (asked) {
 
 record((await stored()).enabled === false, 'the server was told, and says it is off');
 record(
-  (await switchControl().innerText().catch(() => '')).trim() === 'Switched off',
+  (await said()) === 'Switched off',
   'and the editor says so without a reload',
 );
 
@@ -96,7 +99,7 @@ await page.reload({ waitUntil: 'domcontentloaded' });
 if (await drawn(page, 'the editor after a reload', { within: 30_000, still: 0 })) {
   await switchControl().waitFor({ state: 'visible', timeout: 20_000 }).catch(() => undefined);
   record(
-    (await switchControl().innerText().catch(() => '')).trim() === 'Switched off',
+    (await said()) === 'Switched off',
     'a reload still says off',
   );
 }

@@ -102,6 +102,8 @@ import marqueeIcon from '../../assets/marquee.svg';
 import jointIcon from '../../assets/joint.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import undoIcon from '../../assets/undo.svg';
+import toggleOffIcon from '../../assets/toggle-off.svg';
+import toggleOnIcon from '../../assets/toggle-on.svg';
 import { ActionDialog } from '../../components/ActionDialog';
 import { ActionForm } from '../../components/ActionForm';
 import { AppShell } from '../../components/AppShell';
@@ -6194,7 +6196,11 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           {assignmentId !== null && (
             <button
               type="button"
-              className={enabled ? styles.badge : `${styles.badge} ${styles.badgeOff}`}
+              className={styles.enabledToggle}
+              role="switch"
+              aria-checked={enabled}
+              aria-label={enabled ? t('Switched on') : t('Switched off')}
+              data-testid="workflow-enabled"
               title={
                 enabled
                   ? t('This workflow answers its triggers. Switch it off and nothing but Run will start it.')
@@ -6208,7 +6214,10 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
                 }
                 void switchTo(true);
               }}
-            >{enabled ? t('Switched on') : t('Switched off')}</button>
+            >
+              {/* The same green switch the model and admin pages use, rather than a word in a box that read as a label. */}
+              <img src={enabled ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
+            </button>
           )}
           {/* Who else has it open, by login, in the colour their pointer is drawn in. Issue #645. */}
           {others.length > 0 && (
