@@ -153,12 +153,22 @@ export function savedArtifactPreviewUrl(id: string): string {
  * the bytes over; a file it will not open for reading answers
  * application/octet-stream. Null for one that is not there or not this caller's.
  */
-export async function fetchSavedArtifactType(id: string): Promise<string | null> {
+export async function fetchSavedArtifactType(id: string): Promise<{ type: string; filename: string } | null> {
   // The reading address, because the file's own answers every document as
   // application/octet-stream - it is a download - and says nothing of what it is.
   const answer = await fetch(savedArtifactPreviewUrl(id), { method: 'HEAD', credentials: 'same-origin' });
   if (!answer.ok) return null;
-  return (answer.headers.get('Content-Type') ?? '').toLowerCase().split(';')[0].trim();
+  /*
+   * And the file's own name, off the disposition. What is not opened for
+   * reading - an SVG, which could run script as a page - still answers
+   * octet-stream here, and the name is the one thing that says what it is.
+   */
+  const disposition = answer.headers.get('Content-Disposition') ?? '';
+  const named = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  return {
+    type: (answer.headers.get('Content-Type') ?? '').toLowerCase().split(';')[0].trim(),
+    filename: named === undefined ? '' : decodeURIComponent(named),
+  };
 }
 
 /** A saved artifact's bytes, for a page that draws them itself. */

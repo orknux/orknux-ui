@@ -58,6 +58,9 @@ function onePagePdf() {
 const PDF = '990001';
 const BROKEN = '990002';
 const PICTURE = '990003';
+/** An SVG, linked as "this link": the server hands it over as a download, read or not, with its name on the disposition. */
+const DRAWING = '990004';
+const SUNSET = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#f97316"/></svg>');
 const PIXEL = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64',
@@ -67,6 +70,7 @@ const FILES = {
   // What artifact 12 is on the development database: 32 bytes calling themselves a PDF.
   [BROKEN]: { contentType: 'application/pdf', body: Buffer.from('this is not a pdf, it only says') },
   [PICTURE]: { contentType: 'image/png', body: PIXEL },
+  [DRAWING]: { contentType: 'image/svg+xml', body: SUNSET, name: 'sunset.svg' },
 };
 await page.route(/\/api\/artifacts\/99000\d(\/preview)?$/, (route) => {
   const id = route.request().url().match(/\/api\/artifacts\/(\d+)/)[1];
@@ -74,8 +78,10 @@ await page.route(/\/api\/artifacts\/99000\d(\/preview)?$/, (route) => {
   // As the server answers: the file's own address hands a document over as a
   // download, and only the reading address says what it is.
   const reading = route.request().url().endsWith('/preview');
-  const contentType = reading || file.contentType.startsWith('image/') ? file.contentType : 'application/octet-stream';
-  return route.fulfill({ status: 200, contentType, body: file.body });
+  const served = file.contentType !== 'image/svg+xml' && (reading || file.contentType.startsWith('image/'));
+  const contentType = served ? file.contentType : 'application/octet-stream';
+  const headers = file.name === undefined ? {} : { 'Content-Disposition': `attachment; filename*=UTF-8''${file.name}` };
+  return route.fulfill({ status: 200, contentType, headers, body: file.body });
 });
 
 const ANSWER = [
@@ -84,6 +90,7 @@ const ANSWER = [
   `You can download it here: [The_Symphony_of_Steel.pdf](http://localhost:5173/api/artifacts/${PDF})`,
   `The first try is here too: [Symphony_of_Steel.pdf](/api/artifacts/${BROKEN})`,
   `And the cover: [cover.png](http://localhost:5173/api/artifacts/${PICTURE})`,
+  `Saved as sunset.svg - download it from [this link](http://localhost:5173/api/artifacts/${DRAWING}).`,
 ].join('\n');
 
 await page.route('**/graphql', async (route) => {
@@ -161,6 +168,15 @@ if (await drawn(page, 'the chat log')) {
     shown.picture !== null && shown.picture.width > 0 && shown.picture.height > 0,
     `a saved picture is drawn as itself (${JSON.stringify(shown.picture)})`,
   );
+}
+
+if (await drawn(page, 'the chat log')) {
+  const svg = page.locator(`[data-artifact-miniature="${DRAWING}"]`);
+  await svg.locator('img').waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const natural = await svg.locator('img').evaluate((img) => img.naturalWidth).catch(() => 0);
+  record(natural > 0, `an SVG is drawn as the picture it is, not a tile saying OCTET (${natural}px wide)`);
+  const caption = await svg.locator('figcaption').textContent().catch(() => null);
+  record(caption === 'sunset.svg', `captioned with the file's name, not the link's words (${caption})`);
 }
 
 await finish(browser);

@@ -93,6 +93,10 @@ export interface ArtifactMiniatureProps {
 export function ArtifactMiniature({ id, title }: ArtifactMiniatureProps) {
   /** The type the server holds, '' while asking, null for one that is not there. */
   const [type, setType] = useState<string | null>('');
+  /** The file's own name, which the caption says rather than whatever words the link was written with. */
+  const [filename, setFilename] = useState('');
+  /** An SVG's bytes as a picture of its own, since the server will not hand an SVG over as one. */
+  const [svg, setSvg] = useState<string | null>(null);
   const [drawn, setDrawn] = useState<'drawing' | 'drawn' | 'failed'>('drawing');
   const canvas = useRef<HTMLCanvasElement>(null);
 
@@ -101,7 +105,9 @@ export function ArtifactMiniature({ id, title }: ArtifactMiniatureProps) {
     setType('');
     fetchSavedArtifactType(id)
       .then((held) => {
-        if (!abandoned) setType(held);
+        if (abandoned) return;
+        setType(held?.type ?? null);
+        setFilename(held?.filename ?? '');
       })
       .catch(() => {
         if (!abandoned) setType(null);
@@ -110,6 +116,29 @@ export function ArtifactMiniature({ id, title }: ArtifactMiniatureProps) {
       abandoned = true;
     };
   }, [id]);
+
+  /*
+   * An SVG drawn as the picture it is. The server answers it as a download -
+   * opened as a page, an SVG can run script - and an <img> will not draw that;
+   * an <img> of the same bytes typed as SVG draws them and runs nothing.
+   */
+  const isSvg = /\.svg$/i.test(filename) || type === 'image/svg+xml';
+  useEffect(() => {
+    if (!isSvg) return;
+    let abandoned = false;
+    let url: string | null = null;
+    fetchSavedArtifactBytes(id)
+      .then((bytes) => {
+        if (abandoned) return;
+        url = URL.createObjectURL(new Blob([bytes], { type: 'image/svg+xml' }));
+        setSvg(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+      if (url !== null) URL.revokeObjectURL(url);
+    };
+  }, [id, isSvg]);
 
   useEffect(() => {
     if (type !== 'application/pdf' || canvas.current === null) return;
@@ -133,7 +162,9 @@ export function ArtifactMiniature({ id, title }: ArtifactMiniatureProps) {
 
   const readable = READABLE.includes(type);
   const href = readable ? savedArtifactPreviewUrl(id) : savedArtifactUrl(id);
-  const picture = PICTURES.includes(type);
+  const picture = PICTURES.includes(type) || svg !== null;
+  // The file's name where the server gave one; the link's words only where it did not.
+  const named = filename !== '' ? filename : title;
   const page = type === 'application/pdf' && drawn !== 'failed';
 
   return (
@@ -143,23 +174,23 @@ export function ArtifactMiniature({ id, title }: ArtifactMiniatureProps) {
         href={href}
         target="_blank"
         rel="noreferrer noopener"
-        title={readable ? `${title} - ${t('open in a new tab')}` : `${title} - ${t('download')}`}
-        {...(readable ? {} : { download: title })}
+        title={readable ? `${named} - ${t('open in a new tab')}` : `${named} - ${t('download')}`}
+        {...(readable ? {} : { download: named })}
       >
         {picture ? (
-          <img src={savedArtifactUrl(id)} alt={title} loading="lazy" data-keeps-colour="" />
+          <img src={svg ?? savedArtifactUrl(id)} alt={named} loading="lazy" data-keeps-colour="" />
         ) : page ? (
-          <canvas ref={canvas} className={styles.pageDrawn} aria-label={title} data-state={drawn} />
+          <canvas ref={canvas} className={styles.pageDrawn} aria-label={named} data-state={drawn} />
         ) : (
           <span className={styles.tile}>
             <span className={styles.tileMark} aria-hidden="true">
               {markFor(type)}
             </span>
-            <span className={styles.tileKind}>{kindOf(title, type)}</span>
+            <span className={styles.tileKind}>{kindOf(named, type)}</span>
           </span>
         )}
       </a>
-      {title !== '' && <figcaption className={styles.caption}>{title}</figcaption>}
+      {named !== '' && <figcaption className={styles.caption}>{named}</figcaption>}
     </figure>
   );
 }
