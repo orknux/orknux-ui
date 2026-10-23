@@ -367,6 +367,11 @@ export const TESTS = [
     // Makes a workflow of its own and removes it again.
   },
   {
+    name: 'dependency-graph-check',
+    what: "a workspace's Dependencies page draws its parts and what uses what, and choosing one lights its chain with a link to open it",
+    needs: ['workspace'],
+  },
+  {
     name: 'reports-url-check',
     what: 'Admin > Reports keeps the report it shows in the address, through a pick and a reload',
     needs: [],

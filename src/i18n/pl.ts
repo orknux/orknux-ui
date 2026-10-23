@@ -3228,4 +3228,11 @@ export const PL: Record<string, string> = {
   "Stop trusting this authority": "Przestań ufać temu urzędowi",
   "Goes with it:": "Odchodzi razem z nim:",
   "No model is reached through it.": "Żaden model nie jest przez niego dostępny.",
+  "Dependencies": "Zależności",
+  "What uses what in this workspace": "Co czego używa w tym obszarze roboczym",
+  "Could not load the dependencies.": "Nie udało się wczytać zależności.",
+  "Search the dependencies": "Szukaj w zależnościach",
+  "Hide unconnected": "Ukryj niepołączone",
+  "Uses": "Używa",
+  "Nothing in this workspace yet.": "W tym obszarze roboczym nic jeszcze nie ma.",
 };

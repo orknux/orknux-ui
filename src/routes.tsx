@@ -69,6 +69,7 @@ import { WorkspaceToolsPage } from './pages/workspace/WorkspaceToolsPage';
 import { WorkspaceTriggersPage } from './pages/workspace/WorkspaceTriggersPage';
 import { WorkspacePluginsPage } from './pages/workspace/WorkspacePluginsPage';
 import { WorkspaceVariablesPage } from './pages/workspace/WorkspaceVariablesPage';
+import { WorkspaceDependenciesPage } from './pages/workspace/WorkspaceDependenciesPage';
 import { WorkspaceWorkflowsPage } from './pages/workspace/WorkspaceWorkflowsPage';
 
 /** What a page needs to render: who is signed in, and how they sign out. */
@@ -127,6 +128,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/models': (session, onSignOut) => <WorkspaceModelsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/integrations': (session, onSignOut) => <WorkspaceIntegrationsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/audit': (session, onSignOut) => <WorkspaceAuditPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/dependencies': (session, onSignOut) => <WorkspaceDependenciesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/settings': (session, onSignOut) => <WorkspaceSettingsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/executions/:executionId': (session, onSignOut) => <ExecutionDetailPage session={session} onSignOut={onSignOut} />,
   /* Before the one with an id in it: `new` is a page, not an action called new. */
