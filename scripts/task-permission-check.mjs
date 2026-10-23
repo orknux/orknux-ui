@@ -117,11 +117,21 @@ const taskId = page.url().split('/').pop();
 let parked = null;
 /** How the task ended, where it ended without stopping: a provider refusing reads differently from a model that answered. */
 let ended = null;
-for (let look = 0; look < 300 && parked === null; look += 1) {
+/** What the task was doing when the wait ran out, so a timeout names a state rather than nothing. */
+let last = null;
+/*
+ * Twelve minutes unless ORKNUX_CHECK_TASK_MINUTES says otherwise: a local
+ * model at thirty seconds a round looks around - its skills, its memory - for
+ * several rounds before it asks, and five minutes ran out while it was still
+ * looking.
+ */
+const LOOKS = Number(process.env.ORKNUX_CHECK_TASK_MINUTES ?? 12) * 60;
+for (let look = 0; look < LOOKS && parked === null; look += 1) {
   const found = await gql(
-    `query($id: ID!) { task(id: $id) { status endedBecause requests { id kind capability subject asks decision } } }`,
+    `query($id: ID!) { task(id: $id) { status endedBecause sessionId requests { id kind capability subject asks decision } } }`,
     { id: taskId },
   );
+  last = found.task;
   if (found.task.status === 'WAITING') parked = found.task;
   else if (['DONE', 'FAILED', 'STOPPED'].includes(found.task.status)) {
     ended = `${found.task.status}: ${found.task.endedBecause ?? 'no reason given'}`;
@@ -133,7 +143,7 @@ for (let look = 0; look < 300 && parked === null; look += 1) {
 check(
   parked !== null,
   'the task stopped rather than inventing an answer it had no way to get',
-  `the task never stopped for permission - it ended ${ended ?? 'without saying how'}`,
+  `the task never stopped for permission - it ${ended === null ? `was still ${last?.status} after ${LOOKS / 60} minutes (session ${last?.sessionId})` : `ended ${ended}`}`,
 );
 
 if (parked !== null) {
