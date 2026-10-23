@@ -6148,7 +6148,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
             onClick={leavingFor(`/workspace/${workspaceId}`)}
           >{t('Workflows')}</Link>
           <span className={styles.crumbSeparator}>/</span>
-          <span className={styles.workflowName}>{name}</span>
+          <span className={styles.workflowName} title={name} data-testid="workflow-name">{name}</span>
           {/* Who else has it open, by login, in the colour their pointer is drawn in. Issue #645. */}
           {others.length > 0 && (
             <span className={styles.presence} data-testid="presence">
@@ -6232,7 +6232,6 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
               {error}
             </span>
           )}
-          {saved && error === null && <span className={styles.savedNote}>{t('Saved.')}</span>}
         </div>
 
         <div className={styles.toolbarRight}>

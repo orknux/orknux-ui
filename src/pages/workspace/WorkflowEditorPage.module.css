@@ -28,7 +28,25 @@
 }
 
 .toolbarRight {
+  flex: none;
   gap: var(--space-8);
+}
+
+/*
+ * The left side gives way where the bar is short, and only the name does: it
+ * is cut with an ellipsis on its one line rather than wrapping a word a line
+ * down a 40px bar, and the crumb, the arrow and the buttons beside it keep
+ * their size. The whole name is on the element's title.
+ */
+.toolbarLeft {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* What still does not fit is cut at the bar's middle rather than drawn over the buttons on the right. */
+  overflow: hidden;
+}
+
+.toolbarLeft > * {
+  flex: none;
 }
 
 .backButton,
@@ -65,7 +83,16 @@
   color: #66666b;
 }
 
+/* Never cut to nothing: a few letters say which workflow this is, and the title says the rest. */
+.toolbarLeft > .workflowName {
+  flex: 0 1 auto;
+  min-width: 8ch;
+}
+
 .workflowName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
   font-size: var(--text-base);
   color: var(--color-text-primary);
@@ -100,10 +127,6 @@
   color: var(--color-danger);
 }
 
-.savedNote {
-  font-size: var(--text-md);
-  color: var(--color-success-solid);
-}
 
 /* Not in the frame: nodes have to come from somewhere. */
 .addMenu {

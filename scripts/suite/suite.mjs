@@ -373,6 +373,11 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
+    name: 'workflow-title-check',
+    what: 'a long workflow name in a narrow editor is cut on one line with its whole name on the title, and the toolbar keeps its height',
+    needs: ['workspace'],
+  },
+  {
     name: 'question-scroll-check',
     what: 'a question an agent asks, arriving after its turn was drawn, is followed down to rather than left below the fold',
     needs: ['workspace'],
