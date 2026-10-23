@@ -780,6 +780,12 @@ export const TESTS = [
   },
 
   {
+    name: 'executions-address-check',
+    what: "the Runs page's status, date range and search are in its address, and an address opened cold sets them",
+    needs: ['workspace'],
+  },
+
+  {
     name: 'editor-runs-link-check',
     what: "the editor's link to this workflow's runs: guarded, landing filtered, and the filter in the address",
     needs: ['workspace'],

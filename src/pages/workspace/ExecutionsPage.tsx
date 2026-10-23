@@ -52,6 +52,12 @@ const TRIGGER_ICON: Record<string, string> = {
   SCHEDULE: clockIcon,
 };
 
+/** What the status filter may say; anything else in the address is no filter. */
+const STATUSES = ['RUNNING', 'COMPLETED', 'FAILED', 'STOPPED'] as const satisfies readonly ExecutionStatus[];
+
+/** The date range the page opens on: the last day. */
+const DEFAULT_DAYS = 1;
+
 export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
   const { workspaceId = '' } = useParams();
 
@@ -68,9 +74,8 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
     'STARTED',
     'RUN',
   ]);
-  const [status, setStatus] = useState<ExecutionStatus | ''>('');
   /*
-   * The workflow filter lives in the address, not only in state.
+   * Every filter lives in the address, not only in state.
    *
    * The editor links here with `?workflowId=` so that "the runs of this
    * workflow" is one press rather than a press and a pick from a list of every
@@ -78,18 +83,22 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
    * a filter, where one that lives in component state is a thing they had set
    * once. Read on load as the starting value; written back when the Select
    * changes, replacing the entry rather than pushing one, because five picks
-   * from the list should not be five presses of Back to leave. Only this
-   * filter, for now: it is the one anything links to. Issue #437.
+   * from the list should not be five presses of Back to leave. Issue #437 put
+   * the workflow there; the status, the date range and the search followed, so
+   * the list somebody is looking at is the list a pasted link opens.
+   *
+   * A value equal to the default is left out, so the bare address is the page
+   * as it opens. The date range's default is a day, so "all time" is written
+   * out as `days=all` rather than left out.
    */
   const [searchParams, setSearchParams] = useSearchParams();
-  const workflowId = searchParams.get('workflowId') ?? '';
-  const setWorkflowId = useCallback(
-    (chosen: string) => {
+  const setParam = useCallback(
+    (name: string, value: string | null) => {
       setSearchParams(
         (current) => {
           const next = new URLSearchParams(current);
-          if (chosen === '') next.delete('workflowId');
-          else next.set('workflowId', chosen);
+          if (value === null) next.delete(name);
+          else next.set(name, value);
           return next;
         },
         { replace: true },
@@ -97,9 +106,20 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
     },
     [setSearchParams],
   );
-  const [days, setDays] = useState<number | ''>(1);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const workflowId = searchParams.get('workflowId') ?? '';
+  const setWorkflowId = useCallback((chosen: string) => setParam('workflowId', chosen === '' ? null : chosen), [setParam]);
+  const statusParam = searchParams.get('status') ?? '';
+  const status: ExecutionStatus | '' = (STATUSES as readonly string[]).includes(statusParam) ? (statusParam as ExecutionStatus) : '';
+  const setStatus = useCallback((chosen: ExecutionStatus | '') => setParam('status', chosen === '' ? null : chosen), [setParam]);
+  const daysParam = searchParams.get('days');
+  const days: number | '' = daysParam === 'all' ? '' : daysParam !== null && Number(daysParam) > 0 ? Number(daysParam) : DEFAULT_DAYS;
+  const setDays = useCallback(
+    (chosen: number | '') => setParam('days', chosen === '' ? 'all' : chosen === DEFAULT_DAYS ? null : String(chosen)),
+    [setParam],
+  );
+  // Typed into state at once and into the address once the typing pauses, as the list is asked.
+  const debouncedSearch = searchParams.get('q') ?? '';
+  const [search, setSearch] = useState(debouncedSearch);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,9 +145,9 @@ export function ExecutionsPage({ session, onSignOut }: ExecutionsPageProps) {
   }, [workspaceId]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(() => setParam('q', search.trim() === '' ? null : search), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, setParam]);
 
   useEffect(() => setPage(1), [status, workflowId, days, debouncedSearch]);
 
