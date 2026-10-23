@@ -145,6 +145,14 @@ export interface ChatMessage {
 export const CALL_ROLE = 'tool';
 
 /**
+ * The role one round's thinking reads under on a reloaded chat: a line of its
+ * own among the calls, its text in `thinking`, where the round thought it. The
+ * answer it led to then carries no `thinking` of its own, so nothing is drawn
+ * twice. A model that thought once and looked nothing up keeps it on its answer.
+ */
+export const THOUGHT_ROLE = 'thought';
+
+/**
  * What one turn took and what it cost.
  *
  * The turn and not the last call in it: an agent that looked something up

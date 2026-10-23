@@ -619,6 +619,18 @@
   min-height: 0;
   padding: var(--space-32);
   overflow-y: auto;
+  /*
+   * The working's cards - calls, thinking - a step smaller here than on the
+   * session's page. There they are the transcript; here they are asides inside
+   * an answer, and at full size a run of lookups outweighed the answer it led
+   * to. One rule for every card (see EventCard.module.css); the agent's own
+   * words between them are the answer's voice and keep its size.
+   */
+  --event-text: var(--text-xs);
+  --event-prose: var(--text-sm);
+  --event-pad-y: var(--space-6);
+  --event-pad-x: var(--space-10);
+  --event-gap: var(--space-6);
 }
 
 .logEmpty {
@@ -1996,11 +2008,12 @@ button.attachmentName {
 
 .personInTurnText {
   max-width: 70%;
-  padding: var(--space-8) var(--space-12);
+  /* A step under the person's own messages, as the working around it is: it is said inside a turn, not as one. */
+  padding: var(--event-pad-y, var(--space-8)) var(--event-pad-x, var(--space-12));
   background: var(--color-accent-brand);
   border-radius: var(--radius-12) var(--radius-12) var(--space-2) var(--radius-12);
-  font-size: var(--text-base);
-  line-height: 20px;
+  font-size: var(--text-md);
+  line-height: 18px;
   color: var(--color-text-primary);
   white-space: pre-wrap;
 }

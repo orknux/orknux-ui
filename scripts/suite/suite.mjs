@@ -781,7 +781,7 @@ export const TESTS = [
 
   {
     name: 'chat-thinking-split-check',
-    what: 'thinking after a tool call is a folded section of its own, in its place among the calls',
+    what: "thinking after a tool call is a folded section of its own among the calls, live and reloaded, drawn as the session's thinking card, a step smaller",
     needs: ['workspace'],
   },
 

@@ -7,14 +7,7 @@
  * about it beyond how wide it may be.
  */
 .call {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-cyan);
-  border-radius: var(--radius-8);
+  composes: card tool from './EventCard.module.css';
 }
 
 .head {
@@ -62,22 +55,14 @@
 }
 
 .badge {
-  flex-shrink: 0;
-  padding: var(--space-2) var(--space-8);
-  background: var(--color-cyan-soft);
-  border-radius: var(--radius-4);
-  font-weight: 600;
-  font-size: var(--text-2xs);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--color-cyan);
+  composes: badge from './EventCard.module.css';
 }
 
 .name {
   overflow: hidden;
   font-family: var(--font-mono);
   font-weight: 600;
-  font-size: var(--text-sm);
+  font-size: var(--event-text, var(--text-sm));
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -127,7 +112,7 @@
 .note {
   margin: 0;
   overflow: hidden;
-  font-size: var(--text-sm);
+  font-size: var(--event-text, var(--text-sm));
   color: var(--color-text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -140,8 +125,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-6);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  line-height: 18px;
+  font-size: var(--event-text, var(--text-sm));
+  line-height: 1.5;
   color: var(--color-text-secondary);
   overflow-x: auto;
 }
@@ -172,7 +157,7 @@
   background: none;
   border: 0;
   font: inherit;
-  font-size: var(--text-sm);
+  font-size: var(--event-text, var(--text-sm));
   color: var(--color-accent-brand);
   cursor: pointer;
 }
