@@ -107,6 +107,8 @@ export const PL: Record<string, string> = {
   "{written}: {problem}": "{written}: {problem}",
   "Keep the newest line in view as the run writes": "Pokazuj najnowszy wiersz, gdy przebieg pisze",
   "Add an image model in Models": "Dodaj model obrazów w Modelach",
+  "Chat Title Time Limit": "Limit czasu na tytuł czatu",
+  "How long the workspace's companion model has to name a chat. Past it, or when it fails, the chat's own model names it. Between 1 and 600.": "Ile czasu ma model towarzyszący obszaru roboczego na nadanie tytułu czatowi. Po nim, albo gdy zawiedzie, tytuł nadaje model samego czatu. Od 1 do 600.",
   "Rename Chats Every": "Zmieniaj nazwę czatu co",
   "A chat is named by a model after its first exchange, and named again from its latest messages after this many more. 0 names it once. A title somebody typed is never replaced. Between 0 and 1000.": "Model nadaje czatowi nazwę po pierwszej wymianie, a potem nadaje ją ponownie z ostatnich wiadomości po tylu kolejnych. 0 nadaje ją raz. Tytuł wpisany przez kogoś nigdy nie jest zastępowany. Od 0 do 1000.",
   "exchanges": "wymian",
