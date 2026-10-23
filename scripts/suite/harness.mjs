@@ -108,7 +108,27 @@ export async function open(options = {}) {
    * `forward.mjs` when it is on the host - see run.mjs's header.
    */
   const browser = await chromium.launch(launch);
-  const context = await browser.newContext({ viewport, ...contextOptions });
+  /*
+   * The browser starts out remembering the fixture's workspace.
+   *
+   * The chat names no workspace in its address: `/chat` opens the one the
+   * browser last looked at (`orknux.lastWorkspace`), and a fresh context has
+   * none, so it fell through to the first workspace in the list. On the
+   * developer's database that happened to be one with chats and agents; on
+   * CI's it is the workspace a fresh installation makes for itself since the
+   * server's d27a1f84 - no agent, no chat, so no composer - and every check
+   * that opened `/chat` waited twenty seconds for one and failed. Set once, as
+   * stored state rather than a script run on every load, so a check that
+   * switches workspace is remembered switching it like anybody else.
+   */
+  const context = await browser.newContext({
+    viewport,
+    storageState: {
+      cookies: [],
+      origins: [{ origin: new URL(BASE).origin, localStorage: [{ name: 'orknux.lastWorkspace', value: WORKSPACE }] }],
+    },
+    ...contextOptions,
+  });
   const page = await context.newPage();
   await signIn(context);
 
