@@ -45,6 +45,7 @@ import { fetchSkillOffers, reachableSkills } from '../../api/skills';
 import type { SkillOffer } from '../../api/skills';
 import {
   attachmentUrl,
+  isPlayable,
   isShowable,
   formatSize,
   uploadAttachments,
@@ -1279,6 +1280,17 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
             >
               <img className={styles.thumb} src={attachmentUrl(file.id)} alt={file.filename} />
             </button>
+          ) : isPlayable(file.contentType) ? (
+            <video
+              key={file.id}
+              className={styles.chatVideo}
+              src={attachmentUrl(file.id)}
+              controls
+              preload="metadata"
+              title={file.filename}
+              data-message-file={file.id}
+              data-message-video=""
+            />
           ) : (
             <a
               key={file.id}

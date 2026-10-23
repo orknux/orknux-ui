@@ -105,6 +105,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
   /** The workspace's providers, for the select; null until they arrive, and the model's own is drawn meanwhile. */
   const [providers, setProviders] = useState<ModelProvider[] | null>(null);
   const [skipEmptyLines, setSkipEmptyLines] = useState(false);
+  /** Whether a video attached to a chat is sent to this model; offered only where the provider carries one. */
+  const [takesVideo, setTakesVideo] = useState(false);
   const [imageCost, setImageCost] = useState('');
   const [inputCost, setInputCost] = useState('');
   const [outputCost, setOutputCost] = useState('');
@@ -222,6 +224,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     setRepeatPenalty(found.repeatPenalty === null ? '' : String(found.repeatPenalty));
     setVoice(found.voice ?? '');
     setSkipEmptyLines(found.skipEmptyLines);
+    setTakesVideo(found.takesVideo);
     setImageCost(found.imageCostPerImage === null ? '' : String(found.imageCostPerImage));
     setInputCost(found.inputCostPerMillion === null ? '' : String(found.inputCostPerMillion));
     setOutputCost(found.outputCostPerMillion === null ? '' : String(found.outputCostPerMillion));
@@ -333,6 +336,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
         // Sent back whatever it was, for the reason above: a field this form
         // does not show is a field left out and therefore cleared.
         imageCostPerImage: draws ? toNumber(imageCost) : model.imageCostPerImage,
+        // As stored until the provider's settings are known; off where it carries no video, which the server requires.
+        takesVideo: chatParameters === null ? model.takesVideo : offered('takesVideo') ? takesVideo : false,
         providerId,
       });
       await updateModelQuotas(model.id, {
@@ -361,7 +366,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const changed = useDirty(
     {
       name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
-      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost, inputCost, outputCost, cachedCost, writeCost,
+      temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, takesVideo, imageCost, inputCost, outputCost, cachedCost, writeCost,
       tokenLimit, resetInterval, requestsPerMinute, answerLimit, throttleTokens, throttleRequests, retryAfter,
     },
     [model],
@@ -401,6 +406,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
       repeatPenalty, setRepeatPenalty,
       voice, setVoice,
       skipEmptyLines, setSkipEmptyLines,
+      takesVideo, setTakesVideo,
       imageCost, setImageCost,
       inputCost, setInputCost,
       outputCost, setOutputCost,
@@ -719,6 +725,24 @@ export function ModelWindowFields({ form }: SectionProps) {
                 placeholder={t('Server default')}
                 inputMode="decimal"
               />
+            </div>
+          )}
+          {offered('takesVideo') && (
+            <div className={styles.field}>
+              <span className={styles.checkboxWithHint}>
+                <label className={styles.checkboxField}>
+                  <input
+                    type="checkbox"
+                    checked={fields.takesVideo}
+                    onChange={(event) => fields.setTakesVideo(event.target.checked)}
+                    data-testid="model-takes-video"
+                  />
+                  <span>{t('Takes video')}</span>
+                </label>
+                <FieldHint label={t('Takes video')}>
+                  {t('Send a video attached in a chat to this model itself; off, a message with a video is refused.')}
+                </FieldHint>
+              </span>
             </div>
           )}
         </>

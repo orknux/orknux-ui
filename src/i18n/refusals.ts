@@ -253,6 +253,14 @@ const PL: Record<string, string> = {
   CompletionMaxTokensOutOfRange: '{tokens} to nie jest długość podpowiedzi w tokenach. Wybierz od 1 do 500.',
   CompletionTimeoutOutOfRange: '{millis} to nie jest limit czasu podpowiedzi w milisekundach. Wybierz od 200 do 60000.',
   CompletionPauseOutOfRange: '{millis} to nie jest przerwa w pisaniu w milisekundach. Wybierz od 100 do 10000.',
+  // Videos in the chat.
+  VideoMaxOutOfRange: '{megabytes} MB to nie jest limit wideo wysyłanego do modelu. Wybierz od 1 do 1024.',
+  ChatVideoNotTaken: '{model} nie przyjmuje wideo. Włącz Przyjmuje wideo na stronie modelu albo wybierz model, który je przyjmuje.',
+  ChatVideoNotCarried:
+    '{model} działa przez {provider}, którego API nie przyjmuje wideo. Wybierz model u dostawcy, który je przyjmuje.',
+  ChatVideoTooLarge:
+    '{filename} ma {megabytes} MB, a wideo wysyłane do modelu może mieć najwyżej {limit} MB. ' +
+    'Wyślij krótsze albo podnieś Limit załącznika wideo w ustawieniach administratora.',
   WidgetTimerLimitOutOfRange: '{seconds} to nie jest liczba sekund minutnika w czacie. Wybierz od 60 do 604800.',
   ChatWidgetNotFound: 'Ten czat nie ma widżetu {id}.',
   WorkflowAutosaveOutOfRange: '{millis} to nie jest liczba milisekund, które edytor przepływu odczekuje przed zapisem. Wybierz od 200 do 10000.',

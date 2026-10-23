@@ -20,6 +20,8 @@
  * have this comment on it.
  */
 
+import { refusalOf } from './client';
+
 /** An SSE frame ends with a blank line. */
 const BLANK_LINE = '\n\n';
 
@@ -89,12 +91,16 @@ export function givenUp(cause: unknown): boolean {
  * The streaming endpoints are the only ones here that are not GraphQL, so a
  * refusal is not an `ApiError`: it is a `ProblemDetail`, and its `detail` is the
  * line the server wrote for a person to read. Without this the chat put the
- * whole JSON object on screen.
+ * whole JSON object on screen. Where it carries a `code` and `arguments` too,
+ * as a refused video does, it is translated from them as a GraphQL refusal is.
  */
 export function refusal(body: string): string | null {
   try {
-    const held = JSON.parse(body) as { detail?: unknown };
-    return typeof held.detail === 'string' && held.detail !== '' ? held.detail : null;
+    const held = JSON.parse(body) as { detail?: unknown; code?: unknown; arguments?: unknown };
+    if (typeof held.detail !== 'string' || held.detail === '') return null;
+    const code = typeof held.code === 'string' ? held.code : undefined;
+    const args = typeof held.arguments === 'object' && held.arguments !== null ? (held.arguments as Record<string, unknown>) : undefined;
+    return refusalOf(held.detail, code, args);
   } catch {
     return null;
   }

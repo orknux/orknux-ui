@@ -1785,6 +1785,17 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-video-check',
+    what: "a video attached in a chat plays as a <video> under its message, read back and sent, and a model's page offers Takes video where its provider carries one - a llama.cpp or vLLM host, not Ollama - and Save stores it",
+    needs: ['workspace'],
+    /*
+     * The chat half stubs the history, the upload and one turn's stream in the
+     * page; the model half makes its own providers on .invalid hosts and removes
+     * them. Whether a model is sent the video, and refused it, is ChatVideoTest's.
+     */
+  },
+
+  {
     name: 'chat-pin-check',
     what: 'pinning a chat moves it under Pinned at once, not after the list reloads',
     needs: ['workspace'],

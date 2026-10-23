@@ -59,6 +59,7 @@ import {
   setChatCompletionMaxTokens,
   setChatCompletionTimeoutMillis,
   setChatCompletionPauseMillis,
+  setChatVideoMaxMb,
   setObjectMaxDepth,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
@@ -164,6 +165,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [completionTokens, setCompletionTokens] = useState('');
   const [completionTimeout, setCompletionTimeout] = useState('');
   const [completionPause, setCompletionPause] = useState('');
+  const [videoMax, setVideoMax] = useState('');
   const [objectDepth, setObjectDepth] = useState('');
   /** How long one note to self may be, as typed. */
   const [noteLength, setNoteLength] = useState('');
@@ -300,6 +302,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     setCompletionTokens(String(held.chatCompletionMaxTokens));
     setCompletionTimeout(String(held.chatCompletionTimeoutMillis));
     setCompletionPause(String(held.chatCompletionPauseMillis));
+    setVideoMax(String(held.chatVideoMaxMb));
     setBoxLocation(held.localBoxLocation ?? '');
     setBoxRuntime(held.localBoxRuntime);
     setBoxMaxSessions(String(held.localBoxMaxSessions));
@@ -432,6 +435,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: completionTokens, held: settings.chatCompletionMaxTokens, write: setChatCompletionMaxTokens },
         { typed: completionTimeout, held: settings.chatCompletionTimeoutMillis, write: setChatCompletionTimeoutMillis },
         { typed: completionPause, held: settings.chatCompletionPauseMillis, write: setChatCompletionPauseMillis },
+        { typed: videoMax, held: settings.chatVideoMaxMb, write: setChatVideoMaxMb },
         { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
@@ -931,6 +935,33 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   data-testid="chat-completion-pause-millis"
                 />
                 <span className={styles.retentionUnit}>ms</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Video Attachment Limit')}</p>
+                  <FieldHint label={t('Video Attachment Limit')}>
+                    {t('The largest video a chat message may send to a model that takes video. Between 1 and 1024.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-video-max-mb"
+                  name="chatVideoMaxMb"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={1024}
+                  value={videoMax}
+                  onChange={(event) => setVideoMax(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Video Attachment Limit')}
+                  data-testid="chat-video-max-mb"
+                />
+                <span className={styles.retentionUnit}>MB</span>
               </div>
             </div>
 

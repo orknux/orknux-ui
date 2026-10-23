@@ -179,6 +179,12 @@ export interface Model {
    * per-million prices beside it would cost every one of them at nothing.
    */
   imageCostPerImage: number | null;
+  /**
+   * Whether a video attached to a chat message is sent to this model. Off, a
+   * message carrying one is refused before the model is asked; only a provider
+   * whose chat parameters list `takesVideo` lets it be switched on.
+   */
+  takesVideo: boolean;
 }
 
 /** A model the provider says it can run; `added` when the catalogue has it already. */
@@ -230,7 +236,7 @@ export const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute answerLimitMinutes answerLimitMinutesInherited throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion voice skipEmptyLines ' +
-  'imageCostPerImage';
+  'imageCostPerImage takesVideo';
 const USAGE_FIELDS =
   'modelId days from to empty requests inputTokens outputTokens cachedInputTokens totalTokens averageLatencyMillis ' +
   'costEstimate requestsChange tokensChange latencyChange periodStart periodTokens ' +
@@ -242,8 +248,8 @@ const USAGE_FIELDS =
  * nothing else; a provider that reads none answers [].
  */
 export interface ChatParameterSpec {
-  name: 'temperature' | 'topP' | 'topK' | 'minP' | 'repeatPenalty' | 'reasoningEffort' | string;
-  kind: 'NUMBER' | 'CHOICE';
+  name: 'temperature' | 'topP' | 'topK' | 'minP' | 'repeatPenalty' | 'reasoningEffort' | 'takesVideo' | string;
+  kind: 'NUMBER' | 'CHOICE' | 'SWITCH';
   /** What a CHOICE may be; empty for a NUMBER. */
   choices: string[];
 }
@@ -462,6 +468,8 @@ export interface ModelDetailsInput {
   skipEmptyLines?: boolean;
   /** Only asked for on an IMAGE model, which is billed per picture rather than per token. */
   imageCostPerImage?: number | null;
+  /** Whether a video attached to a chat is sent to it; left out, it stays as it is. */
+  takesVideo?: boolean;
   /** The provider to move it to, in the same workspace; left out, it stays where it is. */
   providerId?: string;
 }
