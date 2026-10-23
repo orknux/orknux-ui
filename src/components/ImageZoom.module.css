@@ -147,3 +147,111 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-8);
 }
+
+/*
+ * Enlarged, the picture is moved by dragging it, and clipped to the box it was
+ * fitted to: the window lies over the plate, which the hidden sizer holds at
+ * the fitted size. The border is the window's, so it stays put while the
+ * picture moves under it.
+ */
+.window {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.shown {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform 80ms ease-out;
+}
+
+.sizer {
+  visibility: hidden;
+}
+
+.zoomed {
+  cursor: grab;
+  transition: none;
+}
+
+.zoomed:active {
+  cursor: grabbing;
+}
+
+/* The zoom controls and Save, beside the close control and drawn like it. */
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 2px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.tool {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.zoom .tool {
+  border-color: transparent;
+}
+
+.tool:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.level {
+  min-width: 5ch;
+  padding: 0 var(--space-4);
+  background: none;
+  border: 0;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.level:hover {
+  color: var(--color-text-primary);
+}
+
+.saveIcon {
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picture {
+    transition: none;
+  }
+}

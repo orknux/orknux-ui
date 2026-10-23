@@ -247,6 +247,11 @@ export const PL: Record<string, string> = {
   "Language": "Język",
   "Interface Theme": "Motyw interfejsu",
   "Accent Colour": "Kolor akcentu",
+  "Zoom": "Powiększenie",
+
+
+  "Fit to window": "Dopasuj do okna",
+  "Save picture": "Zapisz obraz",
   "The colour of buttons, your messages and what is selected. Kept in this browser.": "Kolor przycisków, twoich wiadomości i zaznaczeń. Zapamiętywany w tej przeglądarce.",
   "Moss": "Mech",
   "Blue": "Niebieski",

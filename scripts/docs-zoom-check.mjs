@@ -137,6 +137,54 @@ const caption = openDialog
   : '';
 record(caption.includes(alt.split(':')[0].slice(0, 20)), 'the viewer says which picture this is');
 
+
+/*
+ * Zoom, pan and Save. A diagram fitted to the window had labels too small to
+ * read and no way in but saving it elsewhere - and the desktop app had no Save
+ * at all. The wheel zooms about the pointer, a drag moves it, the percentage
+ * puts it back, and Save is a link to the picture's own file.
+ */
+if (openDialog) {
+  const picture = page.locator('dialog[open] img').first();
+  const before = await picture.boundingBox();
+  const level = page.locator('dialog[open] [data-zoom-level]');
+  record((await level.innerText()) === '100%', `it opens fitted (${await level.innerText()})`);
+  await page.locator('dialog[open] [data-zoom-in]').click();
+  await page.locator('dialog[open] [data-zoom-in]').click();
+  const bigger = await picture.boundingBox();
+  record(bigger !== null && before !== null && bigger.width > before.width * 1.4, `+ enlarges it (${Math.round(before?.width ?? 0)} -> ${Math.round(bigger?.width ?? 0)}px, ${await level.innerText()})`);
+  // The plate keeps it in the box it was fitted to, so nothing of the page is covered.
+  const plate = await page.evaluate(() => {
+    const one = document.querySelector('dialog[open] [data-zoom-window]');
+    return one ? getComputedStyle(one).overflow : null;
+  });
+  record(plate === 'hidden', `the enlarged picture is clipped to where it was fitted (overflow: ${plate})`);
+  // Dragged, it moves.
+  const centre = { x: (before?.x ?? 0) + (before?.width ?? 0) / 2, y: (before?.y ?? 0) + (before?.height ?? 0) / 2 };
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x + 80, centre.y + 40, { steps: 5 });
+  await page.mouse.up();
+  const moved = await picture.boundingBox();
+  record(moved !== null && bigger !== null && Math.round(moved.x - bigger.x) === 80, `a drag moves it (${Math.round((moved?.x ?? 0) - (bigger?.x ?? 0))}px)`);
+  record(await page.evaluate(() => document.querySelector('dialog[open]') !== null), 'and does not close the viewer');
+  // The wheel zooms too; the percentage puts it back.
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.wheel(0, -200);
+  await page.waitForTimeout(150);
+  record((await level.innerText()) !== '156%', `the wheel zooms (${await level.innerText()})`);
+  await level.click();
+  await page.waitForTimeout(150);
+  const back = await picture.boundingBox();
+  record((await level.innerText()) === '100%' && back !== null && before !== null && Math.abs(back.width - before.width) < 1 && Math.abs(back.x - before.x) < 1, `the percentage fits it again (${await level.innerText()})`);
+  // Save: a link to the picture's own file, offered as a download.
+  const save = page.locator('dialog[open] [data-picture-save]');
+  const href = await save.getAttribute('href');
+  const named = await save.getAttribute('download');
+  record(href === (await picture.getAttribute('src')) && /\.png$/i.test(named ?? ''), `Save downloads the picture as ${named}`);
+  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 5_000 }).catch(() => null), save.click()]);
+  record(download !== null && download.suggestedFilename() === named, `and a click saves it (${download?.suggestedFilename()})`);
+}
 await page.keyboard.press('Escape');
 await page.waitForTimeout(400);
 record(
