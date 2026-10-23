@@ -137,22 +137,21 @@ export function Thinking({ text, live = false, millis = null, startOpen = false 
           {open ? '▾' : '▸'}
         </span>
         {/*
-          "Thinking" while it is, "Thought for" once it has stopped, with the
-          duration beside it either way.
+          The session's badge, word for word: this is the same line the
+          session's transcript draws, and one thought drawn two ways on two
+          pages read as two different things.
 
-          Deliberately not "Thought for", which is the answer's own disclosure a
-          few lines below — that one reports the whole turn and, where somebody
-          has turned the switch on, what it cost. Two controls under one answer
-          both reading "Thought for N seconds" is how they came to be read as
-          one control, and the cost on that one was taken for something this had
-          attached to the reasoning.
-
-          This block carries no bookkeeping. The only number on it is how long
-          somebody waited for the thinking, which is what the block is about.
+          Never "Thought for", which is the answer's own disclosure a few lines
+          below - that one reports the whole turn and, where somebody has turned
+          the switch on, what it cost. Two controls under one answer both
+          reading "Thought for N seconds" is how they came to be read as one
+          control. This block carries no bookkeeping: the only number on it is
+          how long somebody waited for the thinking.
         */}
-        {live ? t('Thinking') : t('Thought')}
+        <span className={styles.badge}>{t('Thinking')}</span>
         {shown > 0 && (
-          <span className={styles.size} data-testid="thinking-elapsed">
+          /* While it runs, the session's breathing "still thinking" ink; settled, its quiet duration. */
+          <span className={live ? styles.still : styles.size} data-testid="thinking-elapsed">
             {/* The joining word belongs to the duration, not to the label: the
                 label is what this block is, and "for" is part of saying how
                 long - so it is set with the number rather than in the heavier

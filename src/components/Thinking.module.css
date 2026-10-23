@@ -1,89 +1,54 @@
 /*
- * The model's thinking, folded away beside its answer.
- *
- * Quieter than everything around it on purpose. It sits above an answer in the
- * reading order and must not compete with it: what somebody came for is the
- * paragraph underneath, and this is the footnote they open when the paragraph
- * surprises them.
+ * The model's thinking, folded away beside its answer - drawn as the session's
+ * transcript draws a thinking line, because it is the same line. The card, the
+ * badge, the colours and the prose all come from `EventCard.module.css`, which
+ * the session page composes too; what is here is only what a fold needs.
  */
 .thinking {
-  margin: 0 0 var(--space-6) 0;
+  composes: card thinking from './EventCard.module.css';
 }
 
+/* The head is the control: the whole row opens it, not just the triangle. */
 .head {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--space-6);
-  padding: 2px var(--space-6);
+  gap: var(--space-8);
+  width: 100%;
+  min-width: 0;
+  padding: 0;
   border: none;
-  border-radius: var(--radius-sm);
   background: none;
-  font-family: inherit;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  font: inherit;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-.head:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-secondary);
+.head:hover .badge {
+  text-decoration: underline;
 }
 
-/* The triangle turns; nothing else about the row moves. */
+/* The triangle that turns: the same mark, size and place as on a call. */
 .mark {
+  flex-shrink: 0;
   font-size: var(--text-2xs);
   line-height: 1;
+  color: var(--color-text-muted);
 }
 
+.badge {
+  composes: badge from './EventCard.module.css';
+}
+
+/* How long it went on for; while it is still going, the session's breathing "still thinking" ink. */
 .size {
+  composes: duration from './EventCard.module.css';
   font-variant-numeric: tabular-nums;
-  opacity: 0.7;
 }
 
-/*
- * While it is still arriving.
- *
- * Grey, like the rest of the row: this is the model muttering to itself on the
- * way to an answer, and a colour of its own made the quietest thing on the page
- * the loudest. What says it is alive is that it moves.
- *
- * The pulse is on the label rather than on the reasoning, because the reasoning
- * cannot be relied on to move at all - a provider that sends its thinking in
- * one frame delivers the whole block at once, and then nothing on the row has
- * changed for as long as the model is quiet. The label is the one part that can
- * always be seen to be waiting.
- */
-.thinking[data-live='true'] .head {
-  color: var(--color-text-secondary);
-}
-
-.thinking[data-live='true'] .head::after {
-  content: '';
-  width: 5px;
-  height: 5px;
-  margin-left: var(--space-2);
-  border-radius: 50%;
-  background: currentColor;
-  animation: breathing 1.4s ease-in-out infinite;
-}
-
-@keyframes breathing {
-  0%,
-  100% {
-    opacity: 0.2;
-  }
-
-  50% {
-    opacity: 1;
-  }
-}
-
-/* Somebody who asked for less motion is told by the count, which still moves. */
-@media (prefers-reduced-motion: reduce) {
-  .thinking[data-live='true'] .head::after {
-    animation: none;
-    opacity: 0.6;
-  }
+.still {
+  composes: still from './EventCard.module.css';
+  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -92,16 +57,7 @@
  * nobody dares use twice.
  */
 .body {
+  composes: prose from './EventCard.module.css';
   max-height: 18rem;
-  margin: var(--space-6) 0 0 0;
-  padding: var(--space-8) var(--space-12);
   overflow: auto;
-  border-left: 2px solid var(--color-border);
-  background: var(--color-surface);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: var(--text-xs);
-  line-height: 1.6;
-  color: var(--color-text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
 }

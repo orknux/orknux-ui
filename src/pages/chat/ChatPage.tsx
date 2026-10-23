@@ -5,6 +5,7 @@ import type { FormEvent, KeyboardEvent } from 'react';
 
 import {
   CALL_ROLE,
+  THOUGHT_ROLE,
   chooseChatAgent,
   deleteChat,
   fetchChatMessages,
@@ -3713,6 +3714,15 @@ ${named}`;
                     would be two different pages.
                   */}
                   <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} folded />
+                </div>
+              ) : message.role === THOUGHT_ROLE ? (
+                /*
+                  One round's thinking, read back in its place among the calls
+                  - the same section the live turn drew there, so a reload
+                  reads the way the turn did.
+                */
+                <div className={styles.call} data-thought="">
+                  <Thinking text={message.thinking ?? ''} millis={message.thinkingMillis} />
                 </div>
               ) : message.role === 'user' ? (
                 <div className={styles.userRow} data-find={findMark(index)}>

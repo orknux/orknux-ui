@@ -1,0 +1,94 @@
+/*
+ * One line of an agent's working - a call, a round's thinking - drawn as a
+ * card, the same on every page that draws one.
+ *
+ * The session's transcript is where this look came from, and the chat and a
+ * task's page compose it rather than keep copies: the chat's thinking was a
+ * grey fold of its own while the session drew the same thought as a red card,
+ * and two looks for one thing drift further apart with every change to either.
+ *
+ * The sizes are custom properties with the session's own values as fallbacks.
+ * A page that wants its cards smaller says so once, on its own container - the
+ * chat does, because there the cards are asides inside an answer rather than
+ * the transcript itself - and every card under it follows.
+ */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--event-gap, var(--space-8));
+  padding: var(--event-pad-y, var(--space-8)) var(--event-pad-x, var(--space-12));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--kind-colour);
+  border-radius: var(--radius-8);
+}
+
+/* A model's thinking: red, with a tint behind it, so it is never read as the answer beside it. */
+.thinking {
+  --kind-colour: var(--color-thinking);
+  --kind-soft: var(--color-thinking-soft);
+  background: var(--color-thinking-surface);
+}
+
+.tool {
+  --kind-colour: var(--color-cyan);
+  --kind-soft: var(--color-cyan-soft);
+}
+
+/* The kind, said in its own colour on its own tint. */
+.badge {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-8);
+  background: var(--kind-soft);
+  border-radius: var(--radius-4);
+  font-weight: 600;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--kind-colour);
+}
+
+/* How long a round thought for: a measurement of a wait, not a heading. */
+.duration {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+/* And one still going, which is a fact about right now - so it breathes. */
+.still {
+  composes: duration;
+  color: var(--color-accent);
+  animation: breathe 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .still {
+    animation: none;
+  }
+}
+
+/*
+ * What was said or thought, in the page's own face: it is prose, and
+ * monospacing it makes a conversation read as a log file.
+ */
+.prose {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--event-prose, var(--text-md));
+  line-height: 1.6;
+  color: var(--color-text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

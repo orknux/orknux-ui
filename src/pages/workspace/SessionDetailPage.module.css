@@ -463,14 +463,9 @@
  * not depend on remembering what cyan meant.
  */
 .event {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding: var(--space-12) var(--space-16);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--kind-colour);
-  border-radius: var(--radius-8);
+  composes: card from '../../components/EventCard.module.css';
+  --event-pad-y: var(--space-12);
+  --event-pad-x: var(--space-16);
 }
 
 .kindAgent {
@@ -483,14 +478,11 @@
  * it was a twin of the answer beside it, and a darker green still read as one.
  */
 .kindThinking {
-  --kind-colour: var(--color-thinking);
-  --kind-soft: var(--color-thinking-soft);
-  background: var(--color-thinking-surface);
+  composes: thinking from '../../components/EventCard.module.css';
 }
 
 .kindTool {
-  --kind-colour: var(--color-cyan);
-  --kind-soft: var(--color-cyan-soft);
+  composes: tool from '../../components/EventCard.module.css';
 }
 
 .kindUser {
@@ -525,14 +517,7 @@
 }
 
 .kindBadge {
-  padding: var(--space-2) var(--space-8);
-  background: var(--kind-soft);
-  border-radius: var(--radius-4);
-  font-weight: 600;
-  font-size: var(--text-2xs);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--kind-colour);
+  composes: badge from '../../components/EventCard.module.css';
 }
 
 .actor {
@@ -559,13 +544,7 @@
  * a log file.
  */
 .content {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  line-height: 1.6;
-  color: var(--color-text-body);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  composes: prose from '../../components/EventCard.module.css';
 }
 
 /* A tool's arguments are code, and are read as code. */
@@ -641,32 +620,13 @@
   color: var(--color-text-primary);
 }
 
-.thoughtFor,
+.thoughtFor {
+  composes: duration from '../../components/EventCard.module.css';
+}
+
+/* And one that has not stopped, which breathes - the chat's live thinking is the same class. */
 .stillThinking {
-  font-size: var(--text-2xs);
-  letter-spacing: 0.02em;
-  color: var(--color-text-muted);
-}
-
-/*
- * And one that has not stopped, which is a fact about right now rather than
- * about the record - so it breathes, gently, and holds still for anybody who
- * has asked the system for less movement.
- */
-.stillThinking {
-  color: var(--color-accent);
-  animation: breathe 2s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .stillThinking {
-    animation: none;
-  }
+  composes: still from '../../components/EventCard.module.css';
 }
 
 /* The reading card's counts, on their own line under the lead and the share. */

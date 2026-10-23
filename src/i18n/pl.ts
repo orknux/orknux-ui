@@ -2577,7 +2577,6 @@ export const PL: Record<string, string> = {
 
   // --- what a model was thinking ---------------------------------------------
   "Thinking": "Myśli",
-  "Thought": "Myślało",
   "for": "przez",
 
   // --- the agent's setup, where in the log it started answering (#391, #441) --
