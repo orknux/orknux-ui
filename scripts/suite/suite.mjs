@@ -959,6 +959,12 @@ export const TESTS = [
     // Writes the first chat model's prices and puts back what they were.
   },
   {
+    name: 'model-own-answer-limit-check',
+    what: "a model's own answer time limit beside its requests per minute, empty taking the installation's",
+    needs: ['workspace'],
+    // Writes the first chat model's limit and puts back what it was.
+  },
+  {
     name: 'agent-history-changes-check',
     what: "an agent's History says what each save changed and shows a version as JSON against the one before",
     needs: ['workspace'],

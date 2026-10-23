@@ -113,6 +113,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
   const [tokenLimit, setTokenLimit] = useState('');
   const [resetInterval, setResetInterval] = useState<ResetInterval>('MONTHLY');
   const [requestsPerMinute, setRequestsPerMinute] = useState('');
+  const [answerLimit, setAnswerLimit] = useState('');
   /*
    * This model's own throttle, apart from the quotas: empty inherits the
    * provider's default, 0 turns that rate off, and Retry-After is a third state
@@ -229,6 +230,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     setTokenLimit(found.tokenLimit === null ? '' : String(found.tokenLimit));
     setResetInterval(found.resetInterval);
     setRequestsPerMinute(found.requestsPerMinute === null ? '' : String(found.requestsPerMinute));
+    setAnswerLimit(found.answerLimitMinutes === null || found.answerLimitMinutes === undefined ? '' : String(found.answerLimitMinutes));
     setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
     setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
     setRetryAfter(found.acceptRetryAfter === null ? 'inherit' : found.acceptRetryAfter ? 'obey' : 'ignore');
@@ -337,6 +339,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
         tokenLimit: toNumber(tokenLimit),
         resetInterval,
         requestsPerMinute: toNumber(requestsPerMinute),
+        answerLimitMinutes: toNumber(answerLimit),
       });
       const updated = await updateModelThrottle(model.id, {
         throttleTokensPerSecond: toNumber(throttleTokens),
@@ -359,7 +362,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     {
       name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
       temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, imageCost, inputCost, outputCost, cachedCost, writeCost,
-      tokenLimit, resetInterval, requestsPerMinute, throttleTokens, throttleRequests, retryAfter,
+      tokenLimit, resetInterval, requestsPerMinute, answerLimit, throttleTokens, throttleRequests, retryAfter,
     },
     [model],
   );
@@ -406,6 +409,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
       tokenLimit, setTokenLimit,
       resetInterval, setResetInterval,
       requestsPerMinute, setRequestsPerMinute,
+      answerLimit, setAnswerLimit,
       throttleTokens, setThrottleTokens,
       throttleRequests, setThrottleRequests,
       retryAfter, setRetryAfter,
@@ -821,7 +825,24 @@ export function ModelQuotaFields({ form, between }: SectionProps & { between?: R
             inputMode="numeric"
           />
         </div>
-        <div className={styles.field} />
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="answer-limit">
+              {t('Answer Time Limit (min)')}
+            </label>
+            <FieldHint label={t('Answer Time Limit (min)')}>
+              {t('How long one call to this model may take before it is given up on. Empty takes the installation’s.')}
+            </FieldHint>
+          </span>
+          <input
+            id="answer-limit"
+            className={`${styles.input} ${styles.inputMono}`}
+            value={fields.answerLimit}
+            onChange={(event) => fields.setAnswerLimit(event.target.value)}
+            placeholder={String(form.model.answerLimitMinutesInherited)}
+            inputMode="numeric"
+          />
+        </div>
       </div>
     </>
   );

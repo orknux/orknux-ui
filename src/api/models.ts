@@ -146,6 +146,10 @@ export interface Model {
   tokenLimit: number | null;
   resetInterval: ResetInterval;
   requestsPerMinute: number | null;
+  /** How long one call may take, in minutes; null takes the installation's. Issue #644. */
+  answerLimitMinutes: number | null;
+  /** The installation's limit, which a null answerLimitMinutes takes. */
+  answerLimitMinutesInherited: number;
   /** This model's own throttle; null on a rate inherits the provider, 0 turns it off. Issue #426. */
   throttleTokensPerSecond: number | null;
   throttleRequestsPerSecond: number | null;
@@ -224,7 +228,7 @@ const PROVIDER_FIELDS =
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 export const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
-  'tokenLimit resetInterval requestsPerMinute throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
+  'tokenLimit resetInterval requestsPerMinute answerLimitMinutes answerLimitMinutesInherited throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion voice skipEmptyLines ' +
   'imageCostPerImage';
 const USAGE_FIELDS =
@@ -485,6 +489,7 @@ export interface QuotasInput {
   tokenLimit: number | null;
   resetInterval: ResetInterval;
   requestsPerMinute: number | null;
+  answerLimitMinutes: number | null;
 }
 
 export async function updateModelQuotas(id: string, input: QuotasInput): Promise<Model> {

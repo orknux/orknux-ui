@@ -219,6 +219,7 @@ const PL: Record<string, string> = {
   ModelParameterNotTaken: 'Dostawca tego typu nie przyjmuje tego ustawienia modelu; zostaw je nieustawione',
   ModelParameterValueInvalid: 'Tej wartości nie ma wśród tych, które przyjmuje to ustawienie modelu; wybierz jedną z listy albo zostaw domyślną',
   ModelProviderEndpointInvalid: 'Punkt końcowy API dostawcy jest wymagany',
+  ModelAnswerLimitInvalid: 'To nie jest liczba minut na odpowiedź modelu. Wybierz od 1 do 1440 albo zostaw puste, by przyjąć wartość instalacji',
   ModelProviderToolCapInvalid: 'To nie jest liczba narzędzi, którą może nieść zapytanie. Wybierz od 8 do 1024 albo zostaw puste',
   ProviderChatApiNotTaken: 'Ten typ dostawcy mówi tylko przez chat completions; API wybiera się dla dostawców Azure OpenAI. Zostaw je nieustawione',
   ModelProviderInAnotherWorkspace: 'Model można przenieść tylko do dostawcy w jego własnej przestrzeni roboczej',

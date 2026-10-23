@@ -857,6 +857,8 @@ export const PL: Record<string, string> = {
   "Commands": "Komendy",
   "Avg Latency": "Śr. opóźnienie",
   "Requests per Minute (RPM)": "Żądania na minutę (RPM)",
+  "Answer Time Limit (min)": "Limit czasu odpowiedzi (min)",
+  "How long one call to this model may take before it is given up on. Empty takes the installation’s.": "Jak długo może trwać jedno wywołanie tego modelu, zanim zostanie przerwane. Puste przyjmuje wartość instalacji.",
   "Quotas & Limits": "Przydziały i limity",
   "Input $ / million tokens": "Wejście $ / milion tokenów",
   "Output $ / million tokens": "Wyjście $ / milion tokenów",
