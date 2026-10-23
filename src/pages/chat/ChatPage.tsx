@@ -118,8 +118,15 @@ const WORKSPACE_LOOKUP = 100;
  * is written down, and for the one part of it that is.
  */
 interface Working {
-  /** What the model thought, joined as the pieces arrive. */
+  /** What the model thought, joined as the pieces arrive - the whole of it, which is what the message keeps. */
   thinking: string;
+  /**
+   * What it thought before its first call, which is all the section above the
+   * calls shows. Thinking after a call is a line among the calls, so a model
+   * that thinks, calls, and thinks again reads in that order rather than as
+   * one block of thought above everything it did.
+   */
+  opening: string;
   /** The lookups it made, in the order it made them. */
   calls: ChatCall[];
   /**
@@ -139,7 +146,7 @@ interface Working {
 /** How long a short-lived notice stays on screen. */
 const PASSING_MS = 8000;
 
-const NOTHING_YET: Working = { thinking: '', calls: [], compacting: false, writing: null };
+const NOTHING_YET: Working = { thinking: '', opening: '', calls: [], compacting: false, writing: null };
 
 /** Whether there is anything of the working to draw. */
 const anyWorking = (working: Working) =>
@@ -1919,11 +1926,25 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         // update made in the same run of handlers.
         thinkingSoFar.current += piece;
         // Thinking means the prompt has been read: a "Reading the prompt…" card left up said otherwise.
-        setWorking((held) => ({
-          ...held,
-          thinking: held.thinking + piece,
-          writing: held.writing?.promptTotal != null ? null : held.writing,
-        }));
+        setWorking((held) => {
+          const last = held.calls[held.calls.length - 1];
+          const calls =
+            held.calls.length === 0
+              ? held.calls
+              : last?.thought !== undefined
+                ? [...held.calls.slice(0, -1), { ...last, thought: last.thought + piece }]
+                : [
+                    ...held.calls,
+                    { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, thought: piece, seenAt: Date.now() },
+                  ];
+          return {
+            ...held,
+            thinking: held.thinking + piece,
+            opening: held.calls.length === 0 ? held.opening + piece : held.opening,
+            calls,
+            writing: held.writing?.promptTotal != null ? null : held.writing,
+          };
+        });
       },
       /*
        * A drawn picture is put in front of the answer being written, because
@@ -3813,8 +3834,9 @@ ${named}`;
                         what it used to do.
                       */
                       const live = index === messages.length - 1 && sending;
-                      const thinking = live ? working.thinking : (message.thinking ?? '');
                       const calls = index === messages.length - 1 ? working.calls : [];
+                      // Where the calls are drawn, the section above them holds only the thinking before the first.
+                      const thinking = calls.length > 0 ? working.opening : live ? working.thinking : (message.thinking ?? '');
                       /*
                         Summarising is drawn here rather than beside the composer
                         because it is part of this turn's working: it happens
@@ -3866,6 +3888,10 @@ ${named}`;
                                     ? t('Read by the agent')
                                     : t('Queued - the agent reads it at its next step')}
                                 </span>
+                              </div>
+                            ) : call.thought !== undefined ? (
+                              <div key={call.at} data-thought="">
+                                <Thinking text={call.thought} live={live && call === calls[calls.length - 1]} millis={null} />
                               </div>
                             ) : call.said !== undefined ? (
                               <div key={call.at} className={styles.said} data-said="">

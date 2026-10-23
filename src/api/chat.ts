@@ -360,6 +360,11 @@ export interface ChatCall {
    * it asked for - its progress - drawn in order among them.
    */
   said?: string;
+  /**
+   * Set on a line that is no call either: what the model thought after a call,
+   * drawn where it thought it rather than added to the section above the calls.
+   */
+  thought?: string;
   /** Set on a line that is no call either: what the person wrote while the agent was working. */
   person?: string;
   /** Whether the agent has read [person] yet: until then it waits in the inbox for the agent's next step. */

@@ -780,6 +780,12 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-thinking-split-check',
+    what: 'thinking after a tool call is a folded section of its own, in its place among the calls',
+    needs: ['workspace'],
+  },
+
+  {
     name: 'executions-address-check',
     what: "the Runs page's status, date range and search are in its address, and an address opened cold sets them",
     needs: ['workspace'],
