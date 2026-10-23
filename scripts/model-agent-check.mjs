@@ -32,7 +32,8 @@
  * these grants as absences that look the same as a page that has not loaded.
  * Granting is a deliberate act; an action that handed out tools because it was
  * being helpful would be the worst possible place in this product to be
- * generous.
+ * generous. "Nothing" is nothing beyond what every new agent starts with: the
+ * server's own built-ins, and since the server's 065cb6dd the Orknux grant.
  *
  * Everything this check makes is deleted again.
  */
@@ -110,11 +111,20 @@ const after = await graphql(
    }`,
   { w: WORKSPACE },
 );
+/*
+ * What a new agent holds without anybody granting it, and no more: the
+ * built-ins that are on for every agent (GRANT), the ones that are on but may
+ * be hidden (GRANT_OPTIONAL - rate_session and remove_session_rating since the
+ * server's 2fd6b4c5), and the orknux_* tools of the Orknux grant, which a new
+ * agent starts with since the server's 065cb6dd ("A new agent may ask orknux
+ * about orknux unless told not to"). The last only while that grant is on, so
+ * an orknux_* tool held without it is still a failure.
+ */
+const tools = (await graphql(`{ builtInTools { name governance } }`)).builtInTools;
 const builtIns = new Set(
-  (await graphql(`{ builtInTools { name governance } }`)).builtInTools
-    .filter((one) => one.governance === 'GRANT')
-    .map((one) => one.name),
+  tools.filter((one) => one.governance === 'GRANT' || one.governance === 'GRANT_OPTIONAL').map((one) => one.name),
 );
+const orknuxTools = new Set(tools.filter((one) => one.governance === 'ORKNUX_ACCESS').map((one) => one.name));
 const fresh = after.workspaceAgents.content.filter((one) => !had.has(one.id));
 made.push(...fresh.map((one) => one.id));
 
@@ -133,15 +143,14 @@ if (record(fresh.length === 1, `exactly one agent was made (${fresh.length} appe
       agent.description === null &&
       // The server's own tools are on for every agent since #444 - a built-in is
       // on unless somebody turned it off - so "nothing" is nothing beyond them.
-      agent.tools.every((name) => builtIns.has(name)) &&
+      agent.tools.every((name) => builtIns.has(name) || (agent.orknuxAccess && orknuxTools.has(name))) &&
       // And the skills the server brings, granted by default since e3d262b4,
       // with every plugin's skill catalog since 1.0.8.
       agent.skillCatalogs.every((name) => name === 'orknux_skills' || name.endsWith('_plugin')) &&
       // Since 1.0.8 a new agent holds the workspace's memory catalogs, and nothing else.
       agent.memoryCatalogs.every((name) => workspaceCatalogs.includes(name)) &&
-      agent.mcpServers.length === 0 &&
-      agent.orknuxAccess === false,
-    `and it is granted nothing at all, which is what makes it something to dress rather than a surprise (${JSON.stringify({ ...agent, tools: agent.tools.filter((name) => !builtIns.has(name)) })})`,
+      agent.mcpServers.length === 0,
+    `and it is granted nothing beyond what every new agent starts with, which is what makes it something to dress rather than a surprise (${JSON.stringify({ ...agent, tools: agent.tools.filter((name) => !builtIns.has(name) && !(agent.orknuxAccess && orknuxTools.has(name))) })})`,
   );
   record(landed.endsWith(`/agents/${agent.id}/settings`), 'and the page it landed on is that agent');
 }

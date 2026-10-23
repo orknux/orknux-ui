@@ -14,7 +14,13 @@ import { BASE, WORKSPACE, open, record, drawn, finish } from './suite/harness.mj
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 1100 } });
 const stamp = Date.now();
 const agent = (await graphql(
-  `mutation($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM }) { id } }`,
+  /*
+   * Orknux access off on purpose. A new agent starts with it on since the
+   * server's 065cb6dd, and with it on the orknux_* rows are the agent's to
+   * switch one by one (c283f934) - so none of them is locked, and the half of
+   * this check about a locked row would have nothing to hover.
+   */
+  `mutation($w: ID!, $n: String!) { createAgent(input: { workspaceId: $w, name: $n, type: LLM, orknuxAccess: false }) { id } }`,
   { w: WORKSPACE, n: `zz grant card agent ${stamp}` },
 )).createAgent;
 const tool = (await graphql(
@@ -42,17 +48,33 @@ record(builtInLinks === 0, `a built-in's name is not a link, having no page of i
 await page.mouse.move(0, 0);
 record(!(await card.isVisible().catch(() => false)), 'and leaving the row puts it away');
 
-/* A locked row that is on says why it cannot be changed, and where it is switched. */
-const locked = page.locator('[data-grant-name^="orknux_"][data-grant-name$="sessions"]').first();
-const lockedThere = await locked.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
-if (lockedThere) {
-  await locked.hover();
+/*
+ * A locked row says why it cannot be changed, and where it is switched - on or
+ * off (6eb5f06). Off: an orknux_ tool while Orknux access is off. On: a memory
+ * tool, carried because the agent holds the workspace's memory catalogs, which
+ * every new agent does since 1.0.8 and which every workspace has one of.
+ */
+async function lockedReason(name) {
+  const row = page.locator(`[data-grant-name="${name}"]`).first();
+  if (!(await row.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false))) return null;
+  const button = row.locator('[data-tool-state]').first();
+  const fixed = (await button.getAttribute('data-tool-fixed')) !== null;
+  const state = await button.getAttribute('data-tool-state');
+  await row.hover();
   const reason = await page.locator('[data-grant-card] [data-grant-card-reason]').first().innerText().catch(() => '');
-  record(/Orknux access/.test(reason), `a locked row that is on says where it is switched (${JSON.stringify(reason)})`);
   await page.mouse.move(0, 0);
-} else {
-  record(false, 'the orknux_sessions row is on the list');
+  return { fixed, state, reason };
 }
+const lockedOff = await lockedReason('orknux_sessions');
+record(
+  lockedOff !== null && lockedOff.fixed && lockedOff.state === 'hide' && /Orknux access/.test(lockedOff.reason),
+  `a locked row that is off says where it is switched (${JSON.stringify(lockedOff)})`,
+);
+const lockedOn = await lockedReason('memory_search');
+record(
+  lockedOn !== null && lockedOn.fixed && lockedOn.state !== 'hide' && /memory catalogs/.test(lockedOn.reason),
+  `a locked row that is on says where it is switched (${JSON.stringify(lockedOn)})`,
+);
 
 /* A press on the name cycles the row, as the state button does. */
 const pressRow = page.locator(`[data-grant-name="aaa_card_tool_${stamp}"]`).first();
