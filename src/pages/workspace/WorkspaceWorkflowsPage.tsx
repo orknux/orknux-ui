@@ -103,6 +103,23 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
   const [params, setParams] = useSearchParams();
   const order = (params.get('order') as WorkflowOrder | null) ?? 'NAME';
   const ascending = params.get('dir') !== 'desc';
+  /*
+   * Whether the hidden workflows are listed too - the research modes' three,
+   * and any somebody hid. In the address beside the order, so a link to "the
+   * hidden ones" is a link. Issue #659.
+   */
+  const [showHidden, setShowHidden] = useState(() => params.get('hidden') === 'show');
+
+  /*
+   * Held here as well as in the address: the router writes the address in a
+   * transition, and a controlled box whose value waits for it is put back
+   * unticked by React in the meantime - which reads as a click that did not
+   * take.
+   */
+  function showHiddenAs(shown: boolean) {
+    setShowHidden(shown);
+    sortBy({ hidden: shown ? 'show' : null });
+  }
 
   /**
    * A press of a heading: the same column again turns it round, another starts
@@ -162,7 +179,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
    * the reader back at the start - and both have to do it before the fetch, or
    * the screen asks twice and shows the wrong answer in between.
    */
-  const listShape = `${workspaceId}|${order}|${ascending}|${pageSize}`;
+  const listShape = `${workspaceId}|${order}|${ascending}|${pageSize}|${showHidden}`;
   const [pagedFor, setPagedFor] = useState(listShape);
   if (pagedFor !== listShape) {
     setPagedFor(listShape);
@@ -192,7 +209,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
     const mine = ++newest.current;
     setLoading(true);
     setError(null);
-    fetchWorkspaceWorkflows(workspaceId, page - 1, pageSize, order, ascending, asked)
+    fetchWorkspaceWorkflows(workspaceId, page - 1, pageSize, order, ascending, asked, showHidden)
       .then((result) => {
         if (mine !== newest.current) return;
         /*
@@ -215,7 +232,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
         setError(cause instanceof Error ? cause.message : t('Could not load workflows.'));
         setLoading(false);
       });
-  }, [workspaceId, page, pageSize, order, ascending, asked]);
+  }, [workspaceId, page, pageSize, order, ascending, asked, showHidden]);
 
   useEffect(load, [load]);
 
@@ -333,6 +350,14 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
             onChange={setTyped}
             placeholder={t('Search workflows...')}
           />
+          <label className={styles.showHidden}>
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(event) => showHiddenAs(event.target.checked)}
+            />
+            {t('Show hidden')}
+          </label>
         </SearchRow>
 
         <div className={styles.table}>
@@ -372,12 +397,12 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
 
           {workflows?.content.map((workflow) => (
             <div key={workflow.id} className={styles.row}>
-              <Link
-                className={`${styles.colGrow} ${styles.name}`}
-                to={`/workspace/${workspaceId}/workflows/${workflow.workflowId}/editor`}
-              >
-                {workflow.name}
-              </Link>
+              <span className={`${styles.colGrow} ${styles.nameCell}`}>
+                <Link className={styles.name} to={`/workspace/${workspaceId}/workflows/${workflow.workflowId}/editor`}>
+                  {workflow.name}
+                </Link>
+                {workflow.hidden && <span className={styles.hiddenTag}>{t('Hidden')}</span>}
+              </span>
               <span className={`${styles.colGrow} ${styles.description}`}>{workflow.description ?? '—'}</span>
               <span className={styles.colLastRun}>
                 {workflow.lastRun === null ? (

@@ -17,6 +17,8 @@ export interface WorkspaceWorkflow {
   name: string;
   description: string | null;
   enabled: boolean;
+  /** Kept off the Workflows list until Show hidden is ticked; the research workflows start so. */
+  hidden: boolean;
   lastRun: LastRun | null;
   /** When a scheduled trigger will start it next; null when nothing schedules it. */
   nextRun: string | null;
@@ -32,7 +34,7 @@ export interface WorkspaceWorkflow {
 export type WorkflowOrder = 'NAME' | 'DESCRIPTION' | 'LAST_RUN' | 'ENABLED';
 
 const WORKFLOW_FIELDS =
-  'id workflowId name description enabled nextRun ' +
+  'id workflowId name description enabled hidden nextRun ' +
   'lastRun { executionId status startedAt durationSeconds }';
 
 const WORKSPACE_WORKFLOWS_QUERY = `
@@ -43,6 +45,7 @@ const WORKSPACE_WORKFLOWS_QUERY = `
     $order: WorkflowOrder
     $ascending: Boolean
     $search: String
+    $showHidden: Boolean
   ) {
     workspaceWorkflows(
       workspaceId: $workspaceId
@@ -51,6 +54,7 @@ const WORKSPACE_WORKFLOWS_QUERY = `
       order: $order
       ascending: $ascending
       search: $search
+      showHidden: $showHidden
     ) {
       content { ${WORKFLOW_FIELDS} }
       page
@@ -93,6 +97,18 @@ const SET_ENABLED_MUTATION = `
   }
 `;
 
+const SET_HIDDEN_MUTATION = `
+  mutation SetWorkflowHidden($id: ID!, $hidden: Boolean!) {
+    setWorkflowHidden(id: $id, hidden: $hidden) { ${WORKFLOW_FIELDS} }
+  }
+`;
+
+/** Keeps a workflow off the Workflows list, or puts it back. It runs either way. */
+export async function setWorkflowHidden(id: string, hidden: boolean): Promise<WorkspaceWorkflow> {
+  const data = await graphql<{ setWorkflowHidden: WorkspaceWorkflow }>(SET_HIDDEN_MUTATION, { id, hidden });
+  return data.setWorkflowHidden;
+}
+
 const REMOVE_WORKFLOW_MUTATION = `
   mutation RemoveWorkflow($id: ID!) {
     removeWorkflow(id: $id)
@@ -119,6 +135,12 @@ export async function fetchWorkspaceWorkflows(
   order?: WorkflowOrder,
   ascending?: boolean,
   search = '',
+  /**
+   * The hidden ones too. On unless said otherwise: every caller but the
+   * Workflows list is picking a workflow or finding one by id, and a hidden
+   * workflow is still one.
+   */
+  showHidden = true,
 ): Promise<PageOf<WorkspaceWorkflow>> {
   const data = await graphql<{ workspaceWorkflows: PageOf<WorkspaceWorkflow> }>(WORKSPACE_WORKFLOWS_QUERY, {
     workspaceId,
@@ -127,6 +149,7 @@ export async function fetchWorkspaceWorkflows(
     order: order ?? null,
     ascending: ascending ?? null,
     search: search.trim() === '' ? null : search.trim(),
+    showHidden,
   });
   return data.workspaceWorkflows;
 }

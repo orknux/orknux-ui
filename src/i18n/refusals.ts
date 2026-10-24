@@ -434,6 +434,20 @@ const PL: Record<string, string> = {
   WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
   WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
+  // --- Answer > Research, issue #659 ---------------------------------------
+  ResearchQuestionMissing: 'Napisz, co zbadać',
+  ResearchQuestionTooLong: 'Pytanie badania może mieć najwyżej {most} znaków',
+  ResearchModeNotFound: 'Nie ma trybu badania o identyfikatorze {id}',
+  ResearchModeWorkflowMissing: 'Tryb badania {mode} nie ma w tej przestrzeni roboczej przepływu do uruchomienia',
+  ResearchModelUnusable: 'Tego modelu nie można użyć do badania w tej przestrzeni roboczej',
+  ResearchDocumentNotFound: 'W tej przestrzeni roboczej nie ma czytelnego dokumentu o identyfikatorze {id}',
+  ResearchTooManyWebsites: 'Badanie przyjmuje najwyżej {most} stron na każdej liście',
+  ResearchWebsiteTooLong: 'Adres strony może mieć najwyżej {most} znaków',
+  ResearchModeNameInvalid: 'Tryb badania potrzebuje nazwy o długości do 100 znaków',
+  ResearchModeNameTaken: 'Tryb badania o nazwie „{name}” już istnieje',
+  ResearchModeWorkflowNotFound: 'W tej przestrzeni roboczej nie ma przepływu o identyfikatorze {id}',
+  ResearchModeWorkflowNotChosen: 'Wybierz przepływ, który uruchamia ten tryb, albo tryb do skopiowania',
+  ResearchModeSeeded: '{mode} to jeden z trzech trybów badania, które ma każda przestrzeń robocza, i zostaje',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };
