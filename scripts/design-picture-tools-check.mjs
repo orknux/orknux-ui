@@ -244,15 +244,38 @@ const size = await page.evaluate(() => {
   const image = document.querySelector('[data-testid="editor-picture"]');
   return { width: image.naturalWidth, height: image.naturalHeight };
 });
+/**
+ * The green in a column of the picture across the rows under the stripe, raw. A
+ * colour named red is anything over 200 red, and a radius-6 blur three rows from
+ * a 4-pixel stripe moves only about a tenth of its green there - still "red" -
+ * so the blur is read as how much green those rows gained, inside and outside.
+ */
+const greenUnder = (xShare) => page.evaluate(([share, from, to]) => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const pen = canvas.getContext('2d');
+  pen.drawImage(image, 0, 0);
+  const x = Math.floor(share * (canvas.width - 1));
+  let green = 0;
+  for (let y = from; y <= to; y += 1) green += pen.getImageData(x, y, 1, 1).data[1];
+  return green;
+}, [xShare, Math.ceil(size.height / 2) + 2, Math.ceil(size.height / 2) + 6]);
+const insideBefore = await greenUnder(0.25);
+const outsideBefore = await greenUnder(0.75);
 const keptBeforeBlur = kept.length;
 await drag([0.5, size.height * 0.3], [size.width * 0.5, size.height * 0.95]);
 const outlined = await page.getByTestId('blur-selection').count();
 await page.getByTestId('blur-apply').click();
 await showsLastKept();
-const blurred = await shown([[0.25, 0.7], [0.75, 0.7], [0.25, 0.05]]);
-const mixed = blurred?.colours[0] ?? '';
-record(outlined === 1 && kept.length === keptBeforeBlur + 1 && mixed !== 'red' && mixed !== 'rgb(0,255,0)' && blurred.colours[1] === 'red' && blurred.colours[2] === 'blue',
-  `Blur mixes the stripe into the red inside the selection only, and keeps it as a version (${JSON.stringify(blurred)})`);
+const blurred = await shown([[0.75, 0.7], [0.25, 0.05]]);
+const insideAfter = await greenUnder(0.25);
+const outsideAfter = await greenUnder(0.75);
+// The stripe runs the picture's whole width, so before the blur the two columns are alike; after it only the selected one gained green.
+record(outlined === 1 && kept.length === keptBeforeBlur + 1 && insideBefore === outsideBefore &&
+  insideAfter - insideBefore > 60 && outsideAfter === outsideBefore && blurred?.colours.join() === 'red,blue',
+  `Blur mixes the stripe into the red inside the selection only, and keeps it as a version (${JSON.stringify({ insideBefore, insideAfter, outsideBefore, outsideAfter, blurred })})`);
 record(await page.getByTestId('blur-options').isVisible().catch(() => false), 'the blur stays in hand for the next part');
 await page.getByTestId('blur-cancel').click();
 

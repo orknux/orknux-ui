@@ -130,15 +130,27 @@ await page.waitForTimeout(800);
 record((await page.getByTestId('editor-upscale-hint').count()) === 0 && (await page.getByTestId('editor-upscale').isEnabled()),
   'with one, it is on and carries no hint');
 
-// Upscale and Harmonize beside it stand apart from Magic edit, divided as Import is from them: one gap, not buttons touching.
+/*
+ * The group that works on the whole picture - Upscale, Clean up, Harmonize and
+ * Convert to video - stands apart from Magic edit, divided as Import is from it:
+ * one gap either side, not buttons touching. Measured from the group's last
+ * button, which is Convert to video since #658; Harmonize was the last when
+ * this was written, and measuring from it counted Convert to video as gap.
+ */
 const magicBox = await page.getByTestId('magic-edit').boundingBox().catch(() => null);
 const upscaleBox = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
-const harmonizeBox = await page.getByTestId('editor-harmonize').boundingBox().catch(() => null);
+const lastBox = await page.getByTestId('editor-to-video').boundingBox().catch(() => null);
 const importBox = await page.getByTestId('editor-import').boundingBox().catch(() => null);
-const apart = magicBox === null || upscaleBox === null || harmonizeBox === null || importBox === null ? null
-  : { magicToUpscale: upscaleBox.x - (magicBox.x + magicBox.width), harmonizeToImport: importBox.x - (harmonizeBox.x + harmonizeBox.width) };
-record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUpscale - apart.harmonizeToImport) < 2,
-  `Upscale is divided from Magic edit as Import is from Harmonize beside it (${JSON.stringify(apart)})`);
+const apart = magicBox === null || upscaleBox === null || lastBox === null || importBox === null ? null
+  : { magicToUpscale: upscaleBox.x - (magicBox.x + magicBox.width), groupToImport: importBox.x - (lastBox.x + lastBox.width) };
+record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUpscale - apart.groupToImport) < 2,
+  `Upscale is divided from Magic edit as Import is from the group's last button (${JSON.stringify(apart)})`);
+// And the group is one row in its order, its buttons a step apart rather than a divider apart.
+const group = await Promise.all(['editor-upscale', 'editor-cleanup', 'editor-harmonize', 'editor-to-video']
+  .map((id) => page.getByTestId(id).boundingBox().catch(() => null)));
+const steps = group.every((box) => box !== null) ? group.slice(1).map((box, at) => box.x - (group[at].x + group[at].width)) : null;
+record(steps !== null && steps.every((step) => step >= 0 && step < 12),
+  `Upscale, Clean up, Harmonize and Convert to video sit together in that order (${JSON.stringify(steps)})`);
 
 // Upscale: only upscale models, each with its own server's algorithms.
 await page.getByTestId('editor-upscale').click();
