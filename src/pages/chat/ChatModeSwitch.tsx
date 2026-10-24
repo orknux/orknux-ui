@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { setChatMode, type ChatMode, type ChatSession } from '../../api/chat';
+import { Select } from '../../components/Select';
 import { t } from '../../i18n';
 import styles from './ChatModeSwitch.module.css';
 
@@ -28,6 +29,11 @@ function hintOf(mode: ChatMode): string {
  * How the agent works in this chat, beside the composer's other controls.
  * Issue #653. Changed at once and confirmed by the server, as the pin is; a
  * refusal puts it back.
+ *
+ * The application's own `Select`, not a native one: the operating system
+ * draws a native select's list outside the theme. `Select` opens above the
+ * button when the room is there, which at the foot of the window it is, and
+ * shows each row's one-line hint beside the row the pointer or the arrows are on.
  */
 export function ChatModeSwitch({ chat, onChanged }: ChatModeSwitchProps) {
   const [busy, setBusy] = useState(false);
@@ -50,22 +56,22 @@ export function ChatModeSwitch({ chat, onChanged }: ChatModeSwitchProps) {
 
   return (
     <span className={styles.wrap}>
-      <select
+      <Select
         className={chat.mode === 'DEFAULT' ? styles.select : `${styles.select} ${styles.active}`}
         value={chat.mode}
         disabled={busy}
-        onChange={(event) => void choose(event.target.value as ChatMode)}
+        onChange={(mode) => void choose(mode as ChatMode)}
         aria-label={t('Mode')}
         title={error ?? hintOf(chat.mode)}
         data-testid="chat-mode"
         data-chat-mode={chat.mode}
       >
         {MODES.map((mode) => (
-          <option key={mode} value={mode}>
+          <option key={mode} value={mode} data-hint={hintOf(mode)}>
             {labelOf(mode)}
           </option>
         ))}
-      </select>
+      </Select>
     </span>
   );
 }
