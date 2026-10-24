@@ -1101,6 +1101,7 @@ export const PL: Record<string, string> = {
   "Danger Zone": "Strefa nieodwracalna",
   "Copy it now - it is not shown again.": "Skopiuj go teraz — nie zostanie pokazany ponownie.",
   "Copied": "Skopiowano",
+  "Copy the code": "Kopiuj kod",
   "Could not copy - select it and copy by hand": "Nie udało się skopiować — zaznacz i skopiuj ręcznie",
   "Copy the token": "Kopiuj token",
   "never used": "nigdy nieużyty",

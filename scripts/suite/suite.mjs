@@ -4584,6 +4584,12 @@ export const TESTS = [
     // Drawn through an issue description it files and deletes again.
   },
   {
+    name: 'code-copy-check',
+    what: "a fenced code block carries a Copy at its top right, clear of the text, that puts the block's exact text on the clipboard and says so",
+    needs: ['workspace'],
+    // Drawn through an issue description it files and deletes again.
+  },
+  {
     name: 'tool-grant-request-check',
     what: 'an agent asking for tools shows each one asked for, with its kind and what it does, over Accept and Refuse; and a new agent may ask',
     needs: ['workspace'],

@@ -22,6 +22,7 @@ import 'katex/dist/katex.min.css';
 
 import styles from './Markdown.module.css';
 import { ArtifactMiniature } from './ArtifactMiniature';
+import { CopyButton } from './CopyButton';
 import { commandLine } from './shellGrammar';
 import { ImageZoom } from './ImageZoom';
 import type { Picture } from './ImageZoom';
@@ -236,6 +237,26 @@ export function artifactLinksIn(markdown: string): ArtifactLink[] {
   return found;
 }
 
+/** The words of a rendered node, highlighting and all taken off: what a fenced block's Copy puts on the clipboard. */
+interface TextNode {
+  type?: string;
+  value?: string;
+  properties?: { className?: unknown };
+  children?: TextNode[];
+}
+
+/** The language a fenced block named, read off its code's `language-…` class; empty where it named none. */
+function languageOf(node: TextNode | undefined): string {
+  const classes = node?.children?.[0]?.properties?.className;
+  const named = Array.isArray(classes) ? classes.find((one): one is string => typeof one === 'string' && one.startsWith('language-')) : undefined;
+  return named?.slice('language-'.length) ?? '';
+}
+function textOf(node: TextNode | undefined): string {
+  if (node === undefined) return '';
+  if (node.type === 'text') return node.value ?? '';
+  return (node.children ?? []).map(textOf).join('');
+}
+
 /** The plugin list, exactly as the renderer that takes it declares it. */
 type RehypePlugins = ComponentProps<typeof ReactMarkdown>['rehypePlugins'];
 
@@ -361,6 +382,20 @@ export function Markdown({
            * this is a control, so it belongs in the tab order and answers the
            * space bar like every other one.
            */
+          /*
+           * A fenced block carries its own Copy, as every chat and every manual does: a command a model hands over is
+           * there to be run somewhere else, and selecting it by hand picks up the line numbers' worth of mistakes.
+           */
+          pre: ({ node, children: block, ...props }) => (
+            <div className={styles.codeBlock} data-testid="code-block">
+              {/* A bar of its own above the code, so a line too long for the block scrolls under nothing. */}
+              <div className={styles.codeBar}>
+                <span className={styles.codeLanguage}>{languageOf(node as TextNode)}</span>
+                <CopyButton text={textOf(node as TextNode).replace(/\n$/, '')} label={t('Copy the code')} testId="code-copy" />
+              </div>
+              <pre {...props}>{block}</pre>
+            </div>
+          ),
           img: ({ node: _node, ...props }) => {
             const picture = { src: String(props.src ?? ''), alt: String(props.alt ?? '') };
             if (missing.includes(picture.src)) {
