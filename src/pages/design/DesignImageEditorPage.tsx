@@ -33,6 +33,7 @@ import brushIcon from '../../assets/brush.svg';
 import cropIcon from '../../assets/crop.svg';
 import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
 import flipVerticalIcon from '../../assets/flip-vertical.svg';
+import trashIcon from '../../assets/trash-2.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
 import rotateLeftIcon from '../../assets/rotate-left.svg';
@@ -137,6 +138,8 @@ type MagicTool = 'rectangle' | 'lasso';
 
 /** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
 type Tool = MagicTool | 'crop' | 'brush' | 'blur';
+/** How the blur selects: a box, an outline, or a line from sharp to blurred. */
+type BlurShape = 'rectangle' | 'lasso' | 'gradient';
 
 /** Whether a tool selects with a rectangle - two corners - rather than a lasso's outline. */
 const boxed = (tool: Tool | null) => tool === 'rectangle' || tool === 'crop';
@@ -152,6 +155,14 @@ type Snapshot = {
   layers: Layer[];
   layerId: string;
   baseVisible: boolean;
+  /*
+   * What was in hand and selected when the change was made, so undoing a blur,
+   * a crop or an edit gives back the selection it was made over - to adjust
+   * and apply again - rather than the picture alone with the selection gone.
+   */
+  tool: Tool | null;
+  selection: Point[] | null;
+  blurShape: BlurShape;
 };
 
 /** The picture's own place in the layers: at the foot of the stack, never taken away, renamed or moved. */
@@ -432,7 +443,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   // -- Undo and redo ------------------------------------------------------
 
-  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes, layers, layerId, baseVisible });
+  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes, layers, layerId, baseVisible, tool, selection, blurShape });
   const settleTyping = () => {
     window.clearTimeout(typingTimer.current);
     const from = typingFrom.current;
@@ -473,6 +484,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setLayers(to.layers);
     setLayerId(to.layerId);
     setBaseVisible(to.baseVisible);
+    setTool(to.tool);
+    setBlurShape(to.blurShape);
+    setSelection(to.selection);
+    keepsSelection.current = to.shown?.kind === 'picture' && to.shown.picture.id !== picture?.id;
   };
   const undo = () => {
     settleTyping();
@@ -624,7 +639,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setSelection(null);
     setAskAt(null);
   };
-  useEffect(forget, [picture?.id]);
+  // Another picture drops what was selected over the last - unless undo or redo brought it there with its own selection.
+  const keepsSelection = useRef(false);
+  useEffect(() => {
+    if (keepsSelection.current) {
+      keepsSelection.current = false;
+      return;
+    }
+    forget();
+  }, [picture?.id]);
 
   /** The pointer, in the picture's own pixels. */
   const onPicture = (event: ReactPointerEvent): Point | null => {
@@ -835,14 +858,14 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setLayers([...layers.slice(0, at), layer, ...layers.slice(at)]);
     setLayerId(layer.id);
   };
-  /** The layer chosen taken away; the one under it is chosen next. The picture itself is never taken away. */
-  const removeLayer = () => {
-    const at = layers.findIndex((one) => one.id === layerId);
+  /** A layer taken away from its own row; where it was the chosen one, the one under it is chosen next. The picture itself is never taken away. */
+  const removeLayer = (id: string) => {
+    const at = layers.findIndex((one) => one.id === id);
     if (at < 0) return;
     remember();
-    const rest = layers.filter((one) => one.id !== layerId);
+    const rest = layers.filter((one) => one.id !== id);
     setLayers(rest);
-    setLayerId(rest[at - 1]?.id ?? PICTURE_LAYER);
+    if (layerId === id) setLayerId(rest[at - 1]?.id ?? PICTURE_LAYER);
   };
   /** A layer put at another place in the stack, counted from the foot; the picture stays under them all. */
   const moveLayer = (id: string, to: number) => {
@@ -979,7 +1002,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * as Magic edit selects, and blurred inside it only. The tool stays in hand,
    * so one part after another can be blurred; each is a version.
    */
-  const [blurShape, setBlurShape] = useState<'rectangle' | 'lasso' | 'gradient'>('rectangle');
+  const [blurShape, setBlurShape] = useState<BlurShape>('rectangle');
   const [blurRadius, setBlurRadius] = useState<number | null>(null);
   const [blurMost, setBlurMost] = useState<number | null>(null);
   /**
@@ -2058,9 +2081,6 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 <button type="button" className={form.ghost} onClick={newLayer} disabled={natural === null} data-testid="layers-new">
                   {t('New layer')}
                 </button>
-                <button type="button" className={form.ghost} onClick={removeLayer} disabled={activeLayer === null} data-testid="layers-remove">
-                  {t('Remove')}
-                </button>
                 <button type="button" className={form.ghost} onClick={() => void flattenLayers()} disabled={layers.length === 0 || busy} data-testid="layers-flatten">
                   {t('Flatten')}
                 </button>
@@ -2128,6 +2148,19 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                         data-testid="layer-rename"
                       >
                         <img src={pencilIcon} alt="" width={12} height={12} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeLayer(layer.id);
+                        }}
+                        title={t('Remove layer')}
+                        aria-label={t('Remove layer')}
+                        data-testid="layer-remove"
+                      >
+                        <img src={trashIcon} alt="" width={12} height={12} />
                       </button>
                       <button
                         type="button"

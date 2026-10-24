@@ -116,6 +116,7 @@ export const PL: Record<string, string> = {
   "Could not export the provider.": "Nie udało się wyeksportować dostawcy.",
   "Opens the model in a new tab": "Otwiera model w nowej karcie",
   "Open the model": "Otwórz model",
+  "Remove layer": "Usuń warstwę",
   "Export {name}": "Eksportuj {name}",
   "Could not import the models.": "Nie udało się zaimportować modeli.",
   "{count} models added": "Dodano modeli: {count}",

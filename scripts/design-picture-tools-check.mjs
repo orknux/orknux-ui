@@ -368,6 +368,14 @@ await page.getByTestId('editor-undo').click();
 await showsImage(beforeLine.image);
 record(gradual && (await columnAt(sharpColumn)) === beforeLine.sharp && (await greenAt(halfway)) === beforeLine.middle && (await greenAt(size.width - 1)) === beforeLine.end,
   'Undo takes the gradual blur back');
+// And gives back the line it was drawn over, with the blur still in hand, to adjust and apply again.
+const lineBack = {
+  options: await page.getByTestId('blur-options').isVisible().catch(() => false),
+  end: Number(await page.getByTestId('blur-line').locator('line').getAttribute('x2', { timeout: 2_000 }).catch(() => 'NaN')),
+  apply: await page.getByTestId('blur-apply').isEnabled().catch(() => false),
+};
+record(lineBack.options && Math.abs(lineBack.end - lineTo) <= 1 && lineBack.apply,
+  `Undo brings back the blur's line and keeps the blur in hand (${JSON.stringify(lineBack)})`);
 await page.getByTestId('blur-cancel').click();
 
 // -- Layers (#633) ----------------------------------------------------------------
@@ -476,15 +484,21 @@ record(JSON.stringify(twoLayers) === '{"stack":["*Layer 2","Sky"],"seen":"cyan"}
   JSON.stringify(restackUndone) === JSON.stringify(twoLayers),
   `a new layer goes over the one chosen, moving it down changes what is on top, and Undo puts it back (${JSON.stringify({ twoLayers, restacked, restackUndone })})`);
 
-// Removed, the one chosen goes and the one under it is chosen; the picture itself cannot be removed.
-await tap('layers-remove');
+// Removed from its own row, beside Rename, the one under it is chosen; the picture's row has no Remove.
+const removeBesideRename = await page.locator('[data-testid="layer-row"]').first().evaluate((row) => {
+  const rename = row.querySelector('[data-testid="layer-rename"]')?.getBoundingClientRect();
+  const remove = row.querySelector('[data-testid="layer-remove"]')?.getBoundingClientRect();
+  return rename && remove ? Math.abs(rename.top - remove.top) < 2 && remove.left >= rename.right && remove.left - rename.right < 16 : false;
+}).catch(() => false);
+await page.locator('[data-testid="layer-row"]').first().getByTestId('layer-remove').click({ timeout: 3_000 }).catch(() => undefined);
 const removed = { stack: await stack(), seen: await seen() };
 await tap('editor-undo');
 const removeUndone = { stack: await stack(), seen: await seen() };
 await tap('layer-base');
-const pictureKept = await page.getByTestId('layers-remove').isDisabled().catch(() => false);
-record(JSON.stringify(removed) === '{"stack":["*Sky"],"seen":"magenta"}' && JSON.stringify(removeUndone) === JSON.stringify(twoLayers) && pictureKept,
-  `Remove takes the chosen layer away, Undo brings it back, and the picture itself is never removed (${JSON.stringify({ removed, removeUndone, pictureKept })})`);
+const pictureKept = (await page.getByTestId('layer-base').locator('[data-testid="layer-remove"]').count().catch(() => 1)) === 0
+  && (await page.getByTestId('layers-remove').count()) === 0;
+record(removeBesideRename && JSON.stringify(removed) === '{"stack":["*Sky"],"seen":"magenta"}' && JSON.stringify(removeUndone) === JSON.stringify(twoLayers) && pictureKept,
+  `Remove sits on the layer's row beside Rename, takes it away, Undo brings it back, and the picture itself has none (${JSON.stringify({ removeBesideRename, removed, removeUndone, pictureKept })})`);
 
 // Flattened, what is seen becomes the picture, as one version.
 const keptBeforeFlatten = kept.length;
