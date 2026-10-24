@@ -385,7 +385,7 @@ export const TESTS = [
   },
   {
     name: 'chat-completion-check',
-    what: "a pause in typing draws the completion model's suggestion in grey after the caret, Tab takes it, and typing or Escape puts it away",
+    what: "a pause in typing draws the completion model's suggestion in grey after the caret, Tab takes it, typing on is suggested to again, typing the suggested words keeps the rest, and replies under the latest answer are chips a click sends",
     needs: ['workspace'],
     // The suggestion and the workspace's Completion model are answered by the check; nothing reaches a model.
   },
@@ -2208,6 +2208,12 @@ export const TESTS = [
      * Stubs the stream, the post and the agent on the chat list: no real model
      * can be held mid-turn on cue, and the open chat may have no agent.
      */
+  },
+  {
+    name: 'chat-midturn-picture-check',
+    what: 'a picture drawn in a turn stays above a message the person wrote into that turn afterwards, not under it',
+    needs: ['workspace'],
+    // Stubs the stream, the post and the agent on the chat list, as chat-midturn-check does.
   },
 
   {

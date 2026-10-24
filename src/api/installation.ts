@@ -98,6 +98,15 @@ export interface InstallationSettings {
   /** How long the composer waits after the last keystroke before asking, in milliseconds. */
   chatCompletionPauseMillis: number;
   chatCompletionPauseMillisConfigured: number;
+  /** How many replies are suggested under a chat's latest answer; 0 suggests none. */
+  chatReplySuggestions: number;
+  chatReplySuggestionsConfigured: number;
+  /** The most tokens an answer's suggested replies together may be. */
+  chatReplySuggestionsMaxTokens: number;
+  chatReplySuggestionsMaxTokensConfigured: number;
+  /** How long suggested replies may take before they are given up on, in milliseconds. */
+  chatReplySuggestionsTimeoutMillis: number;
+  chatReplySuggestionsTimeoutMillisConfigured: number;
   /** The largest video a chat message may send to a model that takes video, in MB. */
   chatVideoMaxMb: number;
   chatVideoMaxMbConfigured: number;
@@ -374,7 +383,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured chatTitleSeconds chatTitleSecondsConfigured chatCompletionContextTurns chatCompletionContextTurnsConfigured chatCompletionMaxTokens chatCompletionMaxTokensConfigured chatCompletionTimeoutMillis chatCompletionTimeoutMillisConfigured chatCompletionPauseMillis chatCompletionPauseMillisConfigured chatVideoMaxMb chatVideoMaxMbConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
+  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured chatTitleSeconds chatTitleSecondsConfigured chatCompletionContextTurns chatCompletionContextTurnsConfigured chatCompletionMaxTokens chatCompletionMaxTokensConfigured chatCompletionTimeoutMillis chatCompletionTimeoutMillisConfigured chatCompletionPauseMillis chatCompletionPauseMillisConfigured chatReplySuggestions chatReplySuggestionsConfigured chatReplySuggestionsMaxTokens chatReplySuggestionsMaxTokensConfigured chatReplySuggestionsTimeoutMillis chatReplySuggestionsTimeoutMillisConfigured chatVideoMaxMb chatVideoMaxMbConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -616,6 +625,30 @@ export async function setChatCompletionPauseMillis(millis: number): Promise<Inst
     { millis },
   );
   return data.setChatCompletionPauseMillis;
+}
+
+export async function setChatReplySuggestions(count: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatReplySuggestions: InstallationSettings }>(
+    `mutation SetChatReplySuggestions($count: Int!) { setChatReplySuggestions(count: $count) { ${FIELDS} } }`,
+    { count },
+  );
+  return data.setChatReplySuggestions;
+}
+
+export async function setChatReplySuggestionsMaxTokens(tokens: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatReplySuggestionsMaxTokens: InstallationSettings }>(
+    `mutation SetChatReplySuggestionsMaxTokens($tokens: Int!) { setChatReplySuggestionsMaxTokens(tokens: $tokens) { ${FIELDS} } }`,
+    { tokens },
+  );
+  return data.setChatReplySuggestionsMaxTokens;
+}
+
+export async function setChatReplySuggestionsTimeoutMillis(millis: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatReplySuggestionsTimeoutMillis: InstallationSettings }>(
+    `mutation SetChatReplySuggestionsTimeoutMillis($millis: Int!) { setChatReplySuggestionsTimeoutMillis(millis: $millis) { ${FIELDS} } }`,
+    { millis },
+  );
+  return data.setChatReplySuggestionsTimeoutMillis;
 }
 
 export async function setChatVideoMaxMb(megabytes: number): Promise<InstallationSettings> {
