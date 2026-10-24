@@ -1,0 +1,47 @@
+/* Wide enough for a few thumbnails a row; capped against the window like every dialog. */
+.picker {
+  width: 640px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-8);
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-4);
+}
+
+.caption {
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}

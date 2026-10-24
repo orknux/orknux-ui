@@ -1949,6 +1949,12 @@ export const TESTS = [
     /* Answers the picture and its history itself. */
   },
   {
+    name: 'design-picture-tools-check',
+    what: "the image editor's own tools - rotate, mirror, crop, the brush, selective blur and merged layers - keep a version that is what they drew, read back pixel by pixel, and Undo walks back over them; a Magic edit sends the feather chosen; Import opens a picture already in Orknux",
+    needs: ['workspace'],
+    /* Answers the picture, its history and every kept change itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],

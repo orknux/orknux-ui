@@ -305,6 +305,8 @@ export interface EditDesignImageInput {
   /** A PNG the picture's size, as a data URL, transparent where the change goes. */
   mask: string;
   name?: string | null;
+  /** How far the selection's edge is softened, in the picture's own pixels; 0 is a hard edge, null the installation's. */
+  feather?: number | null;
 }
 
 /** Queues the change and answers at once; the result is a new picture, the one changed stays. */
@@ -314,6 +316,45 @@ export async function queueDesignImageEdit(input: EditDesignImageInput): Promise
     { input },
   );
   return data.queueDesignImageEdit;
+}
+
+/** Where the image editor's own tools start and how far each may go, in the picture's own pixels: the installation's numbers. */
+export interface ImageEditorSettings {
+  brush: number;
+  brushMost: number;
+  blur: number;
+  blurMost: number;
+  feather: number;
+  featherMost: number;
+}
+
+export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
+  const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost feather featherMost } }`,
+    { workspaceId },
+  );
+  return data.designImageEditorSettings;
+}
+
+/**
+ * A change the editor worked out itself - rotated, mirrored, cropped, painted -
+ * kept as an unsaved version of the picture, as a model's change is. Answered
+ * already drawn, with the version.
+ */
+export async function keepDesignImageChange(input: {
+  workspaceId: string;
+  /** The picture the change was made to, by its artifact id. */
+  imageId: string;
+  /** The changed picture, as a data URL. */
+  image: string;
+  /** What was done, as the history says it. */
+  change: string;
+}): Promise<DesignImageJob> {
+  const data = await graphql<{ keepDesignImageChange: DesignImageJob }>(
+    `mutation KeepDesignImageChange($input: KeepDesignImageChangeInput!) { keepDesignImageChange(input: $input) { ${JOB_FIELDS} } }`,
+    { input },
+  );
+  return data.keepDesignImageChange;
 }
 
 /** Saves an unsaved version over the picture it is a version of, and throws the picture's other versions away. */
@@ -355,11 +396,13 @@ export interface UpscaleAlgorithms {
   preferred: string | null;
   /** Why the server could not be asked; names is then empty. */
   reason: string | null;
+  /** Of names, the restoration models Clean up offers - SCUNet, SwinIR, FBCNN, 1x models. */
+  restorers: string[];
 }
 
 export async function fetchDesignUpscaleAlgorithms(workspaceId: string, modelId: string): Promise<UpscaleAlgorithms> {
   const data = await graphql<{ designUpscaleAlgorithms: UpscaleAlgorithms }>(
-    `query DesignUpscaleAlgorithms($workspaceId: ID!, $modelId: ID!) { designUpscaleAlgorithms(workspaceId: $workspaceId, modelId: $modelId) { names preferred reason } }`,
+    `query DesignUpscaleAlgorithms($workspaceId: ID!, $modelId: ID!) { designUpscaleAlgorithms(workspaceId: $workspaceId, modelId: $modelId) { names preferred reason restorers } }`,
     { workspaceId, modelId },
   );
   return data.designUpscaleAlgorithms;

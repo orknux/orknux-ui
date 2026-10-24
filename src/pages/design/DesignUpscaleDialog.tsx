@@ -18,6 +18,11 @@ export interface DesignUpscaleDialogProps {
   onClose: () => void;
   /** Throwing shows the reason in the dialog and leaves it open. */
   onUpscale: (modelId: string, algorithm: string, scale: number) => Promise<void>;
+  /**
+   * Clean up rather than Upscale: the same road at 1x, offering the server's
+   * restoration models - SCUNet, SwinIR, FBCNN, 1x models - where it has any.
+   */
+  cleanUp?: boolean;
 }
 
 /** How many times larger: what people ask a picture to become. */
@@ -28,8 +33,10 @@ const SCALES = [1.5, 2, 3, 4];
  * offers - asked of the server, since AUTOMATIC1111, Forge and SD.Next each
  * have their own - and how many times larger.
  */
-export function DesignUpscaleDialog({ open, workspaceId, models, width, height, onClose, onUpscale }: DesignUpscaleDialogProps) {
+export function DesignUpscaleDialog({ open, workspaceId, models, width, height, onClose, onUpscale, cleanUp = false }: DesignUpscaleDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** The two windows are on the page at once, so each names its fields for itself. */
+  const kind = cleanUp ? 'cleanup' : 'upscale';
   const [modelId, setModelId] = useState('');
   const [algorithms, setAlgorithms] = useState<string[] | null>(null);
   const [algorithm, setAlgorithm] = useState('');
@@ -60,9 +67,12 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
     fetchDesignUpscaleAlgorithms(workspaceId, modelId)
       .then((offered) => {
         if (left) return;
-        setAlgorithms(offered.names);
+        // Clean up offers what restores where the server has any, and everything it has where it has none it can name.
+        const names = cleanUp && offered.restorers.length > 0 ? offered.restorers : offered.names;
+        const preferred = cleanUp ? (offered.restorers[0] ?? offered.preferred) : offered.preferred;
+        setAlgorithms(names);
         setUnreachable(offered.reason);
-        setAlgorithm(offered.preferred !== null && offered.names.includes(offered.preferred) ? offered.preferred : (offered.names[0] ?? ''));
+        setAlgorithm(preferred !== null && names.includes(preferred) ? preferred : (names[0] ?? ''));
       })
       .catch((cause) => {
         if (left) return;
@@ -72,7 +82,7 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
     return () => {
       left = true;
     };
-  }, [open, modelId, workspaceId]);
+  }, [open, modelId, workspaceId, cleanUp]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -80,7 +90,7 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
     setSubmitting(true);
     setError(null);
     try {
-      await onUpscale(modelId, algorithm, scale);
+      await onUpscale(modelId, algorithm, cleanUp ? 1 : scale);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not ask for it.'));
       setSubmitting(false);
@@ -88,25 +98,25 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
   }
 
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onCancel={onClose} onClose={onClose} data-testid="upscale-dialog">
+    <dialog ref={dialogRef} className={styles.dialog} onCancel={onClose} onClose={onClose} data-testid={`${kind}-dialog`}>
       <form className={styles.body} onSubmit={submit}>
         <header className={styles.header}>
-          <h2 className={styles.title}>{t('Upscale')}</h2>
+          <h2 className={styles.title}>{cleanUp ? t('Clean up') : t('Upscale')}</h2>
         </header>
         {models.length === 0 ? (
-          <p className={styles.dialogMessage} data-testid="upscale-none">
+          <p className={styles.dialogMessage} data-testid={`${kind}-none`}>
             {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}
           </p>
         ) : (
           <div className={styles.fields}>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="upscale-model">{t('Model')}</label>
+              <label className={styles.label} htmlFor={`${kind}-model`}>{t('Model')}</label>
               <Select
-                id="upscale-model"
+                id={`${kind}-model`}
                 className={`${styles.input} ${styles.select}`}
                 value={modelId}
                 onChange={(picked) => setModelId(picked)}
-                data-testid="upscale-model"
+                data-testid={`${kind}-model`}
               >
                 {models.map((one) => (
                   <option key={one.id} value={one.id}>
@@ -116,14 +126,14 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
               </Select>
             </div>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="upscale-algorithm">{t('Algorithm')}</label>
+              <label className={styles.label} htmlFor={`${kind}-algorithm`}>{t('Algorithm')}</label>
               <Select
-                id="upscale-algorithm"
+                id={`${kind}-algorithm`}
                 className={`${styles.input} ${styles.select}`}
                 value={algorithm}
                 onChange={(picked) => setAlgorithm(picked)}
                 disabled={algorithms === null || algorithms.length === 0}
-                data-testid="upscale-algorithm"
+                data-testid={`${kind}-algorithm`}
               >
                 {algorithms === null && <option value="">{t('Asking the server…')}</option>}
                 {(algorithms ?? []).map((name) => (
@@ -133,11 +143,12 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
                 ))}
               </Select>
               {unreachable !== null && (
-                <p className={styles.error} role="alert" data-testid="upscale-unreachable">
+                <p className={styles.error} role="alert" data-testid={`${kind}-unreachable`}>
                   {unreachable}
                 </p>
               )}
             </div>
+            {!cleanUp && (
             <div className={styles.field}>
               <label className={styles.label} htmlFor="upscale-scale">{t('Scale')}</label>
               <Select
@@ -156,6 +167,7 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
                 ))}
               </Select>
             </div>
+            )}
           </div>
         )}
         {error !== null && (
@@ -171,9 +183,9 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
             type="submit"
             className={styles.filled}
             disabled={modelId === '' || algorithm === '' || submitting}
-            data-testid="upscale-submit"
+            data-testid={`${kind}-submit`}
           >
-            {t('Upscale')}
+            {cleanUp ? t('Clean up') : t('Upscale')}
           </button>
         </div>
       </form>

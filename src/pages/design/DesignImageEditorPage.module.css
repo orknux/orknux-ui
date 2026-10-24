@@ -122,6 +122,195 @@ button.toolbarTitle:hover {
   min-height: 0;
 }
 
+/* The editor's own tools, down the canvas's left. */
+.rail {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-6);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.railGap {
+  width: 20px;
+  height: 1px;
+  margin: var(--space-4) 0;
+  background: var(--color-border);
+}
+
+/* A tool of the rail in hand: the accent, not Magic's violet - nothing here asks a model. */
+.railOn {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+
+/* What the tool in hand is set with, over the picture, in the canvas's flow so it never covers it. */
+.options {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  align-self: center;
+  gap: var(--space-8);
+  max-width: 100%;
+  margin-bottom: var(--space-12);
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* A setting of the tool and its name, on one line. */
+.optionsField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.optionsField input[type='range'] {
+  width: 120px;
+  accent-color: var(--color-accent);
+}
+
+.optionsField input[type='color'] {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  background: none;
+  cursor: pointer;
+}
+
+.optionsValue {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The layers over the picture take the pointer only with the Layers tool in hand, and only on a layer. */
+.layersOn {
+  pointer-events: none;
+}
+
+.layerImage {
+  cursor: move;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* The stack, over the canvas's top right: the picture at its foot, the top layer first. */
+.layersPanel {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-12);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 280px;
+  max-height: calc(100% - var(--space-24));
+  padding: var(--space-8);
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.layersHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.layersHead > span {
+  margin-right: auto;
+}
+
+.layersHead button {
+  padding: 2px var(--space-8);
+  font-size: 12px;
+}
+
+.layerRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+}
+
+.layerRowOn {
+  border-color: var(--color-accent);
+}
+
+.layerBase {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.layerTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.layerThumb {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: var(--radius-4);
+}
+
+.layerName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.layerRow .optionsField input[type='range'] {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.layerRow .optionsField {
+  display: flex;
+}
+
+/* What a crop leaves out, dimmed; what it keeps, outlined. */
+.cropShade {
+  fill: var(--color-picture-shade);
+}
+
+.cropEdge {
+  fill: none;
+  stroke: var(--color-text-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 6 4;
+}
+
 .canvas {
   position: relative;
   display: flex;
@@ -423,6 +612,12 @@ button.toolbarTitle:hover {
 
 .askPrompt {
   min-height: 72px;
+}
+
+/* A number on the ask's own line, as wide as its digits. */
+.askNumber {
+  width: 72px;
+  height: 28px;
 }
 
 .askActions {
