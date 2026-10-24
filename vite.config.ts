@@ -60,7 +60,17 @@ export default defineConfig({
      * staleness is on the server side. Polling costs a directory scan a second
      * and removes the whole class of it.
      */
-    watch: { usePolling: true, interval: 1000 },
+    /*
+     * Only what the bundle is built from is polled. Agent worktrees under
+     * .claude held ten times the files of src, and scanning them every second
+     * kept the server's one thread so busy that every page and every proxied
+     * query queued behind it for tens of seconds.
+     */
+    watch: {
+      usePolling: true,
+      interval: 1000,
+      ignored: ['**/.claude/**', '**/dist/**', '**/screenshots/**', '**/scripts/**', '**/node_modules/**', '**/.git/**'],
+    },
     // Keeps the browser on one origin, so the session cookie is first-party.
     proxy: {
       '/api': { ...PROXY, target: API_TARGET },

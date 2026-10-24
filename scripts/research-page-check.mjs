@@ -69,6 +69,8 @@ const lit = await page.evaluate(() => {
 });
 record(lit === 'Explore', `Explore is the section lit on Research (${lit})`);
 
+// Chat joins the bar once the installation's settings arrive.
+await page.locator('nav[aria-label="Sections"] a', { hasText: /^Chat$/ }).first().waitFor({ timeout: 20_000 }).catch(() => undefined);
 const bar = await page.evaluate(() =>
   [...document.querySelectorAll('nav[aria-label="Sections"] a, nav[aria-label="Sections"] span')]
     .map((one) => ({ name: (one.textContent ?? '').trim(), x: one.getBoundingClientRect().left }))
