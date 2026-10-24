@@ -37,7 +37,9 @@ const ORIGINAL = picture('DESIGN-701', HALVES, null);
 const OTHER = { ...picture('SAVED-77', HALVES, null), kind: 'SAVED', name: null, prompt: 'zz tools: an agent kept this' };
 const DOCUMENT = { ...picture('SAVED-78', '/api/artifacts/78', null), kind: 'SAVED', contentType: 'application/pdf', filename: 'notes.pdf' };
 /** The installation's numbers for the tools, answered here so what the page starts at is known. */
-const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60 };
+const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60, feather: 5, featherMost: 64 };
+/** What each Magic edit was asked with. */
+const edits = [];
 /** What each keepDesignImageChange was asked to keep, in order. */
 const kept = [];
 let next = 702;
@@ -55,6 +57,34 @@ await page.route('**/graphql', async (route) => {
   }
   if (query.includes('designImageHistory')) return route.fulfill({ json: { data: { designImageHistory: [] } } });
   if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
+  if (query.includes('workspaceModels') || query.includes('models(')) {
+    // One image model to ask a Magic edit of, beside whatever the installation has.
+    const answered = await route.fetch().catch(() => null);
+    const json = answered === null ? null : await answered.json().catch(() => null);
+    const list = Object.values(json?.data ?? {}).find(Array.isArray);
+    if (Array.isArray(list)) {
+      list.unshift({
+        id: '9191', providerId: '1', workspaceId: WORKSPACE, providerName: 'Stub', name: 'Drawer', modelId: 'drawer', kind: 'IMAGE',
+        enabled: true, contextWindow: null, maxOutput: null, parallelToolCalls: null,
+      });
+    }
+    return json === null ? route.continue() : route.fulfill({ json });
+  }
+  if (query.includes('queueDesignImageEdit')) {
+    const input = body.variables?.input;
+    edits.push(input);
+    return route.fulfill({
+      json: {
+        data: {
+          queueDesignImageEdit: {
+            id: '9901', status: 'QUEUED', prompt: input.prompt, modelId: input.modelId, model: 'Drawer', size: null, quality: null, style: null,
+            negativePrompt: null, requestedBy: 'alice', requestedAt: new Date().toISOString(), startedAt: null, reason: null, ahead: 0,
+            name: 'Halves', sourceId: input.imageId, upscaler: null, scale: null, image: null,
+          },
+        },
+      },
+    });
+  }
   if (query.includes('designImageEditorSettings')) {
     return route.fulfill({ json: { data: { designImageEditorSettings: SETTINGS } } });
   }
@@ -225,6 +255,25 @@ record(outlined === 1 && kept.length === keptBeforeBlur + 1 && mixed !== 'red' &
   `Blur mixes the stripe into the red inside the selection only, and keeps it as a version (${JSON.stringify(blurred)})`);
 record(await page.getByTestId('blur-options').isVisible().catch(() => false), 'the blur stays in hand for the next part');
 await page.getByTestId('blur-cancel').click();
+
+// -- Feather on a Magic edit (#638) ----------------------------------------------
+
+await page.getByTestId('magic-rectangle').click();
+await drag([2, 2], [size.width - 2, size.height / 2]);
+await page.getByTestId('magic-ask').waitFor({ timeout: 3_000 }).catch(() => undefined);
+const featherStarts = await page.getByTestId('magic-feather').inputValue().catch(() => '');
+const featherMost = await page.getByTestId('magic-feather').getAttribute('max').catch(() => '');
+const askBox = await page.getByTestId('magic-ask').boundingBox().catch(() => null);
+const featherBox = await page.getByTestId('magic-feather').boundingBox().catch(() => null);
+record(featherStarts === '5' && featherMost === '64' && askBox !== null && featherBox !== null &&
+  featherBox.y >= askBox.y && featherBox.y + featherBox.height <= askBox.y + askBox.height,
+  `the Magic edit asks for a feather beside the prompt, starting at the installation's (${JSON.stringify({ featherStarts, featherMost })})`);
+await page.getByTestId('magic-feather').fill('9');
+await page.getByTestId('magic-prompt').fill('zz tools: a sky');
+await page.getByTestId('magic-change').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="editor-drawing"]') !== null, null, { timeout: 5_000 }).catch(() => undefined);
+record(edits.length === 1 && edits[0].feather === 9 && edits[0].prompt === 'zz tools: a sky',
+  `the feather chosen goes with the change, in the picture's pixels (${JSON.stringify(edits.map((one) => one.feather))})`);
 
 // -- Import from Orknux (#632) - last, since it opens another picture -----------
 

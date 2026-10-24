@@ -305,6 +305,8 @@ export interface EditDesignImageInput {
   /** A PNG the picture's size, as a data URL, transparent where the change goes. */
   mask: string;
   name?: string | null;
+  /** How far the selection's edge is softened, in the picture's own pixels; 0 is a hard edge, null the installation's. */
+  feather?: number | null;
 }
 
 /** Queues the change and answers at once; the result is a new picture, the one changed stays. */
@@ -322,11 +324,13 @@ export interface ImageEditorSettings {
   brushMost: number;
   blur: number;
   blurMost: number;
+  feather: number;
+  featherMost: number;
 }
 
 export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
   const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
-    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost } }`,
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost feather featherMost } }`,
     { workspaceId },
   );
   return data.designImageEditorSettings;

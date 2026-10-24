@@ -257,6 +257,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         setBrushSize((held) => held ?? settings.brush);
         setBlurMost(settings.blurMost);
         setBlurRadius((held) => held ?? settings.blur);
+        setFeatherMost(settings.featherMost);
+        setFeather((held) => held ?? settings.feather);
       })
       .catch(() => undefined);
   }, [workspaceId]);
@@ -528,6 +530,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [askAt, setAskAt] = useState<{ x: number; y: number } | null>(null);
   const [change, setChange] = useState('');
   const [editModelId, setEditModelId] = useState('');
+  /**
+   * How far the edge of a change blends into the picture, in its own pixels -
+   * so zoom does not change it. Starts where Admin Settings says; null sends
+   * none and the server takes the installation's.
+   */
+  const [feather, setFeather] = useState<number | null>(null);
+  const [featherMost, setFeatherMost] = useState<number | null>(null);
   const [changing, setChanging] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   // A picture pasted anywhere on the page opens like one imported; text pasted into a box stays text.
@@ -630,6 +639,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         modelId: editModelId,
         prompt: change.trim(),
         mask: maskOf(selection, shownPicture.naturalWidth, shownPicture.naturalHeight),
+        feather,
       });
       remember();
       setChangingOver((held) => ({
@@ -1919,7 +1929,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               className={styles.ask}
               style={{
                 left: Math.max(8, Math.min(askAt.x + 12, (canvasRef.current?.clientWidth ?? 0) - 320)),
-                top: Math.max(8, Math.min(askAt.y + 12, (canvasRef.current?.clientHeight ?? 0) - 220)),
+                top: Math.max(8, Math.min(askAt.y + 12, (canvasRef.current?.clientHeight ?? 0) - 260)),
               }}
               onSubmit={changeSelection}
               data-testid="magic-ask"
@@ -1953,6 +1963,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   </option>
                 ))}
               </Select>
+              {/* How far the edge of the change blends into the picture, in its own pixels; 0 is a hard edge. */}
+              <label className={styles.optionsField}>
+                <span>{t('Feather')}</span>
+                <input
+                  className={`${form.input} ${styles.askNumber}`}
+                  type="number"
+                  min={0}
+                  max={featherMost ?? undefined}
+                  value={feather ?? ''}
+                  onChange={(event) => setFeather(event.target.value === '' ? null : Math.max(0, Math.round(Number(event.target.value))))}
+                  data-testid="magic-feather"
+                />
+                <span>px</span>
+              </label>
               <div className={styles.askActions}>
                 <button type="button" className={form.ghost} onClick={forget}>
                   {t('Cancel')}

@@ -3494,4 +3494,5 @@ export const PL: Record<string, string> = {
   "Blurred, {radius} px": "Rozmyto, {radius} px",
   "Radius": "Promień",
   "Lasso": "Lasso",
+  "Feather": "Wtapianie",
 };

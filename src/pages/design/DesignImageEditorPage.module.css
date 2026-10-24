@@ -512,6 +512,12 @@ button.toolbarTitle:hover {
   min-height: 72px;
 }
 
+/* A number on the ask's own line, as wide as its digits. */
+.askNumber {
+  width: 72px;
+  height: 28px;
+}
+
 .askActions {
   display: flex;
   justify-content: flex-end;
