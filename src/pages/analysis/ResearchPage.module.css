@@ -165,6 +165,13 @@
   overflow: auto;
 }
 
+/* The two switches, side by side, wrapping on a narrow screen. */
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-24);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

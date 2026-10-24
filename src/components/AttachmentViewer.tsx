@@ -178,6 +178,8 @@ export function AttachmentViewer({
               className={styles.picture}
               src={urlOf(showing.id)}
               alt={showing.filename}
+              // A picture somebody took or found, not an icon: the light theme's darkening is for icons.
+              data-keeps-colour=""
             />
 
             {images.length > 1 && (

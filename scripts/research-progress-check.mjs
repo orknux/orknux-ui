@@ -14,6 +14,11 @@
  * source is a row of its own: its number, its title as a link, where it was
  * read and what kind it is.
  *
+ * Asked for images, a finished research shows the ones it kept as a gallery
+ * under the report - each a thumbnail drawn from its own artifact, its
+ * caption, and a link to where it came from - which opens the picture over
+ * the page, and the given-settings card says images were on.
+ *
  * The research itself is answered here, as a run part-way through and then
  * as one finished, so the check does not depend on a model or a search engine
  * - the server's own tests drive the pipeline with stubs of both.
@@ -29,7 +34,8 @@ const SOURCES = [
 const RUNNING = {
   id: '424242', question: 'zz progress check: why are there tides?', modeId: null, modeName: 'Deep', workflowId: '1',
   workflowName: 'Research: Deep', modelId: null, modelName: 'Stub', language: 'FORMAL', outputFormat: 'DOCUMENT',
-  websitesInclude: [], websitesExclude: [], documentsInclude: ['Harbour log'], documentsExclude: [], useWebSearch: true, status: 'RUNNING',
+  websitesInclude: [], websitesExclude: [], documentsInclude: ['Harbour log'], documentsExclude: [], useWebSearch: true,
+  includeImages: false, images: [], status: 'RUNNING',
   executionId: null, result: null, fileName: null, fileUrl: null, artifactId: null, previewUrl: null, error: null, startedBy: 'alice',
   startedAt: new Date().toISOString(), finishedAt: null,
   progress: {
@@ -41,9 +47,24 @@ const RUNNING = {
 const FINISHED = {
   ...RUNNING, status: 'COMPLETED', startedAt: new Date(Date.now() - 125_000).toISOString(), finishedAt: new Date().toISOString(), fileName: 'tides.md', fileUrl: '/api/artifacts/4242', artifactId: '4242',
   progress: { ...RUNNING.progress, step: 'Finished', stage: 'SAVE' },
+  includeImages: true,
+  images: [
+    {
+      number: 1, caption: 'The moon over the bay', url: 'https://pictures.example.org/moon.png', page: 'https://bay.example.org/moon',
+      contentType: 'image/png', sizeBytes: 68, width: 200, height: 150, artifactId: '9001', fileUrl: '/api/artifacts/9001', previewUrl: '/api/artifacts/9001/preview',
+    },
+    {
+      number: 2, caption: 'A tide chart', url: 'https://charts.example.org/chart.png', page: null,
+      contentType: 'image/png', sizeBytes: 68, width: 300, height: 200, artifactId: '9002', fileUrl: '/api/artifacts/9002', previewUrl: '/api/artifacts/9002/preview',
+    },
+  ],
   result: '# Tides\n\nThe moon pulls the sea [1], and a spring tide comes every fortnight [2].\n\n## Sources\n\n1. [Tides and the moon](https://one.example.org/tides)\n2. [Harbour log](/api/artifacts/7)',
 };
 let answering = RUNNING;
+
+/** A picture of one pixel, which is what every kept image's preview is answered with here. */
+const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+await page.route('**/api/artifacts/*/preview', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
 
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
@@ -64,6 +85,8 @@ const facts = ((await opened.locator('[data-progress]').textContent()) ?? '').re
 const stage = ((await opened.locator('[data-stage]').textContent().catch(() => '')) ?? '').trim();
 record(stage === 'Gathering sources', `it says which step of the workflow it is in (${stage})`);
 record((await opened.locator('[data-web-search-off]').count()) === 0, 'a research that searched the web says nothing about it');
+record((await opened.locator('[data-include-images-on]').count()) === 0, 'nor about images, where it was not asked for them');
+record((await opened.locator('[data-images]').count()) === 0, 'and with no image kept, there is no Images section');
 record(/Searches\s*2/.test(facts) && /Sources read\s*2/.test(facts), `it counts searches and sources (${facts.slice(0, 120)})`);
 // --- the steps, drawn in order -------------------------------------------------
 const strip = await opened.locator('[data-stages] > li').evaluateAll((all) =>
@@ -142,5 +165,71 @@ const took = ((await opened.locator('[data-took]').textContent().catch(() => '')
 record(took === '2m 5s', `and says how long it took, start to finish (${took})`);
 const rounds = ((await opened.locator('[data-stat="level"]').locator('xpath=preceding-sibling::dt').textContent().catch(() => '')) ?? '').trim();
 record(rounds === 'Search rounds', `the depth reached is called what it is, not "Level" (${rounds})`);
+
+// --- the images it kept ----------------------------------------------------------
+const imagesOn = ((await opened.locator('[data-include-images-on]').textContent().catch(() => '')) ?? '').trim();
+record(imagesOn === 'On', `the given-settings card says images were on (${imagesOn})`);
+const gallery = opened.locator('[data-images]');
+await gallery.locator('img').first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+const reportBox = await opened.locator('[data-report]').boundingBox().catch(() => null);
+const galleryBox = await gallery.boundingBox().catch(() => null);
+record(
+  reportBox !== null && galleryBox !== null && galleryBox.y >= reportBox.y + reportBox.height - 1,
+  `an Images section is drawn under the report (${galleryBox?.y} under ${reportBox === null ? null : reportBox.y + reportBox.height})`,
+);
+await page
+  .waitForFunction(() => [...document.querySelectorAll('[data-images] img')].every((one) => one.complete && one.naturalWidth > 0), null, { timeout: 10_000 })
+  .catch(() => undefined);
+const figures = await gallery.locator('[data-image]').evaluateAll((all) =>
+  all.map((one) => {
+    const picture = one.querySelector('img');
+    const box = picture?.getBoundingClientRect();
+    return {
+      caption: one.querySelector('[data-image-caption]')?.textContent?.trim(),
+      source: one.querySelector('[data-image-source]')?.getAttribute('href') ?? null,
+      host: one.querySelector('[data-image-source]')?.textContent?.trim() ?? null,
+      src: picture?.getAttribute('src'),
+      loaded: (picture?.naturalWidth ?? 0) > 0,
+      width: Math.round(box?.width ?? 0),
+      height: Math.round(box?.height ?? 0),
+      top: Math.round(box?.top ?? 0),
+    };
+  }),
+);
+record(figures.length === 2, `each kept image is a figure of its own (${figures.length})`);
+record(
+  JSON.stringify(figures.map((one) => one.caption)) === JSON.stringify(['1The moon over the bay', '2A tide chart']),
+  `numbered and captioned as the report places them (${figures.map((one) => one.caption).join(' | ')})`,
+);
+record(
+  JSON.stringify(figures.map((one) => [one.source, one.host])) ===
+    JSON.stringify([['https://bay.example.org/moon', 'bay.example.org'], ['https://charts.example.org/chart.png', 'charts.example.org']]),
+  `each links where it came from: its page, or where it was fetched (${JSON.stringify(figures.map((one) => [one.source, one.host]))})`,
+);
+record(
+  figures.length === 2 && figures.every((one, at) => one.src === FINISHED.images[at].previewUrl && one.loaded),
+  `each drawn from its own artifact, never from where it was found (${figures.map((one) => `${one.src}:${one.loaded}`).join(', ')})`,
+);
+record(
+  figures.length === 2 && figures.every((one) => one.width >= 120 && one.height >= 80 && one.width <= 400),
+  `as thumbnails, small and not nothing (${figures.map((one) => `${one.width}x${one.height}`).join(', ')})`,
+);
+record(figures.length === 2 && figures[0].top === figures[1].top, `side by side at 1440px (${figures.map((one) => one.top).join(', ')})`);
+
+await gallery.locator('[data-open-image="1"]').click().catch(() => undefined);
+const viewer = page.locator('dialog[open]');
+await viewer.locator('img').waitFor({ timeout: 5_000 }).catch(() => undefined);
+const shown = await viewer.locator('img').getAttribute('src').catch(() => null);
+const named = ((await viewer.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+record(
+  shown === '/api/artifacts/9001/preview' && named.includes('The moon over the bay'),
+  `a thumbnail opens its picture in the viewer, under its caption (${shown}; ${named.slice(0, 60)})`,
+);
+await page.keyboard.press('ArrowRight');
+const next = await viewer.locator('img').getAttribute('src').catch(() => null);
+record(next === '/api/artifacts/9002/preview', `and steps on to the next (${next})`);
+await page.keyboard.press('Escape');
+await viewer.waitFor({ state: 'detached', timeout: 5_000 }).catch(() => undefined);
+record((await page.locator('dialog[open]').count()) === 0, 'and Escape closes it');
 
 await finish(browser);

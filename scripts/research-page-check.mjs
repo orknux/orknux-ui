@@ -25,7 +25,9 @@
  * where the workspace has none, at an address that never answers - what is
  * measured is that the research is started and listed, not what a model makes
  * of it, so it may well be listed as failed. Use web search is a box in the
- * sources, on until it is unticked, and the research says when it was off.
+ * sources, on until it is unticked, and the research says when it was off;
+ * Include images is the box beside it, off until it is ticked, sent with the
+ * start as it was left, and said on the research when it was on.
  * The check removes what it started, the document it uploaded and the model
  * it made.
  *
@@ -214,6 +216,18 @@ const order = await page.evaluate(() => {
 });
 record(order !== null && order >= 0, `it stands with the sources, above the websites (${order}px above)`);
 
+// --- images -----------------------------------------------------------------
+const images = dialog.locator('input[type="checkbox"][data-include-images]');
+record((await images.count()) === 1 && !(await images.isChecked()), 'Include images is a box, unticked until somebody ticks it');
+const imagesLabel = ((await images.locator('xpath=..').textContent()) ?? '').trim();
+record(imagesLabel === 'Include images', `and it says so in one line (${imagesLabel})`);
+const beside = await page.evaluate(() => {
+  const web = document.querySelector('dialog[open] [data-web-search]')?.parentElement?.getBoundingClientRect();
+  const box = document.querySelector('dialog[open] [data-include-images]')?.parentElement?.getBoundingClientRect();
+  return web === undefined || box === undefined ? null : { rise: Math.round(Math.abs(box.top - web.top)), gap: Math.round(box.left - web.right) };
+});
+record(beside !== null && beside.rise <= 2 && beside.gap > 0, `beside Use web search, on its line (${JSON.stringify(beside)})`);
+
 // --- websites, as lists -----------------------------------------------------
 const include = dialog.locator('[data-sites="research-websites-include"]');
 const exclude = dialog.locator('[data-sites="research-websites-exclude"]');
@@ -270,8 +284,14 @@ record((await chosenOption(page, documents.locator(`[data-picked="${fileName}"]`
 // --- starting one -----------------------------------------------------------
 await webSearch.uncheck();
 record(!(await webSearch.isChecked()), 'unticked, it stays unticked');
+await images.check();
+record(await images.isChecked(), 'ticked, Include images stays ticked');
 await dialog.locator('textarea#research-question').fill(question);
+// What Start sends, read off the request itself.
+const sent = page.waitForRequest((request) => (request.postData() ?? '').includes('StartResearch'), { timeout: 15_000 }).catch(() => null);
 await dialog.getByRole('button', { name: /^Start$/ }).click();
+const startInput = JSON.parse((await sent)?.postData() ?? '{}')?.variables?.input ?? {};
+record(startInput.includeImages === true && startInput.useWebSearch === false, `Start sends both switches as they were left (${JSON.stringify({ includeImages: startInput.includeImages, useWebSearch: startInput.useWebSearch })})`);
 await page.locator('dialog[open]').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
 record((await page.locator('dialog[open]').count()) === 0, 'Start closes the dialog');
 
@@ -364,9 +384,11 @@ record(usedModel !== '' && usedModel !== '—' && chosenName.startsWith(usedMode
 const openedModel = (await opened.locator('[data-research-model] a[data-model-link]').getAttribute('href').catch(() => null)) ?? '';
 record(openedModel !== '' && openedModel === rowModel, `as a link to the model's page, the row's own (${openedModel})`);
 record((await opened.locator('[data-web-search-off]').count()) === 1, 'and that it did not search the web');
-const stored = await graphql(`query($w: ID!) { researches(workspaceId: $w, size: 100) { content { question useWebSearch modelName } } }`, { w: WORKSPACE });
+const imagesOn = ((await opened.locator('[data-include-images-on]').textContent().catch(() => '')) ?? '').trim();
+record(imagesOn === 'On', `and that it was asked for images (${imagesOn})`);
+const stored = await graphql(`query($w: ID!) { researches(workspaceId: $w, size: 100) { content { question useWebSearch includeImages modelName } } }`, { w: WORKSPACE });
 const mine = stored.researches.content.find((one) => one.question === question);
-record(mine?.useWebSearch === false && (mine?.modelName ?? '') !== '', `the research keeps both (${JSON.stringify(mine)})`);
+record(mine?.useWebSearch === false && mine?.includeImages === true && (mine?.modelName ?? '') !== '', `the research keeps all three (${JSON.stringify(mine)})`);
 
 // --- clean up ---------------------------------------------------------------
 const listed = await graphql(`query($w: ID!) { researches(workspaceId: $w, size: 100) { content { id question } } }`, { w: WORKSPACE });

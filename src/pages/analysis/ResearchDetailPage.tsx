@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { deleteResearch, fetchResearch } from '../../api/research';
-import type { Research, ResearchSource, ResearchStage, ResearchStatus } from '../../api/research';
+import type { Research, ResearchImage, ResearchSource, ResearchStage, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
 import { formatDuration } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
 import checkIcon from '../../assets/check.svg';
 import { AppShell } from '../../components/AppShell';
+import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { BackLink } from '../../components/BackLink';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -154,6 +155,7 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
               <Sources research={research} />
             </div>
             {research.status === 'COMPLETED' && <Report research={research} workspaceId={workspaceId} />}
+            <Images research={research} />
           </>
         )}
       </div>
@@ -293,7 +295,7 @@ function Given({ research }: { research: Research }) {
     [t('Documents to avoid'), research.documentsExclude],
   ];
   const told = lists.filter(([, values]) => values.length > 0);
-  if (told.length === 0 && research.useWebSearch) return null;
+  if (told.length === 0 && research.useWebSearch && !research.includeImages) return null;
   return (
     <section className={styles.card} aria-label={t('What it was given')}>
       <h2 className={styles.cardTitle}>{t('What it was given')}</h2>
@@ -302,6 +304,12 @@ function Given({ research }: { research: Research }) {
           <div className={styles.givenRow}>
             <dt>{t('Web search')}</dt>
             <dd data-web-search-off>{t('Off')}</dd>
+          </div>
+        )}
+        {research.includeImages && (
+          <div className={styles.givenRow}>
+            <dt>{t('Images')}</dt>
+            <dd data-include-images-on>{t('On')}</dd>
           </div>
         )}
         {told.map(([label, values]) => (
@@ -406,6 +414,79 @@ function Report({ research, workspaceId }: { research: Research; workspaceId: st
           </article>
         )
       )}
+    </section>
+  );
+}
+
+/** Where an image came from, as a link can carry it: the page it was on, or where it was fetched from. */
+function originOf(image: ResearchImage): { href: string; host: string } | null {
+  const href = image.page ?? image.url;
+  if (href.startsWith('/')) return { href: href.split('#')[0], host: t('Artifacts') };
+  try {
+    const parsed = new URL(href);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+    return { href, host: parsed.hostname.replace(/^www\./, '') };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The images it kept, as a small gallery under the report: each with its
+ * caption and where it came from, and opened over the page in the picture
+ * viewer. Kept on the Artifacts page as files of their own, which is where
+ * they are shown from - never from the address they were found at.
+ */
+function Images({ research }: { research: Research }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  if (research.images.length === 0) return null;
+  const pictures = research.images.map((image) => ({
+    id: image.artifactId,
+    filename: image.caption,
+    contentType: image.contentType,
+    sizeBytes: image.sizeBytes,
+  }));
+  const previews = new Map(research.images.map((image) => [image.artifactId, image.previewUrl]));
+  return (
+    <section className={styles.card} aria-label={t('Images')} data-images>
+      <h2 className={styles.cardTitle}>
+        {t('Images')}
+        <span className={styles.count}>{research.images.length}</span>
+      </h2>
+      <ul className={styles.gallery} data-gallery>
+        {research.images.map((image) => {
+          const origin = originOf(image);
+          return (
+            <li key={image.artifactId} className={styles.figure} data-image={image.number}>
+              <button
+                type="button"
+                className={styles.thumb}
+                onClick={() => setOpenId(image.artifactId)}
+                title={image.caption}
+                data-open-image={image.number}
+              >
+                <img src={image.previewUrl} alt={image.caption} loading="lazy" width={image.width} height={image.height} data-keeps-colour="" />
+              </button>
+              <span className={styles.caption} title={image.caption} data-image-caption>
+                <span className={styles.sourceNumber} aria-hidden="true">{image.number}</span>
+                <span className={styles.captionText}>{image.caption}</span>
+              </span>
+              {origin !== null && (
+                <a className={styles.imageSource} href={origin.href} target="_blank" rel="noreferrer noopener" title={origin.href} data-image-source>
+                  {origin.host}
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <AttachmentViewer
+        images={pictures}
+        openId={openId}
+        onClose={() => setOpenId(null)}
+        onOpen={setOpenId}
+        urlOf={(id) => previews.get(id) ?? ''}
+      />
     </section>
   );
 }
