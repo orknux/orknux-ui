@@ -11,14 +11,16 @@ export interface WorkspaceSearch {
   /** `tavily` or `brave`. */
   engine: string;
   /**
-   * Whether a key is set — never the key itself.
-   *
-   * The server will not answer with it: the column encrypts it, and a screen
-   * that could read one back is a screen that puts a credential in somebody's
-   * browser history. So the form shows "set" or "not set" and offers to replace
-   * it, which is the whole of what anybody needs from a page.
+   * Whether a key of its own is kept - never the key itself. False for one
+   * reading a workspace variable secret; `revealWorkspaceSearchKey` shows it.
    */
   keySet: boolean;
+  /** The workspace variable secret the key is read from, or null for its own copy. */
+  apiKeyVariableId: string | null;
+  apiKeyVariableName: string | null;
+  apiKeyVariableCatalog: string | null;
+  /** A reference pointing at a variable that is gone. */
+  apiKeyVariableMissing: boolean;
   /** Whether tavily also composes a short answer over the results, at more cost. */
   composeAnswer: boolean;
   /** The indexes this workspace may choose, and the sentence for each. */
@@ -26,11 +28,15 @@ export interface WorkspaceSearch {
 }
 
 export interface SearchEngineChoice {
+  /** What is stored and sent: `tavily`, `brave`. */
   name: string;
+  /** What a person reads: Tavily, Brave. */
+  title: string;
   description: string;
 }
 
-const FIELDS = `engine keySet composeAnswer engines { name description }`;
+const FIELDS = `engine keySet apiKeyVariableId apiKeyVariableName apiKeyVariableCatalog apiKeyVariableMissing
+  composeAnswer engines { name title description }`;
 
 export async function fetchWorkspaceSearch(workspaceId: string): Promise<WorkspaceSearch> {
   const data = await graphql<{ workspaceSearch: WorkspaceSearch }>(
@@ -43,21 +49,33 @@ export async function fetchWorkspaceSearch(workspaceId: string): Promise<Workspa
 /**
  * Saves what a workspace searches with.
  *
- * `apiKey` left undefined leaves the key alone and an empty string clears it,
- * which is what lets the form save the engine without sending back a secret it
- * was never shown.
+ * `apiKey` left undefined leaves the key alone and an empty string clears it;
+ * `apiKeyVariableId` reads it from a workspace secret instead. Never both: the
+ * server refuses the pair.
  */
 export async function saveWorkspaceSearch(
   workspaceId: string,
-  changes: { engine?: string; apiKey?: string; composeAnswer?: boolean },
+  changes: { engine?: string; apiKey?: string; apiKeyVariableId?: string; composeAnswer?: boolean },
 ): Promise<WorkspaceSearch> {
   const data = await graphql<{ setWorkspaceSearch: WorkspaceSearch }>(
-    `mutation SetWorkspaceSearch($workspaceId: ID!, $engine: String, $apiKey: String, $composeAnswer: Boolean) {
+    `mutation SetWorkspaceSearch(
+       $workspaceId: ID!, $engine: String, $apiKey: String, $apiKeyVariableId: ID, $composeAnswer: Boolean
+     ) {
        setWorkspaceSearch(
-         workspaceId: $workspaceId, engine: $engine, apiKey: $apiKey, composeAnswer: $composeAnswer
+         workspaceId: $workspaceId, engine: $engine, apiKey: $apiKey,
+         apiKeyVariableId: $apiKeyVariableId, composeAnswer: $composeAnswer
        ) { ${FIELDS} }
      }`,
     { workspaceId, ...changes },
   );
   return data.setWorkspaceSearch;
+}
+
+/** The workspace's own search key, for the field's Show; recorded. Null where it reads a variable. */
+export async function revealWorkspaceSearchKey(workspaceId: string): Promise<string | null> {
+  const data = await graphql<{ revealWorkspaceSearchKey: string | null }>(
+    'mutation RevealWorkspaceSearchKey($workspaceId: ID!) { revealWorkspaceSearchKey(workspaceId: $workspaceId) }',
+    { workspaceId },
+  );
+  return data.revealWorkspaceSearchKey;
 }

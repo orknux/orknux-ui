@@ -18,7 +18,7 @@ import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
-import { SearchSettings } from './SearchSettings';
+import { SearchSettings, useSearchSettings } from './SearchSettings';
 import styles from './WorkspaceSettingsPage.module.css';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -68,6 +68,8 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  /** What the workspace searches the web with; saved by this page's Save Changes, put back by its Discard. */
+  const search = useSearchSettings(workspaceId, () => setSaved(false));
 
   useEffect(() => {
     // The workspaces query is already filtered to what the caller may see.
@@ -113,15 +115,18 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
     setSaveError(null);
     setSaved(false);
     try {
-      const updated = await updateWorkspace(workspaceId, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        roleIds,
-        adminRoleIds,
-      });
-      // A rename has to reach the selector, which paints from the cached list.
-      forgetWorkspaces();
-      setWorkspace(updated);
+      if (generalChanged) {
+        const updated = await updateWorkspace(workspaceId, {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          roleIds,
+          adminRoleIds,
+        });
+        // A rename has to reach the selector, which paints from the cached list.
+        forgetWorkspaces();
+        setWorkspace(updated);
+      }
+      await search.save();
       setSaved(true);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : t('Could not save the workspace.'));
@@ -135,7 +140,9 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
    * what the page last agreed with the server. Save and Discard are off while
    * there is not.
    */
-  const changed = useDirty({ name, description, roleIds, adminRoleIds }, [workspace]);
+  const generalChanged = useDirty({ name, description, roleIds, adminRoleIds }, [workspace]);
+  /** The search section is part of this form too: its draft is written by the same Save. */
+  const changed = generalChanged || search.dirty;
 
   return (
     <AppShell
@@ -341,12 +348,10 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
 
           {/*
             What this workspace searches with, between the general form and the
-            danger zone. Its own component and its own save: the key is written
-            straight through rather than held until somebody presses the page's
-            Save, because a secret sitting in a form waiting to be submitted is
-            a secret in a browser for longer than it needs to be.
+            danger zone. Its own component, and part of this page's draft: the
+            Save Changes below writes it with the rest and Discard puts it back.
           */}
-          <SearchSettings workspaceId={workspaceId} />
+          <SearchSettings search={search} workspaceId={workspaceId} />
 
           <section className={`${styles.card} ${styles.dangerCard}`}>
             <h2 id="danger-zone" className={styles.dangerHeading}>{t('Danger Zone')}</h2>

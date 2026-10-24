@@ -1136,7 +1136,8 @@ export const TESTS = [
   },
   {
     name: 'workspace-search-check',
-    what: "a workspace's web search is set on its own Settings page, and the side menu's search finds it",
+    what: "a workspace's web search is set on its own Settings page, the side menu's search finds it, and its key is a secret field saved by Save Changes",
+    /* Puts the workspace's key back as it found it, own value or reference. */
     needs: ['workspace'],
   },
   {
@@ -2492,12 +2493,11 @@ export const TESTS = [
   },
   {
     name: 'search-settings-check',
-    what: "a workspace's search key is write-only: set, said to be set, and never drawn or answered back",
+    what: "a workspace's search key is masked until Show, never in the query, and saved by the page's Save Changes",
     needs: ['workspace'],
     /*
-     * Issue #510. Sets a key of its own on the fixture's workspace and clears it
-     * again; where that workspace already holds a real key, which nothing can
-     * put back once overwritten, it runs only the half that reads and says so.
+     * Issue #510. Sets keys of its own on the fixture's workspace, then puts
+     * back what it found - read first through the reveal, or the reference.
      */
   },
   {
