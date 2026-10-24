@@ -66,6 +66,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [lastModel, rememberModel] = useSieve(`research.model.${workspaceId}`);
   // On, as every research was before it could be switched off.
   const [webSearch, setWebSearch] = useState(true);
+  // Off: looking for images is asked for, not assumed.
+  const [images, setImages] = useState(false);
   const [include, setInclude] = useState<string[]>([]);
   const [exclude, setExclude] = useState<string[]>([]);
   const [picked, setPicked] = useState<PickedDocument[]>([]);
@@ -89,6 +91,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       setExclude([]);
       setPicked([]);
       setWebSearch(true);
+      setImages(false);
       setAdding(false);
       setError(null);
       setSubmitting(false);
@@ -159,6 +162,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         documentsInclude: picked.filter((one) => one.use === 'INCLUDE').map((one) => one.document.id),
         documentsExclude: picked.filter((one) => one.use === 'EXCLUDE').map((one) => one.document.id),
         useWebSearch: webSearch,
+        includeImages: images,
       });
       onStarted(started);
     } catch (cause) {
@@ -275,16 +279,29 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
             </div>
           )}
 
-          <label className={dialog.checkboxField}>
-            <input
-              type="checkbox"
-              id="research-web-search"
-              checked={webSearch}
-              onChange={(event) => setWebSearch(event.target.checked)}
-              data-web-search
-            />
-            {t('Use web search')}
-          </label>
+          <div className={styles.checks}>
+            <label className={dialog.checkboxField}>
+              <input
+                type="checkbox"
+                id="research-web-search"
+                checked={webSearch}
+                onChange={(event) => setWebSearch(event.target.checked)}
+                data-web-search
+              />
+              {t('Use web search')}
+            </label>
+
+            <label className={dialog.checkboxField}>
+              <input
+                type="checkbox"
+                id="research-include-images"
+                checked={images}
+                onChange={(event) => setImages(event.target.checked)}
+                data-include-images
+              />
+              {t('Include images')}
+            </label>
+          </div>
 
           <fieldset className={styles.group}>
             <legend className={dialog.label}>{t('Websites')}</legend>

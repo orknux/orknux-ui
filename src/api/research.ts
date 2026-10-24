@@ -51,6 +51,10 @@ export interface Research {
   documentsExclude: string[];
   /** Off, it read only the documents and the websites to keep to. */
   useWebSearch: boolean;
+  /** Whether it looks for images to place in the report and keep beside it. */
+  includeImages: boolean;
+  /** The images it kept, numbered as the report places them. */
+  images: ResearchImage[];
   status: ResearchStatus;
   executionId: string | null;
   /** The report in markdown, once it is finished. Only the one opened asks for it. */
@@ -82,6 +86,23 @@ export interface ResearchProgress {
   stage: ResearchStage | null;
 }
 
+/** A picture a research kept, saved on the Artifacts page as a file of its own. */
+export interface ResearchImage {
+  number: number;
+  caption: string;
+  /** Where it was fetched from. */
+  url: string;
+  /** The page it was found on or for, where that is known. */
+  page: string | null;
+  contentType: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
+  artifactId: string;
+  fileUrl: string;
+  previewUrl: string;
+}
+
 /** One source a research read. */
 export interface ResearchSource {
   number: number;
@@ -104,15 +125,17 @@ export interface StartResearchInput {
   documentsInclude: string[];
   documentsExclude: string[];
   useWebSearch: boolean;
+  includeImages: boolean;
 }
 
 const MODE_FIELDS = 'id kind name workflowId workflowName';
 
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
-  'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch status executionId ' +
+  'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
   'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt ' +
-  'progress { step subQuestions searched level sourcesRead stage } sources { number title url kind }';
+  'progress { step subQuestions searched level sourcesRead stage } sources { number title url kind } ' +
+  'images { number caption url page contentType sizeBytes width height artifactId fileUrl previewUrl }';
 
 export async function fetchResearchModes(workspaceId: string): Promise<ResearchMode[]> {
   const data = await graphql<{ researchModes: ResearchMode[] }>(

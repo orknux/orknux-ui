@@ -3472,6 +3472,7 @@ export const PL: Record<string, string> = {
   "Sources read": "Przeczytane źródła",
   "Sub-questions": "Pytania cząstkowe",
   "Use web search": "Używaj wyszukiwania w sieci",
+  "Include images": "Dołączaj obrazy",
   "Web search": "Wyszukiwanie w sieci",
   "No chat model": "Brak modelu czatu",
   "Planning the research": "Planowanie badania",
