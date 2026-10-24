@@ -3511,6 +3511,13 @@ export const PL: Record<string, string> = {
   "Blur": "Rozmyj",
   "Blurred, {radius} px": "Rozmyto, {radius} px",
   "Radius": "Promień",
+  // Gradual blur: along a line, or fading at a selection's edge.
+  "Gradual": "Stopniowe",
+  "Mirrored": "Lustrzane",
+  "Falloff": "Zanikanie",
+  "Blurred gradually, {radius} px": "Rozmyto stopniowo, {radius} px",
+  "Blurred gradually both ways, {radius} px": "Rozmyto stopniowo w obie strony, {radius} px",
+  "Blurred, {radius} px, edge softened {falloff} px": "Rozmyto, {radius} px, krawędź zmiękczona o {falloff} px",
   "Lasso": "Lasso",
   "Feather": "Wtapianie",
   "Layers": "Warstwy",

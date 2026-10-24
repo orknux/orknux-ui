@@ -37,7 +37,7 @@ const ORIGINAL = picture('DESIGN-701', HALVES, null);
 const OTHER = { ...picture('SAVED-77', HALVES, null), kind: 'SAVED', name: null, prompt: 'zz tools: an agent kept this' };
 const DOCUMENT = { ...picture('SAVED-78', '/api/artifacts/78', null), kind: 'SAVED', contentType: 'application/pdf', filename: 'notes.pdf' };
 /** The installation's numbers for the tools, answered here so what the page starts at is known. */
-const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60, feather: 5, featherMost: 64 };
+const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60, blurFalloff: 3, blurFalloffMost: 40, feather: 5, featherMost: 64 };
 /** What each Magic edit was asked with. */
 const edits = [];
 /** What each keepDesignImageChange was asked to keep, in order. */
@@ -277,6 +277,97 @@ record(outlined === 1 && kept.length === keptBeforeBlur + 1 && insideBefore === 
   insideAfter - insideBefore > 60 && outsideAfter === outsideBefore && blurred?.colours.join() === 'red,blue',
   `Blur mixes the stripe into the red inside the selection only, and keeps it as a version (${JSON.stringify({ insideBefore, insideAfter, outsideBefore, outsideAfter, blurred })})`);
 record(await page.getByTestId('blur-options').isVisible().catch(() => false), 'the blur stays in hand for the next part');
+
+// -- Gradual blur: a soft edge, and along a line ----------------------------------
+
+// The right half is as the brush left it - the stripe across, untouched by the blur above - so both are tried there.
+/** The green in one column of the picture, in its own pixels, across the rows under the stripe. */
+const greenAt = (x) => page.evaluate(([column, from, to]) => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const pen = canvas.getContext('2d');
+  pen.drawImage(image, 0, 0);
+  let green = 0;
+  for (let y = from; y <= to; y += 1) green += pen.getImageData(column, y, 1, 1).data[1];
+  return green;
+}, [x, Math.ceil(size.height / 2) + 2, Math.ceil(size.height / 2) + 6]);
+/** Every pixel of one column, top to bottom, to say a column is exactly as it was. */
+const columnAt = (x) => page.evaluate((column) => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const pen = canvas.getContext('2d');
+  pen.drawImage(image, 0, 0);
+  return Array.from(pen.getImageData(column, 0, 1, canvas.height).data).join(',');
+}, x);
+/** Waits for the canvas to show the picture at [url], as an undo puts it back. */
+const showsImage = (url) => page.waitForFunction((src) => document.querySelector('[data-testid="editor-picture"]')?.getAttribute('src') === src, url, { timeout: 10_000 })
+  .catch(() => undefined);
+/** A point of the picture, in its own pixels, on the screen. */
+const onScreen = async ([x, y]) => {
+  const box = await page.getByTestId('editor-picture').boundingBox();
+  return [box.x + (x / size.width) * box.width, box.y + (y / size.height) * box.height];
+};
+
+// A soft edge: a rectangle over the right half, blurred whole in its middle and hardly at all at its edge.
+const falloffStarts = await page.getByTestId('blur-falloff').inputValue().catch(() => '');
+const falloffMost = await page.getByTestId('blur-falloff').getAttribute('max').catch(() => '');
+record(falloffStarts === '3' && falloffMost === '40',
+  `the blur's falloff starts at the installation's, and goes no further than its most (${JSON.stringify({ falloffStarts, falloffMost })})`);
+await page.getByTestId('blur-falloff').fill('4').catch(() => undefined);
+const softLeft = Math.ceil(size.width / 2) + 1;
+const softRight = size.width - 1;
+const softMiddle = Math.round((softLeft + softRight) / 2);
+const beforeSoft = { edge: await greenAt(softLeft), middle: await greenAt(softMiddle), outside: await columnAt(softLeft - 2), image: kept[kept.length - 1].image };
+const keptBeforeSoft = kept.length;
+await drag([softLeft, size.height * 0.3], [softRight, size.height * 0.95]);
+await page.getByTestId('blur-apply').click();
+await showsLastKept();
+const soft = { edge: (await greenAt(softLeft)) - beforeSoft.edge, middle: (await greenAt(softMiddle)) - beforeSoft.middle };
+const softened = kept.length === keptBeforeSoft + 1 && /4 px/.test(kept[kept.length - 1].change) && soft.middle > 30 && soft.edge < soft.middle / 3 &&
+  (await columnAt(softLeft - 2)) === beforeSoft.outside;
+record(softened,
+  `with a falloff, the blur is whole in the selection's middle and fades out towards its edge, kept as a version (${JSON.stringify({ soft, change: kept[kept.length - 1]?.change })})`);
+await page.getByTestId('editor-undo').click();
+await showsImage(beforeSoft.image);
+record(softened && (await greenAt(softLeft)) === beforeSoft.edge && (await greenAt(softMiddle)) === beforeSoft.middle,
+  'Undo takes the softened blur back');
+
+// Along a line: sharp before its start, blurred whole past its end, and partly between.
+await page.getByTestId('blur-gradient').click();
+const lineFrom = Math.round(size.width * 0.6);
+const lineTo = Math.round(size.width * 0.9);
+await drag([lineFrom, size.height / 2], [Math.round(size.width * 0.8), size.height / 2]);
+// The end's handle dragged on to where the blur should be whole.
+const handle = await page.getByTestId('blur-line-end').boundingBox().catch(() => null);
+if (handle !== null) {
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(...(await onScreen([lineTo, size.height / 2])), { steps: 4 });
+  await page.mouse.up();
+}
+const lineEnd = Number(await page.getByTestId('blur-line').locator('line').getAttribute('x2').catch(() => 'NaN'));
+record(handle !== null && Math.abs(lineEnd - lineTo) <= 1, `a gradual blur's line is drawn with its ends, and its end dragged further (${JSON.stringify({ lineEnd, lineTo })})`);
+const sharpColumn = lineFrom - 2;
+const halfway = Math.round((lineFrom + lineTo) / 2);
+const beforeLine = {
+  sharp: await columnAt(sharpColumn), middle: await greenAt(halfway), end: await greenAt(size.width - 1), image: kept[kept.length - 1].image,
+};
+const keptBeforeLine = kept.length;
+await page.getByTestId('blur-apply').click();
+await showsLastKept();
+const along = { middle: (await greenAt(halfway)) - beforeLine.middle, end: (await greenAt(size.width - 1)) - beforeLine.end };
+const gradual = kept.length === keptBeforeLine + 1 && (await columnAt(sharpColumn)) === beforeLine.sharp &&
+  along.end > 30 && along.middle > along.end * 0.2 && along.middle < along.end * 0.8;
+record(gradual,
+  `a gradual blur leaves the start's side sharp, blurs past the end whole, and between partly, kept as a version (${JSON.stringify({ along, change: kept[kept.length - 1]?.change })})`);
+await page.getByTestId('editor-undo').click();
+await showsImage(beforeLine.image);
+record(gradual && (await columnAt(sharpColumn)) === beforeLine.sharp && (await greenAt(halfway)) === beforeLine.middle && (await greenAt(size.width - 1)) === beforeLine.end,
+  'Undo takes the gradual blur back');
 await page.getByTestId('blur-cancel').click();
 
 // -- Layers (#633) ----------------------------------------------------------------

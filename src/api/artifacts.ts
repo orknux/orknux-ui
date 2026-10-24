@@ -324,13 +324,16 @@ export interface ImageEditorSettings {
   brushMost: number;
   blur: number;
   blurMost: number;
+  /** How far the blur fades out inside a rectangle or lasso's edge to start with; 0 is a hard edge. */
+  blurFalloff: number;
+  blurFalloffMost: number;
   feather: number;
   featherMost: number;
 }
 
 export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
   const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
-    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost feather featherMost } }`,
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost blurFalloff blurFalloffMost feather featherMost } }`,
     { workspaceId },
   );
   return data.designImageEditorSettings;

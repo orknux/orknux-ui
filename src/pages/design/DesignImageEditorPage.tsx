@@ -28,6 +28,7 @@ import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import blurIcon from '../../assets/blur.svg';
+import blurGradientIcon from '../../assets/blur-gradient.svg';
 import brushIcon from '../../assets/brush.svg';
 import cropIcon from '../../assets/crop.svg';
 import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
@@ -65,7 +66,7 @@ import layersIcon from '../../assets/layers.svg';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { blurredInside, boxOf, canvasOf, cropped, layered, loadImage, mirrored, painted, rotated, strokePath } from './pictureEdits';
+import { blurredAlong, blurredInside, boxOf, canvasOf, cropped, layered, loadImage, mirrored, painted, rotated, strokePath } from './pictureEdits';
 import type { Layer, Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -268,6 +269,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         setBrushSize((held) => held ?? settings.brush);
         setBlurMost(settings.blurMost);
         setBlurRadius((held) => held ?? settings.blur);
+        setBlurFalloffMost(settings.blurFalloffMost);
+        setBlurFalloff((held) => held ?? settings.blurFalloff);
         setFeatherMost(settings.featherMost);
         setFeather((held) => held ?? settings.feather);
       })
@@ -614,16 +617,25 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setSelecting([at]);
   };
   const keepSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (selecting === null) return;
+    if (moveLineEnd(event) || selecting === null) return;
     const at = onPicture(event);
     if (at === null) return;
-    if (selectsBox()) setSelecting([selecting[0], at]);
+    if (selectsBox() || selectsLine()) setSelecting([selecting[0], at]);
     else setSelecting([...selecting, at]);
   };
   const finishSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (lineEnd !== null) {
+      setLineEnd(null);
+      return;
+    }
     if (selecting === null) return;
     const drawn = selecting;
     setSelecting(null);
+    if (selectsLine()) {
+      const [from, to] = [drawn[0], drawn[drawn.length - 1]];
+      if (Math.hypot(to.x - from.x, to.y - from.y) >= SMALLEST_SELECTION) setSelection([from, to]);
+      return;
+    }
     const outline =
       selectsBox() && drawn.length === 2
         ? [drawn[0], { x: drawn[1].x, y: drawn[0].y }, drawn[1], { x: drawn[0].x, y: drawn[1].y }]
@@ -902,16 +914,55 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * as Magic edit selects, and blurred inside it only. The tool stays in hand,
    * so one part after another can be blurred; each is a version.
    */
-  const [blurShape, setBlurShape] = useState<'rectangle' | 'lasso'>('rectangle');
+  const [blurShape, setBlurShape] = useState<'rectangle' | 'lasso' | 'gradient'>('rectangle');
   const [blurRadius, setBlurRadius] = useState<number | null>(null);
   const [blurMost, setBlurMost] = useState<number | null>(null);
+  /**
+   * How far a rectangle or lasso's blur fades out inside its edge, in the
+   * picture's own pixels; 0 is a hard edge. Starts where Admin Settings says.
+   */
+  const [blurFalloff, setBlurFalloff] = useState<number | null>(null);
+  const [blurFalloffMost, setBlurFalloffMost] = useState<number | null>(null);
+  /** A gradual blur growing both ways from its start - a sharp band - rather than one way. */
+  const [blurMirrored, setBlurMirrored] = useState(false);
+  /** Which end of a gradual blur's line is being dragged to adjust it: 0 its start, 1 its end. */
+  const [lineEnd, setLineEnd] = useState<0 | 1 | null>(null);
   /** Whether the tool in hand selects with a rectangle - two corners - rather than a lasso's outline. */
   const selectsBox = () => boxed(tool) || (tool === 'blur' && blurShape === 'rectangle');
+  /** Whether the tool in hand draws a line - a gradual blur's, from sharp to blurred. */
+  const selectsLine = () => tool === 'blur' && blurShape === 'gradient';
   function applyBlur() {
     const drawn = pictureCanvas();
     if (drawn === null || selection === null || tool !== 'blur' || blurRadius === null) return;
-    void keepChange(blurredInside(drawn, selection, blurRadius), tf('Blurred, {radius} px', { radius: blurRadius }));
+    if (blurShape === 'gradient') {
+      if (selection.length !== 2) return;
+      void keepChange(
+        blurredAlong(drawn, selection[0], selection[1], blurRadius, blurMirrored),
+        blurMirrored
+          ? tf('Blurred gradually both ways, {radius} px', { radius: blurRadius })
+          : tf('Blurred gradually, {radius} px', { radius: blurRadius }),
+      );
+      return;
+    }
+    const falloff = blurFalloff ?? 0;
+    void keepChange(
+      blurredInside(drawn, selection, blurRadius, falloff),
+      falloff > 0 ? tf('Blurred, {radius} px, edge softened {falloff} px', { radius: blurRadius, falloff }) : tf('Blurred, {radius} px', { radius: blurRadius }),
+    );
   }
+  /** A gradual blur's line end taken in hand, to be dragged where it should be. */
+  const takeLineEnd = (event: ReactPointerEvent<SVGCircleElement>, end: 0 | 1) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    (event.currentTarget.ownerSVGElement ?? event.currentTarget).setPointerCapture(event.pointerId);
+    setLineEnd(end);
+  };
+  const moveLineEnd = (event: ReactPointerEvent<SVGSVGElement>): boolean => {
+    if (lineEnd === null || selection === null || selection.length !== 2) return false;
+    const at = onPicture(event);
+    if (at !== null) setSelection(lineEnd === 0 ? [at, selection[1]] : [selection[0], at]);
+    return true;
+  };
 
   /** The box a crop selection keeps, in the picture's whole pixels; null with nothing selected to crop to. */
   const cropBox = tool === 'crop' && selection !== null && natural !== null ? boxOf(selection, natural.width, natural.height) : null;
@@ -1862,6 +1913,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               >
                 <img src={lassoIcon} alt="" width={16} height={16} />
               </button>
+              <button
+                type="button"
+                className={`${styles.tool} ${blurShape === 'gradient' ? styles.railOn : ''}`}
+                onClick={() => {
+                  forget();
+                  setBlurShape('gradient');
+                }}
+                aria-pressed={blurShape === 'gradient'}
+                title={t('Gradual')}
+                aria-label={t('Gradual')}
+                data-testid="blur-gradient"
+              >
+                <img src={blurGradientIcon} alt="" width={16} height={16} />
+              </button>
               <label className={styles.optionsField}>
                 <span>{t('Radius')}</span>
                 <input
@@ -1874,6 +1939,25 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 />
                 <span className={styles.optionsValue}>{blurRadius ?? ''}</span>
               </label>
+              {blurShape === 'gradient' ? (
+                <label className={styles.optionsField}>
+                  <input type="checkbox" checked={blurMirrored} onChange={(event) => setBlurMirrored(event.target.checked)} data-testid="blur-mirrored" />
+                  <span>{t('Mirrored')}</span>
+                </label>
+              ) : (
+                <label className={styles.optionsField}>
+                  <span>{t('Falloff')}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={blurFalloffMost ?? blurFalloff ?? 0}
+                    value={blurFalloff ?? 0}
+                    onChange={(event) => setBlurFalloff(Number(event.target.value))}
+                    data-testid="blur-falloff"
+                  />
+                  <span className={styles.optionsValue}>{blurFalloff ?? ''}</span>
+                </label>
+              )}
               <button
                 type="button"
                 className={form.ghost}
@@ -2239,6 +2323,35 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                           />
                           <polygon className={styles.cropEdge} points={outlineOf(selecting ?? selection ?? [])} data-testid="crop-selection" />
                         </>
+                      ) : tool === 'blur' && blurShape === 'gradient' ? (
+                        (() => {
+                          const line = selecting ?? selection ?? [];
+                          const from = line[0];
+                          const to = line[line.length - 1];
+                          // A handle the same size on the screen at any zoom: its radius in the picture's pixels.
+                          const handle = 6 / scaleNow();
+                          return (
+                            <g data-testid="blur-line">
+                              <line className={styles.gradientLine} x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
+                              <circle
+                                className={styles.gradientHandle}
+                                cx={from.x}
+                                cy={from.y}
+                                r={handle}
+                                onPointerDown={(event) => takeLineEnd(event, 0)}
+                                data-testid="blur-line-start"
+                              />
+                              <circle
+                                className={`${styles.gradientHandle} ${styles.gradientHandleEnd}`}
+                                cx={to.x}
+                                cy={to.y}
+                                r={handle}
+                                onPointerDown={(event) => takeLineEnd(event, 1)}
+                                data-testid="blur-line-end"
+                              />
+                            </g>
+                          );
+                        })()
                       ) : tool === 'blur' ? (
                         <polygon className={styles.cropEdge} points={outlineOf(selecting ?? selection ?? [])} data-testid="blur-selection" />
                       ) : (

@@ -134,34 +134,132 @@ export function boxOf(points: Point[], width: number, height: number): Box {
 }
 
 /**
- * The picture blurred inside an outline only, by a radius in its own pixels;
- * outside it, every pixel is as it was.
+ * The picture blurred at a radius over the box given, then laid over itself
+ * through a mask: where the mask is opaque the blur is whole, where it is
+ * transparent the pixel is exactly as it was, and in between the two are
+ * mixed. Every way of blurring here is this, with a different mask - which
+ * is what makes a gradual blur as cheap as a hard one.
  *
  * Stack blur rather than the canvas's own `filter`, which not every browser
- * draws with: the same picture blurs the same everywhere. What is blurred is
- * the box around the outline grown by the radius, so pixels just outside the
- * outline still blend into its edge, as they would in the picture itself.
+ * draws with: the same picture blurs the same everywhere.
  */
-export function blurredInside(source: HTMLCanvasElement, outline: Point[], radius: number): HTMLCanvasElement {
-  const around = boxOf(outline, source.width, source.height);
-  const x = Math.max(0, around.x - radius);
-  const y = Math.max(0, around.y - radius);
-  const width = Math.min(source.width, around.x + around.width + radius) - x;
-  const height = Math.min(source.height, around.y + around.height + radius) - y;
+function blurredThrough(source: HTMLCanvasElement, mask: HTMLCanvasElement, radius: number, around: Box): HTMLCanvasElement {
   const blurred = blank(source.width, source.height);
   blurred.pen.drawImage(source, 0, 0);
-  canvasRGBA(blurred.canvas, x, y, width, height, radius);
+  canvasRGBA(blurred.canvas, around.x, around.y, around.width, around.height, radius);
+  blurred.pen.globalCompositeOperation = 'destination-in';
+  blurred.pen.drawImage(mask, 0, 0);
 
   const { canvas, pen } = blank(source.width, source.height);
   pen.drawImage(source, 0, 0);
-  pen.save();
-  pen.beginPath();
-  outline.forEach((point, index) => (index === 0 ? pen.moveTo(point.x, point.y) : pen.lineTo(point.x, point.y)));
-  pen.closePath();
-  pen.clip();
   pen.drawImage(blurred.canvas, 0, 0);
-  pen.restore();
   return canvas;
+}
+
+/** Eased rather than straight, so a softened edge has no visible line where the fade starts. */
+const eased = (share: number) => share * share * (3 - 2 * share);
+
+/**
+ * How far each pixel of a box is from the nearest pixel outside the shape, in
+ * pixels - a two-pass chamfer distance, near enough to Euclidean for a fade
+ * that nobody measures. Outside the box counts as outside the shape.
+ */
+function distancesInside(inside: Uint8Array, width: number, height: number): Float32Array {
+  const across = width + 2;
+  const far = 1e9;
+  const grid = new Float32Array(across * (height + 2));
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) grid[(y + 1) * across + x + 1] = inside[y * width + x] === 1 ? far : 0;
+  }
+  const at = (x: number, y: number) => grid[y * across + x];
+  for (let y = 1; y <= height; y += 1) {
+    for (let x = 1; x <= width; x += 1) {
+      const here = y * across + x;
+      if (grid[here] === 0) continue;
+      grid[here] = Math.min(grid[here], at(x - 1, y) + 3, at(x - 1, y - 1) + 4, at(x, y - 1) + 3, at(x + 1, y - 1) + 4);
+    }
+  }
+  for (let y = height; y >= 1; y -= 1) {
+    for (let x = width; x >= 1; x -= 1) {
+      const here = y * across + x;
+      if (grid[here] === 0) continue;
+      grid[here] = Math.min(grid[here], at(x + 1, y) + 3, at(x + 1, y + 1) + 4, at(x, y + 1) + 3, at(x - 1, y + 1) + 4);
+    }
+  }
+  const distances = new Float32Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) distances[y * width + x] = grid[(y + 1) * across + x + 1] / 3;
+  }
+  return distances;
+}
+
+/**
+ * The picture blurred inside an outline only, by a radius in its own pixels;
+ * outside it, every pixel is as it was.
+ *
+ * With a falloff the blur fades out inside the outline: whole from that many
+ * pixels in, and nothing at the edge itself, so the blurred part has no rim.
+ * The fade is inside rather than across the edge, so what was not selected is
+ * still never touched. 0 is a hard edge.
+ *
+ * What is blurred is the box around the outline grown by the radius, so pixels
+ * just outside the outline still blend into its edge, as they would in the
+ * picture itself.
+ */
+export function blurredInside(source: HTMLCanvasElement, outline: Point[], radius: number, falloff = 0): HTMLCanvasElement {
+  const shape = boxOf(outline, source.width, source.height);
+  const x = Math.max(0, shape.x - radius);
+  const y = Math.max(0, shape.y - radius);
+  const grown: Box = {
+    x,
+    y,
+    width: Math.min(source.width, shape.x + shape.width + radius) - x,
+    height: Math.min(source.height, shape.y + shape.height + radius) - y,
+  };
+
+  const drawn = blank(shape.width, shape.height);
+  drawn.pen.translate(-shape.x, -shape.y);
+  drawn.pen.beginPath();
+  outline.forEach((point, index) => (index === 0 ? drawn.pen.moveTo(point.x, point.y) : drawn.pen.lineTo(point.x, point.y)));
+  drawn.pen.closePath();
+  drawn.pen.fillStyle = '#fff';
+  drawn.pen.fill();
+  if (falloff > 0) {
+    const pixels = drawn.pen.getImageData(0, 0, shape.width, shape.height);
+    const inside = new Uint8Array(shape.width * shape.height);
+    for (let index = 0; index < inside.length; index += 1) inside[index] = pixels.data[index * 4 + 3] >= 128 ? 1 : 0;
+    const distances = distancesInside(inside, shape.width, shape.height);
+    for (let index = 0; index < inside.length; index += 1) {
+      const strength = eased(Math.min(1, Math.max(0, (distances[index] - 0.5) / falloff)));
+      pixels.data[index * 4 + 3] = Math.round(pixels.data[index * 4 + 3] * strength);
+    }
+    drawn.pen.putImageData(pixels, 0, 0);
+  }
+  const mask = blank(source.width, source.height);
+  mask.pen.drawImage(drawn.canvas, shape.x, shape.y);
+  return blurredThrough(source, mask.canvas, radius, grown);
+}
+
+/**
+ * The picture blurred gradually along a line: sharp at its start, blurred at
+ * the whole radius at its end, and mixed evenly between; before the start it
+ * stays sharp and past the end it stays whole. Mirrored, the start is a sharp
+ * band and the blur grows the same way on both sides of it - a tilt-shift.
+ */
+export function blurredAlong(source: HTMLCanvasElement, from: Point, to: Point, radius: number, mirroredBlur = false): HTMLCanvasElement {
+  const mask = blank(source.width, source.height);
+  const start = mirroredBlur ? { x: 2 * from.x - to.x, y: 2 * from.y - to.y } : from;
+  const ramp = mask.pen.createLinearGradient(start.x, start.y, to.x, to.y);
+  if (mirroredBlur) {
+    ramp.addColorStop(0, '#fff');
+    ramp.addColorStop(0.5, 'rgba(255,255,255,0)');
+  } else {
+    ramp.addColorStop(0, 'rgba(255,255,255,0)');
+  }
+  ramp.addColorStop(1, '#fff');
+  mask.pen.fillStyle = ramp;
+  mask.pen.fillRect(0, 0, source.width, source.height);
+  return blurredThrough(source, mask.canvas, radius, { x: 0, y: 0, width: source.width, height: source.height });
 }
 
 /** Only what is inside the box: the picture becomes the box's size. */

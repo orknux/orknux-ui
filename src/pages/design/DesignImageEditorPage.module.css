@@ -584,6 +584,27 @@ button.toolbarTitle:hover {
   touch-action: none;
 }
 
+/* A gradual blur's line: sharp at the hollow handle, blurred at the full one; either is dragged to adjust it. */
+.gradientLine {
+  stroke: var(--color-text-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.gradientHandle {
+  fill: var(--color-bg);
+  stroke: var(--color-text-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.gradientHandleEnd {
+  fill: var(--color-text-primary);
+}
+
 .selected {
   fill: var(--color-violet-soft);
   stroke: var(--color-violet);
