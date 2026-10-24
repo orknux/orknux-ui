@@ -2161,3 +2161,18 @@ button.attachmentName {
 .replySuggestion:hover {
   border-color: var(--color-accent-brand);
 }
+
+/*
+ * A line of an agent's turn after its first: drawn close under the one above,
+ * as the calls of a run already were, because it is the same message going on
+ * rather than a new one. The log's gap is for turns.
+ */
+.turnContinued {
+  margin-top: calc(var(--space-6) - var(--space-24));
+}
+
+/* Where the avatar would be on a line that continues a turn, so its text lines up with the first line's. */
+.assistantAvatarSpace {
+  flex-shrink: 0;
+  width: 32px;
+}

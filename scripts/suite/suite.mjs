@@ -2210,6 +2210,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-turn-grouping-check',
+    what: "an agent's turn - what it said between calls, its calls, thinking, pictures and answer - is one message with one header and one Copy, live and after a reload",
+    needs: ['workspace'],
+    // Stubs the history, the stream and the agent on the chat list: the shape of chat 979's turn, without a model.
+  },
+  {
     name: 'chat-midturn-picture-check',
     what: 'a picture drawn in a turn stays above a message the person wrote into that turn afterwards, not under it',
     needs: ['workspace'],

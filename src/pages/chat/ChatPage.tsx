@@ -1274,6 +1274,76 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   /** The pictures the working on screen draws among its calls, which the last answer does not draw again. */
   const drawnInTurn = new Set(working.calls.flatMap((call) => (call.drew === undefined ? [] : [call.drew])));
 
+  /*
+   * An agent's turn is one message, however many lines the thread keeps it in.
+   *
+   * Read back, a turn is several: what the agent said between its calls, each
+   * call, each round's thinking, the pictures it drew and the answer - and each
+   * line that was the agent's drew its own avatar, name, time and Copy, so one
+   * turn of chat 979 read as three messages. Everything between one thing the
+   * person said and the next is now one turn: the first line that is drawn
+   * carries the one header, the rest follow under it without one, and only the
+   * answer - the turn's last line of text - has the actions. A line drawn
+   * inside another (a picture carried into the answer) is not a line of its
+   * own here either.
+   */
+  const turnHead = new Set<number>();
+  /** Each line of a turn, by the turn's first line. */
+  const turnOf = new Map<number, number>();
+  /** Each turn's answer, by the turn's first line. */
+  const turnAnswerOf = new Map<number, number>();
+  {
+    let turn: number[] = [];
+    const close = () => {
+      if (turn.length === 0) return;
+      const head = turn[0];
+      turnHead.add(head);
+      turn.forEach((at) => turnOf.set(at, head));
+      const said = turn.filter((at) => messages[at].role !== CALL_ROLE && messages[at].role !== THOUGHT_ROLE);
+      if (said.length > 0) turnAnswerOf.set(head, said[said.length - 1]);
+      turn = [];
+    };
+    messages.forEach((message, at) => {
+      if (message.role === 'user' || message.compaction != null) {
+        close();
+        return;
+      }
+      if (carried.has(at)) return;
+      turn.push(at);
+    });
+    close();
+  }
+  const isTurnAnswer = (index: number) => {
+    const head = turnOf.get(index);
+    return head === undefined || turnAnswerOf.get(head) === index;
+  };
+  /** Who the turn was: whoever gave its answer, or failing that its first line. */
+  const turnName = (index: number) => {
+    const head = turnOf.get(index) ?? index;
+    const answer = turnAnswerOf.get(head);
+    return (
+      (answer === undefined ? null : messages[answer].actor) ??
+      messages[head].actor ??
+      current?.agentName ??
+      current?.modelName ??
+      'assistant'
+    );
+  };
+  /** The one header of a turn whose first line is a call or a thought, drawn above it. */
+  const turnHeader = (index: number) => (
+    <div className={styles.assistantRow} data-turn-line={index}>
+      <span className={styles.assistantAvatar} aria-hidden="true">
+        <img src={cpuIcon} alt="" width={16} height={16} />
+      </span>
+      <div className={styles.assistantBody}>
+        <span className={styles.assistantName} data-turn-header="">
+          {turnName(index)}
+        </span>
+        {sentAt(messages[index].at) !== null && <span className={styles.sentAt}>{sentAt(messages[index].at)}</span>}
+      </div>
+    </div>
+  );
+
   /** Each review where it was sent, and - for one taken back - a line where it was taken back. */
   const placedReviews = new Map<number, { review: ChatReview; taken: boolean }[]>();
   const place = (when: string, entry: { review: ChatReview; taken: boolean }) => {
@@ -3804,7 +3874,9 @@ ${named}`;
                   <div className={styles.compactionSummary}>{message.compaction.summary}</div>
                 </details>
               ) : message.role === CALL_ROLE ? (
-                <div className={styles.call}>
+                <>
+                {turnHead.has(index) && turnHeader(index)}
+                <div className={`${styles.call} ${styles.turnContinued}`} data-turn-line={turnOf.get(index)}>
                   {/*
                     Folded, the same as one arriving live.
                     
@@ -3817,15 +3889,19 @@ ${named}`;
                   */}
                   <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} folded />
                 </div>
+                </>
               ) : message.role === THOUGHT_ROLE ? (
                 /*
                   One round's thinking, read back in its place among the calls
                   - the same section the live turn drew there, so a reload
                   reads the way the turn did.
                 */
-                <div className={styles.call} data-thought="">
+                <>
+                {turnHead.has(index) && turnHeader(index)}
+                <div className={`${styles.call} ${styles.turnContinued}`} data-thought="" data-turn-line={turnOf.get(index)}>
                   <Thinking text={message.thinking ?? ''} millis={message.thinkingMillis} />
                 </div>
+                </>
               ) : message.role === 'user' ? (
                 <div className={styles.userRow} data-find={findMark(index)}>
                   <div className={styles.userBody}>
@@ -3876,10 +3952,18 @@ ${named}`;
                   </div>
                 </div>
               ) : carried.has(index) ? null : (
-                <div className={styles.assistantRow} data-find={findMark(index)}>
-                  <span className={styles.assistantAvatar} aria-hidden="true">
-                    <img src={cpuIcon} alt="" width={16} height={16} />
-                  </span>
+                <div
+                  className={turnHead.has(index) ? styles.assistantRow : `${styles.assistantRow} ${styles.turnContinued}`}
+                  data-find={findMark(index)}
+                  data-turn-line={turnOf.get(index)}
+                >
+                  {turnHead.has(index) ? (
+                    <span className={styles.assistantAvatar} aria-hidden="true">
+                      <img src={cpuIcon} alt="" width={16} height={16} />
+                    </span>
+                  ) : (
+                    <span className={styles.assistantAvatarSpace} aria-hidden="true" />
+                  )}
                   <div className={styles.assistantBody}>
                     {/*
                       Whoever actually said it. A turn carried in from the
@@ -3888,10 +3972,12 @@ ${named}`;
                       misleading line on a page somebody opened to work out what
                       that agent did.
                     */}
-                    <span className={styles.assistantName}>
-                      {message.actor ?? current.agentName ?? current.modelName ?? 'assistant'}
-                    </span>
-                    {sentAt(message.at) !== null && (
+                    {turnHead.has(index) && (
+                      <span className={styles.assistantName} data-turn-header="">
+                        {turnName(index)}
+                      </span>
+                    )}
+                    {turnHead.has(index) && sentAt(message.at) !== null && (
                       <span className={styles.sentAt}>{sentAt(message.at)}</span>
                     )}
                     {/* Only the answer just given has a time behind it. */}
@@ -4181,6 +4267,7 @@ ${named}`;
                         </button>
                       </span>
                     )}
+                    {isTurnAnswer(index) && (
                     <div className={styles.rowActions}>
                       <button
                         type="button"
@@ -4258,6 +4345,7 @@ ${named}`;
                       )}
                       {copySaid(index)}
                     </div>
+                    )}
                   </div>
                 </div>
               )}
