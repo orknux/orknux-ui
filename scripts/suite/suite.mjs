@@ -1851,13 +1851,36 @@ export const TESTS = [
 
   {
     name: 'chat-audio-check',
-    what: "a sound attached in a chat plays as an <audio> under its message, read back and sent, a MIDI file stays a chip, and a model's page offers Takes audio on OpenAI's own host and on an OpenAI-shaped server, not Ollama - and Save stores it",
+    what: "a sound attached in a chat plays as an <audio> under its message, read back and sent, a MIDI file has a Play rather than a player, and a model's page offers Takes audio on OpenAI's own host and on an OpenAI-shaped server, not Ollama - and Save stores it",
     needs: ['workspace'],
     /*
      * The chat half stubs the history, the upload and one turn's stream in the
      * page; the model half makes its own providers on .invalid hosts, and one on
      * api.openai.com that is never called, and removes them. Whether a model is
      * sent the sound, and refused it, is ChatAudioTest's.
+     */
+  },
+
+  {
+    name: 'chat-sound-check',
+    what: "an mp3 an agent attached plays under its answer with a download beside it, and a MIDI file's Play asks for the rendering once, says Rendering… meanwhile, and then plays it",
+    needs: ['workspace'],
+    /*
+     * The history is stubbed in the page and the files are routed - the
+     * rendering after a pause long enough to read the caption. Whether the
+     * server renders MIDI is ChatAudioPlayTest's.
+     */
+  },
+
+  {
+    name: 'voice-play-check',
+    what: 'in voice mode a sound the agent plays is fetched and played ahead of its answer, the panel says Speaking over it, the answer is read after it, and stopping the turn stops it',
+    needs: ['workspace'],
+    /*
+     * The ears, the mouth and the turn's stream are stubbed as in
+     * voice-queue-check; the stream sends a `play` frame before the answer.
+     * Makes its own transcription and speech models and removes them. Whether
+     * the server sends the frame only to a voice turn is ChatAudioPlayTest's.
      */
   },
 

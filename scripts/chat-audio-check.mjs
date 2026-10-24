@@ -6,7 +6,7 @@
  *   - an mp3 read back with the history, and a flac sent with a message, is
  *     drawn as an `<audio>` with controls under the person's message - not as a
  *     chip that downloads - and has room on screen; a MIDI file is not a sound
- *     and stays a chip;
+ *     a browser plays, and has a Play instead (chat-sound-check presses it);
  *   - a chat model on OpenAI's own host and one on an OpenAI-shaped server (a
  *     llama.cpp or vLLM host) draw the Takes audio box, Save stores it and a
  *     reload draws it back; an Ollama model draws no such box, because its API
@@ -86,7 +86,7 @@ record(earlier?.controls === true, 'with controls to play it');
 record(earlier?.row === 'user', `under the person's message (${earlier?.row})`);
 record((earlier?.width ?? 0) >= 200 && (earlier?.height ?? 0) >= 20, `and with room on screen (${earlier?.width}x${earlier?.height})`);
 const midi = await drawnAs('903');
-record(midi?.tag === 'a', `a MIDI file is not a sound, and stays a chip (${JSON.stringify(midi)})`);
+record(midi?.tag === 'div' && !midi.controls, `a MIDI file is not a sound a browser plays: a bar with Play, not a player (${JSON.stringify(midi)})`);
 
 await page.locator('input[type="file"]').first().setInputFiles({ name: 'take.flac', mimeType: 'audio/flac', buffer: Buffer.from('fLaC') });
 await page.waitForTimeout(400);

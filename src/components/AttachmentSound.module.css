@@ -1,0 +1,70 @@
+/*
+ * A sound under a message: the browser's own player with a download beside it
+ * - and for a MIDI file, which no browser plays, a Play that asks the server for
+ * a rendering first.
+ */
+.sound {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 320px;
+  max-width: 100%;
+}
+
+.player {
+  display: block;
+  width: 100%;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play {
+  padding: var(--space-2) var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.play:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.play:disabled {
+  cursor: progress;
+  color: var(--color-text-muted);
+}
+
+.download {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.download:hover {
+  color: var(--color-text-primary);
+}
+
+.error {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+}

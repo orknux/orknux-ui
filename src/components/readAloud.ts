@@ -1,3 +1,4 @@
+import { fetchSound } from '../api/attachments';
 import { speak } from '../api/speech';
 import { spokenText } from './spokenText';
 import { t } from '../i18n';
@@ -102,6 +103,14 @@ export interface Reading {
    * not.
    */
   push: (whole: string, done: boolean) => void;
+  /**
+   * Plays a sound at [url] in its place in the queue: after whatever has been
+   * handed over already, before whatever comes next. What `audio_play` puts in a
+   * voice turn, which the agent asks for before its answer arrives - so the
+   * sound plays first and the answer is read when it ends. `stop` stops it like
+   * any piece, which is how talking over it ends it.
+   */
+  play: (url: string) => void;
   /** Abandons it: nothing already asked for is played, and nothing more is asked for. */
   stop: () => void;
 }
@@ -199,7 +208,7 @@ export function readAloud(
   chunking: SpeechChunking = CHUNKING_DEFAULT,
 ): Reading {
   /** Pieces that have not been asked for yet, in the order they must be heard. */
-  const pending: string[] = [];
+  const pending: (string | { sound: string })[] = [];
   /** Characters handed over to be read, and of those the ones already heard. */
   let total = 0;
   let heard = 0;
@@ -253,7 +262,10 @@ export function readAloud(
   /** Asks for the next piece, or answers null when there is none waiting. */
   function ask(): { clip: Promise<Blob>; chars: number } | null {
     const next = pending.shift();
-    return next === undefined ? null : { clip: speak(workspaceId, next), chars: next.length };
+    if (next === undefined) return null;
+    // A sound the agent is playing: fetched as it stands and played in its place in the queue, counting for no text.
+    if (typeof next !== 'string') return { clip: fetchSound(next.sound), chars: 0 };
+    return { clip: speak(workspaceId, next), chars: next.length };
   }
 
   /** Plays one clip and resolves when it has finished, or at once if it cannot. */
@@ -358,6 +370,11 @@ export function readAloud(
       read += upTo;
       pending.push(...parts);
       total += parts.reduce((sum, part) => sum + part.length, 0);
+      void drain();
+    },
+    play(url) {
+      if (stopped) return;
+      pending.push({ sound: url });
       void drain();
     },
     stop() {

@@ -48,12 +48,14 @@ import type { SkillOffer } from '../../api/skills';
 import {
   attachmentUrl,
   isAudible,
+  isMidi,
   isPlayable,
   isShowable,
   formatSize,
   uploadAttachments,
 } from '../../api/attachments';
 import type { Attachment } from '../../api/attachments';
+import { AttachmentSound } from '../../components/AttachmentSound';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { CallLine } from '../../components/CallLine';
 import { ASK_EVERY_MS } from '../../components/NotificationBell';
@@ -1417,17 +1419,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
               data-message-file={file.id}
               data-message-video=""
             />
-          ) : isAudible(file.contentType) ? (
-            <audio
-              key={file.id}
-              className={styles.chatAudio}
-              src={attachmentUrl(file.id)}
-              controls
-              preload="metadata"
-              title={file.filename}
-              data-message-file={file.id}
-              data-message-audio=""
-            />
+          ) : isAudible(file.contentType) || isMidi(file.contentType) ? (
+            <AttachmentSound key={file.id} file={file} />
           ) : (
             <a
               key={file.id}
@@ -2007,6 +2000,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
             onProgress(answer);
           },
           ...watchWorking(),
+          // A sound the agent plays goes into the panel's speaker queue, ahead of the answer it reads.
+          onPlay: (sound) => voiceControls.current?.play(sound.url),
           onDone: (spend) => keepThinkingOnAnswer(spend),
           onError: (reason) => {
             failure = reason;
@@ -2635,11 +2630,13 @@ ${named}`;
           onProgress(answer);
         },
         ...watchWorking(),
+        onPlay: (sound) => voiceControls.current?.play(sound.url),
         onDone: (spend) => keepThinkingOnAnswer(spend),
         onError: (reason) => {
           failure = reason;
         },
-      }, signal);
+        // A voice turn, as its comment in the API says: the server lends audio_play only to one.
+      }, signal, true);
       if (failure !== null) throw new Error(failure);
       if (!heard) await fetchChatMessages(currentId).then(setMessages).catch(() => undefined);
       await loadSessions(currentId);

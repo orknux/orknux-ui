@@ -94,11 +94,47 @@ export function isPlayable(contentType: string): boolean {
 /**
  * Whether the chat may play it under the message in an `<audio>`.
  *
- * The three sounds the server serves inline - and sends a model that takes
- * audio; MIDI is notes rather than sound, and stays a chip.
+ * The sounds the server serves inline: mp3, flac, wav, ogg and m4a/aac. MIDI is
+ * notes rather than sound, and has [isMidi]'s Play instead.
  */
 export function isAudible(contentType: string): boolean {
-  return ['audio/mpeg', 'audio/flac', 'audio/wav'].includes(contentType.toLowerCase());
+  return ['audio/mpeg', 'audio/flac', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/aac'].includes(
+    contentType.toLowerCase(),
+  );
+}
+
+/** Whether it is a MIDI file: a score no browser plays, which the server renders to sound when Play is pressed. */
+export function isMidi(contentType: string): boolean {
+  return ['audio/midi', 'audio/mid', 'audio/x-midi', 'audio/x-mid'].includes(contentType.toLowerCase());
+}
+
+/** Where a MIDI attachment is served as sound: rendered by the server the first time, kept after. */
+export function attachmentAudioUrl(id: string): string {
+  return `/api/attachments/${id}/audio`;
+}
+
+/**
+ * A MIDI attachment as sound, for Play.
+ *
+ * Fetched rather than handed to an `<audio>` as its address, because rendering
+ * takes seconds the first time and the page says so while it does - and an
+ * element given the address would say nothing until it played or failed.
+ */
+export function fetchAttachmentAudio(id: string): Promise<Blob> {
+  return fetchSound(attachmentAudioUrl(id));
+}
+
+/**
+ * A sound the server serves - an attachment, or a MIDI file's rendering - as
+ * bytes to play, with the server's own sentence where it refused.
+ */
+export async function fetchSound(url: string): Promise<Blob> {
+  const answer = await fetch(url, { credentials: 'include' });
+  if (!answer.ok) {
+    const said = (await answer.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(said?.error ?? t('That could not be played.'));
+  }
+  return answer.blob();
 }
 
 /** "2.4 MB", for a chip that has to fit beside a filename. */

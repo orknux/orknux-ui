@@ -476,6 +476,11 @@ export interface ChatStreamHandlers {
   onDrew: (markdown: string) => void;
   /** A file the agent's side put on the chat during this turn; it goes under the answer. */
   onFiled?: (file: Attachment) => void;
+  /**
+   * A sound the agent is playing to the person, in a voice turn: `audio_play`
+   * asked for it, and only the voice panel has speakers queued to put it in.
+   */
+  onPlay?: (sound: { url: string; filename: string; contentType: string }) => void;
   /** The chat's widgets after the agent changed one, all of them. */
   onWidgets?: (widgets: ChatWidget[]) => void;
   /** What the agent wrote beside the calls it is about to make - how it reports progress. */
@@ -863,6 +868,7 @@ async function read(
       reason?: string;
       title?: string;
       markdown?: string;
+      url?: string;
       id?: string;
       filename?: string;
       contentType?: string;
@@ -884,6 +890,9 @@ async function read(
     else if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
     else if (frame.event === 'thinking' && payload.text !== undefined) handlers.onThinking(payload.text);
     else if (frame.event === 'drew' && payload.markdown !== undefined) handlers.onDrew(payload.markdown);
+    else if (frame.event === 'play' && payload.url !== undefined) {
+      handlers.onPlay?.({ url: payload.url, filename: payload.filename ?? '', contentType: payload.contentType ?? '' });
+    }
     else if (frame.event === 'widgets' && Array.isArray(payload.widgets)) {
       handlers.onWidgets?.(payload.widgets.map((one) => ({ ...one, id: String(one.id) })));
     } else if (frame.event === 'filed' && payload.id !== undefined) {
