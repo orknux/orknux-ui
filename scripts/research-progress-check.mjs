@@ -45,7 +45,7 @@ await page.route('**/graphql', async (route) => {
   return route.continue();
 });
 
-await page.goto(`${BASE}/workspace/${WORKSPACE}/answer/research/424242`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/workspace/${WORKSPACE}/analysis/research/424242`, { waitUntil: 'domcontentloaded' });
 const opened = page.locator('[data-opened="424242"]');
 await opened.waitFor({ timeout: 20_000 }).catch(() => undefined);
 

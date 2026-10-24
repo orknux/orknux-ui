@@ -356,7 +356,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
               checked={showHidden}
               onChange={(event) => showHiddenAs(event.target.checked)}
             />
-            {t('Show hidden')}
+            {t('Show built-in')}
           </label>
         </SearchRow>
 
@@ -401,7 +401,7 @@ export function WorkspaceWorkflowsPage({ session, onSignOut }: WorkspaceWorkflow
                 <Link className={styles.name} to={`/workspace/${workspaceId}/workflows/${workflow.workflowId}/editor`}>
                   {workflow.name}
                 </Link>
-                {workflow.hidden && <span className={styles.hiddenTag}>{t('Hidden')}</span>}
+                {workflow.hidden && <span className={styles.hiddenTag}>{t('Built-in')}</span>}
               </span>
               <span className={`${styles.colGrow} ${styles.description}`}>{workflow.description ?? '—'}</span>
               <span className={styles.colLastRun}>

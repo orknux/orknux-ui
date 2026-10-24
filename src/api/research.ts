@@ -1,8 +1,9 @@
 import { graphql } from './client';
 import type { PageOf } from './client';
+import { t } from '../i18n';
 
 /**
- * Answer > Research: a question researched by one of the workspace's own
+ * Analysis > Research: a question researched by one of the workspace's own
  * workflows, and the modes that say which. Issue #659.
  */
 
@@ -134,14 +135,35 @@ export async function fetchResearch(id: string): Promise<Research | null> {
   return data.research;
 }
 
-export async function fetchResearchDocuments(workspaceId: string): Promise<ResearchDocument[]> {
+/** The workspace's documents a word appears in, newest first, a few at a time: a picker's list, not the whole of them. */
+export async function fetchResearchDocuments(workspaceId: string, search = '', limit = 8): Promise<ResearchDocument[]> {
   const data = await graphql<{ researchDocuments: ResearchDocument[] }>(
-    `query ResearchDocuments($workspaceId: ID!) {
-       researchDocuments(workspaceId: $workspaceId) { id name description contentType sizeBytes savedAt }
+    `query ResearchDocuments($workspaceId: ID!, $search: String, $limit: Int) {
+       researchDocuments(workspaceId: $workspaceId, search: $search, limit: $limit) { id name description contentType sizeBytes savedAt }
      }`,
-    { workspaceId },
+    { workspaceId, search: search.trim() === '' ? null : search.trim(), limit },
   );
   return data.researchDocuments;
+}
+
+/**
+ * Files uploaded from the dialog, kept on the workspace's Artifacts page like
+ * any other and answered as documents to pick. REST, because what crosses is
+ * bytes.
+ */
+export async function uploadResearchDocuments(workspaceId: string, files: File[]): Promise<ResearchDocument[]> {
+  const form = new FormData();
+  files.forEach((file) => form.append('files', file, file.name));
+  const answer = await fetch(`/api/workspaces/${workspaceId}/research-documents`, {
+    method: 'POST',
+    body: form,
+    credentials: 'include',
+  });
+  const said = (await answer.json().catch(() => null)) as
+    | { documents?: Array<ResearchDocument & { id: string | number }>; error?: string; message?: string }
+    | null;
+  if (!answer.ok) throw new Error(said?.error ?? said?.message ?? t('Those files could not be uploaded.'));
+  return (said?.documents ?? []).map((one) => ({ ...one, id: String(one.id) }));
 }
 
 /** Writes the research down and starts its mode's workflow; it comes back running. */

@@ -2117,7 +2117,7 @@ export const TESTS = [
 
   {
     name: 'research-page-check',
-    what: 'Answer > Research opens from the bar, New research offers every option, and Start lists the research',
+    what: 'Analysis > Research opens from the bar, New research offers every option - websites as lists, documents picked or uploaded, PDF first - and Start lists the research',
     needs: ['workspace'],
     /*
      * Starts one research and removes it again. No model is needed: what is
@@ -2132,7 +2132,7 @@ export const TESTS = [
   },
   {
     name: 'workflows-hidden-check',
-    what: 'the research workflows are off the Workflows list until Show hidden is ticked, and open in the editor once shown',
+    what: 'the research workflows are off the Workflows list until Show built-in is ticked, and open in the editor once shown',
     needs: ['workspace'],
   },
 
