@@ -399,12 +399,16 @@ const OBJECT_PAGE_SIZE = 100;
  * written out, or read from another node, which is how a Slack trigger's
  * `commands` become the skills an agent follows (issue #381).
  *
+ * `model` is the id of the chat model the agent thinks with on this node
+ * instead of its own - written out, or read off the run, which is how a
+ * research hands its planner and writer the model it was started with.
+ *
  * Which conversation the node's turn belongs to is deliberately not here. That
  * is a Session node's, and an agent joins one by having an edge drawn from it —
  * so two agents can share a conversation by pointing at the same node, instead
  * of by somebody typing one key into both and hoping.
  */
-const AGENT_PARAMETERS = ['prompt', 'systemPrompt', 'skillIds'];
+const AGENT_PARAMETERS = ['prompt', 'systemPrompt', 'skillIds', 'model'];
 
 /**
  * What a session node holds, and the names are the server's: `sessionKey` is
@@ -1821,7 +1825,9 @@ function parameterPlaceholder(draft: NodeData, name: string): string | undefined
       ? t("The agent's own briefing")
       : name === 'skillIds'
         ? t('No skill is loaded by force')
-        : undefined;
+        : name === 'model'
+          ? t("The agent's own model")
+          : undefined;
 }
 
 /**
@@ -7976,6 +7982,7 @@ Change the keystroke in Preferences.`}
                                 or as a list from another node - the Slack trigger&apos;s <strong>commands</strong>,
                                 say - and they are loaded for the model before it starts. An id that names no skill
                                 is refused here when written, and noted in the run when it arrived with the message.
+                                {' '}<strong>model</strong> is the id of a chat model to think with instead of the agent&apos;s own.
                                 {draft.mappings.some((mapping) => mapping.name === 'sessionKey') && (
                                   <>
                                     {' '}
@@ -8104,6 +8111,11 @@ Change the keystroke in Preferences.`}
                                     <label className={styles.parameterName} htmlFor={`node-mapping-${mapping.name}`}>
                                       {mapping.name}
                                     </label>
+                                    {draft.kind === 'AGENT' && mapping.name === 'model' && (
+                                      <FieldHint label={t('Model')}>
+                                        {t('The id of the chat model the agent thinks with on this node, instead of its own - written here, or pointed at a field of the run such as trigger.model. Leave empty for the agent’s own model.')}
+                                      </FieldHint>
+                                    )}
                                     {draft.kind === 'AGENT' && mapping.name === 'skillIds' && (
                                       <FieldHint label={t('Skill IDs')}>
                                         {t('The ids of skills to load for the model before it starts, whether or not it would ask - written here, comma-separated, or pointed at another node such as a Slack trigger’s commands. An id that names no skill is refused when written here, and noted in the run when it came with the message. Leave empty to load nothing by force.')}

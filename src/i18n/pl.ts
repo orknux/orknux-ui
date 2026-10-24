@@ -1242,6 +1242,8 @@ export const PL: Record<string, string> = {
   "Permanently remove this workspace and all associated workflows and executions.": "Trwale usuń tę przestrzeń roboczą oraz wszystkie powiązane przepływy pracy i uruchomienia.",
   "Remove this model from your workspace configuration": "Usuń ten model z konfiguracji swojej przestrzeni roboczej",
   "Remove this server from the workspace. This will not delete the server configuration.": "Usuń ten serwer z przestrzeni roboczej. Konfiguracja samego serwera nie zostanie skasowana.",
+  "The agent's own model": "Własny model agenta",
+  "The id of the chat model the agent thinks with on this node, instead of its own - written here, or pointed at a field of the run such as trigger.model. Leave empty for the agent’s own model.": "Identyfikator modelu czatu, którym agent myśli w tym węźle zamiast własnego - wpisany tutaj albo wskazany jako pole przebiegu, np. trigger.model. Puste oznacza własny model agenta.",
   "Replace this with the agent's own briefing as it is now": "Zastąp to obecnym poleceniem samego agenta",
   "The change is shown in the editor, against the code it would change.": "Zmiana pokazywana jest w edytorze, na tle kodu, który by zmieniła.",
 
