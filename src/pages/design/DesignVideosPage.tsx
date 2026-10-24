@@ -34,6 +34,9 @@ export function statusLabel(video: DesignVideo): string {
     case 'QUEUED':
       return (video.ahead ?? 0) > 0 ? tf('Queued, {ahead} ahead', { ahead: video.ahead ?? 0 }) : t('Queued');
     case 'GENERATING':
+      if (video.framesTotal !== null) {
+        return tf('Upscaling… {done} of {total} frames', { done: video.framesDone ?? 0, total: video.framesTotal });
+      }
       return video.progress !== null && video.progress > 0 ? tf('Making… {progress}%', { progress: video.progress }) : t('Making…');
     case 'DONE':
       return t('Made');
@@ -164,6 +167,12 @@ export function DesignVideosPage({ session, onSignOut }: DesignVideosPageProps) 
                   </span>
                   <span className={gallery.facts} title={video.reason ?? undefined}>
                     <span data-testid="video-model">{video.model}</span>
+                    {video.scale !== null && (
+                      <>
+                        <span className={gallery.dot}>·</span>
+                        <span data-testid="video-scale">{`${video.scale}×`}</span>
+                      </>
+                    )}
                     {video.durationSeconds !== null && (
                       <>
                         <span className={gallery.dot}>·</span>

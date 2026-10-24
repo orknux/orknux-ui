@@ -13,6 +13,7 @@ import {
   onTheWay,
   playable,
   queueDesignVideo,
+  queueDesignVideoUpscale,
   removeDesignVideo,
   stopDesignVideo,
 } from '../../api/videos';
@@ -24,6 +25,7 @@ import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
 import editor from './DesignImageEditorPage.module.css';
 import styles from './DesignVideos.module.css';
+import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { playingTime } from './DesignVideosPage';
 import { paceAfter, paceLine, paceShare } from './videoPace';
 import type { VideoPace } from './videoPace';
@@ -68,6 +70,14 @@ function labelOf(name: VideoSettingName): string {
   }
 }
 
+/** A video's own size: its width and height, or the WIDTHxHEIGHT a server took it as; zeros where neither says. */
+function sizeOf(video: DesignVideo | null): { width: number; height: number } {
+  if (video === null) return { width: 0, height: 0 };
+  if (video.width !== null && video.height !== null) return { width: video.width, height: video.height };
+  const said = /^(\d+)x(\d+)$/.exec(video.size ?? '');
+  return said === null ? { width: 0, height: 0 } : { width: Number(said[1]), height: Number(said[2]) };
+}
+
 /**
  * Where a video is made: what it shows, and beside it what the video is made
  * from - the prompt, the model, and the settings that model takes.
@@ -100,12 +110,17 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
   const [pictures, setPictures] = useState<Artifact[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [upscalers, setUpscalers] = useState<Model[]>([]);
+  const [upscaling, setUpscaling] = useState(false);
 
-  // The workspace's video models.
+  // The workspace's video models, and its upscale models for Upscale.
   useEffect(() => {
     if (workspaceId === '') return;
     fetchModels(workspaceId)
-      .then((all) => setModels(all.filter((one) => one.kind === 'VIDEO' && one.enabled)))
+      .then((all) => {
+        setModels(all.filter((one) => one.kind === 'VIDEO' && one.enabled));
+        setUpscalers(all.filter((one) => one.kind === 'UPSCALE' && one.enabled));
+      })
       .catch(() => setModels([]));
   }, [workspaceId]);
 
@@ -274,6 +289,20 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
     }
   }
 
+  /** Upscale: a new version of the video, opened at once so its progress is what the page shows. Throwing keeps the dialog open with the reason. */
+  async function upscale(upscaleModelId: string, algorithm: string, scale: number) {
+    if (video === null) return;
+    const queued = await queueDesignVideoUpscale({
+      workspaceId,
+      videoId: video.id,
+      modelId: upscaleModelId,
+      algorithm: algorithm === '' ? null : algorithm,
+      scale,
+    });
+    setUpscaling(false);
+    navigate(`/workspace/${workspaceId}/design/videos/${queued.id}`);
+  }
+
   async function stop() {
     if (video === null || busy) return;
     setBusy(true);
@@ -334,6 +363,11 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
         </span>
         <div className={editor.toolbarRight}>
           {video?.status === 'DONE' && video.url !== null && (
+            <button type="button" className={form.ghost} onClick={() => setUpscaling(true)} disabled={busy} data-testid="video-upscale">
+              {t('Upscale')}
+            </button>
+          )}
+          {video?.status === 'DONE' && video.url !== null && (
             <a className={`${form.ghost} ${styles.download}`} href={video.url} download={video.name} data-testid="video-download">
               {t('Download')}
             </a>
@@ -367,9 +401,13 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
                       ? (video.ahead ?? 0) > 0
                         ? tf('Queued, {ahead} ahead…', { ahead: video.ahead ?? 0 })
                         : t('Queued')
-                      : video.progress !== null && video.progress > 0
-                        ? tf('Making… {progress}%', { progress: video.progress })
-                        : t('Making…')
+                      : video.framesTotal !== null
+                        ? tf('Upscaling… {done} of {total} frames', { done: video.framesDone ?? 0, total: video.framesTotal })
+                        : video.upscaledFrom !== null
+                          ? t('Upscaling…')
+                          : video.progress !== null && video.progress > 0
+                            ? tf('Making… {progress}%', { progress: video.progress })
+                            : t('Making…')
                   }
                   delay={0}
                   size={72}
@@ -544,6 +582,16 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
             </div>
           )}
 
+          {video !== null && video.upscaledFrom !== null && (
+            <Link
+              className={editor.configureLink}
+              to={`/workspace/${workspaceId}/design/videos/${video.upscaledFrom}`}
+              data-testid="video-upscaled-from"
+            >
+              {tf('Upscaled {scale}× from the original', { scale: video.scale ?? 1 })}
+            </Link>
+          )}
+
           {video?.durationSeconds != null && (
             <p className={editor.empty} data-testid="video-length">
               {tf('Plays for {time}', { time: playingTime(video.durationSeconds) })}
@@ -566,6 +614,15 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
           </button>
         </form>
       </div>
+      <DesignUpscaleDialog
+        open={upscaling}
+        workspaceId={workspaceId}
+        models={upscalers}
+        width={sizeOf(video).width}
+        height={sizeOf(video).height}
+        onClose={() => setUpscaling(false)}
+        onUpscale={upscale}
+      />
     </AppShell>
   );
 }
