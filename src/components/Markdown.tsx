@@ -29,7 +29,7 @@ import { commandLine } from './shellGrammar';
 import { ImageZoom } from './ImageZoom';
 import type { Picture } from './ImageZoom';
 import { rehypeIssueLinks } from './issueLinks';
-import { rehypeMarkMatches } from './searchMatches';
+import { markTree } from './Highlighted';
 import { normaliseMath } from './markdownMath';
 import { t } from '../i18n';
 
@@ -77,10 +77,12 @@ export interface MarkdownProps {
    */
   issuesIn?: string;
   /**
-   * A term to mark wherever it appears in the prose. Left out everywhere nothing
-   * is being searched for, which is every use of this but the documentation.
+   * The words to mark wherever they appear in the prose, as `termsOf` gives
+   * them. Left out everywhere nothing is being searched for, which is every use
+   * of this but the skills page; a change to them never parses the text again -
+   * see `markTree`.
    */
-  highlight?: string;
+  highlight?: readonly string[];
   /**
    * Whether a picture in the prose opens larger when it is clicked.
    *
@@ -273,11 +275,21 @@ type RehypePlugins = ComponentProps<typeof ReactMarkdown>['rehypePlugins'];
  * Kept from one render to the next while its words and options stay the same: a list of skills drew every card's
  * markdown again on each letter typed into its search, and parsing them held the box up for most of a second.
  */
-export const Markdown = memo(MarkdownBody);
+export const Markdown = memo(MarkdownBody, (before, after) => {
+  for (const key of Object.keys({ ...before, ...after }) as (keyof MarkdownProps)[]) {
+    if (key === 'highlight') continue;
+    if (before[key] !== after[key]) return false;
+  }
+  // The words by what they are, since a page makes a new list of the same words on every render.
+  return (before.highlight ?? []).join(' ') === (after.highlight ?? []).join(' ');
+});
+
+/** Nothing to mark: one list for every caller that passes none, so the marking below is not redone for it. */
+const NO_TERMS: readonly string[] = [];
 
 function MarkdownBody({
   children,
-  highlight,
+  highlight = NO_TERMS,
   issuesIn,
   zoomImages = false,
   pictureLinks = false,
@@ -322,9 +334,9 @@ function MarkdownBody({
   const mathed = useMemo(() => normaliseMath(children), [children]);
 
   /*
-   * Rebuilt only when the term changes. A fresh array on every render would have
-   * react-markdown reparse the document on every keystroke, which for a manual
-   * page is the whole document.
+   * Rebuilt only when the workspace changes. The search's words are not in here,
+   * because a plugin list that changed with every letter would have
+   * react-markdown parse the document again on every keystroke - see `marked`.
    */
   const rehypePlugins = useMemo<RehypePlugins>(
     () => [
@@ -346,23 +358,32 @@ function MarkdownBody({
        */
       [rehypeKatex, { throwOnError: false, trust: false, strict: 'ignore' }],
       [rehypeHighlight, { detect: false, languages: LANGUAGES }],
-      ...(highlight?.trim() ? [rehypeMarkMatches(highlight)] : []),
       ...(issuesIn === undefined ? [] : [rehypeIssueLinks(issuesIn)]),
     ],
-    [highlight, issuesIn],
+    [issuesIn],
   );
 
-  return (
-    <div className={styles.markdown}>
-      <ReactMarkdown
-        remarkPlugins={
+  /*
+   * The text parsed into elements, once per text and per what draws it.
+   *
+   * `ReactMarkdown` is called here rather than mounted: it is a plain function
+   * of its options with no hooks, so its answer is a tree of elements that can
+   * be kept. Mounted, it would parse on every render it was given; called in a
+   * memo it parses when the prose, the options or the state its components
+   * read change, and not when only the search's words do. The components close
+   * over `missing`, `zoomImages` and `runnable`, which is why those are among
+   * what it is kept by - the setters are the same function on every render.
+   */
+  const parsed = useMemo(
+    () =>
+      ReactMarkdown({
+        remarkPlugins:
           // Single dollars off: normaliseMath has already turned the ones that are maths into pairs, and left money alone.
           lineBreaks
             ? [remarkGfm, [remarkMath, { singleDollarTextMath: false }], remarkBreaks]
-            : [remarkGfm, [remarkMath, { singleDollarTextMath: false }]]
-        }
-        rehypePlugins={rehypePlugins}
-        components={{
+            : [remarkGfm, [remarkMath, { singleDollarTextMath: false }]],
+        rehypePlugins,
+        components: {
           /*
            * Anything the model links to is somewhere else entirely, so it opens
            * there and cannot reach back into this page.
@@ -455,10 +476,22 @@ function MarkdownBody({
               </button>
             );
           },
-        }}
-      >
-        {mathed}
-      </ReactMarkdown>
+        },
+        children: mathed,
+      }),
+    [mathed, lineBreaks, rehypePlugins, missing, zoomImages, runnable],
+  );
+
+  /*
+   * And the search's words marked in it: a walk over the elements kept above,
+   * which costs a letter typed far less than a parse - issue #642's freeze was
+   * the parse. Nothing to mark hands back the very same tree.
+   */
+  const marked = useMemo(() => markTree(parsed, highlight), [parsed, highlight]);
+
+  return (
+    <div className={styles.markdown}>
+      {marked}
 
       {gallery.length > 0 && (
         <div className={styles.gallery} aria-label={t('Pictures this answer links to')}>

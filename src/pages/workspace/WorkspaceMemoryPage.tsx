@@ -28,10 +28,12 @@ import slidersIcon from '../../assets/sliders-horizontal.svg';
 // on every card reads as a warning about the card rather than about deleting it.
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
+import { Highlighted } from '../../components/Highlighted';
 import { Loader } from '../../components/Loader';
 import { MoveToCatalog } from '../../components/MoveToCatalog';
 import { UsedBy } from '../../components/UsedBy';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
+import { excerptAround, firstMatch, termsOf } from '../../components/searchMatches';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceMemoryPage.module.css';
 import { DuplicateButton } from '../../components/ComponentTransfer';
@@ -64,6 +66,23 @@ const GROUP_SIZE = PAGE_SIZE;
 
 /** How long the box waits for the typing to stop before every catalog is asked. */
 const SEARCH_PAUSE_MS = 250;
+
+/**
+ * How far into a memory a match may be and still be on its card.
+ *
+ * The card shows three lines and cuts the rest; past the second line break, or
+ * this many characters - a line and a half at the card's narrowest - the match
+ * is taken to be under the cut, and the card shows an excerpt around it instead.
+ */
+const SHOWN_CHARACTERS = 100;
+
+/** What a memory's card shows of its content: all of it, or an excerpt where the match would be cut off. */
+function shownOf(content: string, terms: readonly string[]): { text: string; excerpt: boolean } {
+  const at = firstMatch(content, terms);
+  const before = content.slice(0, Math.max(at, 0));
+  if (at === -1 || (at < SHOWN_CHARACTERS && before.split('\n').length <= 2)) return { text: content, excerpt: false };
+  return { text: excerptAround(content, terms) ?? content, excerpt: true };
+}
 
 /**
  * The workspace's memory: catalogs on the left, what is in the selected one on
@@ -103,6 +122,8 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
    */
   const [search, setSearch] = useState(() => addressed.get('q') ?? '');
   const searching = search.trim() !== '';
+  /** The words a card marks in its title and its text, so somebody can see why it is on the list. */
+  const terms = termsOf(search);
   /**
    * Whether a search has been narrowed to the selected catalog by choosing it
    * in the rail. Otherwise a search shows every catalog's matches, grouped.
@@ -284,12 +305,13 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
 
   /** A memory's card, the same in its catalog and in a search across all of them. */
   function memoryCard(memory: Memory) {
+    const shown = shownOf(memory.content, terms);
     return (
       <article key={memory.id} className={styles.card} data-memory-card={memory.title}>
         <header className={styles.cardHeader}>
           <h2 className={styles.cardTitle}>
             <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/memory/${memory.id}`}>
-              {memory.title}
+              <Highlighted text={memory.title} terms={terms} />
             </Link>
           </h2>
           <div className={styles.cardActions}>
@@ -331,7 +353,9 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
             </button>
           </div>
         </header>
-        <p className={styles.cardBody}>{memory.content}</p>
+        <p className={styles.cardBody} data-search-excerpt={shown.excerpt ? '' : undefined}>
+          <Highlighted text={shown.text} terms={terms} />
+        </p>
         <footer className={styles.cardFooter}>
           <span className={styles.author}>
             <span className={styles.avatar} aria-hidden="true">
