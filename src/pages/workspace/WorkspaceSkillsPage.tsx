@@ -36,6 +36,7 @@ import {
   SaveAsTemplateButton,
   UseTemplateButton,
 } from '../../components/ComponentTransfer';
+import { Highlighted } from '../../components/Highlighted';
 import { Loader } from '../../components/Loader';
 import { CatalogNameDialog } from '../../components/CatalogNameDialog';
 import { Markdown } from '../../components/Markdown';
@@ -43,6 +44,7 @@ import { MoveToCatalog } from '../../components/MoveToCatalog';
 import { NameDialog } from '../../components/NameDialog';
 import { UsedBy } from '../../components/UsedBy';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
+import { excerptAround, firstMatch, termsOf } from '../../components/searchMatches';
 import { shellUser } from '../../session/user';
 import styles from './WorkspaceMemoryPage.module.css';
 import { t } from '../../i18n';
@@ -89,6 +91,26 @@ function haystackOf(skill: { name: string; description: string | null; content: 
     haystacks.set(skill, held);
   }
   return held;
+}
+
+/**
+ * A skill's markdown as the words it reads as, for an excerpt on a card.
+ *
+ * Only the markers that would otherwise sit around a matched word - a heading's
+ * hashes, a quote's angle, bold and code ticks. Underscores stay: in a skill they
+ * are as often inside an identifier as around emphasis.
+ */
+function proseOf(markdown: string): string {
+  return markdown.replace(/^[ \t]{0,3}(?:#{1,6}|>)[ \t]*/gm, '').replace(/\*\*|`/g, '');
+}
+
+/**
+ * The excerpt a card draws when the search matched only its content, which the
+ * card does not show; null where something it does show matched, or nothing.
+ */
+function excerptFor(drawn: string, content: string, terms: readonly string[]): string | null {
+  if (terms.length === 0 || firstMatch(drawn, terms) !== -1) return null;
+  return excerptAround(proseOf(content), terms) ?? excerptAround(content, terms);
 }
 
 /**
@@ -139,6 +161,11 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
    */
   const [search, setSearch] = useState(() => addressed.get('q') ?? '');
   const searching = search.trim() !== '';
+  /**
+   * The words a card marks where it draws them: its name, its description and
+   * its content, so somebody can see why a card is on the list.
+   */
+  const terms = termsOf(search);
   /**
    * Whether a search has been narrowed to the selected catalog by choosing it
    * in the rail. Otherwise a search shows every catalog's matches, grouped.
@@ -332,14 +359,18 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
 
   /** A workspace skill's card, the same in its catalog and in a search across all of them. */
   function skillCard(skill: Skill) {
+    // The content is not on the card, so a skill found only by it says where.
+    const excerpt = excerptFor(`${skill.name} ${skill.key} ${skill.description ?? ''}`, skill.content, terms);
     return (
       <article key={skill.id} className={styles.card} data-skill-card={skill.name}>
         <header className={styles.cardHeader}>
           <h2 className={styles.cardTitle}>
             <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/skills/${skill.id}`}>
-              {skill.name}
+              <Highlighted text={skill.name} terms={terms} />
             </Link>
-            <code className={styles.cardKey} data-skill-key>{skill.key}</code>
+            <code className={styles.cardKey} data-skill-key>
+              <Highlighted text={skill.key} terms={terms} />
+            </code>
           </h2>
           <div className={styles.cardActions}>
             {/* A skill can be left defined but out of reach, which is
@@ -422,7 +453,14 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
             </button>
           </div>
         </header>
-        <p className={styles.cardBody}>{skill.description ?? t('No description')}</p>
+        <p className={styles.cardBody}>
+          {skill.description === null ? t('No description') : <Highlighted text={skill.description} terms={terms} />}
+        </p>
+        {excerpt !== null && (
+          <p className={styles.cardExcerpt} data-search-excerpt>
+            <Highlighted text={excerpt} terms={terms} />
+          </p>
+        )}
         <footer className={styles.cardFooter}>
           <span className={styles.author}>
             <span className={styles.avatar} aria-hidden="true">
@@ -437,21 +475,27 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
 
   /** A plugin skill's card: read-only, with the page folded away under it. */
   function pluginSkillCard(skill: PluginSkill) {
+    // Found only by what is folded away, it is opened, so the match can be seen.
+    const unfold = excerptFor(`${skill.name} ${skill.description ?? ''}`, skill.content, terms) !== null;
     return (
       <article key={skill.name} className={styles.card} data-skill-card={skill.name}>
         <header className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>{skill.name}</h2>
+          <h2 className={styles.cardTitle}>
+            <Highlighted text={skill.name} terms={terms} />
+          </h2>
         </header>
-        <p className={styles.cardBody}>{skill.description ?? t('No description')}</p>
+        <p className={styles.cardBody}>
+          {skill.description === null ? t('No description') : <Highlighted text={skill.description} terms={terms} />}
+        </p>
         {/*
           The page itself, folded away. A skill is long, and a
           catalog of them opened flat is a screen nobody reads -
           but what it says is the only thing worth coming here
           for, so it is one click and not a page away.
         */}
-        <details>
+        <details open={unfold || undefined}>
           <summary className={styles.statsText}>{t('Read it')}</summary>
-          <Markdown>{skill.content}</Markdown>
+          <Markdown highlight={terms}>{skill.content}</Markdown>
         </details>
       </article>
     );

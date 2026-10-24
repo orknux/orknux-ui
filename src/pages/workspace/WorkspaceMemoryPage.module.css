@@ -549,6 +549,22 @@
   white-space: pre-wrap;
 }
 
+/*
+ * Where a search matched a skill's content, which the card does not draw: the
+ * words around the match, on at most two lines, quieter than the description.
+ */
+.cardExcerpt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  line-height: 18px;
+  color: var(--color-text-muted);
+}
+
 .cardFooter {
   display: flex;
   align-items: center;

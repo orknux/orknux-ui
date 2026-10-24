@@ -438,6 +438,12 @@ export const TESTS = [
     // Every catalogue is stubbed; makes nothing and removes nothing.
   },
   {
+    name: 'skills-search-highlight-check',
+    what: "the skills and memory searches mark every occurrence of the words typed in a card's name, description and markdown; a card found by what it does not draw shows an excerpt or opens; clearing removes the marks; the marks follow the last key within 300 ms",
+    needs: ['workspace'],
+    // Makes a skill catalogue and a memory catalogue of its own and deletes both; a plugin's catalogue is stubbed.
+  },
+  {
     name: 'reports-url-check',
     what: 'Admin > Reports keeps the report it shows in the address, through a pick and a reload',
     needs: [],

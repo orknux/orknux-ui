@@ -1,0 +1,13 @@
+/*
+ * A word the search found, in whatever it was found in.
+ *
+ * The accent's soft fill rather than the browser's yellow: the soft fill is
+ * defined for both themes and for every accent somebody can choose, and the
+ * text keeps the primary colour so a mark on muted text reads no fainter than
+ * the words around it. The same paint as a hit in the manual.
+ */
+.match {
+  border-radius: var(--radius-4, 4px);
+  background: var(--color-accent-brand-soft);
+  color: var(--color-text-primary);
+}
