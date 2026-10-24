@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
-import { exportModels, fetchModels, fetchProviders, importModels, modelKindLabel, providerStatusLabel, providerTypeLabel, publishModelTemplate, setModelEnabled } from '../../api/models';
+import { exportModels, exportProvider, fetchModels, fetchProviders, importModels, modelKindLabel, providerStatusLabel, providerTypeLabel, publishModelTemplate, setModelEnabled } from '../../api/models';
 import type { Model, ModelImport, ModelProvider, ProviderStatus } from '../../api/models';
 import { createAgentForModel } from '../../api/agents';
 import type { SessionUser } from '../../api/session';
+import downloadIcon from '../../assets/download.svg';
 import settingsIcon from '../../assets/settings-14.svg';
 import userPlusIcon from '../../assets/user-plus.svg';
 import toggleOffIcon from '../../assets/toggle-off.svg';
@@ -434,6 +435,21 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
                   onDone={() => load()}
                 />
               </span>
+              <button
+                type="button"
+                className={styles.rowAction}
+                aria-label={tf('Export {name}', { name: provider.name })}
+                title={tf('Export {name}', { name: provider.name })}
+                data-testid="provider-export"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setTransferNote(null);
+                  exportProvider(workspaceId, provider).catch((cause: unknown) =>
+                    setTransferNote({ error: true, text: cause instanceof Error ? cause.message : t('Could not export the provider.') }));
+                }}
+              >
+                <img src={downloadIcon} alt="" width={14} height={14} />
+              </button>
               <Link
                 className={styles.rowAction}
                 to={`/workspace/${workspaceId}/models/providers/${provider.id}`}

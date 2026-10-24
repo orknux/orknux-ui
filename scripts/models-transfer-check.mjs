@@ -51,6 +51,34 @@ try {
     && JSON.stringify(exported.sort()) === JSON.stringify([`${PROVIDER} / zz ${stamp} Drawer`, `${PROVIDER} / zz ${stamp} Talker`])
     && file.modelProviders.every((provider) => provider.secret === undefined && JSON.stringify(provider).indexOf('sk-') < 0),
     `Export saves the models the list shows, under their provider, without a key (${JSON.stringify(exported)})`);
+
+  // One provider from its own row: the provider with every model it has, in a file named after it.
+  await page.getByPlaceholder('Search providers...').fill(PROVIDER);
+  const button = page.locator(`[data-testid="provider-export"][aria-label="Export ${PROVIDER}"]`);
+  await button.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const placed = await button.evaluate((held) => {
+    const settings = held.parentElement?.querySelector('a[href*="/models/providers/"]');
+    if (!settings) return null;
+    const a = held.getBoundingClientRect();
+    const b = settings.getBoundingClientRect();
+    return { centres: Math.round(Math.abs((a.top + a.height / 2) - (b.top + b.height / 2))), height: Math.round(a.height), settingsHeight: Math.round(b.height), before: a.right <= b.left };
+  }).catch(() => null);
+  record(placed !== null && placed.centres <= 1 && placed.height === placed.settingsHeight && placed.before,
+    `the provider row offers Export beside its settings (${JSON.stringify(placed)})`);
+  const waitingOne = page.waitForEvent('download', { timeout: 10_000 }).catch(() => null);
+  await button.click().catch(() => undefined);
+  const one = await waitingOne;
+  let oneFile = null;
+  if (one !== null) {
+    const chunks = [];
+    for await (const chunk of await one.createReadStream()) chunks.push(chunk);
+    oneFile = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  }
+  const shipped = (oneFile?.modelProviders ?? []).map((provider) => `${provider.name}: ${provider.models.length}`);
+  record(oneFile?.format === 'orknux-models' && JSON.stringify(shipped) === JSON.stringify([`${PROVIDER}: 2`])
+    && one?.suggestedFilename() === `${PROVIDER.replace(/[^\w.-]+/g, '-')}.orkx.json`
+    && JSON.stringify(oneFile).indexOf('sk-') < 0,
+    `Export on a provider's row saves that provider with all its models (${JSON.stringify(shipped)}, ${one?.suggestedFilename()})`);
 } finally {
   const { modelProviders } = await graphql('query($w: ID!) { modelProviders(workspaceId: $w) { id name } }', { w: WORKSPACE }).catch(() => ({ modelProviders: [] }));
   for (const provider of (modelProviders ?? []).filter((one) => one.name === PROVIDER)) {

@@ -113,6 +113,8 @@ export const PL: Record<string, string> = {
   "A chat is named by a model after its first exchange, and named again from its latest messages after this many more. 0 names it once. A title somebody typed is never replaced. Between 0 and 1000.": "Model nadaje czatowi nazwę po pierwszej wymianie, a potem nadaje ją ponownie z ostatnich wiadomości po tylu kolejnych. 0 nadaje ją raz. Tytuł wpisany przez kogoś nigdy nie jest zastępowany. Od 0 do 1000.",
   "exchanges": "wymian",
   "Could not export the models.": "Nie udało się wyeksportować modeli.",
+  "Could not export the provider.": "Nie udało się wyeksportować dostawcy.",
+  "Export {name}": "Eksportuj {name}",
   "Could not import the models.": "Nie udało się zaimportować modeli.",
   "{count} models added": "Dodano modeli: {count}",
   "{count} already here": "Już tu były: {count}",

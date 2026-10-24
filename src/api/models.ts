@@ -722,6 +722,20 @@ export async function exportModels(workspaceId: string, modelIds: string[]): Pro
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Saves one provider - with every model it has, without its key - as a models file named after it. */
+export async function exportProvider(workspaceId: string, provider: { id: string; name: string }): Promise<void> {
+  const answer = await fetch(`/api/workspaces/${workspaceId}/models/export?providers=${provider.id}`, { credentials: 'same-origin' });
+  if (!answer.ok) throw new Error(t('Could not export the provider.'));
+  const url = URL.createObjectURL(await answer.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${provider.name.replace(/[^\w.-]+/g, '-')}.orkx.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Reads a models file into the workspace. */
 export async function importModels(workspaceId: string, content: string): Promise<ModelImport> {
   const data = await graphql<{ importModels: ModelImport }>(
