@@ -5,19 +5,25 @@
  * start from - and is not offered where no video model takes one; a video
  * generated there shows how far it has got, how long it has taken and - from
  * its measured progress, never a guess - about how long is left, then plays,
- * and is still there after a reload.
+ * and is still there after a reload. A finished video offers Upscale, which
+ * opens the image editor's upscale dialog - its sizes worked out from the
+ * video's - and asks for a new version, whose page counts frames done of all.
  *
  * The videos, the model's settings and the pictures are answered here. The
  * file that plays is a real WebM, recorded in the page from a canvas, so
  * "plays" is a decoded frame and a moving clock rather than an element present.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
 
 const VIEWPORT = { width: 1440, height: 900 };
 const { browser, page } = await open({ viewport: VIEWPORT });
 
 const MODEL = {
   id: '9393', providerId: '1', workspaceId: WORKSPACE, providerName: 'Stub', name: 'Wan', modelId: 'wan', kind: 'VIDEO',
+  contextWindow: null, maxOutput: null, parallelToolCalls: null, enabled: true,
+};
+const UPSCALER = {
+  id: '9494', providerId: '2', workspaceId: WORKSPACE, providerName: 'WebUI', name: 'Enlarger', modelId: 'Lanczos', kind: 'UPSCALE',
   contextWindow: null, maxOutput: null, parallelToolCalls: null, enabled: true,
 };
 const PICTURE = {
@@ -40,8 +46,17 @@ const video = (overrides) => ({
   frames: 33, fps: 16, width: 832, height: 480, seed: null, startImageId: null, startImageUrl: null, requestedBy: 'alice',
   requestedAt: new Date().toISOString(), startedAt: null, finishedAt: null, reason: null, progress: 100, ahead: null,
   progressSamplingOnly: false, asOf: new Date().toISOString(),
-  url: '/api/design-videos/v1', posterUrl: null, contentType: 'video/webm', sizeBytes: 1, durationSeconds: 2.06, ...overrides,
+  url: '/api/design-videos/v1', posterUrl: null, contentType: 'video/webm', sizeBytes: 1, durationSeconds: 2.06,
+  versionOf: null, upscaledFrom: null, upscaler: null, scale: null, framesDone: null, framesTotal: null, ...overrides,
 });
+/** What Upscale asked for. */
+const upscaled = [];
+/** The upscaled version on its way: twelve of thirty-three frames done. */
+const UPSCALING = {
+  id: '88', status: 'GENERATING', name: 'A lighthouse at dusk', model: 'Enlarger', modelId: UPSCALER.id, url: null, durationSeconds: null,
+  versionOf: '77', upscaledFrom: '77', upscaler: 'R-ESRGAN 4x+', scale: 2, framesDone: 12, framesTotal: 33, progress: 36,
+  width: 1664, height: 960, startedAt: new Date().toISOString(),
+};
 
 /** Whether the model takes a picture to start from; turned off for the half that says the button is not offered. */
 let takesStart = true;
@@ -115,6 +130,16 @@ await page.route('**/graphql', async (route) => {
       json: { data: { designVideoSettings: { reason: null, settings: takesStart ? SETTINGS : SETTINGS.filter((one) => one.name !== 'startImage') } } },
     });
   }
+  // Before queueDesignVideo, whose name it begins with.
+  if (query.includes('queueDesignVideoUpscale')) {
+    upscaled.push(body.variables?.input);
+    return route.fulfill({ json: { data: { queueDesignVideoUpscale: video({ ...UPSCALING, status: 'QUEUED', framesDone: null, framesTotal: null, progress: null }) } } });
+  }
+  if (query.includes('designUpscaleAlgorithms')) {
+    return route.fulfill({
+      json: { data: { designUpscaleAlgorithms: { names: ['Lanczos', 'R-ESRGAN 4x+', 'SwinIR 4x'], preferred: 'R-ESRGAN 4x+', reason: null, restorers: [] } } },
+    });
+  }
   if (query.includes('queueDesignVideo')) {
     queued.push(body.variables?.input);
     return route.fulfill({ json: { data: { queueDesignVideo: video({ id: '77', status: 'QUEUED', progress: null, url: null, durationSeconds: null }) } } });
@@ -129,6 +154,7 @@ await page.route('**/graphql', async (route) => {
   }
   if (query.includes('designVideo(')) {
     const id = body.variables?.id;
+    if (id === '88') return route.fulfill({ json: { data: { designVideo: video({ ...UPSCALING, asOf: new Date().toISOString() }) } } });
     if (id !== '77') return route.fulfill({ json: { data: { designVideo: video({ id }) } } });
     const made = release;
     return route.fulfill({
@@ -150,10 +176,10 @@ await page.route('**/graphql', async (route) => {
     const json = answered === null ? null : await answered.json().catch(() => null);
     const list = json?.data?.models;
     if (Array.isArray(list)) {
-      list.push(MODEL);
+      list.push(MODEL, UPSCALER);
       return route.fulfill({ json });
     }
-    return route.fulfill({ json: { data: { models: [MODEL] } } });
+    return route.fulfill({ json: { data: { models: [MODEL, UPSCALER] } } });
   }
   return route.continue();
 });
@@ -318,6 +344,50 @@ record((await page.getByTestId('video-download').getAttribute('href').catch(() =
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('video-player').waitFor({ timeout: 15_000 }).catch(() => undefined);
 record((await page.getByTestId('video-player').count()) === 1, 'a reload finds the video where it was');
+
+// -- Upscale a finished video -------------------------------------------------------
+
+const upscaleButton = page.getByTestId('video-upscale');
+record((await upscaleButton.count()) === 1, 'a finished video offers Upscale');
+await upscaleButton.click().catch(() => undefined);
+const dialog = page.getByTestId('upscale-dialog');
+await dialog.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined);
+record(await dialog.isVisible().catch(() => false), 'which opens the upscale dialog');
+const upscaleModels = (await optionsOffered(page, page.getByTestId('upscale-model')).catch(() => [])).map((one) => one.label);
+record(upscaleModels.length === 1 && upscaleModels[0].startsWith('Enlarger'), `offering the workspace's upscale models and no video model (${JSON.stringify(upscaleModels)})`);
+// The algorithms are the model's server's, asked when the dialog opens.
+const algorithmsOffered = async () => {
+  for (let i = 0; i < 30; i += 1) {
+    const rows = (await optionsOffered(page, page.getByTestId('upscale-algorithm')).catch(() => [])).map((one) => one.label);
+    if (rows.length > 1) return rows;
+    await page.waitForTimeout(200);
+  }
+  return [];
+};
+const offeredAlgorithms = await algorithmsOffered();
+record(offeredAlgorithms.includes('R-ESRGAN 4x+') && offeredAlgorithms.includes('SwinIR 4x'), `with the server's algorithms (${JSON.stringify(offeredAlgorithms)})`);
+// Each scale says what the video becomes: 832 × 480 twice over is 1664 × 960.
+const scalesOffered = (await optionsOffered(page, page.getByTestId('upscale-scale')).catch(() => [])).map((one) => one.label);
+record(scalesOffered.some((label) => label.includes('1664') && label.includes('960')), `each scale says the size it makes (${JSON.stringify(scalesOffered)})`);
+await chooseOption(page, page.getByTestId('upscale-algorithm'), 'SwinIR 4x').catch(() => undefined);
+await chooseOption(page, page.getByTestId('upscale-scale'), '2').catch(() => undefined);
+await page.getByTestId('upscale-submit').click().catch(() => undefined);
+await page.waitForURL(/\/design\/videos\/88$/, { timeout: 10_000 }).catch(() => undefined);
+const asked = upscaled[0] ?? {};
+record(
+  asked.videoId === '77' && asked.modelId === UPSCALER.id && asked.algorithm === 'SwinIR 4x' && asked.scale === 2,
+  `Upscale asks for the video, the model, the algorithm and the scale chosen (${JSON.stringify(asked)})`,
+);
+record(page.url().endsWith('/design/videos/88'), `and opens the new version (${page.url()})`);
+const upscaleMaking = page.getByTestId('video-making');
+await upscaleMaking.waitFor({ timeout: 10_000 }).catch(() => undefined);
+const upscaleLabel = (await upscaleMaking.innerText().catch(() => '')).trim();
+record(/Upscaling… 12 of 33 frames/.test(upscaleLabel), `which counts the frames done of all (${JSON.stringify(upscaleLabel)})`);
+const upscaleBar = await page.getByTestId('video-progress-fill')
+  .evaluate((fill) => fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width).catch(() => -1);
+record(Math.abs(upscaleBar - 0.36) < 0.03, `and draws the bar at that share (${upscaleBar})`);
+const original = await page.getByTestId('video-upscaled-from').getAttribute('href').catch(() => null);
+record(original === `/workspace/${WORKSPACE}/design/videos/77`, `and links to the original, which it leaves as it was (${original})`);
 
 // -- Offered on every picture: where no model starts from one, the video editor is where that is said --
 

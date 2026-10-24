@@ -64,11 +64,22 @@ export interface DesignVideo {
   contentType: string | null;
   sizeBytes: number | null;
   durationSeconds: number | null;
+  /** The video this is a version of; null for one a video model made. */
+  versionOf: string | null;
+  /** The video an upscale took its frames from; null for anything else. */
+  upscaledFrom: string | null;
+  upscaler: string | null;
+  /** How many times larger an upscale makes it. */
+  scale: number | null;
+  /** How many of an upscale's frames are done, of framesTotal; null until they are counted. */
+  framesDone: number | null;
+  framesTotal: number | null;
 }
 
 const VIDEO_FIELDS = `
   id status name prompt modelId model seconds size frames fps width height seed startImageId startImageUrl
   requestedBy requestedAt startedAt finishedAt reason progress progressSamplingOnly asOf ahead url posterUrl contentType sizeBytes durationSeconds
+  versionOf upscaledFrom upscaler scale framesDone framesTotal
 `;
 
 /** What one video model takes, asked of its server now. */
@@ -125,6 +136,22 @@ export async function queueDesignVideo(input: QueueDesignVideo): Promise<DesignV
     { input },
   );
   return data.queueDesignVideo;
+}
+
+/** A finished video made larger, frame by frame, by an upscale model: a new version, the video kept as it was. */
+export async function queueDesignVideoUpscale(input: {
+  workspaceId: string;
+  videoId: string;
+  modelId: string;
+  /** One of the WebUI's algorithms; null is the model's own. */
+  algorithm: string | null;
+  scale: number;
+}): Promise<DesignVideo> {
+  const data = await graphql<{ queueDesignVideoUpscale: DesignVideo }>(
+    `mutation QueueDesignVideoUpscale($input: UpscaleDesignVideoInput!) { queueDesignVideoUpscale(input: $input) { ${VIDEO_FIELDS} } }`,
+    { input },
+  );
+  return data.queueDesignVideoUpscale;
 }
 
 export async function stopDesignVideo(workspaceId: string, id: string): Promise<DesignVideo> {

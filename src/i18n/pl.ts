@@ -3357,6 +3357,10 @@ export const PL: Record<string, string> = {
   "Not made: {reason}": "Niezrobione: {reason}",
   "How far it has got": "Postęp",
   "Plays for {time}": "Trwa {time}",
+  // Upscale on a finished video: its frames made larger one batch at a time.
+  "Upscaling…": "Powiększanie…",
+  "Upscaling… {done} of {total} frames": "Powiększanie… {done} z {total} klatek",
+  "Upscaled {scale}× from the original": "Powiększone {scale}× z oryginału",
   "Convert to video": "Zamień na wideo",
   "Make a video that starts from this picture": "Zrób wideo, które zaczyna się od tego obrazu",
   "Upscale, clean up or harmonize with a model": "Powiększ, oczyść albo zharmonizuj modelem",

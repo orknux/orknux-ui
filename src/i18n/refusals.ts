@@ -27,6 +27,7 @@ import { currentLanguage } from '../session/language';
  * protecting: a refusal is never a bare code on a screen.
  */
 const PL: Record<string, string> = {
+  DesignVideoTooLarge: 'Miałoby {width} × {height}, więcej niż {longest} pikseli, ile może mieć powiększone wideo.',
   InstallationAddressInvalid:
     '{url} nie jest adresem, pod którym można dotrzeć do tej instalacji. Podaj adres http lub https, na przykład https://orknux.example.com.',
   // --- a name that is required, and one that is taken --------------------
