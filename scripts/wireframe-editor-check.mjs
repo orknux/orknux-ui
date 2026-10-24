@@ -27,7 +27,15 @@ await page.getByTestId('new-wireframe').waitFor({ timeout: 20_000 });
 
 // The menu down the side lists the page beside Images.
 const menu = await page.locator('nav a, aside a').allInnerTexts().catch(() => []);
-record(menu.some((one) => one.trim() === 'Wireframes') && menu.some((one) => one.trim() === 'Images'), `Design's menu lists Wireframes beside Images (${menu.join(', ')})`);
+const named = menu.map((one) => one.trim());
+record(named.includes('Wireframes') && named.indexOf('Wireframes') < named.indexOf('Images') && named.indexOf('Images') < named.indexOf('Videos'),
+  `Design's menu runs Wireframes, Images, Videos (${named.join(', ')})`);
+await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows`, { waitUntil: 'domcontentloaded' }).catch(() => undefined);
+await page.locator('header a', { hasText: /^Design$/ }).first().click({ timeout: 15_000 }).catch(() => undefined);
+await page.waitForURL(/\/design\//, { timeout: 10_000 }).catch(() => undefined);
+record(/\/design\/wireframes$/.test(page.url()), `Design at the top opens on Wireframes (${page.url()})`);
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/wireframes`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('new-wireframe').waitFor({ timeout: 20_000 });
 
 // New makes one and opens it in the editor.
 await page.getByTestId('new-wireframe').click();
