@@ -94,7 +94,13 @@ try {
     const skill = (
       await graphql(
         `mutation($input: CreateSkillInput!) { createSkill(input: $input) { id } }`,
-        { input: { workspaceId: WORKSPACE, catalogId: made.skillCatalog, name, description, content } },
+        { input: { workspaceId: WORKSPACE, catalogId: made.skillCatalog, name, description, content: `---
+name: ${name}
+description: ${description}
+---
+
+${content}
+` } },
       )
     ).createSkill;
     made.skills.push(skill.id);
