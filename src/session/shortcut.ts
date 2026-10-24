@@ -204,6 +204,43 @@ export const DEFAULT_NEXT_TAB_SHORTCUT = 'Ctrl+PageDown';
 export const DEFAULT_PREVIOUS_TAB_SHORTCUT = 'Ctrl+PageUp';
 
 /**
+ * The image editor's own tools - the rail down the canvas's left, the brush's
+ * width, and the blur's three shapes - when nothing has been chosen.
+ *
+ * Bare keys, as Magic edit's M and L are: they are heard only on the editor's
+ * canvas and never while a caret is in a box. The letters are an image
+ * editor's: B for the brush, C for crop, U for blur (B is taken), H and V for
+ * flipping horizontally and vertically, R to turn right and Shift+R to turn
+ * back, [ and ] for a narrower and a wider brush. Layers is Shift+L because L
+ * is Magic edit's lasso. The blur's shapes are 1, 2 and 3, in the order its bar
+ * shows them, and pick the blur up if it is not in hand.
+ *
+ * Nothing else on the page claims any of them: its other keys are M, L, Ctrl+A,
+ * Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y, Ctrl+S, Ctrl+= and Ctrl+-, Enter and Escape.
+ */
+export const DEFAULT_IMAGE_EDITOR_SHORTCUTS = {
+  rotateLeft: 'Shift+R',
+  rotateRight: 'R',
+  flipHorizontal: 'H',
+  flipVertical: 'V',
+  brush: 'B',
+  crop: 'C',
+  blur: 'U',
+  layers: 'Shift+L',
+  brushSmaller: '[',
+  brushLarger: ']',
+  blurRectangle: '1',
+  blurLasso: '2',
+  blurGradual: '3',
+} as const;
+
+/** One of the image editor's own shortcuts, by name. */
+export type ImageEditorShortcut = keyof typeof DEFAULT_IMAGE_EDITOR_SHORTCUTS;
+
+/** Their names, in the order Preferences lists them: the rail top to bottom, then the brush and the blur. */
+export const IMAGE_EDITOR_SHORTCUTS = Object.keys(DEFAULT_IMAGE_EDITOR_SHORTCUTS) as ImageEditorShortcut[];
+
+/**
  * Which keystroke opens the command palette, written the way it is shown:
  * modifiers in a fixed order, then the key — `Ctrl+Q`, `Ctrl+Shift+P`, `Alt+G`.
  *
@@ -558,6 +595,33 @@ export function setPreviousTabShortcut(next: Shortcut): void {
 
 export function usePreviousTabShortcut(): Shortcut {
   return previousTab.use();
+}
+
+/** Each of the image editor's own shortcuts, remembered as every other one is, under a key of its own. */
+const imageEditor = Object.fromEntries(
+  IMAGE_EDITOR_SHORTCUTS.map((name) => [name, remembered(`orknux.imageEditor.${name}Shortcut`, DEFAULT_IMAGE_EDITOR_SHORTCUTS[name])]),
+) as Record<ImageEditorShortcut, ReturnType<typeof remembered>>;
+
+export function imageEditorShortcut(name: ImageEditorShortcut): Shortcut {
+  return imageEditor[name].get();
+}
+
+export function setImageEditorShortcut(name: ImageEditorShortcut, next: Shortcut): void {
+  imageEditor[name].set(next);
+}
+
+export function useImageEditorShortcut(name: ImageEditorShortcut): Shortcut {
+  return imageEditor[name].use();
+}
+
+/**
+ * All of them at once, for the editor, which hears them in one listener. The
+ * list is fixed, so the hooks are called in the same order on every render.
+ */
+export function useImageEditorShortcuts(): Record<ImageEditorShortcut, Shortcut> {
+  const held = {} as Record<ImageEditorShortcut, Shortcut>;
+  for (const name of IMAGE_EDITOR_SHORTCUTS) held[name] = imageEditor[name].use();
+  return held;
 }
 
 /** Called whenever either tab shortcut changes; what `desktop.ts` passes on to the app. */

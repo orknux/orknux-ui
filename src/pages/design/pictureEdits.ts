@@ -26,6 +26,16 @@ export function canvasOf(image: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
+/** A picture at an address on a canvas of its own: a layer read back from where it was kept. */
+export function canvasFrom(url: string): Promise<HTMLCanvasElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(canvasOf(image));
+    image.onerror = () => reject(new Error('A layer could not be read.'));
+    image.src = url;
+  });
+}
+
 /** A quarter turn, clockwise to the right: the picture's sides swap. */
 export function rotated(source: HTMLCanvasElement, way: 'left' | 'right'): HTMLCanvasElement {
   const { canvas, pen } = blank(source.height, source.width);
@@ -54,8 +64,29 @@ export function mirrored(source: HTMLCanvasElement, axis: 'horizontal' | 'vertic
   return canvas;
 }
 
-/** One stroke of the brush: its colour, its width and the points it passed, in the picture's own pixels. */
-export type Stroke = { colour: string; size: number; points: Point[] };
+/**
+ * The brush's tips, as image editors have them: a hard round one, a soft round
+ * one whose edge fades, a square flat one, a marker - see-through, its own
+ * overlaps flat and darkening what is under it - and an eraser, which paints
+ * transparency into a layer.
+ */
+export type BrushStyle = 'hard' | 'soft' | 'square' | 'marker' | 'eraser';
+
+/**
+ * One stroke of the brush: its tip, colour, width, how opaque and - for a soft
+ * tip - how hard its edge is, both from 0 to 1, and the points it passed in the
+ * picture's own pixels. A pen's pressure at each point, where the pen gave one,
+ * makes the stroke thinner where it was pressed lightly.
+ */
+export type Stroke = {
+  colour: string;
+  size: number;
+  points: Point[];
+  style: BrushStyle;
+  opacity: number;
+  hardness: number;
+  pressures: number[] | null;
+};
 
 /** A stroke as an SVG path; a single point is a dot, which a path of one point would not draw. */
 export function strokePath(points: Point[]): string {
@@ -66,19 +97,77 @@ export function strokePath(points: Point[]): string {
     : `M${first.x} ${first.y}` + rest.map((point) => `L${point.x} ${point.y}`).join('');
 }
 
-/** The strokes painted over the picture, round-ended, as they were drawn over it on the screen. */
+/** The lightest a pen's touch makes a stroke, as a share of its width: a feather-light touch still leaves a line. */
+const LIGHTEST_TOUCH = 0.1;
+
+/**
+ * How far a soft tip's edge is blurred, in pixels, for a stroke of a width and
+ * a hardness: nothing for a hard edge, and a quarter of the width for none at
+ * all - the core drawn that much narrower on each side, so the fade runs from
+ * the middle of the stroke out to the width it says.
+ */
+const fadeOf = (stroke: Stroke) => (stroke.style === 'soft' || stroke.style === 'eraser' ? Math.round(((1 - stroke.hardness) * stroke.size) / 4) : 0);
+
+/**
+ * One stroke on a canvas of its own, in its colour and wholly opaque: its
+ * shape, before it is laid over anything. Drawn as one shape, so where the
+ * stroke crosses itself it is no darker - the opacity is given when it is
+ * laid down, once. A soft tip's shape is blurred at its edge.
+ */
+function strokeShape(width: number, height: number, stroke: Stroke): HTMLCanvasElement {
+  const { canvas, pen } = blank(width, height);
+  const square = stroke.style === 'square';
+  pen.lineCap = square ? 'square' : 'round';
+  pen.lineJoin = square ? 'miter' : 'round';
+  pen.strokeStyle = '#fff';
+  const fade = fadeOf(stroke);
+  // A soft tip is drawn narrower and blurred out to its width, so it is the width it says.
+  const across = Math.max(1, stroke.size - 2 * fade);
+  const pressures = stroke.pressures;
+  if (pressures === null || stroke.points.length < 2) {
+    pen.lineWidth = across * (pressures === null ? 1 : Math.max(LIGHTEST_TOUCH, pressures[0] ?? 1));
+    pen.stroke(new Path2D(strokePath(stroke.points)));
+  } else {
+    // Pressed harder, wider: each piece between two points as wide as the pen was pressed there.
+    for (let at = 1; at < stroke.points.length; at += 1) {
+      const pressed = Math.max(LIGHTEST_TOUCH, ((pressures[at - 1] ?? 1) + (pressures[at] ?? 1)) / 2);
+      pen.lineWidth = across * pressed;
+      pen.stroke(new Path2D(strokePath([stroke.points[at - 1], stroke.points[at]])));
+    }
+  }
+  if (fade > 0 && stroke.points.length > 0) {
+    const reach = stroke.size + fade;
+    const area = boxOf(stroke.points, width, height);
+    const x = Math.max(0, area.x - reach);
+    const y = Math.max(0, area.y - reach);
+    canvasRGBA(canvas, x, y, Math.min(width, area.x + area.width + reach) - x, Math.min(height, area.y + area.height + reach) - y, fade);
+  }
+  pen.globalCompositeOperation = 'source-in';
+  pen.fillStyle = stroke.colour;
+  pen.fillRect(0, 0, width, height);
+  return canvas;
+}
+
+/**
+ * The strokes painted over a canvas, as they are drawn over it on the screen:
+ * each laid down at its opacity - a marker multiplying with what is under it,
+ * an eraser taking away what is there - one after another.
+ */
 export function painted(source: HTMLCanvasElement, strokes: Stroke[]): HTMLCanvasElement {
   const { canvas, pen } = blank(source.width, source.height);
   pen.drawImage(source, 0, 0);
-  pen.lineCap = 'round';
-  pen.lineJoin = 'round';
   for (const stroke of strokes) {
     if (stroke.points.length === 0) continue;
-    pen.strokeStyle = stroke.colour;
-    pen.lineWidth = stroke.size;
-    pen.stroke(new Path2D(strokePath(stroke.points)));
+    pen.globalAlpha = Math.min(1, Math.max(0, stroke.opacity));
+    pen.globalCompositeOperation = stroke.style === 'eraser' ? 'destination-out' : stroke.style === 'marker' ? 'multiply' : 'source-over';
+    pen.drawImage(strokeShape(source.width, source.height, stroke), 0, 0);
   }
   return canvas;
+}
+
+/** Strokes on nothing: what the brush has painted on the picture and not yet kept, to show over it. */
+export function strokesAlone(width: number, height: number, strokes: Stroke[]): HTMLCanvasElement {
+  return painted(blank(width, height).canvas, strokes);
 }
 
 /**

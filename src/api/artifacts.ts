@@ -329,11 +329,19 @@ export interface ImageEditorSettings {
   blurFalloffMost: number;
   feather: number;
   featherMost: number;
+  /** How many layers a picture may keep over it. */
+  layersMost: number;
+  /** How opaque the brush starts, in percent: every tip but the marker. */
+  brushOpacity: number;
+  /** How hard the soft tip's and the eraser's edge starts, in percent. */
+  brushHardness: number;
+  /** How opaque the marker starts, in percent. */
+  markerOpacity: number;
 }
 
 export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
   const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
-    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost blurFalloff blurFalloffMost feather featherMost } }`,
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost blurFalloff blurFalloffMost feather featherMost layersMost brushOpacity brushHardness markerOpacity } }`,
     { workspaceId },
   );
   return data.designImageEditorSettings;
@@ -352,12 +360,44 @@ export async function keepDesignImageChange(input: {
   image: string;
   /** What was done, as the history says it. */
   change: string;
+  /** The layers it was made with, the picture itself first; image is then them flattened. Left out, the version is flat. */
+  layers?: DesignImageLayerInput[];
 }): Promise<DesignImageJob> {
   const data = await graphql<{ keepDesignImageChange: DesignImageJob }>(
     `mutation KeepDesignImageChange($input: KeepDesignImageChangeInput!) { keepDesignImageChange(input: $input) { ${JOB_FIELDS} } }`,
     { input },
   );
   return data.keepDesignImageChange;
+}
+
+/** One layer of a picture as a change is kept with it: its pixels as a PNG data URL. */
+export interface DesignImageLayerInput {
+  /** Null for the picture itself. */
+  name: string | null;
+  visible: boolean;
+  /** The picture itself, under every layer: the first, and only there. */
+  picture: boolean;
+  image: string;
+}
+
+/** One layer of a picture as it was kept: the picture's own file is them flattened. */
+export interface DesignImageLayer {
+  id: string;
+  /** Null for the picture itself. */
+  name: string | null;
+  visible: boolean;
+  /** The picture itself, at the foot of the stack: its pixels without the layers over it. */
+  picture: boolean;
+  url: string;
+}
+
+/** A picture's layers, the picture itself first; empty for one kept flat. */
+export async function fetchDesignImageLayers(workspaceId: string, imageId: string): Promise<DesignImageLayer[]> {
+  const data = await graphql<{ designImageLayers: DesignImageLayer[] }>(
+    `query DesignImageLayers($workspaceId: ID!, $imageId: ID!) { designImageLayers(workspaceId: $workspaceId, imageId: $imageId) { id name visible picture url } }`,
+    { workspaceId, imageId },
+  );
+  return data.designImageLayers;
 }
 
 /** Saves an unsaved version over the picture it is a version of, and throws the picture's other versions away. */

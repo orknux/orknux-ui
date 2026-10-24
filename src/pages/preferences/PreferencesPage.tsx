@@ -113,7 +113,13 @@ import {
   setPreviousTabShortcut,
   useNextTabShortcut,
   usePreviousTabShortcut,
+  DEFAULT_IMAGE_EDITOR_SHORTCUTS,
+  IMAGE_EDITOR_SHORTCUTS,
+  imageEditorShortcut,
+  setImageEditorShortcut,
+  useImageEditorShortcuts,
 } from '../../session/shortcut';
+import type { ImageEditorShortcut } from '../../session/shortcut';
 import { inDesktopApp, recordingKeys } from '../../session/desktop';
 import styles from './PreferencesPage.module.css';
 import { t, tf } from '../../i18n';
@@ -143,7 +149,43 @@ type ShortcutKey =
   | 'magicLasso'
   | 'magicAll'
   | 'nextTab'
-  | 'previousTab';
+  | 'previousTab'
+  | ImageEditorShortcut;
+
+/** Whether a shortcut is one of the image editor's own: heard only on its canvas, so a bare key will do. */
+const inImageEditor = (key: string | null): key is ImageEditorShortcut => key !== null && (IMAGE_EDITOR_SHORTCUTS as string[]).includes(key);
+
+/** What Preferences calls each of the image editor's own shortcuts, and what its (?) says. */
+function imageEditorLabel(name: ImageEditorShortcut): { label: string; hint: string } {
+  switch (name) {
+    case 'rotateLeft':
+      return { label: t('Rotate Left Shortcut'), hint: t('Turns the picture a quarter to the left in the image editor. Heard only there, never while typing.') };
+    case 'rotateRight':
+      return { label: t('Rotate Right Shortcut'), hint: t('Turns the picture a quarter to the right in the image editor. Heard only there, never while typing.') };
+    case 'flipHorizontal':
+      return { label: t('Flip Horizontally Shortcut'), hint: t('Mirrors the picture left for right in the image editor. Heard only there, never while typing.') };
+    case 'flipVertical':
+      return { label: t('Flip Vertically Shortcut'), hint: t('Mirrors the picture top for bottom in the image editor. Heard only there, never while typing.') };
+    case 'brush':
+      return { label: t('Brush Shortcut'), hint: t("Picks up the image editor's brush, or puts it down. Heard only there, never while typing.") };
+    case 'crop':
+      return { label: t('Crop Shortcut'), hint: t("Picks up the image editor's crop, or puts it down. Heard only there, never while typing.") };
+    case 'blur':
+      return { label: t('Blur Shortcut'), hint: t("Picks up the image editor's blur, or puts it down. Heard only there, never while typing.") };
+    case 'layers':
+      return { label: t('Layers Shortcut'), hint: t("Shows or hides the image editor's layers. Heard only there, never while typing.") };
+    case 'brushSmaller':
+      return { label: t('Narrower Brush Shortcut'), hint: t("Makes the image editor's brush narrower. Heard only there, never while typing.") };
+    case 'brushLarger':
+      return { label: t('Wider Brush Shortcut'), hint: t("Makes the image editor's brush wider. Heard only there, never while typing.") };
+    case 'blurRectangle':
+      return { label: t('Blur Rectangle Shortcut'), hint: t('Blurs inside a rectangle in the image editor. Heard only there, never while typing.') };
+    case 'blurLasso':
+      return { label: t('Blur Lasso Shortcut'), hint: t('Blurs inside a lasso in the image editor. Heard only there, never while typing.') };
+    case 'blurGradual':
+      return { label: t('Gradual Blur Shortcut'), hint: t('Blurs gradually along a line in the image editor. Heard only there, never while typing.') };
+  }
+}
 
 /** How each is read and how each is stored, for Save. */
 const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string) => void }[] = [
@@ -170,6 +212,11 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
   { key: 'nextTab', stored: nextTabShortcut, store: setNextTabShortcut },
   { key: 'previousTab', stored: previousTabShortcut, store: setPreviousTabShortcut },
+  ...IMAGE_EDITOR_SHORTCUTS.map((name) => ({
+    key: name,
+    stored: () => imageEditorShortcut(name),
+    store: (next: string) => setImageEditorShortcut(name, next),
+  })),
 ];
 
 export interface PreferencesPageProps {
@@ -225,6 +272,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const nextTabKey = shortcutDrafts.nextTab ?? storedNextTab;
   const storedPreviousTab = usePreviousTabShortcut();
   const previousTabKey = shortcutDrafts.previousTab ?? storedPreviousTab;
+  const storedImageEditor = useImageEditorShortcuts();
   const storedMagicLasso = useMagicLassoShortcut();
   const magicLassoKey = shortcutDrafts.magicLasso ?? storedMagicLasso;
   const storedZoomIn = useZoomInShortcut();
@@ -274,6 +322,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'magicAll'
     | 'nextTab'
     | 'previousTab'
+    | ImageEditorShortcut
     | null
   >(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -308,7 +357,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
        * free - which is why R, A and S can be the defaults there and cannot be
        * anywhere else.
        */
-      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'joint' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !usable(said)) {
+      if (recording !== 'turn' && recording !== 'add' && recording !== 'select' && recording !== 'joint' && recording !== 'magicRectangle' && recording !== 'magicLasso' && !inImageEditor(recording) && !usable(said)) {
         setRefused(said);
         return;
       }
@@ -335,6 +384,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'magicAll') draftShortcut('magicAll', said);
       else if (recording === 'nextTab') draftShortcut('nextTab', said);
       else if (recording === 'previousTab') draftShortcut('previousTab', said);
+      else if (inImageEditor(recording)) draftShortcut(recording, said);
       else draftShortcut('format', said);
       setRecording(null);
       setRefused(null);
@@ -1372,6 +1422,37 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 </p>
               )}
             </div>
+
+            {IMAGE_EDITOR_SHORTCUTS.map((which) => {
+              const { label, hint } = imageEditorLabel(which);
+              const key = shortcutDrafts[which] ?? storedImageEditor[which];
+              const fallback = DEFAULT_IMAGE_EDITOR_SHORTCUTS[which];
+              return (
+                <div className={styles.setting} key={which}>
+                  <span className={styles.labelWithHint}>
+                    <span className={styles.settingLabel} id={`${which}-shortcut`}>{label}</span>
+                    <FieldHint label={label}>{hint}</FieldHint>
+                  </span>
+                  <div className={styles.options}>
+                    <button
+                      type="button"
+                      className={recording === which ? styles.optionCurrent : styles.option}
+                      onClick={() => {
+                        setRefused(null);
+                        setRecording((held) => (held === which ? null : which));
+                      }}
+                      data-testid={`imageEditor-${which}-shortcut`}
+                    >
+                      {recording === which ? t('Press any keys…') : key}
+                    </button>
+                    {key !== fallback && recording !== which && (
+                      <button type="button" className={styles.option} onClick={() => draftShortcut(which, fallback)}>{t('Reset')}</button>
+                    )}
+                  </div>
+                  {recording === which && <p className={styles.settingNote}>{t('Press the combination you want. Escape leaves it as it is.')}</p>}
+                </div>
+              );
+            })}
 
             {inDesktopApp() && (['nextTab', 'previousTab'] as const).map((which) => {
               const label = which === 'nextTab' ? t('Next Tab Shortcut') : t('Previous Tab Shortcut');
