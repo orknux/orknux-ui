@@ -33,9 +33,18 @@ record(await drawn(page, "the agent's page"), "the agent's page is on screen");
 
 const row = page.locator('[data-grant-name="scratchpad_write"]').first();
 record(await row.waitFor({ timeout: 20_000 }).then(() => true).catch(() => false), 'the tools list has the built-in scratchpad_write');
-await row.hover();
 const card = page.locator('[data-grant-card]').first();
-const shown = await card.waitFor({ timeout: 3_000 }).then(() => true).catch(() => false);
+/*
+ * Hovered again until the card is up: the row is there before the list has
+ * settled, and a row that moves out from under the pointer never hears the
+ * mouse arrive. Three tries in the time one wait used to take.
+ */
+let shown = false;
+for (let attempt = 0; attempt < 3 && !shown; attempt += 1) {
+  await page.mouse.move(0, 0);
+  await row.hover();
+  shown = await card.waitFor({ timeout: 1_000 }).then(() => true).catch(() => false);
+}
 record(shown, 'hovering it draws a card');
 if (shown) {
   const box = await card.boundingBox();
