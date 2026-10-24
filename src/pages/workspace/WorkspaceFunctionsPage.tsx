@@ -127,7 +127,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
       workspaceId,
       page - 1,
       pageSize,
-      scope === 'WORKSPACE' || scope === 'PLUGIN' ? scope : undefined,
+      scope === 'WORKSPACE' || scope === 'PLUGIN' || scope === 'EMBEDDED' ? scope : undefined,
       scope.startsWith('plugin:') ? scope.slice('plugin:'.length) : undefined,
       asked,
       order,
@@ -212,6 +212,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
               <option value="">{t('All sources')}</option>
               <option value="WORKSPACE">{t('The workspace\'s own')}</option>
               <option value="PLUGIN">{t('From plugins')}</option>
+              <option value="EMBEDDED">{t('Built in')}</option>
               {/* And each plugin by name, which is the question people ask. */}
               {pluginChoices.map((plugin) => (
                 <option key={plugin.id} value={`plugin:${plugin.id}`}>
@@ -293,6 +294,7 @@ export function WorkspaceFunctionsPage({ session, onSignOut }: WorkspaceFunction
                 {fn.plugin !== null && (
                   <span className={styles.pluginBadge}>{fn.plugin.name}</span>
                 )}
+                {fn.scope === 'EMBEDDED' && <span className={styles.pluginBadge}>{t('Built in')}</span>}
               </Link>
               <span className={`${styles.colParams} ${styles.mono}`} title={fn.signature}>
                 {fn.signature}

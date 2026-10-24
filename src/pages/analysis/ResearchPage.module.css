@@ -34,7 +34,7 @@
 
 .colStatus {
   flex-shrink: 0;
-  width: 110px;
+  width: 130px;
 }
 
 .colStarted {
@@ -68,6 +68,31 @@
   text-decoration: underline;
 }
 
+/*
+ * Every other cell reads as the Runs list's do: one size, the secondary
+ * colour, and a link in the primary colour at a medium weight. They were four
+ * sizes and three weights, each cell inheriting from wherever it happened to.
+ */
+.cell {
+  overflow: hidden;
+  font-weight: 400;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellLink {
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.cellLink:hover {
+  text-decoration: underline;
+}
+
 .muted {
   color: var(--color-text-muted);
 }
@@ -78,12 +103,23 @@
   color: var(--color-text-muted);
 }
 
+/* The Runs list's status badge, so a research and its run say their state alike. */
 .status {
-  display: inline-block;
-  padding: var(--space-2) var(--space-8);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-4);
   font-weight: 600;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: var(--radius-full);
 }
 
 .running {

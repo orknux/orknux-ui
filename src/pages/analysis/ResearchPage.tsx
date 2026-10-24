@@ -35,7 +35,7 @@ const STATUS_CLASS: Record<ResearchStatus, string> = {
 };
 
 /**
- * Answer > Research: the research this workspace has done, the one opened, and
+ * Explore > Research: the research this workspace has done, the one opened, and
  * starting another. Issue #659.
  *
  * A research is a question handed to one of the workspace's own workflows - the
@@ -115,7 +115,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         <OpenedResearch
           research={opened}
           workspaceId={workspaceId}
-          onClose={() => navigate(`/workspace/${workspaceId}/analysis/research`)}
+          onClose={() => navigate(`/workspace/${workspaceId}/explore/research`)}
         />
       )}
 
@@ -135,32 +135,35 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
 
         {list?.content.map((one) => (
           <div key={one.id} className={`${table.row} ${styles.row}`} data-research={one.id}>
-            <Link className={`${styles.colQuestion} ${styles.question}`} to={`/workspace/${workspaceId}/analysis/research/${one.id}`} title={one.question}>
+            <Link className={`${styles.colQuestion} ${styles.question}`} to={`/workspace/${workspaceId}/explore/research/${one.id}`} title={one.question} data-cell="question">
               {one.question}
             </Link>
-            <span className={styles.colMode}>{seededLabel(one.modeName)}</span>
-            <span className={`${styles.colModel} ${styles.muted}`}>{one.modelName ?? '—'}</span>
-            <span className={styles.colStatus}>
+            <span className={`${styles.colMode} ${styles.cell}`} data-cell="mode">{seededLabel(one.modeName)}</span>
+            <span className={`${styles.colModel} ${styles.cell}`} data-cell="model">
+              <ModelName research={one} workspaceId={workspaceId} />
+            </span>
+            <span className={styles.colStatus} data-cell="status">
               <span className={`${styles.status} ${STATUS_CLASS[one.status]}`} title={one.error ?? undefined}>
+                <span className={styles.statusDot} aria-hidden="true" />
                 {statusLabel(one.status)}
               </span>
             </span>
-            <span className={`${styles.colStarted} ${styles.muted}`} title={one.startedAt}>
+            <span className={`${styles.colStarted} ${styles.cell}`} title={one.startedAt} data-cell="started">
               {timeAgo(one.startedAt)}
             </span>
-            <span className={styles.colResult}>
+            <span className={`${styles.colResult} ${styles.cell}`} data-cell="result">
               {one.status === 'COMPLETED' ? (
-                <Link to={`/workspace/${workspaceId}/analysis/research/${one.id}`}>
+                <Link className={styles.cellLink} to={`/workspace/${workspaceId}/explore/research/${one.id}`}>
                   {one.outputFormat === 'PDF' ? t('PDF') : t('Document')}
                 </Link>
               ) : one.status === 'RUNNING' && one.progress !== null ? (
-                <span className={styles.muted} title={one.progress.step} data-row-progress>
+                <span title={one.progress.step} data-row-progress>
                   {tf('{count} sources', { count: one.progress.sourcesRead })}
                 </span>
               ) : one.executionId !== null ? (
-                <Link to={`/workspace/${workspaceId}/executions/${one.executionId}`}>{t('Run')}</Link>
+                <Link className={styles.cellLink} to={`/workspace/${workspaceId}/executions/${one.executionId}`}>{t('Run')}</Link>
               ) : (
-                <span className={styles.muted}>—</span>
+                '—'
               )}
             </span>
             <span className={styles.colActions}>
@@ -209,12 +212,25 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         onConfirm={async () => {
           if (removing === null) return;
           await deleteResearch(removing.id);
-          if (opened?.id === removing.id) navigate(`/workspace/${workspaceId}/analysis/research`);
+          if (opened?.id === removing.id) navigate(`/workspace/${workspaceId}/explore/research`);
           setRemoving(null);
           load();
         }}
       />
     </AppShell>
+  );
+}
+
+/**
+ * The model a research was started with, as a way to its page - the way an
+ * agent's or a node's model is. Plain where the research names none.
+ */
+function ModelName({ research, workspaceId }: { research: Research; workspaceId: string }) {
+  if (research.modelId === null) return <>{research.modelName ?? '—'}</>;
+  return (
+    <Link className={styles.cellLink} to={`/workspace/${workspaceId}/models/${research.modelId}`} data-model-link>
+      {research.modelName ?? research.modelId}
+    </Link>
   );
 }
 
@@ -233,7 +249,9 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
         <dt>{t('Mode')}</dt>
         <dd>{seededLabel(research.modeName)}</dd>
         <dt>{t('Model')}</dt>
-        <dd data-research-model>{research.modelName ?? '—'}</dd>
+        <dd data-research-model>
+          <ModelName research={research} workspaceId={workspaceId} />
+        </dd>
         <dt>{t('Language')}</dt>
         <dd>{languageLabel(research.language)}</dd>
         <dt>{t('Status')}</dt>

@@ -113,7 +113,7 @@ left-hand side:
 
 - **AI** — what a model is given to work with: agents, models, tools, skills,
   memory and the sessions its agents have kept.
-- **Analysis** — questions researched by the workspace's own workflows: Research
+- **Explore** — questions researched by the workspace's own workflows: Research
   lists what has been researched and starts more.
 - **Workflow** — the work itself and what it is made of: executions, workflows,
   actions, functions, triggers, conditions and objects.

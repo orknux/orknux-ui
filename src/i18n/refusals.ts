@@ -363,6 +363,7 @@ const PL: Record<string, string> = {
   FunctionExternallyManaged:
     '„{name}” pochodzi z wtyczki i nie da się jej tutaj zmienić. Wczytaj wtyczkę ponownie, aby ' +
     'zmienić to, co deklaruje.',
+  FunctionBuiltIn: '„{name}” pochodzi z samego Orknux i nie da się jej tutaj zmienić.',
   ImportNotEditable:
     '{name} pochodzi z wtyczki, więc nie da się jej zaimportować. Skieruj na nią akcję zamiast tego.',
   UserExternallyManaged:
@@ -434,7 +435,7 @@ const PL: Record<string, string> = {
   WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
   WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
-  // --- Analysis > Research, issue #659 -------------------------------------
+  // --- Explore > Research, issue #659 --------------------------------------
   ResearchQuestionMissing: 'Napisz, co zbadać',
   ResearchQuestionTooLong: 'Pytanie badania może mieć najwyżej {most} znaków',
   ResearchModeNotFound: 'Nie ma trybu badania o identyfikatorze {id}',

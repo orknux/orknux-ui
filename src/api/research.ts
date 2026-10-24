@@ -3,7 +3,7 @@ import type { PageOf } from './client';
 import { t } from '../i18n';
 
 /**
- * Analysis > Research: a question researched by one of the workspace's own
+ * Explore > Research: a question researched by one of the workspace's own
  * workflows, and the modes that say which. Issue #659.
  */
 

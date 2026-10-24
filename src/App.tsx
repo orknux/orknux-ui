@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { currentSession, login, logout } from './api/session';
 import styles from './App.module.css';
@@ -167,7 +167,15 @@ export function App() {
           }
         />
       ))}
+      {/* Explore was called Analysis while 1.2.0 was being built; a link from then still lands. */}
+      <Route path="/workspace/:workspaceId/analysis/*" element={<AnalysisMoved />} />
       <Route path="*" element={<Navigate to={session ? signedInHome : '/login'} replace />} />
     </Routes>
   );
+}
+
+/** An /analysis/ address, at the same place under /explore/ - its query and fragment kept. */
+function AnalysisMoved() {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate to={pathname.replace(/\/analysis(\/|$)/, '/explore$1') + search + hash} replace />;
 }
