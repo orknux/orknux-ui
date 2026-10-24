@@ -409,6 +409,12 @@ await page.getByTestId('blur-cancel').click();
 await page.getByTestId('editor-zoom').click();
 /** Clicks what is there; a control that is not leaves the step undone, and the record after it says so. */
 const tap = (id) => page.getByTestId(id).first().click({ timeout: 3_000 }).catch(() => undefined);
+/** The layers panel open or closed, whichever it was: the editor remembers it between pages, so a press alone may close what it meant to open. */
+const layersTo = async (want) => {
+  await page.getByTestId('editor-layers').waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const shown = (await page.getByTestId('layers-panel').count()) > 0;
+  if (shown !== (want === 'open')) await tap('editor-layers');
+};
 /** The layers' names, the top of the stack first, and which is chosen. */
 const stack = () => page.evaluate(() => [...document.querySelectorAll('[data-testid="layer-row"]')].map((row) =>
   `${row.getAttribute('aria-selected') === 'true' ? '*' : ''}${row.querySelector('[data-testid="layer-name"]')?.textContent ?? ''}`));
@@ -448,7 +454,7 @@ const paintRow = async (colour) => {
 };
 const pictureSrc = () => page.getByTestId('editor-picture').getAttribute('src');
 
-await tap('editor-layers');
+await layersTo('open');
 await page.getByTestId('layers-panel').waitFor({ timeout: 3_000 }).catch(() => undefined);
 const noFromButtons = (await page.getByTestId('layers-add-file').count()) === 0 && (await page.getByTestId('layers-add-orknux').count()) === 0;
 const startsWith = { stack: await stack(), base: await page.getByTestId('layer-base').count(), seen: await seen() };
@@ -531,7 +537,7 @@ const flat = await shown([[0.1, (row + 0.5) / size.height]]);
 record(kept.length === keptBeforeFlatten + 1 && kept[kept.length - 1].change === 'Layers flattened' && (await stack()).length === 0 &&
   flat?.width === size.width && flat.colours[0] === 'rgb(0,255,255)',
   `Flatten keeps what is seen as one version of the picture's own size, and the layers go (${JSON.stringify({ flat, change: kept[kept.length - 1]?.change })})`);
-await tap('editor-layers');
+await layersTo('closed');
 
 // -- Feather on a Magic edit (#638) ----------------------------------------------
 
@@ -582,7 +588,7 @@ const whole = await page.evaluate(() => {
 });
 /** A row across the top quarter, where the picture is red on the left. */
 const savedRow = Math.round(whole.height * 0.25);
-await tap('editor-layers');
+await layersTo('open');
 await page.getByTestId('layers-panel').waitFor({ timeout: 3_000 }).catch(() => undefined);
 await tap('layers-new');
 await tap('editor-brush');
@@ -599,7 +605,7 @@ record(kept.length === keptBeforeSave + 1 && saves.length === 1 && sentWithSave?
 
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
-await tap('editor-layers');
+await layersTo('open');
 await page.getByTestId('layer-row').first().waitFor({ timeout: 5_000 }).catch(() => undefined);
 const reopened = await stack();
 /** The paint, read where it was painted: on the layer, and not in the picture under it. */
@@ -729,5 +735,20 @@ const newKey = await cropOn();
 const reboundTitle = await page.getByTestId('editor-crop').getAttribute('title').catch(() => '');
 record(recorded.trim() === 'G' && !oldKey && newKey && reboundTitle === 'Crop (G)',
   `a key chosen on Preferences picks the tool instead of the default, and its button says so (${JSON.stringify({ recorded, oldKey, newKey, reboundTitle })})`);
+
+// The layers panel is remembered for whoever uses the editor: open stays open over a reload, closed stays closed.
+const layersShown = async () => (await page.getByTestId('layers-panel').count()) > 0;
+const reopen = async () => {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByTestId('editor-layers').waitFor({ timeout: 20_000 }).catch(() => undefined);
+  await page.waitForTimeout(500);
+};
+if (!(await layersShown())) await tap('editor-layers');
+await reopen();
+const keptOpen = await layersShown();
+await tap('editor-layers');
+await reopen();
+const keptClosed = !(await layersShown());
+record(keptOpen && keptClosed, `the layers panel is remembered across a reload, open or closed (${JSON.stringify({ keptOpen, keptClosed })})`);
 
 await finish(browser);

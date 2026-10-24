@@ -67,6 +67,7 @@ import {
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
+import { useSieve } from '../../components/sieve';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import styles from './DesignImageEditorPage.module.css';
 import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
@@ -870,7 +871,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const layerEdits = useRef(0);
   /** Which picture's layers are on the page: another picture shown has its own read. */
   const layersFor = useRef<string | null>(null);
-  const [layersOpen, setLayersOpen] = useState(false);
+  // Whether the layers panel is open, remembered for whoever uses the editor, as a list's filter is.
+  const [layersRemembered, rememberLayers] = useSieve('image-editor.layers');
+  const layersOpen = layersRemembered === 'open';
+  const setLayersOpen = (next: boolean | ((held: boolean) => boolean)) =>
+    rememberLayers((typeof next === 'function' ? next(layersOpen) : next) ? 'open' : '');
   /** How many layers a picture may keep over the picture itself: the installation's number. */
   const [layersMost, setLayersMost] = useState<number | null>(null);
   const layerCount = useRef(0);
