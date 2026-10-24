@@ -37,7 +37,7 @@ const ORIGINAL = picture('DESIGN-701', HALVES, null);
 const OTHER = { ...picture('SAVED-77', HALVES, null), kind: 'SAVED', name: null, prompt: 'zz tools: an agent kept this' };
 const DOCUMENT = { ...picture('SAVED-78', '/api/artifacts/78', null), kind: 'SAVED', contentType: 'application/pdf', filename: 'notes.pdf' };
 /** The installation's numbers for the tools, answered here so what the page starts at is known. */
-const SETTINGS = { brush: 4, brushMost: 50 };
+const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60 };
 /** What each keepDesignImageChange was asked to keep, in order. */
 const kept = [];
 let next = 702;
@@ -201,6 +201,30 @@ await showsLastKept();
 const brushed = await shown([[0.5, 0.5], [0.5, 0.05], [0.5, 0.95]]);
 record(kept.length === keptBeforeBrush + 1 && brushed?.colours[0] === 'rgb(0,255,0)' && brushed.colours[1] === 'blue' && brushed.colours[2] === 'red',
   `Apply keeps the painted picture: green where the stroke went, untouched elsewhere (${JSON.stringify(brushed)})`);
+
+// -- Selective blur (#636) -------------------------------------------------------
+
+// Blue over a green stripe over red: the left half of the stripe's lower edge is blurred, the right half is not.
+await page.getByTestId('editor-blur').click();
+await page.getByTestId('blur-options').waitFor({ timeout: 3_000 }).catch(() => undefined);
+const blurStarts = await page.getByTestId('blur-radius').inputValue().catch(() => '');
+const blurMost = await page.getByTestId('blur-radius').getAttribute('max').catch(() => '');
+record(blurStarts === '6' && blurMost === '60', `the blur starts at the installation's radius, and goes no further than its most (${JSON.stringify({ blurStarts, blurMost })})`);
+const size = await page.evaluate(() => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  return { width: image.naturalWidth, height: image.naturalHeight };
+});
+const keptBeforeBlur = kept.length;
+await drag([0.5, size.height * 0.3], [size.width * 0.5, size.height * 0.95]);
+const outlined = await page.getByTestId('blur-selection').count();
+await page.getByTestId('blur-apply').click();
+await showsLastKept();
+const blurred = await shown([[0.25, 0.7], [0.75, 0.7], [0.25, 0.05]]);
+const mixed = blurred?.colours[0] ?? '';
+record(outlined === 1 && kept.length === keptBeforeBlur + 1 && mixed !== 'red' && mixed !== 'rgb(0,255,0)' && blurred.colours[1] === 'red' && blurred.colours[2] === 'blue',
+  `Blur mixes the stripe into the red inside the selection only, and keeps it as a version (${JSON.stringify(blurred)})`);
+record(await page.getByTestId('blur-options').isVisible().catch(() => false), 'the blur stays in hand for the next part');
+await page.getByTestId('blur-cancel').click();
 
 // -- Import from Orknux (#632) - last, since it opens another picture -----------
 

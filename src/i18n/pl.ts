@@ -3490,4 +3490,8 @@ export const PL: Record<string, string> = {
   "Brush": "Pędzel",
   "Painted with the brush": "Pomalowano pędzlem",
   "Apply": "Zastosuj",
+  "Blur": "Rozmyj",
+  "Blurred, {radius} px": "Rozmyto, {radius} px",
+  "Radius": "Promień",
+  "Lasso": "Lasso",
 };

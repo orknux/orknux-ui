@@ -320,11 +320,13 @@ export async function queueDesignImageEdit(input: EditDesignImageInput): Promise
 export interface ImageEditorSettings {
   brush: number;
   brushMost: number;
+  blur: number;
+  blurMost: number;
 }
 
 export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
   const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
-    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost } }`,
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost } }`,
     { workspaceId },
   );
   return data.designImageEditorSettings;

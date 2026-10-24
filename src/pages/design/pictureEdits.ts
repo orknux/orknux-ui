@@ -1,3 +1,5 @@
+import { canvasRGBA } from 'stackblur-canvas';
+
 /**
  * Changes the image editor works out itself, on a canvas in the browser: the
  * picture is already here, so turning it over needs no model and no queue.
@@ -89,6 +91,37 @@ export function boxOf(points: Point[], width: number, height: number): Box {
   const right = Math.min(width, Math.ceil(Math.max(...points.map((point) => point.x))));
   const bottom = Math.min(height, Math.ceil(Math.max(...points.map((point) => point.y))));
   return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+}
+
+/**
+ * The picture blurred inside an outline only, by a radius in its own pixels;
+ * outside it, every pixel is as it was.
+ *
+ * Stack blur rather than the canvas's own `filter`, which not every browser
+ * draws with: the same picture blurs the same everywhere. What is blurred is
+ * the box around the outline grown by the radius, so pixels just outside the
+ * outline still blend into its edge, as they would in the picture itself.
+ */
+export function blurredInside(source: HTMLCanvasElement, outline: Point[], radius: number): HTMLCanvasElement {
+  const around = boxOf(outline, source.width, source.height);
+  const x = Math.max(0, around.x - radius);
+  const y = Math.max(0, around.y - radius);
+  const width = Math.min(source.width, around.x + around.width + radius) - x;
+  const height = Math.min(source.height, around.y + around.height + radius) - y;
+  const blurred = blank(source.width, source.height);
+  blurred.pen.drawImage(source, 0, 0);
+  canvasRGBA(blurred.canvas, x, y, width, height, radius);
+
+  const { canvas, pen } = blank(source.width, source.height);
+  pen.drawImage(source, 0, 0);
+  pen.save();
+  pen.beginPath();
+  outline.forEach((point, index) => (index === 0 ? pen.moveTo(point.x, point.y) : pen.lineTo(point.x, point.y)));
+  pen.closePath();
+  pen.clip();
+  pen.drawImage(blurred.canvas, 0, 0);
+  pen.restore();
+  return canvas;
 }
 
 /** Only what is inside the box: the picture becomes the box's size. */

@@ -27,6 +27,7 @@ import type { ImageSizePreset } from '../../api/imagePresets';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
+import blurIcon from '../../assets/blur.svg';
 import brushIcon from '../../assets/brush.svg';
 import cropIcon from '../../assets/crop.svg';
 import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
@@ -62,7 +63,7 @@ import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { boxOf, canvasOf, cropped, mirrored, painted, rotated, strokePath } from './pictureEdits';
+import { blurredInside, boxOf, canvasOf, cropped, mirrored, painted, rotated, strokePath } from './pictureEdits';
 import type { Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -113,7 +114,7 @@ type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: stri
 type MagicTool = 'rectangle' | 'lasso';
 
 /** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
-type Tool = MagicTool | 'crop' | 'brush';
+type Tool = MagicTool | 'crop' | 'brush' | 'blur';
 
 /** Whether a tool selects with a rectangle - two corners - rather than a lasso's outline. */
 const boxed = (tool: Tool | null) => tool === 'rectangle' || tool === 'crop';
@@ -254,6 +255,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       .then((settings) => {
         setBrushMost(settings.brushMost);
         setBrushSize((held) => held ?? settings.brush);
+        setBlurMost(settings.blurMost);
+        setBlurRadius((held) => held ?? settings.blur);
       })
       .catch(() => undefined);
   }, [workspaceId]);
@@ -592,7 +595,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (selecting === null) return;
     const at = onPicture(event);
     if (at === null) return;
-    if (boxed(tool)) setSelecting([selecting[0], at]);
+    if (selectsBox()) setSelecting([selecting[0], at]);
     else setSelecting([...selecting, at]);
   };
   const finishSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -600,15 +603,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     const drawn = selecting;
     setSelecting(null);
     const outline =
-      boxed(tool) && drawn.length === 2
+      selectsBox() && drawn.length === 2
         ? [drawn[0], { x: drawn[1].x, y: drawn[0].y }, drawn[1], { x: drawn[0].x, y: drawn[1].y }]
         : drawn;
     const xs = outline.map((point) => point.x);
     const ys = outline.map((point) => point.y);
     if (outline.length < 3 || Math.max(...xs) - Math.min(...xs) < SMALLEST_SELECTION || Math.max(...ys) - Math.min(...ys) < SMALLEST_SELECTION) return;
     setSelection(outline);
-    // A crop is applied from its bar; only a Magic selection asks what to change, by the pointer.
-    if (tool === 'crop') return;
+    // A crop or a blur is applied from its bar; only a Magic selection asks what to change, by the pointer.
+    if (tool === 'crop' || tool === 'blur') return;
     const around = canvasRef.current?.getBoundingClientRect();
     if (around === undefined) return;
     setAskAt({ x: event.clientX - around.left, y: event.clientY - around.top });
@@ -776,6 +779,22 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (drawn !== null) await keepChange(drawn, t('Painted with the brush'));
   }
 
+  /*
+   * Selective blur: part of the picture selected with a rectangle or a lasso,
+   * as Magic edit selects, and blurred inside it only. The tool stays in hand,
+   * so one part after another can be blurred; each is a version.
+   */
+  const [blurShape, setBlurShape] = useState<'rectangle' | 'lasso'>('rectangle');
+  const [blurRadius, setBlurRadius] = useState<number | null>(null);
+  const [blurMost, setBlurMost] = useState<number | null>(null);
+  /** Whether the tool in hand selects with a rectangle - two corners - rather than a lasso's outline. */
+  const selectsBox = () => boxed(tool) || (tool === 'blur' && blurShape === 'rectangle');
+  function applyBlur() {
+    const drawn = pictureCanvas();
+    if (drawn === null || selection === null || tool !== 'blur' || blurRadius === null) return;
+    void keepChange(blurredInside(drawn, selection, blurRadius), tf('Blurred, {radius} px', { radius: blurRadius }));
+  }
+
   /** The box a crop selection keeps, in the picture's whole pixels; null with nothing selected to crop to. */
   const cropBox = tool === 'crop' && selection !== null && natural !== null ? boxOf(selection, natural.width, natural.height) : null;
   /** The picture made what is inside the crop's box; the tool is put down once it is kept. */
@@ -837,7 +856,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The selection's outline in the picture's own pixels, which is what the layer over it draws in. */
   const outlineOf = (points: Point[]) => {
     const corners =
-      boxed(tool) && points.length === 2
+      selectsBox() && points.length === 2
         ? [points[0], { x: points[1].x, y: points[0].y }, points[1], { x: points[0].x, y: points[1].y }]
         : points;
     return corners.map((point) => `${point.x},${point.y}`).join(' ');
@@ -879,6 +898,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   keys.current.apply = () => {
     if (tool === 'crop' && selection !== null) {
       applyCrop();
+      return true;
+    }
+    if (tool === 'blur' && selection !== null) {
+      applyBlur();
       return true;
     }
     return false;
@@ -1547,6 +1570,18 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           >
             <img src={cropIcon} alt="" width={16} height={16} />
           </button>
+          <button
+            type="button"
+            className={`${styles.tool} ${tool === 'blur' ? styles.railOn : ''}`}
+            onClick={() => pick('blur')}
+            disabled={picture === null || busy}
+            aria-pressed={tool === 'blur'}
+            title={t('Blur')}
+            aria-label={t('Blur')}
+            data-testid="editor-blur"
+          >
+            <img src={blurIcon} alt="" width={16} height={16} />
+          </button>
         </div>
         <div
           className={`${styles.canvas} ${dropping ? styles.canvasDropping : ''}`}
@@ -1611,6 +1646,64 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 data-testid="brush-apply"
               >
                 {t('Apply')}
+              </button>
+            </div>
+          )}
+          {tool === 'blur' && (
+            <div className={styles.options} role="toolbar" aria-label={t('Blur')} data-testid="blur-options">
+              <button
+                type="button"
+                className={`${styles.tool} ${blurShape === 'rectangle' ? styles.railOn : ''}`}
+                onClick={() => {
+                  forget();
+                  setBlurShape('rectangle');
+                }}
+                aria-pressed={blurShape === 'rectangle'}
+                title={t('Rectangle')}
+                aria-label={t('Rectangle')}
+                data-testid="blur-rectangle"
+              >
+                <img src={rectangleIcon} alt="" width={16} height={16} />
+              </button>
+              <button
+                type="button"
+                className={`${styles.tool} ${blurShape === 'lasso' ? styles.railOn : ''}`}
+                onClick={() => {
+                  forget();
+                  setBlurShape('lasso');
+                }}
+                aria-pressed={blurShape === 'lasso'}
+                title={t('Lasso')}
+                aria-label={t('Lasso')}
+                data-testid="blur-lasso"
+              >
+                <img src={lassoIcon} alt="" width={16} height={16} />
+              </button>
+              <label className={styles.optionsField}>
+                <span>{t('Radius')}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={blurMost ?? blurRadius ?? 1}
+                  value={blurRadius ?? 1}
+                  onChange={(event) => setBlurRadius(Number(event.target.value))}
+                  data-testid="blur-radius"
+                />
+                <span className={styles.optionsValue}>{blurRadius ?? ''}</span>
+              </label>
+              <button
+                type="button"
+                className={form.ghost}
+                onClick={() => {
+                  forget();
+                  setTool(null);
+                }}
+                data-testid="blur-cancel"
+              >
+                {t('Cancel')}
+              </button>
+              <button type="button" className={form.filled} onClick={applyBlur} disabled={selection === null || blurRadius === null || busy} data-testid="blur-apply">
+                {t('Blur')}
               </button>
             </div>
           )}
@@ -1811,6 +1904,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                           />
                           <polygon className={styles.cropEdge} points={outlineOf(selecting ?? selection ?? [])} data-testid="crop-selection" />
                         </>
+                      ) : tool === 'blur' ? (
+                        <polygon className={styles.cropEdge} points={outlineOf(selecting ?? selection ?? [])} data-testid="blur-selection" />
                       ) : (
                         <polygon className={styles.selected} points={outlineOf(selecting ?? selection ?? [])} data-testid="magic-selection" />
                       ))}
