@@ -117,6 +117,18 @@ await page.route('**/graphql', async (route) => {
     wireframe: { ...stored, document: JSON.stringify(after), elementCount: after.elements.length, revision: stored.revision + 1 },
   } } } });
 });
+// An empty chat greets and offers what it can draw, as cards with an icon, a title and a line each.
+const welcome = page.getByTestId('wireframe-welcome');
+const greeting = (await welcome.locator('h2').textContent().catch(() => '')) ?? '';
+const cards = await page.getByTestId('wireframe-idea').evaluateAll((all) =>
+  all.map((one) => ({ icon: one.querySelector('img') !== null, lines: one.innerText.split('\n').filter((line) => line.trim() !== '').length, height: Math.round(one.getBoundingClientRect().height) })));
+record(greeting.startsWith('Hi ') && cards.length === 4 && cards.every((one) => one.icon && one.lines === 2 && one.height >= 48 && one.height <= 72),
+  `an empty chat greets and offers four cards of an icon, a title and a line (${JSON.stringify({ greeting, cards })})`);
+const send = await page.getByTestId('wireframe-chat-send').boundingBox();
+const typed = await page.getByTestId('wireframe-chat-input').boundingBox();
+record(send !== null && typed !== null && send.y > typed.y + typed.height - 2 && send.width <= 40,
+  `Send is a round button along the foot of the box, under the words (${JSON.stringify({ send, typed })})`);
+await page.screenshot({ path: shot('wireframe-welcome.png'), clip: await page.getByTestId('wireframe-panel').boundingBox() });
 await page.getByTestId('wireframe-chat-input').fill('Add a sign in button');
 const modelShown = (await page.getByTestId('wireframe-chat-model').textContent().catch(() => '')) ?? '';
 if (await page.getByTestId('wireframe-chat-send').isDisabled()) {
@@ -179,6 +191,31 @@ await press(frameBox.x + 2, frameBox.y + frameBox.height / 2);
 const frameSelected = await page.locator('[data-testid="wireframe-selected"]').first().boundingBox().catch(() => null);
 record((await selectedCount()) === 1 && frameSelected !== null && Math.abs(frameSelected.width - frameBox.width) < 4,
   `a click on the frame's edge still selects the frame (${JSON.stringify(frameSelected)})`);
+
+// A card is sent as its own prompt: with something drawn, Polish this screen comes first.
+await page.evaluate(() => sessionStorage.clear());
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.getByTestId('wireframe-welcome').waitFor({ timeout: 15_000 }).catch(() => undefined);
+let ideaAsked = null;
+const now = (await gql(`query ($id: ID!) { wireframe(id: $id) { id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt } }`, { id })).data.wireframe;
+await page.route('**/graphql', async (route) => {
+  const body = route.request().postDataJSON() ?? {};
+  if (!(body.query ?? '').includes('askWireframe')) return route.continue();
+  ideaAsked = body.variables;
+  return route.fulfill({ json: { data: { askWireframe: { answer: 'Tidied.', changed: false, wireframe: now } } } });
+});
+// The cards follow the drawing, so they are read once it is on the canvas.
+await page.locator('[data-element-type]').first().waitFor({ timeout: 15_000 }).catch(() => undefined);
+const firstIdea = page.getByTestId('wireframe-idea').first();
+const firstTitle = (await firstIdea.textContent().catch(() => '')) ?? '';
+if (await firstIdea.isEnabled().catch(() => false)) {
+  await firstIdea.click();
+  await page.getByTestId('wireframe-chat-message').first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+  record(firstTitle.includes('Polish this screen') && (ideaAsked?.messages?.at(-1)?.content ?? '').startsWith('Tidy up what is drawn'),
+    `a card sends its own prompt, Polish first once something is drawn (${firstTitle} -> ${ideaAsked?.messages?.at(-1)?.content})`);
+  record((await page.getByTestId('wireframe-welcome').count()) === 0, 'and the greeting gives way to the conversation');
+}
+await page.unroute('**/graphql');
 
 await gql(`mutation ($id: ID!) { deleteWireframe(id: $id) }`, { id });
 await finish(browser);

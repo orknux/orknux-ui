@@ -146,6 +146,7 @@ const NOT_A_FIELD_NOTE = [
   },
   { class: 'questionsLead', why: 'the same, for the step that asks about what a file could not carry' },
   { class: 'arrival', why: 'the same, for the step that says what an imported workflow arrives as' },
+  { class: 'ideaLine', upTo: A_LINE, why: "a suggestion card's own line under its title, on the button it describes rather than under a field" },
 ];
 
 /**

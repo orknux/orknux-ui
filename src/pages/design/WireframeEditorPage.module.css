@@ -219,8 +219,159 @@
   gap: var(--space-8);
 }
 
+/* ---- An empty chat: a greeting and what it can draw, low in the panel, over a glow ---- */
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  margin-top: auto;
+  padding: var(--space-24) var(--space-4) var(--space-8);
+  background: radial-gradient(120% 70% at 100% 100%, color-mix(in srgb, var(--color-violet) 16%, transparent), transparent 70%);
+  border-radius: var(--radius-12);
+}
+
+.hello {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-2xl);
+  font-weight: 300;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.ideas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.idea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-8);
+  text-align: left;
+  color: var(--color-text-primary);
+  font: inherit;
+  background: color-mix(in srgb, var(--color-surface-raised) 85%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-12);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.idea:hover:not(:disabled),
+.idea:focus-visible {
+  background: var(--color-surface-hover);
+  border-color: color-mix(in srgb, var(--color-violet) 45%, var(--color-border));
+  transform: translateY(-1px);
+}
+
+.idea:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ideaIcon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--color-violet) 24%, transparent), color-mix(in srgb, var(--color-violet) 6%, transparent));
+  border: 1px solid color-mix(in srgb, var(--color-violet) 22%, transparent);
+  border-radius: var(--radius-8);
+}
+
+.ideaText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ideaTitle {
+  font-size: var(--text-md);
+}
+
+.ideaLine {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- The box a request is typed in: the words, then the model and Send in a row along its foot ---- */
+
+.askBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-10) var(--space-10) var(--space-8) var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-12);
+  transition: border-color 120ms ease;
+}
+
+.askBox:focus-within {
+  border-color: color-mix(in srgb, var(--color-violet) 55%, var(--color-border));
+}
+
 .ask {
-  min-height: 72px;
+  min-height: 56px;
+  padding: 0;
+  resize: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.askBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.askBar .modelPill {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  font-size: var(--text-xs);
+  background: transparent;
+  border-color: transparent;
+}
+
+.askBar .modelPill:hover {
+  border-color: var(--color-border);
+}
+
+.send {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--color-violet);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.send:disabled {
+  cursor: default;
+  opacity: 0.35;
 }
 
 .count {
