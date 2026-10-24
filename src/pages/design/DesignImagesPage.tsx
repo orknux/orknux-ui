@@ -23,7 +23,7 @@ import table from '../workspace/CatalogueTable.module.css';
 import gallery from '../workspace/WorkspaceArtifactsPage.module.css';
 import styles from './DesignImagesPage.module.css';
 import { t, tf } from '../../i18n';
-import { useVideoFromPicture, videoFromPicturePath } from './useVideoFromPicture';
+import { videoFromPicturePath } from './useVideoFromPicture';
 
 export interface DesignImagesPageProps {
   session: SessionUser;
@@ -183,8 +183,6 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
   }, [open?.id]);
 
   const drawnWith = open?.drawnWith ?? null;
-  /** Only where a video model here starts from a picture; otherwise the button leads nowhere. */
-  const videoFromPicture = useVideoFromPicture(workspaceId);
   /** The picture a remove has been asked about, held until it is confirmed. */
   const [removing, setRemoving] = useState<Artifact | null>(null);
 
@@ -366,17 +364,15 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             >
               <TrashIcon />
             </button>
-            {videoFromPicture && (
-              <button
-                type="button"
-                className={`${table.createButton} ${styles.focusEdit}`}
-                onClick={() => navigate(videoFromPicturePath(workspaceId, open.id))}
-                title={t('Make a video that starts from this picture')}
-                data-testid="design-image-to-video"
-              >
-                {t('Convert to video')}
-              </button>
-            )}
+            <button
+              type="button"
+              className={`${table.createButton} ${styles.focusEdit}`}
+              onClick={() => navigate(videoFromPicturePath(workspaceId, open.id))}
+              title={t('Make a video that starts from this picture')}
+              data-testid="design-image-to-video"
+            >
+              {t('Convert to video')}
+            </button>
             <button
               type="button"
               className={`${table.createButton} ${styles.focusEdit}`}

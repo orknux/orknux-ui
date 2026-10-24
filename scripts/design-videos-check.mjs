@@ -45,8 +45,8 @@ const video = (overrides) => ({
 let takesStart = true;
 /** What Generate asked for. */
 const queued = [];
-/** How many times the new video has been asked about: on its way twice, then made. */
-let asked = 0;
+// The video is made once the check has seen it under way, not after a count of reads a slow page may run past.
+let release = false;
 
 // A real WebM, recorded from a canvas in the page: what a <video> must decode and play.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/videos`, { waitUntil: 'domcontentloaded' });
@@ -120,8 +120,7 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('designVideo(')) {
     const id = body.variables?.id;
     if (id !== '77') return route.fulfill({ json: { data: { designVideo: video({ id }) } } });
-    asked += 1;
-    const made = asked > 3;
+    const made = release;
     return route.fulfill({
       json: { data: { designVideo: video({
         id: '77', name: 'A lighthouse at dusk', prompt: 'a lighthouse at dusk, waves', startImageId: PICTURE.id, startImageUrl: PICTURE.url,
@@ -230,6 +229,7 @@ record(page.url().endsWith('/design/videos/77'), `and the address moves to the v
 const progress = page.getByTestId('video-progress');
 await progress.waitFor({ timeout: 10_000 }).catch(() => undefined);
 record((await progress.getAttribute('aria-valuenow').catch(() => null)) === '50', 'how far it has got is shown while it is made');
+release = true;
 
 const player = page.getByTestId('video-player');
 await player.waitFor({ timeout: 20_000 }).catch(() => undefined);
@@ -251,12 +251,16 @@ await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('video-player').waitFor({ timeout: 15_000 }).catch(() => undefined);
 record((await page.getByTestId('video-player').count()) === 1, 'a reload finds the video where it was');
 
-// -- Not offered where it would lead nowhere ------------------------------------------------
+// -- Offered on every picture: where no model starts from one, the video editor is where that is said --
 
 takesStart = false;
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}`, { waitUntil: 'domcontentloaded' });
 await page.getByTestId('design-image-edit').waitFor({ timeout: 20_000 }).catch(() => undefined);
 await page.waitForTimeout(1500);
-record((await page.getByTestId('design-image-to-video').count()) === 0, 'no Convert to video where no video model starts from a picture');
+const offered = page.getByTestId('design-image-to-video');
+record((await offered.count()) === 1, 'Convert to video is on a picture even where no video model starts from one');
+await offered.click().catch(() => undefined);
+await page.waitForURL(/\/design\/videos\/new/, { timeout: 10_000 }).catch(() => undefined);
+record(page.url().includes('/design/videos/new'), `and it opens the video editor (${page.url()})`);
 
 await finish(browser);
