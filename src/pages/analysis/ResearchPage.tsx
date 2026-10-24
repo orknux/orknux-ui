@@ -5,6 +5,7 @@ import type { PageOf } from '../../api/client';
 import { deleteResearch, fetchResearches } from '../../api/research';
 import type { Research, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
+import { formatDuration } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
 import { AppShell } from '../../components/AppShell';
 import { AutoRefresh } from '../../components/AutoRefresh';
@@ -100,7 +101,9 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
           <span className={styles.colMode}>{t('Mode')}</span>
           <span className={styles.colModel}>{t('Model')}</span>
           <span className={styles.colStatus}>{t('Status')}</span>
+          <span className={styles.colRounds}>{t('Search rounds')}</span>
           <span className={styles.colStarted}>{t('Started')}</span>
+          <span className={styles.colTook}>{t('Took')}</span>
           <span className={styles.colResult}>{t('Result')}</span>
           <span className={styles.colActions} />
         </div>
@@ -123,8 +126,14 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
                 {statusLabel(one.status)}
               </span>
             </span>
+            <span className={`${styles.colRounds} ${styles.cell}`} data-cell="rounds">{one.progress?.level ?? '—'}</span>
             <span className={`${styles.colStarted} ${styles.cell}`} title={one.startedAt} data-cell="started">
               {timeAgo(one.startedAt)}
+            </span>
+            <span className={`${styles.colTook} ${styles.cell}`} data-cell="took">
+              {one.finishedAt === null
+                ? '—'
+                : formatDuration(Math.max(0, Math.round((Date.parse(one.finishedAt) - Date.parse(one.startedAt)) / 1000)))}
             </span>
             <span className={`${styles.colResult} ${styles.cell}`} data-cell="result">
               {one.status === 'COMPLETED' ? (

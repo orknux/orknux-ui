@@ -47,6 +47,16 @@
   width: 90px;
 }
 
+.colRounds {
+  flex-shrink: 0;
+  width: 110px;
+}
+
+.colTook {
+  flex-shrink: 0;
+  width: 80px;
+}
+
 .colActions {
   display: flex;
   flex-shrink: 0;

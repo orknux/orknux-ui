@@ -325,7 +325,7 @@ const drawn = await row.first().evaluate((held) => {
   }
   return cells;
 });
-const textCells = ['mode', 'model', 'started', 'result'];
+const textCells = ['mode', 'model', 'rounds', 'started', 'took', 'result'];
 const sizes = new Set([drawn.question?.size, ...textCells.map((name) => drawn[name]?.size)]);
 record(sizes.size === 1 && !sizes.has(undefined), `the question and every text cell are one size (${JSON.stringify(Object.fromEntries(Object.entries(drawn).map(([k, v]) => [k, v.size])))})`);
 record(drawn.question?.weight === '600', `the question is the row's one bold cell (${drawn.question?.weight})`);
