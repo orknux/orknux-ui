@@ -3401,7 +3401,6 @@ export const PL: Record<string, string> = {
   "Sticky note": "Karteczka",
   "Pick a tool and draw, or ask on the right.": "Wybierz narzędzie i rysuj albo poproś po prawej.",
   "This workspace has no chat model": "Ta przestrzeń robocza nie ma modelu czatu",
-  "Draw a sign-in screen for a phone": "Narysuj ekran logowania na telefon",
   "What to draw": "Co narysować",
   // Negative prompts, issue #657.
   "Negative prompt": "Prompt negatywny",
