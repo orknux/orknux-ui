@@ -28,7 +28,7 @@ if (picture !== undefined && picture !== null) {
   record(placed !== null && placed.href === `/workspace/${WORKSPACE}/design/images/${picture.id}/edit` && placed.level !== null && placed.level < 2 && placed.before,
     `the viewer offers Open in editor beside Save (${JSON.stringify(placed)})`);
   await edit.click().catch(() => undefined);
-  await page.waitForURL(/\/design\/images\/\d+\/edit$/, { timeout: 20_000 }).catch(() => undefined);
+  await page.waitForURL(/\/design\/images\/[^/]+\/edit$/, { timeout: 20_000 }).catch(() => undefined);
   record(page.url().endsWith(`/design/images/${picture.id}/edit`), `and it opens that picture's editor (${page.url().replace(BASE, '')})`);
 }
 
