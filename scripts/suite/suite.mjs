@@ -1930,7 +1930,7 @@ export const TESTS = [
 
   {
     name: 'design-upscale-check',
-    what: "the image editor upscales with the server's own algorithms, imports a picked, dropped or pasted file, and exports PNG, JPEG or .orkx",
+    what: "the image editor upscales with the server's own algorithms, imports a picked, dropped or pasted file, exports PNG, JPEG or .orkx, and Convert to video on its bar asks first only where something is unsaved",
     needs: ['workspace'],
     /* Answers the picture, the models, the algorithms and the queue itself. */
   },
@@ -2080,7 +2080,7 @@ export const TESTS = [
   },
   {
     name: 'design-videos-check',
-    what: "Design's Videos page lists, Convert to video opens the editor near-full-screen with the picture, and a video made there plays",
+    what: "Design's Videos page lists, Convert to video opens the editor near-full-screen with the picture, a video being made says how long it has taken and, from its measured progress, about how long is left, and a video made there plays",
     needs: ['workspace'],
     /*
      * Issue #658. Answers the videos, the model's settings and the pictures

@@ -68,6 +68,14 @@
   transition: width 0.4s ease;
 }
 
+/* How long it has taken and about how long is left: one line under the bar. */
+.pace {
+  margin: 0;
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* The picture a video starts from, small, above the wait. */
 .startShown {
   max-width: 240px;

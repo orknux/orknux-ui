@@ -3,8 +3,9 @@
  * their poster, prompt, model, length and state; "Convert to video" on a
  * picture opens the video editor near-full-screen with that picture set to
  * start from - and is not offered where no video model takes one; a video
- * generated there shows how far it has got, then plays, and is still there
- * after a reload.
+ * generated there shows how far it has got, how long it has taken and - from
+ * its measured progress, never a guess - about how long is left, then plays,
+ * and is still there after a reload.
  *
  * The videos, the model's settings and the pictures are answered here. The
  * file that plays is a real WebM, recorded in the page from a canvas, so
@@ -38,6 +39,7 @@ const video = (overrides) => ({
   id: 'v1', status: 'DONE', name: 'A boat', prompt: 'a paper boat on a pond', modelId: MODEL.id, model: 'Wan', seconds: null, size: null,
   frames: 33, fps: 16, width: 832, height: 480, seed: null, startImageId: null, startImageUrl: null, requestedBy: 'alice',
   requestedAt: new Date().toISOString(), startedAt: null, finishedAt: null, reason: null, progress: 100, ahead: null,
+  progressSamplingOnly: false, asOf: new Date().toISOString(),
   url: '/api/design-videos/v1', posterUrl: null, contentType: 'video/webm', sizeBytes: 1, durationSeconds: 2.06, ...overrides,
 });
 
@@ -47,6 +49,14 @@ let takesStart = true;
 const queued = [];
 // The video is made once the check has seen it under way, not after a count of reads a slow page may run past.
 let release = false;
+/**
+ * How the video on its way is answered: its progress, whether that counts only
+ * sampling, and when it started. The server's clock is set ten minutes ahead
+ * of the browser's, so an elapsed time counted on the browser's own clock
+ * would read 0:00 rather than what the server measured.
+ */
+const SKEW = 10 * 60_000;
+const onItsWay = { progress: 50, samplingOnly: false, startedAt: Date.now() };
 
 // A real WebM, recorded from a canvas in the page: what a <video> must decode and play.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/videos`, { waitUntil: 'domcontentloaded' });
@@ -124,8 +134,9 @@ await page.route('**/graphql', async (route) => {
     return route.fulfill({
       json: { data: { designVideo: video({
         id: '77', name: 'A lighthouse at dusk', prompt: 'a lighthouse at dusk, waves', startImageId: PICTURE.id, startImageUrl: PICTURE.url,
-        status: made ? 'DONE' : 'GENERATING', progress: made ? 100 : 50, url: made ? '/api/design-videos/77' : null,
-        durationSeconds: made ? 2 : null,
+        status: made ? 'DONE' : 'GENERATING', progress: made ? 100 : onItsWay.progress, url: made ? '/api/design-videos/77' : null,
+        durationSeconds: made ? 2 : null, progressSamplingOnly: onItsWay.samplingOnly,
+        startedAt: new Date(onItsWay.startedAt + SKEW).toISOString(), asOf: new Date(Date.now() + SKEW).toISOString(),
       }) } },
     });
   }
@@ -229,6 +240,63 @@ record(page.url().endsWith('/design/videos/77'), `and the address moves to the v
 const progress = page.getByTestId('video-progress');
 await progress.waitFor({ timeout: 10_000 }).catch(() => undefined);
 record((await progress.getAttribute('aria-valuenow').catch(() => null)) === '50', 'how far it has got is shown while it is made');
+
+// -- How long it has taken, and about how long is left -------------------------------
+
+const pace = page.getByTestId('video-pace');
+/** The time line and the bar's fill as a share of the bar, once a read or two of what the stub now says has landed. */
+const paceNow = async () => {
+  await page.waitForTimeout(2_600);
+  return {
+    line: (await pace.innerText().catch(() => '')).trim(),
+    share: await page.getByTestId('video-progress-fill').evaluate((fill) => fill.getBoundingClientRect().width / fill.parentElement.getBoundingClientRect().width).catch(() => -1),
+  };
+};
+const secondsOf = (clock) => {
+  const [minutes, seconds] = clock.split(':').map(Number);
+  return minutes * 60 + seconds;
+};
+
+// No progress at all from its server: the time taken, on the server's clock, and nothing guessed.
+onItsWay.progress = null;
+// Started forty seconds ago by the server's clock: half way is then under a minute and a half, said in seconds.
+onItsWay.startedAt = Date.now() - 40_000;
+await page.reload({ waitUntil: 'domcontentloaded' });
+await pace.waitFor({ timeout: 15_000 }).catch(() => undefined);
+const unmeasured = await paceNow();
+const unmeasuredElapsed = /^(\d+:\d\d) elapsed$/.exec(unmeasured.line);
+record(unmeasuredElapsed !== null && Math.abs(secondsOf(unmeasuredElapsed[1]) - (Date.now() - onItsWay.startedAt) / 1000) < 5,
+  `with no progress from its server only the time taken is said, counted on the server's clock (${JSON.stringify(unmeasured)})`);
+
+// Too little to go on: said as being worked out.
+onItsWay.progress = 3;
+const early = await paceNow();
+record(/^\d+:\d\d elapsed · Estimating…$/.test(early.line), `under five points of progress the time left is being estimated (${JSON.stringify(early)})`);
+
+// Half way after E seconds: about E seconds left, and the bar half full.
+onItsWay.progress = 50;
+const halfWay = await paceNow();
+const estimate = /^(\d+:\d\d) elapsed · about (\d+) s left$/.exec(halfWay.line);
+const took = estimate === null ? 0 : secondsOf(estimate[1]);
+record(estimate !== null && Math.abs(Number(estimate[2]) - took) <= Math.max(10, took * 0.2),
+  `past the threshold the time left is the time taken over the share done (${JSON.stringify({ ...halfWay, took })})`);
+record(Math.abs(halfWay.share - 0.5) < 0.03, `and the bar is drawn at the share done (${halfWay.share})`);
+
+// A read that says no progress - a poll its server did not answer - keeps the bar where it was.
+onItsWay.progress = null;
+const lapse = await paceNow();
+record(Math.abs(lapse.share - 0.5) < 0.03, `a read with no progress keeps the bar at the last share measured (${JSON.stringify(lapse)})`);
+
+// stable-diffusion.cpp counts its sampling steps alone: the time left is said to be the sampling's, and once they are done, Finishing….
+onItsWay.samplingOnly = true;
+onItsWay.progress = 60;
+const sampling = await paceNow();
+record(/ · about \d+ (s|min) of sampling left$/.test(sampling.line), `where progress counts only sampling, the time left says so (${JSON.stringify(sampling)})`);
+onItsWay.progress = 99;
+const decoding = await paceNow();
+record(/^\d+:\d\d elapsed · Finishing…$/.test(decoding.line), `with the steps all done it says Finishing…, not a time (${JSON.stringify(decoding)})`);
+onItsWay.samplingOnly = false;
+onItsWay.progress = 50;
 release = true;
 
 const player = page.getByTestId('video-player');

@@ -52,6 +52,10 @@ export interface DesignVideo {
   reason: string | null;
   /** How far it has got, in percent, where its server says. */
   progress: number | null;
+  /** Whether progress counts only the sampling steps, as stable-diffusion.cpp's does: the decode after them is not in it. */
+  progressSamplingOnly: boolean;
+  /** The server's clock when this was read, to count from startedAt on the same clock. */
+  asOf: string;
   /** How many queued videos are made before this one; null unless QUEUED. */
   ahead: number | null;
   /** The file, once DONE. */
@@ -64,7 +68,7 @@ export interface DesignVideo {
 
 const VIDEO_FIELDS = `
   id status name prompt modelId model seconds size frames fps width height seed startImageId startImageUrl
-  requestedBy requestedAt startedAt finishedAt reason progress ahead url posterUrl contentType sizeBytes durationSeconds
+  requestedBy requestedAt startedAt finishedAt reason progress progressSamplingOnly asOf ahead url posterUrl contentType sizeBytes durationSeconds
 `;
 
 /** What one video model takes, asked of its server now. */

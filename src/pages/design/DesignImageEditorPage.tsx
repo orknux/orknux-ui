@@ -73,6 +73,7 @@ import styles from './DesignImageEditorPage.module.css';
 import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import layersIcon from '../../assets/layers.svg';
+import videoIcon from '../../assets/video.svg';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
@@ -272,7 +273,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [exporting, setExporting] = useState(false);
   /** Import's menu open: a file, or a picture already in Orknux. */
   const [importMenu, setImportMenu] = useState(false);
-  /** The menu of what a model does with the whole picture open: Upscale, Clean up, Harmonize, Convert to video. */
+  /** The menu of what a model does with the whole picture open: Upscale, Clean up, Harmonize. */
   const [modelMenu, setModelMenu] = useState(false);
   /** The window of pictures in Orknux open, and what the one chosen is for. */
   const [picking, setPicking] = useState(false);
@@ -312,8 +313,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The rail's tools, the brush's width and the blur's shapes, as Preferences has them. */
   const editorKeys = useImageEditorShortcuts();
   const location = useLocation();
-  /** Where to go once the leave guard has let go of its history - a copy just saved. */
-  const goingTo = useRef<string | null>(null);
+  /**
+   * Where to go once the leave guard has let go of its history - a copy just
+   * saved, or the video page after Save & Leave - and whether that replaces
+   * the editor's entry: the copy's editor does, the video page goes on top, so
+   * Back from it is the editor.
+   */
+  const goingTo = useRef<{ to: string; replace: boolean } | null>(null);
 
   const picture = shown?.kind === 'picture' ? shown.picture : null;
   /** The model chosen, for whether it takes a negative prompt and what its own is. */
@@ -1494,6 +1500,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       }
       if (pendingName !== null) kept = await renameDesignImage(workspaceId, kept.id, pendingName);
       setPendingName(null);
+      savedPicture.current = kept;
       // The picture took the version's layers with it, and the page holds them already.
       layersFor.current = kept.id;
       setShown({ kind: 'picture', picture: kept });
@@ -1539,7 +1546,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       setShown({ kind: 'picture', picture: copy });
       // With a rename held, the leave guard holds a spare history entry: moved to once it has stepped off it,
       // or that step lands back on the original. Without one there is nothing to wait for.
-      if (unsaved) goingTo.current = to;
+      if (unsaved) goingTo.current = { to, replace: true };
       else navigate(to, { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the picture.'));
@@ -1665,10 +1672,34 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (to === null || unsaved) return;
     if ((location.state as Record<string, unknown> | null)?.orknuxUnsavedWork === true) return;
     goingTo.current = null;
-    navigate(to, { replace: true });
+    navigate(to.to, { replace: to.replace });
   }, [location.key, unsaved]);
   const canSave = unsaved || drafted;
   const guard = useLeaveGuard({ unsaved, backTo: `/workspace/${workspaceId}/design/images`, save });
+
+  /**
+   * Convert to video, asked first where there is anything Save would write -
+   * a version drafted, layers or strokes not kept, a new name - and gone
+   * straight to the video page where there is not. Leave starts the video
+   * from the picture as it was last saved, which is what leaving without
+   * saving means; Save & Leave saves first and starts it from what was saved.
+   */
+  const [videoAsking, setVideoAsking] = useState(false);
+  /** The picture Save last wrote, for Save & Leave to start the video from. */
+  const savedPicture = useRef<Artifact | null>(null);
+  function toVideo() {
+    if (picture === null || busy) return;
+    if (canSave) {
+      setVideoAsking(true);
+      return;
+    }
+    navigate(videoFromPicturePath(workspaceId, picture.id));
+  }
+  /** Leaves for the video page: over the leave guard's spare entry where it holds one, so Back from there is the editor once. */
+  function leaveForVideo(to: string) {
+    const onGuardEntry = (location.state as Record<string, unknown> | null)?.orknuxUnsavedWork === true;
+    navigate(to, { replace: onGuardEntry });
+  }
   const canDiscard =
     canSave || pendingName !== null || (job !== null && (job.status === 'QUEUED' || job.status === 'FAILED' || job.status === 'STOPPED'));
 
@@ -1818,6 +1849,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           {/*
             What a model does with the whole picture, in one menu: as four
             buttons of their own they pushed the picture's name off the bar.
+            Convert to video is the one that leaves the editor, and stands
+            beside the menu as a button of its own.
             With no model for one, its item is off and says why and where to
             add one, at once on hover, not after a title's delay.
           */}
@@ -1829,7 +1862,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               disabled={picture === null}
               aria-haspopup="menu"
               aria-expanded={modelMenu}
-              title={t('Upscale, clean up, harmonize or make a video with a model')}
+              title={t('Upscale, clean up or harmonize with a model')}
               data-testid="editor-ai"
             >
               {t('AI')} ▾
@@ -1909,28 +1942,25 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     </span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setModelMenu(false);
-                    void asSeen()
-                      .then((seen) => {
-                        if (seen === null) return;
-                        const to = videoFromPicturePath(workspaceId, seen.id);
-                        if (!askBeforeLeaving(to)) navigate(to);
-                      })
-                      .catch((cause) => setError(cause instanceof Error ? cause.message : t('Could not keep the change.')));
-                  }}
-                  disabled={picture === null || busy || strokes.length > 0}
-                  title={t('Make a video that starts from this picture')}
-                  data-testid="editor-to-video"
-                >
-                  {t('Convert to video')}
-                </button>
               </div>
             )}
           </div>
+          {/*
+            Convert to video on the bar itself, beside the menu it used to be
+            in: an icon, since its words would take the room the picture's
+            name needs at 1280 wide.
+          */}
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={toVideo}
+            disabled={picture === null || busy}
+            title={t('Make a video that starts from this picture')}
+            aria-label={t('Convert to video')}
+            data-testid="editor-to-video"
+          >
+            <img src={videoIcon} alt="" width={16} height={16} />
+          </button>
           <span className={styles.toolbarGap} aria-hidden="true" />
           <div className={styles.exportMenu}>
             <button
@@ -3151,6 +3181,28 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         onStay={guard.stay}
         onLeave={guard.leave}
         onSaveAndLeave={guard.saveAndLeave}
+      />
+      <UnsavedWorkDialog
+        subject={videoAsking ? (pendingName ?? picture?.name ?? t('This picture')) : null}
+        creating={false}
+        onStay={() => setVideoAsking(false)}
+        onLeave={() => {
+          if (picture === null) return;
+          setVideoAsking(false);
+          leaveForVideo(videoFromPicturePath(workspaceId, picture.versionOf ?? picture.id));
+        }}
+        onSaveAndLeave={async () => {
+          const held = unsaved;
+          savedPicture.current = null;
+          if (!(await save())) return false;
+          const kept = savedPicture.current as Artifact | null;
+          const to = videoFromPicturePath(workspaceId, kept?.id ?? picture?.versionOf ?? picture?.id ?? '');
+          setVideoAsking(false);
+          // With something unsaved the leave guard holds a spare history entry and steps off it once saved: gone after it has.
+          if (held) goingTo.current = { to, replace: false };
+          else navigate(to);
+          return true;
+        }}
       />
     </AppShell>
   );
