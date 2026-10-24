@@ -420,6 +420,13 @@ const PL: Record<string, string> = {
   WorkspaceAdminRoleNotAssigned:
     '{names} nie mogą administrować tą przestrzenią roboczą, nie będąc do niej przypisani. ' +
     'Dodaj je do ról, które ją otwierają, a potem oznacz jako administrujące.',
+
+  // --- wireframes, issue #655 ---------------------------------------------
+  WireframeNotFound: 'Nie ma makiety o identyfikatorze {id}',
+  WireframeNameInvalid: 'Makieta potrzebuje nazwy, najwyżej 200 znaków',
+  WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
+  WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
+  WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };

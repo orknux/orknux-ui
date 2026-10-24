@@ -201,6 +201,24 @@
    * fixed to the window and covers whatever the page put under it.
    */
   --quick-chat-clearance: 112px;
+
+  /*
+   * A wireframe is drawn in pencil on paper, whichever way up the interface
+   * is: greyscale, low-fidelity, like a designer's first sketch. So these are
+   * not redefined for the light theme - a wireframe that inverted with the
+   * screen around it would be a different drawing in each.
+   */
+  --wireframe-desk: #e7e7ea;
+  --wireframe-grid: #cfcfd4;
+  --wireframe-paper: #ffffff;
+  --wireframe-ink: #3f3f46;
+  --wireframe-pencil: #8a8a93;
+  --wireframe-fill: #ececef;
+  --wireframe-strong: #52525b;
+  --wireframe-on-strong: #ffffff;
+  --wireframe-note: #fdf3c4;
+  --wireframe-note-edge: #d9c87a;
+  --wireframe-select: #2f80ed;
 }
 
 /*

@@ -1,0 +1,138 @@
+/* A wireframe in pencil: greyscale, thin lines, the same on the canvas and on a card. */
+
+.element {
+  cursor: default;
+}
+
+.frame {
+  fill: var(--wireframe-paper);
+  stroke: var(--wireframe-ink);
+  stroke-width: 1.5;
+}
+
+.frameTitle {
+  fill: var(--wireframe-pencil);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.rect {
+  fill: var(--wireframe-fill);
+  stroke: var(--wireframe-pencil);
+  stroke-width: 1;
+}
+
+.button {
+  fill: var(--wireframe-paper);
+  stroke: var(--wireframe-ink);
+  stroke-width: 1.5;
+}
+
+.buttonPrimary {
+  fill: var(--wireframe-strong);
+  stroke: var(--wireframe-strong);
+  stroke-width: 1.5;
+}
+
+.input {
+  fill: var(--wireframe-paper);
+  stroke: var(--wireframe-pencil);
+  stroke-width: 1;
+}
+
+.cross {
+  stroke: var(--wireframe-pencil);
+  stroke-width: 1;
+}
+
+.note {
+  fill: var(--wireframe-note);
+  stroke: var(--wireframe-note-edge);
+  stroke-width: 1;
+}
+
+.line {
+  stroke: var(--wireframe-ink);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+/* Wide enough to catch a pointer on a line a pixel and a half thick. */
+.lineHit {
+  stroke: transparent;
+  stroke-width: 12;
+  fill: none;
+}
+
+/* A text element has no outline; this is what a click on it lands on. */
+.textHit {
+  fill: transparent;
+}
+
+.arrowHead {
+  fill: var(--wireframe-ink);
+}
+
+/* The words inside a box, laid out by the browser so they wrap. */
+.words {
+  overflow: visible;
+  pointer-events: none;
+}
+
+.words > div {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  line-height: 1.3;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.centred {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: var(--wireframe-ink);
+  font-size: 14px;
+  text-align: center;
+}
+
+.onStrong {
+  color: var(--wireframe-on-strong);
+}
+
+.text {
+  color: var(--wireframe-ink);
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--wireframe-pencil);
+  font-size: 14px;
+}
+
+.caption {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 6px;
+  color: var(--wireframe-pencil);
+  font-size: 12px;
+}
+
+.noteText {
+  padding: 10px;
+  color: var(--wireframe-ink);
+  font-size: 13px;
+}
+
+.preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

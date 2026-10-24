@@ -27,7 +27,8 @@ export type ConfirmKind =
   | 'removeModel'
   | 'removeCertificate'
   | 'removeArtifact'
-  | 'removeImage';
+  | 'removeImage'
+  | 'removeWireframe';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -52,6 +53,7 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeCertificate',
   'removeArtifact',
   'removeImage',
+  'removeWireframe',
 ]);
 
 export interface ConfirmDialogProps {
@@ -294,6 +296,11 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
     removeImage: {
       title: t('Remove picture'),
       message: <>{t('The picture is deleted from this workspace, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeWireframe: {
+      title: t('Remove wireframe'),
+      message: <>{t('The wireframe is deleted from this workspace, and there is no way back from this one:')} {name}</>,
       button: submitting ? t('Removing…') : t('Remove'),
     },
     removeScratchpad: {

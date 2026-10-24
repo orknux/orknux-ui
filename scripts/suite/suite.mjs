@@ -2083,6 +2083,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Answers the artifact list with one picture of its own. */
   },
+  {
+    name: 'wireframe-editor-check',
+    what: 'Design -> Wireframes opens the editor, which fills the screen as the image editor does; a tool draws what is there after a reload, and a model\'s drawing lands on the canvas',
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it; the model's answer is answered here, since CI has none. */
+  },
 
   {
     name: 'chat-session-link-check',

@@ -1,0 +1,230 @@
+/*
+ * The wireframe editor's own parts. The bar, the frame of canvas and panel and
+ * the panel itself are the image editor's (DesignImageEditorPage.module.css),
+ * so the two editors in Design read as one.
+ */
+
+/* The tools in a group of their own, as the image editor's Magic group is. */
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolOn {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+/* The desk the drawing lies on: light grey whichever way up the interface is, like a design tool's. */
+.canvas {
+  position: relative;
+  flex: 1 0 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--wireframe-desk);
+}
+
+.surface {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+.gridDot {
+  fill: var(--wireframe-grid);
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+}
+
+.missing {
+  padding: var(--space-24);
+  color: var(--color-text-muted);
+}
+
+.emptyHint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  color: var(--wireframe-pencil);
+  pointer-events: none;
+}
+
+/* What is selected, in the one colour the drawing does not use. */
+.selected {
+  fill: none;
+  stroke: var(--wireframe-select);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.selectionBox {
+  fill: none;
+  stroke: var(--wireframe-select);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.handle {
+  fill: var(--wireframe-paper);
+  stroke: var(--wireframe-select);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.handle_nw,
+.handle_se {
+  cursor: nwse-resize;
+}
+
+.handle_ne,
+.handle_sw {
+  cursor: nesw-resize;
+}
+
+.handle_n,
+.handle_s {
+  cursor: ns-resize;
+}
+
+.handle_e,
+.handle_w {
+  cursor: ew-resize;
+}
+
+.handle_start,
+.handle_end {
+  cursor: move;
+}
+
+.marquee {
+  fill: color-mix(in srgb, var(--wireframe-select) 10%, transparent);
+  stroke: var(--wireframe-select);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* Typing over an element's words, where they are. */
+.inPlace {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  resize: none;
+  background: var(--wireframe-paper);
+  border: 1.5px solid var(--wireframe-select);
+  border-radius: var(--radius-4);
+  color: var(--wireframe-ink);
+  font-family: var(--font-sans);
+  line-height: 1.3;
+  outline: none;
+}
+
+/* A model drawing: said at the top of the canvas, which waits under it. */
+.drawing {
+  position: absolute;
+  top: var(--space-12);
+  left: 50%;
+  z-index: 4;
+  padding: var(--space-6) var(--space-12);
+  transform: translateX(-50%);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-menu);
+  color: var(--color-text-secondary);
+}
+
+/* The panel: the selection's numbers on top, the conversation filling the rest, the box to ask in at its foot. */
+.panel {
+  gap: var(--space-12);
+  overflow: hidden;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-8);
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.field input {
+  height: 30px;
+  padding: 0 var(--space-6);
+}
+
+.check {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.talk {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+
+.mine {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-8);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+}
+
+.theirs {
+  align-self: flex-start;
+  max-width: 100%;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.ask {
+  min-height: 72px;
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-align: right;
+}

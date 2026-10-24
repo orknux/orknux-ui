@@ -33,6 +33,7 @@ import templateIcon from './assets/layers.svg';
 import settingsIcon from './assets/settings.svg';
 import slidersIcon from './assets/sliders-horizontal.svg';
 import toolIcon from './assets/tool.svg';
+import wireframeIcon from './assets/frame.svg';
 import { t } from './i18n';
 
 /**
@@ -375,6 +376,14 @@ export const PAGES = [
   /* The video editor: a new video, or one asked for already, which it follows until it is made. */
   { path: '/workspace/:workspaceId/design/videos/new', access: 'signed-in', goTo: false },
   { path: '/workspace/:workspaceId/design/videos/:videoId', access: 'signed-in', goTo: false },
+  /* Screens sketched by hand or drawn by a model, beside the pictures. Issue #655. */
+  {
+    path: '/workspace/:workspaceId/design/wireframes',
+    access: 'signed-in',
+    goTo: { label: t('Wireframes'), where: 'Design', icon: wireframeIcon, also: 'mockups screens sketches layout ui' },
+  },
+  /* A wireframe's editor, reached from the list as a picture's is from Images. */
+  { path: '/workspace/:workspaceId/design/wireframes/:wireframeId', access: 'signed-in', goTo: false },
 
   // ---- Workspace: what the whole of it is set up with ----
   {

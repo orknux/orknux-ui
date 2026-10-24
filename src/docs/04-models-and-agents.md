@@ -819,6 +819,13 @@ agent says `overwrite_draft`, and the refusal tells it to read the workflow
 first: a draft is somebody's unfinished work, and an agent that saved over it
 without looking would lose it with no way back.
 
+It can **draw wireframes** the same way. `orknux_wireframes` lists the ones in
+Design and `orknux_wireframe` reads one; `orknux_create_wireframe` makes one,
+`orknux_change_wireframe` adds, changes and removes elements, and
+`orknux_draw_wireframe` replaces the whole drawing. They are the tools the chat
+down the right of the wireframe editor gives the model chosen there, and what
+they draw is saved and audited as a save from the editor is.
+
 ## Letting an agent work in a box
 
 A **box** is a sandbox an agent can open a session in: a working directory of
