@@ -18,7 +18,7 @@ import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { shellUser } from '../../session/user';
 import table from '../workspace/CatalogueTable.module.css';
 import { NewResearchDialog } from './NewResearchDialog';
-import { languageLabel, seededLabel, statusLabel } from './researchLabels';
+import { languageLabel, seededLabel, stageLabel, statusLabel } from './researchLabels';
 import styles from './ResearchPage.module.css';
 import { t, tf } from '../../i18n';
 
@@ -139,7 +139,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
               {one.question}
             </Link>
             <span className={styles.colMode}>{seededLabel(one.modeName)}</span>
-            <span className={`${styles.colModel} ${styles.muted}`}>{one.modelName ?? t('Set in the mode')}</span>
+            <span className={`${styles.colModel} ${styles.muted}`}>{one.modelName ?? '—'}</span>
             <span className={styles.colStatus}>
               <span className={`${styles.status} ${STATUS_CLASS[one.status]}`} title={one.error ?? undefined}>
                 {statusLabel(one.status)}
@@ -233,7 +233,7 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
         <dt>{t('Mode')}</dt>
         <dd>{seededLabel(research.modeName)}</dd>
         <dt>{t('Model')}</dt>
-        <dd>{research.modelName ?? t('Set in the mode')}</dd>
+        <dd data-research-model>{research.modelName ?? '—'}</dd>
         <dt>{t('Language')}</dt>
         <dd>{languageLabel(research.language)}</dd>
         <dt>{t('Status')}</dt>
@@ -246,6 +246,12 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
             </>
           )}
         </dd>
+        {!research.useWebSearch && (
+          <>
+            <dt>{t('Web search')}</dt>
+            <dd data-web-search-off>{t('Off')}</dd>
+          </>
+        )}
         {research.websitesInclude.length > 0 && (
           <>
             <dt>{t('Websites to use')}</dt>
@@ -282,6 +288,12 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
             </p>
           )}
           <dl className={styles.facts}>
+            {research.progress.stage !== null && (
+              <>
+                <dt>{t('Step')}</dt>
+                <dd data-stage={research.progress.stage}>{stageLabel(research.progress.stage)}</dd>
+              </>
+            )}
             <dt>{t('Level')}</dt>
             <dd>{research.progress.level}</dd>
             <dt>{t('Searches')}</dt>

@@ -60,6 +60,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [question, setQuestion] = useState('');
   const [modeId, setModeId] = useState('');
   const [modelId, setModelId] = useState('');
+  // On, as every research was before it could be switched off.
+  const [webSearch, setWebSearch] = useState(true);
   const [include, setInclude] = useState<string[]>([]);
   const [exclude, setExclude] = useState<string[]>([]);
   const [picked, setPicked] = useState<PickedDocument[]>([]);
@@ -82,6 +84,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       setInclude([]);
       setExclude([]);
       setPicked([]);
+      setWebSearch(true);
       setAdding(false);
       setError(null);
       setSubmitting(false);
@@ -90,7 +93,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         .then(([foundModes, foundModels]) => {
           setModes(foundModes);
           setModeId((chosen) => (foundModes.some((mode) => mode.id === chosen) ? chosen : (foundModes[0]?.id ?? '')));
-          setModels(foundModels.filter((model) => model.kind === 'CHAT'));
+          const chat = foundModels.filter((model) => model.kind === 'CHAT');
+          setModels(chat);
+          // A research always has its model: the one chosen last, or the first there is.
+          setModelId((chosen) => (chat.some((model) => model.id === chosen) ? chosen : (chat[0]?.id ?? '')));
         })
         .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load what a research needs.')));
     } else if (!open && held.open) {
@@ -128,7 +134,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (question.trim() === '' || modeId === '' || submitting) return;
+    if (question.trim() === '' || modeId === '' || modelId === '' || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -136,13 +142,14 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         workspaceId,
         question: question.trim(),
         modeId,
-        modelId: modelId === '' ? null : modelId,
+        modelId,
         language,
         outputFormat: format,
         websitesInclude: include,
         websitesExclude: exclude,
         documentsInclude: picked.filter((one) => one.use === 'INCLUDE').map((one) => one.document.id),
         documentsExclude: picked.filter((one) => one.use === 'EXCLUDE').map((one) => one.document.id),
+        useWebSearch: webSearch,
       });
       onStarted();
     } catch (cause) {
@@ -208,7 +215,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
                   value={modelId}
                   models={models}
                   onChange={setModelId}
-                  none={t('Set in the mode')}
+                  none={t('No chat model')}
+                  required
                   workspaceId={workspaceId}
                 />
               </div>
@@ -255,6 +263,17 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
             </div>
           )}
 
+          <label className={dialog.checkboxField}>
+            <input
+              type="checkbox"
+              id="research-web-search"
+              checked={webSearch}
+              onChange={(event) => setWebSearch(event.target.checked)}
+              data-web-search
+            />
+            {t('Use web search')}
+          </label>
+
           <fieldset className={styles.group}>
             <legend className={dialog.label}>{t('Websites')}</legend>
             <div className={styles.pair}>
@@ -298,7 +317,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           <button type="button" className={dialog.ghost} onClick={onClose} disabled={submitting}>
             {t('Cancel')}
           </button>
-          <button type="submit" className={dialog.filled} disabled={question.trim() === '' || modeId === '' || submitting}>
+          <button type="submit" className={dialog.filled} disabled={question.trim() === '' || modeId === '' || modelId === '' || submitting}>
             {submitting ? t('Starting…') : t('Start')}
           </button>
         </div>

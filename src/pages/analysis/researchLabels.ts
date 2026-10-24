@@ -1,4 +1,4 @@
-import type { ResearchLanguage, ResearchStatus } from '../../api/research';
+import type { ResearchLanguage, ResearchStage, ResearchStatus } from '../../api/research';
 import { t } from '../../i18n';
 
 /** What a status is called on the page. */
@@ -50,4 +50,20 @@ const SEEDED: Record<string, string> = { Shallow: 'SHALLOW', Medium: 'MEDIUM', D
 /** A mode's name as a research keeps it, in the reader's language where it is one of the three. */
 export function seededLabel(name: string): string {
   return modeLabel(SEEDED[name] ?? null, name);
+}
+
+/** What a step of a mode's workflow is called on the page. */
+export function stageLabel(stage: ResearchStage): string {
+  switch (stage) {
+    case 'PLAN':
+      return t('Planning the research');
+    case 'GATHER':
+      return t('Gathering sources');
+    case 'FOLLOW_UP':
+      return t('Following up');
+    case 'WRITE':
+      return t('Writing the report');
+    case 'SAVE':
+      return t('Saving the report');
+  }
 }

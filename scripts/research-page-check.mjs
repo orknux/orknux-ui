@@ -18,9 +18,14 @@
  * there lands on Artifacts and arrives picked. Start writes the research down,
  * and the list shows it at once.
  *
- * No model is needed: what is measured is that the research is started and
- * listed, not what a model makes of it, so it may well be listed as failed.
- * The check removes what it started and the document it uploaded.
+ * A research always has its model, so the picker has no empty row and
+ * arrives with the workspace's first chat model chosen; the check makes one
+ * where the workspace has none, at an address that never answers - what is
+ * measured is that the research is started and listed, not what a model makes
+ * of it, so it may well be listed as failed. Use web search is a box in the
+ * sources, on until it is unticked, and the research says when it was off.
+ * The check removes what it started, the document it uploaded and the model
+ * it made.
  */
 import { BASE, WORKSPACE, open, record, finish, optionsOffered, chosenOption, chooseOption } from './suite/harness.mjs';
 
@@ -28,6 +33,20 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 const stamp = Date.now();
 const question = `zz research check ${stamp}: why is the sea salty?`;
 const fileName = `zz-research-${stamp}.md`;
+
+// A chat model to preselect: the workspace's own, or one made here that never answers.
+const held = await graphql(`query($w: ID!) { models(workspaceId: $w) { id name kind } }`, { w: WORKSPACE });
+let madeProvider = null;
+if (!held.models.some((one) => one.kind === 'CHAT')) {
+  madeProvider = (
+    await graphql(`mutation ($input: CreateModelProviderInput!) { createModelProvider(input: $input) { id } }`, {
+      input: { workspaceId: WORKSPACE, name: `zz research check ${stamp}`, type: 'OPENAI', endpoint: 'https://research.invalid', secret: 'sk-check' },
+    })
+  ).createModelProvider.id;
+  await graphql(`mutation ($input: CreateModelInput!) { createModel(input: $input) { id } }`, {
+    input: { providerId: madeProvider, name: `zz research model ${stamp}`, modelId: 'zz-research', kind: 'CHAT' },
+  });
+}
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/analysis/research`, { waitUntil: 'domcontentloaded' });
 await page.getByRole('heading', { name: 'Research', level: 1 }).waitFor({ timeout: 20_000 }).catch(() => undefined);
@@ -124,11 +143,38 @@ await dialog.locator('[data-adding-mode]').getByRole('button', { name: 'Cancel' 
 
 record(await dialog.locator('#research-model').isVisible(), 'the model is chosen with the model picker');
 
+// Chosen already, and there is no "none" row to leave it on: a research always has its model.
+await page.waitForFunction(() => document.querySelector('#research-model')?.getAttribute('data-value') !== '', null, { timeout: 10_000 }).catch(() => undefined);
+const preselected = (await dialog.locator('#research-model').getAttribute('data-value')) ?? '';
+const chosenName = ((await dialog.locator('#research-model').textContent()) ?? '').trim();
+record(preselected !== '', `a chat model is chosen before anybody picks one (${chosenName})`);
+await dialog.locator('#research-model').click();
+const pickerRows = page.locator('[data-model-menu="research-model"] [role="option"]');
+await pickerRows.first().waitFor({ timeout: 5_000 }).catch(() => undefined);
+const emptyRows = await page.locator('[data-model-menu="research-model"] [role="option"][data-value=""]').count();
+const firstRow = (await pickerRows.first().getAttribute('data-value').catch(() => '')) ?? '';
+record(emptyRows === 0 && (await pickerRows.count()) > 0, `the picker offers models and no empty row (${emptyRows} empty)`);
+record(firstRow === preselected, 'the one chosen is the first the picker offers');
+await page.keyboard.press('Escape');
+record(!/set in the mode/i.test(((await dialog.textContent()) ?? '')), 'nothing says the model is set in the mode');
+
 const languages = (await optionsOffered(page, '#research-language')).map((one) => one.label);
 record(JSON.stringify(languages) === JSON.stringify(['Academic', 'Colloquial', 'Formal']), `the languages are Academic, Colloquial, Formal (${languages.join(', ')})`);
 const formats = (await optionsOffered(page, '#research-format')).map((one) => one.label);
 record(JSON.stringify(formats) === JSON.stringify(['PDF', 'Document']), `the outputs are PDF and Document (${formats.join(', ')})`);
 record((await chosenOption(page, '#research-format')) === 'PDF', `the output is PDF until somebody says otherwise (${await chosenOption(page, '#research-format')})`);
+
+// --- web search -------------------------------------------------------------
+const webSearch = dialog.locator('input[type="checkbox"][data-web-search]');
+record((await webSearch.count()) === 1 && (await webSearch.isChecked()), 'Use web search is a box, ticked until somebody unticks it');
+const boxLabel = ((await webSearch.locator('xpath=..').textContent()) ?? '').trim();
+record(boxLabel === 'Use web search', `and it says so in one line (${boxLabel})`);
+const order = await page.evaluate(() => {
+  const box = document.querySelector('dialog[open] [data-web-search]')?.getBoundingClientRect();
+  const sites = document.querySelector('dialog[open] [data-sites="research-websites-include"]')?.getBoundingClientRect();
+  return box === undefined || sites === undefined ? null : Math.round(sites.top - box.bottom);
+});
+record(order !== null && order >= 0, `it stands with the sources, above the websites (${order}px above)`);
 
 // --- websites, as lists -----------------------------------------------------
 const include = dialog.locator('[data-sites="research-websites-include"]');
@@ -184,6 +230,8 @@ await chooseOption(page, documents.locator(`[data-picked="${fileName}"]`), 'EXCL
 record((await chosenOption(page, documents.locator(`[data-picked="${fileName}"]`))) === 'EXCLUDE', 'and the row says include or exclude');
 
 // --- starting one -----------------------------------------------------------
+await webSearch.uncheck();
+record(!(await webSearch.isChecked()), 'unticked, it stays unticked');
 await dialog.locator('textarea#research-question').fill(question);
 await dialog.getByRole('button', { name: /^Start$/ }).click();
 await page.locator('dialog[open]').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
@@ -201,6 +249,12 @@ const opened = page.locator('[data-opened]');
 await opened.waitFor({ timeout: 10_000 }).catch(() => undefined);
 const facts = ((await opened.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
 record(facts.includes('example.org') && facts.includes('tabloid.example') && facts.includes(fileName), `opened, it shows the websites and the document it was given (${facts.slice(0, 160)})`);
+const usedModel = ((await opened.locator('[data-research-model]').textContent().catch(() => '')) ?? '').trim();
+record(usedModel !== '' && usedModel !== '—' && chosenName.startsWith(usedModel), `and the model it used (${usedModel})`);
+record((await opened.locator('[data-web-search-off]').count()) === 1, 'and that it did not search the web');
+const stored = await graphql(`query($w: ID!) { researches(workspaceId: $w, size: 100) { content { question useWebSearch modelName } } }`, { w: WORKSPACE });
+const mine = stored.researches.content.find((one) => one.question === question);
+record(mine?.useWebSearch === false && (mine?.modelName ?? '') !== '', `the research keeps both (${JSON.stringify(mine)})`);
 
 // --- clean up ---------------------------------------------------------------
 const listed = await graphql(`query($w: ID!) { researches(workspaceId: $w, size: 100) { content { id question } } }`, { w: WORKSPACE });
@@ -210,6 +264,9 @@ for (const one of listed.researches.content.filter((held) => held.question.start
 const uploaded = await graphql(`query($w: ID!) { researchDocuments(workspaceId: $w, search: "zz-research-", limit: 100) { id } }`, { w: WORKSPACE });
 for (const one of uploaded.researchDocuments) {
   await graphql(`mutation($id: String!) { deleteArtifact(id: $id) }`, { id: `SAVED-${one.id}` }).catch(() => undefined);
+}
+if (madeProvider !== null) {
+  await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: madeProvider }).catch(() => undefined);
 }
 
 await finish(browser);
