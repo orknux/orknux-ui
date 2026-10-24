@@ -9,6 +9,7 @@ import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import dialog from '../../components/Dialog.module.css';
 import { ModelPicker } from '../../components/ModelPicker';
+import { useSieve } from '../../components/sieve';
 import { Select } from '../../components/Select';
 import { DocumentPicker } from './DocumentPicker';
 import type { PickedDocument } from './DocumentPicker';
@@ -61,6 +62,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [question, setQuestion] = useState('');
   const [modeId, setModeId] = useState('');
   const [modelId, setModelId] = useState('');
+  // The model last chosen here, remembered for whoever starts the next research in this workspace.
+  const [lastModel, rememberModel] = useSieve(`research.model.${workspaceId}`);
   // On, as every research was before it could be switched off.
   const [webSearch, setWebSearch] = useState(true);
   const [include, setInclude] = useState<string[]>([]);
@@ -97,7 +100,12 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           const chat = foundModels.filter((model) => model.kind === 'CHAT');
           setModels(chat);
           // A research always has its model: the one chosen last, or the first there is.
-          setModelId((chosen) => (chat.some((model) => model.id === chosen) ? chosen : (chat[0]?.id ?? '')));
+          setModelId((chosen) =>
+            chat.some((model) => model.id === chosen)
+              ? chosen
+              : chat.some((model) => model.id === lastModel)
+                ? lastModel
+                : (chat[0]?.id ?? ''));
         })
         .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load what a research needs.')));
     } else if (!open && held.open) {
@@ -215,7 +223,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
                   className={dialog.input}
                   value={modelId}
                   models={models}
-                  onChange={setModelId}
+                  onChange={(picked) => {
+                    setModelId(picked);
+                    rememberModel(picked);
+                  }}
                   none={t('No chat model')}
                   required
                   workspaceId={workspaceId}

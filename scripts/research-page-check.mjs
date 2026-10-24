@@ -49,15 +49,19 @@ const fileName = `zz-research-${stamp}.md`;
 // A chat model to preselect: the workspace's own, or one made here that never answers.
 const held = await graphql(`query($w: ID!) { models(workspaceId: $w) { id name kind } }`, { w: WORKSPACE });
 let madeProvider = null;
-if (!held.models.some((one) => one.kind === 'CHAT')) {
+// Two of them, so remembering the one chosen can be told from taking the first.
+const chatModels = held.models.filter((one) => one.kind === 'CHAT').length;
+if (chatModels < 2) {
   madeProvider = (
     await graphql(`mutation ($input: CreateModelProviderInput!) { createModelProvider(input: $input) { id } }`, {
       input: { workspaceId: WORKSPACE, name: `zz research check ${stamp}`, type: 'OPENAI', endpoint: 'https://research.invalid', secret: 'sk-check' },
     })
   ).createModelProvider.id;
-  await graphql(`mutation ($input: CreateModelInput!) { createModel(input: $input) { id } }`, {
-    input: { providerId: madeProvider, name: `zz research model ${stamp}`, modelId: 'zz-research', kind: 'CHAT' },
-  });
+  for (let at = chatModels; at < 2; at++) {
+    await graphql(`mutation ($input: CreateModelInput!) { createModel(input: $input) { id } }`, {
+      input: { providerId: madeProvider, name: `zz research model ${stamp} ${at}`, modelId: `zz-research-${at}`, kind: 'CHAT' },
+    });
+  }
 }
 
 // An address from when the section was called Analysis lands on Explore's page.
@@ -164,7 +168,7 @@ record(await dialog.locator('#research-model').isVisible(), 'the model is chosen
 // Chosen already, and there is no "none" row to leave it on: a research always has its model.
 await page.waitForFunction(() => document.querySelector('#research-model')?.getAttribute('data-value') !== '', null, { timeout: 10_000 }).catch(() => undefined);
 const preselected = (await dialog.locator('#research-model').getAttribute('data-value')) ?? '';
-const chosenName = ((await dialog.locator('#research-model').textContent()) ?? '').trim();
+let chosenName = ((await dialog.locator('#research-model').textContent()) ?? '').trim();
 record(preselected !== '', `a chat model is chosen before anybody picks one (${chosenName})`);
 await dialog.locator('#research-model').click();
 const pickerRows = page.locator('[data-model-menu="research-model"] [role="option"]');
@@ -173,8 +177,24 @@ const emptyRows = await page.locator('[data-model-menu="research-model"] [role="
 const firstRow = (await pickerRows.first().getAttribute('data-value').catch(() => '')) ?? '';
 record(emptyRows === 0 && (await pickerRows.count()) > 0, `the picker offers models and no empty row (${emptyRows} empty)`);
 record(firstRow === preselected, 'the one chosen is the first the picker offers');
+const rowValues = await pickerRows.evaluateAll((all) => all.map((one) => one.getAttribute('data-value') ?? ''));
 await page.keyboard.press('Escape');
 record(!/set in the mode/i.test(((await dialog.textContent()) ?? '')), 'nothing says the model is set in the mode');
+
+// The model chosen is remembered for the next research: picked, the dialog closed and opened again, it is still chosen.
+const other = rowValues.find((one) => one !== '' && one !== preselected) ?? null;
+if (other !== null) {
+  await dialog.locator('#research-model').click();
+  await page.locator(`[data-model-menu="research-model"] [role="option"][data-value="${other}"]`).click({ timeout: 5_000 }).catch(() => undefined);
+  await dialog.getByRole('button', { name: 'Cancel' }).last().click({ timeout: 5_000 }).catch(() => undefined);
+  // Through a reload, so it is remembered rather than merely still held by the page.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: /New research/ }).click({ timeout: 15_000 });
+  await page.waitForFunction(() => document.querySelector('#research-model')?.getAttribute('data-value') !== '', null, { timeout: 10_000 }).catch(() => undefined);
+  const remembered = (await dialog.locator('#research-model').getAttribute('data-value')) ?? '';
+  record(remembered === other, `the model last chosen is chosen again next time (${remembered} for ${other})`);
+  chosenName = ((await dialog.locator('#research-model').textContent()) ?? '').trim();
+}
 
 const languages = (await optionsOffered(page, '#research-language')).map((one) => one.label);
 record(JSON.stringify(languages) === JSON.stringify(['Academic', 'Colloquial', 'Formal']), `the languages are Academic, Colloquial, Formal (${languages.join(', ')})`);
