@@ -3,15 +3,18 @@
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: var(--space-16);
+  gap: var(--space-12);
   height: 40px;
   padding: 0 var(--space-24);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
+/* One line whatever the bar holds: squeezed, "Images" broke under its arrow. */
 .back {
+  flex-shrink: 0;
   padding: 0;
+  white-space: nowrap;
   background: none;
   border: 0;
   color: var(--color-text-secondary);
@@ -59,6 +62,7 @@ button.toolbarTitle:hover {
 
 .toolbarRight {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--space-4);
   margin-left: auto;
@@ -104,9 +108,10 @@ button.toolbarTitle:hover {
 }
 
 .toolbarGap {
+  flex-shrink: 0;
   width: 1px;
   height: 20px;
-  margin: 0 var(--space-6);
+  margin: 0 var(--space-4);
   background: var(--color-border);
 }
 
@@ -714,7 +719,7 @@ button.toolbarTitle:hover {
   white-space: nowrap;
 }
 
-/* Upscale, Import and Export: words on the toolbar, the height of its tools. */
+/* AI, Import, Export and the save strip: words on the toolbar, the height of its tools. */
 .toolbarButton {
   height: 32px;
   padding: 0 var(--space-12);
@@ -751,8 +756,28 @@ button.toolbarTitle:hover {
   cursor: pointer;
 }
 
-.exportItems button:hover {
+.exportItems button:hover:not(:disabled) {
   background: var(--color-surface-hover);
+}
+
+.exportItems button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The AI menu: an item with a hint around it fills the row as a bare one does. */
+.modelItems .upscaleWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Why an item is off opens beside the menu, not over the item under it, and touches it so the pointer can cross to its link. */
+.modelItems .upscaleHint {
+  top: 0;
+  right: 100%;
+  left: auto;
+  padding-top: var(--space-12);
+  transform: none;
 }
 
 /* A file held over the canvas: the drop is said where it lands. */

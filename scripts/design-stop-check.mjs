@@ -12,7 +12,7 @@
  * The picture, the models, the options, the queue and the stop are answered
  * here, so the check needs no image server of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, openPictureMenu } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -93,6 +93,7 @@ await page.route('**/graphql', async (route) => {
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
 await page.waitForTimeout(800);
+await openPictureMenu(page);
 await page.getByTestId('editor-harmonize').click().catch(() => undefined);
 await page.getByTestId('harmonize-dialog').waitFor({ timeout: 3_000 }).catch(() => undefined);
 await page.waitForTimeout(400);

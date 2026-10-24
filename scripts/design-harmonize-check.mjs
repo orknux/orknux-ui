@@ -14,7 +14,7 @@
  * The picture, the models, the options and the queue are answered here, so the
  * check needs no image server of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, optionsOffered } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, chosenOption, optionsOffered, openPictureMenu } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -107,6 +107,7 @@ const openEditor = async () => {
 // With no model to redraw with, the button is off, and why - with where to add one - shows the moment the pointer is over it.
 noModels = true;
 await openEditor();
+await openPictureMenu(page);
 const off = await page.getByTestId('editor-harmonize').isDisabled().catch(() => false);
 const hiddenBefore = !(await page.getByTestId('editor-harmonize-hint').isVisible().catch(() => false));
 await page.getByTestId('editor-harmonize-wrap').hover().catch(() => undefined);
@@ -122,15 +123,16 @@ record(off && hiddenBefore && shown && stays && words.startsWith('Harmonize redr
 
 noModels = false;
 await openEditor();
+await openPictureMenu(page);
 record((await page.getByTestId('editor-harmonize-hint').count()) === 0 && (await page.getByTestId('editor-harmonize').isEnabled().catch(() => false)),
   'with models, it is on and carries no hint');
 
-// Beside Upscale: the next thing along the same row, not across a divider.
-const upscaleBox = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
+// In the AI menu with Upscale and Clean up: the item under Clean up, in the same column.
+const cleanupBox = await page.getByTestId('editor-cleanup').boundingBox().catch(() => null);
 const harmonizeBox = await page.getByTestId('editor-harmonize').boundingBox().catch(() => null);
-const beside = upscaleBox === null || harmonizeBox === null ? null
-  : { gap: harmonizeBox.x - (upscaleBox.x + upscaleBox.width), rows: Math.abs(harmonizeBox.y - upscaleBox.y) };
-record(beside !== null && beside.gap >= 0 && beside.gap < 20 && beside.rows < 2, `Harmonize sits right beside Upscale (${JSON.stringify(beside)})`);
+const beside = cleanupBox === null || harmonizeBox === null ? null
+  : { gap: harmonizeBox.y - (cleanupBox.y + cleanupBox.height), column: Math.abs(harmonizeBox.x - cleanupBox.x) };
+record(beside !== null && beside.gap >= 0 && beside.gap < 8 && beside.column < 2, `Harmonize sits in the AI menu right under Clean up (${JSON.stringify(beside)})`);
 
 // The window: every model that can redraw, starting at the editor's own, and the picture's prompt.
 await page.getByTestId('editor-harmonize').click();
@@ -194,6 +196,7 @@ record(draft && saveOn && discardOn && page.url().includes(PICTURE.id),
 
 // A failure leaves the picture with the model's own words.
 outcome = 'FAILED';
+await openPictureMenu(page);
 await page.getByTestId('editor-harmonize').click();
 await dialog.waitFor({ timeout: 3_000 }).catch(() => undefined);
 await page.waitForTimeout(400);

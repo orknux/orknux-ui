@@ -10,7 +10,7 @@
  * The picture, the models, the algorithms and the queue are answered here, so
  * the check needs no upscale server of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered, openPictureMenu } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
 
@@ -107,6 +107,7 @@ noUpscalers = true;
 await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
 await page.waitForTimeout(500);
+await openPictureMenu(page);
 const off = await page.getByTestId('editor-upscale').isDisabled().catch(() => false);
 const hiddenBefore = !(await page.getByTestId('editor-upscale-hint').isVisible().catch(() => false));
 await page.getByTestId('editor-upscale-wrap').hover();
@@ -127,30 +128,31 @@ noUpscalers = false;
 await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
 await page.waitForTimeout(800);
+await openPictureMenu(page);
 record((await page.getByTestId('editor-upscale-hint').count()) === 0 && (await page.getByTestId('editor-upscale').isEnabled()),
   'with one, it is on and carries no hint');
 
 /*
- * The group that works on the whole picture - Upscale, Clean up, Harmonize and
- * Convert to video - stands apart from Magic edit, divided as Import is from it:
- * one gap either side, not buttons touching. Measured from the group's last
- * button, which is Convert to video since #658; Harmonize was the last when
- * this was written, and measuring from it counted Convert to video as gap.
+ * What works on the whole picture - Upscale, Clean up, Harmonize and Convert
+ * to video - is one AI menu, since four buttons of their own pushed the
+ * picture's name off the bar. Its button stands apart from Magic edit, divided
+ * as Import is from it: one gap either side, not buttons touching.
  */
 const magicBox = await page.getByTestId('magic-edit').boundingBox().catch(() => null);
-const upscaleBox = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
-const lastBox = await page.getByTestId('editor-to-video').boundingBox().catch(() => null);
+const aiBox = await page.getByTestId('editor-ai').boundingBox().catch(() => null);
 const importBox = await page.getByTestId('editor-import').boundingBox().catch(() => null);
-const apart = magicBox === null || upscaleBox === null || lastBox === null || importBox === null ? null
-  : { magicToUpscale: upscaleBox.x - (magicBox.x + magicBox.width), groupToImport: importBox.x - (lastBox.x + lastBox.width) };
-record(apart !== null && apart.magicToUpscale >= 20 && Math.abs(apart.magicToUpscale - apart.groupToImport) < 2,
-  `Upscale is divided from Magic edit as Import is from the group's last button (${JSON.stringify(apart)})`);
-// And the group is one row in its order, its buttons a step apart rather than a divider apart.
+const apart = magicBox === null || aiBox === null || importBox === null ? null
+  : { magicToAi: aiBox.x - (magicBox.x + magicBox.width), aiToImport: importBox.x - (aiBox.x + aiBox.width) };
+record(apart !== null && apart.magicToAi >= 12 && Math.abs(apart.magicToAi - apart.aiToImport) < 2,
+  `the AI menu is divided from Magic edit as Import is from it (${JSON.stringify(apart)})`);
+// And the menu holds the four in that order, one under the other.
 const group = await Promise.all(['editor-upscale', 'editor-cleanup', 'editor-harmonize', 'editor-to-video']
-  .map((id) => page.getByTestId(id).boundingBox().catch(() => null)));
-const steps = group.every((box) => box !== null) ? group.slice(1).map((box, at) => box.x - (group[at].x + group[at].width)) : null;
-record(steps !== null && steps.every((step) => step >= 0 && step < 12),
-  `Upscale, Clean up, Harmonize and Convert to video sit together in that order (${JSON.stringify(steps)})`);
+  .map((id) => page.getByTestId('editor-ai-menu').getByTestId(id).boundingBox().catch(() => null)));
+const steps = group.every((box) => box !== null)
+  ? group.slice(1).map((box, at) => ({ down: Math.round(box.y - (group[at].y + group[at].height)), across: Math.round(box.x - group[at].x) }))
+  : null;
+record(steps !== null && steps.every((step) => step.down >= 0 && step.down < 8 && Math.abs(step.across) < 2),
+  `the AI menu holds Upscale, Clean up, Harmonize and Convert to video in that order (${JSON.stringify(steps)})`);
 
 // Upscale: only upscale models, each with its own server's algorithms.
 await page.getByTestId('editor-upscale').click();
@@ -183,10 +185,11 @@ record(!(await dialog.isVisible().catch(() => false)) && (await page.getByTestId
 // Clean up: the same road at 1x, offering the server's restoration models, with no scale to choose. Issue #640.
 await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await openPictureMenu(page);
 const cleanupBox = await page.getByTestId('editor-cleanup').boundingBox().catch(() => null);
 const upscaleAt = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
-record(cleanupBox !== null && upscaleAt !== null && Math.abs(cleanupBox.y - upscaleAt.y) < 2 && cleanupBox.x > upscaleAt.x &&
-  cleanupBox.x - (upscaleAt.x + upscaleAt.width) < 16, `Clean up sits beside Upscale (${JSON.stringify({ cleanupBox, upscaleAt })})`);
+record(cleanupBox !== null && upscaleAt !== null && Math.abs(cleanupBox.x - upscaleAt.x) < 2 && cleanupBox.y > upscaleAt.y &&
+  cleanupBox.y - (upscaleAt.y + upscaleAt.height) < 8, `Clean up sits under Upscale (${JSON.stringify({ cleanupBox, upscaleAt })})`);
 await page.getByTestId('editor-cleanup').click();
 const cleanup = page.getByTestId('cleanup-dialog');
 await cleanup.waitFor({ timeout: 3_000 }).catch(() => undefined);

@@ -203,6 +203,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [exporting, setExporting] = useState(false);
   /** Import's menu open: a file, or a picture already in Orknux. */
   const [importMenu, setImportMenu] = useState(false);
+  /** The menu of what a model does with the whole picture open: Upscale, Clean up, Harmonize, Convert to video. */
+  const [modelMenu, setModelMenu] = useState(false);
   /** The window of pictures in Orknux open, and what the one chosen is for. */
   const [picking, setPicking] = useState<'open' | 'layer' | null>(null);
   /** A file being dragged over the canvas, which a drop opens here. */
@@ -562,15 +564,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }, []);
 
   useEffect(() => {
-    if (!exporting && !importMenu) return;
+    if (!exporting && !importMenu && !modelMenu) return;
     const away = (event: MouseEvent) => {
       const inside = (selector: string) => event.target instanceof Element && event.target.closest(selector) !== null;
       if (!inside('[data-testid="editor-export-menu"], [data-testid="editor-export"]')) setExporting(false);
       if (!inside('[data-testid="editor-import-menu"], [data-testid="editor-import"]')) setImportMenu(false);
+      if (!inside('[data-testid="editor-ai-menu"], [data-testid="editor-ai"]')) setModelMenu(false);
     };
     window.addEventListener('mousedown', away);
     return () => window.removeEventListener('mousedown', away);
-  }, [exporting, importMenu]);
+  }, [exporting, importMenu, modelMenu]);
 
   /** The picture's own size, once it has loaded: what the selection layer draws in. */
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
@@ -1381,92 +1384,118 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             </button>
           </div>
           <span className={styles.toolbarGap} aria-hidden="true" />
-          {/* With no upscale model, why not and where to add one - at once on hover, not after a title's delay. */}
-          <span className={styles.upscaleWrap} data-testid="editor-upscale-wrap">
+          {/*
+            What a model does with the whole picture, in one menu: as four
+            buttons of their own they pushed the picture's name off the bar.
+            With no model for one, its item is off and says why and where to
+            add one, at once on hover, not after a title's delay.
+          */}
+          <div className={styles.exportMenu}>
             <button
               type="button"
               className={`${form.ghost} ${styles.toolbarButton}`}
-              onClick={() => {
-                forget();
-                setUpscaling(true);
-              }}
-              disabled={picture === null || busy || noUpscaler || pending}
-              title={noUpscaler ? undefined : t('Make the picture larger with an upscale model')}
-              data-testid="editor-upscale"
+              onClick={() => setModelMenu((held) => !held)}
+              disabled={picture === null}
+              aria-haspopup="menu"
+              aria-expanded={modelMenu}
+              title={t('Upscale, clean up, harmonize or make a video with a model')}
+              data-testid="editor-ai"
             >
-              {t('Upscale')}
+              {t('AI')} ▾
             </button>
-            {noUpscaler && (
-              <span className={styles.upscaleHint} role="tooltip" data-testid="editor-upscale-hint">
-                {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
-                <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-upscale-models">
-                  {t('Go to Models')}
-                </Link>
-              </span>
+            {modelMenu && (
+              <div className={`${styles.exportItems} ${styles.modelItems}`} role="menu" data-testid="editor-ai-menu">
+                <span className={styles.upscaleWrap} role="none" data-testid="editor-upscale-wrap">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setModelMenu(false);
+                      forget();
+                      setUpscaling(true);
+                    }}
+                    disabled={picture === null || busy || noUpscaler || pending}
+                    title={noUpscaler ? undefined : t('Make the picture larger with an upscale model')}
+                    data-testid="editor-upscale"
+                  >
+                    {t('Upscale')}
+                  </button>
+                  {noUpscaler && (
+                    <span className={styles.upscaleHint} role="tooltip" data-testid="editor-upscale-hint">
+                      {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
+                      <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-upscale-models">
+                        {t('Go to Models')}
+                      </Link>
+                    </span>
+                  )}
+                </span>
+                {/* The same road as Upscale, at 1x. */}
+                <span className={styles.upscaleWrap} role="none" data-testid="editor-cleanup-wrap">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setModelMenu(false);
+                      forget();
+                      setCleaning(true);
+                    }}
+                    disabled={picture === null || busy || noUpscaler || pending}
+                    title={noUpscaler ? undefined : t('Remove the blocks and speckle repeated edits leave, with a restoration model')}
+                    data-testid="editor-cleanup"
+                  >
+                    {t('Clean up')}
+                  </button>
+                  {noUpscaler && (
+                    <span className={styles.upscaleHint} role="tooltip" data-testid="editor-cleanup-hint">
+                      {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
+                      <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-cleanup-models">
+                        {t('Go to Models')}
+                      </Link>
+                    </span>
+                  )}
+                </span>
+                <span className={styles.upscaleWrap} role="none" data-testid="editor-harmonize-wrap">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setModelMenu(false);
+                      forget();
+                      setHarmonizing(true);
+                    }}
+                    disabled={picture === null || busy || noHarmonizer || pending}
+                    title={noHarmonizer ? undefined : t('Redraw the whole picture lightly, so the seams between changed parts blend')}
+                    data-testid="editor-harmonize"
+                  >
+                    {t('Harmonize')}
+                  </button>
+                  {noHarmonizer && (
+                    <span className={styles.upscaleHint} role="tooltip" data-testid="editor-harmonize-hint">
+                      {t('Harmonize redraws lightly through a Stable Diffusion WebUI, and this workspace has none. Add a WebUI provider and an Upscale model under it.')}{' '}
+                      <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-harmonize-models">
+                        {t('Go to Models')}
+                      </Link>
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setModelMenu(false);
+                    if (picture === null) return;
+                    const to = videoFromPicturePath(workspaceId, picture.id);
+                    if (!askBeforeLeaving(to)) navigate(to);
+                  }}
+                  disabled={picture === null || busy || pending}
+                  title={t('Make a video that starts from this picture')}
+                  data-testid="editor-to-video"
+                >
+                  {t('Convert to video')}
+                </button>
+              </div>
             )}
-          </span>
-          {/* Beside Upscale, and like it says at once why not and where to add a model. */}
-          {/* Beside Upscale, the same road at 1x - and like it, says at once why not where there is no model for it. */}
-          <span className={styles.upscaleWrap} data-testid="editor-cleanup-wrap">
-            <button
-              type="button"
-              className={`${form.ghost} ${styles.toolbarButton}`}
-              onClick={() => {
-                forget();
-                setCleaning(true);
-              }}
-              disabled={picture === null || busy || noUpscaler || pending}
-              title={noUpscaler ? undefined : t('Remove the blocks and speckle repeated edits leave, with a restoration model')}
-              data-testid="editor-cleanup"
-            >
-              {t('Clean up')}
-            </button>
-            {noUpscaler && (
-              <span className={styles.upscaleHint} role="tooltip" data-testid="editor-cleanup-hint">
-                {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
-                <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-cleanup-models">
-                  {t('Go to Models')}
-                </Link>
-              </span>
-            )}
-          </span>
-          <span className={styles.upscaleWrap} data-testid="editor-harmonize-wrap">
-            <button
-              type="button"
-              className={`${form.ghost} ${styles.toolbarButton}`}
-              onClick={() => {
-                forget();
-                setHarmonizing(true);
-              }}
-              disabled={picture === null || busy || noHarmonizer || pending}
-              title={noHarmonizer ? undefined : t('Redraw the whole picture lightly, so the seams between changed parts blend')}
-              data-testid="editor-harmonize"
-            >
-              {t('Harmonize')}
-            </button>
-            {noHarmonizer && (
-              <span className={styles.upscaleHint} role="tooltip" data-testid="editor-harmonize-hint">
-                {t('Harmonize redraws lightly through a Stable Diffusion WebUI, and this workspace has none. Add a WebUI provider and an Upscale model under it.')}{' '}
-                <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-harmonize-models">
-                  {t('Go to Models')}
-                </Link>
-              </span>
-            )}
-          </span>
-          <button
-            type="button"
-            className={`${form.ghost} ${styles.toolbarButton}`}
-            onClick={() => {
-              if (picture === null) return;
-              const to = videoFromPicturePath(workspaceId, picture.id);
-              if (!askBeforeLeaving(to)) navigate(to);
-            }}
-            disabled={picture === null || busy || pending}
-            title={t('Make a video that starts from this picture')}
-            data-testid="editor-to-video"
-          >
-            {t('Convert to video')}
-          </button>
+          </div>
           <span className={styles.toolbarGap} aria-hidden="true" />
           <div className={styles.exportMenu}>
             <button
@@ -1611,7 +1640,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <span className={styles.toolbarGap} aria-hidden="true" />
           {/* A blank canvas, without going back to the gallery for it; unsaved changes here are asked about on the way out. */}
           <Link
-            className={form.ghost}
+            className={`${form.ghost} ${styles.toolbarButton}`}
             style={{ textDecoration: 'none' }}
             to={`/workspace/${workspaceId}/design/images/new`}
             title={t('Start a new picture')}
@@ -1619,12 +1648,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           >
             {t('New')}
           </Link>
-          <button type="button" className={form.ghost} onClick={discard} disabled={!canDiscard || busy} data-testid="editor-discard">
+          <button type="button" className={`${form.ghost} ${styles.toolbarButton}`} onClick={discard} disabled={!canDiscard || busy} data-testid="editor-discard">
             {t('Discard')}
           </button>
           <button
             type="button"
-            className={form.ghost}
+            className={`${form.ghost} ${styles.toolbarButton}`}
             onClick={() => void saveAsCopy()}
             disabled={picture?.versionOf == null || busy}
             title={t('Saves the changes as a new picture and leaves this one as it was')}
@@ -1632,7 +1661,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           >
             {t('Save as copy')}
           </button>
-          <button type="button" className={form.filled} onClick={save} disabled={!canSave || busy} data-testid="editor-save">
+          <button type="button" className={`${form.filled} ${styles.toolbarButton}`} onClick={save} disabled={!canSave || busy} data-testid="editor-save">
             {t('Save')}
           </button>
         </div>
