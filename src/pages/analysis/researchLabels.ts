@@ -52,7 +52,23 @@ export function seededLabel(name: string): string {
   return modeLabel(SEEDED[name] ?? null, name);
 }
 
-/** What a step of a mode's workflow is called on the page. */
+/** A step of a mode's workflow by the name its node has, as the steps are drawn in order. */
+export function stepLabel(stage: ResearchStage): string {
+  switch (stage) {
+    case 'PLAN':
+      return t('Plan research');
+    case 'GATHER':
+      return t('Gather sources');
+    case 'FOLLOW_UP':
+      return t('Deepen findings');
+    case 'WRITE':
+      return t('Write report');
+    case 'SAVE':
+      return t('Save report');
+  }
+}
+
+/** What a research is doing while it is in a step of its workflow. */
 export function stageLabel(stage: ResearchStage): string {
   switch (stage) {
     case 'PLAN':
@@ -60,7 +76,7 @@ export function stageLabel(stage: ResearchStage): string {
     case 'GATHER':
       return t('Gathering sources');
     case 'FOLLOW_UP':
-      return t('Following up');
+      return t('Deepening findings');
     case 'WRITE':
       return t('Writing the report');
     case 'SAVE':

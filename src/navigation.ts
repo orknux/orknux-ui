@@ -363,7 +363,7 @@ export const PAGES = [
     access: 'signed-in',
     goTo: { label: t('Research'), where: 'Explore', icon: fileSearchIcon, also: 'deep research report question sources analysis' },
   },
-  /* The same page, opened at one research - where its report is read. */
+  /* One research, on a page of its own: its progress, its sources and its report. */
   { path: '/workspace/:workspaceId/explore/research/:researchId', access: 'signed-in', goTo: false },
 
   // ---- Design: what a model drew, and drawing more ----
