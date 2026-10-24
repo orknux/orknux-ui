@@ -201,15 +201,19 @@ button.toolbarTitle:hover {
   white-space: nowrap;
 }
 
-/* The layers over the picture take the pointer only with the Layers tool in hand, and only on a layer. */
-.layersOn {
+/* A layer over the picture, at the picture's size; the pointer goes through it to whatever tool is in hand. */
+.layerPixels {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
-.layerImage {
-  cursor: move;
-  pointer-events: auto;
-  touch-action: none;
+/* The picture hidden in the layers keeps its place, so the layers over it stay where they are. */
+.pictureHidden {
+  visibility: hidden;
 }
 
 /* The stack, over the canvas's top right: the picture at its foot, the top layer first. */
@@ -263,8 +267,11 @@ button.toolbarTitle:hover {
   border-color: var(--color-accent);
 }
 
+.layerRowMoving {
+  opacity: 0.5;
+}
+
 .layerBase {
-  cursor: default;
   opacity: 0.8;
 }
 
@@ -283,6 +290,19 @@ button.toolbarTitle:hover {
   border-radius: var(--radius-4);
 }
 
+/* A layer's own pixels are transparent where nothing is painted: shown over a checkerboard, as the canvas is. */
+.layerThumbClear {
+  background: repeating-conic-gradient(var(--color-surface-raised) 0% 25%, var(--color-bg) 0% 50%) 50% / 8px 8px;
+}
+
+.layerNameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 var(--space-6);
+  font-size: 12px;
+}
+
 .layerName {
   flex: 1 1 auto;
   min-width: 0;
@@ -293,15 +313,6 @@ button.toolbarTitle:hover {
   text-overflow: ellipsis;
 }
 
-.layerRow .optionsField input[type='range'] {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
-}
-
-.layerRow .optionsField {
-  display: flex;
-}
 
 /* What a crop leaves out, dimmed; what it keeps, outlined. */
 .cropShade {
@@ -582,6 +593,27 @@ button.toolbarTitle:hover {
   cursor: crosshair;
   pointer-events: auto;
   touch-action: none;
+}
+
+/* A gradual blur's line: sharp at the hollow handle, blurred at the full one; either is dragged to adjust it. */
+.gradientLine {
+  stroke: var(--color-text-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.gradientHandle {
+  fill: var(--color-bg);
+  stroke: var(--color-text-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.gradientHandleEnd {
+  fill: var(--color-text-primary);
 }
 
 .selected {
