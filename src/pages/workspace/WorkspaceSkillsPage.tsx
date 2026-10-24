@@ -77,9 +77,18 @@ function matchesSearch(
 ): boolean {
   const wanted = search.trim().toLowerCase();
   if (wanted === '') return true;
-  return `${skill.name}
-${skill.description ?? ''}
-${skill.content}`.toLowerCase().includes(wanted);
+  return haystackOf(skill).includes(wanted);
+}
+
+/** A skill's words lowercased once per skill read, not once per skill per letter typed. */
+const haystacks = new WeakMap<object, string>();
+function haystackOf(skill: { name: string; description: string | null; content: string }): string {
+  let held = haystacks.get(skill);
+  if (held === undefined) {
+    held = [skill.name, skill.description ?? '', skill.content].join(' ').toLowerCase();
+    haystacks.set(skill, held);
+  }
+  return held;
 }
 
 /**

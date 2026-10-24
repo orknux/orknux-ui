@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
@@ -269,7 +269,13 @@ function textOf(node: TextNode | undefined): string {
 /** The plugin list, exactly as the renderer that takes it declares it. */
 type RehypePlugins = ComponentProps<typeof ReactMarkdown>['rehypePlugins'];
 
-export function Markdown({
+/**
+ * Kept from one render to the next while its words and options stay the same: a list of skills drew every card's
+ * markdown again on each letter typed into its search, and parsing them held the box up for most of a second.
+ */
+export const Markdown = memo(MarkdownBody);
+
+function MarkdownBody({
   children,
   highlight,
   issuesIn,
