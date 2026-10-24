@@ -107,12 +107,14 @@ It is a strange answer the first time you meet it, and it is the right one - the
 alternative tells anybody with an account roughly how much this installation
 holds and what of, one number at a time.
 
-The top bar carries the whole of it. On the left, beside the mark, are the four
+The top bar carries the whole of it. On the left, beside the mark, are the
 parts of the product you work inside. Each one opens a menu of its own down the
 left-hand side:
 
 - **AI** — what a model is given to work with: agents, models, tools, skills,
   memory and the sessions its agents have kept.
+- **Analysis** — questions researched by the workspace's own workflows: Research
+  lists what has been researched and starts more.
 - **Workflow** — the work itself and what it is made of: executions, workflows,
   actions, functions, triggers, conditions and objects.
 - **Workspace** — what the whole of it is set up with: variables, plugins,

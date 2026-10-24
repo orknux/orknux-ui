@@ -434,7 +434,7 @@ const PL: Record<string, string> = {
   WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
   WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
-  // --- Answer > Research, issue #659 ---------------------------------------
+  // --- Analysis > Research, issue #659 -------------------------------------
   ResearchQuestionMissing: 'Napisz, co zbadać',
   ResearchQuestionTooLong: 'Pytanie badania może mieć najwyżej {most} znaków',
   ResearchModeNotFound: 'Nie ma trybu badania o identyfikatorze {id}',

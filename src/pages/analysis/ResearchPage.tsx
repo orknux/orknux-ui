@@ -115,7 +115,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         <OpenedResearch
           research={opened}
           workspaceId={workspaceId}
-          onClose={() => navigate(`/workspace/${workspaceId}/answer/research`)}
+          onClose={() => navigate(`/workspace/${workspaceId}/analysis/research`)}
         />
       )}
 
@@ -135,7 +135,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
 
         {list?.content.map((one) => (
           <div key={one.id} className={`${table.row} ${styles.row}`} data-research={one.id}>
-            <Link className={`${styles.colQuestion} ${styles.question}`} to={`/workspace/${workspaceId}/answer/research/${one.id}`} title={one.question}>
+            <Link className={`${styles.colQuestion} ${styles.question}`} to={`/workspace/${workspaceId}/analysis/research/${one.id}`} title={one.question}>
               {one.question}
             </Link>
             <span className={styles.colMode}>{seededLabel(one.modeName)}</span>
@@ -150,7 +150,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
             </span>
             <span className={styles.colResult}>
               {one.status === 'COMPLETED' ? (
-                <Link to={`/workspace/${workspaceId}/answer/research/${one.id}`}>
+                <Link to={`/workspace/${workspaceId}/analysis/research/${one.id}`}>
                   {one.outputFormat === 'PDF' ? t('PDF') : t('Document')}
                 </Link>
               ) : one.status === 'RUNNING' && one.progress !== null ? (
@@ -209,7 +209,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         onConfirm={async () => {
           if (removing === null) return;
           await deleteResearch(removing.id);
-          if (opened?.id === removing.id) navigate(`/workspace/${workspaceId}/answer/research`);
+          if (opened?.id === removing.id) navigate(`/workspace/${workspaceId}/analysis/research`);
           setRemoving(null);
           load();
         }}

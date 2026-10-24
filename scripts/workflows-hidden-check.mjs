@@ -1,5 +1,5 @@
 /**
- * The research workflows are hidden until Show hidden is ticked. Issue #659.
+ * The research workflows are built-in, and kept off the list until Show built-in is ticked. Issue #659.
  *
  * Shallow, Medium and Deep are workflows of the workspace like any other, and
  * editable like any other, but seeded hidden: the Workflows list leaves them
@@ -26,8 +26,8 @@ await search.waitFor({ timeout: 20_000 });
 await search.fill('Research:');
 await page.waitForTimeout(1500);
 
-const box = page.getByRole('checkbox', { name: 'Show hidden' });
-record((await box.count()) === 1 && !(await box.isChecked()), 'the list has a Show hidden box, unticked');
+const box = page.getByRole('checkbox', { name: 'Show built-in' });
+record((await box.count()) === 1 && !(await box.isChecked()), 'the list has a Show built-in box, unticked');
 const before = await rowsNamed();
 record(names.every((name) => !before.includes(name)), `unticked, the research workflows are not listed (${before.join(', ') || 'none'})`);
 
@@ -46,7 +46,7 @@ record(new URL(page.url()).searchParams.get('hidden') === 'show', 'the box is ke
 
 const deep = page.locator('a[href$="/editor"]', { hasText: names.find((one) => one.endsWith('Deep')) ?? 'Research: Deep' }).first();
 const tag = deep.locator('xpath=following-sibling::*[1]');
-record(((await tag.textContent().catch(() => '')) ?? '').trim() === 'Hidden', 'a hidden one says so beside its name');
+record(((await tag.textContent().catch(() => '')) ?? '').trim() === 'Built-in', 'a built-in one says so beside its name');
 
 // Still the workflow it is: it opens in the editor.
 await deep.click();

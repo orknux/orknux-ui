@@ -58,7 +58,7 @@ export type Access = 'signed-in' | 'admin' | 'workspace-admin';
  * The first five are the links across the top, in that order. `Docs`, `Admin`
  * and `You` are reached from the corner instead, and light nothing in the bar.
  */
-export type Where = 'AI' | 'Answer' | 'Chat' | 'Design' | 'Flow' | 'Workspace' | 'Docs' | 'Admin' | 'You';
+export type Where = 'AI' | 'Analysis' | 'Chat' | 'Design' | 'Flow' | 'Workspace' | 'Docs' | 'Admin' | 'You';
 
 /**
  * The links across the top, in the order they are drawn.
@@ -77,7 +77,7 @@ export type Where = 'AI' | 'Answer' | 'Chat' | 'Design' | 'Flow' | 'Workspace' |
 /*
  * In the alphabet's order, so a section added later has one obvious place.
  */
-export const TOP_SECTIONS = ['AI', 'Answer', 'Chat', 'Design', 'Flow', 'Workspace'] as const;
+export const TOP_SECTIONS = ['AI', 'Analysis', 'Chat', 'Design', 'Flow', 'Workspace'] as const;
 
 export type TopSection = (typeof TOP_SECTIONS)[number];
 
@@ -99,8 +99,8 @@ export function sectionLabel(name: TopSection): string {
   switch (name) {
     case 'AI':
       return t('AI');
-    case 'Answer':
-      return t('Answer');
+    case 'Analysis':
+      return t('Analysis');
     case 'Design':
       return t('Design');
     case 'Flow':
@@ -356,14 +356,14 @@ export const PAGES = [
     goTo: { label: t('Objects'), where: 'Flow', icon: boxIcon, also: 'shapes data' },
   },
 
-  // ---- Answer: a question researched by the workspace's own workflows ----
+  // ---- Analysis: a question researched by the workspace's own workflows ----
   {
-    path: '/workspace/:workspaceId/answer/research',
+    path: '/workspace/:workspaceId/analysis/research',
     access: 'signed-in',
-    goTo: { label: t('Research'), where: 'Answer', icon: fileSearchIcon, also: 'deep research report question sources' },
+    goTo: { label: t('Research'), where: 'Analysis', icon: fileSearchIcon, also: 'deep research report question sources' },
   },
   /* The same page, opened at one research - where its report is read. */
-  { path: '/workspace/:workspaceId/answer/research/:researchId', access: 'signed-in', goTo: false },
+  { path: '/workspace/:workspaceId/analysis/research/:researchId', access: 'signed-in', goTo: false },
 
   // ---- Design: what a model drew, and drawing more ----
   /* Screens sketched by hand or drawn by a model, first in Design, before the pictures drawn from them. Issue #655. */

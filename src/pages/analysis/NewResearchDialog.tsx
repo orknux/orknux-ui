@@ -3,14 +3,17 @@ import type { FormEvent } from 'react';
 
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
-import { createResearchMode, fetchResearchDocuments, fetchResearchModes, startResearch } from '../../api/research';
-import type { ResearchDocument, ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
+import { createResearchMode, fetchResearchModes, startResearch } from '../../api/research';
+import type { ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import dialog from '../../components/Dialog.module.css';
 import { ModelPicker } from '../../components/ModelPicker';
 import { Select } from '../../components/Select';
+import { DocumentPicker } from './DocumentPicker';
+import type { PickedDocument } from './DocumentPicker';
 import { languageLabel, modeLabel } from './researchLabels';
+import { SiteList } from './SiteList';
 import styles from './ResearchPage.module.css';
 import { t } from '../../i18n';
 
@@ -35,18 +38,7 @@ function modeHint(mode: ResearchMode): string {
   }
 }
 
-/** What a document is to this research. */
-type Use = 'NONE' | 'INCLUDE' | 'EXCLUDE';
-
 const LANGUAGES: ResearchLanguage[] = ['ACADEMIC', 'COLLOQUIAL', 'FORMAL'];
-
-/** A list typed one to a line, or with commas. */
-function linesOf(text: string): string[] {
-  return text
-    .split(/[\n,]/)
-    .map((line) => line.trim())
-    .filter((line) => line !== '');
-}
 
 /** What the "runs" choice of a new mode holds: a mode to copy, or a workflow. */
 const COPY = 'copy:';
@@ -63,17 +55,17 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [modes, setModes] = useState<ResearchMode[]>([]);
   const [models, setModels] = useState<Model[]>([]);
-  const [documents, setDocuments] = useState<ResearchDocument[]>([]);
   const [workflows, setWorkflows] = useState<WorkspaceWorkflow[]>([]);
 
   const [question, setQuestion] = useState('');
   const [modeId, setModeId] = useState('');
   const [modelId, setModelId] = useState('');
-  const [include, setInclude] = useState('');
-  const [exclude, setExclude] = useState('');
-  const [uses, setUses] = useState<Record<string, Use>>({});
+  const [include, setInclude] = useState<string[]>([]);
+  const [exclude, setExclude] = useState<string[]>([]);
+  const [picked, setPicked] = useState<PickedDocument[]>([]);
   const [language, setLanguage] = useState<ResearchLanguage>('FORMAL');
-  const [format, setFormat] = useState<ResearchOutputFormat>('DOCUMENT');
+  // A file to keep and send on, which is what most research is for.
+  const [format, setFormat] = useState<ResearchOutputFormat>('PDF');
 
   const [adding, setAdding] = useState(false);
   const [modeName, setModeName] = useState('');
@@ -87,19 +79,18 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
     if (held === null) return;
     if (open && !held.open) {
       setQuestion('');
-      setInclude('');
-      setExclude('');
-      setUses({});
+      setInclude([]);
+      setExclude([]);
+      setPicked([]);
       setAdding(false);
       setError(null);
       setSubmitting(false);
       held.showModal();
-      Promise.all([fetchResearchModes(workspaceId), fetchModels(workspaceId), fetchResearchDocuments(workspaceId)])
-        .then(([foundModes, foundModels, foundDocuments]) => {
+      Promise.all([fetchResearchModes(workspaceId), fetchModels(workspaceId)])
+        .then(([foundModes, foundModels]) => {
           setModes(foundModes);
           setModeId((chosen) => (foundModes.some((mode) => mode.id === chosen) ? chosen : (foundModes[0]?.id ?? '')));
           setModels(foundModels.filter((model) => model.kind === 'CHAT'));
-          setDocuments(foundDocuments);
         })
         .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load what a research needs.')));
     } else if (!open && held.open) {
@@ -148,10 +139,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         modelId: modelId === '' ? null : modelId,
         language,
         outputFormat: format,
-        websitesInclude: linesOf(include),
-        websitesExclude: linesOf(exclude),
-        documentsInclude: Object.keys(uses).filter((id) => uses[id] === 'INCLUDE'),
-        documentsExclude: Object.keys(uses).filter((id) => uses[id] === 'EXCLUDE'),
+        websitesInclude: include,
+        websitesExclude: exclude,
+        documentsInclude: picked.filter((one) => one.use === 'INCLUDE').map((one) => one.document.id),
+        documentsExclude: picked.filter((one) => one.use === 'EXCLUDE').map((one) => one.document.id),
       });
       onStarted();
     } catch (cause) {
@@ -267,57 +258,12 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           <fieldset className={styles.group}>
             <legend className={dialog.label}>{t('Websites')}</legend>
             <div className={styles.pair}>
-              <div className={dialog.field}>
-                <label className={dialog.label} htmlFor="research-websites-include">{t('Include')}</label>
-                <div className={`${dialog.inputWrapper} ${styles.short}`}>
-                  <textarea
-                    id="research-websites-include"
-                    className={`${dialog.input} ${dialog.textarea}`}
-                    placeholder="example.org"
-                    value={include}
-                    onChange={(event) => setInclude(event.target.value)}
-                  />
-                </div>
-              </div>
-              <div className={dialog.field}>
-                <label className={dialog.label} htmlFor="research-websites-exclude">{t('Exclude')}</label>
-                <div className={`${dialog.inputWrapper} ${styles.short}`}>
-                  <textarea
-                    id="research-websites-exclude"
-                    className={`${dialog.input} ${dialog.textarea}`}
-                    placeholder="example.com"
-                    value={exclude}
-                    onChange={(event) => setExclude(event.target.value)}
-                  />
-                </div>
-              </div>
+              <SiteList id="research-websites-include" label={t('Include')} sites={include} onChange={setInclude} />
+              <SiteList id="research-websites-exclude" label={t('Exclude')} sites={exclude} onChange={setExclude} />
             </div>
           </fieldset>
 
-          <fieldset className={styles.group} data-documents>
-            <legend className={dialog.label}>{t('Documents')}</legend>
-            {documents.length === 0 ? (
-              <span className={styles.muted}>{t('No documents yet.')}</span>
-            ) : (
-              <ul className={styles.documents}>
-                {documents.map((document) => (
-                  <li key={document.id} className={styles.documentRow}>
-                    <span className={styles.documentName} title={document.description}>{document.name}</span>
-                    <Select
-                      className={styles.documentUse}
-                      value={uses[document.id] ?? 'NONE'}
-                      onChange={(value) => setUses((held) => ({ ...held, [document.id]: value as Use }))}
-                      aria-label={document.name}
-                    >
-                      <option value="NONE">{t('Not used')}</option>
-                      <option value="INCLUDE">{t('Include')}</option>
-                      <option value="EXCLUDE">{t('Exclude')}</option>
-                    </Select>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </fieldset>
+          <DocumentPicker workspaceId={workspaceId} picked={picked} onChange={setPicked} />
 
           <div className={styles.pair}>
             <div className={dialog.field}>
