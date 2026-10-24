@@ -57,6 +57,7 @@ import {
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
+import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import styles from './DesignImageEditorPage.module.css';
 import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
@@ -2402,7 +2403,22 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           )}
 
           <div className={form.field}>
-            <label className={form.label} htmlFor="image-model">{t('Model')}</label>
+            <span className={form.labelRow}>
+              <label className={form.label} htmlFor="image-model">{t('Model')}</label>
+              {modelId !== '' && (models ?? []).some((one) => one.id === modelId) && (
+                <Link
+                  className={form.jump}
+                  to={`/workspace/${workspaceId}/models/${modelId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={t('Opens the model in a new tab')}
+                  aria-label={t('Open the model')}
+                  data-testid="image-model-link"
+                >
+                  <OpenDefinitionIcon />
+                </Link>
+              )}
+            </span>
             <div className={form.inputWrapper}>
               <Select
                 id="image-model"

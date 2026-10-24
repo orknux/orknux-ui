@@ -263,6 +263,16 @@ await page.getByTestId('image-quality').waitFor({ timeout: 5_000 }).catch(() => 
 const fields = await page.getByTestId('editor-panel').locator('label').allInnerTexts();
 record(['Prompt', 'Model', 'Quality'].every((one) => fields.includes(one)), `the panel asks for the prompt, the model and its parameters (${fields.join(', ')})`);
 
+// The chosen model is a link away, beside its label, as a definition is on an action.
+const modelLink = await page.getByTestId('image-model-link').evaluate((link) => {
+  const label = document.querySelector('label[for="image-model"]');
+  const a = link.getBoundingClientRect();
+  const b = label?.getBoundingClientRect();
+  return { href: link.getAttribute('href'), target: link.getAttribute('target'), level: b ? Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) : null };
+}).catch(() => null);
+record(modelLink !== null && /\/workspace\/\d+\/models\/\d+$/.test(modelLink.href ?? '') && modelLink.target === '_blank' && modelLink.level !== null && modelLink.level < 6,
+  `the Model label links to the chosen model (${JSON.stringify(modelLink)})`);
+
 // Named before it is drawn, in the top bar; the name goes with the request.
 await page.getByTestId('editor-name').click().catch(() => undefined);
 await page.getByTestId('editor-name-input').fill('Harbour at dusk');

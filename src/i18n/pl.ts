@@ -114,6 +114,8 @@ export const PL: Record<string, string> = {
   "exchanges": "wymian",
   "Could not export the models.": "Nie udało się wyeksportować modeli.",
   "Could not export the provider.": "Nie udało się wyeksportować dostawcy.",
+  "Opens the model in a new tab": "Otwiera model w nowej karcie",
+  "Open the model": "Otwórz model",
   "Export {name}": "Eksportuj {name}",
   "Could not import the models.": "Nie udało się zaimportować modeli.",
   "{count} models added": "Dodano modeli: {count}",
