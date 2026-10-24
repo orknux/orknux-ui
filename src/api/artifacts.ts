@@ -316,6 +316,27 @@ export async function queueDesignImageEdit(input: EditDesignImageInput): Promise
   return data.queueDesignImageEdit;
 }
 
+/**
+ * A change the editor worked out itself - rotated, mirrored, cropped, painted -
+ * kept as an unsaved version of the picture, as a model's change is. Answered
+ * already drawn, with the version.
+ */
+export async function keepDesignImageChange(input: {
+  workspaceId: string;
+  /** The picture the change was made to, by its artifact id. */
+  imageId: string;
+  /** The changed picture, as a data URL. */
+  image: string;
+  /** What was done, as the history says it. */
+  change: string;
+}): Promise<DesignImageJob> {
+  const data = await graphql<{ keepDesignImageChange: DesignImageJob }>(
+    `mutation KeepDesignImageChange($input: KeepDesignImageChangeInput!) { keepDesignImageChange(input: $input) { ${JOB_FIELDS} } }`,
+    { input },
+  );
+  return data.keepDesignImageChange;
+}
+
 /** Saves an unsaved version over the picture it is a version of, and throws the picture's other versions away. */
 export async function saveDesignImageVersion(workspaceId: string, id: string, asCopy = false): Promise<Artifact> {
   const data = await graphql<{ saveDesignImageVersion: Artifact }>(

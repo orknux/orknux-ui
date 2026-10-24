@@ -1938,6 +1938,12 @@ export const TESTS = [
     /* Answers the picture and its history itself. */
   },
   {
+    name: 'design-picture-tools-check',
+    what: "the image editor's own tools - rotate and mirror - keep a version that is what they drew, read back pixel by pixel, and Undo walks back over them",
+    needs: ['workspace'],
+    /* Answers the picture, its history and every kept change itself. */
+  },
+  {
     name: 'import-plan-filter-check',
     what: 'the import dialog narrows its plan to what is not here, and expands it to its full length',
     needs: ['workspace'],

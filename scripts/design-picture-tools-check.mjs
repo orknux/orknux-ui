@@ -1,0 +1,135 @@
+/**
+ * The image editor's own tools - the ones that change the picture without a
+ * model - measured on what they draw.
+ *
+ * Each is worked out in the browser and kept as a version through
+ * keepDesignImageChange, so the check answers that mutation itself, keeps the
+ * picture it was handed, and serves it back as the version: what is then on
+ * the canvas is exactly what the tool made. It is read back pixel by pixel.
+ *
+ * The picture is 60 by 40, red on its left half and blue on its right, so a
+ * turn shows in its sides and a mirror in which colour is where.
+ */
+import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+
+const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
+
+const picture = (id, url, versionOf) => ({
+  id, kind: 'DESIGN', source: 'Design', sourcePath: `design/images/${id}`, prompt: 'zz tools: two halves', filename: 'halves.png',
+  contentType: 'image/png', sizeBytes: 1, url, previewUrl: null, drawnAt: new Date().toISOString(), name: 'Halves',
+  versionOf, draft: null, draftUrl: null,
+  drawnWith: { modelId: null, model: 'Imported', size: null, quality: null, style: null, drawnBy: 'alice' },
+});
+
+const HALVES = await page.evaluate(() => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 60;
+  canvas.height = 40;
+  const pen = canvas.getContext('2d');
+  pen.fillStyle = '#ff0000';
+  pen.fillRect(0, 0, 30, 40);
+  pen.fillStyle = '#0000ff';
+  pen.fillRect(30, 0, 30, 40);
+  return canvas.toDataURL('image/png');
+});
+const ORIGINAL = picture('DESIGN-701', HALVES, null);
+/** What each keepDesignImageChange was asked to keep, in order. */
+const kept = [];
+let next = 702;
+
+await page.route('**/graphql', async (route) => {
+  const body = route.request().postDataJSON() ?? {};
+  const query = body.query ?? '';
+  if (query.includes('workspaceArtifact(')) {
+    return route.fulfill({ json: { data: { workspaceArtifact: body.variables?.id === ORIGINAL.id ? ORIGINAL : null } } });
+  }
+  if (query.includes('designImageHistory')) return route.fulfill({ json: { data: { designImageHistory: [] } } });
+  if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
+  if (query.includes('keepDesignImageChange')) {
+    const input = body.variables?.input;
+    kept.push(input);
+    const id = String(next++);
+    const version = picture(`DESIGN-${id}`, input.image, ORIGINAL.id);
+    return route.fulfill({
+      json: {
+        data: {
+          keepDesignImageChange: {
+            id, status: 'DRAWN', prompt: input.change, modelId: null, model: 'Image editor', size: null, quality: null, style: null,
+            negativePrompt: null, requestedBy: 'alice', requestedAt: new Date().toISOString(), startedAt: null, reason: null, ahead: null,
+            name: 'Halves', sourceId: input.imageId, upscaler: null, scale: null, image: version,
+          },
+        },
+      },
+    });
+  }
+  return route.continue();
+});
+
+/** The picture on the canvas, read back: its own size, and the colour at points given as shares of it. */
+const shown = (points) => page.evaluate(async (at) => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  if (image === null) return null;
+  if (!image.complete) await new Promise((done) => image.addEventListener('load', done, { once: true }));
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const pen = canvas.getContext('2d');
+  pen.drawImage(image, 0, 0);
+  const colour = ([x, y]) => {
+    const [r, g, b] = pen.getImageData(Math.floor(x * (canvas.width - 1)), Math.floor(y * (canvas.height - 1)), 1, 1).data;
+    return r > 200 && g < 60 && b < 60 ? 'red' : b > 200 && r < 60 && g < 60 ? 'blue' : `rgb(${r},${g},${b})`;
+  };
+  return { width: canvas.width, height: canvas.height, colours: at.map(colour) };
+}, points);
+
+/** Waits for the canvas to show the version kept last. */
+const showsLastKept = async () => {
+  const want = kept[kept.length - 1]?.image;
+  await page.waitForFunction((src) => document.querySelector('[data-testid="editor-picture"]')?.getAttribute('src') === src, want, { timeout: 10_000 })
+    .catch(() => undefined);
+};
+
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${ORIGINAL.id}/edit`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const before = await shown([[0.1, 0.5], [0.9, 0.5]]);
+record(before?.width === 60 && before?.height === 40 && before.colours.join() === 'red,blue',
+  `the picture opens 60x40, red left and blue right (${JSON.stringify(before)})`);
+
+// -- Rotate and mirror (#634) -------------------------------------------------
+
+await page.getByTestId('editor-rotate-right').click();
+await showsLastKept();
+const right = await shown([[0.5, 0.1], [0.5, 0.9]]);
+record(kept.length === 1 && kept[0].imageId === ORIGINAL.id && kept[0].change !== '' &&
+  right?.width === 40 && right?.height === 60 && right.colours.join() === 'red,blue',
+  `Rotate right keeps a version 40x60 with the left half turned to the top (${JSON.stringify({ right, change: kept[0]?.change })})`);
+record(await page.getByTestId('editor-unsaved').isVisible().catch(() => false), 'the rotated picture is a draft, marked so');
+
+await page.getByTestId('editor-rotate-left').click();
+await showsLastKept();
+const back = await shown([[0.1, 0.5], [0.9, 0.5]]);
+record(kept.length === 2 && kept[1].imageId === 'DESIGN-702' && back?.width === 60 && back?.height === 40 && back.colours.join() === 'red,blue',
+  `Rotate left turns it back, 60x40, red left again (${JSON.stringify(back)})`);
+
+await page.getByTestId('editor-flip-horizontal').click();
+await showsLastKept();
+const flipped = await shown([[0.1, 0.5], [0.9, 0.5]]);
+record(flipped?.width === 60 && flipped.colours.join() === 'blue,red', `Flip horizontally puts blue on the left (${JSON.stringify(flipped)})`);
+
+await page.getByTestId('editor-rotate-right').click();
+await showsLastKept();
+await page.getByTestId('editor-flip-vertical').click();
+await showsLastKept();
+const upended = await shown([[0.5, 0.1], [0.5, 0.9]]);
+// Flipped (blue left), turned right (blue on top), flipped vertically (blue at the foot).
+record(upended?.width === 40 && upended?.height === 60 && upended.colours.join() === 'red,blue',
+  `Flip vertically swaps top for bottom (${JSON.stringify(upended)})`);
+
+// Undo walks back over the versions: the canvas shows the one before.
+await page.getByTestId('editor-undo').click();
+await page.waitForFunction((src) => document.querySelector('[data-testid="editor-picture"]')?.getAttribute('src') === src, kept[3].image, { timeout: 10_000 })
+  .catch(() => undefined);
+const undone = await shown([[0.5, 0.1], [0.5, 0.9]]);
+record(undone?.colours.join() === 'blue,red', `Undo shows the picture before the vertical flip (${JSON.stringify(undone)})`);
+
+await finish(browser);

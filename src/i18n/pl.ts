@@ -3469,4 +3469,13 @@ export const PL: Record<string, string> = {
   "Start": "Rozpocznij",
   "Show built-in": "Pokaż wbudowane",
   "Built-in": "Wbudowany",
+  "Could not keep the change.": "Nie udało się zachować zmiany.",
+  "Rotated left": "Obrócono w lewo",
+  "Rotated right": "Obrócono w prawo",
+  "Flipped horizontally": "Odbito w poziomie",
+  "Flipped vertically": "Odbito w pionie",
+  "Rotate left": "Obróć w lewo",
+  "Rotate right": "Obróć w prawo",
+  "Flip horizontally": "Odbij w poziomie",
+  "Flip vertically": "Odbij w pionie",
 };

@@ -9,6 +9,7 @@ import {
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   importDesignImage,
+  keepDesignImageChange,
   queueDesignImage,
   queueDesignImageEdit,
   queueDesignImageHarmonize,
@@ -25,8 +26,12 @@ import type { ImageSizePreset } from '../../api/imagePresets';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
+import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
+import flipVerticalIcon from '../../assets/flip-vertical.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import redoIcon from '../../assets/redo.svg';
+import rotateLeftIcon from '../../assets/rotate-left.svg';
+import rotateRightIcon from '../../assets/rotate-right.svg';
 import selectAllIcon from '../../assets/select-all.svg';
 import lassoIcon from '../../assets/select-lasso.svg';
 import rectangleIcon from '../../assets/select-rectangle.svg';
@@ -53,6 +58,8 @@ import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
+import { canvasOf, mirrored, rotated } from './pictureEdits';
+import type { Point } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
 import { videoFromPicturePath } from './useVideoFromPicture';
@@ -97,9 +104,6 @@ type Made = { job: DesignImageJob };
 
 /** What the canvas holds: a picture, a request on its way, or nothing yet. */
 type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: string } | null;
-
-/** A point on the picture, in its own pixels. */
-type Point = { x: number; y: number };
 
 /** Which way of selecting part of the picture is in hand. */
 type MagicTool = 'rectangle' | 'lasso';
@@ -656,6 +660,47 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setHarmonizing(false);
     show({ kind: 'job', jobId: queued.id });
   }
+
+  /** The picture shown, on a canvas of its own at its own size; null before it has loaded. */
+  const pictureCanvas = (): HTMLCanvasElement | null => {
+    const shownPicture = pictureRef.current;
+    if (picture === null || shownPicture === null || shownPicture.naturalWidth === 0) return null;
+    return canvasOf(shownPicture);
+  };
+
+  /**
+   * A change worked out here kept as a version of the picture shown - a draft
+   * Save writes and Discard throws away, and a step undo goes back over, as a
+   * model's change is. Answers the version, or null where it could not be kept.
+   */
+  async function keepChange(drawn: HTMLCanvasElement, change: string): Promise<Artifact | null> {
+    if (picture === null || busy) return null;
+    setBusy(true);
+    setError(null);
+    try {
+      const kept = await keepDesignImageChange({ workspaceId, imageId: picture.id, image: drawn.toDataURL('image/png'), change });
+      remember();
+      setMade((held) => [{ job: kept }, ...held]);
+      forget();
+      if (kept.image !== null) show({ kind: 'picture', picture: kept.image });
+      return kept.image;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not keep the change.'));
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** A quarter turn, or a mirror image: done at once, as a version of the picture. */
+  const turn = (way: 'left' | 'right') => {
+    const drawn = pictureCanvas();
+    if (drawn !== null) void keepChange(rotated(drawn, way), way === 'left' ? t('Rotated left') : t('Rotated right'));
+  };
+  const mirror = (axis: 'horizontal' | 'vertical') => {
+    const drawn = pictureCanvas();
+    if (drawn !== null) void keepChange(mirrored(drawn, axis), axis === 'horizontal' ? t('Flipped horizontally') : t('Flipped vertically'));
+  };
 
   /**
    * A file brought in - picked, or dropped on the canvas - kept as a picture of
@@ -1282,6 +1327,53 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       </div>
 
       <div className={styles.editor}>
+        {/* What the editor does to the picture itself, without a model: down the canvas's left, as an editor's tools are. */}
+        <div className={styles.rail} role="toolbar" aria-orientation="vertical" aria-label={t('Edit')} data-testid="editor-tools">
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={() => turn('left')}
+            disabled={picture === null || busy}
+            title={t('Rotate left')}
+            aria-label={t('Rotate left')}
+            data-testid="editor-rotate-left"
+          >
+            <img src={rotateLeftIcon} alt="" width={16} height={16} />
+          </button>
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={() => turn('right')}
+            disabled={picture === null || busy}
+            title={t('Rotate right')}
+            aria-label={t('Rotate right')}
+            data-testid="editor-rotate-right"
+          >
+            <img src={rotateRightIcon} alt="" width={16} height={16} />
+          </button>
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={() => mirror('horizontal')}
+            disabled={picture === null || busy}
+            title={t('Flip horizontally')}
+            aria-label={t('Flip horizontally')}
+            data-testid="editor-flip-horizontal"
+          >
+            <img src={flipHorizontalIcon} alt="" width={16} height={16} />
+          </button>
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={() => mirror('vertical')}
+            disabled={picture === null || busy}
+            title={t('Flip vertically')}
+            aria-label={t('Flip vertically')}
+            data-testid="editor-flip-vertical"
+          >
+            <img src={flipVerticalIcon} alt="" width={16} height={16} />
+          </button>
+        </div>
         <div
           className={`${styles.canvas} ${dropping ? styles.canvasDropping : ''}`}
           data-testid="editor-canvas"
