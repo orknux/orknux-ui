@@ -39,7 +39,7 @@ const RUNNING = {
   sources: SOURCES,
 };
 const FINISHED = {
-  ...RUNNING, status: 'COMPLETED', finishedAt: new Date().toISOString(), fileName: 'tides.md', fileUrl: '/api/artifacts/4242', artifactId: '4242',
+  ...RUNNING, status: 'COMPLETED', startedAt: new Date(Date.now() - 125_000).toISOString(), finishedAt: new Date().toISOString(), fileName: 'tides.md', fileUrl: '/api/artifacts/4242', artifactId: '4242',
   progress: { ...RUNNING.progress, step: 'Finished', stage: 'SAVE' },
   result: '# Tides\n\nThe moon pulls the sea [1], and a spring tide comes every fortnight [2].\n\n## Sources\n\n1. [Tides and the moon](https://one.example.org/tides)\n2. [Harbour log](/api/artifacts/7)',
 };
@@ -138,5 +138,9 @@ record(states.length === 5 && states.every((one) => one === 'done'), `and every 
 record((await opened.locator('[data-summary] [data-working]').count()) === 0, 'and the spinner is gone');
 const kept = await opened.locator('[data-research-artifact]').getAttribute('href').catch(() => null);
 record(kept !== null && kept.endsWith('/artifacts/4242'), `and links the report it kept on the Artifacts page (${kept})`);
+const took = ((await opened.locator('[data-took]').textContent().catch(() => '')) ?? '').trim();
+record(took === '2m 5s', `and says how long it took, start to finish (${took})`);
+const rounds = ((await opened.locator('[data-stat="level"]').locator('xpath=preceding-sibling::dt').textContent().catch(() => '')) ?? '').trim();
+record(rounds === 'Search rounds', `the depth reached is called what it is, not "Level" (${rounds})`);
 
 await finish(browser);

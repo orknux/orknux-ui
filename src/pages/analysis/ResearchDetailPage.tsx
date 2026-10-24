@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { deleteResearch, fetchResearch } from '../../api/research';
 import type { Research, ResearchSource, ResearchStage, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
+import { formatDuration } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
 import checkIcon from '../../assets/check.svg';
 import { AppShell } from '../../components/AppShell';
@@ -219,6 +220,15 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
         <dt>{t('Started')}</dt>
         <dd title={research.startedAt}>{timeAgo(research.startedAt)}</dd>
       </div>
+      {/* How long it took, once it is over: from the start to the moment it finished, failed or was stopped. */}
+      {research.finishedAt !== null && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Took')}</dt>
+          <dd data-took>
+            {formatDuration(Math.max(0, Math.round((Date.parse(research.finishedAt) - Date.parse(research.startedAt)) / 1000)))}
+          </dd>
+        </div>
+      )}
     </dl>
   );
 }
@@ -265,7 +275,8 @@ function Progress({ research }: { research: Research }) {
           <dd data-stat="sources">{progress?.sourcesRead ?? 0}</dd>
         </div>
         <div className={styles.stat}>
-          <dt>{t('Level')}</dt>
+          {/* Rounds of searching: 1 is the plan's own queries, each follow-up round one more - not the mode. */}
+          <dt>{t('Search rounds')}</dt>
           <dd data-stat="level">{progress?.level ?? 0}</dd>
         </div>
       </dl>
