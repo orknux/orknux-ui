@@ -198,10 +198,12 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         open={starting}
         workspaceId={workspaceId}
         onClose={() => setStarting(false)}
-        onStarted={() => {
+        onStarted={(started) => {
           setStarting(false);
           setPage(1);
           load();
+          // Straight to the research just started, where its progress is shown.
+          navigate(`/workspace/${workspaceId}/explore/research/${started.id}`);
         }}
       />
 
@@ -257,6 +259,12 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
         <dt>{t('Status')}</dt>
         <dd>
           <span className={`${styles.status} ${STATUS_CLASS[research.status]}`}>{statusLabel(research.status)}</span>
+          {/* Working, said where the status is rather than in front of what it is reading. */}
+          {research.status === 'RUNNING' && (
+            <span className={styles.working} data-working>
+              <Loader label="" size={16} delay={0} />
+            </span>
+          )}
           {research.executionId !== null && (
             <>
               {' '}
@@ -302,7 +310,7 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
         <div className={styles.progress} data-progress>
           {research.status === 'RUNNING' && (
             <p className={styles.step} data-step>
-              <Loader /> {research.progress.step}
+              {research.progress.step}
             </p>
           )}
           <dl className={styles.facts}>

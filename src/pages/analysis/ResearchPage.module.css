@@ -353,11 +353,15 @@
 }
 
 .step {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
   margin: 0;
   color: var(--color-text-primary);
+}
+
+/* The spinner beside the Running badge, on its line. */
+.working {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: var(--space-8);
 }
 
 .subheading {

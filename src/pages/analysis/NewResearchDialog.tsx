@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import { createResearchMode, fetchResearchModes, startResearch } from '../../api/research';
-import type { ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
+import type { Research, ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import dialog from '../../components/Dialog.module.css';
@@ -21,7 +21,8 @@ export interface NewResearchDialogProps {
   open: boolean;
   workspaceId: string;
   onClose: () => void;
-  onStarted: () => void;
+  /** Handed the research just started. */
+  onStarted: (started: Research) => void;
 }
 
 /** How long a mode usually takes, said beside the option rather than in it. */
@@ -138,7 +139,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
     setSubmitting(true);
     setError(null);
     try {
-      await startResearch({
+      const started = await startResearch({
         workspaceId,
         question: question.trim(),
         modeId,
@@ -151,7 +152,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         documentsExclude: picked.filter((one) => one.use === 'EXCLUDE').map((one) => one.document.id),
         useWebSearch: webSearch,
       });
-      onStarted();
+      onStarted(started);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not start the research.'));
       setSubmitting(false);
