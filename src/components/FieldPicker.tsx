@@ -91,7 +91,11 @@ export function FieldPicker({ options, value, onChange, label, labels = FIELD_LA
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
 
-  const chosen = options.find((option) => option.expression === value);
+  // A field inside an offered object - `trigger.model` under the run's input - is answered by that object, as a placeholder is.
+  const inside = options.find((option) => value.startsWith(`${option.expression}.`));
+  const chosen =
+    options.find((option) => option.expression === value) ??
+    (inside === undefined ? undefined : { ...inside, field: value, expression: value });
 
   useEffect(() => {
     if (!open) return;

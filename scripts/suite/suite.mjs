@@ -1146,6 +1146,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'workflow-run-input-check',
+    what: "a workflow with no trigger reads trigger.x as the run's input, and the editor does not draw it red",
+    needs: ['workspace'],
+  },
+  {
     name: 'workspace-search-check',
     what: "a workspace's web search is set on its own Settings page, the side menu's search finds it, and its key is a secret field saved by Save Changes",
     /* Puts the workspace's key back as it found it, own value or reference. */

@@ -2979,6 +2979,16 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           type: port.type,
         })));
       })
+      .concat(
+        /*
+         * No trigger node: a run is started with its input handed over whole -
+         * an API call, a research, another workflow - and `trigger.x` reads it,
+         * as the save accepts. Offered as the run's input so it is not drawn red.
+         */
+        nodes.some((node) => (node.data as NodeData).kind === 'TRIGGER')
+          ? []
+          : [{ groupKey: '__run', groupName: t('Run input'), field: 'trigger', expression: 'trigger', type: 'OBJECT' }],
+      )
       .concat(variableOptions);
   }, [nodes, ports, selectedKey, variableOptions, triggers]);
 
