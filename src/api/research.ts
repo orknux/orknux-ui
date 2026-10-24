@@ -11,6 +11,8 @@ export type ResearchModeKind = 'SHALLOW' | 'MEDIUM' | 'DEEP' | 'CUSTOM';
 export type ResearchLanguage = 'ACADEMIC' | 'COLLOQUIAL' | 'FORMAL';
 export type ResearchOutputFormat = 'PDF' | 'DOCUMENT';
 export type ResearchStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
+/** The steps of a mode's workflow, left to right. */
+export type ResearchStage = 'PLAN' | 'GATHER' | 'FOLLOW_UP' | 'WRITE' | 'SAVE';
 
 /** How deep a research goes, said as the workflow that does it. */
 export interface ResearchMode {
@@ -47,6 +49,8 @@ export interface Research {
   websitesExclude: string[];
   documentsInclude: string[];
   documentsExclude: string[];
+  /** Off, it read only the documents and the websites to keep to. */
+  useWebSearch: boolean;
   status: ResearchStatus;
   executionId: string | null;
   /** The report in markdown, once it is finished. Only the one opened asks for it. */
@@ -72,6 +76,8 @@ export interface ResearchProgress {
   /** How many levels down; 1 is the plan's own questions. */
   level: number;
   sourcesRead: number;
+  /** The step doing it; null where the workflow did it in one. */
+  stage: ResearchStage | null;
 }
 
 /** One source a research read. */
@@ -88,22 +94,23 @@ export interface StartResearchInput {
   workspaceId: string;
   question: string;
   modeId: string;
-  modelId?: string | null;
+  modelId: string;
   language: ResearchLanguage;
   outputFormat: ResearchOutputFormat;
   websitesInclude: string[];
   websitesExclude: string[];
   documentsInclude: string[];
   documentsExclude: string[];
+  useWebSearch: boolean;
 }
 
 const MODE_FIELDS = 'id kind name workflowId workflowName';
 
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
-  'websitesInclude websitesExclude documentsInclude documentsExclude status executionId ' +
+  'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch status executionId ' +
   'fileName fileUrl previewUrl error startedBy startedAt finishedAt ' +
-  'progress { step subQuestions searched level sourcesRead } sources { number title url kind }';
+  'progress { step subQuestions searched level sourcesRead stage } sources { number title url kind }';
 
 export async function fetchResearchModes(workspaceId: string): Promise<ResearchMode[]> {
   const data = await graphql<{ researchModes: ResearchMode[] }>(

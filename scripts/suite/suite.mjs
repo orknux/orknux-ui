@@ -2128,11 +2128,13 @@ export const TESTS = [
 
   {
     name: 'research-page-check',
-    what: 'Analysis > Research opens from the bar, New research offers every option - websites as lists, documents picked or uploaded, PDF first - and Start lists the research',
+    what: 'Analysis > Research opens from the bar, New research offers every option - a model chosen first, Use web search ticked, websites as lists, documents picked or uploaded, PDF first - and Start lists the research',
     needs: ['workspace'],
     /*
-     * Starts one research and removes it again. No model is needed: what is
-     * measured is that it is started and listed, so it may be listed as failed.
+     * Starts one research and removes it again. A research needs a model, and
+     * one that never answers will do - the check makes it where the workspace
+     * has none: what is measured is that it is started and listed, so it may
+     * be listed as failed.
      */
   },
   {

@@ -18,8 +18,10 @@ export interface ModelPickerProps {
   /** The models on offer, already narrowed to the kind this field takes. */
   models: Model[];
   onChange: (value: string) => void;
-  /** What the empty choice says, e.g. "None — this agent cannot run". */
+  /** What the empty choice says, e.g. "None — this agent cannot run"; with `required`, what shows while nothing is chosen. */
   none: string;
+  /** No empty row: a model has to be chosen. */
+  required?: boolean;
   /** Where set, a model from another workspace is marked as shared. */
   workspaceId?: string;
   disabled?: boolean;
@@ -42,7 +44,7 @@ export interface ModelPickerProps {
  * with a box that narrows the list as one types. Drawn into the body at a fixed
  * position, so a dialog or a card that clips its overflow cannot cut it short.
  */
-export function ModelPicker({ id, value, models, onChange, none, workspaceId, disabled, className }: ModelPickerProps) {
+export function ModelPicker({ id, value, models, onChange, none, required = false, workspaceId, disabled, className }: ModelPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [at, setAt] = useState(0);
@@ -60,8 +62,8 @@ export function ModelPicker({ id, value, models, onChange, none, workspaceId, di
   const shown = needle === ''
     ? models
     : models.filter((one) => one.name.toLowerCase().includes(needle) || one.providerName.toLowerCase().includes(needle));
-  // The "none" row first, and only while nothing is typed: nobody types to find it.
-  const rows: Array<Model | null> = needle === '' ? [null, ...shown] : shown;
+  // The "none" row first, and only while nothing is typed: nobody types to find it. None at all where a model is required.
+  const rows: Array<Model | null> = needle === '' && !required ? [null, ...shown] : shown;
   const chosen = models.find((one) => one.id === value);
 
   const nameOf = (model: Model) =>
@@ -96,7 +98,7 @@ export function ModelPicker({ id, value, models, onChange, none, workspaceId, di
     if (!open) return;
     setQuery('');
     const current = models.findIndex((one) => one.id === value);
-    setAt(current === -1 ? 0 : current + 1);
+    setAt(current === -1 ? 0 : current + (required ? 0 : 1));
     window.requestAnimationFrame(() => (filter.current ?? list.current)?.focus());
     const away = (event: PointerEvent) => {
       const target = event.target as Node;

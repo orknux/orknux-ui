@@ -440,6 +440,8 @@ const PL: Record<string, string> = {
   ResearchModeNotFound: 'Nie ma trybu badania o identyfikatorze {id}',
   ResearchModeWorkflowMissing: 'Tryb badania {mode} nie ma w tej przestrzeni roboczej przepływu do uruchomienia',
   ResearchModelUnusable: 'Tego modelu nie można użyć do badania w tej przestrzeni roboczej',
+  ResearchModelMissing: 'Wybierz model czatu, którym ma pracować badanie',
+  ResearchNothingToRead: 'Bez wyszukiwania w sieci wybierz dokumenty lub strony do przeczytania',
   ResearchDocumentNotFound: 'W tej przestrzeni roboczej nie ma czytelnego dokumentu o identyfikatorze {id}',
   ResearchTooManyWebsites: 'Badanie przyjmuje najwyżej {most} stron na każdej liście',
   ResearchWebsiteTooLong: 'Adres strony może mieć najwyżej {most} znaków',
