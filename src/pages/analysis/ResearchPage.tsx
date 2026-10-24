@@ -105,7 +105,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
           <span className={styles.colStarted}>{t('Started')}</span>
           <span className={styles.colTook}>{t('Took')}</span>
           <span className={styles.colResult}>{t('Result')}</span>
-          <span className={styles.colActions} />
+          <span className={styles.colActions}>{t('Actions')}</span>
         </div>
 
         {list === null && error === null && <p className={styles.notice}><Loader /></p>}

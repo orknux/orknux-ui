@@ -61,7 +61,7 @@
   display: flex;
   flex-shrink: 0;
   justify-content: flex-end;
-  width: 40px;
+  width: 80px;
 }
 
 .question {
