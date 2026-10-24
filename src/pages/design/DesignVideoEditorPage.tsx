@@ -25,6 +25,8 @@ import form from '../../components/Dialog.module.css';
 import editor from './DesignImageEditorPage.module.css';
 import styles from './DesignVideos.module.css';
 import { playingTime } from './DesignVideosPage';
+import { paceAfter, paceLine, paceShare } from './videoPace';
+import type { VideoPace } from './videoPace';
 import { t, tf } from '../../i18n';
 
 export interface DesignVideoEditorPageProps {
@@ -219,6 +221,16 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
     return () => window.clearInterval(ask);
   }, [waiting, video?.id, workspaceId]);
 
+  // How long it has taken and about how long is left, measured off each read of it; see paceLine.
+  const [pace, setPace] = useState<VideoPace | null>(null);
+  useEffect(() => setPace((held) => paceAfter(held, video, Date.now())), [video]);
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (pace === null) return;
+    const tick = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(tick);
+  }, [pace === null]);
+
   // The workspace's pictures, once somebody asks to choose one.
   useEffect(() => {
     if (!choosing || pictures !== null || workspaceId === '') return;
@@ -368,11 +380,16 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
                   aria-label={t('How far it has got')}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-valuenow={video.progress ?? 0}
+                  aria-valuenow={paceShare(pace, video)}
                   data-testid="video-progress"
                 >
-                  <div className={styles.barFill} style={{ width: `${video.progress ?? 0}%` }} />
+                  <div className={styles.barFill} style={{ width: `${paceShare(pace, video)}%` }} data-testid="video-progress-fill" />
                 </div>
+                {pace !== null && pace.videoId === video.id && (
+                  <p className={styles.pace} data-testid="video-pace">
+                    {paceLine(pace, Math.max(clock, Date.now()))}
+                  </p>
+                )}
                 <button type="button" className={`${form.ghost} ${editor.stop}`} onClick={() => void stop()} disabled={busy} data-testid="video-stop">
                   {t('Stop')}
                 </button>

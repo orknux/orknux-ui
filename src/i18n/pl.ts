@@ -3357,7 +3357,15 @@ export const PL: Record<string, string> = {
   "Plays for {time}": "Trwa {time}",
   "Convert to video": "Zamień na wideo",
   "Make a video that starts from this picture": "Zrób wideo, które zaczyna się od tego obrazu",
-  "Upscale, clean up, harmonize or make a video with a model": "Powiększ, oczyść, zharmonizuj albo zrób wideo modelem",
+  "Upscale, clean up or harmonize with a model": "Powiększ, oczyść albo zharmonizuj modelem",
+  // How long a video has taken, and about how long is left, measured off its progress.
+  "{time} elapsed": "upłynęło {time}",
+  "about {minutes} min left": "zostało około {minutes} min",
+  "about {seconds} s left": "zostało około {seconds} s",
+  "about {minutes} min of sampling left": "próbkowania zostało około {minutes} min",
+  "about {seconds} s of sampling left": "próbkowania zostało około {seconds} s",
+  "Estimating…": "Szacowanie…",
+  "Finishing…": "Kończenie…",
   // Wireframes in Design, issue #655.
   "Wireframes": "Makiety",
   "Wireframe editor": "Edytor makiet",

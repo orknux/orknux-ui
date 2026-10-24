@@ -133,26 +133,35 @@ record((await page.getByTestId('editor-upscale-hint').count()) === 0 && (await p
   'with one, it is on and carries no hint');
 
 /*
- * What works on the whole picture - Upscale, Clean up, Harmonize and Convert
- * to video - is one AI menu, since four buttons of their own pushed the
- * picture's name off the bar. Its button stands apart from Magic edit, divided
- * as Import is from it: one gap either side, not buttons touching.
+ * What a model does to the whole picture - Upscale, Clean up and Harmonize -
+ * is one AI menu, since four buttons of their own pushed the picture's name
+ * off the bar. Convert to video, the one that leaves the editor, is a button
+ * on the bar beside it. The two stand apart from Magic edit, divided as
+ * Import is from them: one gap either side, not buttons touching.
  */
 const magicBox = await page.getByTestId('magic-edit').boundingBox().catch(() => null);
 const aiBox = await page.getByTestId('editor-ai').boundingBox().catch(() => null);
+const videoBox = await page.getByTestId('editor-to-video').boundingBox().catch(() => null);
 const importBox = await page.getByTestId('editor-import').boundingBox().catch(() => null);
-const apart = magicBox === null || aiBox === null || importBox === null ? null
-  : { magicToAi: aiBox.x - (magicBox.x + magicBox.width), aiToImport: importBox.x - (aiBox.x + aiBox.width) };
-record(apart !== null && apart.magicToAi >= 12 && Math.abs(apart.magicToAi - apart.aiToImport) < 2,
-  `the AI menu is divided from Magic edit as Import is from it (${JSON.stringify(apart)})`);
-// And the menu holds the four in that order, one under the other.
-const group = await Promise.all(['editor-upscale', 'editor-cleanup', 'editor-harmonize', 'editor-to-video']
+const apart = magicBox === null || aiBox === null || videoBox === null || importBox === null ? null
+  : {
+    magicToAi: aiBox.x - (magicBox.x + magicBox.width),
+    aiToVideo: videoBox.x - (aiBox.x + aiBox.width),
+    videoToImport: importBox.x - (videoBox.x + videoBox.width),
+    level: Math.abs(videoBox.y + videoBox.height / 2 - (aiBox.y + aiBox.height / 2)),
+  };
+record(apart !== null && apart.magicToAi >= 12 && Math.abs(apart.magicToAi - apart.videoToImport) < 2
+    && apart.aiToVideo >= 0 && apart.aiToVideo < 12 && apart.level < 2,
+  `Convert to video stands on the bar beside the AI menu, the two divided from Magic edit as Import is from them (${JSON.stringify(apart)})`);
+// And the menu holds the three in that order, one under the other - and Convert to video no longer.
+const group = await Promise.all(['editor-upscale', 'editor-cleanup', 'editor-harmonize']
   .map((id) => page.getByTestId('editor-ai-menu').getByTestId(id).boundingBox().catch(() => null)));
 const steps = group.every((box) => box !== null)
   ? group.slice(1).map((box, at) => ({ down: Math.round(box.y - (group[at].y + group[at].height)), across: Math.round(box.x - group[at].x) }))
   : null;
-record(steps !== null && steps.every((step) => step.down >= 0 && step.down < 8 && Math.abs(step.across) < 2),
-  `the AI menu holds Upscale, Clean up, Harmonize and Convert to video in that order (${JSON.stringify(steps)})`);
+const videoInMenu = await page.getByTestId('editor-ai-menu').getByTestId('editor-to-video').count().catch(() => -1);
+record(steps !== null && steps.every((step) => step.down >= 0 && step.down < 8 && Math.abs(step.across) < 2) && videoInMenu === 0,
+  `the AI menu holds Upscale, Clean up and Harmonize in that order, and not Convert to video (${JSON.stringify({ steps, videoInMenu })})`);
 
 // Upscale: only upscale models, each with its own server's algorithms.
 await page.getByTestId('editor-upscale').click();
@@ -275,5 +284,45 @@ await page.evaluate((base64) => {
 await page.waitForTimeout(800);
 record(imports[3]?.name === 'Pasted picture' && imports[3]?.image?.startsWith('data:image/png;base64,'),
   `a pasted picture is imported (${JSON.stringify({ name: imports[3]?.name })})`);
+
+/*
+ * Convert to video asks first where there is something Save would write - a
+ * new name, here - with the product's own Leave without saving? window, and
+ * Cancel stays. With nothing unsaved it goes straight to the video page with
+ * the picture.
+ */
+const videoAt = `/workspace/${WORKSPACE}/design/videos/new`;
+const asking = page.locator('dialog[data-check="unsaved-work"][open]');
+await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(500);
+await page.getByTestId('editor-name').click().catch(() => undefined);
+await page.getByTestId('editor-name-input').fill('Grey field, renamed').catch(() => undefined);
+await page.getByTestId('editor-name-input').press('Enter').catch(() => undefined);
+await page.getByTestId('editor-unsaved').waitFor({ timeout: 5_000 }).catch(() => undefined);
+await page.getByTestId('editor-to-video').click().catch(() => undefined);
+await asking.waitFor({ timeout: 5_000 }).catch(() => undefined);
+const askedFirst = {
+  asked: await asking.count(),
+  title: (await asking.locator('h2').innerText().catch(() => '')).trim(),
+  stayed: new URL(page.url()).pathname === `/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`,
+};
+record(askedFirst.asked === 1 && askedFirst.title === 'Leave without saving?' && askedFirst.stayed,
+  `with a change not saved, Convert to video asks before it leaves (${JSON.stringify(askedFirst)})`);
+await asking.getByRole('button', { name: 'Cancel' }).click().catch(() => undefined);
+await page.waitForTimeout(300);
+record((await asking.count()) === 0 && new URL(page.url()).pathname.endsWith(`/design/images/${PICTURE.id}/edit`),
+  'and Cancel stays in the editor');
+
+// The rename is still held, so the browser asks before the reload throws it away: yes.
+page.once('dialog', (dialog) => void dialog.accept().catch(() => undefined));
+await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForTimeout(500);
+await page.getByTestId('editor-to-video').click().catch(() => undefined);
+await page.waitForURL((url) => url.pathname === videoAt, { timeout: 10_000 }).catch(() => undefined);
+const straight = { at: new URL(page.url()).pathname, from: new URL(page.url()).searchParams.get('from'), asked: await asking.count() };
+record(straight.at === videoAt && straight.from === PICTURE.id && straight.asked === 0,
+  `with nothing unsaved, Convert to video goes straight to the video page with the picture (${JSON.stringify(straight)})`);
 
 await finish(browser);
