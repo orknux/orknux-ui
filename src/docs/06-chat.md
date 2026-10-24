@@ -35,6 +35,13 @@ chosen offers no such tool, and the agent is never told it could have drawn.
 ![A picture asked for in the conversation, drawn into the
 thread](/screens/chat-picture.png)
 
+**How hard it thinks is yours to choose, per chat.** Where the model answering
+takes a reasoning effort, a small button beside the microphone opens a menu of
+Model default and the levels that model takes. What you pick is sent with this
+chat's next turns and nothing else: the model's own setting, and every other
+chat, agent and workflow using it, stay as they were. A model that takes no
+effort shows no button.
+
 Switching workspace from the corner leaves you in the chat rather than taking
 you to the new workspace's workflows: the conversations listed on the left are
 the ones held in whichever workspace the corner names.

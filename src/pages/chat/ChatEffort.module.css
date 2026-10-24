@@ -1,0 +1,86 @@
+/*
+ * The reasoning effort beside the microphone (#654): the same height and
+ * outline as the microphone, so the row reads as one set of controls, and as
+ * wide as the word it shows.
+ */
+.holder {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--space-8);
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pill:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A word chosen for this chat, as against the model's own. */
+.pillSet {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft);
+  color: var(--color-text-primary);
+}
+
+.pillLabel {
+  line-height: 1;
+}
+
+/* Above the button: the composer is at the bottom of the window. */
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-8));
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+}
+
+.option {
+  padding: var(--space-6) var(--space-8);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-surface-hover);
+}
+
+.optionOn {
+  box-shadow: inset 2px 0 0 var(--color-accent-brand);
+  color: var(--color-accent-brand);
+}

@@ -105,6 +105,7 @@ import { ChatWidgets } from '../../components/ChatWidgets';
 import { actOnChatWidget, fetchChatWidgets, removeChatWidget, type ChatWidget } from '../../api/widgets';
 import styles from './ChatPage.module.css';
 import { t, tf } from '../../i18n';
+import { ChatEffort } from './ChatEffort';
 import { zoned } from '../../session/timeZone';
 
 export interface ChatPageProps {
@@ -4500,6 +4501,10 @@ ${named}`;
                 image model still decides whether it can be done at all; it now
                 decides whether the *agent* is offered the tool.
               */}
+              {/* How hard the model thinks in this chat, beside the microphone; drawn only where the model takes it. #654. */}
+              {current !== null && (
+                <ChatEffort chatId={current.id} answeredBy={`${current.agentId ?? ''}:${current.modelId ?? ''}`} />
+              )}
               {/* What the microphone is hearing, while it hears it. */}
               {listening !== null && <VoiceMeter stream={listening} />}
               {hears && (

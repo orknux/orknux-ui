@@ -44,7 +44,7 @@ const MAKEABLE_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE',
 const RESET_INTERVALS: ResetInterval[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'NEVER'];
 
 /** The reasoning effort's words as a person reads them; a word the server adds later shows as it is spelled. */
-function effortLabel(effort: string): string {
+export function effortLabel(effort: string): string {
   switch (effort) {
     case 'minimal':
       return t('Minimal');

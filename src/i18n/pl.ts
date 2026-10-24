@@ -2776,6 +2776,8 @@ export const PL: Record<string, string> = {
     "Jak pewna musi być odpowiedź, od 0 do 1, żeby ją przyjąć. Poniżej progu jest oznaczana jako niepewna, a rozgałęziający węzeł wychodzi linią dla niepewnych. Puste przyjmuje każdą odpowiedź.",
   "Every answer is taken": "Każda odpowiedź jest przyjmowana",
   "Reasoning effort": "Wysiłek rozumowania",
+  // The chat composer's effort control, beside the microphone. Issue #654.
+  "Reasoning effort: {level}": "Wysiłek rozumowania: {level}",
   "How long a reasoning model thinks before answering; default sends nothing.":
     "Jak długo model rozumujący myśli przed odpowiedzią; domyślnie nic nie jest wysyłane.",
   "Unset": "Nieustawione",

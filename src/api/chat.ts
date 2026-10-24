@@ -301,6 +301,39 @@ export async function setChatPinned(id: string, pinned: boolean): Promise<ChatSe
 }
 
 /**
+ * A chat's own reasoning effort, and the words its model takes. Issue #654.
+ *
+ * Asked for apart from the chat's other fields because `reasoningEfforts` is
+ * read off the answering model's provider, and the sidebar's list of chats has
+ * no use for that. `reasoningEffort` null is the model's own setting;
+ * `reasoningEfforts` empty is a model that takes none, and the composer draws
+ * no control for it.
+ */
+export interface ChatEffort {
+  reasoningEffort: string | null;
+  reasoningEfforts: string[];
+}
+
+export async function fetchChatEffort(id: string): Promise<ChatEffort | null> {
+  const data = await graphql<{ chatSession: ChatEffort | null }>(
+    'query ChatEffort($id: ID!) { chatSession(id: $id) { reasoningEffort reasoningEfforts } }',
+    { id },
+  );
+  return data.chatSession;
+}
+
+/** Sets the effort this chat's next turns ask for; null goes back to the model's own. */
+export async function setChatReasoningEffort(id: string, effort: string | null): Promise<ChatEffort> {
+  const data = await graphql<{ setChatReasoningEffort: ChatEffort }>(
+    `mutation SetChatReasoningEffort($id: ID!, $effort: String) {
+       setChatReasoningEffort(id: $id, effort: $effort) { reasoningEffort reasoningEfforts }
+     }`,
+    { id, effort },
+  );
+  return data.setChatReasoningEffort;
+}
+
+/**
  * Hands the chat to one of the workspace's agents.
  *
  * One way only, and there is no `chooseChatModel` beside it any more. Both used

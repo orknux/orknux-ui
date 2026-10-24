@@ -1852,6 +1852,17 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-effort-check',
+    what: "the reasoning effort beside the microphone: level with it, offering only the model's words, a pick sent, and no control for a model that takes none",
+    needs: ['workspace'],
+    /*
+     * Makes a chat of its own and deletes it. Which words the model takes, and
+     * the pick, are answered in the page, so no reasoning model has to exist;
+     * what the server sends is ChatReasoningEffortTest's. Issue #654.
+     */
+  },
+
+  {
     name: 'prompt-reading-check',
     what: 'while a llama.cpp server reads a long prompt, the chat and the session page say how far it has got',
     needs: ['workspace'],
