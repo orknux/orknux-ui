@@ -3367,4 +3367,9 @@ export const PL: Record<string, string> = {
   "This workspace has no chat model": "Ta przestrzeń robocza nie ma modelu czatu",
   "Draw a sign-in screen for a phone": "Narysuj ekran logowania na telefon",
   "What to draw": "Co narysować",
+  // Negative prompts, issue #657.
+  "Negative prompt": "Prompt negatywny",
+  "What the picture must not contain": "Czego obraz nie może zawierać",
+  "Default negative prompt": "Domyślny prompt negatywny",
+  "What a picture this model draws must not contain, sent whenever a drawing names no negative prompt of its own.": "Czego nie może zawierać obraz rysowany przez ten model; wysyłane, gdy rysunek nie ma własnego promptu negatywnego.",
 };

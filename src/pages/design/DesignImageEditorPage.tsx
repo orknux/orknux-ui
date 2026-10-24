@@ -189,6 +189,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [spec, setSpec] = useState<ImageParameterSpec[]>([]);
   const [presets, setPresets] = useState<ImageSizePreset[]>([]);
   const [prompt, setPrompt] = useState('');
+  /** What the picture must not contain; sent only to a model that takes one, and empty takes the model's own. */
+  const [negativePrompt, setNegativePrompt] = useState('');
   const [asked, setAsked] = useState<Asked>(NOTHING);
   /** What was asked when a picture was opened, held until its model's parameters are known. */
   const [carried, setCarried] = useState<Asked | null>(null);
@@ -218,6 +220,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const goingTo = useRef<string | null>(null);
 
   const picture = shown?.kind === 'picture' ? shown.picture : null;
+  /** The model chosen, for whether it takes a negative prompt and what its own is. */
+  const chosen = models?.find((one) => one.id === modelId) ?? null;
+  const takesNegative = chosen?.takesNegativePrompt ?? false;
   const job = shown?.kind === 'job' ? (made.find((one) => one.job.id === shown.jobId)?.job ?? null) : null;
 
   useEffect(() => {
@@ -288,6 +293,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             .catch(() => undefined);
         }
         setPrompt(found.prompt);
+        setNegativePrompt(found.negativePrompt ?? '');
         if (found.modelId !== null) setModelId(found.modelId);
         setCarried({ size: found.size ?? '', quality: found.quality ?? '', style: found.style ?? '' });
         if (found.status === 'DRAWN' && found.image !== null) show({ kind: 'picture', picture: found.image });
@@ -741,6 +747,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         quality: asked.quality || null,
         style: asked.style || null,
         name: newName || null,
+        // Never to a model that takes none: the server refuses one there rather than drawing without it.
+        negativePrompt: takesNegative && negativePrompt.trim() !== '' ? negativePrompt.trim() : null,
       });
       remember();
       setNewName('');
@@ -1572,6 +1580,21 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               />
             </div>
           </div>
+
+          {takesNegative && (
+            <div className={form.field} data-testid="image-negative-prompt">
+              <label className={form.label} htmlFor="image-negative">{t('Negative prompt')}</label>
+              <div className={form.inputWrapper}>
+                <input
+                  id="image-negative"
+                  className={form.input}
+                  value={negativePrompt}
+                  onChange={(event) => setNegativePrompt(event.target.value)}
+                  placeholder={chosen?.negativePrompt ?? t('What the picture must not contain')}
+                />
+              </div>
+            </div>
+          )}
 
           <div className={form.field}>
             <label className={form.label} htmlFor="image-model">{t('Model')}</label>

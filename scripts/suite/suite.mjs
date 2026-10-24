@@ -2091,6 +2091,18 @@ export const TESTS = [
   },
 
   {
+    name: 'negative-prompt-check',
+    what: 'a negative prompt is offered where the model draws with one, on its page and in the image editor, and sent',
+    needs: ['workspace'],
+    /*
+     * Issue #657. The models are the server's own, on a stable-diffusion.cpp
+     * provider and an OpenAI one, because whether the field is drawn is the
+     * server's `takesNegativePrompt` and that is what is under test; only the
+     * queueing mutation is answered in the browser, so nothing is drawn.
+     */
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, once, from its header',
     needs: ['workspace'],

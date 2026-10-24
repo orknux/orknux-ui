@@ -217,6 +217,7 @@ const PL: Record<string, string> = {
   MemoryContentInvalid: 'Wspomnienie potrzebuje czegoś do zapamiętania',
   ModelIdInvalid: 'Identyfikator modelu jest wymagany',
   ModelParameterNotTaken: 'Dostawca tego typu nie przyjmuje tego ustawienia modelu; zostaw je nieustawione',
+  NegativePromptNotTaken: 'Ten model nie przyjmuje promptu negatywnego; zostaw go pustym',
   ModelParameterValueInvalid: 'Tej wartości nie ma wśród tych, które przyjmuje to ustawienie modelu; wybierz jedną z listy albo zostaw domyślną',
   ModelProviderEndpointInvalid: 'Punkt końcowy API dostawcy jest wymagany',
   ModelAnswerLimitInvalid: 'To nie jest liczba minut na odpowiedź modelu. Wybierz od 1 do 1440 albo zostaw puste, by przyjąć wartość instalacji',
