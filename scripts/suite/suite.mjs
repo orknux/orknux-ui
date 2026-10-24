@@ -2209,6 +2209,12 @@ export const TESTS = [
      * can be held mid-turn on cue, and the open chat may have no agent.
      */
   },
+  {
+    name: 'chat-midturn-picture-check',
+    what: 'a picture drawn in a turn stays above a message the person wrote into that turn afterwards, not under it',
+    needs: ['workspace'],
+    // Stubs the stream, the post and the agent on the chat list, as chat-midturn-check does.
+  },
 
   {
     name: 'chat-timer-sound-check',

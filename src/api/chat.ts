@@ -426,6 +426,12 @@ export interface ChatCall {
   person?: string;
   /** Whether the agent has read [person] yet: until then it waits in the inbox for the agent's next step. */
   personRead?: boolean;
+  /**
+   * Set on a line that is a picture a tool drew, as its markdown: drawn where
+   * it was drawn among the calls, so a message the person wrote later in the
+   * turn is not drawn above a picture that came before it.
+   */
+  drew?: string;
   /** When the page heard of it, so a question asked during the turn can be put among the calls. */
   seenAt?: number;
 }

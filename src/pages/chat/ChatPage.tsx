@@ -1270,6 +1270,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     carried.add(index);
     picturesFor.set(home, [...(picturesFor.get(home) ?? []), message.content]);
   });
+  /** The pictures the working on screen draws among its calls, which the last answer does not draw again. */
+  const drawnInTurn = new Set(working.calls.flatMap((call) => (call.drew === undefined ? [] : [call.drew])));
 
   /** Each review where it was sent, and - for one taken back - a line where it was taken back. */
   const placedReviews = new Map<number, { review: ChatReview; taken: boolean }[]>();
@@ -2010,6 +2012,20 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
        */
       onDrew: (markdown) => {
         drewPicture.current = true;
+        /*
+         * And a line among the calls, where the picture is drawn while the
+         * working is on screen. Carried below the working instead, a picture
+         * drawn before the person wrote into the turn was drawn under what
+         * they wrote - chat 974's mockup read as the answer to "ok, but I
+         * want wireframe", which it came before.
+         */
+        setWorking((held) => ({
+          ...held,
+          calls: [
+            ...held.calls,
+            { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, drew: markdown, seenAt: Date.now() },
+          ],
+        }));
         setMessages((present) => {
           const at = present.length - 1;
           const drawn = {
@@ -3965,6 +3981,10 @@ ${named}`;
                               <div key={call.at} className={styles.said} data-said="">
                                 <Markdown>{call.said}</Markdown>
                               </div>
+                            ) : call.drew !== undefined ? (
+                              <div key={call.at} data-drew-in-turn="">
+                                <Markdown pictureLinks zoomImages>{call.drew}</Markdown>
+                              </div>
                             ) : (
                             <CallLine
                               key={call.at}
@@ -4022,7 +4042,10 @@ ${named}`;
                         <InteractionCard request={request} onAnswered={answeredRequest} />
                       </div>
                     ))}
-                    {(picturesFor.get(index) ?? []).map((picture, at) => (
+                    {(picturesFor.get(index) ?? [])
+                      // Already drawn among this turn's calls, where it was drawn.
+                      .filter((picture) => index !== messages.length - 1 || !drawnInTurn.has(picture))
+                      .map((picture, at) => (
                       <Markdown key={`picture-${at}`} pictureLinks zoomImages>{picture}</Markdown>
                     ))}
                     <Markdown pictureLinks zoomImages runnable={runOffer}>{shownTake(index, message)}</Markdown>
