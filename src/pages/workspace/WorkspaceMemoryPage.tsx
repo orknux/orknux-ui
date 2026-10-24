@@ -13,6 +13,7 @@ import {
   renameMemoryCatalog,
 } from '../../api/memory';
 import type { Memory, MemoryCatalog, MemorySort } from '../../api/memory';
+import type { PageOf } from '../../api/client';
 import type { SessionUser } from '../../api/session';
 import arrowDownIcon from '../../assets/arrow-down-narrow-wide.svg';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
@@ -54,6 +55,17 @@ const SORTS: { value: MemorySort; label: string }[] = [
 const PAGE_SIZE = 5;
 
 /**
+ * How many of one catalog's matches a search across every catalog shows.
+ *
+ * A page's worth, and the rest is that catalog narrowed to: the search is the
+ * server's, catalog by catalog, so what is drawn is never every memory held.
+ */
+const GROUP_SIZE = PAGE_SIZE;
+
+/** How long the box waits for the typing to stop before every catalog is asked. */
+const SEARCH_PAUSE_MS = 250;
+
+/**
  * The workspace's memory: catalogs on the left, what is in the selected one on
  * the right.
  *
@@ -83,7 +95,23 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  const [search, setSearch] = useState('');
+  /**
+   * What the box at the top of the rail holds, and it reads every catalog.
+   *
+   * It sat in the catalog's panel and searched only that one, so a memory
+   * filed somewhere else was "not there". `?q=` opens on a search.
+   */
+  const [search, setSearch] = useState(() => addressed.get('q') ?? '');
+  const searching = search.trim() !== '';
+  /**
+   * Whether a search has been narrowed to the selected catalog by choosing it
+   * in the rail. Otherwise a search shows every catalog's matches, grouped.
+   */
+  const [narrowed, setNarrowed] = useState(false);
+  /** The first matches in each catalog, and how many there are, by catalog id. */
+  const [found, setFound] = useState<Map<string, PageOf<Memory>> | null>(null);
+  /** Bumped after a change, so the search across every catalog is asked again. */
+  const [revision, setRevision] = useState(0);
   const [author, setAuthor] = useState('');
   const [sort, setSort] = useState<MemorySort>('LAST_MODIFIED');
   const [page, setPage] = useState(0);
@@ -141,12 +169,62 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
     fetchMemoryAuthors(selected).then(setAuthors).catch(() => setAuthors([]));
   }, [selected, total]);
 
-  /** Anything that changes what is being shown starts again at the first page. */
+  /*
+   * Every catalog asked the same question, each for its first few and a count.
+   *
+   * The server's search rather than the browser's, as inside a catalog: a
+   * catalog is paged because it can be long, so reading them all whole to
+   * filter here is exactly what the paging is there to avoid. Asked again
+   * while narrowed, because the rail's counts are what this answers.
+   */
+  useEffect(() => {
+    if (!searching || catalogs === null) {
+      setFound(null);
+      return;
+    }
+    let stale = false;
+    const pause = window.setTimeout(() => {
+      Promise.all(
+        catalogs.map(async (catalog) => {
+          const matches = await fetchMemories(catalog.id, { search, sort, page: 0, size: GROUP_SIZE });
+          return [catalog.id, matches] as const;
+        }),
+      )
+        .then((answers) => {
+          if (!stale) setFound(new Map(answers));
+        })
+        .catch((cause: unknown) => {
+          if (!stale) setError(cause instanceof Error ? cause.message : t('Could not load the memories.'));
+        });
+    }, SEARCH_PAUSE_MS);
+    return () => {
+      stale = true;
+      window.clearTimeout(pause);
+    };
+  }, [searching, catalogs, search, sort, revision]);
+
+  /** After a change to a memory: the open catalog, and the search across all of them. */
+  async function reloadMemories() {
+    await loadMemories();
+    setRevision((present) => present + 1);
+  }
+
+  /** A new search starts across every catalog; one being refined stays where it was narrowed to. */
+  function changeSearch(text: string) {
+    if (search.trim() === '' || text.trim() === '') setNarrowed(false);
+    setSearch(text);
+    setPage(0);
+  }
+
+  /**
+   * Anything that changes what is being shown starts again at the first page.
+   * The search stays: choosing a catalog while searching narrows it there.
+   */
   function choose(catalogId: string) {
     setSelected(catalogId);
-    setSearch('');
     setAuthor('');
     setPage(0);
+    if (searching) setNarrowed(true);
   }
 
   async function guard(work: () => Promise<void>) {
@@ -195,9 +273,76 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
     if (!window.confirm(`Delete "${memory.title}"?`)) return;
     await guard(async () => {
       await deleteMemory(memory.id);
-      await loadMemories();
+      await reloadMemories();
       await loadCatalogs(selected ?? undefined);
     });
+  }
+
+  /** Every catalog's matches at once, rather than the selected catalog's. */
+  const everywhere = searching && !narrowed;
+  const foundTotal = [...(found?.values() ?? [])].reduce((sum, matches) => sum + matches.totalElements, 0);
+
+  /** A memory's card, the same in its catalog and in a search across all of them. */
+  function memoryCard(memory: Memory) {
+    return (
+      <article key={memory.id} className={styles.card} data-memory-card={memory.title}>
+        <header className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>
+            <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/memory/${memory.id}`}>
+              {memory.title}
+            </Link>
+          </h2>
+          <div className={styles.cardActions}>
+            <DuplicateButton
+              name={memory.title}
+              className={styles.iconButton}
+              run={() => duplicateMemory(memory.id).then((made) => made.title)}
+              onDone={() => void reloadMemories()}
+            />
+            <MoveToCatalog
+              name={memory.title}
+              catalogs={catalogs ?? []}
+              currentCatalogId={memory.catalogId}
+              className={styles.iconButton}
+              move={(target) => moveMemory(memory.id, memory.title, memory.content, target)}
+              onMoved={() =>
+                guard(async () => {
+                  await reloadMemories();
+                  await loadCatalogs(selected ?? undefined);
+                })
+              }
+            />
+            <Link
+              className={styles.iconButton}
+              to={`/workspace/${workspaceId}/memory/${memory.id}`}
+              aria-label={`Edit ${memory.title}`}
+              title={t('Edit')}
+            >
+              <img src={penIcon} alt="" width={14} height={14} />
+            </Link>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() => void handleDeleteMemory(memory)}
+              aria-label={`Delete ${memory.title}`}
+              title={t('Delete')}
+            >
+              <img src={trashIcon} alt="" width={14} height={14} />
+            </button>
+          </div>
+        </header>
+        <p className={styles.cardBody}>{memory.content}</p>
+        <footer className={styles.cardFooter}>
+          <span className={styles.author}>
+            <span className={styles.avatar} aria-hidden="true">
+              {memory.createdBy.slice(0, 1).toUpperCase()}
+            </span>
+            Added by {memory.createdBy}
+          </span>
+          <span className={styles.date}>{memoryDate(memory.createdAt)}</span>
+        </footer>
+      </article>
+    );
   }
 
   const from = total === 0 ? 0 : page * PAGE_SIZE + 1;
@@ -226,22 +371,53 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
             </button>
           </header>
 
+          {/* The search, over every catalog, so it sits above them rather than in one. */}
+          <div className={styles.railSearch}>
+            <img src={searchIcon} alt="" width={14} height={14} />
+            <input
+              className={styles.searchInput}
+              type="search"
+              placeholder={t('Search memories...')}
+              value={search}
+              onChange={(event) => changeSearch(event.target.value)}
+              aria-label={t('Search memories')}
+              data-memory-search
+            />
+          </div>
+
           <div className={styles.catalogsList}>
             {catalogs === null && <p className={styles.sidebarNote}><Loader /></p>}
             {catalogs?.length === 0 && <p className={styles.sidebarNote}>{t('No catalogs yet.')}</p>}
+            {searching && (
+              <button
+                type="button"
+                className={everywhere ? styles.catalogCurrent : styles.catalog}
+                onClick={() => setNarrowed(false)}
+                aria-current={everywhere ? 'true' : undefined}
+                data-search-everywhere
+              >
+                <img src={searchIcon} alt="" width={14} height={14} />
+                <span className={styles.catalogName}>{t('All catalogs')}</span>
+                <span className={everywhere ? styles.countCurrent : styles.count}>{found === null ? '' : foundTotal}</span>
+              </button>
+            )}
             {catalogs?.map((catalog) => {
-              const open = catalog.id === selected;
+              const open = catalog.id === selected && !everywhere;
+              // While searching, the badge is the matches and a catalog with none is dimmed.
+              const matches = found?.get(catalog.id)?.totalElements;
               return (
                 <button
                   key={catalog.id}
                   type="button"
-                  className={open ? styles.catalogCurrent : styles.catalog}
+                  className={`${open ? styles.catalogCurrent : styles.catalog}${matches === 0 ? ` ${styles.catalogDim}` : ''}`}
                   onClick={() => choose(catalog.id)}
                   aria-current={open ? 'true' : undefined}
+                  data-catalog-row={catalog.name}
+                  data-matches={matches}
                 >
                   <img src={open ? folderOpenIcon : folderIcon} alt="" width={14} height={14} />
                   <span className={styles.catalogName}>{catalog.name}</span>
-                  <span className={open ? styles.countCurrent : styles.count}>{catalog.memoryCount}</span>
+                  <span className={open ? styles.countCurrent : styles.count}>{matches ?? catalog.memoryCount}</span>
                 </button>
               );
             })}
@@ -255,7 +431,53 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
             </p>
           )}
 
-          {current === null ? (
+          {everywhere ? (
+            /*
+              A search across every catalog: the first matches in each, grouped
+              under the catalog they are in, each card the one its catalog draws.
+              A catalog with more than fits says how many, and the rest is that
+              catalog narrowed to - paged as it always is.
+            */
+            <>
+              <header className={styles.catalogHeader}>
+                <h1 className={styles.catalogHeading}>{t('All catalogs')}</h1>
+              </header>
+              <div className={styles.rule} />
+
+              {found === null ? (
+                <p className={styles.sidebarNote}><Loader /></p>
+              ) : foundTotal === 0 ? (
+                <p className={styles.empty} data-search-empty>{t('Nothing anywhere matches that.')}</p>
+              ) : (
+                <div className={styles.groups}>
+                  {(catalogs ?? []).map((catalog) => {
+                    const matches = found.get(catalog.id);
+                    if (matches === undefined || matches.totalElements === 0) return null;
+                    return (
+                      <section key={catalog.id} className={styles.group} data-search-group={catalog.name}>
+                        <h2 className={styles.groupHeading}>
+                          <img src={folderIcon} alt="" width={14} height={14} />
+                          <span className={styles.catalogName}>{catalog.name}</span>
+                          <span className={styles.count}>{matches.totalElements}</span>
+                        </h2>
+                        <div className={styles.cards}>{matches.content.map(memoryCard)}</div>
+                        {matches.totalElements > matches.content.length && (
+                          <button
+                            type="button"
+                            className={styles.groupMore}
+                            onClick={() => choose(catalog.id)}
+                            data-search-more
+                          >
+                            {t('Show all')} {matches.totalElements}
+                          </button>
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : current === null ? (
             <p className={styles.empty}>
               {catalogs?.length === 0
                 ? t('Add a catalog to start writing things down.')
@@ -301,20 +523,6 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
               <div className={styles.rule} />
 
               <div className={styles.toolbar}>
-                <div className={styles.searchBox}>
-                  <img src={searchIcon} alt="" width={14} height={14} />
-                  <input
-                    className={styles.searchInput}
-                    type="search"
-                    placeholder={t('Search memories...')}
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setPage(0);
-                    }}
-                    aria-label={t('Search memories')}
-                  />
-                </div>
                 <div className={styles.selectBox}>
                   <img src={slidersIcon} alt="" width={14} height={14} />
                   <Select
@@ -378,65 +586,7 @@ export function WorkspaceMemoryPage({ session, onSignOut }: WorkspaceMemoryPageP
                       : t('Nothing written down here yet.')}
                   </p>
                 )}
-                {memories.map((memory) => (
-                  <article key={memory.id} className={styles.card}>
-                    <header className={styles.cardHeader}>
-                      <h2 className={styles.cardTitle}>
-                        <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/memory/${memory.id}`}>
-                          {memory.title}
-                        </Link>
-                      </h2>
-                      <div className={styles.cardActions}>
-                        <DuplicateButton
-                          name={memory.title}
-                          className={styles.iconButton}
-                          run={() => duplicateMemory(memory.id).then((made) => made.title)}
-                          onDone={() => void loadMemories()}
-                        />
-                        <MoveToCatalog
-                          name={memory.title}
-                          catalogs={catalogs ?? []}
-                          currentCatalogId={memory.catalogId}
-                          className={styles.iconButton}
-                          move={(target) => moveMemory(memory.id, memory.title, memory.content, target)}
-                          onMoved={() =>
-                            guard(async () => {
-                              await loadMemories();
-                              await loadCatalogs(selected ?? undefined);
-                            })
-                          }
-                        />
-                        <Link
-                          className={styles.iconButton}
-                          to={`/workspace/${workspaceId}/memory/${memory.id}`}
-                          aria-label={`Edit ${memory.title}`}
-                          title={t('Edit')}
-                        >
-                          <img src={penIcon} alt="" width={14} height={14} />
-                        </Link>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          onClick={() => void handleDeleteMemory(memory)}
-                          aria-label={`Delete ${memory.title}`}
-                          title={t('Delete')}
-                        >
-                          <img src={trashIcon} alt="" width={14} height={14} />
-                        </button>
-                      </div>
-                    </header>
-                    <p className={styles.cardBody}>{memory.content}</p>
-                    <footer className={styles.cardFooter}>
-                      <span className={styles.author}>
-                        <span className={styles.avatar} aria-hidden="true">
-                          {memory.createdBy.slice(0, 1).toUpperCase()}
-                        </span>
-                        Added by {memory.createdBy}
-                      </span>
-                      <span className={styles.date}>{memoryDate(memory.createdAt)}</span>
-                    </footer>
-                  </article>
-                ))}
+                {memories.map(memoryCard)}
               </div>
 
               <div className={styles.pagination}>

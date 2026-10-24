@@ -415,9 +415,21 @@ export const TESTS = [
   },
   {
     name: 'skill-catalogue-search-check',
-    what: "a skill catalogue's search box, a plugin's and a workspace's, narrows its skills as you type by name, description and content, says when nothing matches, and gives them all back when cleared",
+    what: "the skills search narrows by name, description and content, in a plugin's catalogue and a workspace's, across both and narrowed to each, says once when nothing matches, and gives them all back when cleared",
     needs: ['workspace'],
     // Both catalogues are stubbed; makes nothing and removes nothing.
+  },
+  {
+    name: 'skill-search-global-check',
+    what: "the skills search, typed with one catalogue open, finds matches in the others and a plugin's, grouped under each catalogue's name; the column counts and dims; choosing narrows; clearing returns; ?q= searches everywhere",
+    needs: ['workspace'],
+    // Every catalogue is stubbed; makes nothing and removes nothing.
+  },
+  {
+    name: 'memory-search-global-check',
+    what: "the memory search, typed with one catalogue open, finds matches in another, grouped under its name with the rest offered; the column counts and dims; choosing narrows; clearing returns",
+    needs: ['workspace'],
+    // Every catalogue is stubbed; makes nothing and removes nothing.
   },
   {
     name: 'reports-url-check',

@@ -1547,6 +1547,10 @@ export const PL: Record<string, string> = {
   "That user no longer exists.": "Ten użytkownik już nie istnieje.",
   "There is no workspace to chat in yet.": "Nie ma jeszcze przestrzeni roboczej, w której można rozmawiać.",
   "Nothing here matches that.": "Nic tutaj temu nie odpowiada.",
+  // The search across every catalog, on Skills and Memory.
+  "Nothing anywhere matches that.": "Nic nigdzie temu nie odpowiada.",
+  "All catalogs": "Wszystkie katalogi",
+  "Show all": "Pokaż wszystkie",
   "Nothing matches that.": "Nic temu nie odpowiada.",
   "Nothing matches that filter.": "Nic nie pasuje do tego filtra.",
   "No field matches": "Żadne pole nie pasuje",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
@@ -8,6 +8,7 @@ import {
   createSkillCatalog,
   deleteSkill,
   deleteSkillCatalog,
+  fetchEveryWorkspaceSkill,
   fetchPluginSkillCatalogs,
   fetchSkillCatalogs,
   fetchWorkspaceSkills,
@@ -15,7 +16,7 @@ import {
   setSkillEnabled,
   updateSkill,
 } from '../../api/skills';
-import type { PluginSkillCatalog, Skill, SkillCatalog } from '../../api/skills';
+import type { PluginSkill, PluginSkillCatalog, Skill, SkillCatalog } from '../../api/skills';
 import { timeAgo } from '../../api/tools';
 import folderOpenIcon from '../../assets/folder-open.svg';
 import folderIcon from '../../assets/folder.svg';
@@ -59,7 +60,7 @@ export interface WorkspaceSkillsPageProps {
  */
 const PLUGIN_PREFIX = 'plugin:';
 
-/** A catalog is a page's worth; the search box filters what is already here. */
+/** A catalog is a page's worth. */
 const PAGE_SIZE = 50;
 
 /**
@@ -67,7 +68,7 @@ const PAGE_SIZE = 50;
  *
  * Its content too, and not only the name and description on the card: what
  * somebody remembers of a skill is often a phrase from inside it. One rule for
- * both kinds of catalog, so the box finds the same things whichever is open.
+ * both kinds of catalog, so the box finds the same things wherever they are.
  * Issue #642.
  */
 function matchesSearch(
@@ -118,8 +119,25 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
   const [pluginCatalogs, setPluginCatalogs] = useState<PluginSkillCatalog[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [skills, setSkills] = useState<PageOf<Skill> | null>(null);
-  // Opened on `?q=` where a link names one skill - the agent form's rows for a plugin's skill, which has no page of its own.
+  /**
+   * What the box at the top of the rail holds, and it reads every catalog.
+   *
+   * It sat inside the catalog's panel and searched only that one, so a skill
+   * somebody half remembered was "not there" unless they had already guessed
+   * its folder - the opposite of what a search is for. Opened on `?q=` where a
+   * link names one skill: the agent form's rows for a plugin's skill, which has
+   * no page of its own.
+   */
   const [search, setSearch] = useState(() => addressed.get('q') ?? '');
+  const searching = search.trim() !== '';
+  /**
+   * Whether a search has been narrowed to the selected catalog by choosing it
+   * in the rail. Otherwise a search shows every catalog's matches, grouped.
+   */
+  const [narrowed, setNarrowed] = useState(false);
+  /** Every workspace skill, read while a search is on and only then. */
+  const [everySkill, setEverySkill] = useState<Skill[] | null>(null);
+  const searchBox = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   /** Whether the catalog column is folded away; the list is not always the work. */
   const [foldedCatalogs, setFoldedCatalogs] = useState(false);
@@ -186,6 +204,38 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
     });
   }, [loadSkills]);
 
+  // Read once when a search starts rather than on every letter: the box filters what is here.
+  const loadEvery = useCallback(async () => {
+    if (!searching) {
+      setEverySkill(null);
+      return;
+    }
+    setEverySkill(await fetchEveryWorkspaceSkill(workspaceId));
+  }, [workspaceId, searching]);
+
+  useEffect(() => {
+    loadEvery().catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : t('Could not load the skills.'));
+    });
+  }, [loadEvery]);
+
+  /** After a change to a skill: the open catalog, and the search across all of them. */
+  async function reloadSkills() {
+    await Promise.all([loadSkills(), loadEvery()]);
+  }
+
+  /** A new search starts across every catalog; one being refined stays where it was narrowed to. */
+  function changeSearch(text: string) {
+    if (search.trim() === '' || text.trim() === '') setNarrowed(false);
+    setSearch(text);
+  }
+
+  /** Choosing a catalog while searching narrows the search to it. */
+  function choose(at: string) {
+    setSelected(at);
+    if (searching) setNarrowed(true);
+  }
+
   async function guard(work: () => Promise<void>) {
     setError(null);
     try {
@@ -237,16 +287,166 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
     if (!window.confirm(`Delete "${skill.name}"?`)) return;
     await guard(async () => {
       await deleteSkill(skill.id);
-      await loadSkills();
+      await reloadSkills();
       await loadCatalogs(selected ?? undefined);
     });
   }
 
-  // Filtered here rather than by the server: a catalog is a page's worth, and
-  // the box is for finding one you can already see.
+  // Filtered here rather than by the server, by the one rule both kinds share.
   const showing = (skills?.content ?? []).filter((skill) => matchesSearch(skill, search));
   // A plugin's catalog arrived whole with the rail, so it is filtered the same way.
   const showingPlugin = (currentPlugin?.skills ?? []).filter((skill) => matchesSearch(skill, search));
+
+  /** What a search finds, catalog by catalog; null until every skill has been read. */
+  const found =
+    searching && everySkill !== null
+      ? new Map<string, Skill[]>(
+          (catalogs ?? []).map((catalog) => [
+            catalog.id,
+            everySkill.filter((skill) => skill.catalogId === catalog.id && matchesSearch(skill, search)),
+          ]),
+        )
+      : null;
+  const foundPlugin = searching
+    ? new Map<string, PluginSkill[]>(
+        (pluginCatalogs ?? []).map((catalog) => [
+          catalog.name,
+          catalog.skills.filter((skill) => matchesSearch(skill, search)),
+        ]),
+      )
+    : null;
+  const foundTotal =
+    [...(found?.values() ?? [])].reduce((sum, list) => sum + list.length, 0) +
+    [...(foundPlugin?.values() ?? [])].reduce((sum, list) => sum + list.length, 0);
+  /** Every catalog's matches at once, rather than the selected catalog's. */
+  const everywhere = searching && !narrowed;
+
+  /** A workspace skill's card, the same in its catalog and in a search across all of them. */
+  function skillCard(skill: Skill) {
+    return (
+      <article key={skill.id} className={styles.card} data-skill-card={skill.name}>
+        <header className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>
+            <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/skills/${skill.id}`}>
+              {skill.name}
+            </Link>
+            <code className={styles.cardKey} data-skill-key>{skill.key}</code>
+          </h2>
+          <div className={styles.cardActions}>
+            {/* A skill can be left defined but out of reach, which is
+                what the toggle is for; which catalog it is in does
+                not change either way. */}
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() =>
+                void guard(async () => {
+                  await setSkillEnabled(skill.id, !skill.enabled);
+                  await reloadSkills();
+                })
+              }
+              role="switch"
+              aria-checked={skill.enabled}
+              aria-label={`${skill.enabled ? 'Disable' : 'Enable'} ${skill.name}`}
+              title={skill.enabled ? 'Disable' : 'Enable'}
+            >
+              <img
+                src={skill.enabled ? toggleOnIcon : toggleOffIcon}
+                alt=""
+                width={36}
+                height={20}
+                data-keeps-colour
+              />
+            </button>
+            <ExportComponentButton
+              workspaceId={workspaceId}
+              kind="SKILL"
+              id={skill.id}
+              name={skill.name}
+              className={styles.iconButton}
+            />
+            <DuplicateComponentButton
+              workspaceId={workspaceId}
+              kind="SKILL"
+              id={skill.id}
+              name={skill.name}
+              className={styles.iconButton}
+              onDone={() => void reloadSkills()}
+            />
+            <SaveAsTemplateButton
+              workspaceId={workspaceId}
+              kind="SKILL"
+              id={skill.id}
+              name={skill.name}
+              className={styles.iconButton}
+              canPublish={session.admin}
+            />
+            <MoveToCatalog
+              name={skill.name}
+              catalogs={catalogs ?? []}
+              currentCatalogId={skill.catalogId}
+              className={styles.iconButton}
+              move={(target) => updateSkill(skill.id, { catalogId: target })}
+              onMoved={() =>
+                guard(async () => {
+                  await reloadSkills();
+                  await loadCatalogs(selected ?? undefined);
+                })
+              }
+            />
+            <Link
+              className={styles.iconButton}
+              to={`/workspace/${workspaceId}/skills/${skill.id}`}
+              aria-label={`Edit ${skill.name}`}
+              title={t('Edit')}
+            >
+              <img src={penIcon} alt="" width={14} height={14} />
+            </Link>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() => void handleDeleteSkill(skill)}
+              aria-label={`Delete ${skill.name}`}
+              title={t('Delete')}
+            >
+              <img src={trashIcon} alt="" width={14} height={14} />
+            </button>
+          </div>
+        </header>
+        <p className={styles.cardBody}>{skill.description ?? t('No description')}</p>
+        <footer className={styles.cardFooter}>
+          <span className={styles.author}>
+            <span className={styles.avatar} aria-hidden="true">
+              {skill.lastModifiedBy.slice(0, 1).toUpperCase()}
+            </span>
+            {timeAgo(skill.lastModifiedAt)} by {skill.lastModifiedBy}
+          </span>
+        </footer>
+      </article>
+    );
+  }
+
+  /** A plugin skill's card: read-only, with the page folded away under it. */
+  function pluginSkillCard(skill: PluginSkill) {
+    return (
+      <article key={skill.name} className={styles.card} data-skill-card={skill.name}>
+        <header className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>{skill.name}</h2>
+        </header>
+        <p className={styles.cardBody}>{skill.description ?? t('No description')}</p>
+        {/*
+          The page itself, folded away. A skill is long, and a
+          catalog of them opened flat is a screen nobody reads -
+          but what it says is the only thing worth coming here
+          for, so it is one click and not a page away.
+        */}
+        <details>
+          <summary className={styles.statsText}>{t('Read it')}</summary>
+          <Markdown>{skill.content}</Markdown>
+        </details>
+      </article>
+    );
+  }
 
   return (
     <AppShell
@@ -273,23 +473,76 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
             )}
           </header>
 
+          {/*
+            The search, over every catalog, so it sits above them rather than in
+            one. Folded, the column keeps a way to it: the glass opens the
+            column with the box ready to type in.
+          */}
+          {foldedCatalogs ? (
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() => {
+                setFoldedCatalogs(false);
+                // After the column is drawn again, which is what puts the box back.
+                requestAnimationFrame(() => searchBox.current?.focus());
+              }}
+              aria-label={t('Search skills')}
+              title={t('Search skills')}
+              data-skill-search-open
+            >
+              <img src={searchIcon} alt="" width={14} height={14} />
+            </button>
+          ) : (
+            <div className={styles.railSearch}>
+              <img src={searchIcon} alt="" width={14} height={14} />
+              <input
+                ref={searchBox}
+                className={styles.searchInput}
+                type="search"
+                placeholder={t('Search skills...')}
+                value={search}
+                onChange={(event) => changeSearch(event.target.value)}
+                aria-label={t('Search skills')}
+                data-skill-search
+              />
+            </div>
+          )}
+
           {!foldedCatalogs && (
           <div className={styles.catalogsList}>
             {catalogs === null && <p className={styles.sidebarNote}><Loader /></p>}
             {catalogs?.length === 0 && <p className={styles.sidebarNote}>{t('No catalogs yet.')}</p>}
+            {searching && (
+              <button
+                type="button"
+                className={everywhere ? styles.catalogCurrent : styles.catalog}
+                onClick={() => setNarrowed(false)}
+                aria-current={everywhere ? 'true' : undefined}
+                data-search-everywhere
+              >
+                <img src={searchIcon} alt="" width={14} height={14} />
+                <span className={styles.catalogName}>{t('All catalogs')}</span>
+                <span className={everywhere ? styles.countCurrent : styles.count}>{foundTotal}</span>
+              </button>
+            )}
             {catalogs?.map((catalog) => {
-              const open = catalog.id === selected;
+              const open = catalog.id === selected && !everywhere;
+              // While searching, the badge is the matches and a catalog with none is dimmed.
+              const matches = found?.get(catalog.id)?.length;
               return (
                 <button
                   key={catalog.id}
                   type="button"
-                  className={open ? styles.catalogCurrent : styles.catalog}
-                  onClick={() => setSelected(catalog.id)}
+                  className={`${open ? styles.catalogCurrent : styles.catalog}${matches === 0 ? ` ${styles.catalogDim}` : ''}`}
+                  onClick={() => choose(catalog.id)}
                   aria-current={open ? 'true' : undefined}
+                  data-catalog-row={catalog.name}
+                  data-matches={matches}
                 >
                   <img src={open ? folderOpenIcon : folderIcon} alt="" width={14} height={14} />
                   <span className={styles.catalogName}>{catalog.name}</span>
-                  <span className={open ? styles.countCurrent : styles.count}>{catalog.skillCount}</span>
+                  <span className={open ? styles.countCurrent : styles.count}>{matches ?? catalog.skillCount}</span>
                 </button>
               );
             })}
@@ -305,20 +558,23 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                 <p className={styles.catalogsFrom}>{t('FROM PLUGINS')}</p>
                 {pluginCatalogs.map((catalog) => {
                   const at = `${PLUGIN_PREFIX}${catalog.name}`;
-                  const open = at === selected;
+                  const open = at === selected && !everywhere;
+                  const matches = foundPlugin?.get(catalog.name)?.length;
                   return (
                     <button
                       key={catalog.name}
                       type="button"
-                      className={open ? styles.catalogCurrent : styles.catalog}
-                      onClick={() => setSelected(at)}
+                      className={`${open ? styles.catalogCurrent : styles.catalog}${matches === 0 ? ` ${styles.catalogDim}` : ''}`}
+                      onClick={() => choose(at)}
                       aria-current={open ? 'true' : undefined}
                       title={`${catalog.name} — from the ${catalog.plugin} plugin`}
+                      data-catalog-row={catalog.name}
+                      data-matches={matches}
                     >
                       <img src={puzzleIcon} alt="" width={14} height={14} />
                       <span className={styles.catalogName}>{catalog.name}</span>
                       <span className={open ? styles.countCurrent : styles.count}>
-                        {catalog.skills.length}
+                        {matches ?? catalog.skills.length}
                       </span>
                     </button>
                   );
@@ -361,7 +617,58 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
             </p>
           )}
 
-          {currentPlugin !== null ? (
+          {everywhere ? (
+            /*
+              A search across every catalog: the matches grouped under the
+              catalog each is in, the plugins' after the workspace's own, and
+              every card the one its catalog draws - opened and edited from here
+              exactly as from there.
+            */
+            <>
+              <header className={styles.catalogHeader}>
+                <h1 className={styles.catalogHeading}>{t('All catalogs')}</h1>
+              </header>
+              <div className={styles.rule} />
+
+              {found === null ? (
+                <p className={styles.sidebarNote}><Loader /></p>
+              ) : foundTotal === 0 ? (
+                <p className={styles.empty} data-search-empty>{t('Nothing anywhere matches that.')}</p>
+              ) : (
+                <div className={styles.groups}>
+                  {(catalogs ?? []).map((catalog) => {
+                    const matches = found.get(catalog.id) ?? [];
+                    if (matches.length === 0) return null;
+                    return (
+                      <section key={catalog.id} className={styles.group} data-search-group={catalog.name}>
+                        <h2 className={styles.groupHeading}>
+                          <img src={folderIcon} alt="" width={14} height={14} />
+                          <span className={styles.catalogName}>{catalog.name}</span>
+                          <span className={styles.count}>{matches.length}</span>
+                        </h2>
+                        <div className={styles.cards}>{matches.map(skillCard)}</div>
+                      </section>
+                    );
+                  })}
+                  {(pluginCatalogs ?? []).map((catalog) => {
+                    const matches = foundPlugin?.get(catalog.name) ?? [];
+                    if (matches.length === 0) return null;
+                    return (
+                      <section key={catalog.name} className={styles.group} data-search-group={catalog.name}>
+                        <h2 className={styles.groupHeading} title={`${catalog.name} — from the ${catalog.plugin} plugin`}>
+                          <img src={puzzleIcon} alt="" width={14} height={14} data-plugin-marker />
+                          <span className={styles.catalogName}>{catalog.name}</span>
+                          <span className={styles.groupFrom}>{t('From the plugin')} {catalog.plugin}</span>
+                          <span className={styles.count}>{matches.length}</span>
+                        </h2>
+                        <div className={styles.cards}>{matches.map(pluginSkillCard)}</div>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : currentPlugin !== null ? (
             /*
               A plugin's catalog, read-only and saying so.
 
@@ -376,22 +683,6 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                 <h1 className={styles.catalogHeading}>{currentPlugin.name}</h1>
               </header>
               <div className={styles.rule} />
-
-              {/* The same box as a workspace catalog's, without the buttons beside it: nothing can be added here. */}
-              <div className={styles.toolbar}>
-                <div className={styles.searchBox}>
-                  <img src={searchIcon} alt="" width={14} height={14} />
-                  <input
-                    className={styles.searchInput}
-                    type="search"
-                    placeholder={t('Search skills...')}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    aria-label={t('Search skills')}
-                    data-skill-search
-                  />
-                </div>
-              </div>
 
               <div className={styles.stats}>
                 {/* One line, and the whole of what is different here: where
@@ -408,24 +699,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                 {currentPlugin.skills.length > 0 && showingPlugin.length === 0 && (
                   <p className={styles.empty}>{t('Nothing here matches that.')}</p>
                 )}
-                {showingPlugin.map((skill) => (
-                  <article key={skill.name} className={styles.card} data-skill-card={skill.name}>
-                    <header className={styles.cardHeader}>
-                      <h2 className={styles.cardTitle}>{skill.name}</h2>
-                    </header>
-                    <p className={styles.cardBody}>{skill.description ?? t('No description')}</p>
-                    {/*
-                      The page itself, folded away. A skill is long, and a
-                      catalog of them opened flat is a screen nobody reads -
-                      but what it says is the only thing worth coming here
-                      for, so it is one click and not a page away.
-                    */}
-                    <details>
-                      <summary className={styles.statsText}>{t('Read it')}</summary>
-                      <Markdown>{skill.content}</Markdown>
-                    </details>
-                  </article>
-                ))}
+                {showingPlugin.map(pluginSkillCard)}
               </div>
             </>
           ) : current === null ? (
@@ -462,18 +736,6 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
               <div className={styles.rule} />
 
               <div className={styles.toolbar}>
-                <div className={styles.searchBox}>
-                  <img src={searchIcon} alt="" width={14} height={14} />
-                  <input
-                    className={styles.searchInput}
-                    type="search"
-                    placeholder={t('Search skills...')}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    aria-label={t('Search skills')}
-                    data-skill-search
-                  />
-                </div>
                 <ImportComponentsButton
                   workspaceId={workspaceId}
                   onImported={() =>
@@ -481,7 +743,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                       // The catalogs too: an imported skill names its folder, and
                       // a folder this workspace did not have was just made.
                       await loadCatalogs();
-                      await loadSkills();
+                      await reloadSkills();
                     })
                   }
                 />
@@ -492,7 +754,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                     void guard(async () => {
                       // The catalogs too, for the reason Import gives above.
                       await loadCatalogs();
-                      await loadSkills();
+                      await reloadSkills();
                     })
                   }
                 />
@@ -514,107 +776,7 @@ export function WorkspaceSkillsPage({ session, onSignOut }: WorkspaceSkillsPageP
                     {search !== '' ? t('Nothing here matches that.') : t('No skills in this catalog yet.')}
                   </p>
                 )}
-                {showing.map((skill) => (
-                  <article key={skill.id} className={styles.card} data-skill-card={skill.name}>
-                    <header className={styles.cardHeader}>
-                      <h2 className={styles.cardTitle}>
-                        <Link className={styles.cardTitleLink} to={`/workspace/${workspaceId}/skills/${skill.id}`}>
-                          {skill.name}
-                        </Link>
-                        <code className={styles.cardKey} data-skill-key>{skill.key}</code>
-                      </h2>
-                      <div className={styles.cardActions}>
-                        {/* A skill can be left defined but out of reach, which is
-                            what the toggle is for; which catalog it is in does
-                            not change either way. */}
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          onClick={() =>
-                            void guard(async () => {
-                              await setSkillEnabled(skill.id, !skill.enabled);
-                              await loadSkills();
-                            })
-                          }
-                          role="switch"
-                          aria-checked={skill.enabled}
-                          aria-label={`${skill.enabled ? 'Disable' : 'Enable'} ${skill.name}`}
-                          title={skill.enabled ? 'Disable' : 'Enable'}
-                        >
-                          <img
-                            src={skill.enabled ? toggleOnIcon : toggleOffIcon}
-                            alt=""
-                            width={36}
-                            height={20}
-                            data-keeps-colour
-                          />
-                        </button>
-                        <ExportComponentButton
-                          workspaceId={workspaceId}
-                          kind="SKILL"
-                          id={skill.id}
-                          name={skill.name}
-                          className={styles.iconButton}
-                        />
-                        <DuplicateComponentButton
-                          workspaceId={workspaceId}
-                          kind="SKILL"
-                          id={skill.id}
-                          name={skill.name}
-                          className={styles.iconButton}
-                          onDone={() => void loadSkills()}
-                        />
-                        <SaveAsTemplateButton
-                          workspaceId={workspaceId}
-                          kind="SKILL"
-                          id={skill.id}
-                          name={skill.name}
-                          className={styles.iconButton}
-                          canPublish={session.admin}
-                        />
-                        <MoveToCatalog
-                          name={skill.name}
-                          catalogs={catalogs ?? []}
-                          currentCatalogId={skill.catalogId}
-                          className={styles.iconButton}
-                          move={(target) => updateSkill(skill.id, { catalogId: target })}
-                          onMoved={() =>
-                            guard(async () => {
-                              await loadSkills();
-                              await loadCatalogs(selected ?? undefined);
-                            })
-                          }
-                        />
-                        <Link
-                          className={styles.iconButton}
-                          to={`/workspace/${workspaceId}/skills/${skill.id}`}
-                          aria-label={`Edit ${skill.name}`}
-                          title={t('Edit')}
-                        >
-                          <img src={penIcon} alt="" width={14} height={14} />
-                        </Link>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          onClick={() => void handleDeleteSkill(skill)}
-                          aria-label={`Delete ${skill.name}`}
-                          title={t('Delete')}
-                        >
-                          <img src={trashIcon} alt="" width={14} height={14} />
-                        </button>
-                      </div>
-                    </header>
-                    <p className={styles.cardBody}>{skill.description ?? t('No description')}</p>
-                    <footer className={styles.cardFooter}>
-                      <span className={styles.author}>
-                        <span className={styles.avatar} aria-hidden="true">
-                          {skill.lastModifiedBy.slice(0, 1).toUpperCase()}
-                        </span>
-                        {timeAgo(skill.lastModifiedAt)} by {skill.lastModifiedBy}
-                      </span>
-                    </footer>
-                  </article>
-                ))}
+                {showing.map(skillCard)}
               </div>
 
               {/*

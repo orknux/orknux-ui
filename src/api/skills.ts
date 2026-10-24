@@ -57,6 +57,24 @@ export async function fetchWorkspaceSkills(
   return data.workspaceSkills;
 }
 
+/**
+ * Every skill the workspace holds, in every catalog, page after page.
+ *
+ * What the skills page's search reads across catalogs. The server answers at
+ * most a hundred to a page, so a workspace past that is asked again rather
+ * than cut short - a search that silently stopped at the hundredth skill would
+ * report nothing where something was there.
+ */
+export async function fetchEveryWorkspaceSkill(workspaceId: string): Promise<Skill[]> {
+  const first = await fetchWorkspaceSkills(workspaceId, 0, 100);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, index) =>
+      fetchWorkspaceSkills(workspaceId, index + 1, 100),
+    ),
+  );
+  return [first, ...rest].flatMap((page) => page.content);
+}
+
 export async function fetchSkillCatalogs(workspaceId: string): Promise<SkillCatalog[]> {
   const data = await graphql<{ skillCatalogs: SkillCatalog[] }>(
     `query SkillCatalogs($workspaceId: ID!) { skillCatalogs(workspaceId: $workspaceId) { ${CATALOG_FIELDS} } }`,
