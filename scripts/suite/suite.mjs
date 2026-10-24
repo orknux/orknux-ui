@@ -2096,6 +2096,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own wireframe and removes it; the model's answer is answered here, since CI has none. */
   },
+  {
+    name: 'wireframe-export-check',
+    what: "the wireframe editor's Export saves HTML, SVG and PNG named after the wireframe, each holding what is on the screen and drawn as the canvas draws it",
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it; the HTML is the server's own page. */
+  },
 
   {
     name: 'negative-prompt-check',

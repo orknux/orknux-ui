@@ -1,0 +1,17 @@
+/* An export that failed, said under the button rather than pushing the toolbar about. */
+.error {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  max-width: 320px;
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

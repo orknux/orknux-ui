@@ -3336,6 +3336,10 @@ export const PL: Record<string, string> = {
   // Wireframes in Design, issue #655.
   "Wireframes": "Makiety",
   "Wireframe editor": "Edytor makiet",
+  "Could not export the wireframe.": "Nie udało się wyeksportować makiety.",
+  "One page, each frame a screen": "Jedna strona, każda ramka jako ekran",
+  "The drawing as drawn, as a vector picture": "Rysunek taki, jak narysowany, jako grafika wektorowa",
+  "The drawing as drawn, as a picture": "Rysunek taki, jak narysowany, jako obraz",
   "Hi {name}!": "Cześć, {name}!",
   "What shall we sketch?": "Co dziś szkicujemy?",
   "Sign-in screen": "Ekran logowania",

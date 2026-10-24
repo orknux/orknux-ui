@@ -48,6 +48,7 @@ import { shellUser } from '../../session/user';
 import shell from './DesignImageEditorPage.module.css';
 import styles from './WireframeEditorPage.module.css';
 import { boundsOf, WireframeShapes } from './WireframeDrawing';
+import { WireframeExport } from './WireframeExport';
 
 export interface WireframeEditorPageProps {
   session: SessionUser;
@@ -861,6 +862,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
           <button type="button" className={form.ghost} onClick={remove} disabled={selected.length === 0} title={t('Delete')} data-testid="wireframe-delete">
             {t('Delete')}
           </button>
+          <WireframeExport id={wireframe?.id ?? null} name={wireframe?.name ?? ''} elements={elements} />
           <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy} title={`${t('Save')} (${saveKey})`} data-testid="wireframe-save">
             {t('Save')}
           </button>

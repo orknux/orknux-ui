@@ -118,6 +118,19 @@ export async function deleteWireframe(id: string): Promise<boolean> {
   return data.deleteWireframe;
 }
 
+/**
+ * The drawing as one HTML page, written by the server so the editor's export and
+ * `orknux_wireframe_html` are the same page. The elements sent are what is on
+ * the screen, saved or not; nothing is stored.
+ */
+export async function exportWireframeHtml(id: string, elements: WireframeElement[]): Promise<string> {
+  const data = await graphql<{ exportWireframeHtml: string }>(
+    `mutation ($id: ID!, $document: String) { exportWireframeHtml(id: $id, document: $document) }`,
+    { id, document: documentOf(elements) },
+  );
+  return data.exportWireframeHtml;
+}
+
 /** Asks a chat model to draw in the wireframe; what it draws is saved as it goes. */
 export async function askWireframe(id: string, modelId: string, messages: WireframeTurn[]): Promise<WireframeAnswer> {
   const data = await graphql<{ askWireframe: WireframeAnswer }>(
