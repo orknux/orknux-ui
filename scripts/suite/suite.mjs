@@ -2140,7 +2140,7 @@ export const TESTS = [
 
   {
     name: 'research-page-check',
-    what: 'Analysis > Research opens from the bar, New research offers every option - a model chosen first, Use web search ticked, websites as lists, documents picked or uploaded, PDF first - and Start lists the research',
+    what: 'Explore > Research opens from the bar - an /analysis/ address lands there too - New research offers every option - a model chosen first, Use web search ticked, websites as lists, documents picked or uploaded, PDF first - and Start lists the research, its row at one size with a regular weight for text and medium for links, under its headings, the model a link to its page',
     needs: ['workspace'],
     /*
      * Starts one research and removes it again. A research needs a model, and

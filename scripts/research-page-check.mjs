@@ -1,8 +1,9 @@
 /**
- * Analysis is a section of its own, and Research is its first page. Issue #659.
+ * Explore is a section of its own, and Research is its first page. Issue #659.
  *
- * The bar across the top gains Analysis, between AI and Chat, and it goes to
- * Research - the list of what this workspace has researched, with a New
+ * The bar across the top gains Explore, between Design and Flow - it was
+ * Analysis while 1.2.0 was built, and an /analysis/ address still lands - and
+ * it goes to Research - the list of what this workspace has researched, with a New
  * research button. The dialog offers every choice the owner asked for: the
  * question; the mode - Shallow, Medium, Deep and whatever was added, each
  * named in a word with how long it usually takes said beside the row rather
@@ -26,6 +27,12 @@
  * sources, on until it is unticked, and the research says when it was off.
  * The check removes what it started, the document it uploaded and the model
  * it made.
+ *
+ * The list's row reads as the Runs list's does: every cell but the question
+ * and the status badge at one size, plain text at a regular weight and a link
+ * at a medium one, each cell under its heading's left edge - they were four
+ * sizes and three weights. The model a research used is a link to the model's
+ * page, in the row and on the research.
  */
 import { BASE, WORKSPACE, open, record, finish, optionsOffered, chosenOption, chooseOption } from './suite/harness.mjs';
 
@@ -48,7 +55,11 @@ if (!held.models.some((one) => one.kind === 'CHAT')) {
   });
 }
 
+// An address from when the section was called Analysis lands on Explore's page.
 await page.goto(`${BASE}/workspace/${WORKSPACE}/analysis/research`, { waitUntil: 'domcontentloaded' });
+await page.waitForURL(/\/explore\/research$/, { timeout: 15_000 }).catch(() => undefined);
+record(/\/workspace\/[^/]+\/explore\/research$/.test(page.url()), `an /analysis/ address goes to /explore/ (${page.url()})`);
+await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/research`, { waitUntil: 'domcontentloaded' });
 await page.getByRole('heading', { name: 'Research', level: 1 }).waitFor({ timeout: 20_000 }).catch(() => undefined);
 
 // --- the section ------------------------------------------------------------
@@ -56,18 +67,18 @@ const lit = await page.evaluate(() => {
   const current = document.querySelector('nav[aria-label="Sections"] [aria-current="page"]');
   return current === null ? null : (current.textContent ?? '').trim();
 });
-record(lit === 'Analysis', `Analysis is the section lit on Research (${lit})`);
+record(lit === 'Explore', `Explore is the section lit on Research (${lit})`);
 
 const bar = await page.evaluate(() =>
   [...document.querySelectorAll('nav[aria-label="Sections"] a, nav[aria-label="Sections"] span')]
     .map((one) => ({ name: (one.textContent ?? '').trim(), x: one.getBoundingClientRect().left }))
-    .filter((one) => ['AI', 'Analysis', 'Answer', 'Chat', 'Design', 'Flow', 'Workspace'].includes(one.name))
+    .filter((one) => ['AI', 'Analysis', 'Answer', 'Chat', 'Design', 'Explore', 'Flow', 'Workspace'].includes(one.name))
     .sort((a, b) => a.x - b.x)
     .map((one) => one.name),
 );
 record(
-  bar.indexOf('Analysis') === bar.indexOf('AI') + 1 && bar.indexOf('AI') >= 0 && !bar.includes('Answer'),
-  `Analysis is drawn after AI, in the alphabet's order, and nothing says Answer (${bar.join(', ')})`,
+  JSON.stringify(bar) === JSON.stringify(['AI', 'Chat', 'Design', 'Explore', 'Flow', 'Workspace']),
+  `Explore is drawn between Design and Flow, in the alphabet's order, and nothing says Analysis or Answer (${bar.join(', ')})`,
 );
 
 /*
@@ -94,9 +105,9 @@ record(menu > 0, 'Research is in the section menu');
 
 // The bar's own link lands here, from another section.
 await page.goto(`${BASE}/workspace/${WORKSPACE}`, { waitUntil: 'domcontentloaded' });
-await page.locator('nav[aria-label="Sections"] a', { hasText: /^Analysis$/ }).first().click({ timeout: 15_000 }).catch(() => undefined);
-await page.waitForURL(/\/analysis\/research$/, { timeout: 15_000 }).catch(() => undefined);
-record(/\/analysis\/research$/.test(page.url()), `the Analysis link opens Research (${page.url()})`);
+await page.locator('nav[aria-label="Sections"] a', { hasText: /^Explore$/ }).first().click({ timeout: 15_000 }).catch(() => undefined);
+await page.waitForURL(/\/explore\/research$/, { timeout: 15_000 }).catch(() => undefined);
+record(/\/explore\/research$/.test(page.url()), `the Explore link opens Research (${page.url()})`);
 
 // --- the dialog -------------------------------------------------------------
 await page.getByRole('button', { name: /New research/ }).click({ timeout: 15_000 });
@@ -243,6 +254,59 @@ record((await row.count()) === 1, 'the research is in the list at once');
 const status = ((await row.first().locator('span').filter({ hasText: /^(Running|Completed|Failed|Stopped)$/ }).first().textContent().catch(() => '')) ?? '').trim();
 record(status !== '', `and says where it has got to (${status})`);
 
+// --- the row's typography ---------------------------------------------------
+/*
+ * What is drawn, per cell: the element holding the words - a link where the
+ * cell is one - its computed size and weight, its left edge against its
+ * heading's, and its middle against the row's.
+ */
+const drawn = await row.first().evaluate((held) => {
+  const card = held.closest('section');
+  const heads = [...(card?.querySelectorAll(':scope > div:first-child > span') ?? [])];
+  const rowBox = held.getBoundingClientRect();
+  const cells = {};
+  for (const cell of held.querySelectorAll('[data-cell]')) {
+    const words = cell.getAttribute('data-cell') === 'status' ? cell.firstElementChild : (cell.querySelector('a') ?? cell);
+    const style = getComputedStyle(words);
+    const box = words.getBoundingClientRect();
+    const heading = heads.find((one) => Math.abs(one.getBoundingClientRect().left - cell.getBoundingClientRect().left) < 1.5);
+    cells[cell.getAttribute('data-cell')] = {
+      size: style.fontSize,
+      weight: style.fontWeight,
+      link: words.tagName === 'A',
+      left: Math.round(box.left - cell.getBoundingClientRect().left),
+      headed: heading !== undefined,
+      middle: Math.round(box.top + box.height / 2 - (rowBox.top + rowBox.height / 2)),
+    };
+  }
+  return cells;
+});
+const textCells = ['mode', 'model', 'started', 'result'];
+const sizes = new Set([drawn.question?.size, ...textCells.map((name) => drawn[name]?.size)]);
+record(sizes.size === 1 && !sizes.has(undefined), `the question and every text cell are one size (${JSON.stringify(Object.fromEntries(Object.entries(drawn).map(([k, v]) => [k, v.size])))})`);
+record(drawn.question?.weight === '600', `the question is the row's one bold cell (${drawn.question?.weight})`);
+const weights = textCells.map((name) => `${name}:${drawn[name]?.link ? 'link' : 'text'}:${drawn[name]?.weight}`);
+record(
+  textCells.every((name) => drawn[name] !== undefined && drawn[name].weight === (drawn[name].link ? '500' : '400')),
+  `plain cells are regular and links medium (${weights.join(', ')})`,
+);
+record(
+  drawn.status !== undefined && parseFloat(drawn.status.size) < parseFloat(drawn.question?.size ?? '0') && drawn.status.weight === '600',
+  `the status is a badge, smaller and bold, as on Runs (${drawn.status?.size} ${drawn.status?.weight})`,
+);
+record(
+  Object.values(drawn).every((one) => one.headed && one.left <= 1),
+  `every cell starts under its heading (${JSON.stringify(Object.fromEntries(Object.entries(drawn).map(([k, v]) => [k, `${v.headed}/${v.left}`])))})`,
+);
+record(
+  Object.values(drawn).every((one) => Math.abs(one.middle) <= 2),
+  `every cell sits on the row's middle (${JSON.stringify(Object.fromEntries(Object.entries(drawn).map(([k, v]) => [k, v.middle])))})`,
+);
+
+// --- the model, as a link ---------------------------------------------------
+const rowModel = (await row.first().locator('[data-cell="model"] a[data-model-link]').getAttribute('href').catch(() => null)) ?? '';
+record(new RegExp(`^/workspace/${WORKSPACE}/models/\\d+$`).test(rowModel), `the row's model links to the model's page (${rowModel})`);
+
 // Opened, it says what was asked.
 await row.first().getByRole('link', { name: question }).click().catch(() => undefined);
 const opened = page.locator('[data-opened]');
@@ -251,6 +315,8 @@ const facts = ((await opened.textContent().catch(() => '')) ?? '').replace(/\s+/
 record(facts.includes('example.org') && facts.includes('tabloid.example') && facts.includes(fileName), `opened, it shows the websites and the document it was given (${facts.slice(0, 160)})`);
 const usedModel = ((await opened.locator('[data-research-model]').textContent().catch(() => '')) ?? '').trim();
 record(usedModel !== '' && usedModel !== '—' && chosenName.startsWith(usedModel), `and the model it used (${usedModel})`);
+const openedModel = (await opened.locator('[data-research-model] a[data-model-link]').getAttribute('href').catch(() => null)) ?? '';
+record(openedModel !== '' && openedModel === rowModel, `as a link to the model's page, the row's own (${openedModel})`);
 record((await opened.locator('[data-web-search-off]').count()) === 1, 'and that it did not search the web');
 const stored = await graphql(`query($w: ID!) { researches(workspaceId: $w, size: 100) { content { question useWebSearch modelName } } }`, { w: WORKSPACE });
 const mine = stored.researches.content.find((one) => one.question === question);

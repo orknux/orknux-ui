@@ -106,8 +106,8 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/agents': (session, onSignOut) => <AgentsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/objects': (session, onSignOut) => <WorkspaceObjectsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/artifacts': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
-  '/workspace/:workspaceId/analysis/research': (session, onSignOut) => <ResearchPage session={session} onSignOut={onSignOut} />,
-  '/workspace/:workspaceId/analysis/research/:researchId': (session, onSignOut) => <ResearchPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/explore/research': (session, onSignOut) => <ResearchPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/explore/research/:researchId': (session, onSignOut) => <ResearchPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   // One instance across the editor's own moves between these two, renewed where somebody arrives at New; see DesignImageEditorRoute.

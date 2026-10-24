@@ -282,7 +282,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     if (workspaceId === '') return;
     fetchAllWorkspaceFunctions(workspaceId)
       .then((page) =>
-        setImportable(page.content.filter((held) => held.scope !== 'PLUGIN' && held.id !== functionId)),
+        setImportable(page.content.filter((held) => held.scope === 'WORKSPACE' && held.id !== functionId)),
       )
       .catch(() => setImportable([]));
   }, [workspaceId, functionId]);
@@ -1417,6 +1417,53 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
         <section className={styles.card}>
           <Loader />
         </section>
+      ) : fn !== null && fn.scope === 'EMBEDDED' ? (
+        /*
+          Brought by the release itself: there is no code here, only what it
+          takes and answers, and the server refuses an edit. So it is read, not
+          an editor holding a sentence where the code would be.
+        */
+        <>
+          <header className={styles.pageHeader}>
+            <p className={styles.breadcrumb}>
+              <BackLink to={backTo} label={t('Functions')} />
+              <Link className={styles.crumbLink} to={backTo}>{t('Functions')}</Link>
+              <span className={styles.crumbSeparator}>/</span>
+              <span className={styles.crumbCurrent}>{fn.name}</span>
+            </p>
+            <div className={styles.headerRow}>
+              <div className={styles.titleGroup}>
+                <h1 className={styles.title}>{fn.name}</h1>
+                <span className={styles.activeBadge} data-built-in>{t('Built in')}</span>
+              </div>
+            </div>
+          </header>
+          <section className={`${styles.card} ${styles.metadata}`} aria-label={fn.name}>
+            <p className={styles.metadataValue}>{t('Brought by Orknux itself; it cannot be edited here.')}</p>
+            {fn.description !== null && (
+              <div>
+                <p className={styles.metadataLabel}>{t('Description')}</p>
+                <p className={styles.metadataValue}>{fn.description}</p>
+              </div>
+            )}
+            <div>
+              <p className={styles.metadataLabel}>{t('Parameters')}</p>
+              {fn.params.length === 0 ? (
+                <p className={styles.metadataValue}>{t('This function takes no arguments.')}</p>
+              ) : (
+                fn.params.map((param) => (
+                  <p key={param.name} className={styles.metadataValue} data-built-in-param={param.name}>
+                    <strong>{param.name}</strong> · {param.objectName ?? valueTypeLabel(param.type)}
+                  </p>
+                ))
+              )}
+            </div>
+            <div>
+              <p className={styles.metadataLabel}>{t('Return Type')}</p>
+              <p className={styles.metadataValue}>{fn.returnObjectName ?? valueTypeLabel(fn.returnType)}</p>
+            </div>
+          </section>
+        </>
       ) : (
         <>
           <header className={styles.pageHeader}>

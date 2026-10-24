@@ -60,8 +60,12 @@ export interface ScriptImportInput {
   name: string;
 }
 
-/** Where a function came from, and therefore whether it can be changed here. */
-export type FunctionScope = 'WORKSPACE' | 'PLUGIN';
+/**
+ * Where a function came from, and therefore whether it can be changed here.
+ * EMBEDDED is the release's own - research_plan, pdf_fromHtml - with no code
+ * here to read or edit.
+ */
+export type FunctionScope = 'WORKSPACE' | 'PLUGIN' | 'EMBEDDED';
 
 /**
  * The plugin a function came from.

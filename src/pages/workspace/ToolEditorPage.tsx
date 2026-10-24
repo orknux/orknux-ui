@@ -240,7 +240,7 @@ export function ToolEditorPage({ session, onSignOut }: ToolEditorPageProps) {
   useEffect(() => {
     if (workspaceId === '') return;
     fetchAllWorkspaceFunctions(workspaceId)
-      .then((page) => setImportable(page.content.filter((held) => held.scope !== 'PLUGIN')))
+      .then((page) => setImportable(page.content.filter((held) => held.scope === 'WORKSPACE')))
       .catch(() => setImportable([]));
   }, [workspaceId]);
 
