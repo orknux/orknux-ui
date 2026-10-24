@@ -153,12 +153,20 @@ if (openDialog) {
   await page.locator('dialog[open] [data-zoom-in]').click();
   const bigger = await picture.boundingBox();
   record(bigger !== null && before !== null && bigger.width > before.width * 1.4, `+ enlarges it (${Math.round(before?.width ?? 0)} -> ${Math.round(bigger?.width ?? 0)}px, ${await level.innerText()})`);
-  // The plate keeps it in the box it was fitted to, so nothing of the page is covered.
-  const plate = await page.evaluate(() => {
-    const one = document.querySelector('dialog[open] [data-zoom-window]');
-    return one ? getComputedStyle(one).overflow : null;
+  // Enlarged, it spreads past the box it was fitted to - across the viewer, not cropped to that box - and the controls stay on top.
+  const spread = await page.evaluate(() => {
+    const window = document.querySelector('dialog[open] [data-zoom-window]');
+    const shown = window?.querySelector('img');
+    if (!window || !shown) return null;
+    const box = window.getBoundingClientRect();
+    const picture = shown.getBoundingClientRect();
+    const plus = [...document.querySelectorAll('dialog[open] button')].find((one) => one.getAttribute('aria-label') === 'Zoom in');
+    const p = plus?.getBoundingClientRect();
+    const onTop = p ? document.elementFromPoint(p.left + p.width / 2, p.top + p.height / 2) : null;
+    return { overflow: getComputedStyle(window).overflow, beyond: picture.width > box.width + 1, controlsOnTop: onTop !== null && plus !== undefined && plus.contains(onTop) };
   });
-  record(plate === 'hidden', `the enlarged picture is clipped to where it was fitted (overflow: ${plate})`);
+  record(spread !== null && spread.overflow === 'visible' && spread.beyond && spread.controlsOnTop,
+    `the enlarged picture uses the viewer rather than being cropped to its fitted box, under the controls (${JSON.stringify(spread)})`);
   // Dragged, it moves.
   const centre = { x: (before?.x ?? 0) + (before?.width ?? 0) / 2, y: (before?.y ?? 0) + (before?.height ?? 0) / 2 };
   await page.mouse.move(centre.x, centre.y);

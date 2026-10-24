@@ -176,6 +176,21 @@
   visibility: hidden;
 }
 
+/*
+ * Enlarged, the picture is no longer held to the box it was fitted into: that
+ * read as the picture being cropped, with most of the screen left dark. It
+ * spreads over the whole viewer, which clips it to the window, and the
+ * controls stay above it.
+ */
+.windowZoomed {
+  overflow: visible;
+  border-color: transparent;
+}
+
+.bar {
+  z-index: 2;
+}
+
 .zoomed {
   cursor: grab;
   transition: none;

@@ -461,7 +461,11 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
         )}
       </section>
 
-      <ImageZoom picture={zoomed} onClose={close} />
+      <ImageZoom
+        picture={zoomed}
+        onClose={close}
+        editHref={open !== null && zoomed !== null ? `/workspace/${workspaceId}/design/images/${open.id}/edit` : undefined}
+      />
 
       {/*
         A document, read where it is - in a frame the server sandboxes, so a

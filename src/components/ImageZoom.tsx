@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import downloadIcon from '../assets/download.svg';
+import paletteIcon from '../assets/palette.svg';
 import styles from './ImageZoom.module.css';
 import { t } from '../i18n';
 
@@ -32,6 +34,8 @@ export interface ImageZoomProps {
   /** The picture being looked at, or null when nothing is open. */
   picture: Picture | null;
   onClose: () => void;
+  /** Where the picture is worked on, for a picture that has an editor; no button without one. */
+  editHref?: string;
 }
 
 /**
@@ -52,7 +56,7 @@ export interface ImageZoomProps {
  * focus stays inside and returns where it was, and it draws in the top layer,
  * so nothing here has to have an opinion about z-index.
  */
-export function ImageZoom({ picture, onClose }: ImageZoomProps) {
+export function ImageZoom({ picture, onClose, editHref }: ImageZoomProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const plateRef = useRef<HTMLDivElement>(null);
 
@@ -174,6 +178,17 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
                   +
                 </button>
               </div>
+              {editHref !== undefined && (
+                <Link
+                  className={styles.tool}
+                  to={editHref}
+                  aria-label={t('Open in editor')}
+                  title={t('Open in editor')}
+                  data-picture-edit=""
+                >
+                  <span className={styles.saveIcon} style={{ maskImage: `url("${paletteIcon}")`, WebkitMaskImage: `url("${paletteIcon}")` }} />
+                </Link>
+              )}
               <a
                 className={styles.tool}
                 href={picture.src}
@@ -201,7 +216,7 @@ export function ImageZoom({ picture, onClose }: ImageZoomProps) {
               and only gives the plate that fitted size. Clipping the plate
               itself hid the controls hanging above it.
             */}
-            <div className={styles.window} data-zoom-window="">
+            <div className={scale > 1 ? `${styles.window} ${styles.windowZoomed}` : styles.window} data-zoom-window="">
             <img
               className={scale > 1 ? `${styles.shown} ${styles.zoomed}` : styles.shown}
               src={picture.src}

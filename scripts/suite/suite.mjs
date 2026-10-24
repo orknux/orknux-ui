@@ -1135,6 +1135,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'artifact-viewer-edit-check',
+    what: 'a picture opened from Artifacts offers Open in editor beside Save, and lands on its editor',
+    needs: ['workspace'],
+  },
+  {
     name: 'workspace-search-check',
     what: "a workspace's web search is set on its own Settings page, the side menu's search finds it, and its key is a secret field saved by Save Changes",
     /* Puts the workspace's key back as it found it, own value or reference. */
