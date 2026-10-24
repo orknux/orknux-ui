@@ -210,6 +210,49 @@ await button.click();
 await page.waitForURL(new RegExp(`/design/images/new$`), { timeout: 10_000 }).catch(() => undefined);
 record(page.url().endsWith('/design/images/new') && (await page.locator('dialog[open]').count()) === 0, `which opens the editor, not a dialog (${page.url()})`);
 
+/*
+ * The editor's top bar fits the window: nothing scrolls out of it, Save is
+ * whole, "Images" is one line, and the picture's name has room. With four
+ * model buttons of their own the bar was 1493 wide in a 1440 window, the name
+ * squeezed to 0px and unclickable and Save cut off. The name's room is its
+ * width plus whatever the bar leaves free after it, since "New image" is
+ * narrower than 100px drawn whole.
+ */
+const toolbarAt = async (width) => {
+  await page.setViewportSize({ width, height: 1000 });
+  await page.waitForTimeout(300);
+  return page.getByTestId('editor-back').evaluate((back) => {
+    const bar = back.parentElement;
+    const name = bar.querySelector('[data-testid="editor-name"]');
+    const save = bar.querySelector('[data-testid="editor-save"]');
+    const right = save.closest('div');
+    const nameBox = name.getBoundingClientRect();
+    const beforeRight = right.previousElementSibling.getBoundingClientRect();
+    const free = right.getBoundingClientRect().left - beforeRight.right - parseFloat(getComputedStyle(bar).columnGap || '0');
+    const saveBox = save.getBoundingClientRect();
+    const hit = document.elementFromPoint(nameBox.left + nameBox.width / 2, nameBox.top + nameBox.height / 2);
+    const lineHeight = parseFloat(getComputedStyle(back).lineHeight) || parseFloat(getComputedStyle(back).fontSize) * 1.4;
+    return {
+      width,
+      client: bar.clientWidth,
+      scroll: bar.scrollWidth,
+      name: Math.round(nameBox.width),
+      whole: name.scrollWidth <= name.clientWidth,
+      room: Math.round(nameBox.width + Math.max(0, free)),
+      clickable: hit !== null && name.contains(hit),
+      saveInside: saveBox.left >= 0 && saveBox.right <= window.innerWidth && saveBox.width > 0,
+      backLines: Math.round(back.getBoundingClientRect().height / lineHeight),
+    };
+  }).catch((error) => ({ width, error: String(error) }));
+};
+for (const width of [1440, 1280]) {
+  const fit = await toolbarAt(width);
+  record(fit.scroll <= fit.client && fit.room >= 100 && (fit.whole || fit.name >= 100) && fit.clickable && fit.saveInside && fit.backLines === 1,
+    `at ${width} wide the editor's top bar fits: the name readable and clickable, Save whole, Images on one line (${JSON.stringify(fit)})`);
+}
+await page.setViewportSize({ width: 1440, height: 1000 });
+await page.waitForTimeout(300);
+
 // The canvas, and the panel down its right with the prompt, the model and the size.
 const canvas = await page.getByTestId('editor-canvas').boundingBox().catch(() => null);
 const panel = await page.getByTestId('editor-panel').boundingBox().catch(() => null);

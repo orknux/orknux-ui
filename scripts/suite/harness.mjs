@@ -338,6 +338,19 @@ export async function workspacesOffered(page) {
   return names;
 }
 
+/**
+ * Opens the image editor's AI menu - Upscale, Clean up, Harmonize, Convert to
+ * video - unless it is open already, so a check can find those items by their
+ * test ids. Waits for the editor's toolbar first, since the button is drawn
+ * with the page.
+ */
+export async function openPictureMenu(page) {
+  const menu = page.getByTestId('editor-ai-menu');
+  if (await menu.isVisible().catch(() => false)) return true;
+  await page.getByTestId('editor-ai').click({ timeout: 10_000 }).catch(() => {});
+  return menu.waitFor({ state: 'visible', timeout: 3_000 }).then(() => true).catch(() => false);
+}
+
 export async function selectNode(page, node, name = 'the node') {
   await node.waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
   for (let press = 0; press < 5; press += 1) {

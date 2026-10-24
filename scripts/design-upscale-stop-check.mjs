@@ -11,7 +11,7 @@
  * The picture, the models, the algorithms, the job and the stop are answered
  * here, so the check needs no upscale server of the installation's.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, openPictureMenu } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
 
@@ -75,6 +75,7 @@ async function upscaleAndFindStop() {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${PICTURE.id}/edit`, { waitUntil: 'domcontentloaded' });
   await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
   await page.waitForTimeout(800);
+  await openPictureMenu(page);
   await page.getByTestId('editor-upscale').click().catch(() => undefined);
   await page.getByTestId('upscale-dialog').waitFor({ timeout: 3_000 }).catch(() => undefined);
   await page.waitForTimeout(500);

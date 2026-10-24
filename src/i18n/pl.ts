@@ -3350,6 +3350,7 @@ export const PL: Record<string, string> = {
   "Plays for {time}": "Trwa {time}",
   "Convert to video": "Zamień na wideo",
   "Make a video that starts from this picture": "Zrób wideo, które zaczyna się od tego obrazu",
+  "Upscale, clean up, harmonize or make a video with a model": "Powiększ, oczyść, zharmonizuj albo zrób wideo modelem",
   // Wireframes in Design, issue #655.
   "Wireframes": "Makiety",
   "Wireframe editor": "Edytor makiet",
