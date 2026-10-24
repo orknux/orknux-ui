@@ -3506,4 +3506,12 @@ export const PL: Record<string, string> = {
   "Hide": "Ukryj",
   "Clean up": "Oczyść",
   "Remove the blocks and speckle repeated edits leave, with a restoration model": "Usuń bloki i szum, które zostawiają powtarzane edycje, modelem odtwarzającym",
+  // A chat's mode, in its composer, and the plan it ends in. Issue #653.
+  "Plan": "Plan",
+  "Only looks, then asks you to approve a plan": "Tylko sprawdza, potem prosi o zatwierdzenie planu",
+  "Goes ahead without waiting for you to allow a step": "Działa dalej, nie czekając na twoją zgodę",
+  "Asks you where a tool needs your leave": "Pyta cię, gdy narzędzie potrzebuje twojej zgody",
+  "Could not change the mode.": "Nie udało się zmienić trybu.",
+  "Keep planning": "Planuj dalej",
+  "Approved": "Zatwierdzono",
 };

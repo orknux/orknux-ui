@@ -373,6 +373,12 @@ export const TESTS = [
     // Makes a chat of its own and deletes it; the questions and the answer never reach the server.
   },
   {
+    name: 'chat-mode-check',
+    what: "a chat's mode switch in the composer's row, a choice sent and kept, and a plan drawn as markdown with Approve and Keep planning",
+    needs: ['workspace'],
+    // Makes a chat of its own on the workspace's first agent and deletes it; the plan and its answer never reach the server.
+  },
+  {
     name: 'chat-review-live-check',
     what: 'a review the agent sends from inside a turn is drawn in the chat at once, not after a reload',
     needs: ['workspace'],

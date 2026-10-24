@@ -1,0 +1,39 @@
+/* The chat's mode, beside the microphone: the same height and border as the buttons in that row. */
+.wrap {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.select {
+  height: 32px;
+  padding: 0 var(--space-6);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Plan or Auto: not how chats usually work, so it shows. */
+.active {
+  border-color: var(--color-accent-brand);
+  background: var(--color-accent-brand-soft);
+  color: var(--color-text-primary);
+}
+
+.select option {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}

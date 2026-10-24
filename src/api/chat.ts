@@ -57,7 +57,12 @@ export interface ChatSession {
    * would add nothing and read as free.
    */
   spentPictures: number;
+  /** How the agent works in this chat, switched from the composer; DEFAULT where nobody switched it. */
+  mode: ChatMode;
 }
+
+/** Default is how chats always worked; Plan only looks and ends in a plan to approve; Auto does not stop to ask. */
+export type ChatMode = 'DEFAULT' | 'PLAN' | 'AUTO';
 
 /**
  * One line of a chat, as it is read.
@@ -194,7 +199,7 @@ export interface ChatAnswer extends ChatSpend {
 
 const SESSION_FIELDS =
   'id workspaceId title pinned modelId modelName createdAt lastMessageAt unreadCount agentId agentName llmSessionId ' +
-  'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures';
+  'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures mode';
 
 export async function fetchChatSessions(workspaceId: string): Promise<ChatSession[]> {
   const data = await graphql<{ chatSessions: ChatSession[] }>(
@@ -298,6 +303,17 @@ export async function setChatPinned(id: string, pinned: boolean): Promise<ChatSe
     { id, pinned },
   );
   return data.setChatPinned;
+}
+
+/** Switches how the agent works in this chat, from its next turn on. */
+export async function setChatMode(id: string, mode: ChatMode): Promise<ChatSession> {
+  const data = await graphql<{ setChatMode: ChatSession }>(
+    `mutation SetChatMode($id: ID!, $mode: ChatMode!) {
+       setChatMode(id: $id, mode: $mode) { ${SESSION_FIELDS} }
+     }`,
+    { id, mode },
+  );
+  return data.setChatMode;
 }
 
 /**

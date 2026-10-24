@@ -56,7 +56,8 @@ import type { Attachment } from '../../api/attachments';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { CallLine } from '../../components/CallLine';
 import { ASK_EVERY_MS } from '../../components/NotificationBell';
-import { InteractionCard, placeRequests } from '../../components/InteractionCard';
+import { InteractionCard, PLAN_KIND, placeRequests } from '../../components/InteractionCard';
+import { ChatModeSwitch } from './ChatModeSwitch';
 import { fetchSessionRequests, type InteractionRequest } from '../../api/interactions';
 import { Thinking } from '../../components/Thinking';
 import { CHUNKING_DEFAULT, readAloud } from '../../components/readAloud';
@@ -1200,6 +1201,23 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       .catch(() => undefined);
   }, [requestsSession]);
   useEffect(loadRequests, [loadRequests, messages.length, finishedCalls]);
+  /*
+   * A plan answered can take the chat out of plan mode on the server, so the
+   * switch in the composer reads the chat back rather than guessing. #653.
+   */
+  const answeredRequest = useCallback(
+    (answered: InteractionRequest) => {
+      loadRequests();
+      if (answered.kind !== PLAN_KIND || currentId === null) return;
+      fetchChatSession(currentId)
+        .then((fresh) => {
+          if (fresh === null) return;
+          setSessions((held) => held?.map((one) => (one.id === fresh.id ? { ...one, mode: fresh.mode } : one)) ?? held);
+        })
+        .catch(() => undefined);
+    },
+    [loadRequests, currentId],
+  );
   useEffect(() => {
     window.addEventListener('focus', loadRequests);
     return () => window.removeEventListener('focus', loadRequests);
@@ -3684,7 +3702,7 @@ ${named}`;
               ))}
               {(placedRequests.get(index) ?? []).map((request) => (
                 <div key={`request-${request.id}`} className={styles.requestRow}>
-                  <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                  <InteractionCard request={request} onAnswered={answeredRequest} />
                 </div>
               ))}
               {/*
@@ -3921,7 +3939,7 @@ ${named}`;
                             const before = (seenAt: number | undefined) =>
                               requestsBefore(seenAt, drawn).map((request) => (
                                 <div key={`request-${request.id}`} className={styles.requestInTurn}>
-                                  <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                                  <InteractionCard request={request} onAnswered={answeredRequest} />
                                 </div>
                               ));
                             return (
@@ -4001,7 +4019,7 @@ ${named}`;
                     */}
                     {(requestsInAnswer.get(index) ?? []).map((request) => (
                       <div key={`request-${request.id}`} className={styles.requestInTurn} data-request-in-answer="">
-                        <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                        <InteractionCard request={request} onAnswered={answeredRequest} />
                       </div>
                     ))}
                     {(picturesFor.get(index) ?? []).map((picture, at) => (
@@ -4161,7 +4179,7 @@ ${named}`;
               ))}
             {(placedRequests.get(messages.length) ?? []).map((request) => (
               <div key={`request-${request.id}`} className={styles.requestRow}>
-                <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                <InteractionCard request={request} onAnswered={answeredRequest} />
               </div>
             ))}
 
@@ -4185,7 +4203,7 @@ ${named}`;
             {/* A question still waiting for an answer is the last thing in the chat, so it cannot be scrolled past. */}
             {openRequests.map((request) => (
               <div key={`request-${request.id}`} className={styles.requestRow} data-request-open-bottom="">
-                <InteractionCard request={request} onAnswered={() => loadRequests()} />
+                <InteractionCard request={request} onAnswered={answeredRequest} />
               </div>
             ))}
           </div>
@@ -4504,6 +4522,15 @@ ${named}`;
               {/* How hard the model thinks in this chat, beside the microphone; drawn only where the model takes it. #654. */}
               {current !== null && (
                 <ChatEffort chatId={current.id} answeredBy={`${current.agentId ?? ''}:${current.modelId ?? ''}`} />
+              )}
+              {/* How the agent works here - Default, Plan or Auto. Only an agent has tools to hold back. #653. */}
+              {current.agentId !== null && (
+                <ChatModeSwitch
+                  chat={current}
+                  onChanged={(fresh) =>
+                    setSessions((held) => held?.map((one) => (one.id === fresh.id ? { ...one, mode: fresh.mode } : one)) ?? held)
+                  }
+                />
               )}
               {/* What the microphone is hearing, while it hears it. */}
               {listening !== null && <VoiceMeter stream={listening} />}

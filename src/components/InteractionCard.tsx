@@ -1,7 +1,30 @@
 import { useState } from 'react';
 import { answerRequest, answerRequestWith, type InteractionRequest } from '../api/interactions';
 import { t } from '../i18n';
+import { Markdown } from './Markdown';
 import styles from './InteractionCard.module.css';
+
+/** An agent's plan in a chat in plan mode, put to the person to approve. Issue #653. */
+export const PLAN_KIND = 'agent.plan';
+
+/**
+ * The labels the server gives its fixed questions, as the person reads them.
+ * The server keeps them English because they also reach the session page and
+ * the log; a label nobody listed here - an agent's own options - is shown as
+ * it came.
+ */
+function labelled(label: string): string {
+  switch (label) {
+    case 'Approve':
+      return t('Approve');
+    case 'Approved':
+      return t('Approved');
+    case 'Keep planning':
+      return t('Keep planning');
+    default:
+      return label;
+  }
+}
 
 interface InteractionCardProps {
   request: InteractionRequest;
@@ -21,6 +44,7 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
   const [ticked, setTicked] = useState<string[]>([]);
   const [words, setWords] = useState('');
   const open = request.chosen === null;
+  const plan = request.kind === PLAN_KIND;
   /*
    * A menu rather than a row of buttons where there is more to it than which
    * button: a line under each option, several to tick, or the person's own
@@ -51,8 +75,15 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
       data-interaction-kind={request.kind}
       data-interaction-open={open ? 'true' : 'false'}
     >
-      <span className={styles.badge}>{t('Question')}</span>
-      <p className={styles.question}>{request.question}</p>
+      <span className={styles.badge}>{plan ? t('Plan') : t('Question')}</span>
+      {/* A plan is what the model wrote, in markdown; a question is one sentence. */}
+      {plan ? (
+        <div className={styles.question} data-interaction-plan="">
+          <Markdown>{request.question}</Markdown>
+        </div>
+      ) : (
+        <p className={styles.question}>{request.question}</p>
+      )}
       {/*
         What it is about, one line each - the tools an agent asks for, with what
         sort of tool each is and what it does - so the person sees exactly what
@@ -98,7 +129,7 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
                   {/* Numbered, so an answer in words can say "the second one". */}
                   <span className={styles.choiceNumber} data-choice-number>{index + 1}.</span>
                   <span className={styles.choiceText}>
-                    <span className={styles.choiceLabel}>{option.label}</span>
+                    <span className={styles.choiceLabel}>{labelled(option.label)}</span>
                     {Boolean(option.description) && <span className={styles.choiceDescription}>{option.description}</span>}
                   </span>
                 </button>
@@ -140,13 +171,15 @@ export function InteractionCard({ request, onAnswered }: InteractionCardProps) {
               onClick={() => void choose(option.id)}
               data-interaction-option={option.id}
             >
-              {option.label}
+              {labelled(option.label)}
             </button>
           ))}
         </div>
       ) : (
         <p className={styles.outcome} data-interaction-outcome="">
-          {request.outcome ?? request.options.find((option) => option.id === request.chosen)?.label ?? request.chosen}
+          {request.outcome !== null
+            ? labelled(request.outcome)
+            : labelled(request.options.find((option) => option.id === request.chosen)?.label ?? request.chosen ?? '')}
           {request.chosenBy !== null && <span className={styles.by}> · {request.chosenBy}</span>}
         </p>
       )}
