@@ -33,6 +33,9 @@ const HALVES = await page.evaluate(() => {
   return canvas.toDataURL('image/png');
 });
 const ORIGINAL = picture('DESIGN-701', HALVES, null);
+/** Another picture in Orknux, an agent's, for Import from Orknux; and a document beside it, which is no picture. */
+const OTHER = { ...picture('SAVED-77', HALVES, null), kind: 'SAVED', name: null, prompt: 'zz tools: an agent kept this' };
+const DOCUMENT = { ...picture('SAVED-78', '/api/artifacts/78', null), kind: 'SAVED', contentType: 'application/pdf', filename: 'notes.pdf' };
 /** What each keepDesignImageChange was asked to keep, in order. */
 const kept = [];
 let next = 702;
@@ -41,7 +44,12 @@ await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
   const query = body.query ?? '';
   if (query.includes('workspaceArtifact(')) {
-    return route.fulfill({ json: { data: { workspaceArtifact: body.variables?.id === ORIGINAL.id ? ORIGINAL : null } } });
+    const one = [ORIGINAL, OTHER].find((held) => held.id === body.variables?.id) ?? null;
+    return route.fulfill({ json: { data: { workspaceArtifact: one } } });
+  }
+  if (query.includes('workspaceArtifacts(')) {
+    const content = [ORIGINAL, OTHER, DOCUMENT];
+    return route.fulfill({ json: { data: { workspaceArtifacts: { content, page: 0, size: content.length, totalElements: content.length, totalPages: 1 } } } });
   }
   if (query.includes('designImageHistory')) return route.fulfill({ json: { data: { designImageHistory: [] } } });
   if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
@@ -163,5 +171,22 @@ record(cropBar && kept.length === keptBefore + 1 && crop !== null && Math.abs(cr
   said.replace(/\s/g, '') === `${crop.width}×${crop.height}` && crop.colours.join() === 'blue,red',
   `Crop keeps what was selected, the size its bar said, and Enter applies it (${JSON.stringify({ crop, said })})`);
 record(!(await page.getByTestId('crop-options').isVisible().catch(() => false)), 'the crop tool is put down once it is applied');
+
+// -- Import from Orknux (#632) - last, since it opens another picture -----------
+
+await page.getByTestId('editor-import').click();
+const menu = await page.getByTestId('editor-import-menu').isVisible().catch(() => false);
+await page.getByTestId('editor-import-from-orknux').click();
+await page.getByTestId('picture-picker-grid').waitFor({ timeout: 5_000 }).catch(() => undefined);
+const offered = await page.evaluate(() => [...document.querySelectorAll('[data-testid="picture-picker-item"]')].map((one) => one.getAttribute('data-id')));
+record(menu && JSON.stringify(offered) === JSON.stringify([ORIGINAL.id, OTHER.id]),
+  `Import offers a file or Orknux, and Orknux's window offers its pictures and not its documents (${JSON.stringify(offered)})`);
+await page.locator(`[data-testid="picture-picker-item"][data-id="${OTHER.id}"]`).click();
+await page.waitForURL(`**/design/images/${OTHER.id}/edit`, { timeout: 10_000 }).catch(() => undefined);
+await page.waitForFunction(() => document.querySelector('[data-testid="editor-picture"]')?.getAttribute('alt') === 'zz tools: an agent kept this', null, { timeout: 10_000 })
+  .catch(() => undefined);
+record(page.url().endsWith(`/design/images/${OTHER.id}/edit`) && !(await page.getByTestId('picture-picker').isVisible().catch(() => false)) &&
+  (await page.getByTestId('editor-picture').getAttribute('alt').catch(() => '')) === OTHER.prompt,
+  `the picture chosen opens in the editor, and the window closes (${page.url()})`);
 
 await finish(browser);

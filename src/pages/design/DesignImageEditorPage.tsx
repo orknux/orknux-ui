@@ -56,6 +56,7 @@ import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
 import styles from './DesignImageEditorPage.module.css';
 import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
+import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
@@ -191,6 +192,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const harmonizers = upscalers;
   const noHarmonizer = models !== null && harmonizers.length === 0;
   const [exporting, setExporting] = useState(false);
+  /** Import's menu open: a file, or a picture already in Orknux. */
+  const [importMenu, setImportMenu] = useState(false);
+  /** The window of pictures in Orknux open, and what the one chosen is for. */
+  const [picking, setPicking] = useState<'open' | null>(null);
   /** A file being dragged over the canvas, which a drop opens here. */
   const [dropping, setDropping] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -527,15 +532,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }, []);
 
   useEffect(() => {
-    if (!exporting) return;
+    if (!exporting && !importMenu) return;
     const away = (event: MouseEvent) => {
-      if (!(event.target instanceof Element) || event.target.closest('[data-testid="editor-export-menu"], [data-testid="editor-export"]') === null) {
-        setExporting(false);
-      }
+      const inside = (selector: string) => event.target instanceof Element && event.target.closest(selector) !== null;
+      if (!inside('[data-testid="editor-export-menu"], [data-testid="editor-export"]')) setExporting(false);
+      if (!inside('[data-testid="editor-import-menu"], [data-testid="editor-import"]')) setImportMenu(false);
     };
     window.addEventListener('mousedown', away);
     return () => window.removeEventListener('mousedown', away);
-  }, [exporting]);
+  }, [exporting, importMenu]);
 
   /** The picture's own size, once it has loaded: what the selection layer draws in. */
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
@@ -747,6 +752,18 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     } finally {
       setBusy(false);
     }
+  }
+
+  /**
+   * A picture already in Orknux opened here - Design's own, or one a run, a
+   * task or an agent drew or kept. Opened as it is rather than copied, as a file
+   * is: it is already somewhere to be found, and a copy would be a second
+   * picture in the gallery nobody asked for. Save writes over it; Save as copy
+   * leaves it as it was.
+   */
+  function openFromOrknux(chosen: Artifact) {
+    if (chosen.id === picture?.id || chosen.id === picture?.versionOf) return;
+    navigate(`/workspace/${workspaceId}/design/images/${chosen.id}/edit`);
   }
 
   async function exportAs(format: ExportFormat) {
@@ -1220,16 +1237,46 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             {t('Convert to video')}
           </button>
           <span className={styles.toolbarGap} aria-hidden="true" />
-          <button
-            type="button"
-            className={`${form.ghost} ${styles.toolbarButton}`}
-            onClick={() => importRef.current?.click()}
-            disabled={busy}
-            title={t('Open a picture from a file, or drop one on the canvas')}
-            data-testid="editor-import"
-          >
-            {t('Import')}
-          </button>
+          <div className={styles.exportMenu}>
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.toolbarButton}`}
+              onClick={() => setImportMenu((held) => !held)}
+              disabled={busy}
+              aria-haspopup="menu"
+              aria-expanded={importMenu}
+              title={t('Open a picture from a file or from Orknux, or drop one on the canvas')}
+              data-testid="editor-import"
+            >
+              {t('Import')} ▾
+            </button>
+            {importMenu && (
+              <div className={styles.exportItems} role="menu" data-testid="editor-import-menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setImportMenu(false);
+                    importRef.current?.click();
+                  }}
+                  data-testid="editor-import-from-file"
+                >
+                  {t('From a file…')}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setImportMenu(false);
+                    setPicking('open');
+                  }}
+                  data-testid="editor-import-from-orknux"
+                >
+                  {t('From Orknux…')}
+                </button>
+              </div>
+            )}
+          </div>
           <input
             ref={importRef}
             type="file"
@@ -1909,6 +1956,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         prompt={picture?.prompt ?? prompt}
         onClose={() => setHarmonizing(false)}
         onHarmonize={harmonize}
+      />
+      <DesignPicturePickerDialog
+        open={picking !== null}
+        workspaceId={workspaceId}
+        title={t('Import from Orknux')}
+        onClose={() => setPicking(null)}
+        onPick={(chosen) => {
+          setPicking(null);
+          openFromOrknux(chosen);
+        }}
       />
       <UnsavedWorkDialog
         subject={guard.asking ? (pendingName ?? picture?.name ?? t('This picture')) : null}
