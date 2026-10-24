@@ -117,7 +117,8 @@ import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import { TunablesSection } from './TunablesSection';
 import type { PendingWrite } from './LogLevelsSection';
-import { ReportSwitches } from './ReportSwitches';
+import { ReportSwitch, ReportSwitches } from './ReportSwitches';
+import { fetchCommandRunsEnabled, setCommandRuns } from '../../api/commands';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
 
@@ -735,6 +736,18 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                 />
               </button>
             </div>
+
+            {/* Run on a chat answer's shell blocks; flipped, not saved, like every switch here. */}
+            <ReportSwitch
+              id="run-commands"
+              heading={t('Run commands from the chat')}
+              hint={t('Offers Run on the shell blocks of a chat answer to administrators. The command runs on the machine this server is on; Run as administrator asks the operating system. Off for a server, on in the desktop app, until switched here.')}
+              read={fetchCommandRunsEnabled}
+              write={setCommandRuns}
+              on={t('Turn running commands off')}
+              off={t('Turn running commands on')}
+              onError={setError}
+            />
 
             {/*
               The ceiling on how long an agent may look things up before it has

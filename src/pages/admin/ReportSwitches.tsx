@@ -61,8 +61,8 @@ export function ReportSwitches({ onError }: ReportSwitchesProps) {
   );
 }
 
-/** One switch: its name, whether it is on, and the press that changes it. */
-function ReportSwitch({ id, heading, hint, read, write, on, off, onError }: {
+/** One switch: its name, whether it is on, and the press that changes it. Used beyond Reports too. */
+export function ReportSwitch({ id, heading, hint, read, write, on, off, onError }: {
   id: string;
   heading: string;
   hint: string;
