@@ -2130,3 +2130,34 @@ button.attachmentName {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/*
+ * Replies suggested under the latest answer. Each is a model's line drawn as
+ * plain text on one line, cut with an ellipsis where it would wrap, with the
+ * whole of it on the title.
+ */
+.replySuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.replySuggestion {
+  max-width: 100%;
+  padding: var(--space-4) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.replySuggestion:hover {
+  border-color: var(--color-accent-brand);
+}

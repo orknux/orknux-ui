@@ -59,6 +59,9 @@ import {
   setChatCompletionMaxTokens,
   setChatCompletionTimeoutMillis,
   setChatCompletionPauseMillis,
+  setChatReplySuggestions,
+  setChatReplySuggestionsMaxTokens,
+  setChatReplySuggestionsTimeoutMillis,
   setChatVideoMaxMb,
   setObjectMaxDepth,
   setPluginMaxSourceKb,
@@ -166,6 +169,10 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [completionTokens, setCompletionTokens] = useState('');
   const [completionTimeout, setCompletionTimeout] = useState('');
   const [completionPause, setCompletionPause] = useState('');
+  /** Suggested replies' three numbers, as typed. */
+  const [replyCount, setReplyCount] = useState('');
+  const [replyTokens, setReplyTokens] = useState('');
+  const [replyTimeout, setReplyTimeout] = useState('');
   const [videoMax, setVideoMax] = useState('');
   const [objectDepth, setObjectDepth] = useState('');
   /** How long one note to self may be, as typed. */
@@ -303,6 +310,9 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     setCompletionTokens(String(held.chatCompletionMaxTokens));
     setCompletionTimeout(String(held.chatCompletionTimeoutMillis));
     setCompletionPause(String(held.chatCompletionPauseMillis));
+    setReplyCount(String(held.chatReplySuggestions));
+    setReplyTokens(String(held.chatReplySuggestionsMaxTokens));
+    setReplyTimeout(String(held.chatReplySuggestionsTimeoutMillis));
     setVideoMax(String(held.chatVideoMaxMb));
     setBoxLocation(held.localBoxLocation ?? '');
     setBoxRuntime(held.localBoxRuntime);
@@ -436,6 +446,9 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: completionTokens, held: settings.chatCompletionMaxTokens, write: setChatCompletionMaxTokens },
         { typed: completionTimeout, held: settings.chatCompletionTimeoutMillis, write: setChatCompletionTimeoutMillis },
         { typed: completionPause, held: settings.chatCompletionPauseMillis, write: setChatCompletionPauseMillis },
+        { typed: replyCount, held: settings.chatReplySuggestions, write: setChatReplySuggestions },
+        { typed: replyTokens, held: settings.chatReplySuggestionsMaxTokens, write: setChatReplySuggestionsMaxTokens },
+        { typed: replyTimeout, held: settings.chatReplySuggestionsTimeoutMillis, write: setChatReplySuggestionsTimeoutMillis },
         { typed: videoMax, held: settings.chatVideoMaxMb, write: setChatVideoMaxMb },
         { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
@@ -946,6 +959,92 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   disabled={busy}
                   aria-label={t('Completion Pause')}
                   data-testid="chat-completion-pause-millis"
+                />
+                <span className={styles.retentionUnit}>ms</span>
+              </div>
+            </div>
+
+            {/*
+              Suggested replies under a chat's latest answer, from the same
+              Completion model. Asked once per answer, so cheaper than a
+              completion, and given longer, since nobody is typing meanwhile.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Suggested Replies')}</p>
+                  <FieldHint label={t('Suggested Replies')}>
+                    {t('How many replies are suggested under the latest answer; 0 suggests none. Between 0 and 6.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-reply-suggestions"
+                  name="chatReplySuggestions"
+                  className={styles.input}
+                  type="number"
+                  min={0}
+                  max={6}
+                  value={replyCount}
+                  onChange={(event) => setReplyCount(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Suggested Replies')}
+                  data-testid="chat-reply-suggestions"
+                />
+                <span className={styles.retentionUnit}>{t('replies')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Suggested Replies Length')}</p>
+                  <FieldHint label={t('Suggested Replies Length')}>
+                    {t('The most tokens all of an answer’s suggested replies together may be. Between 1 and 1000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-reply-suggestions-max-tokens"
+                  name="chatReplySuggestionsMaxTokens"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={replyTokens}
+                  onChange={(event) => setReplyTokens(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Suggested Replies Length')}
+                  data-testid="chat-reply-suggestions-max-tokens"
+                />
+                <span className={styles.retentionUnit}>{t('tokens')}</span>
+              </div>
+            </div>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Suggested Replies Time Limit')}</p>
+                  <FieldHint label={t('Suggested Replies Time Limit')}>
+                    {t('How long suggested replies may take before they are given up on and none are shown. Between 200 and 60000.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="chat-reply-suggestions-timeout-millis"
+                  name="chatReplySuggestionsTimeoutMillis"
+                  className={styles.input}
+                  type="number"
+                  min={200}
+                  max={60000}
+                  value={replyTimeout}
+                  onChange={(event) => setReplyTimeout(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Suggested Replies Time Limit')}
+                  data-testid="chat-reply-suggestions-timeout-millis"
                 />
                 <span className={styles.retentionUnit}>ms</span>
               </div>

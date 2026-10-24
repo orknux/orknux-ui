@@ -385,7 +385,7 @@ export const TESTS = [
   },
   {
     name: 'chat-completion-check',
-    what: "a pause in typing draws the completion model's suggestion in grey after the caret, Tab takes it, and typing or Escape puts it away",
+    what: "a pause in typing draws the completion model's suggestion in grey after the caret, Tab takes it, typing on is suggested to again, typing the suggested words keeps the rest, and replies under the latest answer are chips a click sends",
     needs: ['workspace'],
     // The suggestion and the workspace's Completion model are answered by the check; nothing reaches a model.
   },

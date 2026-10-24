@@ -10,6 +10,7 @@ import {
   deleteChat,
   fetchChatMessages,
   fetchChatCompletion,
+  fetchChatReplySuggestions,
   postChatMessageDuringTurn,
   fetchChatSession,
   fetchChatSessions,
@@ -2244,15 +2245,21 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     return true;
   }
 
-  async function handleSend(event: FormEvent) {
+  /**
+   * Sends what is in the composer, or [chosen] in its place - a suggested reply
+   * clicked under the answer, which is only offered while the composer is
+   * empty, so nothing typed is ever replaced by it.
+   */
+  async function handleSend(event: FormEvent, chosen?: string) {
     event.preventDefault();
+    const typed = chosen ?? draft;
     // Words or a file: a picture sent on its own is a message.
-    if (currentId === null || (draft.trim() === '' && attached.length === 0)) return;
+    if (currentId === null || (typed.trim() === '' && attached.length === 0)) return;
 
     // A command is carried out rather than said to the model: the model has no
     // way to run a workflow, and asking it to would be asking it to answer as
     // though it had.
-    if (draft.trim() !== '' && (await runCommand(draft))) return;
+    if (typed.trim() !== '' && (await runCommand(typed))) return;
 
     /*
      * What was attached is named in the message.
@@ -2272,7 +2279,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
      */
     const unopenable = going.filter((file) => !file.contentType.startsWith('image/'));
     const named = `Attached: ${unopenable.map((file) => file.filename).join(', ')}`;
-    const said = unopenable.length === 0 ? draft.trim() : draft.trim() === '' ? named : `${draft.trim()}
+    const said = unopenable.length === 0 ? typed.trim() : typed.trim() === '' ? named : `${typed.trim()}
 
 ${named}`;
 
@@ -2744,9 +2751,23 @@ ${named}`;
    * drawn. A request that fails shows nothing - the person asked for nothing.
    */
   const menuOpen = offered.length > 0 || skillsOffered.length > 0;
+  /**
+   * What of the suggestion is still to come after [text]: the suggestion's
+   * words less what has been typed of them since. Typing the words that were
+   * suggested is taking them a letter at a time, and the rest stays drawn -
+   * it was taken away at the first key, and the same words asked for again.
+   */
+  const stillSuggested = (text: string) => {
+    if (suggestion === null || !text.startsWith(suggestion.after)) return null;
+    const whole = suggestion.after + suggestion.words;
+    if (!whole.startsWith(text) || whole.length <= text.length) return null;
+    return whole.slice(text.length);
+  };
   useEffect(() => {
     if (completionPause === null || currentId === null || sending || menuOpen) return;
     if (draft.trim() === '' || caret !== draft.length) return;
+    // Being typed through: the rest is on screen already, and asking again would only redraw it.
+    if (draft !== suggestion?.after && stillSuggested(draft) !== null) return;
     const asked = draft;
     const chatAsked = currentId;
     const controller = new AbortController();
@@ -2762,12 +2783,50 @@ ${named}`;
       window.clearTimeout(timer);
       controller.abort();
     };
+    // `suggestion` is read only to skip a request, never to make one: an answer arriving is not a reason to ask.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completionPause, currentId, sending, menuOpen, draft, caret]);
 
-  /** What is drawn after the caret: only for the text it was asked for, with the caret still at its end. */
-  const ghost =
-    suggestion !== null && suggestion.after === draft && caret === draft.length && !menuOpen && !sending
-      ? suggestion.words
+  /** What is drawn after the caret: only for the text it was asked for, or that text typed on along it, with the caret at its end. */
+  const ghost = caret === draft.length && !menuOpen && !sending ? stillSuggested(draft) : null;
+
+  /*
+   * Suggested replies under the latest answer.
+   *
+   * Asked once the answer is finished, in a workspace with a Completion model,
+   * and only while nothing is typed or attached: the chips are a way to start a
+   * message, and somebody already writing one has started. Keyed by the answer
+   * they are for, so a new answer asks again and a reload is answered from what
+   * the server kept. A click sends the reply as it is - the composer is empty
+   * whenever they are shown, so nothing typed is ever replaced - and sending
+   * anything takes them away, because the answer they replied to is no longer
+   * the last thing said.
+   */
+  const lastMessage = messages.length === 0 ? null : messages[messages.length - 1];
+  const repliesFor =
+    currentId !== null && completionPause !== null && !sending && lastMessage?.role === 'assistant' && lastMessage.content.trim() !== ''
+      ? `${currentId}:${messages.length}:${lastMessage.content}`
+      : null;
+  const [replies, setReplies] = useState<{ answer: string; lines: string[] } | null>(null);
+  useEffect(() => {
+    if (repliesFor === null || currentId === null) return;
+    const chatAsked = currentId;
+    const controller = new AbortController();
+    fetchChatReplySuggestions(chatAsked, controller.signal)
+      .then((lines) => {
+        if (controller.signal.aborted) return;
+        // Plain text, one line each, whatever the model wrote.
+        const plain = lines.map((line) => line.replace(/\s+/g, ' ').trim()).filter((line) => line !== '');
+        setReplies({ answer: repliesFor, lines: plain });
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+    // currentId is part of repliesFor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repliesFor]);
+  const replyChips =
+    replies !== null && replies.answer === repliesFor && draft.trim() === '' && attached.length === 0 && replies.lines.length > 0
+      ? replies.lines
       : null;
 
   /*
@@ -4050,6 +4109,22 @@ ${named}`;
                     ))}
                     <Markdown pictureLinks zoomImages runnable={runOffer}>{shownTake(index, message)}</Markdown>
                     {filesOf(filesUnder(message), 'assistant')}
+                    {index === messages.length - 1 && replyChips !== null && (
+                      <div className={styles.replySuggestions} role="group" aria-label={t('Suggested replies')} data-testid="chat-reply-suggestions">
+                        {replyChips.map((line) => (
+                          <button
+                            key={line}
+                            type="button"
+                            className={styles.replySuggestion}
+                            title={line}
+                            data-testid="chat-reply-suggestion"
+                            onClick={(event) => void handleSend(event as unknown as FormEvent, line)}
+                          >
+                            {line}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {/*
                       Which take of this answer is being read, and the way back
                       to the others.

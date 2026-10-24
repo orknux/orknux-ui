@@ -3301,6 +3301,15 @@ export const PL: Record<string, string> = {
   "How long a suggestion may take before it is given up on and nothing is shown. Between 200 and 60000.": "Jak długo może trwać podpowiedź, zanim zostanie porzucona i nic nie zostanie pokazane. Od 200 do 60000.",
   "Completion Pause": "Przerwa przed podpowiedzią",
   "How long the chat waits after the last keystroke before asking for a suggestion. Between 100 and 10000.": "Jak długo czat czeka po ostatnim naciśnięciu klawisza, zanim poprosi o podpowiedź. Od 100 do 10000.",
+  // Suggested replies under a chat's latest answer.
+  "Suggested replies": "Proponowane odpowiedzi",
+  "Suggested Replies": "Proponowane odpowiedzi",
+  "How many replies are suggested under the latest answer; 0 suggests none. Between 0 and 6.": "Ile odpowiedzi proponować pod ostatnią odpowiedzią; 0 nie proponuje żadnej. Od 0 do 6.",
+  "replies": "odpowiedzi",
+  "Suggested Replies Length": "Długość proponowanych odpowiedzi",
+  "The most tokens all of an answer’s suggested replies together may be. Between 1 and 1000.": "Najwięcej tokenów, ile mogą mieć razem wszystkie odpowiedzi proponowane pod jedną odpowiedzią. Od 1 do 1000.",
+  "Suggested Replies Time Limit": "Limit czasu proponowanych odpowiedzi",
+  "How long suggested replies may take before they are given up on and none are shown. Between 200 and 60000.": "Jak długo mogą trwać proponowane odpowiedzi, zanim zostaną porzucone i żadna nie zostanie pokazana. Od 200 do 60000.",
   // Videos in the chat.
   "Takes video": "Przyjmuje wideo",
   "Send a video attached in a chat to this model itself; off, a message with a video is refused.": "Wysyłaj temu modelowi samo wideo dołączone w czacie; wyłączone, wiadomość z wideo zostaje odrzucona.",

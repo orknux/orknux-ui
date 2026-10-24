@@ -252,6 +252,21 @@ export async function fetchChatCompletion(chatId: string, text: string, signal?:
   return data.chatCompletion;
 }
 
+/**
+ * Replies the person might send next to the answer the chat ends on, from the
+ * workspace's Completion model: plain text, one line each, none where there is
+ * nothing to suggest. The server keeps them for that answer, so asking again
+ * after a reload does not ask the model again. Nothing is written into the chat.
+ */
+export async function fetchChatReplySuggestions(chatId: string, signal?: AbortSignal): Promise<string[]> {
+  const data = await graphql<{ chatReplySuggestions: string[] }>(
+    'query ChatReplySuggestions($chatId: ID!) { chatReplySuggestions(chatId: $chatId) }',
+    { chatId },
+    signal,
+  );
+  return data.chatReplySuggestions;
+}
+
 export async function fetchChatMessages(id: string): Promise<ChatMessage[]> {
   const data = await graphql<{ chatMessages: ChatMessage[] }>(
     'query ChatMessages($id: ID!) { chatMessages(id: $id) { role content actor takes thinking thinkingMillis at attachments { id filename contentType sizeBytes } } }',
