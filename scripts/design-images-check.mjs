@@ -233,7 +233,7 @@ const toolbarAt = async (width) => {
     const hit = document.elementFromPoint(nameBox.left + nameBox.width / 2, nameBox.top + nameBox.height / 2);
     const lineHeight = parseFloat(getComputedStyle(back).lineHeight) || parseFloat(getComputedStyle(back).fontSize) * 1.4;
     return {
-      width,
+      width: window.innerWidth,
       client: bar.clientWidth,
       scroll: bar.scrollWidth,
       name: Math.round(nameBox.width),
