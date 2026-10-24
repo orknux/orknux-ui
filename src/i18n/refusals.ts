@@ -28,7 +28,7 @@ import { currentLanguage } from '../session/language';
  */
 const PL: Record<string, string> = {
   InstallationAddressInvalid:
-    '{url} nie jest adresem, pod którym można dotrzeć do tej instalacji. Podaj adres zaczynający się od https:// lub http://, na przykład https://orknux.example.com.',
+    '{url} nie jest adresem, pod którym można dotrzeć do tej instalacji. Podaj adres http lub https, na przykład https://orknux.example.com.',
   // --- a name that is required, and one that is taken --------------------
   ActionNameInvalid: 'Nazwa akcji jest wymagana',
   AgentNameInvalid: 'Nazwa agenta jest wymagana',
@@ -378,7 +378,7 @@ const PL: Record<string, string> = {
   BoxLabelRequired: 'Skrzynka potrzebuje etykiety - to po niej agent dostaje do niej dostęp',
   LocalBoxNotEditable: 'Lokalnej skrzynki nie zmienia się tutaj. Jej etykieta to zawsze local, a ustawienia są w ustawieniach administratora',
   BoxNameInvalid: 'Nazwa skrzynki nie może być pusta ani dłuższa niż 255 znaków',
-  BoxAddressInvalid: '„{address}” nie jest adresem skrzynki. Podaj go ze schematem, np. http://sandbox.internal:8090.',
+  BoxAddressInvalid: '„{address}” nie jest adresem skrzynki. Podaj adres http lub https, np. http://sandbox.internal:8090.',
   LocalBoxNotRemovable: 'Lokalnej skrzynki nie da się usunąć; wyłącza się ją w ustawieniach administracyjnych',
   BoxUnreachable: 'Nie udało się połączyć ze skrzynką {name}',
   LocalBoxRuntimeUnknown: '„{runtime}” nie jest środowiskiem lokalnej skrzynki. Wybierz local albo docker.',

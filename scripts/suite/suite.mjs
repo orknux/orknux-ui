@@ -5204,6 +5204,16 @@ export const TESTS = [
   },
   // --- boxes ----------------------------------------------------------------
   {
+    name: 'address-scheme-check',
+    what: "an address typed without a scheme reads http:// once the field is left - a box's and an MCP server's - and is stored that way; the placeholders ask for no scheme",
+    needs: ['workspace'],
+    /*
+     * The box is under `.invalid` and the MCP server on a port nothing listens
+     * on, so nothing reaches a network. Removes both, and sweeps what a killed
+     * run left.
+     */
+  },
+  {
     name: 'boxes-admin-check',
     what: 'Admin -> Boxes lists a row per box with Name, Type, Health, Active sessions, Free sessions and no label; a remote box is added, tested and deleted through the page; the local box offers nothing to edit; Admin Settings draws every box knob on what the server holds',
     needs: [],

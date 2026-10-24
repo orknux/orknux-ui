@@ -29,6 +29,7 @@ import { Markdown } from '../../components/Markdown';
 import { shellUser } from '../../session/user';
 import styles from './AdminUpdatesPage.module.css';
 import { t, tf } from '../../i18n';
+import { withScheme } from '../../components/address';
 
 export interface AdminUpdatesPageProps {
   session: SessionUser;
@@ -468,15 +469,19 @@ export function AdminUpdatesPage({ session, onSignOut }: AdminUpdatesPageProps) 
                 }}
               >
                 <input
-                  type="url"
+                  type="text"
+                  inputMode="url"
                   className={styles.field}
                   data-testid="release-url"
                   aria-label={t('URL of a server jar, or of a directory holding releases.json')}
-                  placeholder="https://artifactory.example.com/orknux/orknux-server.jar"
+                  placeholder="artifactory.example.com/orknux/orknux-server.jar"
                   value={url ?? ''}
                   onChange={(event) => {
                     setUrl(event.target.value);
                     setListed(null);
+                  }}
+                  onBlur={() => {
+                    if (url !== null) setUrl(withScheme(url));
                   }}
                   disabled={fetching}
                 />

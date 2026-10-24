@@ -50,6 +50,7 @@ import { NewFunctionPanel } from './NewFunctionPanel';
 import { OpenDefinitionIcon } from './OpenDefinitionIcon';
 import { SlackTargetField } from './SlackTargetField';
 import { t } from '../i18n';
+import { withScheme } from './address';
 import { DiscardButton } from './SaveBar';
 import { useDirty } from './useDirty';
 import { Select } from './Select';
@@ -1220,9 +1221,11 @@ export function ActionForm({
                     id="action-url"
                     className={styles.input}
                     type="text"
-                    placeholder="https://api.example.com/data"
+                    inputMode="url"
+                    placeholder="api.example.com/data"
                     value={url}
                     onChange={(event) => setUrl(event.target.value)}
+                    onBlur={() => setUrl(withScheme(url))}
                     required
                   />
                 </div>

@@ -10,6 +10,7 @@ import { HeaderRowsEditor } from './HeaderRowsEditor';
 import { SecretField, useSecretField } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
+import { withScheme } from './address';
 import { Select } from './Select';
 
 export interface McpServerDialogProps {
@@ -159,9 +160,11 @@ export function McpServerDialog({ open, workspaceId, onClose, onCreated }: McpSe
                 name="serverAddress"
                 className={`${styles.input} ${styles.inputMono}`}
                 type="text"
-                placeholder="https://"
+                inputMode="url"
+                placeholder="mcp.example.com/mcp"
                 value={address}
                 onChange={(event) => setAddress(event.target.value)}
+                onBlur={() => setAddress(withScheme(address))}
                 required
               />
             </div>

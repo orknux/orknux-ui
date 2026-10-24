@@ -13,6 +13,7 @@ import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { FieldHint } from './FieldHint';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
+import { withScheme } from './address';
 import { Select } from './Select';
 
 export interface ModelDialogProps {
@@ -359,10 +360,12 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
                     id="model-endpoint"
                     name="endpoint"
                     className={`${styles.input} ${styles.inputMono}`}
-                    type="url"
-                    placeholder="http://192.168.0.199:8005/v1"
+                    type="text"
+                    inputMode="url"
+                    placeholder="192.168.0.199:8005/v1"
                     value={endpoint}
                     onChange={(event) => setEndpoint(event.target.value)}
+                    onBlur={() => setEndpoint(withScheme(endpoint))}
                     required
                   />
                 </div>

@@ -2974,7 +2974,7 @@ export const PL: Record<string, string> = {
   "Back to Boxes": "Powrót do skrzynek",
   "e.g. build sandbox": "np. piaskownica do budowania",
   "The local box runs inside this server, so there is nothing to reach and no token to hold.": "Lokalna skrzynka działa wewnątrz tego serwera, więc nie ma dokąd się łączyć ani tokena do trzymania.",
-  "Where the Orkbox answers, with its scheme - http://sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.": "Gdzie odpowiada Orkbox, ze schematem - http://sandbox.internal:8090. Osiągany przez reguły proxy z sekcji Sieć, jak wszystko inne, z czym rozmawia ten serwer.",
+  "Where the Orkbox answers, such as sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.": "Gdzie odpowiada Orkbox, na przykład sandbox.internal:8090. Osiągany przez reguły proxy z sekcji Sieć, jak wszystko inne, z czym rozmawia ten serwer.",
   "In-process": "W procesie serwera",
   "API token": "Token API",
   "Stored encrypted; the eye shows it. Leaving the field empty keeps whatever is already stored.": "Przechowywany w postaci zaszyfrowanej; oko go pokazuje. Puste pole zachowuje to, co już zapisano.",

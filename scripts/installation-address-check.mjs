@@ -1,8 +1,9 @@
 /**
  * Admin -> Settings -> Address: where the installation is reached from, which
  * the links it writes are built on. The box opens empty with ORKNUX_BASE_URL as
- * its placeholder, an address typed goes out with the page's Save, and a
- * refusal is shown where it was typed.
+ * its placeholder, an address typed goes out with the page's Save, one typed
+ * without a scheme reads http:// once the box is left, and a refusal is shown
+ * where it was typed.
  */
 import { BASE, open, record, finish } from './suite/harness.mjs';
 
@@ -17,7 +18,7 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('setInstallationAddress(')) {
     const url = body.variables?.url ?? '';
     sent.push(url);
-    if (url !== '' && !/^https?:\/\//.test(url)) {
+    if (url !== '' && (!/^https?:\/\//.test(url) || url.includes('?'))) {
       return route.fulfill({
         json: { data: null, errors: [{ message: `${url} is not an address this installation can be reached at.`, extensions: { code: 'InstallationAddressInvalid', arguments: { url } } }] },
       });
@@ -44,6 +45,13 @@ await page.waitForTimeout(1500);
 record(sent.includes('https://orknux.example.com'), `Save sends the address typed, without its trailing slash (${JSON.stringify(sent)})`);
 
 await box.fill('orknux.example.com');
+await box.press('Tab');
+record((await box.inputValue()) === 'http://orknux.example.com', `typed without a scheme, the box reads http:// once left (${await box.inputValue()})`);
+await page.getByRole('button', { name: /^Save/ }).first().click();
+await page.waitForTimeout(1500);
+record(sent.includes('http://orknux.example.com'), `and that is what Save sends (${JSON.stringify(sent)})`);
+
+await box.fill('orknux.example.com/?page=1');
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(1500);
 record((await page.getByRole('alert').filter({ hasText: 'orknux.example.com' }).count()) > 0, 'an address that is not one is refused, with the reason');

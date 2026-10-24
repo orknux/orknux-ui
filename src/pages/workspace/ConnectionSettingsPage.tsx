@@ -49,6 +49,7 @@ import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
 import dialog from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
+import { withScheme } from '../../components/address';
 import { zoned } from '../../session/timeZone';
 import { ConnectionGuide } from '../../components/ConnectionGuide';
 import { Select } from '../../components/Select';
@@ -773,7 +774,10 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                     type="text"
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
-                    placeholder={mail ? 'smtp.example.com' : 'https://'}
+                    onBlur={() => {
+                      if (!mail) setAddress(withScheme(address));
+                    }}
+                    placeholder={mail ? 'smtp.example.com' : 'api.example.com'}
                   />
                 </div>
               </div>
@@ -1015,9 +1019,10 @@ function ConnectionSettingsView({ session, onSignOut, onDiscard }: ConnectionSet
                   name="urlOverride"
                   className={styles.input}
                   type="text"
-                  placeholder={connection?.url ?? 'https://'}
+                  placeholder={connection?.url ?? 'api.example.com'}
                   value={urlOverride}
                   onChange={(event) => setUrlOverride(event.target.value)}
+                  onBlur={() => setUrlOverride(withScheme(urlOverride))}
                 />
               </div>
             </div>

@@ -35,6 +35,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './ProviderSettingsPage.module.css';
 import { t } from '../../i18n';
+import { withScheme } from '../../components/address';
 import { Select } from '../../components/Select';
 
 export interface ProviderSettingsPageProps {
@@ -600,8 +601,10 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                 <input
                   id="provider-endpoint"
                   className={`${styles.input} ${styles.inputMono}`}
+                  inputMode="url"
                   value={endpoint}
                   onChange={(event) => setEndpoint(event.target.value)}
+                  onBlur={() => setEndpoint(withScheme(endpoint))}
                   placeholder={endpointHint(type)}
                   required
                 />

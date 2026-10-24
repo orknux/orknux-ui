@@ -33,6 +33,7 @@ import { duration } from '../workspace/WorkspaceWatchersPage';
 import { shellUser } from '../../session/user';
 import styles from './AdminBoxPage.module.css';
 import { t, tf } from '../../i18n';
+import { withScheme } from '../../components/address';
 import { moment, zoned } from '../../session/timeZone';
 
 /** How many of a box's sessions are shown at once: the sizes a person's sessions in Reports offer. */
@@ -443,7 +444,7 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
                 <FieldHint label={t('Address')}>
                   {local
                     ? t('The local box runs inside this server, so there is nothing to reach and no token to hold.')
-                    : t('Where the Orkbox answers, with its scheme - http://sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.')}
+                    : t('Where the Orkbox answers, such as sandbox.internal:8090. Reached through the proxy rules under Networking like anything else this server talks to.')}
                 </FieldHint>
               </span>
               {local ? (
@@ -461,13 +462,15 @@ export function AdminBoxPage({ session, onSignOut }: AdminBoxPageProps) {
                   id="box-address"
                   name="boxAddress"
                   className={`${styles.input} ${styles.inputMono}`}
-                  type="url"
-                  placeholder="http://sandbox.internal:8090"
+                  type="text"
+                  inputMode="url"
+                  placeholder="sandbox.internal:8090"
                   value={address}
                   onChange={(event) => {
                     setAddress(event.target.value);
                     setTested(null);
                   }}
+                  onBlur={() => setAddress(withScheme(address))}
                   required
                 />
               )}

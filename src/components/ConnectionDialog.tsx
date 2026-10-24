@@ -7,6 +7,7 @@ import chevronDown12Icon from '../assets/chevron-down-12.svg';
 import { FieldHint } from './FieldHint';
 import styles from './Dialog.module.css';
 import { t } from '../i18n';
+import { withScheme } from './address';
 import { Select } from './Select';
 
 export interface ConnectionDialogProps {
@@ -187,9 +188,12 @@ export function ConnectionDialog({ open, onClose, onSaved }: ConnectionDialogPro
                 name="connectionUrl"
                 className={`${styles.input} ${styles.inputMono}`}
                 type="text"
-                placeholder={type === 'SMTP' ? 'smtp.example.com' : 'https://'}
+                placeholder={type === 'SMTP' ? 'smtp.example.com' : 'api.example.com'}
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
+                onBlur={() => {
+                  if (type !== 'SMTP') setUrl(withScheme(url));
+                }}
                 required
               />
             </div>

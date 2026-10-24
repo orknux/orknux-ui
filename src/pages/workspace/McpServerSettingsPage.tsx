@@ -28,6 +28,7 @@ import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
 import styles from './IntegrationSettings.module.css';
 import { t } from '../../i18n';
+import { withScheme } from '../../components/address';
 import { Select } from '../../components/Select';
 
 export interface McpServerSettingsPageProps {
@@ -297,8 +298,10 @@ function McpServerSettingsView({ session, onSignOut, onDiscard }: McpServerSetti
                   name="serverAddress"
                   className={`${styles.input} ${styles.inputMono}`}
                   type="text"
+                  inputMode="url"
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
+                  onBlur={() => setAddress(withScheme(address))}
                   required
                 />
               </div>

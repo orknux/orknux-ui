@@ -4,6 +4,7 @@ import { fetchInstallationAddress, setInstallationAddress } from '../../api/addr
 import type { InstallationAddress } from '../../api/address';
 import { FieldHint } from '../../components/FieldHint';
 import { t } from '../../i18n';
+import { withScheme } from '../../components/address';
 import page from './AdminSettingsPage.module.css';
 import type { PendingWrite } from './LogLevelsSection';
 
@@ -88,11 +89,13 @@ export function AddressSection({ onPending, busy = false }: AddressSectionProps)
             id="installation-address"
             name="installationAddress"
             className={`${page.input} ${page.wideInput}`}
-            type="url"
+            type="text"
+            inputMode="url"
             spellCheck={false}
             placeholder={held?.configured ?? ''}
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
+            onBlur={() => setTyped(withScheme(typed))}
             disabled={busy || held === null}
             aria-label={t('Where this installation is reached from')}
           />

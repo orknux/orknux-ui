@@ -26,6 +26,7 @@ import { SecretField, useSecretField } from './SecretField';
 import type { SecretFieldHandle, SecretSource } from './SecretField';
 import { useWorkspaceVariables } from '../pages/workspace/workspaceVariables';
 import { t } from '../i18n';
+import { withScheme } from './address';
 import { ConnectionGuide } from './ConnectionGuide';
 import { Select } from './Select';
 
@@ -425,9 +426,12 @@ export function WorkspaceConnectionDialog({ open, workspaceId, onClose, onCreate
                 name="connectionUrl"
                 className={`${styles.input} ${styles.inputMono}`}
                 type="text"
-                placeholder={mail ? 'smtp.example.com' : (pluginKind?.defaultUrl ?? pluginKind?.urlPlaceholder ?? 'https://')}
+                placeholder={mail ? 'smtp.example.com' : (pluginKind?.defaultUrl ?? pluginKind?.urlPlaceholder ?? 'api.example.com')}
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
+                onBlur={() => {
+                  if (!mail) setUrl(withScheme(url));
+                }}
                 // Not where the kind has an address of its own: left empty, the server fills that in.
                 required={!defaulted}
               />

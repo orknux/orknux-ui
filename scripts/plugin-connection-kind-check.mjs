@@ -390,8 +390,8 @@ try {
     await chooseOption(page, '#workspace-connection-type', 'confluence/wiki');
     await page.waitForTimeout(300);
     record(
-      (await url.getAttribute('placeholder')) === 'https://',
-      `dialog: a kind without a placeholder falls back to https:// (${await url.getAttribute('placeholder')})`,
+      (await url.getAttribute('placeholder')) === 'api.example.com',
+      `dialog: a kind without a placeholder falls back to one that asks for no scheme (${await url.getAttribute('placeholder')})`,
     );
     await chooseOption(page, '#workspace-connection-type', 'prometheus/server');
 
