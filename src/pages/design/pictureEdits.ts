@@ -26,6 +26,16 @@ export function canvasOf(image: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
+/** A picture at an address on a canvas of its own: a layer read back from where it was kept. */
+export function canvasFrom(url: string): Promise<HTMLCanvasElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(canvasOf(image));
+    image.onerror = () => reject(new Error('A layer could not be read.'));
+    image.src = url;
+  });
+}
+
 /** A quarter turn, clockwise to the right: the picture's sides swap. */
 export function rotated(source: HTMLCanvasElement, way: 'left' | 'right'): HTMLCanvasElement {
   const { canvas, pen } = blank(source.height, source.width);

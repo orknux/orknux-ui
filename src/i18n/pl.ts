@@ -3526,6 +3526,8 @@ export const PL: Record<string, string> = {
   "New layer": "Nowa warstwa",
   "Flatten": "Spłaszcz",
   "Layer {number}": "Warstwa {number}",
+  "Layers changed": "Zmieniono warstwy",
+  "At most {count} layers": "Najwyżej {count} warstw",
   "Hide": "Ukryj",
   "Clean up": "Oczyść",
   "Remove the blocks and speckle repeated edits leave, with a restoration model": "Usuń bloki i szum, które zostawiają powtarzane edycje, modelem odtwarzającym",

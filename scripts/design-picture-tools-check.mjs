@@ -42,6 +42,10 @@ const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60, blurFalloff: 
 const edits = [];
 /** What each keepDesignImageChange was asked to keep, in order. */
 const kept = [];
+/** The layers kept with each picture or version, by its id, as the server keeps them: what designImageLayers answers. */
+const layersOf = {};
+/** What each saveDesignImageVersion saved. */
+const saves = [];
 let next = 702;
 
 await page.route('**/graphql', async (route) => {
@@ -56,6 +60,20 @@ await page.route('**/graphql', async (route) => {
     return route.fulfill({ json: { data: { workspaceArtifacts: { content, page: 0, size: content.length, totalElements: content.length, totalPages: 1 } } } });
   }
   if (query.includes('designImageHistory')) return route.fulfill({ json: { data: { designImageHistory: [] } } });
+  if (query.includes('designImageLayers')) {
+    const held = layersOf[body.variables?.imageId] ?? [];
+    const designImageLayers = held.map((one, at) => ({ id: String(at + 1), name: one.name, visible: one.visible, picture: one.picture, url: one.image }));
+    return route.fulfill({ json: { data: { designImageLayers } } });
+  }
+  if (query.includes('saveDesignImageVersion')) {
+    // Over the picture: its file the version's, and its layers the version's - or none, where the version was flat.
+    const id = body.variables?.id;
+    const version = kept.find((one) => one.version === id);
+    saves.push(id);
+    ORIGINAL.url = version?.image ?? ORIGINAL.url;
+    layersOf[ORIGINAL.id] = layersOf[id] ?? [];
+    return route.fulfill({ json: { data: { saveDesignImageVersion: { ...ORIGINAL, versionOf: null } } } });
+  }
   if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
   if (query.includes('workspaceModels') || query.includes('models(')) {
     // One image model to ask a Magic edit of, beside whatever the installation has.
@@ -90,8 +108,9 @@ await page.route('**/graphql', async (route) => {
   }
   if (query.includes('keepDesignImageChange')) {
     const input = body.variables?.input;
-    kept.push(input);
     const id = String(next++);
+    kept.push({ ...input, version: `DESIGN-${id}` });
+    if (input.layers?.length > 0) layersOf[`DESIGN-${id}`] = input.layers;
     const version = picture(`DESIGN-${id}`, input.image, ORIGINAL.id);
     return route.fulfill({
       json: {
@@ -545,5 +564,50 @@ await page.waitForFunction(() => document.querySelector('[data-testid="editor-pi
 record(page.url().endsWith(`/design/images/${OTHER.id}/edit`) && !(await page.getByTestId('picture-picker').isVisible().catch(() => false)) &&
   (await page.getByTestId('editor-picture').getAttribute('alt').catch(() => '')) === OTHER.prompt,
   `the picture chosen opens in the editor, and the window closes (${page.url()})`);
+
+// -- Layers survive Save ------------------------------------------------------------
+
+// A new layer painted on and saved: kept as a layer beside the flattened picture, and opened again as one.
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${ORIGINAL.id}/edit`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForFunction(() => (document.querySelector('[data-testid="editor-picture"]')?.naturalWidth ?? 0) > 0, null, { timeout: 10_000 }).catch(() => undefined);
+/** The picture's own size now, which the strokes below are drawn in. */
+const whole = await page.evaluate(() => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  return { width: image.naturalWidth, height: image.naturalHeight };
+});
+/** A row across the top quarter, where the picture is red on the left. */
+const savedRow = Math.round(whole.height * 0.25);
+await tap('editor-layers');
+await page.getByTestId('layers-panel').waitFor({ timeout: 3_000 }).catch(() => undefined);
+await tap('layers-new');
+await tap('editor-brush');
+await page.getByTestId('brush-colour').fill('#ff00ff').catch(() => undefined);
+await drag([1, savedRow], [whole.width - 1, savedRow], 10);
+await tap('editor-brush');
+const keptBeforeSave = kept.length;
+await tap('editor-save');
+for (let waited = 0; saves.length === 0 && waited < 50; waited += 1) await page.waitForTimeout(200);
+const sentWithSave = kept[keptBeforeSave];
+record(kept.length === keptBeforeSave + 1 && saves.length === 1 && sentWithSave?.layers?.length === 2 &&
+  sentWithSave.layers[0].picture === true && sentWithSave.layers[1].name === 'Layer 1' && sentWithSave.layers[1].picture === false,
+  `Save keeps the layers with the picture rather than flattening them (${JSON.stringify({ layers: sentWithSave?.layers?.map((one) => one.name), saves })})`);
+
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await tap('editor-layers');
+await page.getByTestId('layer-row').first().waitFor({ timeout: 5_000 }).catch(() => undefined);
+const reopened = await stack();
+/** The paint, read where it was painted: on the layer, and not in the picture under it. */
+const underPaint = await shown([[0.25, (savedRow + 0.5) / whole.height]]);
+const onLayer = await page.evaluate(([x, y, below]) => {
+  const canvas = document.querySelector('[data-testid="layer-canvas"]');
+  if (canvas === null) return null;
+  const pen = canvas.getContext('2d');
+  const [r, g, b, a] = pen.getImageData(x, y, 1, 1).data;
+  return { painted: `rgba(${r},${g},${b},${a})`, clear: pen.getImageData(x, below, 1, 1).data[3] };
+}, [Math.round(whole.width * 0.25), savedRow, Math.round(whole.height * 0.8)]);
+record(JSON.stringify(reopened) === '["Layer 1"]' && underPaint?.colours[0] === 'red' && onLayer?.painted === 'rgba(255,0,255,255)' && onLayer.clear === 0,
+  `opened again, the picture lists its layer, with the paint on the layer and the picture under it as it was (${JSON.stringify({ reopened, underPaint, onLayer })})`);
 
 await finish(browser);

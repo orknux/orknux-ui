@@ -6,6 +6,7 @@ import {
   discardDesignImageVersions,
   dismissDesignImageJob,
   fetchDesignImageHistory,
+  fetchDesignImageLayers,
   fetchDesignImageEditorSettings,
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
@@ -67,7 +68,7 @@ import layersIcon from '../../assets/layers.svg';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { blurredAlong, blurredInside, boxOf, canvasOf, cropped, emptyLayer, flattened, mirrored, painted, rotated, strokePath } from './pictureEdits';
+import { blurredAlong, blurredInside, boxOf, canvasFrom, canvasOf, cropped, emptyLayer, flattened, mirrored, painted, rotated, strokePath } from './pictureEdits';
 import type { Layer, Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -155,6 +156,8 @@ type Snapshot = {
   layers: Layer[];
   layerId: string;
   baseVisible: boolean;
+  baseUrl: string | null;
+  layersDirty: boolean;
   /*
    * What was in hand and selected when the change was made, so undoing a blur,
    * a crop or an edit gives back the selection it was made over - to adjust
@@ -314,6 +317,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         setBlurFalloff((held) => held ?? settings.blurFalloff);
         setFeatherMost(settings.featherMost);
         setFeather((held) => held ?? settings.feather);
+        setLayersMost(settings.layersMost);
       })
       .catch(() => undefined);
   }, [workspaceId]);
@@ -443,7 +447,22 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   // -- Undo and redo ------------------------------------------------------
 
-  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes, layers, layerId, baseVisible, tool, selection, blurShape });
+  const now = (): Snapshot => ({
+    prompt,
+    modelId,
+    asked,
+    shown,
+    pendingName,
+    strokes,
+    layers,
+    layerId,
+    baseVisible,
+    baseUrl,
+    layersDirty,
+    tool,
+    selection,
+    blurShape,
+  });
   const settleTyping = () => {
     window.clearTimeout(typingTimer.current);
     const from = typingFrom.current;
@@ -484,6 +503,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setLayers(to.layers);
     setLayerId(to.layerId);
     setBaseVisible(to.baseVisible);
+    setBaseUrl(to.baseUrl);
+    setLayersDirty(to.layersDirty);
+    // The step holds its picture's layers already: nothing is read again for it.
+    if (to.shown?.kind === 'picture') layersFor.current = to.shown.picture.id;
     setTool(to.tool);
     setBlurShape(to.blurShape);
     setSelection(to.selection);
@@ -794,16 +817,34 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * and blurred on, renamed, hidden, and put above or below one another. The
    * brush and the blur work on the layer chosen; what is shown is every layer
    * shown, the first lowest. Every change to them is a step undo takes back.
-   * They are held on the page alone (#633): Save flattens the ones shown into
-   * the picture as one version, as does Flatten, and a model asked for a
-   * change sees them flattened, since it is handed a picture and not a stack.
+   *
+   * They are kept with the picture (reversing #633, where Save flattened
+   * them): every version is kept with the layers it was made with, beside the
+   * file - which is them flattened, so whatever else reads the picture reads
+   * what it looks like - and opening a picture brings its layers back. Only
+   * Flatten merges them. A model is handed the picture as it looks, and its
+   * change comes back as a layer of its own over them.
    */
   const [layers, setLayers] = useState<Layer[]>([]);
   /** The layer the brush and the blur work on: one of the layers, or the picture itself. */
   const [layerId, setLayerId] = useState<string>(PICTURE_LAYER);
   /** The picture itself hidden, so only the layers over it are seen. */
   const [baseVisible, setBaseVisible] = useState(true);
+  /**
+   * Where the picture's own pixels are - under the layers - where it has
+   * layers; null where its file is all there is. The file is the layers
+   * flattened, and drawing the layers over it would draw them twice.
+   */
+  const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  /** The layers changed since they were last kept: what Save, Discard and the leave guard are about. */
+  const [layersDirty, setLayersDirty] = useState(false);
+  /** Counts every change to the layers, so a keep finishing late knows whether one came after it. */
+  const layerEdits = useRef(0);
+  /** Which picture's layers are on the page: another picture shown has its own read. */
+  const layersFor = useRef<string | null>(null);
   const [layersOpen, setLayersOpen] = useState(false);
+  /** How many layers a picture may keep over the picture itself: the installation's number. */
+  const [layersMost, setLayersMost] = useState<number | null>(null);
   const layerCount = useRef(0);
   /** A layer's row being dragged to another place in the stack. */
   const [movingRow, setMovingRow] = useState<string | null>(null);
@@ -812,17 +853,69 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The layer chosen, or null where it is the picture itself. */
   const activeLayer = layers.find((one) => one.id === layerId) ?? null;
 
+  /** A change to the layers, not yet kept. */
+  const touchLayers = () => {
+    layerEdits.current += 1;
+    setLayersDirty(true);
+  };
+
+  /**
+   * A picture's layers as they were kept, read onto the page; none for one kept
+   * flat. Where the picture shown is another than the one they were read for,
+   * the page starts without any, so the last picture's are never seen over it.
+   */
+  const reading = useRef(0);
+  async function readLayers(of: Artifact, clearFirst: boolean): Promise<void> {
+    const ticket = (reading.current += 1);
+    layersFor.current = of.id;
+    if (clearFirst) {
+      setLayers([]);
+      setBaseUrl(null);
+      setBaseVisible(true);
+      setLayerId(PICTURE_LAYER);
+      setLayersDirty(false);
+    }
+    try {
+      const kept = await fetchDesignImageLayers(workspaceId, of.id);
+      const over = kept.filter((one) => !one.picture);
+      const pixels = await Promise.all(over.map((one) => canvasFrom(one.url)));
+      if (reading.current !== ticket || layersFor.current !== of.id) return;
+      const base = kept.find((one) => one.picture) ?? null;
+      const read: Layer[] = over.map((one, at) => {
+        layerCount.current += 1;
+        return { id: `layer-${layerCount.current}`, name: one.name ?? tf('Layer {number}', { number: at + 1 }), visible: one.visible, pixels: pixels[at] };
+      });
+      setLayers(read);
+      setBaseUrl(base?.url ?? null);
+      setBaseVisible(base?.visible ?? true);
+      setLayerId(PICTURE_LAYER);
+      setLayersDirty(false);
+    } catch {
+      // Unread, the picture is still its file as it looks; nothing is lost by showing that.
+    }
+  }
+  // Another picture shown - opened, chosen on the strip, drawn by a model - brings its own layers.
+  useEffect(() => {
+    if (picture === null || layersFor.current === picture.id) return;
+    void readLayers(picture, true);
+  }, [picture?.id]);
+
   /** The picture alone, on a canvas of its own at its own size; null before it has loaded. */
   const baseCanvas = (): HTMLCanvasElement | null => {
     const shownPicture = pictureRef.current;
     if (picture === null || shownPicture === null || shownPicture.naturalWidth === 0) return null;
     return canvasOf(shownPicture);
   };
+  /** The picture alone with what the brush painted on it and has not kept. */
+  const paintedBase = (): HTMLCanvasElement | null => {
+    const base = baseCanvas();
+    return base === null || strokes.length === 0 ? base : painted(base, strokes);
+  };
 
   /**
    * What is on the screen as one picture: the picture and the layers shown,
    * with what the brush has painted on the picture and not yet kept - so a
-   * tool that works on the whole of it, or Save, has exactly what is seen.
+   * tool that works on the whole of it, or a model, has exactly what is seen.
    */
   const pictureCanvas = (): HTMLCanvasElement | null => {
     const shownPicture = pictureRef.current;
@@ -834,6 +927,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** A layer's pixels changed, as one step undo takes back. */
   const repaintLayer = (id: string, pixels: HTMLCanvasElement) => {
     remember();
+    touchLayers();
     setLayers((held) => held.map((one) => (one.id === id ? { ...one, pixels } : one)));
   };
   /** A layer chosen to work on; what the brush painted on the picture is kept first, so it is not carried over. */
@@ -845,16 +939,18 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** An empty layer, above the one chosen, and chosen itself. */
   const newLayer = () => {
     if (natural === null) return;
+    if (layersMost !== null && layers.length >= layersMost) return;
     layerCount.current += 1;
     const layer: Layer = {
       id: `layer-${layerCount.current}`,
-      name: tf('Layer {number}', { number: layerCount.current }),
+      name: tf('Layer {number}', { number: layers.length + 1 }),
       visible: true,
       pixels: emptyLayer(natural.width, natural.height),
     };
     const at = layers.findIndex((one) => one.id === layerId) + 1;
     if (strokes.length > 0) void applyPaint();
     remember();
+    touchLayers();
     setLayers([...layers.slice(0, at), layer, ...layers.slice(at)]);
     setLayerId(layer.id);
   };
@@ -863,6 +959,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     const at = layers.findIndex((one) => one.id === id);
     if (at < 0) return;
     remember();
+    touchLayers();
     const rest = layers.filter((one) => one.id !== id);
     setLayers(rest);
     if (layerId === id) setLayerId(rest[at - 1]?.id ?? PICTURE_LAYER);
@@ -872,12 +969,14 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     const at = layers.findIndex((one) => one.id === id);
     if (at < 0 || to < 0 || to >= layers.length || to === at) return;
     remember();
+    touchLayers();
     const next = layers.filter((one) => one.id !== id);
     next.splice(to, 0, layers[at]);
     setLayers(next);
   };
   const showLayer = (id: string) => {
     remember();
+    touchLayers();
     if (id === PICTURE_LAYER) setBaseVisible(!baseVisible);
     else setLayers((held) => held.map((one) => (one.id === id ? { ...one, visible: !one.visible } : one)));
   };
@@ -888,42 +987,78 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setRenaming(null);
     if (layer === undefined || called === '' || called === layer.name) return;
     remember();
+    touchLayers();
     setLayers((held) => held.map((one) => (one.id === layer.id ? { ...one, name: called } : one)));
   };
-  /** The layers shown flattened into the picture, as one version. */
+  /** The layers shown flattened into the picture, as one version: the one thing that merges them. */
   async function flattenLayers(): Promise<void> {
     const drawn = layers.length === 0 ? null : pictureCanvas();
-    if (drawn !== null) await keepChange(drawn, t('Layers flattened'));
+    if (drawn !== null) await keepChange({ base: drawn, baseVisible: true, layers: [] }, t('Layers flattened'), true);
   }
   /**
-   * The picture as a model is to be handed it: with the layers flattened into
-   * it first, as a version, where there are any. Throws where it could not be kept.
+   * The picture as a model is to be handed it: what is on the page kept as a
+   * version first, where the layers were changed since they were. The version
+   * keeps them, and the model's change comes back as a layer over them.
+   * Throws where it could not be kept.
    */
   async function asSeen(): Promise<Artifact | null> {
-    if (picture === null || layers.length === 0) return picture;
-    const drawn = pictureCanvas();
-    return drawn === null ? null : keepNow(drawn, t('Layers flattened'));
+    if (picture === null || (!layersDirty && strokes.length === 0)) return picture;
+    const base = paintedBase();
+    return base === null ? null : keepNow({ base, baseVisible, layers }, t('Layers changed'), false);
   }
 
   /**
-   * Keeps a change worked out here, and shows it; throws where it could not be
-   * kept. A change made from what is on the screen has the layers in it, and
-   * they go; one made to the picture alone leaves them over it.
+   * What one version is kept as: the picture's own pixels, whether they are
+   * shown, and the layers over them, the first lowest. Without layers - and
+   * with the picture shown - it is the picture alone, kept flat.
    */
-  async function keepNow(drawn: HTMLCanvasElement, change: string, layersIn = true): Promise<Artifact | null> {
+  type Stack = { base: HTMLCanvasElement; baseVisible: boolean; layers: Layer[] };
+
+  /**
+   * Keeps a change worked out here, and shows it; throws where it could not be
+   * kept. The version's file is the stack flattened, which is what everything
+   * else reads, and the layers are kept beside it. [restacked] says the change
+   * made the layers what [stack] holds - a turn, a crop, Flatten - rather than
+   * leaving them as they are on the page.
+   */
+  async function keepNow(stack: Stack, change: string, restacked: boolean): Promise<Artifact | null> {
     if (picture === null) return null;
-    const kept = await keepDesignImageChange({ workspaceId, imageId: picture.id, image: drawn.toDataURL('image/png'), change });
+    const edit = layerEdits.current;
+    const layered = stack.layers.length > 0 || !stack.baseVisible;
+    const image = layered
+      ? flattened(stack.base.width, stack.base.height, stack.baseVisible ? stack.base : null, stack.layers).toDataURL('image/png')
+      : stack.base.toDataURL('image/png');
+    const baseImage = layered ? stack.base.toDataURL('image/png') : null;
+    const kept = await keepDesignImageChange({
+      workspaceId,
+      imageId: picture.id,
+      image,
+      change,
+      layers:
+        baseImage === null
+          ? undefined
+          : [
+              { name: null, visible: stack.baseVisible, picture: true, image: baseImage },
+              ...stack.layers.map((one) => ({ name: one.name, visible: one.visible, picture: false, image: one.pixels.toDataURL('image/png') })),
+            ],
+    });
     // The state it replaces goes on the stack, strokes not yet kept included: undo goes back to them.
     remember();
     setStrokes([]);
-    if (layersIn) {
-      setLayers([]);
-      setLayerId(PICTURE_LAYER);
-      setBaseVisible(true);
+    setBaseUrl(baseImage);
+    if (restacked) {
+      setLayers(stack.layers);
+      setBaseVisible(stack.baseVisible);
+      if (!stack.layers.some((one) => one.id === layerId)) setLayerId(PICTURE_LAYER);
     }
+    // Kept as they are, unless they were changed again while this was on its way.
+    if (layerEdits.current === edit) setLayersDirty(false);
     setMade((held) => [{ job: kept }, ...held]);
     forget();
-    if (kept.image !== null) show({ kind: 'picture', picture: kept.image });
+    if (kept.image !== null) {
+      layersFor.current = kept.image.id;
+      show({ kind: 'picture', picture: kept.image });
+    }
     return kept.image;
   }
 
@@ -932,12 +1067,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * Save writes and Discard throws away, and a step undo goes back over, as a
    * model's change is. Answers the version, or null where it could not be kept.
    */
-  async function keepChange(drawn: HTMLCanvasElement, change: string, layersIn = true): Promise<Artifact | null> {
+  async function keepChange(stack: Stack, change: string, restacked: boolean): Promise<Artifact | null> {
     if (picture === null || busy) return null;
     setBusy(true);
     setError(null);
     try {
-      return await keepNow(drawn, change, layersIn);
+      return await keepNow(stack, change, restacked);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not keep the change.'));
       return null;
@@ -946,15 +1081,21 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
   }
 
-  /** A quarter turn, or a mirror image: done at once, as a version of the picture. */
-  const turn = (way: 'left' | 'right') => {
-    const drawn = pictureCanvas();
-    if (drawn !== null) void keepChange(rotated(drawn, way), way === 'left' ? t('Rotated left') : t('Rotated right'));
+  /** Every layer of the picture, its own pixels included, changed alike - a turn, a mirror image, a crop - and kept. */
+  const everyLayer = (change: (pixels: HTMLCanvasElement) => HTMLCanvasElement, said: string) => {
+    const base = paintedBase();
+    if (base === null) return Promise.resolve(null);
+    return keepChange(
+      { base: change(base), baseVisible, layers: layers.map((one) => ({ ...one, pixels: change(one.pixels) })) },
+      said,
+      true,
+    );
   };
-  const mirror = (axis: 'horizontal' | 'vertical') => {
-    const drawn = pictureCanvas();
-    if (drawn !== null) void keepChange(mirrored(drawn, axis), axis === 'horizontal' ? t('Flipped horizontally') : t('Flipped vertically'));
-  };
+
+  /** A quarter turn, or a mirror image: done at once to every layer, as a version of the picture. */
+  const turn = (way: 'left' | 'right') => void everyLayer((pixels) => rotated(pixels, way), way === 'left' ? t('Rotated left') : t('Rotated right'));
+  const mirror = (axis: 'horizontal' | 'vertical') =>
+    void everyLayer((pixels) => mirrored(pixels, axis), axis === 'horizontal' ? t('Flipped horizontally') : t('Flipped vertically'));
 
   /*
    * The brush: strokes painted over the picture, drawn on the screen as they
@@ -967,8 +1108,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [brushSize, setBrushSize] = useState<number | null>(null);
   const [brushMost, setBrushMost] = useState<number | null>(null);
   const [brushColour, setBrushColour] = useState('#000000');
-  /** What has been done on the page and not yet kept: strokes painted on the picture, layers over it. */
-  const pending = strokes.length > 0 || layers.length > 0;
+  /** What has been done on the page and not yet kept: strokes painted on the picture, layers changed. */
+  const pending = strokes.length > 0 || layersDirty;
   const startStroke = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (tool !== 'brush' || event.button !== 0 || brushSize === null) return;
     const at = onPicture(event);
@@ -991,10 +1132,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
     setStroking(null);
   };
-  /** What the brush painted on the picture, kept as a version of it; the layers over it stay. */
+  /** What the brush painted on the picture, kept as a version of it; the layers over it stay, and are kept with it. */
   async function applyPaint(): Promise<void> {
-    const drawn = strokes.length === 0 ? null : baseCanvas();
-    if (drawn !== null) await keepChange(painted(drawn, strokes), t('Painted with the brush'), false);
+    const base = strokes.length === 0 ? null : paintedBase();
+    if (base !== null) await keepChange({ base, baseVisible, layers }, t('Painted with the brush'), false);
   }
 
   /*
@@ -1042,7 +1183,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         : falloff > 0
           ? tf('Blurred, {radius} px, edge softened {falloff} px', { radius: blurRadius, falloff })
           : tf('Blurred, {radius} px', { radius: blurRadius });
-    void keepChange(blurred, said, false);
+    void keepChange({ base: blurred, baseVisible, layers }, said, false);
   }
   /** A gradual blur's line end taken in hand, to be dragged where it should be. */
   const takeLineEnd = (event: ReactPointerEvent<SVGCircleElement>, end: 0 | 1) => {
@@ -1060,12 +1201,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   /** The box a crop selection keeps, in the picture's whole pixels; null with nothing selected to crop to. */
   const cropBox = tool === 'crop' && selection !== null && natural !== null ? boxOf(selection, natural.width, natural.height) : null;
-  /** The picture made what is inside the crop's box; the tool is put down once it is kept. */
+  /** The picture made what is inside the crop's box, every layer with it; the tool is put down once it is kept. */
   function applyCrop() {
-    const drawn = pictureCanvas();
-    if (drawn === null || selection === null || tool !== 'crop') return;
-    const box = boxOf(selection, drawn.width, drawn.height);
-    void keepChange(cropped(drawn, box), tf('Cropped to {width}×{height}', { width: box.width, height: box.height })).then((kept) => {
+    if (selection === null || tool !== 'crop' || natural === null) return;
+    const box = boxOf(selection, natural.width, natural.height);
+    void everyLayer((pixels) => cropped(pixels, box), tf('Cropped to {width}×{height}', { width: box.width, height: box.height })).then((kept) => {
       if (kept !== null) setTool(null);
     });
   }
@@ -1211,10 +1351,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setBusy(true);
     setError(null);
     try {
-      // What the brush painted and the layers shown are kept first, flattened, and saved with the rest.
-      const painting = pending ? pictureCanvas() : null;
-      const said = layers.length > 0 ? t('Layers flattened') : t('Painted with the brush');
-      const current = (painting === null ? null : await keepNow(painting, said)) ?? picture;
+      // What the brush painted and the layers as they are now are kept first - the layers as layers - and saved with the rest.
+      const current = (await keepPending()) ?? picture;
       let kept = current;
       if (current.versionOf != null) {
         const of = current.versionOf;
@@ -1226,6 +1364,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       }
       if (pendingName !== null) kept = await renameDesignImage(workspaceId, kept.id, pendingName);
       setPendingName(null);
+      // The picture took the version's layers with it, and the page holds them already.
+      layersFor.current = kept.id;
       setShown({ kind: 'picture', picture: kept });
       return true;
     } catch (cause) {
@@ -1236,24 +1376,36 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
   }
 
+  /** What is on the page and not yet kept, kept as a version: strokes on the picture, layers changed. Null where there is none. */
+  async function keepPending(): Promise<Artifact | null> {
+    if (!pending) return null;
+    const base = paintedBase();
+    if (base === null) return null;
+    return keepNow({ base, baseVisible, layers }, layersDirty ? t('Layers changed') : t('Painted with the brush'), false);
+  }
+
   /**
    * The changes made here saved as a picture of its own, and the picture they
    * were made to left as it was saved - its unsaved changes thrown away. The
    * editor then goes on with the copy.
    */
   async function saveAsCopy(): Promise<void> {
-    if (picture === null || picture.versionOf == null || busy) return;
-    const of = picture.versionOf;
+    if (picture === null || (picture.versionOf == null && !pending) || busy) return;
     setBusy(true);
     setError(null);
     try {
-      let copy = await saveDesignImageVersion(workspaceId, picture.id, true);
+      const current = (await keepPending()) ?? picture;
+      const of = current.versionOf;
+      if (of == null) return;
+      let copy = await saveDesignImageVersion(workspaceId, current.id, true);
       if (pendingName !== null) copy = await renameDesignImage(workspaceId, copy.id, pendingName);
       setPendingName(null);
       setMade((held) => held.filter((one) => one.job.image?.versionOf !== of));
       setPast([]);
       setFuture([]);
       const to = `/workspace/${workspaceId}/design/images/${copy.id}/edit`;
+      // The copy is the version itself, layers and all, which the page holds already.
+      layersFor.current = copy.id;
       setShown({ kind: 'picture', picture: copy });
       // With a rename held, the leave guard holds a spare history entry: moved to once it has stepped off it,
       // or that step lands back on the original. Without one there is nothing to wait for.
@@ -1297,13 +1449,14 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   async function discard() {
     if (busy) return;
-    // Strokes and layers not yet kept go first: they are the newest thing on the page.
+    // Strokes and layer changes not yet kept go first: they are the newest thing on the page. The layers go back to how they were kept.
     if (pending) {
       remember();
       setStrokes([]);
-      setLayers([]);
-      setLayerId(PICTURE_LAYER);
-      setBaseVisible(true);
+      if (layersDirty && picture !== null) {
+        layerEdits.current += 1;
+        void readLayers(picture, false);
+      }
       return;
     }
     if (pendingName !== null) {
@@ -1807,7 +1960,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             type="button"
             className={`${form.ghost} ${styles.toolbarButton}`}
             onClick={() => void saveAsCopy()}
-            disabled={picture?.versionOf == null || busy}
+            disabled={(picture?.versionOf == null && !pending) || busy}
             title={t('Saves the changes as a new picture and leaves this one as it was')}
             data-testid="editor-save-copy"
           >
@@ -2078,7 +2231,14 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             <div className={styles.layersPanel} role="group" aria-label={t('Layers')} data-testid="layers-panel">
               <div className={styles.layersHead}>
                 <span>{t('Layers')}</span>
-                <button type="button" className={form.ghost} onClick={newLayer} disabled={natural === null} data-testid="layers-new">
+                <button
+                  type="button"
+                  className={form.ghost}
+                  onClick={newLayer}
+                  disabled={natural === null || (layersMost !== null && layers.length >= layersMost)}
+                  title={layersMost !== null && layers.length >= layersMost ? tf('At most {count} layers', { count: layersMost }) : undefined}
+                  data-testid="layers-new"
+                >
                   {t('New layer')}
                 </button>
                 <button type="button" className={form.ghost} onClick={() => void flattenLayers()} disabled={layers.length === 0 || busy} data-testid="layers-flatten">
@@ -2126,6 +2286,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                           }}
                           onClick={(event) => event.stopPropagation()}
                           aria-label={t('Name')}
+                          maxLength={255}
                           autoFocus
                           data-testid="layer-name-input"
                         />
@@ -2214,7 +2375,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 data-testid="layer-base"
               >
                 <div className={styles.layerTop}>
-                  <img src={picture.url} alt="" className={styles.layerThumb} />
+                  <img src={baseUrl ?? picture.url} alt="" className={styles.layerThumb} />
                   <span className={styles.layerName}>{t('Picture')}</span>
                   <button
                     type="button"
@@ -2372,7 +2533,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               <div className={styles.pictureFrame}>
                 <img
                   ref={pictureRef}
-                  src={picture.url}
+                  src={baseUrl ?? picture.url}
                   alt={picture.prompt}
                   className={`${zoom === null ? styles.picture : styles.pictureZoomed} ${baseVisible ? '' : styles.pictureHidden}`}
                   style={
