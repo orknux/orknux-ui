@@ -1,0 +1,134 @@
+/* Design's Videos page and its editor: what the image pages do not already draw. */
+
+/* A card's thumbnail is a button, which opens the video in the editor. */
+.thumbHolder {
+  cursor: pointer;
+}
+
+/* A video's poster, or its first frame, at the gallery's own crop. */
+.thumbVideo {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: var(--color-surface-raised);
+}
+
+/* Where a video still on its way, failed or stopped stands in for its poster. */
+.thumbState {
+  display: grid;
+  place-items: center;
+  gap: var(--space-8);
+  height: 220px;
+  padding: var(--space-12);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.thumbFailed {
+  color: var(--color-danger);
+}
+
+/* The one thing in the editor's canvas: the video, as large as the canvas lets it be. */
+.player {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-6);
+}
+
+/* The wait, said under its mark, with how far along. */
+.making {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-16);
+  width: min(480px, 100%);
+  color: var(--color-text-secondary);
+}
+
+.making [role='status'] {
+  gap: var(--space-16);
+  font-size: 20px;
+}
+
+.bar {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-4);
+  background: var(--color-surface-raised);
+}
+
+.barFill {
+  height: 100%;
+  background: var(--color-violet);
+  transition: width 0.4s ease;
+}
+
+/* The picture a video starts from, small, above the wait. */
+.startShown {
+  max-width: 240px;
+  max-height: 160px;
+  border-radius: var(--radius-6);
+  opacity: 0.6;
+}
+
+/* The picture chosen to start from, and what changes or clears it. */
+.start {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.startThumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-surface-raised);
+}
+
+.startActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* The workspace's pictures to start from: a grid under the field, scrolled within itself. */
+.pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: var(--space-6);
+  max-height: 240px;
+  margin-top: var(--space-8);
+  overflow-y: auto;
+}
+
+.pictureChoice {
+  padding: 0;
+  overflow: hidden;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.pictureChoice img {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+}
+
+.pictureChoice[aria-pressed='true'] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.download {
+  text-decoration: none;
+}

@@ -39,7 +39,7 @@ import { Select } from './Select';
  */
 
 /** What a model may be switched to here: the kinds a model is made as. A model already of another kind keeps it on the list. */
-const MAKEABLE_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE'];
+const MAKEABLE_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE', 'VIDEO'];
 
 const RESET_INTERVALS: ResetInterval[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'NEVER'];
 
@@ -260,6 +260,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
    * mistyped price permanent.
    */
   const draws = model?.kind === 'IMAGE';
+  /** A video model reads no window and reports no tokens: neither card is drawn, and their values go back as stored. */
+  const makesVideo = model?.kind === 'VIDEO';
 
   /**
    * A speech model reads in a voice, and this is where it is changed.
@@ -330,10 +332,10 @@ export function useModelForm(workspaceId: string, modelId: string) {
         topK: sampled('topK', topK, model.topK),
         minP: sampled('minP', minP, model.minP),
         repeatPenalty: sampled('repeatPenalty', repeatPenalty, model.repeatPenalty),
-        inputCostPerMillion: draws ? model.inputCostPerMillion : toNumber(inputCost),
-        outputCostPerMillion: draws ? model.outputCostPerMillion : toNumber(outputCost),
-        cachedInputCostPerMillion: draws ? model.cachedInputCostPerMillion : toNumber(cachedCost),
-        cacheWriteCostPerMillion: draws ? model.cacheWriteCostPerMillion : toNumber(writeCost),
+        inputCostPerMillion: draws || makesVideo ? model.inputCostPerMillion : toNumber(inputCost),
+        outputCostPerMillion: draws || makesVideo ? model.outputCostPerMillion : toNumber(outputCost),
+        cachedInputCostPerMillion: draws || makesVideo ? model.cachedInputCostPerMillion : toNumber(cachedCost),
+        cacheWriteCostPerMillion: draws || makesVideo ? model.cacheWriteCostPerMillion : toNumber(writeCost),
         voice: reads ? (voice.trim() === '' ? null : voice.trim()) : model.voice,
         skipEmptyLines: reads ? skipEmptyLines : model.skipEmptyLines,
         // Sent back whatever it was, for the reason above: a field this form
@@ -389,6 +391,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     save,
     toggle,
     draws,
+    makesVideo,
     reads,
     offered,
     effortChoices,
@@ -547,7 +550,7 @@ export function ModelDetailsFields({ form }: SectionProps) {
  */
 export function ModelWindowFields({ form }: SectionProps) {
   const { draws, reads, offered, effortChoices, fields } = form;
-  if (form.model === null) return null;
+  if (form.model === null || form.makesVideo) return null;
   return (
     <div className={styles.fieldRow}>
       {draws ? (
@@ -961,7 +964,7 @@ export function ModelThrottleFields({ form }: SectionProps) {
  */
 export function ModelPriceFields({ form }: SectionProps) {
   const { draws, fields } = form;
-  if (form.model === null || draws) return null;
+  if (form.model === null || draws || form.makesVideo) return null;
   return (
     <div className={styles.fieldRow}>
       <MoneyField

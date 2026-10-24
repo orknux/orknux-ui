@@ -5,6 +5,7 @@ import bellIcon from './assets/bell.svg';
 import bookIcon from './assets/book.svg';
 import botIcon from './assets/bot.svg';
 import boxIcon from './assets/box.svg';
+import filmIcon from './assets/film.svg';
 import imageIcon from './assets/image.svg';
 import chartColumnIcon from './assets/chart-column.svg';
 import chartLineIcon from './assets/chart-line.svg';
@@ -366,6 +367,14 @@ export const PAGES = [
    */
   { path: '/workspace/:workspaceId/design/images/new', access: 'signed-in', goTo: false },
   { path: '/workspace/:workspaceId/design/images/:artifactId/edit', access: 'signed-in', goTo: false },
+  {
+    path: '/workspace/:workspaceId/design/videos',
+    access: 'signed-in',
+    goTo: { label: t('Videos'), where: 'Design', icon: filmIcon, also: 'video movie generated design' },
+  },
+  /* The video editor: a new video, or one asked for already, which it follows until it is made. */
+  { path: '/workspace/:workspaceId/design/videos/new', access: 'signed-in', goTo: false },
+  { path: '/workspace/:workspaceId/design/videos/:videoId', access: 'signed-in', goTo: false },
 
   // ---- Workspace: what the whole of it is set up with ----
   {

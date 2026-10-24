@@ -35,6 +35,8 @@ import { ExecutionDetailPage } from './pages/workspace/ExecutionDetailPage';
 import { WorkspaceArtifactsPage } from './pages/workspace/WorkspaceArtifactsPage';
 import { DesignImagesPage } from './pages/design/DesignImagesPage';
 import { DesignImageEditorRoute } from './pages/design/DesignImageEditorPage';
+import { DesignVideosPage } from './pages/design/DesignVideosPage';
+import { DesignVideoEditorRoute } from './pages/design/DesignVideoEditorPage';
 import { ExecutionsPage } from './pages/workspace/ExecutionsPage';
 import { FunctionEditorPage } from './pages/workspace/FunctionEditorPage';
 import { McpServerSettingsPage } from './pages/workspace/McpServerSettingsPage';
@@ -106,6 +108,9 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   // One instance across the editor's own moves between these two, renewed where somebody arrives at New; see DesignImageEditorRoute.
   '/workspace/:workspaceId/design/images/new': (session, onSignOut) => <DesignImageEditorRoute session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId/edit': (session, onSignOut) => <DesignImageEditorRoute session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/videos': (session, onSignOut) => <DesignVideosPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/videos/new': (session, onSignOut) => <DesignVideoEditorRoute session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/videos/:videoId': (session, onSignOut) => <DesignVideoEditorRoute session={session} onSignOut={onSignOut} />,
   /*
    * The same page, opened at one artifact.
    *

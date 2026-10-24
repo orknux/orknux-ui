@@ -35,7 +35,7 @@ export interface ModelDialogProps {
  * checked and counted against a quota it would never spend. They stay in the type and
  * the labels for anything registered while they were on offer.
  */
-const MODEL_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE', 'UPSCALE', 'DECISION'];
+const MODEL_KINDS: ModelKind[] = ['CHAT', 'TRANSCRIPTION', 'SPEECH', 'IMAGE', 'VIDEO', 'UPSCALE', 'DECISION'];
 
 /**
  * A name worth showing, from an id that may not be one.
@@ -119,6 +119,8 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
    * maximum output or a price per million tokens: it is billed per picture.
    */
   const draws = kind === 'IMAGE';
+  /** A video model is billed per video and reports no tokens either, so it has no token prices or window. */
+  const makesVideo = kind === 'VIDEO';
 
   /**
    * The providers a model of this kind can hang off. A decision model is only
@@ -282,9 +284,9 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
           // An image model is billed per picture and reports no tokens, so the
           // two per-million prices are not offered for one and nothing is sent
           // for them. Sent, they would cost every picture at nought.
-          inputCostPerMillion: draws ? null : optionalNumber(inputCost),
-          outputCostPerMillion: draws ? null : optionalNumber(outputCost),
-          cachedInputCostPerMillion: draws ? null : optionalNumber(cachedCost),
+          inputCostPerMillion: draws || makesVideo ? null : optionalNumber(inputCost),
+          outputCostPerMillion: draws || makesVideo ? null : optionalNumber(outputCost),
+          cachedInputCostPerMillion: draws || makesVideo ? null : optionalNumber(cachedCost),
           // Only meaningful on a speech model, and blank means "the provider's
           // own" rather than a name this would have to invent.
           voice: kind === 'SPEECH' ? (voice.trim() === '' ? null : voice.trim()) : null,
@@ -453,6 +455,12 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
                   reader usually takes the name of the voice pack it loaded.
                 </FieldHint>
               )}
+              {makesVideo && (
+                <FieldHint label={t('Model ID')}>
+                  Whatever the video server calls the model — <code>sora-2</code> at OpenAI. stable-diffusion.cpp
+                  makes video with the model it has loaded, whatever is typed here.
+                </FieldHint>
+              )}
               {draws && (
                 <FieldHint label={t('Model ID')}>
                   Whatever draws — <code>gpt-image-1</code> or <code>dall-e-3</code> at OpenAI, and
@@ -577,7 +585,7 @@ export function ModelDialog({ open, workspaceId, providers, onClose, onCreated }
             </div>
           )}
 
-          {!draws && (
+          {!draws && !makesVideo && (
           <>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="model-context">{t('Context Window')}</label>

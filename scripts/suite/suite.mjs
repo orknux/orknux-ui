@@ -2027,6 +2027,17 @@ export const TESTS = [
     /* Answers the picture and the models itself. */
   },
   {
+    name: 'design-videos-check',
+    what: "Design's Videos page lists, Convert to video opens the editor near-full-screen with the picture, and a video made there plays",
+    needs: ['workspace'],
+    /*
+     * Issue #658. Answers the videos, the model's settings and the pictures
+     * itself, and serves a WebM it records in the page, so "plays" is a frame
+     * decoded and a clock that moved. The server half - each backend's request,
+     * the polling and the file kept - is DesignVideoAPITest, on both engines.
+     */
+  },
+  {
     name: 'run-step-parameters-check',
     what: "a run's step lists what it was handed for its parameters, above its input",
     needs: ['workspace'],

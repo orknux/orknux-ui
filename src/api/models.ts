@@ -15,7 +15,7 @@ export type ProviderAuthMethod = 'API_KEY' | 'ENTRA_ID';
 export type ChatApi = 'RESPONSES' | 'CHAT_COMPLETIONS';
 /** CONNECTED only once a check reached the provider: a stored key is not a working one. */
 export type ProviderStatus = 'NOT_CONFIGURED' | 'NOT_CHECKED' | 'CONNECTED' | 'FAILED';
-export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE' | 'DECISION' | 'UPSCALE';
+export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 'SPEECH' | 'IMAGE' | 'DECISION' | 'UPSCALE' | 'VIDEO';
 
 /**
  * The kinds that do not answer a prompt.
@@ -25,7 +25,7 @@ export type ModelKind = 'CHAT' | 'EMBEDDING' | 'COMPLETION' | 'TRANSCRIPTION' | 
  * makes a conversation that cannot reply. Listed once so a sixth kind does not
  * have to be remembered in five places.
  */
-export const VOICE_KINDS: ModelKind[] = ['TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION', 'UPSCALE'];
+export const VOICE_KINDS: ModelKind[] = ['TRANSCRIPTION', 'SPEECH', 'IMAGE', 'DECISION', 'UPSCALE', 'VIDEO'];
 
 /**
  * Whether a provider of this type can hold a model of this kind - the pairings
@@ -615,6 +615,8 @@ export function modelKindLabel(kind: ModelKind): string {
       return t('Decision');
     case 'UPSCALE':
       return t('Upscale');
+    case 'VIDEO':
+      return t('Video');
   }
 }
 

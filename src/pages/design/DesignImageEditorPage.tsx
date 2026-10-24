@@ -55,6 +55,7 @@ import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
+import { useVideoFromPicture, videoFromPicturePath } from './useVideoFromPicture';
 
 export interface DesignImageEditorPageProps {
   session: SessionUser;
@@ -178,6 +179,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    */
   const harmonizers = upscalers;
   const noHarmonizer = models !== null && harmonizers.length === 0;
+  /** Only where a video model here starts from a picture; otherwise the button leads nowhere. */
+  const videoFromPicture = useVideoFromPicture(workspaceId);
   const [exporting, setExporting] = useState(false);
   /** A file being dragged over the canvas, which a drop opens here. */
   const [dropping, setDropping] = useState(false);
@@ -1117,6 +1120,22 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               </span>
             )}
           </span>
+          {videoFromPicture && (
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.toolbarButton}`}
+              onClick={() => {
+                if (picture === null) return;
+                const to = videoFromPicturePath(workspaceId, picture.id);
+                if (!askBeforeLeaving(to)) navigate(to);
+              }}
+              disabled={picture === null || busy}
+              title={t('Make a video that starts from this picture')}
+              data-testid="editor-to-video"
+            >
+              {t('Convert to video')}
+            </button>
+          )}
           <span className={styles.toolbarGap} aria-hidden="true" />
           <button
             type="button"
