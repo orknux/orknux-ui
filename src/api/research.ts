@@ -50,6 +50,10 @@ export interface Research {
   executionId: string | null;
   /** The report in markdown, once it is finished. Only the one opened asks for it. */
   result?: string | null;
+  /** Where it has got to; null before it has begun. */
+  progress: ResearchProgress | null;
+  /** What it read, numbered as the report cites them. */
+  sources: ResearchSource[];
   fileName: string | null;
   fileUrl: string | null;
   previewUrl: string | null;
@@ -57,6 +61,26 @@ export interface Research {
   startedBy: string;
   startedAt: string;
   finishedAt: string | null;
+}
+
+/** Where a research has got to, as the pipeline last said. */
+export interface ResearchProgress {
+  step: string;
+  subQuestions: string[];
+  searched: string[];
+  /** How many levels down; 1 is the plan's own questions. */
+  level: number;
+  sourcesRead: number;
+}
+
+/** One source a research read. */
+export interface ResearchSource {
+  number: number;
+  title: string;
+  url: string;
+  kind: 'WEB' | 'DOCUMENT';
+  /** What was learnt from it. Only the one opened asks for it. */
+  notes?: string;
 }
 
 export interface StartResearchInput {
@@ -77,7 +101,8 @@ const MODE_FIELDS = 'id kind name workflowId workflowName';
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude status executionId ' +
-  'fileName fileUrl previewUrl error startedBy startedAt finishedAt';
+  'fileName fileUrl previewUrl error startedBy startedAt finishedAt ' +
+  'progress { step subQuestions searched level sourcesRead } sources { number title url kind }';
 
 export async function fetchResearchModes(workspaceId: string): Promise<ResearchMode[]> {
   const data = await graphql<{ researchModes: ResearchMode[] }>(
@@ -103,7 +128,7 @@ export async function fetchResearches(workspaceId: string, page: number, size: n
 /** One research, with its report. */
 export async function fetchResearch(id: string): Promise<Research | null> {
   const data = await graphql<{ research: Research | null }>(
-    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result } }`,
+    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result sources { number notes } } }`,
     { id },
   );
   return data.research;

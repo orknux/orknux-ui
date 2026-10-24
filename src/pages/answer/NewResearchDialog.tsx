@@ -217,7 +217,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
                   value={modelId}
                   models={models}
                   onChange={setModelId}
-                  none={t('Agent’s own')}
+                  none={t('Set in the mode')}
                   workspaceId={workspaceId}
                 />
               </div>

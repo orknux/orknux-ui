@@ -2083,6 +2083,12 @@ export const TESTS = [
      */
   },
   {
+    name: 'research-progress-check',
+    what: 'a research shows its step, sub-questions and sources while it runs, and keeps the sources with its report',
+    needs: ['workspace'],
+    /* Answers the research itself, running and then finished; the pipeline is the server suite's. */
+  },
+  {
     name: 'workflows-hidden-check',
     what: 'the research workflows are off the Workflows list until Show hidden is ticked, and open in the editor once shown',
     needs: ['workspace'],

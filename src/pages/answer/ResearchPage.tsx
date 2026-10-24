@@ -20,7 +20,7 @@ import table from '../workspace/CatalogueTable.module.css';
 import { NewResearchDialog } from './NewResearchDialog';
 import { languageLabel, seededLabel, statusLabel } from './researchLabels';
 import styles from './ResearchPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface ResearchPageProps {
   session: SessionUser;
@@ -139,7 +139,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
               {one.question}
             </Link>
             <span className={styles.colMode}>{seededLabel(one.modeName)}</span>
-            <span className={`${styles.colModel} ${styles.muted}`}>{one.modelName ?? t('Agent’s own')}</span>
+            <span className={`${styles.colModel} ${styles.muted}`}>{one.modelName ?? t('Set in the mode')}</span>
             <span className={styles.colStatus}>
               <span className={`${styles.status} ${STATUS_CLASS[one.status]}`} title={one.error ?? undefined}>
                 {statusLabel(one.status)}
@@ -153,6 +153,10 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
                 <Link to={`/workspace/${workspaceId}/answer/research/${one.id}`}>
                   {one.outputFormat === 'PDF' ? t('PDF') : t('Document')}
                 </Link>
+              ) : one.status === 'RUNNING' && one.progress !== null ? (
+                <span className={styles.muted} title={one.progress.step} data-row-progress>
+                  {tf('{count} sources', { count: one.progress.sourcesRead })}
+                </span>
               ) : one.executionId !== null ? (
                 <Link to={`/workspace/${workspaceId}/executions/${one.executionId}`}>{t('Run')}</Link>
               ) : (
@@ -229,7 +233,7 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
         <dt>{t('Mode')}</dt>
         <dd>{seededLabel(research.modeName)}</dd>
         <dt>{t('Model')}</dt>
-        <dd>{research.modelName ?? t('Agent’s own')}</dd>
+        <dd>{research.modelName ?? t('Set in the mode')}</dd>
         <dt>{t('Language')}</dt>
         <dd>{languageLabel(research.language)}</dd>
         <dt>{t('Status')}</dt>
@@ -270,7 +274,47 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
 
       {research.error !== null && <p className={styles.errorLine} role="alert">{research.error}</p>}
 
-      {research.status === 'RUNNING' && <p className={styles.notice}><Loader /></p>}
+      {research.progress !== null && (
+        <div className={styles.progress} data-progress>
+          {research.status === 'RUNNING' && (
+            <p className={styles.step} data-step>
+              <Loader /> {research.progress.step}
+            </p>
+          )}
+          <dl className={styles.facts}>
+            <dt>{t('Level')}</dt>
+            <dd>{research.progress.level}</dd>
+            <dt>{t('Searches')}</dt>
+            <dd>{research.progress.searched.length}</dd>
+            <dt>{t('Sources read')}</dt>
+            <dd>{research.progress.sourcesRead}</dd>
+          </dl>
+          {research.progress.subQuestions.length > 0 && (
+            <>
+              <h3 className={styles.subheading}>{t('Sub-questions')}</h3>
+              <ol className={styles.subQuestions} data-sub-questions>
+                {research.progress.subQuestions.map((one) => (
+                  <li key={one}>{one}</li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+      )}
+
+      {research.sources.length > 0 && (
+        <>
+          <h3 className={styles.subheading}>{t('Sources')}</h3>
+          <ol className={styles.sources} data-sources>
+            {research.sources.map((source) => (
+              <li key={source.number} value={source.number} title={source.notes}>
+                <a href={source.url} target="_blank" rel="noreferrer noopener">{source.title}</a>
+                {source.kind === 'DOCUMENT' && <span className={styles.muted}> · {t('Document')}</span>}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
 
       {research.status === 'COMPLETED' && (
         <div className={styles.report}>
