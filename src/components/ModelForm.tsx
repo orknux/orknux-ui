@@ -110,6 +110,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
   /** Whether a sound attached to a chat is sent to this model; offered only where the provider carries one. */
   const [takesAudio, setTakesAudio] = useState(false);
   const [imageCost, setImageCost] = useState('');
+  /** What the model's pictures must not contain when a drawing names nothing; only where its provider takes one. */
+  const [negativePrompt, setNegativePrompt] = useState('');
   const [inputCost, setInputCost] = useState('');
   const [outputCost, setOutputCost] = useState('');
   const [cachedCost, setCachedCost] = useState('');
@@ -229,6 +231,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     setTakesVideo(found.takesVideo);
     setTakesAudio(found.takesAudio);
     setImageCost(found.imageCostPerImage === null ? '' : String(found.imageCostPerImage));
+    setNegativePrompt(found.negativePrompt ?? '');
     setInputCost(found.inputCostPerMillion === null ? '' : String(found.inputCostPerMillion));
     setOutputCost(found.outputCostPerMillion === null ? '' : String(found.outputCostPerMillion));
     setCachedCost(found.cachedInputCostPerMillion === null ? '' : String(found.cachedInputCostPerMillion));
@@ -269,6 +272,13 @@ export function useModelForm(workspaceId: string, modelId: string) {
    * delete the model and make it again.
    */
   const reads = model?.kind === 'SPEECH';
+  /**
+   * Whether the provider picked above draws with a negative prompt - the
+   * server says, per provider - so a model moved to one that does not stops
+   * offering it. The model's own answer stands while the list is on its way.
+   */
+  const takesNegative =
+    providers?.find((one) => one.id === providerId)?.takesNegativePrompt ?? model?.takesNegativePrompt ?? false;
   /** Whether the provider reads this setting for a chat model; only those are drawn and sent. */
   const offered = (setting: string): boolean =>
     kind === 'CHAT' && (chatParameters?.some((one) => one.name === setting) ?? false);
@@ -342,6 +352,8 @@ export function useModelForm(workspaceId: string, modelId: string) {
         // As stored until the provider's settings are known; off where it carries no video, which the server requires.
         takesVideo: chatParameters === null ? model.takesVideo : offered('takesVideo') ? takesVideo : false,
         takesAudio: chatParameters === null ? model.takesAudio : offered('takesAudio') ? takesAudio : false,
+        // Nothing where the provider takes none, which the server requires.
+        negativePrompt: takesNegative && negativePrompt.trim() !== '' ? negativePrompt.trim() : null,
         providerId,
       });
       await updateModelQuotas(model.id, {
@@ -371,7 +383,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     {
       name, modelIdDraft, kind, providerId, contextWindow, maxOutput, parallel, reasoningEffort,
       temperature, topP, topK, minP, repeatPenalty, voice, skipEmptyLines, takesVideo, takesAudio, imageCost, inputCost, outputCost, cachedCost, writeCost,
-      tokenLimit, resetInterval, requestsPerMinute, answerLimit, throttleTokens, throttleRequests, retryAfter,
+      negativePrompt, tokenLimit, resetInterval, requestsPerMinute, answerLimit, throttleTokens, throttleRequests, retryAfter,
     },
     [model],
   );
@@ -390,6 +402,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
     toggle,
     draws,
     reads,
+    takesNegative,
     offered,
     effortChoices,
     editableKinds,
@@ -413,6 +426,7 @@ export function useModelForm(workspaceId: string, modelId: string) {
       takesVideo, setTakesVideo,
       takesAudio, setTakesAudio,
       imageCost, setImageCost,
+      negativePrompt, setNegativePrompt,
       inputCost, setInputCost,
       outputCost, setOutputCost,
       cachedCost, setCachedCost,
@@ -546,7 +560,7 @@ export function ModelDetailsFields({ form }: SectionProps) {
  * wrong for all but one of them. Issue #252.
  */
 export function ModelWindowFields({ form }: SectionProps) {
-  const { draws, reads, offered, effortChoices, fields } = form;
+  const { draws, reads, takesNegative, offered, effortChoices, fields } = form;
   if (form.model === null) return null;
   return (
     <div className={styles.fieldRow}>
@@ -806,6 +820,23 @@ export function ModelWindowFields({ form }: SectionProps) {
               {t('A blank line is something the eye reads and the ear cannot, and readers differ on it: some pause far too long, some treat it as the end and clip what follows. Turn this on where yours does. It changes the text handed over, never where an answer is cut.')}
             </FieldHint>
           </span>
+        </div>
+      )}
+      {takesNegative && (
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="model-negative-prompt">{t('Default negative prompt')}</label>
+            <FieldHint label={t('Default negative prompt')}>
+              {t('What a picture this model draws must not contain, sent whenever a drawing names no negative prompt of its own.')}
+            </FieldHint>
+          </span>
+          <input
+            id="model-negative-prompt"
+            className={styles.input}
+            value={fields.negativePrompt}
+            onChange={(event) => fields.setNegativePrompt(event.target.value)}
+            data-testid="model-negative-prompt"
+          />
         </div>
       )}
     </div>

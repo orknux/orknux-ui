@@ -188,6 +188,8 @@ export interface DrawDesignImageInput {
   style: string | null;
   /** What to call it; empty names it after its prompt's first words. */
   name?: string | null;
+  /** What the picture must not contain; null takes the model's own. Only for a model that takes one. */
+  negativePrompt?: string | null;
 }
 
 export type DesignImageJobStatus = 'QUEUED' | 'DRAWING' | 'DRAWN' | 'FAILED' | 'STOPPED';
@@ -202,6 +204,8 @@ export interface DesignImageJob {
   size: string | null;
   quality: string | null;
   style: string | null;
+  /** What it was asked not to contain; null is none given. */
+  negativePrompt: string | null;
   requestedBy: string;
   requestedAt: string;
   startedAt: string | null;
@@ -221,7 +225,7 @@ export interface DesignImageJob {
   scale: number | null;
 }
 
-const JOB_FIELDS = `id status prompt modelId model size quality style requestedBy requestedAt startedAt reason ahead name sourceId upscaler scale image { ${ARTIFACT_FIELDS} }`;
+const JOB_FIELDS = `id status prompt modelId model size quality style negativePrompt requestedBy requestedAt startedAt reason ahead name sourceId upscaler scale image { ${ARTIFACT_FIELDS} }`;
 
 /** Queues a picture and answers at once; a refusal of what could never be drawn throws with its reason. */
 export async function queueDesignImage(input: DrawDesignImageInput): Promise<DesignImageJob> {

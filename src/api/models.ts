@@ -91,6 +91,8 @@ export interface ModelProvider {
   editMask: EditMask | null;
   /** Whether it does, the default resolved: on for Ollama unless set. */
   offersAllTools: boolean;
+  /** Whether its models draw with a negative prompt; where they do not, none is offered. Issue #657. */
+  takesNegativePrompt: boolean;
   /** The most tools one request carries, as set; null is what the type takes. */
   maxTools: number | null;
   /** How many that is, the default resolved. */
@@ -191,6 +193,10 @@ export interface Model {
    * asked; only a provider whose chat parameters list `takesAudio` offers it.
    */
   takesAudio: boolean;
+  /** What its pictures must not contain, sent when a drawing names none; null is none. Issue #657. */
+  negativePrompt: string | null;
+  /** Whether its provider draws with a negative prompt; where it does not, none is offered. */
+  takesNegativePrompt: boolean;
 }
 
 /** A model the provider says it can run; `added` when the catalogue has it already. */
@@ -235,14 +241,14 @@ export interface ModelUsage {
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
   'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi sendsReasoning ' +
-  'offerAllTools offersAllTools maxTools toolCap editMask ' +
+  'offerAllTools offersAllTools takesNegativePrompt maxTools toolCap editMask ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 export const MODEL_FIELDS =
   'id providerId workspaceId providerName name modelId kind contextWindow maxOutput parallelToolCalls reasoningEffort temperature topP topK minP repeatPenalty enabled ' +
   'tokenLimit resetInterval requestsPerMinute answerLimitMinutes answerLimitMinutesInherited throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter ' +
   'inputCostPerMillion outputCostPerMillion cachedInputCostPerMillion cacheWriteCostPerMillion voice skipEmptyLines ' +
-  'imageCostPerImage takesVideo takesAudio';
+  'imageCostPerImage takesVideo takesAudio negativePrompt takesNegativePrompt';
 const USAGE_FIELDS =
   'modelId days from to empty requests inputTokens outputTokens cachedInputTokens totalTokens averageLatencyMillis ' +
   'costEstimate requestsChange tokensChange latencyChange periodStart periodTokens ' +
@@ -478,6 +484,8 @@ export interface ModelDetailsInput {
   takesVideo?: boolean;
   /** Whether a sound attached to a chat is sent to it; left out, it stays as it is. */
   takesAudio?: boolean;
+  /** What its pictures must not contain, by default; refused where the provider takes no negative prompt. */
+  negativePrompt?: string | null;
   /** The provider to move it to, in the same workspace; left out, it stays where it is. */
   providerId?: string;
 }

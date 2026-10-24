@@ -3296,4 +3296,9 @@ export const PL: Record<string, string> = {
   // Sound in the chat.
   "Takes audio": "Przyjmuje dźwięk",
   "Send an mp3, wav or flac attached in a chat to this model itself; off, a message with one is refused.": "Wysyłaj temu modelowi sam plik mp3, wav lub flac dołączony w czacie; wyłączone, wiadomość z takim plikiem zostaje odrzucona.",
+  // Negative prompts, issue #657.
+  "Negative prompt": "Prompt negatywny",
+  "What the picture must not contain": "Czego obraz nie może zawierać",
+  "Default negative prompt": "Domyślny prompt negatywny",
+  "What a picture this model draws must not contain, sent whenever a drawing names no negative prompt of its own.": "Czego nie może zawierać obraz rysowany przez ten model; wysyłane, gdy rysunek nie ma własnego promptu negatywnego.",
 };
