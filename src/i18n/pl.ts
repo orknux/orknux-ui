@@ -247,6 +247,7 @@ export const PL: Record<string, string> = {
   "Language": "Język",
   "Interface Theme": "Motyw interfejsu",
   "Accent Colour": "Kolor akcentu",
+  "Answered in {time}": "Odpowiedź w {time}",
   "Zoom": "Powiększenie",
 
 

@@ -1,5 +1,5 @@
 /**
- * An answer's "Thought for" is its own turn's time.
+ * An answer's "Answered in" is its own turn's time.
  *
  * The time was kept beside the page and drawn under whichever answer was last,
  * so the next turn's answer read "Thought for 46 seconds" - the previous one's
@@ -55,7 +55,7 @@ const ask = async (text) => {
   await page.keyboard.type(text);
   await page.keyboard.press('Enter');
 };
-const times = () => page.evaluate(() => [...document.querySelectorAll('button')].map((one) => one.textContent ?? '').filter((text) => text.startsWith('Thought for')));
+const times = () => page.evaluate(() => [...document.querySelectorAll('button')].map((one) => one.textContent ?? '').filter((text) => text.startsWith('Answered in')));
 
 await ask('First question.');
 await page.getByText('First answer.').first().waitFor({ timeout: 10_000 }).catch(() => {});

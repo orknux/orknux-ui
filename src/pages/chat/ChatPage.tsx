@@ -3801,7 +3801,12 @@ ${named}`;
                         onClick={() => setThoughtOpen(!thoughtOpen)}
                         aria-expanded={thoughtOpen}
                       >
-                        Thought for {thinkingTime(message.spend.millis)}
+                        {/*
+                          The whole turn, not its thinking: under "Thought for"
+                          it sat over the thinking section's own, smaller
+                          "Thought for", and read as the same thing twice.
+                        */}
+                        {tf('Answered in {time}', { time: thinkingTime(message.spend.millis) })}
                         <img
                           className={thoughtOpen ? styles.thoughtChevronOpen : styles.thoughtChevron}
                           src={chevronDown12Icon}
