@@ -55,7 +55,7 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
   if (held === null) {
     return (
       <section className={styles.card}>
-        <h2 className={styles.heading}>{t('Search')}</h2>
+        <h2 id="search" className={styles.heading}>{t('Search')}</h2>
         <p className={styles.note}>{failure ?? t('Reading…')}</p>
       </section>
     );
@@ -65,7 +65,7 @@ export function SearchSettings({ workspaceId }: { workspaceId: string }) {
 
   return (
     <section className={styles.card}>
-      <h2 className={styles.heading}>
+      <h2 id="search" className={styles.heading}>
         {t('Search')}
         <FieldHint label={t('Search')}>
           {t('What this workspace searches the web with. An agent given the search tools uses this key, and the bill goes to whoever set it.')}

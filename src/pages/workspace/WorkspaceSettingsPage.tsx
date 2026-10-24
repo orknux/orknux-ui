@@ -69,6 +69,7 @@ import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
 import styles from './WorkspaceSettingsPage.module.css';
+import { SearchSettings } from '../workspace-settings/SearchSettings';
 import { ModelPicker } from '../../components/ModelPicker';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -1950,6 +1951,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         worse answer than no control, and the admin screen is where the switch
         actually is.
       */}
+      {/* What the workspace searches the web with - Research and the search tools read it. Its own save, as on the admin screen. */}
+      <SearchSettings workspaceId={workspaceId} />
+
       {hasChat && (
       <section className={styles.card}>
         <div className={styles.sectionTitle}>

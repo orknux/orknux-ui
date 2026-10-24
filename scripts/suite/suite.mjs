@@ -1135,6 +1135,11 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-search-check',
+    what: "a workspace's web search is set on its own Settings page, and the side menu's search finds it",
+    needs: ['workspace'],
+  },
+  {
     name: 'hint-settings-check',
     what: 'the workspace settings pages moved their prose, and kept what should stay printed',
     needs: ['workspace'],

@@ -169,7 +169,7 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
         <>
           <form id={formId} className={styles.card} onSubmit={handleSave}>
             <div className={styles.sectionTitle}>
-              <h2 className={styles.sectionHeading}>{t('General')}</h2>
+              <h2 id="general" className={styles.sectionHeading}>{t('General')}</h2>
             </div>
 
             <div className={styles.fields}>
@@ -349,7 +349,7 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
           <SearchSettings workspaceId={workspaceId} />
 
           <section className={`${styles.card} ${styles.dangerCard}`}>
-            <h2 className={styles.dangerHeading}>{t('Danger Zone')}</h2>
+            <h2 id="danger-zone" className={styles.dangerHeading}>{t('Danger Zone')}</h2>
             <div className={styles.dangerRow}>
               <div className={styles.dangerText}>
                 <p className={styles.dangerTitle}>{t('Delete Workspace')}</p>
