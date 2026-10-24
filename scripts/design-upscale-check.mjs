@@ -26,7 +26,9 @@ const model = (id, name, kind) => ({
 });
 const MODELS = [model('9191', 'Drawer', 'IMAGE'), model('9393', 'Forge', 'UPSCALE'), model('9494', 'SD.Next', 'UPSCALE')];
 /** Each server its own algorithms. */
-const ALGORITHMS = { 9393: ['R-ESRGAN 4x+', 'Lanczos'], 9494: ['SwinIR 4x', 'ESRGAN_4x', 'Nearest'] };
+const ALGORITHMS = { 9393: ['R-ESRGAN 4x+', 'Lanczos'], 9494: ['SwinIR 4x', 'ESRGAN_4x', 'Nearest', 'ScuNET GAN'] };
+/** Of those, what restores rather than enlarges, as the server names them: what Clean up offers. */
+const RESTORERS = { 9393: [], 9494: ['SwinIR 4x', 'ScuNET GAN'] };
 const upscales = [];
 /** Whether the workspace is answered with no upscale model at all. */
 let noUpscalers = false;
@@ -74,7 +76,8 @@ await page.route('**/graphql', async (route) => {
   if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
   if (query.includes('designUpscaleAlgorithms')) {
     const names = ALGORITHMS[body.variables?.modelId] ?? [];
-    return route.fulfill({ json: { data: { designUpscaleAlgorithms: { names, preferred: names[0] ?? null, reason: null } } } });
+    const restorers = RESTORERS[body.variables?.modelId] ?? [];
+    return route.fulfill({ json: { data: { designUpscaleAlgorithms: { names, preferred: names[0] ?? null, reason: null, restorers } } } });
   }
   if (query.includes('queueDesignImageUpscale')) {
     upscales.push(body.variables?.input);
@@ -164,6 +167,31 @@ record(asked !== null && asked.modelId === '9494' && asked.algorithm === 'ESRGAN
   `Upscale queues the picture with that model, algorithm and scale (${JSON.stringify(asked)})`);
 record(!(await dialog.isVisible().catch(() => false)) && (await page.getByTestId('editor-changing').count()) === 1,
   'and the window closes onto the picture being drawn');
+
+// Clean up: the same road at 1x, offering the server's restoration models, with no scale to choose. Issue #640.
+await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const cleanupBox = await page.getByTestId('editor-cleanup').boundingBox().catch(() => null);
+const upscaleAt = await page.getByTestId('editor-upscale').boundingBox().catch(() => null);
+record(cleanupBox !== null && upscaleAt !== null && Math.abs(cleanupBox.y - upscaleAt.y) < 2 && cleanupBox.x > upscaleAt.x &&
+  cleanupBox.x - (upscaleAt.x + upscaleAt.width) < 16, `Clean up sits beside Upscale (${JSON.stringify({ cleanupBox, upscaleAt })})`);
+await page.getByTestId('editor-cleanup').click();
+const cleanup = page.getByTestId('cleanup-dialog');
+await cleanup.waitFor({ timeout: 3_000 }).catch(() => undefined);
+await chooseOption(page, cleanup.getByTestId('cleanup-model'), '9494');
+const restorersOffered = await page.waitForTimeout(400)
+  .then(() => optionsOffered(page, cleanup.getByTestId('cleanup-algorithm')))
+  .then((rows) => rows.map((one) => one.label)).catch(() => []);
+record(JSON.stringify(restorersOffered) === JSON.stringify(RESTORERS[9494]) && (await cleanup.getByTestId('upscale-scale').count()) === 0,
+  `the Clean up window offers the restoration models and no scale (${JSON.stringify(restorersOffered)})`);
+await chooseOption(page, cleanup.getByTestId('cleanup-algorithm'), 'ScuNET GAN');
+const upscalesBefore = upscales.length;
+await cleanup.getByTestId('cleanup-submit').click();
+await page.waitForTimeout(500);
+const cleaned = upscales[upscalesBefore] ?? null;
+record(cleaned !== null && cleaned.algorithm === 'ScuNET GAN' && cleaned.scale === 1 && cleaned.modelId === '9494' &&
+  !(await cleanup.isVisible().catch(() => false)) && (await page.getByTestId('editor-changing').count()) === 1,
+  `Clean up queues the picture at 1x with the restoration model chosen, as a draft being drawn (${JSON.stringify(cleaned)})`);
 
 // Export: PNG, JPEG and .orkx - the last with the name and prompt.
 await page.goto(editAt(PICTURE.id), { waitUntil: 'domcontentloaded' });

@@ -3501,4 +3501,6 @@ export const PL: Record<string, string> = {
   "Add a layer from Orknux": "Dodaj warstwę z Orknux",
   "Opacity": "Krycie",
   "Hide": "Ukryj",
+  "Clean up": "Oczyść",
+  "Remove the blocks and speckle repeated edits leave, with a restoration model": "Usuń bloki i szum, które zostawiają powtarzane edycje, modelem odtwarzającym",
 };

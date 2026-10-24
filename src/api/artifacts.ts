@@ -396,11 +396,13 @@ export interface UpscaleAlgorithms {
   preferred: string | null;
   /** Why the server could not be asked; names is then empty. */
   reason: string | null;
+  /** Of names, the restoration models Clean up offers - SCUNet, SwinIR, FBCNN, 1x models. */
+  restorers: string[];
 }
 
 export async function fetchDesignUpscaleAlgorithms(workspaceId: string, modelId: string): Promise<UpscaleAlgorithms> {
   const data = await graphql<{ designUpscaleAlgorithms: UpscaleAlgorithms }>(
-    `query DesignUpscaleAlgorithms($workspaceId: ID!, $modelId: ID!) { designUpscaleAlgorithms(workspaceId: $workspaceId, modelId: $modelId) { names preferred reason } }`,
+    `query DesignUpscaleAlgorithms($workspaceId: ID!, $modelId: ID!) { designUpscaleAlgorithms(workspaceId: $workspaceId, modelId: $modelId) { names preferred reason restorers } }`,
     { workspaceId, modelId },
   );
   return data.designUpscaleAlgorithms;

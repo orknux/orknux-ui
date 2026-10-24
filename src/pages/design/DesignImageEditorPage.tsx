@@ -184,6 +184,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The workspace's upscale models: what the Upscale window offers, and nothing else. */
   const [upscalers, setUpscalers] = useState<Model[]>([]);
   const [upscaling, setUpscaling] = useState(false);
+  /**
+   * Clean up's window open: the upscale road at 1x, through a WebUI's
+   * restoration models, for the blocks and speckle repeated edits leave.
+   */
+  const [cleaning, setCleaning] = useState(false);
   /** Models are loaded and none of them upscales: the button says so rather than opening an empty window. */
   const noUpscaler = models !== null && upscalers.length === 0;
   const [harmonizing, setHarmonizing] = useState(false);
@@ -676,6 +681,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setMade((held) => [{ job: queued }, ...held]);
     forget();
     setUpscaling(false);
+    setCleaning(false);
     show({ kind: 'job', jobId: queued.id });
   }
 
@@ -1400,6 +1406,30 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             )}
           </span>
           {/* Beside Upscale, and like it says at once why not and where to add a model. */}
+          {/* Beside Upscale, the same road at 1x - and like it, says at once why not where there is no model for it. */}
+          <span className={styles.upscaleWrap} data-testid="editor-cleanup-wrap">
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.toolbarButton}`}
+              onClick={() => {
+                forget();
+                setCleaning(true);
+              }}
+              disabled={picture === null || busy || noUpscaler || pending}
+              title={noUpscaler ? undefined : t('Remove the blocks and speckle repeated edits leave, with a restoration model')}
+              data-testid="editor-cleanup"
+            >
+              {t('Clean up')}
+            </button>
+            {noUpscaler && (
+              <span className={styles.upscaleHint} role="tooltip" data-testid="editor-cleanup-hint">
+                {t('There is no upscale model in this workspace. Add a Stable Diffusion WebUI provider and an Upscale model under it.')}{' '}
+                <Link to={`/workspace/${workspaceId}/models`} data-testid="editor-cleanup-models">
+                  {t('Go to Models')}
+                </Link>
+              </span>
+            )}
+          </span>
           <span className={styles.upscaleWrap} data-testid="editor-harmonize-wrap">
             <button
               type="button"
@@ -2478,6 +2508,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         width={natural?.width ?? 0}
         height={natural?.height ?? 0}
         onClose={() => setUpscaling(false)}
+        onUpscale={upscale}
+      />
+      <DesignUpscaleDialog
+        open={cleaning}
+        cleanUp
+        workspaceId={workspaceId}
+        models={upscalers}
+        width={natural?.width ?? 0}
+        height={natural?.height ?? 0}
+        onClose={() => setCleaning(false)}
         onUpscale={upscale}
       />
       <DesignHarmonizeDialog
