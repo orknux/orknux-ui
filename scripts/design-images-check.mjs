@@ -1,7 +1,7 @@
 /**
  * Design is a section of its own, and a picture on Artifacts opens in it.
  *
- * The bar across the top gains Design and is in the alphabet's order - AI,
+ * The bar across the top gains Design and is in the alphabet's order - AI, Answer,
  * Chat, Design, Flow, Workspace - and Design's menu starts at Images. A picture
  * on the Artifacts page carries "Open in Design", which lands on that image,
  * shown above the gallery, with what it was drawn with, and its close button
@@ -127,14 +127,14 @@ await link.waitFor({ timeout: 20_000 }).catch(() => undefined);
 // The bar, left to right, as drawn - once Chat is in it, which waits for the installation's settings.
 await page.locator('nav a', { hasText: /^Chat$/ }).first().waitFor({ timeout: 10_000 }).catch(() => undefined);
 const bar = await page.evaluate(() => {
-  const names = ['AI', 'Chat', 'Design', 'Flow', 'Workspace'];
+  const names = ['AI', 'Answer', 'Chat', 'Design', 'Flow', 'Workspace'];
   return [...document.querySelectorAll('header a, header button')]
     .filter((one) => names.includes(one.textContent?.trim() ?? ''))
     .map((one) => ({ name: one.textContent.trim(), x: one.getBoundingClientRect().left }))
     .sort((a, b) => a.x - b.x)
     .map((one) => one.name);
 });
-record(JSON.stringify(bar) === JSON.stringify(['AI', 'Chat', 'Design', 'Flow', 'Workspace']), `the top bar is in the alphabet's order (${bar.join(', ')})`);
+record(JSON.stringify(bar) === JSON.stringify(['AI', 'Answer', 'Chat', 'Design', 'Flow', 'Workspace']), `the top bar is in the alphabet's order (${bar.join(', ')})`);
 
 record((await link.count()) === 1, 'a picture on Artifacts offers Open in Design');
 await link.click().catch(() => undefined);

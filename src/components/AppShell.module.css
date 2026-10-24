@@ -79,8 +79,12 @@
  * takes what is left. It is no longer centred on the window — it is centred on
  * the room between them, which is where it looks like it is anyway — and
  * nothing is drawn on top of anything.
+ *
+ * Six sections since Answer (issue #659) want more than half of a 1440 window
+ * less the box, so the window-centred layout is kept for screens wide enough
+ * to hold them: at 1440 Flow went under the box.
  */
-@media (max-width: 1439px) {
+@media (max-width: 1919px) {
   .topNav {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }

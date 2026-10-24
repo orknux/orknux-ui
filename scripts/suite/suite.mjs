@@ -2074,6 +2074,21 @@ export const TESTS = [
   },
 
   {
+    name: 'research-page-check',
+    what: 'Answer > Research opens from the bar, New research offers every option, and Start lists the research',
+    needs: ['workspace'],
+    /*
+     * Starts one research and removes it again. No model is needed: what is
+     * measured is that it is started and listed, so it may be listed as failed.
+     */
+  },
+  {
+    name: 'workflows-hidden-check',
+    what: 'the research workflows are off the Workflows list until Show hidden is ticked, and open in the editor once shown',
+    needs: ['workspace'],
+  },
+
+  {
     name: 'chat-session-link-check',
     what: 'a chat links to the session it is answered in, once, from its header',
     needs: ['workspace'],
