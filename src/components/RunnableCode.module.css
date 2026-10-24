@@ -1,0 +1,56 @@
+/* Run in a code block's bar, beside Copy; what it printed under the block's code. */
+
+/* Pushed to the right, next to Copy, which stays the bar's last child. */
+.controls {
+  display: flex;
+  gap: var(--space-6);
+  margin-left: auto;
+}
+
+.button {
+  padding: var(--space-2) var(--space-8);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.result {
+  border-top: 1px solid var(--color-border);
+}
+
+/* What the command printed: monospace, kept as printed, long lines scroll here. Doubled to outweigh .markdown .codeBlock pre. */
+.output.output {
+  margin: 0;
+  padding: var(--space-8) var(--space-14);
+  max-height: 320px;
+  overflow: auto;
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre;
+}
+
+.status {
+  margin: 0;
+  padding: var(--space-4) var(--space-14);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.failed {
+  color: var(--color-danger);
+}

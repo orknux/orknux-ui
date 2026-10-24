@@ -66,6 +66,8 @@ import { fetchWorkspace } from '../../api/workspaces';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
 import { fetchChatReviews, fetchSessionReviewsOffered } from '../../api/ratings';
+import { fetchCommandRunsOffered } from '../../api/commands';
+import type { CommandRunOffer } from '../../api/commands';
 import type { ChatReview } from '../../api/ratings';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspaces } from '../../api/workspaces';
@@ -259,6 +261,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [attachmentsAllowed, setAttachmentsAllowed] = useState(false);
   /** Whether reviews can be sent, which adds an entry to the same menu. */
   const [reviewsOffered, setReviewsOffered] = useState(false);
+  /** The shell blocks an answer may run, by language; none until the server says, and none for most people. */
+  const [runOffer, setRunOffer] = useState<CommandRunOffer | undefined>(undefined);
   /** The chat being reviewed, while the dialog is open. */
   const [reviewing, setReviewing] = useState<string | null>(null);
   /** The reviews this chat has had, drawn in the thread where they were sent. */
@@ -1509,6 +1513,10 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     fetchSessionReviewsOffered()
       .then(setReviewsOffered)
       .catch(() => setReviewsOffered(false));
+    // Run on a shell block: offered only to an administrator, while Admin -> Settings allows it.
+    fetchCommandRunsOffered()
+      .then(setRunOffer)
+      .catch(() => setRunOffer(undefined));
   }, []);
 
   // Someone on an old link, or with the page still open when it was switched
@@ -3998,7 +4006,7 @@ ${named}`;
                     {(picturesFor.get(index) ?? []).map((picture, at) => (
                       <Markdown key={`picture-${at}`} pictureLinks zoomImages>{picture}</Markdown>
                     ))}
-                    <Markdown pictureLinks zoomImages>{shownTake(index, message)}</Markdown>
+                    <Markdown pictureLinks zoomImages runnable={runOffer}>{shownTake(index, message)}</Markdown>
                     {filesOf(filesUnder(message), 'assistant')}
                     {/*
                       Which take of this answer is being read, and the way back

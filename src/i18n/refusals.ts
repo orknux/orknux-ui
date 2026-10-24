@@ -408,6 +408,12 @@ const PL: Record<string, string> = {
   // --- who is asking ------------------------------------------------------
   SignInRequired: 'Zaloguj się, aby to zobaczyć',
   AdminRequired: 'Ta czynność wymaga roli administratora',
+  // --- Run on a chat answer's shell blocks --------------------------------
+  CommandRunsOff: 'Uruchamianie poleceń z czatu jest wyłączone w Admin > Ustawienia.',
+  CommandEmpty: 'Nie ma polecenia do uruchomienia.',
+  CommandLanguageUnrunnable: 'Bloku oznaczonego jako "{language}" nie da się uruchomić na tym serwerze.',
+  CommandElevationUnavailable: 'System operacyjny tego serwera nie daje tu sposobu, by poprosić o uprawnienia administratora.',
+  CommandRunNotFound: 'Tego uruchomienia polecenia już tu nie ma.',
   WorkspaceForbidden: 'To nie istnieje albo nie masz do tego dostępu',
   SecretReadForbidden:
     'Odczytanie sekretów przestrzeni {name} wymaga roli, która odczytuje tam sekrety, albo roli, która nią ' +

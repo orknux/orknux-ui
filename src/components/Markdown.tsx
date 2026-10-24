@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import java from 'highlight.js/lib/languages/java';
@@ -23,6 +23,8 @@ import 'katex/dist/katex.min.css';
 import styles from './Markdown.module.css';
 import { ArtifactMiniature } from './ArtifactMiniature';
 import { CopyButton } from './CopyButton';
+import { RunnableCode } from './RunnableCode';
+import type { CommandRunOffer } from '../api/commands';
 import { commandLine } from './shellGrammar';
 import { ImageZoom } from './ImageZoom';
 import type { Picture } from './ImageZoom';
@@ -115,6 +117,13 @@ export interface MarkdownProps {
    * their editor ran out of width.
    */
   lineBreaks?: boolean;
+  /**
+   * The shell blocks that carry Run, by the language they were tagged: what
+   * the server offers this person. Passed by the chat and by nothing else - the
+   * manual and the tracker never run anything - and left out, or offering no
+   * language, every block is drawn with Copy alone.
+   */
+  runnable?: CommandRunOffer;
 }
 
 /**
@@ -267,6 +276,7 @@ export function Markdown({
   zoomImages = false,
   pictureLinks = false,
   lineBreaks = true,
+  runnable,
 }: MarkdownProps) {
   /** Which picture is open over the page, or null while none is. */
   const [zoomed, setZoomed] = useState<Picture | null>(null);
@@ -386,16 +396,30 @@ export function Markdown({
            * A fenced block carries its own Copy, as every chat and every manual does: a command a model hands over is
            * there to be run somewhere else, and selecting it by hand picks up the line numbers' worth of mistakes.
            */
-          pre: ({ node, children: block, ...props }) => (
-            <div className={styles.codeBlock} data-testid="code-block">
-              {/* A bar of its own above the code, so a line too long for the block scrolls under nothing. */}
-              <div className={styles.codeBar}>
-                <span className={styles.codeLanguage}>{languageOf(node as TextNode)}</span>
-                <CopyButton text={textOf(node as TextNode).replace(/\n$/, '')} label={t('Copy the code')} testId="code-copy" />
+          pre: ({ node, children: block, ...props }) => {
+            const language = languageOf(node as TextNode);
+            const text = textOf(node as TextNode).replace(/\n$/, '');
+            const drawn = (controls?: ReactNode, output?: ReactNode) => (
+              <div className={styles.codeBlock} data-testid="code-block">
+                {/* A bar of its own above the code, so a line too long for the block scrolls under nothing. */}
+                <div className={styles.codeBar}>
+                  <span className={styles.codeLanguage}>{language}</span>
+                  {controls}
+                  <CopyButton text={text} label={t('Copy the code')} testId="code-copy" />
+                </div>
+                <pre {...props}>{block}</pre>
+                {output}
               </div>
-              <pre {...props}>{block}</pre>
-            </div>
-          ),
+            );
+            // Run, beside Copy: only where the chat passed what the server offers, and only on a language it runs.
+            const runs = runnable !== undefined && runnable.languages.includes(language.toLowerCase());
+            if (!runs) return drawn();
+            return (
+              <RunnableCode language={language.toLowerCase()} code={text} offer={runnable}>
+                {drawn}
+              </RunnableCode>
+            );
+          },
           img: ({ node: _node, ...props }) => {
             const picture = { src: String(props.src ?? ''), alt: String(props.alt ?? '') };
             if (missing.includes(picture.src)) {

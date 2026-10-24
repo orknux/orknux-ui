@@ -1405,6 +1405,13 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'run-command-check',
+    what: 'Run is drawn on a shell block only while Admin Settings allows it, and what the command printed is drawn under the block',
+    // Stubs the answer; the run itself is real, on the server's machine. Flips an installation-wide switch.
+    needs: ['workspace'],
+    alone: true,
+  },
+  {
     name: 'parameter-picker-check',
     what: 'a plugin parameter that names its values is answered from a list, and one that does not is typed',
     // Loads a plugin, which is installation-wide: its rows appear in every
