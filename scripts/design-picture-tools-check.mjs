@@ -676,7 +676,8 @@ record(markerStarts === '50' && marker.single !== null && marker.single > 100 &&
 // The eraser: on the layer painted and saved earlier, paint taken off to nothing; on the picture itself it is off.
 const savedLayer = page.locator('[data-testid="layer-row"]').filter({ hasText: 'Layer 1' });
 const painting = await savedLayer.getAttribute('data-id').catch(() => null);
-await savedLayer.click({ timeout: 3_000 }).catch(() => undefined);
+// Chosen by its name: the middle of the row is its buttons, and a click there removed the layer.
+await savedLayer.getByTestId('layer-name').click({ timeout: 3_000 }).catch(() => undefined);
 await tap('brush-style-eraser');
 await page.getByTestId('brush-hardness').fill('100').catch(() => undefined);
 const beforeErase = await alphaAt(painting, 15, savedRow);
