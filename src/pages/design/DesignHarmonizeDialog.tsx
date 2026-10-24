@@ -101,7 +101,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (modelId === '' || options === null || described.trim() === '' || submitting) return;
+    if (modelId === '' || options === null || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -214,7 +214,7 @@ export function DesignHarmonizeDialog({ open, workspaceId, models, defaultModelI
           <button
             type="submit"
             className={styles.filled}
-            disabled={modelId === '' || options === null || described.trim() === '' || (webUi && !(strength >= LEAST && strength <= MOST)) || submitting}
+            disabled={modelId === '' || options === null || (webUi && !(strength >= LEAST && strength <= MOST)) || submitting}
             data-testid="harmonize-submit"
           >
             {t('Harmonize')}
