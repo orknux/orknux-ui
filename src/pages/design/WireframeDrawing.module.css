@@ -136,3 +136,8 @@
   width: 100%;
   height: 100%;
 }
+
+/* A card's drawing is a picture of the wireframe: the card's own pointer carries over it. */
+.preview .element {
+  cursor: inherit;
+}

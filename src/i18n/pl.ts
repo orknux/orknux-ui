@@ -3336,6 +3336,9 @@ export const PL: Record<string, string> = {
   // Wireframes in Design, issue #655.
   "Wireframes": "Makiety",
   "Wireframe editor": "Edytor makiet",
+  "Search wireframes": "Szukaj makiet",
+  "Search wireframes...": "Szukaj makiet...",
+  "No wireframe matches what you typed.": "Żadna makieta nie pasuje do tego, co wpisano.",
   "Hi {name}!": "Cześć, {name}!",
   "What shall we sketch?": "Co dziś szkicujemy?",
   "Sign-in screen": "Ekran logowania",

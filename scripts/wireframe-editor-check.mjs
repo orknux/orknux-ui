@@ -152,6 +152,19 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/design/wireframes`, { waitUntil:
 const card = page.locator(`[data-testid="wireframe-card"][data-wireframe-id="${id}"]`);
 await card.waitFor({ timeout: 10_000 }).catch(() => undefined);
 record((await card.locator('[data-element-type="rect"]').count()) === 1, 'the list draws the wireframe small on its card');
+const cursor = await card.locator('[data-element-type="rect"]').first().evaluate((one) => getComputedStyle(one).cursor);
+record(cursor === 'pointer', `over the card's drawing the pointer is the card's own (${cursor})`);
+// Search narrows the list by a name or by words drawn on a wireframe.
+const search = page.getByRole('searchbox');
+await search.fill('welcome back');
+await page.waitForTimeout(300);
+const byWords = await page.locator(`[data-testid="wireframe-card"][data-wireframe-id="${id}"]`).count();
+await search.fill('zz-nothing-is-called-this');
+await page.waitForTimeout(300);
+const none = await page.getByTestId('wireframe-card').count();
+const said = (await page.getByTestId('wireframe-none-match').textContent().catch(() => '')) ?? '';
+record(byWords === 1 && none === 0 && said.includes('No wireframe matches'), `search finds a wireframe by its drawn words and says when nothing matches (${byWords}, ${none}, ${said})`);
+await search.fill('');
 await card.getByTestId('wireframe-open').click();
 await page.waitForURL(new RegExp(`/design/wireframes/${id}$`), { timeout: 10_000 }).catch(() => undefined);
 record(page.url().endsWith(`/design/wireframes/${id}`), `clicking the card opens it in the editor (${page.url()})`);

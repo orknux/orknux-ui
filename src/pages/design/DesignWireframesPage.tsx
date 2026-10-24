@@ -9,6 +9,7 @@ import pencilIcon from '../../assets/pencil.svg';
 import { AppShell } from '../../components/AppShell';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loader } from '../../components/Loader';
+import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { TrashIcon } from '../../components/TrashIcon';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { t, tf } from '../../i18n';
@@ -39,6 +40,17 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
   /** The card being renamed, and what is typed. */
   const [naming, setNaming] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<Wireframe | null>(null);
+  /** What the list is narrowed to: a name, or any words drawn on a wireframe. */
+  const [hunting, setHunting] = useState('');
+  const sought = hunting.trim().toLowerCase();
+  const shown =
+    wireframes === null || sought === ''
+      ? wireframes
+      : wireframes.filter(
+          (wireframe) =>
+            wireframe.name.toLowerCase().includes(sought) ||
+            elementsOf(wireframe).some((element) => (element.text ?? '').toLowerCase().includes(sought)),
+        );
 
   useEffect(() => {
     if (workspaceId === '') return;
@@ -103,6 +115,10 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
         </button>
       </header>
 
+      <SearchRow>
+        <SearchBox value={hunting} onChange={setHunting} placeholder={t('Search wireframes...')} label={t('Search wireframes')} />
+      </SearchRow>
+
       {error !== null && (
         <p className={table.pageError} role="alert">
           {error}
@@ -116,9 +132,14 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
           </p>
         )}
         {wireframes?.length === 0 && <p className={table.notice}>{t('No wireframes yet.')}</p>}
-        {wireframes !== null && wireframes.length > 0 && (
+        {wireframes !== null && wireframes.length > 0 && shown?.length === 0 && (
+          <p className={table.notice} data-testid="wireframe-none-match">
+            {t('No wireframe matches what you typed.')}
+          </p>
+        )}
+        {shown !== null && shown.length > 0 && (
           <div className={gallery.gallery} data-testid="wireframe-list">
-            {wireframes.map((wireframe) => (
+            {shown.map((wireframe) => (
               <figure key={wireframe.id} className={gallery.card} data-testid="wireframe-card" data-wireframe-id={wireframe.id}>
                 <button
                   type="button"
