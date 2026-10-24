@@ -81,6 +81,46 @@ export function painted(source: HTMLCanvasElement, strokes: Stroke[]): HTMLCanva
   return canvas;
 }
 
+/**
+ * A picture laid over the one being edited, until the layers are merged: where
+ * it sits and how large, in the picture's own pixels, how opaque, and whether
+ * it is shown. Its file is at `url` - a picture in Orknux, or a file read in.
+ */
+export type Layer = {
+  id: string;
+  name: string;
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** 0 to 1. */
+  opacity: number;
+  visible: boolean;
+};
+
+/** The layers drawn over the picture, the first lowest, each where it sits and as opaque as it is. */
+export function layered(source: HTMLCanvasElement, layers: { image: CanvasImageSource; layer: Layer }[]): HTMLCanvasElement {
+  const { canvas, pen } = blank(source.width, source.height);
+  pen.drawImage(source, 0, 0);
+  for (const { image, layer } of layers) {
+    pen.globalAlpha = layer.opacity;
+    pen.drawImage(image, layer.x, layer.y, layer.width, layer.height);
+  }
+  pen.globalAlpha = 1;
+  return canvas;
+}
+
+/** A picture's file loaded, for drawing on a canvas. */
+export function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((done, failed) => {
+    const image = new Image();
+    image.onload = () => done(image);
+    image.onerror = () => failed(new Error('The picture could not be read.'));
+    image.src = url;
+  });
+}
+
 /** A box on the picture, in whole pixels. */
 export type Box = { x: number; y: number; width: number; height: number };
 

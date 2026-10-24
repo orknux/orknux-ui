@@ -60,11 +60,12 @@ import form from '../../components/Dialog.module.css';
 import styles from './DesignImageEditorPage.module.css';
 import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
+import layersIcon from '../../assets/layers.svg';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { blurredInside, boxOf, canvasOf, cropped, mirrored, painted, rotated, strokePath } from './pictureEdits';
-import type { Point, Stroke } from './pictureEdits';
+import { blurredInside, boxOf, canvasOf, cropped, layered, loadImage, mirrored, painted, rotated, strokePath } from './pictureEdits';
+import type { Layer, Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
 import { videoFromPicturePath } from './useVideoFromPicture';
@@ -114,13 +115,13 @@ type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: stri
 type MagicTool = 'rectangle' | 'lasso';
 
 /** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
-type Tool = MagicTool | 'crop' | 'brush' | 'blur';
+type Tool = MagicTool | 'crop' | 'brush' | 'blur' | 'layers';
 
 /** Whether a tool selects with a rectangle - two corners - rather than a lasso's outline. */
 const boxed = (tool: Tool | null) => tool === 'rectangle' || tool === 'crop';
 
 /** One step undo goes back to: what the panel held and what was on the canvas. */
-type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null; strokes: Stroke[] };
+type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null; strokes: Stroke[]; layers: Layer[] };
 
 /** How long typing in the prompt pauses before it counts as one step to undo. */
 const TYPING_SETTLES_MS = 700;
@@ -198,10 +199,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** Import's menu open: a file, or a picture already in Orknux. */
   const [importMenu, setImportMenu] = useState(false);
   /** The window of pictures in Orknux open, and what the one chosen is for. */
-  const [picking, setPicking] = useState<'open' | null>(null);
+  const [picking, setPicking] = useState<'open' | 'layer' | null>(null);
   /** A file being dragged over the canvas, which a drop opens here. */
   const [dropping, setDropping] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+  /** A file picked to lay over the picture as a layer. */
+  const layerFileRef = useRef<HTMLInputElement>(null);
   const [modelId, setModelId] = useState('');
   const [spec, setSpec] = useState<ImageParameterSpec[]>([]);
   const [presets, setPresets] = useState<ImageSizePreset[]>([]);
@@ -388,7 +391,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   // -- Undo and redo ------------------------------------------------------
 
-  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes });
+  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes, layers });
   const settleTyping = () => {
     window.clearTimeout(typingTimer.current);
     const from = typingFrom.current;
@@ -426,6 +429,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     show(to.shown);
     setPendingName(to.pendingName);
     setStrokes(to.strokes);
+    setLayers(to.layers);
   };
   const undo = () => {
     settleTyping();
@@ -700,16 +704,107 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     show({ kind: 'job', jobId: queued.id });
   }
 
+  /*
+   * Layers: pictures laid over the one being edited - from a file or from
+   * Orknux - each moved by dragging it, sized, made more or less opaque,
+   * hidden, and put above or below the others, until they are merged into
+   * the picture as one version. Every change to them is a step undo takes
+   * back. They are held on the page until merged, as a rename is, so leaving
+   * with some asks first; a tool that changes the picture merges them first.
+   */
+  const [layers, setLayers] = useState<Layer[]>([]);
+  /** The layer being worked on: dragging moves it, the panel marks it. */
+  const [layerId, setLayerId] = useState<string | null>(null);
+  /** Each layer's picture, loaded once, so merging draws at once. */
+  const layerImages = useRef(new Map<string, HTMLImageElement>());
+  const layerCount = useRef(0);
+  /** A layer being dragged: where the pointer went down, and where the layer was then. */
+  const [dragging, setDragging] = useState<{ id: string; from: Point; x: number; y: number } | null>(null);
+
   /**
-   * The picture shown, on a canvas of its own at its own size, with what the
-   * brush has painted over it and not yet kept - so a tool used next works on
-   * what is on the screen. Null before it has loaded.
+   * The picture shown, on a canvas of its own at its own size, with the layers
+   * and what the brush has painted over it and not yet kept - so a tool used
+   * next works on what is on the screen. Null before it has loaded.
    */
   const pictureCanvas = (): HTMLCanvasElement | null => {
     const shownPicture = pictureRef.current;
     if (picture === null || shownPicture === null || shownPicture.naturalWidth === 0) return null;
-    const drawn = canvasOf(shownPicture);
+    let drawn = canvasOf(shownPicture);
+    const over = layers
+      .filter((one) => one.visible)
+      .flatMap((layer) => {
+        const image = layerImages.current.get(layer.url);
+        return image === undefined ? [] : [{ image, layer }];
+      });
+    if (over.length > 0) drawn = layered(drawn, over);
     return strokes.length === 0 ? drawn : painted(drawn, strokes);
+  };
+
+  /** A picture laid over the one shown as a new layer, fitted inside it and centred, on top of the others. */
+  async function addLayer(url: string, name: string) {
+    if (natural === null) return;
+    try {
+      const image = layerImages.current.get(url) ?? (await loadImage(url));
+      layerImages.current.set(url, image);
+      const scale = Math.min(1, natural.width / image.naturalWidth, natural.height / image.naturalHeight);
+      const width = Math.max(1, Math.round(image.naturalWidth * scale));
+      const height = Math.max(1, Math.round(image.naturalHeight * scale));
+      layerCount.current += 1;
+      const id = `layer-${layerCount.current}`;
+      remember();
+      setLayers((held) => [
+        ...held,
+        { id, name, url, x: Math.round((natural.width - width) / 2), y: Math.round((natural.height - height) / 2), width, height, opacity: 1, visible: true },
+      ]);
+      setLayerId(id);
+      setTool('layers');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not open that file.'));
+    }
+  }
+  /** One layer changed; the step before it is remembered only where [step] says so, as a drag is one step and not one per move. */
+  const changeLayer = (id: string, change: Partial<Layer>, step = true) => {
+    if (step) remember();
+    setLayers((held) => held.map((one) => (one.id === id ? { ...one, ...change } : one)));
+  };
+  /** A layer moved up or down the stack: up is nearer the top, drawn over the rest. */
+  const restack = (id: string, by: 1 | -1) => {
+    const at = layers.findIndex((one) => one.id === id);
+    const to = at + by;
+    if (at < 0 || to < 0 || to >= layers.length) return;
+    remember();
+    const next = [...layers];
+    [next[at], next[to]] = [next[to], next[at]];
+    setLayers(next);
+  };
+  const removeLayer = (id: string) => {
+    remember();
+    setLayers((held) => held.filter((one) => one.id !== id));
+  };
+  /** The layers merged into the picture, as one version. */
+  async function mergeLayers(): Promise<void> {
+    const drawn = layers.length === 0 ? null : pictureCanvas();
+    if (drawn !== null) await keepChange(drawn, t('Layers merged'));
+  }
+  const startDragging = (event: ReactPointerEvent<SVGElement>, layer: Layer) => {
+    if (tool !== 'layers' || event.button !== 0) return;
+    const at = onPicture(event);
+    if (at === null) return;
+    event.stopPropagation();
+    (event.currentTarget.ownerSVGElement ?? event.currentTarget).setPointerCapture(event.pointerId);
+    setLayerId(layer.id);
+    remember();
+    setDragging({ id: layer.id, from: at, x: layer.x, y: layer.y });
+  };
+  const keepDragging = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (dragging === null) return;
+    const shownPicture = pictureRef.current;
+    if (shownPicture === null) return;
+    // Not clamped to the picture: a layer may hang over its edge, and what hangs over is cut off when merged.
+    const box = shownPicture.getBoundingClientRect();
+    const x = ((event.clientX - box.left) / box.width) * shownPicture.naturalWidth;
+    const y = ((event.clientY - box.top) / box.height) * shownPicture.naturalHeight;
+    changeLayer(dragging.id, { x: Math.round(dragging.x + x - dragging.from.x), y: Math.round(dragging.y + y - dragging.from.y) }, false);
   };
 
   /** Keeps a change worked out here, and shows it; throws where it could not be kept. */
@@ -719,6 +814,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     // The state it replaces goes on the stack, strokes not yet kept included: undo goes back to them.
     remember();
     setStrokes([]);
+    setLayers([]);
     setMade((held) => [{ job: kept }, ...held]);
     forget();
     if (kept.image !== null) show({ kind: 'picture', picture: kept.image });
@@ -765,6 +861,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [brushSize, setBrushSize] = useState<number | null>(null);
   const [brushMost, setBrushMost] = useState<number | null>(null);
   const [brushColour, setBrushColour] = useState('#000000');
+  /** What has been done on the page and not yet kept: strokes painted, layers laid over. */
+  const pending = strokes.length > 0 || layers.length > 0;
   const startStroke = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (tool !== 'brush' || event.button !== 0 || brushSize === null) return;
     const at = onPicture(event);
@@ -954,13 +1052,14 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    */
   async function save(): Promise<boolean> {
     if (picture === null || busy) return !unsaved && !drafted;
-    if (picture.versionOf == null && pendingName === null && strokes.length === 0) return true;
+    if (picture.versionOf == null && pendingName === null && !pending) return true;
     setBusy(true);
     setError(null);
     try {
-      // What the brush painted is kept first, and saved with the rest.
-      const painting = strokes.length > 0 ? pictureCanvas() : null;
-      const current = (painting === null ? null : await keepNow(painting, t('Painted with the brush'))) ?? picture;
+      // What the brush painted and the layers laid over are kept first, and saved with the rest.
+      const painting = pending ? pictureCanvas() : null;
+      const said = layers.length > 0 ? t('Layers merged') : t('Painted with the brush');
+      const current = (painting === null ? null : await keepNow(painting, said)) ?? picture;
       let kept = current;
       if (current.versionOf != null) {
         const of = current.versionOf;
@@ -1043,10 +1142,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   async function discard() {
     if (busy) return;
-    // Strokes not yet kept go first: they are the newest thing on the page.
-    if (strokes.length > 0) {
+    // Strokes and layers not yet kept go first: they are the newest thing on the page.
+    if (pending) {
       remember();
       setStrokes([]);
+      setLayers([]);
       return;
     }
     if (pendingName !== null) {
@@ -1117,7 +1217,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * What leaving would lose: a rename, which is held on the page alone. Changes
    * drawn here are a draft kept by the server, so leaving loses nothing of them.
    */
-  const unsaved = picture !== null && (pendingName !== null || strokes.length > 0);
+  const unsaved = picture !== null && (pendingName !== null || pending);
   /** The picture shown is a draft: changes Save would write over the picture. */
   const drafted = picture !== null && picture.versionOf != null;
   useEffect(() => {
@@ -1239,7 +1339,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setTool((held) => (held === 'rectangle' ? null : 'rectangle'));
               }}
-              disabled={picture === null}
+              disabled={picture === null || pending}
               aria-pressed={tool === 'rectangle'}
               title={`${t('Magic rectangle select')} (${rectangleKey})`}
               aria-label={t('Magic rectangle select')}
@@ -1254,7 +1354,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setTool((held) => (held === 'lasso' ? null : 'lasso'));
               }}
-              disabled={picture === null}
+              disabled={picture === null || pending}
               aria-pressed={tool === 'lasso'}
               title={`${t('Magic lasso select')} (${lassoKey})`}
               aria-label={t('Magic lasso select')}
@@ -1266,7 +1366,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               type="button"
               className={styles.tool}
               onClick={selectAll}
-              disabled={picture === null}
+              disabled={picture === null || pending}
               title={`${t('Magic select all')} (${allKey})`}
               aria-label={t('Magic select all')}
               data-testid="magic-all"
@@ -1284,7 +1384,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setUpscaling(true);
               }}
-              disabled={picture === null || busy || noUpscaler || strokes.length > 0}
+              disabled={picture === null || busy || noUpscaler || pending}
               title={noUpscaler ? undefined : t('Make the picture larger with an upscale model')}
               data-testid="editor-upscale"
             >
@@ -1308,7 +1408,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setHarmonizing(true);
               }}
-              disabled={picture === null || busy || noHarmonizer || strokes.length > 0}
+              disabled={picture === null || busy || noHarmonizer || pending}
               title={noHarmonizer ? undefined : t('Redraw the whole picture lightly, so the seams between changed parts blend')}
               data-testid="editor-harmonize"
             >
@@ -1331,7 +1431,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               const to = videoFromPicturePath(workspaceId, picture.id);
               if (!askBeforeLeaving(to)) navigate(to);
             }}
-            disabled={picture === null || busy}
+            disabled={picture === null || busy || pending}
             title={t('Make a video that starts from this picture')}
             data-testid="editor-to-video"
           >
@@ -1592,6 +1692,19 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           >
             <img src={blurIcon} alt="" width={16} height={16} />
           </button>
+          <span className={styles.railGap} aria-hidden="true" />
+          <button
+            type="button"
+            className={`${styles.tool} ${tool === 'layers' ? styles.railOn : ''}`}
+            onClick={() => pick('layers')}
+            disabled={picture === null || busy}
+            aria-pressed={tool === 'layers'}
+            title={t('Layers')}
+            aria-label={t('Layers')}
+            data-testid="editor-layers"
+          >
+            <img src={layersIcon} alt="" width={16} height={16} />
+          </button>
         </div>
         <div
           className={`${styles.canvas} ${dropping ? styles.canvasDropping : ''}`}
@@ -1714,6 +1827,122 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               </button>
               <button type="button" className={form.filled} onClick={applyBlur} disabled={selection === null || blurRadius === null || busy} data-testid="blur-apply">
                 {t('Blur')}
+              </button>
+            </div>
+          )}
+          {tool === 'layers' && (
+            <div className={styles.layersPanel} role="group" aria-label={t('Layers')} data-testid="layers-panel">
+              <div className={styles.layersHead}>
+                <span>{t('Layers')}</span>
+                <button type="button" className={form.ghost} onClick={() => layerFileRef.current?.click()} data-testid="layers-add-file">
+                  {t('From a file…')}
+                </button>
+                <button type="button" className={form.ghost} onClick={() => setPicking('layer')} data-testid="layers-add-orknux">
+                  {t('From Orknux…')}
+                </button>
+                <input
+                  ref={layerFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  hidden
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file === undefined) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') void addLayer(reader.result, file.name.replace(/\.[^.]+$/, ''));
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  data-testid="layers-file"
+                />
+              </div>
+              {/* The top of the stack first, as it is seen; the picture itself at the foot, where it always is. */}
+              {[...layers].reverse().map((layer) => (
+                <div
+                  key={layer.id}
+                  className={`${styles.layerRow} ${layer.id === layerId ? styles.layerRowOn : ''}`}
+                  onClick={() => setLayerId(layer.id)}
+                  data-testid="layer-row"
+                  data-id={layer.id}
+                >
+                  <div className={styles.layerTop}>
+                    <img src={layer.url} alt="" className={styles.layerThumb} />
+                    <span className={styles.layerName} title={layer.name}>{layer.name}</span>
+                    <button
+                      type="button"
+                      className={styles.tool}
+                      onClick={() => changeLayer(layer.id, { visible: !layer.visible })}
+                      aria-pressed={!layer.visible}
+                      title={layer.visible ? t('Hide') : t('Show')}
+                      aria-label={layer.visible ? t('Hide') : t('Show')}
+                      data-testid="layer-visible"
+                    >
+                      {layer.visible ? '◉' : '○'}
+                    </button>
+                    <button type="button" className={styles.tool} onClick={() => restack(layer.id, 1)} title={t('Move up')} aria-label={t('Move up')} data-testid="layer-up">
+                      ↑
+                    </button>
+                    <button type="button" className={styles.tool} onClick={() => restack(layer.id, -1)} title={t('Move down')} aria-label={t('Move down')} data-testid="layer-down">
+                      ↓
+                    </button>
+                    <button type="button" className={styles.tool} onClick={() => removeLayer(layer.id)} title={t('Remove')} aria-label={t('Remove')} data-testid="layer-remove">
+                      ×
+                    </button>
+                  </div>
+                  <label className={styles.optionsField}>
+                    <span>{t('Opacity')}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(layer.opacity * 100)}
+                      onPointerDown={remember}
+                      onKeyDown={remember}
+                      onChange={(event) => changeLayer(layer.id, { opacity: Number(event.target.value) / 100 }, false)}
+                      data-testid="layer-opacity"
+                    />
+                    <span className={styles.optionsValue}>{Math.round(layer.opacity * 100)}%</span>
+                  </label>
+                  <label className={styles.optionsField}>
+                    <span>{t('Size')}</span>
+                    <input
+                      type="range"
+                      min={5}
+                      max={400}
+                      value={Math.round((layer.width / (layerImages.current.get(layer.url)?.naturalWidth ?? layer.width)) * 100)}
+                      onPointerDown={remember}
+                      onKeyDown={remember}
+                      onChange={(event) => {
+                        const image = layerImages.current.get(layer.url);
+                        if (image === undefined) return;
+                        const scale = Number(event.target.value) / 100;
+                        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+                        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+                        // Sized about its middle, so it stays where it was put.
+                        changeLayer(
+                          layer.id,
+                          { width, height, x: Math.round(layer.x + (layer.width - width) / 2), y: Math.round(layer.y + (layer.height - height) / 2) },
+                          false,
+                        );
+                      }}
+                      data-testid="layer-size"
+                    />
+                    <span className={styles.optionsValue}>
+                      {Math.round((layer.width / (layerImages.current.get(layer.url)?.naturalWidth ?? layer.width)) * 100)}%
+                    </span>
+                  </label>
+                </div>
+              ))}
+              <div className={`${styles.layerRow} ${styles.layerBase}`} data-testid="layer-base">
+                <div className={styles.layerTop}>
+                  {picture !== null && <img src={picture.url} alt="" className={styles.layerThumb} />}
+                  <span className={styles.layerName}>{t('Picture')}</span>
+                </div>
+              </div>
+              <button type="button" className={form.filled} onClick={() => void mergeLayers()} disabled={layers.length === 0 || busy} data-testid="layers-merge">
+                {t('Merge layers')}
               </button>
             </div>
           )}
@@ -1869,6 +2098,42 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
                   data-testid="editor-picture"
                 />
+                {natural !== null && layers.length > 0 && (
+                  // The layers over the picture, in its own pixels, the first lowest; dragged with the Layers tool in hand.
+                  <svg
+                    className={`${styles.selectLayer} ${tool === 'layers' ? styles.layersOn : ''}`}
+                    viewBox={`0 0 ${natural.width} ${natural.height}`}
+                    preserveAspectRatio="none"
+                    onPointerMove={keepDragging}
+                    onPointerUp={() => setDragging(null)}
+                    data-testid="layers-layer"
+                  >
+                    {layers.map((layer) =>
+                      layer.visible ? (
+                        <image
+                          key={layer.id}
+                          href={layer.url}
+                          x={layer.x}
+                          y={layer.y}
+                          width={layer.width}
+                          height={layer.height}
+                          opacity={layer.opacity}
+                          preserveAspectRatio="none"
+                          className={tool === 'layers' ? styles.layerImage : undefined}
+                          onPointerDown={(event) => startDragging(event, layer)}
+                          data-testid="layer-image"
+                          data-id={layer.id}
+                        />
+                      ) : null,
+                    )}
+                    {tool === 'layers' &&
+                      layers
+                        .filter((layer) => layer.id === layerId && layer.visible)
+                        .map((layer) => (
+                          <rect key="chosen" className={styles.cropEdge} x={layer.x} y={layer.y} width={layer.width} height={layer.height} pointerEvents="none" />
+                        ))}
+                  </svg>
+                )}
                 {natural !== null && (tool === 'brush' || strokes.length > 0) && (
                   // What the brush paints, over the picture in its own pixels, as it will be kept.
                   <svg
@@ -1893,7 +2158,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     ))}
                   </svg>
                 )}
-                {natural !== null && tool !== 'brush' && (tool !== null || selection !== null) && (
+                {natural !== null && tool !== 'brush' && tool !== 'layers' && (tool !== null || selection !== null) && (
                   <svg
                     className={`${styles.selectLayer} ${tool !== null ? styles.selectLayerOn : ''}`}
                     viewBox={`0 0 ${natural.width} ${natural.height}`}
@@ -2227,11 +2492,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       <DesignPicturePickerDialog
         open={picking !== null}
         workspaceId={workspaceId}
-        title={t('Import from Orknux')}
         onClose={() => setPicking(null)}
+        title={picking === 'layer' ? t('Add a layer from Orknux') : t('Import from Orknux')}
         onPick={(chosen) => {
+          const forLayer = picking === 'layer';
           setPicking(null);
-          openFromOrknux(chosen);
+          if (forLayer) void addLayer(chosen.url, chosen.name ?? chosen.prompt);
+          else openFromOrknux(chosen);
         }}
       />
       <UnsavedWorkDialog

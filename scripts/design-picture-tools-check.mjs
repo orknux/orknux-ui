@@ -256,6 +256,45 @@ record(outlined === 1 && kept.length === keptBeforeBlur + 1 && mixed !== 'red' &
 record(await page.getByTestId('blur-options').isVisible().catch(() => false), 'the blur stays in hand for the next part');
 await page.getByTestId('blur-cancel').click();
 
+// -- Layers (#633) ----------------------------------------------------------------
+
+// The halves laid over the blurred picture as a layer, fitted inside it: red left, blue right, across its middle.
+const base = await page.evaluate(() => {
+  const image = document.querySelector('[data-testid="editor-picture"]');
+  return { width: image.naturalWidth, height: image.naturalHeight };
+});
+await page.getByTestId('editor-layers').click();
+await page.getByTestId('layers-panel').waitFor({ timeout: 3_000 }).catch(() => undefined);
+await page.getByTestId('layers-add-orknux').click();
+await page.getByTestId('picture-picker-grid').waitFor({ timeout: 5_000 }).catch(() => undefined);
+await page.locator(`[data-testid="picture-picker-item"][data-id="${ORIGINAL.id}"]`).click();
+await page.getByTestId('layer-image').waitFor({ timeout: 5_000 }).catch(() => undefined);
+const placed = async () => page.evaluate(() => {
+  const image = document.querySelector('[data-testid="layer-image"]');
+  return image === null ? null : ['x', 'y', 'width', 'height'].map((name) => Number(image.getAttribute(name)));
+});
+const laid = await placed();
+const fit = Math.min(1, base.width / 60, base.height / 40);
+record(laid !== null && laid[2] === Math.round(60 * fit) && laid[3] === Math.round(40 * fit) &&
+  Math.abs(laid[0] - (base.width - laid[2]) / 2) <= 1 && Math.abs(laid[1] - (base.height - laid[3]) / 2) <= 1 &&
+  (await page.getByTestId('layer-row').count()) === 1 && (await page.getByTestId('layer-base').count()) === 1,
+  `a picture from Orknux is laid over as a layer, fitted inside the picture and centred, listed above the picture (${JSON.stringify({ laid, base })})`);
+await drag([laid[0] + laid[2] / 2, laid[1] + laid[3] / 2], [laid[0] + laid[2] / 2, laid[1] + laid[3] / 2 + 3]);
+const moved = await placed();
+await page.getByTestId('editor-undo').click();
+const unmoved = await placed();
+record(moved !== null && Math.abs(moved[1] - laid[1] - 3) <= 1 && moved[0] === laid[0] && JSON.stringify(unmoved) === JSON.stringify(laid),
+  `dragging moves the layer in the picture's pixels, and Undo puts it back (${JSON.stringify({ moved, unmoved })})`);
+record(await page.getByTestId('magic-rectangle').isDisabled(), 'with a layer not merged, a Magic edit - which a model draws on the picture as kept - waits');
+const keptBeforeMerge = kept.length;
+await page.getByTestId('layers-merge').click();
+await showsLastKept();
+const merged = await shown([[0.1, 0.5], [0.9, 0.5], [0.5, 0.03]]);
+record(kept.length === keptBeforeMerge + 1 && merged?.width === base.width && merged.colours.join() === 'red,blue,blue' &&
+  (await page.getByTestId('layer-image').count()) === 0,
+  `Merge keeps the picture with the layer drawn in as one version, the picture's own size (${JSON.stringify(merged)})`);
+await page.getByTestId('editor-layers').click();
+
 // -- Feather on a Magic edit (#638) ----------------------------------------------
 
 await page.getByTestId('magic-rectangle').click();

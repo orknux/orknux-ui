@@ -3495,4 +3495,10 @@ export const PL: Record<string, string> = {
   "Radius": "Promień",
   "Lasso": "Lasso",
   "Feather": "Wtapianie",
+  "Layers": "Warstwy",
+  "Layers merged": "Scalono warstwy",
+  "Merge layers": "Scal warstwy",
+  "Add a layer from Orknux": "Dodaj warstwę z Orknux",
+  "Opacity": "Krycie",
+  "Hide": "Ukryj",
 };
