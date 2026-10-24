@@ -49,6 +49,7 @@ import shell from './DesignImageEditorPage.module.css';
 import styles from './WireframeEditorPage.module.css';
 import { boundsOf, WireframeShapes } from './WireframeDrawing';
 import { WireframeExport } from './WireframeExport';
+import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
 
 export interface WireframeEditorPageProps {
   session: SessionUser;
@@ -76,6 +77,8 @@ const ZOOM_LEAST = 0.1;
 const ZOOM_MOST = 6;
 /** How many steps undo keeps. */
 const UNDO_DEPTH = 100;
+/** How long the history waits after a change before it is written to browser storage, so a drag is not written every frame. */
+const UNDO_KEEP_MS = 250;
 /** A drag shorter than this, on screen, is a click: the element is made at its usual size. */
 const CLICK_SLOP = 4;
 /** How near a frame's edge, on screen, a press takes the frame rather than the empty space inside it. */
@@ -245,6 +248,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
       .then((found) => {
         if (left) return;
         if (found === null) {
+          forgetUndo(wireframeId);
           setMissing(true);
           return;
         }
@@ -290,12 +294,15 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
     talkEnd.current?.scrollIntoView({ block: 'end' });
   }, [talk, answering]);
 
-  /** A wireframe as the server holds it, taken onto the canvas. */
+  /** A wireframe as the server holds it, taken onto the canvas, with the history this browser kept of it if that history ends here. */
   function take(found: Wireframe) {
     const drawn = elementsOf(found);
+    const kept = restoreUndo(found.id, found.revision, JSON.stringify(drawn));
     setWireframe(found);
     setElements(drawn);
     setSaved(JSON.stringify(drawn));
+    setPast(kept?.past ?? []);
+    setFuture(kept?.future ?? []);
     setSelected((held) => held.filter((id) => drawn.some((one) => one.id === id)));
     if (!fitted.current) {
       fitted.current = true;
@@ -305,6 +312,33 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   }
 
   // -- Undo ---------------------------------------------------------------
+
+  // The history outlives a reload: written a moment after it settles, and at once when the page goes.
+  const keeping = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (wireframe === null) return;
+    const id = wireframe.id;
+    const revision = wireframe.revision;
+    const head = elements;
+    const undo = { past, future };
+    let written = false;
+    const write = () => {
+      if (written) return;
+      written = true;
+      keepUndo(id, revision, JSON.stringify(head), undo);
+    };
+    keeping.current = write;
+    const timer = window.setTimeout(write, UNDO_KEEP_MS);
+    return () => window.clearTimeout(timer);
+  }, [wireframe, elements, past, future]);
+  useEffect(() => {
+    const leaving = () => keeping.current?.();
+    window.addEventListener('pagehide', leaving);
+    return () => {
+      window.removeEventListener('pagehide', leaving);
+      leaving();
+    };
+  }, []);
 
   /** A change worth undoing: the drawing it replaces goes on the stack. */
   function remember(before: WireframeElement[]) {
@@ -726,6 +760,12 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   const one = selected.length === 1 ? (elements.find((element) => element.id === selected[0]) ?? null) : null;
   const chosen = elements.filter((element) => selected.includes(element.id));
   const chosenBounds = boundsOf(chosen.map((element) => ({ ...element, type: element.type === 'frame' ? 'rect' : element.type })));
+  // Where a model is drawing, on screen: what is selected, else what is drawn, else the whole canvas (null).
+  const drawingBounds = chosenBounds ?? boundsOf(elements.map((element) => ({ ...element, type: element.type === 'frame' ? 'rect' : element.type })));
+  const drawingArea =
+    drawingBounds === null
+      ? null
+      : { left: drawingBounds.x * view.zoom + view.x, top: drawingBounds.y * view.zoom + view.y, width: drawingBounds.w * view.zoom, height: drawingBounds.h * view.zoom };
   const editingElement = editing === null ? null : (elements.find((element) => element.id === editing.id) ?? null);
   const handleSize = 8 / view.zoom;
   const step = view.zoom < 0.5 ? GRID * 4 : GRID * 2;
@@ -990,6 +1030,14 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
               data-testid="wireframe-text-input"
             />
           )}
+          {answering && wireframe !== null && (
+            <div
+              className={`${styles.drawingArea} ${drawingArea === null ? styles.drawingAreaWhole : ''}`}
+              style={drawingArea ?? undefined}
+              aria-hidden="true"
+              data-testid="wireframe-drawing-area"
+            />
+          )}
           {answering && (
             <div className={styles.drawing} data-testid="wireframe-drawing">
               <Loader label={t('Drawing…')} delay={0} size={20} />
@@ -1138,7 +1186,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
                   aria-label={t('Send')}
                   data-testid="wireframe-chat-send"
                 >
-                  {answering ? <Loader delay={0} size={14} /> : <img src={sendIcon} alt="" width={16} height={16} data-keeps-colour="" />}
+                  {answering ? <Loader label="" delay={0} size={14} /> :<img src={sendIcon} alt="" width={16} height={16} data-keeps-colour="" />}
                 </button>
               </div>
             </div>

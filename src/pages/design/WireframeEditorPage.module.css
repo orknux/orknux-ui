@@ -149,6 +149,66 @@
   color: var(--color-text-secondary);
 }
 
+/* Where the model is drawing - what is selected, else what is drawn, else the canvas: outlined, breathing, and swept by a soft light until it answers. */
+.drawingArea {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-violet) 6%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-violet) 70%, transparent);
+  border-radius: var(--radius-4);
+  pointer-events: none;
+  animation: drawingBreathe 1.6s ease-in-out infinite;
+}
+
+.drawingArea::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  content: '';
+  /* Square to the band, so its sides are clear at every height and show no edge. */
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-violet) 18%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: drawingSweep 1.8s ease-in-out infinite;
+}
+
+.drawingAreaWhole {
+  inset: var(--space-12);
+}
+
+@keyframes drawingBreathe {
+  0%,
+  100% {
+    border-color: color-mix(in srgb, var(--color-violet) 45%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-violet) 30%, transparent);
+  }
+  50% {
+    border-color: var(--color-violet);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-violet) 18%, transparent);
+  }
+}
+
+@keyframes drawingSweep {
+  to {
+    transform: translateX(200%);
+  }
+}
+
+/* Held still: the outline and the tint say it as well. */
+@media (prefers-reduced-motion: reduce) {
+  .drawingArea {
+    animation: none;
+  }
+
+  .drawingArea::after {
+    display: none;
+    animation: none;
+  }
+}
+
 /* The panel: the selection's numbers on top, the conversation filling the rest, the box to ask in at its foot. */
 .panel {
   gap: var(--space-12);
@@ -191,9 +251,11 @@
   flex-direction: column;
   gap: var(--space-8);
   min-height: 0;
+  /* Room inside the scrolling part as well as around it: without it a request's bubble ran to the panel's right edge,
+     and the first and last lines were cut by the edge they scroll under. */
+  padding: var(--space-4) var(--space-8);
   overflow-y: auto;
 }
-
 
 .mine {
   align-self: flex-end;
@@ -365,6 +427,7 @@
   background: var(--color-violet);
   border: 0;
   border-radius: 50%;
+  overflow: hidden;
   cursor: pointer;
   transition: opacity 120ms ease;
 }
