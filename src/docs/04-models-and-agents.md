@@ -821,10 +821,14 @@ without looking would lose it with no way back.
 
 It can **draw wireframes** the same way. `orknux_wireframes` lists the ones in
 Design and `orknux_wireframe` reads one; `orknux_create_wireframe` makes one,
+with its elements in the same call if it is given them,
 `orknux_change_wireframe` adds, changes and removes elements, and
 `orknux_draw_wireframe` replaces the whole drawing. They are the tools the chat
 down the right of the wireframe editor gives the model chosen there, and what
 they draw is saved and audited as a save from the editor is.
+`orknux_wireframe_html` writes one out as a single HTML page - each frame a
+screen, buttons, fields and pictures as real HTML elements - and answers the
+page with a link to download it, the same page **Export** in the editor saves.
 
 ## Letting an agent work in a box
 
