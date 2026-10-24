@@ -372,42 +372,129 @@ await page.getByTestId('blur-cancel').click();
 
 // -- Layers (#633) ----------------------------------------------------------------
 
-// The halves laid over the blurred picture as a layer, fitted inside it: red left, blue right, across its middle.
-const base = await page.evaluate(() => {
-  const image = document.querySelector('[data-testid="editor-picture"]');
-  return { width: image.naturalWidth, height: image.naturalHeight };
-});
-await page.getByTestId('editor-layers').click();
+// Layers as any image editor has them: empty ones added over the picture, painted on, renamed, hidden, restacked
+// and removed, every one a step Undo takes back. What is drawn is read off the screen, since a layer is never the
+// picture's file until it is flattened. The whole picture fitted first, so a point of it is on the screen.
+await page.getByTestId('editor-zoom').click();
+/** Clicks what is there; a control that is not leaves the step undone, and the record after it says so. */
+const tap = (id) => page.getByTestId(id).first().click({ timeout: 3_000 }).catch(() => undefined);
+/** The layers' names, the top of the stack first, and which is chosen. */
+const stack = () => page.evaluate(() => [...document.querySelectorAll('[data-testid="layer-row"]')].map((row) =>
+  `${row.getAttribute('aria-selected') === 'true' ? '*' : ''}${row.querySelector('[data-testid="layer-name"]')?.textContent ?? ''}`));
+/** A row painted across the picture's top, in the blue. */
+const row = Math.round(size.height * 0.2);
+/** Where on the screen that row is read: left of the layers' panel, which sits over the canvas's right. */
+const readPoint = async () => {
+  const picture = await page.getByTestId('editor-picture').boundingBox();
+  const panel = await page.getByTestId('layers-panel').boundingBox().catch(() => null);
+  const right = Math.min(picture.x + picture.width, panel === null ? Infinity : panel.x);
+  return { x: picture.x + Math.min(picture.width * 0.25, (right - picture.x) / 2), y: picture.y + ((row + 0.5) / size.height) * picture.height };
+};
+/** The colour drawn at that point of the screen - the picture and every layer shown over it, as somebody sees them. */
+const seen = async () => {
+  await page.waitForTimeout(100);
+  const { x, y } = await readPoint();
+  const shot = await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } });
+  return page.evaluate(async (png) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const pen = canvas.getContext('2d');
+    pen.drawImage(image, 0, 0);
+    const [r, g, b] = pen.getImageData(0, 0, 1, 1).data;
+    return r > 200 && g < 60 && b > 200 ? 'magenta' : r < 60 && g > 200 && b > 200 ? 'cyan' : r < 60 && g < 60 && b > 200 ? 'blue' : `rgb(${r},${g},${b})`;
+  }, shot.toString('base64'));
+};
+/** One stroke across the picture at that row, in a colour, with the brush put down after it. */
+const paintRow = async (colour) => {
+  await tap('editor-brush');
+  await page.getByTestId('brush-colour').fill(colour).catch(() => undefined);
+  await drag([1, row], [size.width - 1, row], 10);
+  await tap('editor-brush');
+};
+const pictureSrc = () => page.getByTestId('editor-picture').getAttribute('src');
+
+await tap('editor-layers');
 await page.getByTestId('layers-panel').waitFor({ timeout: 3_000 }).catch(() => undefined);
-await page.getByTestId('layers-add-orknux').click();
-await page.getByTestId('picture-picker-grid').waitFor({ timeout: 5_000 }).catch(() => undefined);
-await page.locator(`[data-testid="picture-picker-item"][data-id="${ORIGINAL.id}"]`).click();
-await page.getByTestId('layer-image').waitFor({ timeout: 5_000 }).catch(() => undefined);
-const placed = async () => page.evaluate(() => {
-  const image = document.querySelector('[data-testid="layer-image"]');
-  return image === null ? null : ['x', 'y', 'width', 'height'].map((name) => Number(image.getAttribute(name)));
-});
-const laid = await placed();
-const fit = Math.min(1, base.width / 60, base.height / 40);
-record(laid !== null && laid[2] === Math.round(60 * fit) && laid[3] === Math.round(40 * fit) &&
-  Math.abs(laid[0] - (base.width - laid[2]) / 2) <= 1 && Math.abs(laid[1] - (base.height - laid[3]) / 2) <= 1 &&
-  (await page.getByTestId('layer-row').count()) === 1 && (await page.getByTestId('layer-base').count()) === 1,
-  `a picture from Orknux is laid over as a layer, fitted inside the picture and centred, listed above the picture (${JSON.stringify({ laid, base })})`);
-await drag([laid[0] + laid[2] / 2, laid[1] + laid[3] / 2], [laid[0] + laid[2] / 2, laid[1] + laid[3] / 2 + 3]);
-const moved = await placed();
-await page.getByTestId('editor-undo').click();
-const unmoved = await placed();
-record(moved !== null && Math.abs(moved[1] - laid[1] - 3) <= 1 && moved[0] === laid[0] && JSON.stringify(unmoved) === JSON.stringify(laid),
-  `dragging moves the layer in the picture's pixels, and Undo puts it back (${JSON.stringify({ moved, unmoved })})`);
-record(await page.getByTestId('magic-rectangle').isDisabled(), 'with a layer not merged, a Magic edit - which a model draws on the picture as kept - waits');
-const keptBeforeMerge = kept.length;
-await page.getByTestId('layers-merge').click();
+const noFromButtons = (await page.getByTestId('layers-add-file').count()) === 0 && (await page.getByTestId('layers-add-orknux').count()) === 0;
+const startsWith = { stack: await stack(), base: await page.getByTestId('layer-base').count(), seen: await seen() };
+await tap('layers-new');
+const added = await stack();
+await tap('editor-undo');
+const addUndone = await stack();
+await tap('editor-redo');
+const addRedone = await stack();
+record(noFromButtons && startsWith.stack.length === 0 && startsWith.base === 1 && startsWith.seen === 'blue' &&
+  JSON.stringify(added) === '["*Layer 1"]' && addUndone.length === 0 && JSON.stringify(addRedone) === '["*Layer 1"]',
+  `New layer adds an empty one over the picture, named and chosen, and Undo takes it away (${JSON.stringify({ startsWith, added, addUndone, addRedone })})`);
+
+// Painted on, the layer changes what is seen and the picture stays as it was: hidden, the picture shows through.
+const keptBeforeLayers = kept.length;
+const srcBeforeLayers = await pictureSrc();
+await paintRow('#ff00ff');
+const paintedOn = await seen();
+const readAcross = await page.getByTestId('editor-picture').boundingBox().then(async (box) => ((await readPoint()).x - box.x) / box.width);
+const pictureUnder = await shown([[readAcross, (row + 0.5) / size.height]]);
+await page.locator('[data-testid="layer-row"] [data-testid="layer-visible"]').first().click({ timeout: 3_000 }).catch(() => undefined);
+const hiddenShows = await seen();
+await tap('editor-undo');
+const shownAgain = await seen();
+record(paintedOn === 'magenta' && hiddenShows === 'blue' && shownAgain === 'magenta' && kept.length === keptBeforeLayers &&
+  (await pictureSrc()) === srcBeforeLayers && pictureUnder?.colours[0] === 'blue',
+  `the brush paints on the layer chosen: the picture under it is untouched, shows through with the layer hidden, and Undo shows the layer again (${JSON.stringify({ paintedOn, hiddenShows, shownAgain, pictureUnder })})`);
+await tap('editor-undo');
+const paintUndone = await seen();
+await tap('editor-redo');
+const paintRedone = await seen();
+record(paintedOn === 'magenta' && paintUndone === 'blue' && paintRedone === 'magenta',
+  `Undo takes back what was painted on a layer, and Redo paints it again (${JSON.stringify({ paintUndone, paintRedone })})`);
+
+// Renamed by double-clicking its name.
+await page.getByTestId('layer-name').first().dblclick({ timeout: 3_000 }).catch(() => undefined);
+await page.getByTestId('layer-name-input').fill('Sky').catch(() => undefined);
+await page.getByTestId('layer-name-input').press('Enter').catch(() => undefined);
+const renamed = await stack();
+await tap('editor-undo');
+const renameUndone = await stack();
+await tap('editor-redo');
+record(JSON.stringify(renamed) === '["*Sky"]' && JSON.stringify(renameUndone) === '["*Layer 1"]' && JSON.stringify(await stack()) === '["*Sky"]',
+  `a layer is renamed, and Undo gives it its name back (${JSON.stringify({ renamed, renameUndone })})`);
+
+// A second layer over the first, painted another colour: on top, it is what is seen; moved down, the first is.
+await tap('layers-new');
+await paintRow('#00ffff');
+const twoLayers = { stack: await stack(), seen: await seen() };
+await page.locator('[data-testid="layer-row"] [data-testid="layer-down"]').first().click({ timeout: 3_000 }).catch(() => undefined);
+const restacked = { stack: await stack(), seen: await seen() };
+await tap('editor-undo');
+const restackUndone = { stack: await stack(), seen: await seen() };
+record(JSON.stringify(twoLayers) === '{"stack":["*Layer 2","Sky"],"seen":"cyan"}' &&
+  JSON.stringify(restacked) === '{"stack":["Sky","*Layer 2"],"seen":"magenta"}' &&
+  JSON.stringify(restackUndone) === JSON.stringify(twoLayers),
+  `a new layer goes over the one chosen, moving it down changes what is on top, and Undo puts it back (${JSON.stringify({ twoLayers, restacked, restackUndone })})`);
+
+// Removed, the one chosen goes and the one under it is chosen; the picture itself cannot be removed.
+await tap('layers-remove');
+const removed = { stack: await stack(), seen: await seen() };
+await tap('editor-undo');
+const removeUndone = { stack: await stack(), seen: await seen() };
+await tap('layer-base');
+const pictureKept = await page.getByTestId('layers-remove').isDisabled().catch(() => false);
+record(JSON.stringify(removed) === '{"stack":["*Sky"],"seen":"magenta"}' && JSON.stringify(removeUndone) === JSON.stringify(twoLayers) && pictureKept,
+  `Remove takes the chosen layer away, Undo brings it back, and the picture itself is never removed (${JSON.stringify({ removed, removeUndone, pictureKept })})`);
+
+// Flattened, what is seen becomes the picture, as one version.
+const keptBeforeFlatten = kept.length;
+await tap('layers-flatten');
 await showsLastKept();
-const merged = await shown([[0.1, 0.5], [0.9, 0.5], [0.5, 0.03]]);
-record(kept.length === keptBeforeMerge + 1 && merged?.width === base.width && merged.colours.join() === 'red,blue,blue' &&
-  (await page.getByTestId('layer-image').count()) === 0,
-  `Merge keeps the picture with the layer drawn in as one version, the picture's own size (${JSON.stringify(merged)})`);
-await page.getByTestId('editor-layers').click();
+const flat = await shown([[0.1, (row + 0.5) / size.height]]);
+record(kept.length === keptBeforeFlatten + 1 && kept[kept.length - 1].change === 'Layers flattened' && (await stack()).length === 0 &&
+  flat?.width === size.width && flat.colours[0] === 'rgb(0,255,255)',
+  `Flatten keeps what is seen as one version of the picture's own size, and the layers go (${JSON.stringify({ flat, change: kept[kept.length - 1]?.change })})`);
+await tap('editor-layers');
 
 // -- Feather on a Magic edit (#638) ----------------------------------------------
 

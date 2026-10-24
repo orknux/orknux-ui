@@ -82,43 +82,33 @@ export function painted(source: HTMLCanvasElement, strokes: Stroke[]): HTMLCanva
 }
 
 /**
- * A picture laid over the one being edited, until the layers are merged: where
- * it sits and how large, in the picture's own pixels, how opaque, and whether
- * it is shown. Its file is at `url` - a picture in Orknux, or a file read in.
+ * A layer over the picture, as any image editor has them: pixels of its own,
+ * the picture's size and transparent where nothing is painted, a name and
+ * whether it is shown. Its canvas is never drawn on once made - a change makes
+ * a new one - so a step undo holds keeps the layer as it was.
  */
 export type Layer = {
   id: string;
   name: string;
-  url: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  /** 0 to 1. */
-  opacity: number;
   visible: boolean;
+  pixels: HTMLCanvasElement;
 };
 
-/** The layers drawn over the picture, the first lowest, each where it sits and as opaque as it is. */
-export function layered(source: HTMLCanvasElement, layers: { image: CanvasImageSource; layer: Layer }[]): HTMLCanvasElement {
-  const { canvas, pen } = blank(source.width, source.height);
-  pen.drawImage(source, 0, 0);
-  for (const { image, layer } of layers) {
-    pen.globalAlpha = layer.opacity;
-    pen.drawImage(image, layer.x, layer.y, layer.width, layer.height);
-  }
-  pen.globalAlpha = 1;
-  return canvas;
+/** A new layer: transparent, the picture's size. */
+export function emptyLayer(width: number, height: number): HTMLCanvasElement {
+  return blank(width, height).canvas;
 }
 
-/** A picture's file loaded, for drawing on a canvas. */
-export function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((done, failed) => {
-    const image = new Image();
-    image.onload = () => done(image);
-    image.onerror = () => failed(new Error('The picture could not be read.'));
-    image.src = url;
-  });
+/**
+ * The picture and the layers over it as one: the first layer lowest, hidden
+ * ones left out, and the picture itself left out where it is hidden too. Each
+ * is drawn at the picture's size, so a layer made for it lines up with it.
+ */
+export function flattened(width: number, height: number, picture: CanvasImageSource | null, layers: Layer[]): HTMLCanvasElement {
+  const { canvas, pen } = blank(width, height);
+  if (picture !== null) pen.drawImage(picture, 0, 0, width, height);
+  for (const layer of layers) if (layer.visible) pen.drawImage(layer.pixels, 0, 0, width, height);
+  return canvas;
 }
 
 /** A box on the picture, in whole pixels. */

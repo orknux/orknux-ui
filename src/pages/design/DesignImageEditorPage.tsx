@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
+import type { CanvasHTMLAttributes, FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -66,7 +66,7 @@ import layersIcon from '../../assets/layers.svg';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { blurredAlong, blurredInside, boxOf, canvasOf, cropped, layered, loadImage, mirrored, painted, rotated, strokePath } from './pictureEdits';
+import { blurredAlong, blurredInside, boxOf, canvasOf, cropped, emptyLayer, flattened, mirrored, painted, rotated, strokePath } from './pictureEdits';
 import type { Layer, Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -75,6 +75,25 @@ import { videoFromPicturePath } from './useVideoFromPicture';
 export interface DesignImageEditorPageProps {
   session: SessionUser;
   onSignOut?: () => void;
+}
+
+/**
+ * A layer's pixels on the page: its canvas copied into one of the page's own,
+ * since a canvas can be shown in one place only and the layer's is held by
+ * undo as well. Drawn again whenever the layer is a new canvas.
+ */
+function LayerView({ pixels, ...rest }: { pixels: HTMLCanvasElement } & CanvasHTMLAttributes<HTMLCanvasElement> & { 'data-testid'?: string; 'data-id'?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const pen = canvas?.getContext('2d');
+    if (canvas == null || pen == null) return;
+    canvas.width = pixels.width;
+    canvas.height = pixels.height;
+    pen.clearRect(0, 0, canvas.width, canvas.height);
+    pen.drawImage(pixels, 0, 0);
+  }, [pixels]);
+  return <canvas ref={ref} {...rest} />;
 }
 
 /** Marks the editor's own move to New - undo back past a drawing - which is not somebody asking for a new picture. */
@@ -117,13 +136,26 @@ type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: stri
 type MagicTool = 'rectangle' | 'lasso';
 
 /** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
-type Tool = MagicTool | 'crop' | 'brush' | 'blur' | 'layers';
+type Tool = MagicTool | 'crop' | 'brush' | 'blur';
 
 /** Whether a tool selects with a rectangle - two corners - rather than a lasso's outline. */
 const boxed = (tool: Tool | null) => tool === 'rectangle' || tool === 'crop';
 
 /** One step undo goes back to: what the panel held and what was on the canvas. */
-type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null; strokes: Stroke[]; layers: Layer[] };
+type Snapshot = {
+  prompt: string;
+  modelId: string;
+  asked: Asked;
+  shown: Shown;
+  pendingName: string | null;
+  strokes: Stroke[];
+  layers: Layer[];
+  layerId: string;
+  baseVisible: boolean;
+};
+
+/** The picture's own place in the layers: at the foot of the stack, never taken away, renamed or moved. */
+const PICTURE_LAYER = 'picture';
 
 /** How long typing in the prompt pauses before it counts as one step to undo. */
 const TYPING_SETTLES_MS = 700;
@@ -208,12 +240,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The menu of what a model does with the whole picture open: Upscale, Clean up, Harmonize, Convert to video. */
   const [modelMenu, setModelMenu] = useState(false);
   /** The window of pictures in Orknux open, and what the one chosen is for. */
-  const [picking, setPicking] = useState<'open' | 'layer' | null>(null);
+  const [picking, setPicking] = useState(false);
   /** A file being dragged over the canvas, which a drop opens here. */
   const [dropping, setDropping] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
-  /** A file picked to lay over the picture as a layer. */
-  const layerFileRef = useRef<HTMLInputElement>(null);
   const [modelId, setModelId] = useState('');
   const [spec, setSpec] = useState<ImageParameterSpec[]>([]);
   const [presets, setPresets] = useState<ImageSizePreset[]>([]);
@@ -402,7 +432,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   // -- Undo and redo ------------------------------------------------------
 
-  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes, layers });
+  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes, layers, layerId, baseVisible });
   const settleTyping = () => {
     window.clearTimeout(typingTimer.current);
     const from = typingFrom.current;
@@ -441,6 +471,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setPendingName(to.pendingName);
     setStrokes(to.strokes);
     setLayers(to.layers);
+    setLayerId(to.layerId);
+    setBaseVisible(to.baseVisible);
   };
   const undo = () => {
     settleTyping();
@@ -655,21 +687,24 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     event.preventDefault();
     const shownPicture = pictureRef.current;
     if (picture === null || selection === null || shownPicture === null || change.trim() === '' || editModelId === '' || changing) return;
+    const selected = selection;
     setChanging(true);
     setError(null);
     try {
+      const seen = await asSeen();
+      if (seen === null) return;
       const queued = await queueDesignImageEdit({
         workspaceId,
-        imageId: picture.id,
+        imageId: seen.id,
         modelId: editModelId,
         prompt: change.trim(),
-        mask: maskOf(selection, shownPicture.naturalWidth, shownPicture.naturalHeight),
+        mask: maskOf(selected, shownPicture.naturalWidth, shownPicture.naturalHeight),
         feather,
       });
       remember();
       setChangingOver((held) => ({
         ...held,
-        [queued.id]: { url: picture.url, width: shownPicture.naturalWidth, height: shownPicture.naturalHeight, points: selection },
+        [queued.id]: { url: seen.url, width: shownPicture.naturalWidth, height: shownPicture.naturalHeight, points: selected },
       }));
       setMade((held) => [{ job: queued }, ...held]);
       setChange('');
@@ -686,13 +721,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   async function upscale(upscaleModelId: string, algorithm: string, scale: number) {
     const shownPicture = pictureRef.current;
     if (picture === null || shownPicture === null) return;
-    const queued = await queueDesignImageUpscale({ workspaceId, imageId: picture.id, modelId: upscaleModelId, algorithm, scale });
+    const seen = await asSeen();
+    if (seen === null) return;
+    const queued = await queueDesignImageUpscale({ workspaceId, imageId: seen.id, modelId: upscaleModelId, algorithm, scale });
     const width = shownPicture.naturalWidth;
     const height = shownPicture.naturalHeight;
     remember();
     setChangingOver((held) => ({
       ...held,
-      [queued.id]: { url: picture.url, width, height, points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] },
+      [queued.id]: { url: seen.url, width, height, points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] },
     }));
     setMade((held) => [{ job: queued }, ...held]);
     forget();
@@ -705,9 +742,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   async function harmonize(harmonizeModelId: string, described: string, strength: number | null, checkpoint: string | null) {
     const shownPicture = pictureRef.current;
     if (picture === null || shownPicture === null) return;
+    const seen = await asSeen();
+    if (seen === null) return;
     const queued = await queueDesignImageHarmonize({
       workspaceId,
-      imageId: picture.id,
+      imageId: seen.id,
       modelId: harmonizeModelId,
       prompt: described,
       strength,
@@ -718,7 +757,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     remember();
     setChangingOver((held) => ({
       ...held,
-      [queued.id]: { url: picture.url, width, height, points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] },
+      [queued.id]: { url: seen.url, width, height, points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] },
     }));
     setMade((held) => [{ job: queued }, ...held]);
     forget();
@@ -727,116 +766,138 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   }
 
   /*
-   * Layers: pictures laid over the one being edited - from a file or from
-   * Orknux - each moved by dragging it, sized, made more or less opaque,
-   * hidden, and put above or below the others, until they are merged into
-   * the picture as one version. Every change to them is a step undo takes
-   * back. They are held on the page until merged, as a rename is, so leaving
-   * with some asks first; a tool that changes the picture merges them first.
+   * Layers, as any image editor has them: the picture at the foot of the
+   * stack, and over it layers of pixels of their own - added empty, painted
+   * and blurred on, renamed, hidden, and put above or below one another. The
+   * brush and the blur work on the layer chosen; what is shown is every layer
+   * shown, the first lowest. Every change to them is a step undo takes back.
+   * They are held on the page alone (#633): Save flattens the ones shown into
+   * the picture as one version, as does Flatten, and a model asked for a
+   * change sees them flattened, since it is handed a picture and not a stack.
    */
   const [layers, setLayers] = useState<Layer[]>([]);
-  /** The layer being worked on: dragging moves it, the panel marks it. */
-  const [layerId, setLayerId] = useState<string | null>(null);
-  /** Each layer's picture, loaded once, so merging draws at once. */
-  const layerImages = useRef(new Map<string, HTMLImageElement>());
+  /** The layer the brush and the blur work on: one of the layers, or the picture itself. */
+  const [layerId, setLayerId] = useState<string>(PICTURE_LAYER);
+  /** The picture itself hidden, so only the layers over it are seen. */
+  const [baseVisible, setBaseVisible] = useState(true);
+  const [layersOpen, setLayersOpen] = useState(false);
   const layerCount = useRef(0);
-  /** A layer being dragged: where the pointer went down, and where the layer was then. */
-  const [dragging, setDragging] = useState<{ id: string; from: Point; x: number; y: number } | null>(null);
+  /** A layer's row being dragged to another place in the stack. */
+  const [movingRow, setMovingRow] = useState<string | null>(null);
+  /** The layer whose name is being typed over, and what has been typed. */
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  /** The layer chosen, or null where it is the picture itself. */
+  const activeLayer = layers.find((one) => one.id === layerId) ?? null;
+
+  /** The picture alone, on a canvas of its own at its own size; null before it has loaded. */
+  const baseCanvas = (): HTMLCanvasElement | null => {
+    const shownPicture = pictureRef.current;
+    if (picture === null || shownPicture === null || shownPicture.naturalWidth === 0) return null;
+    return canvasOf(shownPicture);
+  };
 
   /**
-   * The picture shown, on a canvas of its own at its own size, with the layers
-   * and what the brush has painted over it and not yet kept - so a tool used
-   * next works on what is on the screen. Null before it has loaded.
+   * What is on the screen as one picture: the picture and the layers shown,
+   * with what the brush has painted on the picture and not yet kept - so a
+   * tool that works on the whole of it, or Save, has exactly what is seen.
    */
   const pictureCanvas = (): HTMLCanvasElement | null => {
     const shownPicture = pictureRef.current;
     if (picture === null || shownPicture === null || shownPicture.naturalWidth === 0) return null;
-    let drawn = canvasOf(shownPicture);
-    const over = layers
-      .filter((one) => one.visible)
-      .flatMap((layer) => {
-        const image = layerImages.current.get(layer.url);
-        return image === undefined ? [] : [{ image, layer }];
-      });
-    if (over.length > 0) drawn = layered(drawn, over);
-    return strokes.length === 0 ? drawn : painted(drawn, strokes);
+    const under = !baseVisible ? null : strokes.length > 0 ? painted(canvasOf(shownPicture), strokes) : shownPicture;
+    return flattened(shownPicture.naturalWidth, shownPicture.naturalHeight, under, layers);
   };
 
-  /** A picture laid over the one shown as a new layer, fitted inside it and centred, on top of the others. */
-  async function addLayer(url: string, name: string) {
-    if (natural === null) return;
-    try {
-      const image = layerImages.current.get(url) ?? (await loadImage(url));
-      layerImages.current.set(url, image);
-      const scale = Math.min(1, natural.width / image.naturalWidth, natural.height / image.naturalHeight);
-      const width = Math.max(1, Math.round(image.naturalWidth * scale));
-      const height = Math.max(1, Math.round(image.naturalHeight * scale));
-      layerCount.current += 1;
-      const id = `layer-${layerCount.current}`;
-      remember();
-      setLayers((held) => [
-        ...held,
-        { id, name, url, x: Math.round((natural.width - width) / 2), y: Math.round((natural.height - height) / 2), width, height, opacity: 1, visible: true },
-      ]);
-      setLayerId(id);
-      setTool('layers');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('Could not open that file.'));
-    }
-  }
-  /** One layer changed; the step before it is remembered only where [step] says so, as a drag is one step and not one per move. */
-  const changeLayer = (id: string, change: Partial<Layer>, step = true) => {
-    if (step) remember();
-    setLayers((held) => held.map((one) => (one.id === id ? { ...one, ...change } : one)));
-  };
-  /** A layer moved up or down the stack: up is nearer the top, drawn over the rest. */
-  const restack = (id: string, by: 1 | -1) => {
-    const at = layers.findIndex((one) => one.id === id);
-    const to = at + by;
-    if (at < 0 || to < 0 || to >= layers.length) return;
+  /** A layer's pixels changed, as one step undo takes back. */
+  const repaintLayer = (id: string, pixels: HTMLCanvasElement) => {
     remember();
-    const next = [...layers];
-    [next[at], next[to]] = [next[to], next[at]];
+    setLayers((held) => held.map((one) => (one.id === id ? { ...one, pixels } : one)));
+  };
+  /** A layer chosen to work on; what the brush painted on the picture is kept first, so it is not carried over. */
+  const chooseLayer = (id: string) => {
+    if (id === layerId) return;
+    if (strokes.length > 0) void applyPaint();
+    setLayerId(id);
+  };
+  /** An empty layer, above the one chosen, and chosen itself. */
+  const newLayer = () => {
+    if (natural === null) return;
+    layerCount.current += 1;
+    const layer: Layer = {
+      id: `layer-${layerCount.current}`,
+      name: tf('Layer {number}', { number: layerCount.current }),
+      visible: true,
+      pixels: emptyLayer(natural.width, natural.height),
+    };
+    const at = layers.findIndex((one) => one.id === layerId) + 1;
+    if (strokes.length > 0) void applyPaint();
+    remember();
+    setLayers([...layers.slice(0, at), layer, ...layers.slice(at)]);
+    setLayerId(layer.id);
+  };
+  /** The layer chosen taken away; the one under it is chosen next. The picture itself is never taken away. */
+  const removeLayer = () => {
+    const at = layers.findIndex((one) => one.id === layerId);
+    if (at < 0) return;
+    remember();
+    const rest = layers.filter((one) => one.id !== layerId);
+    setLayers(rest);
+    setLayerId(rest[at - 1]?.id ?? PICTURE_LAYER);
+  };
+  /** A layer put at another place in the stack, counted from the foot; the picture stays under them all. */
+  const moveLayer = (id: string, to: number) => {
+    const at = layers.findIndex((one) => one.id === id);
+    if (at < 0 || to < 0 || to >= layers.length || to === at) return;
+    remember();
+    const next = layers.filter((one) => one.id !== id);
+    next.splice(to, 0, layers[at]);
     setLayers(next);
   };
-  const removeLayer = (id: string) => {
+  const showLayer = (id: string) => {
     remember();
-    setLayers((held) => held.filter((one) => one.id !== id));
+    if (id === PICTURE_LAYER) setBaseVisible(!baseVisible);
+    else setLayers((held) => held.map((one) => (one.id === id ? { ...one, visible: !one.visible } : one)));
   };
-  /** The layers merged into the picture, as one version. */
-  async function mergeLayers(): Promise<void> {
+  const finishRenaming = () => {
+    if (renaming === null) return;
+    const called = renaming.name.trim();
+    const layer = layers.find((one) => one.id === renaming.id);
+    setRenaming(null);
+    if (layer === undefined || called === '' || called === layer.name) return;
+    remember();
+    setLayers((held) => held.map((one) => (one.id === layer.id ? { ...one, name: called } : one)));
+  };
+  /** The layers shown flattened into the picture, as one version. */
+  async function flattenLayers(): Promise<void> {
     const drawn = layers.length === 0 ? null : pictureCanvas();
-    if (drawn !== null) await keepChange(drawn, t('Layers merged'));
+    if (drawn !== null) await keepChange(drawn, t('Layers flattened'));
   }
-  const startDragging = (event: ReactPointerEvent<SVGElement>, layer: Layer) => {
-    if (tool !== 'layers' || event.button !== 0) return;
-    const at = onPicture(event);
-    if (at === null) return;
-    event.stopPropagation();
-    (event.currentTarget.ownerSVGElement ?? event.currentTarget).setPointerCapture(event.pointerId);
-    setLayerId(layer.id);
-    remember();
-    setDragging({ id: layer.id, from: at, x: layer.x, y: layer.y });
-  };
-  const keepDragging = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (dragging === null) return;
-    const shownPicture = pictureRef.current;
-    if (shownPicture === null) return;
-    // Not clamped to the picture: a layer may hang over its edge, and what hangs over is cut off when merged.
-    const box = shownPicture.getBoundingClientRect();
-    const x = ((event.clientX - box.left) / box.width) * shownPicture.naturalWidth;
-    const y = ((event.clientY - box.top) / box.height) * shownPicture.naturalHeight;
-    changeLayer(dragging.id, { x: Math.round(dragging.x + x - dragging.from.x), y: Math.round(dragging.y + y - dragging.from.y) }, false);
-  };
+  /**
+   * The picture as a model is to be handed it: with the layers flattened into
+   * it first, as a version, where there are any. Throws where it could not be kept.
+   */
+  async function asSeen(): Promise<Artifact | null> {
+    if (picture === null || layers.length === 0) return picture;
+    const drawn = pictureCanvas();
+    return drawn === null ? null : keepNow(drawn, t('Layers flattened'));
+  }
 
-  /** Keeps a change worked out here, and shows it; throws where it could not be kept. */
-  async function keepNow(drawn: HTMLCanvasElement, change: string): Promise<Artifact | null> {
+  /**
+   * Keeps a change worked out here, and shows it; throws where it could not be
+   * kept. A change made from what is on the screen has the layers in it, and
+   * they go; one made to the picture alone leaves them over it.
+   */
+  async function keepNow(drawn: HTMLCanvasElement, change: string, layersIn = true): Promise<Artifact | null> {
     if (picture === null) return null;
     const kept = await keepDesignImageChange({ workspaceId, imageId: picture.id, image: drawn.toDataURL('image/png'), change });
     // The state it replaces goes on the stack, strokes not yet kept included: undo goes back to them.
     remember();
     setStrokes([]);
-    setLayers([]);
+    if (layersIn) {
+      setLayers([]);
+      setLayerId(PICTURE_LAYER);
+      setBaseVisible(true);
+    }
     setMade((held) => [{ job: kept }, ...held]);
     forget();
     if (kept.image !== null) show({ kind: 'picture', picture: kept.image });
@@ -848,12 +909,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * Save writes and Discard throws away, and a step undo goes back over, as a
    * model's change is. Answers the version, or null where it could not be kept.
    */
-  async function keepChange(drawn: HTMLCanvasElement, change: string): Promise<Artifact | null> {
+  async function keepChange(drawn: HTMLCanvasElement, change: string, layersIn = true): Promise<Artifact | null> {
     if (picture === null || busy) return null;
     setBusy(true);
     setError(null);
     try {
-      return await keepNow(drawn, change);
+      return await keepNow(drawn, change, layersIn);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not keep the change.'));
       return null;
@@ -883,7 +944,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [brushSize, setBrushSize] = useState<number | null>(null);
   const [brushMost, setBrushMost] = useState<number | null>(null);
   const [brushColour, setBrushColour] = useState('#000000');
-  /** What has been done on the page and not yet kept: strokes painted, layers laid over. */
+  /** What has been done on the page and not yet kept: strokes painted on the picture, layers over it. */
   const pending = strokes.length > 0 || layers.length > 0;
   const startStroke = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (tool !== 'brush' || event.button !== 0 || brushSize === null) return;
@@ -897,16 +958,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     const at = onPicture(event);
     if (at !== null) setStroking({ ...stroking, points: [...stroking.points, at] });
   };
+  /** A stroke finished: into the layer chosen at once, or over the picture until Apply keeps it as a version. */
   const finishStroke = () => {
     if (stroking === null) return;
-    remember();
-    setStrokes((held) => [...held, stroking]);
+    if (activeLayer !== null) repaintLayer(activeLayer.id, painted(activeLayer.pixels, [stroking]));
+    else {
+      remember();
+      setStrokes((held) => [...held, stroking]);
+    }
     setStroking(null);
   };
-  /** What the brush painted, kept as a version of the picture. */
+  /** What the brush painted on the picture, kept as a version of it; the layers over it stay. */
   async function applyPaint(): Promise<void> {
-    const drawn = strokes.length === 0 ? null : pictureCanvas();
-    if (drawn !== null) await keepChange(drawn, t('Painted with the brush'));
+    const drawn = strokes.length === 0 ? null : baseCanvas();
+    if (drawn !== null) await keepChange(painted(drawn, strokes), t('Painted with the brush'), false);
   }
 
   /*
@@ -931,24 +996,30 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const selectsBox = () => boxed(tool) || (tool === 'blur' && blurShape === 'rectangle');
   /** Whether the tool in hand draws a line - a gradual blur's, from sharp to blurred. */
   const selectsLine = () => tool === 'blur' && blurShape === 'gradient';
+  /** The blur applied to the layer chosen: at once to a layer, and as a version to the picture itself. */
   function applyBlur() {
-    const drawn = pictureCanvas();
+    const drawn = activeLayer?.pixels ?? baseCanvas();
     if (drawn === null || selection === null || tool !== 'blur' || blurRadius === null) return;
-    if (blurShape === 'gradient') {
-      if (selection.length !== 2) return;
-      void keepChange(
-        blurredAlong(drawn, selection[0], selection[1], blurRadius, blurMirrored),
-        blurMirrored
-          ? tf('Blurred gradually both ways, {radius} px', { radius: blurRadius })
-          : tf('Blurred gradually, {radius} px', { radius: blurRadius }),
-      );
+    if (blurShape === 'gradient' && selection.length !== 2) return;
+    const falloff = blurFalloff ?? 0;
+    const blurred =
+      blurShape === 'gradient'
+        ? blurredAlong(drawn, selection[0], selection[1], blurRadius, blurMirrored)
+        : blurredInside(drawn, selection, blurRadius, falloff);
+    if (activeLayer !== null) {
+      repaintLayer(activeLayer.id, blurred);
+      forget();
       return;
     }
-    const falloff = blurFalloff ?? 0;
-    void keepChange(
-      blurredInside(drawn, selection, blurRadius, falloff),
-      falloff > 0 ? tf('Blurred, {radius} px, edge softened {falloff} px', { radius: blurRadius, falloff }) : tf('Blurred, {radius} px', { radius: blurRadius }),
-    );
+    const said =
+      blurShape === 'gradient'
+        ? blurMirrored
+          ? tf('Blurred gradually both ways, {radius} px', { radius: blurRadius })
+          : tf('Blurred gradually, {radius} px', { radius: blurRadius })
+        : falloff > 0
+          ? tf('Blurred, {radius} px, edge softened {falloff} px', { radius: blurRadius, falloff })
+          : tf('Blurred, {radius} px', { radius: blurRadius });
+    void keepChange(blurred, said, false);
   }
   /** A gradual blur's line end taken in hand, to be dragged where it should be. */
   const takeLineEnd = (event: ReactPointerEvent<SVGCircleElement>, end: 0 | 1) => {
@@ -1117,9 +1188,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setBusy(true);
     setError(null);
     try {
-      // What the brush painted and the layers laid over are kept first, and saved with the rest.
+      // What the brush painted and the layers shown are kept first, flattened, and saved with the rest.
       const painting = pending ? pictureCanvas() : null;
-      const said = layers.length > 0 ? t('Layers merged') : t('Painted with the brush');
+      const said = layers.length > 0 ? t('Layers flattened') : t('Painted with the brush');
       const current = (painting === null ? null : await keepNow(painting, said)) ?? picture;
       let kept = current;
       if (current.versionOf != null) {
@@ -1208,6 +1279,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       remember();
       setStrokes([]);
       setLayers([]);
+      setLayerId(PICTURE_LAYER);
+      setBaseVisible(true);
       return;
     }
     if (pendingName !== null) {
@@ -1400,7 +1473,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setTool((held) => (held === 'rectangle' ? null : 'rectangle'));
               }}
-              disabled={picture === null || pending}
+              disabled={picture === null || strokes.length > 0}
               aria-pressed={tool === 'rectangle'}
               title={`${t('Magic rectangle select')} (${rectangleKey})`}
               aria-label={t('Magic rectangle select')}
@@ -1415,7 +1488,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setTool((held) => (held === 'lasso' ? null : 'lasso'));
               }}
-              disabled={picture === null || pending}
+              disabled={picture === null || strokes.length > 0}
               aria-pressed={tool === 'lasso'}
               title={`${t('Magic lasso select')} (${lassoKey})`}
               aria-label={t('Magic lasso select')}
@@ -1427,7 +1500,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               type="button"
               className={styles.tool}
               onClick={selectAll}
-              disabled={picture === null || pending}
+              disabled={picture === null || strokes.length > 0}
               title={`${t('Magic select all')} (${allKey})`}
               aria-label={t('Magic select all')}
               data-testid="magic-all"
@@ -1466,7 +1539,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                       forget();
                       setUpscaling(true);
                     }}
-                    disabled={picture === null || busy || noUpscaler || pending}
+                    disabled={picture === null || busy || noUpscaler || strokes.length > 0}
                     title={noUpscaler ? undefined : t('Make the picture larger with an upscale model')}
                     data-testid="editor-upscale"
                   >
@@ -1491,7 +1564,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                       forget();
                       setCleaning(true);
                     }}
-                    disabled={picture === null || busy || noUpscaler || pending}
+                    disabled={picture === null || busy || noUpscaler || strokes.length > 0}
                     title={noUpscaler ? undefined : t('Remove the blocks and speckle repeated edits leave, with a restoration model')}
                     data-testid="editor-cleanup"
                   >
@@ -1515,7 +1588,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                       forget();
                       setHarmonizing(true);
                     }}
-                    disabled={picture === null || busy || noHarmonizer || pending}
+                    disabled={picture === null || busy || noHarmonizer || strokes.length > 0}
                     title={noHarmonizer ? undefined : t('Redraw the whole picture lightly, so the seams between changed parts blend')}
                     data-testid="editor-harmonize"
                   >
@@ -1535,11 +1608,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   role="menuitem"
                   onClick={() => {
                     setModelMenu(false);
-                    if (picture === null) return;
-                    const to = videoFromPicturePath(workspaceId, picture.id);
-                    if (!askBeforeLeaving(to)) navigate(to);
+                    void asSeen()
+                      .then((seen) => {
+                        if (seen === null) return;
+                        const to = videoFromPicturePath(workspaceId, seen.id);
+                        if (!askBeforeLeaving(to)) navigate(to);
+                      })
+                      .catch((cause) => setError(cause instanceof Error ? cause.message : t('Could not keep the change.')));
                   }}
-                  disabled={picture === null || busy || pending}
+                  disabled={picture === null || busy || strokes.length > 0}
                   title={t('Make a video that starts from this picture')}
                   data-testid="editor-to-video"
                 >
@@ -1580,7 +1657,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   role="menuitem"
                   onClick={() => {
                     setImportMenu(false);
-                    setPicking('open');
+                    setPicking(true);
                   }}
                   data-testid="editor-import-from-orknux"
                 >
@@ -1806,10 +1883,10 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <span className={styles.railGap} aria-hidden="true" />
           <button
             type="button"
-            className={`${styles.tool} ${tool === 'layers' ? styles.railOn : ''}`}
-            onClick={() => pick('layers')}
-            disabled={picture === null || busy}
-            aria-pressed={tool === 'layers'}
+            className={`${styles.tool} ${layersOpen ? styles.railOn : ''}`}
+            onClick={() => setLayersOpen((held) => !held)}
+            disabled={picture === null}
+            aria-pressed={layersOpen}
             title={t('Layers')}
             aria-label={t('Layers')}
             data-testid="editor-layers"
@@ -1974,120 +2051,151 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               </button>
             </div>
           )}
-          {tool === 'layers' && (
+          {layersOpen && picture !== null && (
             <div className={styles.layersPanel} role="group" aria-label={t('Layers')} data-testid="layers-panel">
               <div className={styles.layersHead}>
                 <span>{t('Layers')}</span>
-                <button type="button" className={form.ghost} onClick={() => layerFileRef.current?.click()} data-testid="layers-add-file">
-                  {t('From a file…')}
+                <button type="button" className={form.ghost} onClick={newLayer} disabled={natural === null} data-testid="layers-new">
+                  {t('New layer')}
                 </button>
-                <button type="button" className={form.ghost} onClick={() => setPicking('layer')} data-testid="layers-add-orknux">
-                  {t('From Orknux…')}
+                <button type="button" className={form.ghost} onClick={removeLayer} disabled={activeLayer === null} data-testid="layers-remove">
+                  {t('Remove')}
                 </button>
-                <input
-                  ref={layerFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  hidden
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = '';
-                    if (file === undefined) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      if (typeof reader.result === 'string') void addLayer(reader.result, file.name.replace(/\.[^.]+$/, ''));
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                  data-testid="layers-file"
-                />
+                <button type="button" className={form.ghost} onClick={() => void flattenLayers()} disabled={layers.length === 0 || busy} data-testid="layers-flatten">
+                  {t('Flatten')}
+                </button>
               </div>
               {/* The top of the stack first, as it is seen; the picture itself at the foot, where it always is. */}
-              {[...layers].reverse().map((layer) => (
-                <div
-                  key={layer.id}
-                  className={`${styles.layerRow} ${layer.id === layerId ? styles.layerRowOn : ''}`}
-                  onClick={() => setLayerId(layer.id)}
-                  data-testid="layer-row"
-                  data-id={layer.id}
-                >
-                  <div className={styles.layerTop}>
-                    <img src={layer.url} alt="" className={styles.layerThumb} />
-                    <span className={styles.layerName} title={layer.name}>{layer.name}</span>
-                    <button
-                      type="button"
-                      className={styles.tool}
-                      onClick={() => changeLayer(layer.id, { visible: !layer.visible })}
-                      aria-pressed={!layer.visible}
-                      title={layer.visible ? t('Hide') : t('Show')}
-                      aria-label={layer.visible ? t('Hide') : t('Show')}
-                      data-testid="layer-visible"
-                    >
-                      {layer.visible ? '◉' : '○'}
-                    </button>
-                    <button type="button" className={styles.tool} onClick={() => restack(layer.id, 1)} title={t('Move up')} aria-label={t('Move up')} data-testid="layer-up">
-                      ↑
-                    </button>
-                    <button type="button" className={styles.tool} onClick={() => restack(layer.id, -1)} title={t('Move down')} aria-label={t('Move down')} data-testid="layer-down">
-                      ↓
-                    </button>
-                    <button type="button" className={styles.tool} onClick={() => removeLayer(layer.id)} title={t('Remove')} aria-label={t('Remove')} data-testid="layer-remove">
-                      ×
-                    </button>
+              {layers
+                .map((layer, at) => ({ layer, at }))
+                .reverse()
+                .map(({ layer, at }) => (
+                  <div
+                    key={layer.id}
+                    className={`${styles.layerRow} ${layer.id === layerId ? styles.layerRowOn : ''} ${movingRow === layer.id ? styles.layerRowMoving : ''}`}
+                    onClick={() => chooseLayer(layer.id)}
+                    draggable={renaming?.id !== layer.id}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      setMovingRow(layer.id);
+                    }}
+                    onDragOver={(event) => {
+                      if (movingRow !== null) event.preventDefault();
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (movingRow !== null) moveLayer(movingRow, at);
+                      setMovingRow(null);
+                    }}
+                    onDragEnd={() => setMovingRow(null)}
+                    aria-selected={layer.id === layerId}
+                    data-testid="layer-row"
+                    data-id={layer.id}
+                  >
+                    <div className={styles.layerTop}>
+                      <LayerView pixels={layer.pixels} className={`${styles.layerThumb} ${styles.layerThumbClear}`} />
+                      {renaming?.id === layer.id ? (
+                        <input
+                          className={`${form.input} ${styles.layerNameInput}`}
+                          value={renaming.name}
+                          onChange={(event) => setRenaming({ id: layer.id, name: event.target.value })}
+                          onBlur={finishRenaming}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') finishRenaming();
+                            if (event.key === 'Escape') setRenaming(null);
+                          }}
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label={t('Name')}
+                          autoFocus
+                          data-testid="layer-name-input"
+                        />
+                      ) : (
+                        <span
+                          className={styles.layerName}
+                          title={layer.name}
+                          onDoubleClick={() => setRenaming({ id: layer.id, name: layer.name })}
+                          data-testid="layer-name"
+                        >
+                          {layer.name}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => setRenaming({ id: layer.id, name: layer.name })}
+                        title={t('Rename')}
+                        aria-label={t('Rename')}
+                        data-testid="layer-rename"
+                      >
+                        <img src={pencilIcon} alt="" width={12} height={12} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => showLayer(layer.id)}
+                        aria-pressed={!layer.visible}
+                        title={layer.visible ? t('Hide') : t('Show')}
+                        aria-label={layer.visible ? t('Hide') : t('Show')}
+                        data-testid="layer-visible"
+                      >
+                        {layer.visible ? '◉' : '○'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => moveLayer(layer.id, at + 1)}
+                        disabled={at === layers.length - 1}
+                        title={t('Move up')}
+                        aria-label={t('Move up')}
+                        data-testid="layer-up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => moveLayer(layer.id, at - 1)}
+                        disabled={at === 0}
+                        title={t('Move down')}
+                        aria-label={t('Move down')}
+                        data-testid="layer-down"
+                      >
+                        ↓
+                      </button>
+                    </div>
                   </div>
-                  <label className={styles.optionsField}>
-                    <span>{t('Opacity')}</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={Math.round(layer.opacity * 100)}
-                      onPointerDown={remember}
-                      onKeyDown={remember}
-                      onChange={(event) => changeLayer(layer.id, { opacity: Number(event.target.value) / 100 }, false)}
-                      data-testid="layer-opacity"
-                    />
-                    <span className={styles.optionsValue}>{Math.round(layer.opacity * 100)}%</span>
-                  </label>
-                  <label className={styles.optionsField}>
-                    <span>{t('Size')}</span>
-                    <input
-                      type="range"
-                      min={5}
-                      max={400}
-                      value={Math.round((layer.width / (layerImages.current.get(layer.url)?.naturalWidth ?? layer.width)) * 100)}
-                      onPointerDown={remember}
-                      onKeyDown={remember}
-                      onChange={(event) => {
-                        const image = layerImages.current.get(layer.url);
-                        if (image === undefined) return;
-                        const scale = Number(event.target.value) / 100;
-                        const width = Math.max(1, Math.round(image.naturalWidth * scale));
-                        const height = Math.max(1, Math.round(image.naturalHeight * scale));
-                        // Sized about its middle, so it stays where it was put.
-                        changeLayer(
-                          layer.id,
-                          { width, height, x: Math.round(layer.x + (layer.width - width) / 2), y: Math.round(layer.y + (layer.height - height) / 2) },
-                          false,
-                        );
-                      }}
-                      data-testid="layer-size"
-                    />
-                    <span className={styles.optionsValue}>
-                      {Math.round((layer.width / (layerImages.current.get(layer.url)?.naturalWidth ?? layer.width)) * 100)}%
-                    </span>
-                  </label>
-                </div>
-              ))}
-              <div className={`${styles.layerRow} ${styles.layerBase}`} data-testid="layer-base">
+                ))}
+              <div
+                className={`${styles.layerRow} ${styles.layerBase} ${layerId === PICTURE_LAYER ? styles.layerRowOn : ''}`}
+                onClick={() => chooseLayer(PICTURE_LAYER)}
+                onDragOver={(event) => {
+                  if (movingRow !== null) event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  // Dropped on the picture: as low as a layer goes, just over it.
+                  event.preventDefault();
+                  if (movingRow !== null) moveLayer(movingRow, 0);
+                  setMovingRow(null);
+                }}
+                aria-selected={layerId === PICTURE_LAYER}
+                data-testid="layer-base"
+              >
                 <div className={styles.layerTop}>
-                  {picture !== null && <img src={picture.url} alt="" className={styles.layerThumb} />}
+                  <img src={picture.url} alt="" className={styles.layerThumb} />
                   <span className={styles.layerName}>{t('Picture')}</span>
+                  <button
+                    type="button"
+                    className={styles.tool}
+                    onClick={() => showLayer(PICTURE_LAYER)}
+                    aria-pressed={!baseVisible}
+                    title={baseVisible ? t('Hide') : t('Show')}
+                    aria-label={baseVisible ? t('Hide') : t('Show')}
+                    data-testid="layer-base-visible"
+                  >
+                    {baseVisible ? '◉' : '○'}
+                  </button>
                 </div>
               </div>
-              <button type="button" className={form.filled} onClick={() => void mergeLayers()} disabled={layers.length === 0 || busy} data-testid="layers-merge">
-                {t('Merge layers')}
-              </button>
             </div>
           )}
           {tool === 'crop' && (
@@ -2233,7 +2341,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   ref={pictureRef}
                   src={picture.url}
                   alt={picture.prompt}
-                  className={zoom === null ? styles.picture : styles.pictureZoomed}
+                  className={`${zoom === null ? styles.picture : styles.pictureZoomed} ${baseVisible ? '' : styles.pictureHidden}`}
                   style={
                     zoom === null || pictureRef.current === null
                       ? undefined
@@ -2242,41 +2350,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
                   data-testid="editor-picture"
                 />
-                {natural !== null && layers.length > 0 && (
-                  // The layers over the picture, in its own pixels, the first lowest; dragged with the Layers tool in hand.
-                  <svg
-                    className={`${styles.selectLayer} ${tool === 'layers' ? styles.layersOn : ''}`}
-                    viewBox={`0 0 ${natural.width} ${natural.height}`}
-                    preserveAspectRatio="none"
-                    onPointerMove={keepDragging}
-                    onPointerUp={() => setDragging(null)}
-                    data-testid="layers-layer"
-                  >
-                    {layers.map((layer) =>
-                      layer.visible ? (
-                        <image
-                          key={layer.id}
-                          href={layer.url}
-                          x={layer.x}
-                          y={layer.y}
-                          width={layer.width}
-                          height={layer.height}
-                          opacity={layer.opacity}
-                          preserveAspectRatio="none"
-                          className={tool === 'layers' ? styles.layerImage : undefined}
-                          onPointerDown={(event) => startDragging(event, layer)}
-                          data-testid="layer-image"
-                          data-id={layer.id}
-                        />
-                      ) : null,
-                    )}
-                    {tool === 'layers' &&
-                      layers
-                        .filter((layer) => layer.id === layerId && layer.visible)
-                        .map((layer) => (
-                          <rect key="chosen" className={styles.cropEdge} x={layer.x} y={layer.y} width={layer.width} height={layer.height} pointerEvents="none" />
-                        ))}
-                  </svg>
+                {layers.map((layer) =>
+                  layer.visible ? (
+                    // Each layer shown over the picture, the first lowest, at the picture's size.
+                    <LayerView key={layer.id} pixels={layer.pixels} className={styles.layerPixels} data-testid="layer-canvas" data-id={layer.id} />
+                  ) : null,
                 )}
                 {natural !== null && (tool === 'brush' || strokes.length > 0) && (
                   // What the brush paints, over the picture in its own pixels, as it will be kept.
@@ -2302,7 +2380,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     ))}
                   </svg>
                 )}
-                {natural !== null && tool !== 'brush' && tool !== 'layers' && (tool !== null || selection !== null) && (
+                {natural !== null && tool !== 'brush' && (tool !== null || selection !== null) && (
                   <svg
                     className={`${styles.selectLayer} ${tool !== null ? styles.selectLayerOn : ''}`}
                     viewBox={`0 0 ${natural.width} ${natural.height}`}
@@ -2688,15 +2766,13 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         onHarmonize={harmonize}
       />
       <DesignPicturePickerDialog
-        open={picking !== null}
+        open={picking}
         workspaceId={workspaceId}
-        onClose={() => setPicking(null)}
-        title={picking === 'layer' ? t('Add a layer from Orknux') : t('Import from Orknux')}
+        onClose={() => setPicking(false)}
+        title={t('Import from Orknux')}
         onPick={(chosen) => {
-          const forLayer = picking === 'layer';
-          setPicking(null);
-          if (forLayer) void addLayer(chosen.url, chosen.name ?? chosen.prompt);
-          else openFromOrknux(chosen);
+          setPicking(false);
+          openFromOrknux(chosen);
         }}
       />
       <UnsavedWorkDialog
