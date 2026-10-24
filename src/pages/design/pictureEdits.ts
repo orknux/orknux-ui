@@ -51,3 +51,22 @@ export function mirrored(source: HTMLCanvasElement, axis: 'horizontal' | 'vertic
   pen.drawImage(source, 0, 0);
   return canvas;
 }
+
+/** A box on the picture, in whole pixels. */
+export type Box = { x: number; y: number; width: number; height: number };
+
+/** The box around a selection's points, in whole pixels and inside the picture. */
+export function boxOf(points: Point[], width: number, height: number): Box {
+  const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x))));
+  const top = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y))));
+  const right = Math.min(width, Math.ceil(Math.max(...points.map((point) => point.x))));
+  const bottom = Math.min(height, Math.ceil(Math.max(...points.map((point) => point.y))));
+  return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+}
+
+/** Only what is inside the box: the picture becomes the box's size. */
+export function cropped(source: HTMLCanvasElement, box: Box): HTMLCanvasElement {
+  const { canvas, pen } = blank(box.width, box.height);
+  pen.drawImage(source, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+  return canvas;
+}

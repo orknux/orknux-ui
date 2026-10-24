@@ -1939,7 +1939,7 @@ export const TESTS = [
   },
   {
     name: 'design-picture-tools-check',
-    what: "the image editor's own tools - rotate and mirror - keep a version that is what they drew, read back pixel by pixel, and Undo walks back over them",
+    what: "the image editor's own tools - rotate, mirror and crop - keep a version that is what they drew, read back pixel by pixel, and Undo walks back over them",
     needs: ['workspace'],
     /* Answers the picture, its history and every kept change itself. */
   },

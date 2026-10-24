@@ -74,6 +74,9 @@
   --color-accent: #fafafa;
   --color-accent-foreground: #09090b;
 
+  /* What dims a picture outside a crop: over the picture, so the same in both themes. */
+  --color-picture-shade: rgb(0 0 0 / 55%);
+
   /*
    * Primary action inside modals. Iron-moss, the brand colour — but the mark's
    * lighter node tint rather than #4A6B52 itself, which goes muddy against this

@@ -132,4 +132,36 @@ await page.waitForFunction((src) => document.querySelector('[data-testid="editor
 const undone = await shown([[0.5, 0.1], [0.5, 0.9]]);
 record(undone?.colours.join() === 'blue,red', `Undo shows the picture before the vertical flip (${JSON.stringify(undone)})`);
 
+/** Drags over the picture between two points given in its own pixels, as somebody selecting would. */
+const drag = async (from, to, steps = 6) => {
+  const box = await page.getByTestId('editor-picture').boundingBox();
+  const size = await page.evaluate(() => {
+    const image = document.querySelector('[data-testid="editor-picture"]');
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  });
+  const at = ([x, y]) => [box.x + (x / size.width) * box.width, box.y + (y / size.height) * box.height];
+  await page.mouse.move(...at(from));
+  await page.mouse.down();
+  await page.mouse.move(...at(to), { steps });
+  await page.mouse.up();
+};
+
+// -- Crop (#635) ---------------------------------------------------------------
+
+// The picture shown is 40x60, blue over red: the middle of it is kept.
+await page.getByTestId('editor-zoom-in').click();
+await page.getByTestId('editor-zoom-in').click();
+await page.getByTestId('editor-crop').click();
+const cropBar = await page.getByTestId('crop-options').isVisible().catch(() => false);
+await drag([5, 15], [35, 45]);
+const said = (await page.getByTestId('crop-size').textContent().catch(() => '')) ?? '';
+const keptBefore = kept.length;
+await page.keyboard.press('Enter');
+await showsLastKept();
+const crop = await shown([[0.5, 0.1], [0.5, 0.9]]);
+record(cropBar && kept.length === keptBefore + 1 && crop !== null && Math.abs(crop.width - 30) <= 1 && Math.abs(crop.height - 30) <= 1 &&
+  said.replace(/\s/g, '') === `${crop.width}×${crop.height}` && crop.colours.join() === 'blue,red',
+  `Crop keeps what was selected, the size its bar said, and Enter applies it (${JSON.stringify({ crop, said })})`);
+record(!(await page.getByTestId('crop-options').isVisible().catch(() => false)), 'the crop tool is put down once it is applied');
+
 await finish(browser);

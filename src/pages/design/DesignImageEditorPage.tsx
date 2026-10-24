@@ -26,6 +26,7 @@ import type { ImageSizePreset } from '../../api/imagePresets';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
+import cropIcon from '../../assets/crop.svg';
 import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
 import flipVerticalIcon from '../../assets/flip-vertical.svg';
 import pencilIcon from '../../assets/pencil.svg';
@@ -58,7 +59,7 @@ import { DesignHarmonizeDialog } from './DesignHarmonizeDialog';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { canvasOf, mirrored, rotated } from './pictureEdits';
+import { boxOf, canvasOf, cropped, mirrored, rotated } from './pictureEdits';
 import type { Point } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -107,6 +108,12 @@ type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: stri
 
 /** Which way of selecting part of the picture is in hand. */
 type MagicTool = 'rectangle' | 'lasso';
+
+/** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
+type Tool = MagicTool | 'crop';
+
+/** Whether a tool selects with a rectangle - two corners - rather than a lasso's outline. */
+const boxed = (tool: Tool | null) => tool === 'rectangle' || tool === 'crop';
 
 /** One step undo goes back to: what the panel held and what was on the canvas. */
 type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null };
@@ -431,8 +438,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true, bringIn: async (_: File, __?: boolean) => {} });
-  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: MagicTool) => {}, all: () => {}, save: async () => true, bringIn: async (_: File, __?: boolean) => {} };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: Tool) => {}, all: () => {}, apply: (): boolean => false, save: async () => true, bringIn: async (_: File, __?: boolean) => {} });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: Tool) => {}, all: () => {}, apply: (): boolean => false, save: async () => true, bringIn: async (_: File, __?: boolean) => {} };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
@@ -456,6 +463,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         keys.current.zoomOut();
       } else if (typing) {
         return;
+      } else if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && keys.current.apply()) {
+        // The tool in hand applied - a crop selected - as its bar's button would.
+        event.preventDefault();
       } else if (matches(event, rectangleKey)) {
         event.preventDefault();
         keys.current.pick('rectangle');
@@ -484,7 +494,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * there, and the image model's edit endpoint redraws only that: the result is
    * a new picture, queued like any other, and the one changed stays as it was.
    */
-  const [tool, setTool] = useState<MagicTool | null>(null);
+  const [tool, setTool] = useState<Tool | null>(null);
   /**
    * What each change asked here is drawn over: the picture, and the selection
    * in its pixels - null where the selection is not known, for a change opened
@@ -568,7 +578,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (selecting === null) return;
     const at = onPicture(event);
     if (at === null) return;
-    if (tool === 'rectangle') setSelecting([selecting[0], at]);
+    if (boxed(tool)) setSelecting([selecting[0], at]);
     else setSelecting([...selecting, at]);
   };
   const finishSelecting = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -576,13 +586,15 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     const drawn = selecting;
     setSelecting(null);
     const outline =
-      tool === 'rectangle' && drawn.length === 2
+      boxed(tool) && drawn.length === 2
         ? [drawn[0], { x: drawn[1].x, y: drawn[0].y }, drawn[1], { x: drawn[0].x, y: drawn[1].y }]
         : drawn;
     const xs = outline.map((point) => point.x);
     const ys = outline.map((point) => point.y);
     if (outline.length < 3 || Math.max(...xs) - Math.min(...xs) < SMALLEST_SELECTION || Math.max(...ys) - Math.min(...ys) < SMALLEST_SELECTION) return;
     setSelection(outline);
+    // A crop is applied from its bar; only a Magic selection asks what to change, by the pointer.
+    if (tool === 'crop') return;
     const around = canvasRef.current?.getBoundingClientRect();
     if (around === undefined) return;
     setAskAt({ x: event.clientX - around.left, y: event.clientY - around.top });
@@ -702,6 +714,18 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (drawn !== null) void keepChange(mirrored(drawn, axis), axis === 'horizontal' ? t('Flipped horizontally') : t('Flipped vertically'));
   };
 
+  /** The box a crop selection keeps, in the picture's whole pixels; null with nothing selected to crop to. */
+  const cropBox = tool === 'crop' && selection !== null && natural !== null ? boxOf(selection, natural.width, natural.height) : null;
+  /** The picture made what is inside the crop's box; the tool is put down once it is kept. */
+  function applyCrop() {
+    const drawn = pictureCanvas();
+    if (drawn === null || selection === null || tool !== 'crop') return;
+    const box = boxOf(selection, drawn.width, drawn.height);
+    void keepChange(cropped(drawn, box), tf('Cropped to {width}×{height}', { width: box.width, height: box.height })).then((kept) => {
+      if (kept !== null) setTool(null);
+    });
+  }
+
   /**
    * A file brought in - picked, or dropped on the canvas - kept as a picture of
    * its own and opened here. An .orkx file brings its name and prompt with it.
@@ -739,7 +763,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** The selection's outline in the picture's own pixels, which is what the layer over it draws in. */
   const outlineOf = (points: Point[]) => {
     const corners =
-      tool === 'rectangle' && points.length === 2
+      boxed(tool) && points.length === 2
         ? [points[0], { x: points[1].x, y: points[0].y }, points[1], { x: points[0].x, y: points[1].y }]
         : points;
     return corners.map((point) => `${point.x},${point.y}`).join(' ');
@@ -768,10 +792,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   keys.current.all = selectAll;
   keys.current.save = () => save();
   /** A tool picked by its shortcut, or put down by it again; nothing without a picture to select on. */
-  keys.current.pick = (which: MagicTool) => {
+  keys.current.pick = (which: Tool) => pick(which);
+  /** A tool picked, or put down by picking it again; nothing without a picture to use it on. */
+  function pick(which: Tool) {
     if (picture === null) return;
     forget();
     setTool((held) => (held === which ? null : which));
+  }
+  /** What Enter applies with the tool in hand; false where it applies nothing, and Enter is left alone. */
+  keys.current.apply = () => {
+    if (tool === 'crop' && selection !== null) {
+      applyCrop();
+      return true;
+    }
+    return false;
   };
 
   // -- Generate, save, discard -------------------------------------------
@@ -1373,6 +1407,19 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           >
             <img src={flipVerticalIcon} alt="" width={16} height={16} />
           </button>
+          <span className={styles.railGap} aria-hidden="true" />
+          <button
+            type="button"
+            className={`${styles.tool} ${tool === 'crop' ? styles.railOn : ''}`}
+            onClick={() => pick('crop')}
+            disabled={picture === null || busy}
+            aria-pressed={tool === 'crop'}
+            title={t('Crop')}
+            aria-label={t('Crop')}
+            data-testid="editor-crop"
+          >
+            <img src={cropIcon} alt="" width={16} height={16} />
+          </button>
         </div>
         <div
           className={`${styles.canvas} ${dropping ? styles.canvasDropping : ''}`}
@@ -1397,6 +1444,27 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             void bringIn(file);
           }}
         >
+          {tool === 'crop' && (
+            <div className={styles.options} role="toolbar" aria-label={t('Crop')} data-testid="crop-options">
+              <span className={styles.optionsValue} data-testid="crop-size">
+                {cropBox === null ? t('Select the part to keep') : `${cropBox.width} × ${cropBox.height}`}
+              </span>
+              <button
+                type="button"
+                className={form.ghost}
+                onClick={() => {
+                  forget();
+                  setTool(null);
+                }}
+                data-testid="crop-cancel"
+              >
+                {t('Cancel')}
+              </button>
+              <button type="button" className={form.filled} onClick={applyCrop} disabled={cropBox === null || busy} data-testid="crop-apply">
+                {t('Crop')}
+              </button>
+            </div>
+          )}
           {dropping && (
             <div className={styles.dropHint} data-testid="editor-drop-hint">
               {t('Drop a picture to open it here')}
@@ -1538,9 +1606,20 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     onPointerUp={finishSelecting}
                     data-testid="magic-layer"
                   >
-                    {(selecting ?? selection) !== null && (
-                      <polygon className={styles.selected} points={outlineOf(selecting ?? selection ?? [])} data-testid="magic-selection" />
-                    )}
+                    {(selecting ?? selection) !== null &&
+                      (tool === 'crop' ? (
+                        // What a crop leaves out, dimmed around what it keeps.
+                        <>
+                          <path
+                            className={styles.cropShade}
+                            fillRule="evenodd"
+                            d={`M0 0H${natural.width}V${natural.height}H0Z M${outlineOf(selecting ?? selection ?? []).replace(/ /g, ' L')}Z`}
+                          />
+                          <polygon className={styles.cropEdge} points={outlineOf(selecting ?? selection ?? [])} data-testid="crop-selection" />
+                        </>
+                      ) : (
+                        <polygon className={styles.selected} points={outlineOf(selecting ?? selection ?? [])} data-testid="magic-selection" />
+                      ))}
                   </svg>
                 )}
               </div>

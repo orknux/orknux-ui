@@ -3478,4 +3478,7 @@ export const PL: Record<string, string> = {
   "Rotate right": "Obróć w prawo",
   "Flip horizontally": "Odbij w poziomie",
   "Flip vertically": "Odbij w pionie",
+  "Crop": "Przytnij",
+  "Cropped to {width}×{height}": "Przycięto do {width}×{height}",
+  "Select the part to keep": "Zaznacz część do zachowania",
 };
