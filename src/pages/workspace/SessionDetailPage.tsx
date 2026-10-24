@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { costAmount, readingShare, startChat, tokenCount, writingParts } from '../../api/chat';
 import { fetchWorkspace } from '../../api/workspaces';
-import { formatLatency, formatSpeed } from '../../api/models';
+import { formatSpeed } from '../../api/models';
 import type { ModelSpeed } from '../../api/models';
 import { FoldToggle } from '../../components/FoldToggle';
 import { fetchInstallationSettings } from '../../api/installation';
@@ -2489,40 +2489,6 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
           </ul>
         )}
       </aside>
-      {/*
-        Each model call whose provider reported its speed, newest first: how
-        fast it read the prompt and wrote the answer, as the provider measured
-        it. Not drawn at all where no call reported - a panel saying "none"
-        on every session behind OpenAI would read as something missing.
-      */}
-      {held !== null && (held.modelCalls ?? []).length > 0 && (
-        <aside className={styles.scratchpads} aria-label={t('Model call speeds in this session')} data-session-speeds="">
-          <span className={styles.familyTitleRow}>
-            <p className={styles.familyTitle}>{t('Speeds')}</p>
-            <FieldHint label={t('Speeds')}>{t('How fast the provider says each call read the prompt and wrote the answer, newest first.')}</FieldHint>
-          </span>
-          <ul className={styles.familyList}>
-            {(held.modelCalls ?? []).map((one) => (
-              <li key={one.id} className={styles.noteRow} title={moment(one.at)} data-session-speed-call={one.id}>
-                <span className={styles.todoText} data-session-speed-rates="">
-                  {tf('{prompt} read · {generated} written', {
-                    prompt: formatSpeed(one.promptTokensPerSecond),
-                    generated: formatSpeed(one.generatedTokensPerSecond),
-                  })}
-                </span>
-                <span className={styles.todoNote}>
-                  {tf('{input} in · {output} out · {time} · {when}', {
-                    input: tokenCount(one.inputTokens),
-                    output: tokenCount(one.outputTokens),
-                    time: formatLatency(one.millis),
-                    when: timeAgo(one.at),
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
       {/*
         The reminders this session's agent set: waiting ones first, soonest
         first, each with its note and when it comes up; then the ones that rang.

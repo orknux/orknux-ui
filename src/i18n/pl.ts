@@ -3322,11 +3322,6 @@ export const PL: Record<string, string> = {
   "How fast the provider read and wrote": "Jak szybko dostawca czytał i pisał",
   "From the one call whose provider reported its speed": "Z jedynego wywołania, którego dostawca podał szybkość",
   "Averaged by tokens over {count} calls whose provider reported its speed": "Średnia ważona tokenami z {count} wywołań, których dostawca podał szybkość",
-  "Model call speeds in this session": "Szybkości wywołań modelu w tej sesji",
-  "Speeds": "Szybkości",
-  "How fast the provider says each call read the prompt and wrote the answer, newest first.": "Jak szybko według dostawcy każde wywołanie przeczytało prompt i napisało odpowiedź, od najnowszych.",
-  "{prompt} read · {generated} written": "{prompt} czytanie · {generated} pisanie",
-  "{input} in · {output} out · {time} · {when}": "{input} wejście · {output} wyjście · {time} · {when}",
   "Speed over the last call": "Szybkość z ostatniego wywołania",
   "Speed over the last {count} calls": "Szybkość z ostatnich {count} wywołań",
   // Sound in the chat.

@@ -78,12 +78,8 @@ record(JSON.stringify(figures.generated) === JSON.stringify(['Generation speed',
 const strip = await meter.boundingBox().catch(() => null);
 record(strip !== null && strip.height > 0 && strip.height < 90, `the speed strip is drawn as one row (${strip?.height}px high)`);
 
-const rows = page.locator('[data-session-speeds] [data-session-speed-call]');
-record((await rows.count()) === 2, `the Speeds panel lists each call that reported (${await rows.count()})`);
-const first = ((await rows.first().locator('[data-session-speed-rates]').textContent().catch(() => '')) ?? '').trim();
-record(first === '3,000 tok/s read · 80.0 tok/s written', `newest first, with its own speeds (${first})`);
-const firstBox = await rows.first().boundingBox().catch(() => null);
-record(firstBox !== null && firstBox.height > 0, `and the row is drawn (${firstBox?.height}px)`);
+// The summary in the header is the whole of it: no panel listing every call beside the session.
+record((await page.locator('[data-session-speeds]').count()) === 0, 'no per-call Speeds panel beside the session, only the summary in its header');
 
 /* ---- A provider that reports nothing: no strip, no panel. */
 
@@ -92,7 +88,6 @@ SESSION.modelCalls = [];
 await showSession();
 await page.locator('[data-session-spend]').waitFor({ timeout: 15_000 }).catch(() => undefined);
 record((await page.locator('[data-session-speed]').count()) === 0, 'a session no call reported a speed for draws no speed');
-record((await page.locator('[data-session-speeds]').count()) === 0, 'and no Speeds panel');
 
 /* ---- The model page. */
 
