@@ -105,7 +105,16 @@ import {
   duplicateShortcut,
   publishShortcut,
   voiceMuteShortcut,
+  DEFAULT_NEXT_TAB_SHORTCUT,
+  DEFAULT_PREVIOUS_TAB_SHORTCUT,
+  nextTabShortcut,
+  previousTabShortcut,
+  setNextTabShortcut,
+  setPreviousTabShortcut,
+  useNextTabShortcut,
+  usePreviousTabShortcut,
 } from '../../session/shortcut';
+import { inDesktopApp, recordingKeys } from '../../session/desktop';
 import styles from './PreferencesPage.module.css';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -132,7 +141,9 @@ type ShortcutKey =
   | 'zoomOut'
   | 'magicRectangle'
   | 'magicLasso'
-  | 'magicAll';
+  | 'magicAll'
+  | 'nextTab'
+  | 'previousTab';
 
 /** How each is read and how each is stored, for Save. */
 const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string) => void }[] = [
@@ -157,6 +168,8 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'magicRectangle', stored: magicRectangleShortcut, store: setMagicRectangleShortcut },
   { key: 'magicLasso', stored: magicLassoShortcut, store: setMagicLassoShortcut },
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
+  { key: 'nextTab', stored: nextTabShortcut, store: setNextTabShortcut },
+  { key: 'previousTab', stored: previousTabShortcut, store: setPreviousTabShortcut },
 ];
 
 export interface PreferencesPageProps {
@@ -208,6 +221,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const magicRectangleKey = shortcutDrafts.magicRectangle ?? storedMagicRectangle;
   const storedMagicAll = useMagicAllShortcut();
   const magicAllKey = shortcutDrafts.magicAll ?? storedMagicAll;
+  const storedNextTab = useNextTabShortcut();
+  const nextTabKey = shortcutDrafts.nextTab ?? storedNextTab;
+  const storedPreviousTab = usePreviousTabShortcut();
+  const previousTabKey = shortcutDrafts.previousTab ?? storedPreviousTab;
   const storedMagicLasso = useMagicLassoShortcut();
   const magicLassoKey = shortcutDrafts.magicLasso ?? storedMagicLasso;
   const storedZoomIn = useZoomInShortcut();
@@ -255,6 +272,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'magicRectangle'
     | 'magicLasso'
     | 'magicAll'
+    | 'nextTab'
+    | 'previousTab'
     | null
   >(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -314,13 +333,20 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'magicRectangle') draftShortcut('magicRectangle', said);
       else if (recording === 'magicLasso') draftShortcut('magicLasso', said);
       else if (recording === 'magicAll') draftShortcut('magicAll', said);
+      else if (recording === 'nextTab') draftShortcut('nextTab', said);
+      else if (recording === 'previousTab') draftShortcut('previousTab', said);
       else draftShortcut('format', said);
       setRecording(null);
       setRefused(null);
     }
 
     window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    // The desktop app holds the tab keys before a page sees them; while recording, it lets them through.
+    recordingKeys(true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      recordingKeys(false);
+    };
   }, [recording]);
 
   const [theme, setTheme] = useState<Theme>(currentTheme);
@@ -1346,6 +1372,47 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 </p>
               )}
             </div>
+
+            {inDesktopApp() && (['nextTab', 'previousTab'] as const).map((which) => {
+              const label = which === 'nextTab' ? t('Next Tab Shortcut') : t('Previous Tab Shortcut');
+              const key = which === 'nextTab' ? nextTabKey : previousTabKey;
+              const fallback = which === 'nextTab' ? DEFAULT_NEXT_TAB_SHORTCUT : DEFAULT_PREVIOUS_TAB_SHORTCUT;
+              return (
+                <div className={styles.setting} key={which}>
+                  <span className={styles.labelWithHint}>
+                    <span className={styles.settingLabel} id={`${which}-shortcut`}>{label}</span>
+                    <FieldHint label={label}>
+                      {which === 'nextTab'
+                        ? t('Moves to the next tab in the desktop app, from the last back to the first; Ctrl+Tab always does too.')
+                        : t('Moves to the previous tab in the desktop app, from the first back to the last; Ctrl+Shift+Tab always does too.')}
+                    </FieldHint>
+                  </span>
+                  <div className={styles.options}>
+                    <button
+                      type="button"
+                      className={recording === which ? styles.optionCurrent : styles.option}
+                      onClick={() => {
+                        setRefused(null);
+                        setRecording((held) => (held === which ? null : which));
+                      }}
+                      data-testid={`${which}-shortcut`}
+                    >
+                      {recording === which ? t('Press any keys…') : key}
+                    </button>
+                    {key !== fallback && recording !== which && (
+                      <button type="button" className={styles.option} onClick={() => draftShortcut(which, fallback)}>{t('Reset')}</button>
+                    )}
+                  </div>
+                  {recording === which && (
+                    <p className={styles.settingNote}>
+                      {refused !== null
+                        ? tf('{keys} would fire while typing. Hold Ctrl, Alt, Shift or Cmd with it, or use a function key.', { keys: refused })
+                        : t('Press the combination you want. Escape leaves it as it is.')}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
 
             <div className={styles.setting}>
               <span className={styles.labelWithHint}>
