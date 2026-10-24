@@ -169,6 +169,13 @@ button.toolbarTitle:hover {
   box-shadow: var(--shadow-card);
 }
 
+/* A row of choices of one setting - the brush's tips - side by side. */
+.optionsGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 /* A setting of the tool and its name, on one line. */
 .optionsField {
   display: inline-flex;

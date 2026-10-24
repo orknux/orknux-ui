@@ -37,7 +37,10 @@ const ORIGINAL = picture('DESIGN-701', HALVES, null);
 const OTHER = { ...picture('SAVED-77', HALVES, null), kind: 'SAVED', name: null, prompt: 'zz tools: an agent kept this' };
 const DOCUMENT = { ...picture('SAVED-78', '/api/artifacts/78', null), kind: 'SAVED', contentType: 'application/pdf', filename: 'notes.pdf' };
 /** The installation's numbers for the tools, answered here so what the page starts at is known. */
-const SETTINGS = { brush: 4, brushMost: 50, blur: 6, blurMost: 60, blurFalloff: 3, blurFalloffMost: 40, feather: 5, featherMost: 64 };
+const SETTINGS = {
+  brush: 4, brushMost: 50, blur: 6, blurMost: 60, blurFalloff: 3, blurFalloffMost: 40, feather: 5, featherMost: 64,
+  layersMost: 32, brushOpacity: 100, brushHardness: 50, markerOpacity: 50,
+};
 /** What each Magic edit was asked with. */
 const edits = [];
 /** What each keepDesignImageChange was asked to keep, in order. */
@@ -239,9 +242,10 @@ const keptBeforeBrush = kept.length;
 const middle = await page.evaluate(() => document.querySelector('[data-testid="editor-picture"]').naturalHeight / 2);
 const across = await page.evaluate(() => document.querySelector('[data-testid="editor-picture"]').naturalWidth);
 await drag([1, middle], [across - 1, middle], 10);
-const painted = await page.locator('[data-testid="brush-layer"] path').count();
+const strokesHeld = async () => Number(await page.getByTestId('brush-layer').getAttribute('data-strokes').catch(() => 'NaN'));
+const painted = await strokesHeld();
 await page.getByTestId('editor-undo').click();
-const undoneStroke = await page.locator('[data-testid="brush-layer"] path').count();
+const undoneStroke = await strokesHeld();
 record(painted === 1 && undoneStroke === 0 && kept.length === keptBeforeBrush,
   `a stroke is drawn over the picture as it goes, and Undo takes it back before anything is kept (${JSON.stringify({ painted, undoneStroke })})`);
 await drag([1, middle], [across - 1, middle], 10);
@@ -609,5 +613,79 @@ const onLayer = await page.evaluate(([x, y, below]) => {
 }, [Math.round(whole.width * 0.25), savedRow, Math.round(whole.height * 0.8)]);
 record(JSON.stringify(reopened) === '["Layer 1"]' && underPaint?.colours[0] === 'red' && onLayer?.painted === 'rgba(255,0,255,255)' && onLayer.clear === 0,
   `opened again, the picture lists its layer, with the paint on the layer and the picture under it as it was (${JSON.stringify({ reopened, underPaint, onLayer })})`);
+
+// -- Brush tips -------------------------------------------------------------------
+
+// Each tip on a layer of its own over the picture, read off the layer's pixels: what the tip leaves is the layer, nothing else.
+/** The alpha of a layer's pixels down one column, between two rows: how a stroke's edge falls off across it. */
+const alphaDown = (id, x, from, to) => page.evaluate(([layer, column, top, bottom]) => {
+  const canvas = document.querySelector(`[data-testid="layer-canvas"][data-id="${layer}"]`);
+  if (canvas === null) return null;
+  return Array.from(canvas.getContext('2d').getImageData(column, top, 1, bottom - top + 1).data).filter((_, at) => at % 4 === 3);
+}, [id, x, from, to]);
+const alphaAt = async (id, x, y) => (await alphaDown(id, x, y, y))?.[0] ?? null;
+const chosenLayer = () => page.locator('[data-testid="layer-row"][aria-selected="true"]').getAttribute('data-id').catch(() => null);
+/** A click of the brush in one place: a dot of the tip's own shape. */
+const dot = async ([x, y]) => {
+  const box = await page.getByTestId('editor-picture').boundingBox();
+  await page.mouse.click(box.x + (x / whole.width) * box.width, box.y + (y / whole.height) * box.height);
+};
+await tap('layers-new');
+const tips = await chosenLayer();
+await tap('editor-brush');
+await page.getByTestId('brush-options').waitFor({ timeout: 3_000 }).catch(() => undefined);
+await page.getByTestId('brush-size').fill('8').catch(() => undefined);
+await page.getByTestId('brush-colour').fill('#00ff00').catch(() => undefined);
+const tipsOffered = await page.locator('[data-testid="brush-styles"] [role="radio"]').evaluateAll((all) => all.map((one) => one.getAttribute('title')));
+// Hard: a stroke along the top whose edge goes from painted to bare at once.
+await tap('brush-style-hard');
+await drag([6, 6], [24, 6], 8);
+const hardEdge = await alphaDown(tips, 15, 0, 14);
+const between = (alphas) => (alphas ?? []).filter((alpha) => alpha > 10 && alpha < 245).length;
+// Soft, with no hardness at all: the same stroke fades out across its edge.
+await tap('brush-style-soft');
+await page.getByTestId('brush-hardness').fill('0').catch(() => undefined);
+await drag([6, 20], [24, 20], 8);
+const softEdge = await alphaDown(tips, 15, 12, 28);
+record(JSON.stringify(tipsOffered) === '["Hard","Soft","Square","Marker","Eraser"]' && hardEdge !== null && Math.max(...hardEdge) === 255 && between(hardEdge) <= 2 &&
+  Math.max(...(softEdge ?? [0])) > 200 && between(softEdge) >= 4,
+  `the hard tip's edge is sharp, the soft tip's fades across several pixels (${JSON.stringify({ tipsOffered, hardEdge, softEdge })})`);
+// Round and square: one click each, and only the square fills its corner.
+await tap('brush-style-hard');
+await dot([36, 6]);
+await tap('brush-style-square');
+await dot([50, 6]);
+const corners = { round: await alphaAt(tips, 39, 9), square: await alphaAt(tips, 53, 9) };
+record(corners.square === 255 && corners.round !== null && corners.round < 128,
+  `a square tip leaves a square, filled to its corner, where the round one leaves a circle (${JSON.stringify(corners)})`);
+// Marker: see-through, and a stroke back over itself no darker where it crosses.
+await tap('brush-style-marker');
+const markerStarts = await page.getByTestId('brush-opacity').inputValue().catch(() => '');
+await drag([6, 33], [30, 33], 8);
+{
+  const box = await page.getByTestId('editor-picture').boundingBox();
+  const at = ([x, y]) => [box.x + (x / whole.width) * box.width, box.y + (y / whole.height) * box.height];
+  await page.mouse.move(...at([40, 33]));
+  await page.mouse.down();
+  for (const point of [[56, 33], [44, 33]]) await page.mouse.move(...at(point), { steps: 6 });
+  await page.mouse.up();
+}
+const marker = { single: await alphaAt(tips, 18, 33), crossed: await alphaAt(tips, 50, 33), markerStarts };
+record(markerStarts === '50' && marker.single !== null && marker.single > 100 && marker.single < 155 && marker.crossed !== null && Math.abs(marker.crossed - marker.single) <= 3,
+  `the marker starts half see-through, and a stroke over itself is no darker where it crosses (${JSON.stringify(marker)})`);
+// The eraser: on the layer painted and saved earlier, paint taken off to nothing; on the picture itself it is off.
+const savedLayer = page.locator('[data-testid="layer-row"]').filter({ hasText: 'Layer 1' });
+const painting = await savedLayer.getAttribute('data-id').catch(() => null);
+await savedLayer.click({ timeout: 3_000 }).catch(() => undefined);
+await tap('brush-style-eraser');
+await page.getByTestId('brush-hardness').fill('100').catch(() => undefined);
+const beforeErase = await alphaAt(painting, 15, savedRow);
+await drag([6, savedRow], [24, savedRow], 8);
+const erased = { before: beforeErase, after: await alphaAt(painting, 15, savedRow), untouched: await alphaAt(painting, 45, savedRow) };
+await tap('layer-base');
+const eraserOnPicture = await page.getByTestId('brush-style-eraser').isDisabled().catch(() => false);
+record(erased.before === 255 && erased.after === 0 && erased.untouched === 255 && eraserOnPicture,
+  `the eraser makes a layer's pixels transparent where it goes and nowhere else, and is off on the picture itself (${JSON.stringify({ erased, eraserOnPicture })})`);
+await tap('editor-brush');
 
 await finish(browser);

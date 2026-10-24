@@ -331,11 +331,17 @@ export interface ImageEditorSettings {
   featherMost: number;
   /** How many layers a picture may keep over it. */
   layersMost: number;
+  /** How opaque the brush starts, in percent: every tip but the marker. */
+  brushOpacity: number;
+  /** How hard the soft tip's and the eraser's edge starts, in percent. */
+  brushHardness: number;
+  /** How opaque the marker starts, in percent. */
+  markerOpacity: number;
 }
 
 export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
   const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
-    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost blurFalloff blurFalloffMost feather featherMost layersMost } }`,
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost blur blurMost blurFalloff blurFalloffMost feather featherMost layersMost brushOpacity brushHardness markerOpacity } }`,
     { workspaceId },
   );
   return data.designImageEditorSettings;

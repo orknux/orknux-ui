@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CanvasHTMLAttributes, FormEvent, PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -31,6 +31,11 @@ import type { SessionUser } from '../../api/session';
 import blurIcon from '../../assets/blur.svg';
 import blurGradientIcon from '../../assets/blur-gradient.svg';
 import brushIcon from '../../assets/brush.svg';
+import brushHardIcon from '../../assets/brush-hard.svg';
+import brushMarkerIcon from '../../assets/brush-marker.svg';
+import brushSoftIcon from '../../assets/brush-soft.svg';
+import brushSquareIcon from '../../assets/brush-square.svg';
+import eraserIcon from '../../assets/eraser.svg';
 import cropIcon from '../../assets/crop.svg';
 import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
 import flipVerticalIcon from '../../assets/flip-vertical.svg';
@@ -68,8 +73,8 @@ import layersIcon from '../../assets/layers.svg';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { blurredAlong, blurredInside, boxOf, canvasFrom, canvasOf, cropped, emptyLayer, flattened, mirrored, painted, rotated, strokePath } from './pictureEdits';
-import type { Layer, Point, Stroke } from './pictureEdits';
+import { blurredAlong, blurredInside, boxOf, canvasFrom, canvasOf, cropped, emptyLayer, flattened, mirrored, painted, rotated } from './pictureEdits';
+import type { BrushStyle, Layer, Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
 import { videoFromPicturePath } from './useVideoFromPicture';
@@ -139,6 +144,17 @@ type MagicTool = 'rectangle' | 'lasso';
 
 /** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
 type Tool = MagicTool | 'crop' | 'brush' | 'blur';
+/** The brush's tips, in the order its bar offers them, each with the one word its button is called. */
+const BRUSH_STYLES: { style: BrushStyle; label: () => string; icon: string }[] = [
+  { style: 'hard', label: () => t('Hard'), icon: brushHardIcon },
+  { style: 'soft', label: () => t('Soft'), icon: brushSoftIcon },
+  { style: 'square', label: () => t('Square'), icon: brushSquareIcon },
+  { style: 'marker', label: () => t('Marker'), icon: brushMarkerIcon },
+  { style: 'eraser', label: () => t('Eraser'), icon: eraserIcon },
+];
+/** Whether a tip has an edge to soften: the soft one, and the eraser. */
+const softens = (style: BrushStyle) => style === 'soft' || style === 'eraser';
+
 /** How the blur selects: a box, an outline, or a line from sharp to blurred. */
 type BlurShape = 'rectangle' | 'lasso' | 'gradient';
 
@@ -311,6 +327,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       .then((settings) => {
         setBrushMost(settings.brushMost);
         setBrushSize((held) => held ?? settings.brush);
+        setBrushOpacity((held) => held ?? settings.brushOpacity);
+        setMarkerOpacity((held) => held ?? settings.markerOpacity);
+        setBrushHardness((held) => held ?? settings.brushHardness);
         setBlurMost(settings.blurMost);
         setBlurRadius((held) => held ?? settings.blur);
         setBlurFalloffMost(settings.blurFalloffMost);
@@ -934,6 +953,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const chooseLayer = (id: string) => {
     if (id === layerId) return;
     if (strokes.length > 0) void applyPaint();
+    // The eraser takes paint off a layer; the picture itself has nothing under it to show, so the brush goes back to a tip that paints.
+    if (id === PICTURE_LAYER && brushStyle === 'eraser') setBrushStyle('hard');
     setLayerId(id);
   };
   /** An empty layer, above the one chosen, and chosen itself. */
@@ -941,9 +962,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (natural === null) return;
     if (layersMost !== null && layers.length >= layersMost) return;
     layerCount.current += 1;
+    // Numbered after the layers there are, skipping a name one of them already has.
+    let number = layers.length + 1;
+    while (layers.some((one) => one.name === tf('Layer {number}', { number }))) number += 1;
     const layer: Layer = {
       id: `layer-${layerCount.current}`,
-      name: tf('Layer {number}', { number: layers.length + 1 }),
+      name: tf('Layer {number}', { number }),
       visible: true,
       pixels: emptyLayer(natural.width, natural.height),
     };
@@ -1108,19 +1132,50 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const [brushSize, setBrushSize] = useState<number | null>(null);
   const [brushMost, setBrushMost] = useState<number | null>(null);
   const [brushColour, setBrushColour] = useState('#000000');
+  /** The tip in hand. */
+  const [brushStyle, setBrushStyle] = useState<BrushStyle>('hard');
+  /**
+   * How opaque the brush paints, in percent, starting where Admin Settings
+   * says - the marker's apart from the rest, since a marker is see-through.
+   */
+  const [brushOpacity, setBrushOpacity] = useState<number | null>(null);
+  const [markerOpacity, setMarkerOpacity] = useState<number | null>(null);
+  /** How hard the soft tip's and the eraser's edge is, in percent; 0 fades across half the width. */
+  const [brushHardness, setBrushHardness] = useState<number | null>(null);
+  /** The opacity the tip in hand paints at, in percent. */
+  const opacityNow = brushStyle === 'marker' ? markerOpacity : brushOpacity;
+  /** The eraser takes paint off a layer, and the picture itself has no layer under it: it is off there. */
+  const erasesNothing = brushStyle === 'eraser' && activeLayer === null;
   /** What has been done on the page and not yet kept: strokes painted on the picture, layers changed. */
   const pending = strokes.length > 0 || layersDirty;
+  /** How hard a pen is pressed, from 0 to 1; null for a mouse or a finger, which say nothing of it. */
+  const pressureOf = (event: ReactPointerEvent) => (event.pointerType === 'pen' ? event.pressure : null);
   const startStroke = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (tool !== 'brush' || event.button !== 0 || brushSize === null) return;
+    if (tool !== 'brush' || event.button !== 0 || brushSize === null || erasesNothing) return;
     const at = onPicture(event);
     if (at === null) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    setStroking({ colour: brushColour, size: brushSize, points: [at] });
+    const pressure = pressureOf(event);
+    setStroking({
+      colour: brushColour,
+      size: brushSize,
+      points: [at],
+      style: brushStyle,
+      opacity: (opacityNow ?? 100) / 100,
+      hardness: softens(brushStyle) ? (brushHardness ?? 100) / 100 : 1,
+      pressures: pressure === null ? null : [pressure],
+    });
   };
   const keepStroking = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (stroking === null) return;
     const at = onPicture(event);
-    if (at !== null) setStroking({ ...stroking, points: [...stroking.points, at] });
+    if (at === null) return;
+    const pressure = pressureOf(event);
+    setStroking({
+      ...stroking,
+      points: [...stroking.points, at],
+      pressures: stroking.pressures === null ? null : [...stroking.pressures, pressure ?? stroking.pressures[stroking.pressures.length - 1] ?? 1],
+    });
   };
   /** A stroke finished: into the layer chosen at once, or over the picture until Apply keeps it as a version. */
   const finishStroke = () => {
@@ -1132,6 +1187,21 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }
     setStroking(null);
   };
+  /**
+   * What the brush has painted and not kept, as it will be kept: the picture
+   * with its strokes - drawn whole over it, so a marker darkens it on the
+   * screen as it will in the version - and the layer being painted on.
+   */
+  const basePainted = useMemo(() => {
+    const shown = stroking === null || activeLayer !== null ? strokes : [...strokes, stroking];
+    const base = shown.length === 0 ? null : baseCanvas();
+    return base === null ? null : painted(base, shown);
+  }, [strokes, stroking, activeLayer, natural, baseUrl]);
+  const layerPainted = useMemo(
+    () => (stroking === null || activeLayer === null ? null : painted(activeLayer.pixels, [stroking])),
+    [stroking, activeLayer],
+  );
+
   /** What the brush painted on the picture, kept as a version of it; the layers over it stay, and are kept with it. */
   async function applyPaint(): Promise<void> {
     const base = strokes.length === 0 ? null : paintedBase();
@@ -2107,10 +2177,56 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 />
                 <span className={styles.optionsValue}>{brushSize ?? ''}</span>
               </label>
+              <div className={styles.optionsGroup} role="radiogroup" aria-label={t('Tip')} data-testid="brush-styles">
+                {BRUSH_STYLES.map((one) => (
+                  <button
+                    key={one.style}
+                    type="button"
+                    role="radio"
+                    className={`${styles.tool} ${brushStyle === one.style ? styles.railOn : ''}`}
+                    onClick={() => setBrushStyle(one.style)}
+                    disabled={one.style === 'eraser' && activeLayer === null}
+                    aria-checked={brushStyle === one.style}
+                    title={one.label()}
+                    aria-label={one.label()}
+                    data-testid={`brush-style-${one.style}`}
+                  >
+                    <img src={one.icon} alt="" width={16} height={16} />
+                  </button>
+                ))}
+              </div>
+              {brushStyle !== 'eraser' && (
+                <label className={styles.optionsField}>
+                  <span>{t('Colour')}</span>
+                  <input type="color" value={brushColour} onChange={(event) => setBrushColour(event.target.value)} data-testid="brush-colour" />
+                </label>
+              )}
               <label className={styles.optionsField}>
-                <span>{t('Colour')}</span>
-                <input type="color" value={brushColour} onChange={(event) => setBrushColour(event.target.value)} data-testid="brush-colour" />
+                <span>{t('Opacity')}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={opacityNow ?? 100}
+                  onChange={(event) => (brushStyle === 'marker' ? setMarkerOpacity : setBrushOpacity)(Number(event.target.value))}
+                  data-testid="brush-opacity"
+                />
+                <span className={styles.optionsValue}>{opacityNow === null ? '' : `${opacityNow}%`}</span>
               </label>
+              {softens(brushStyle) && (
+                <label className={styles.optionsField}>
+                  <span>{t('Hardness')}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={brushHardness ?? 100}
+                    onChange={(event) => setBrushHardness(Number(event.target.value))}
+                    data-testid="brush-hardness"
+                  />
+                  <span className={styles.optionsValue}>{brushHardness === null ? '' : `${brushHardness}%`}</span>
+                </label>
+              )}
               <button
                 type="button"
                 className={form.ghost}
@@ -2544,14 +2660,24 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
                   data-testid="editor-picture"
                 />
+                {basePainted !== null && baseVisible && (
+                  // The picture with the strokes on it not yet kept, under the layers as the picture is.
+                  <LayerView pixels={basePainted} className={styles.layerPixels} data-testid="brush-paint" />
+                )}
                 {layers.map((layer) =>
                   layer.visible ? (
-                    // Each layer shown over the picture, the first lowest, at the picture's size.
-                    <LayerView key={layer.id} pixels={layer.pixels} className={styles.layerPixels} data-testid="layer-canvas" data-id={layer.id} />
+                    // Each layer shown over the picture, the first lowest, at the picture's size; the one being painted as it is painted.
+                    <LayerView
+                      key={layer.id}
+                      pixels={layerPainted !== null && layer.id === layerId ? layerPainted : layer.pixels}
+                      className={styles.layerPixels}
+                      data-testid="layer-canvas"
+                      data-id={layer.id}
+                    />
                   ) : null,
                 )}
                 {natural !== null && (tool === 'brush' || strokes.length > 0) && (
-                  // What the brush paints, over the picture in its own pixels, as it will be kept.
+                  // Where the brush is put to the picture, in its own pixels; what it paints is drawn on the canvases under it.
                   <svg
                     className={`${styles.selectLayer} ${tool === 'brush' ? styles.selectLayerOn : ''}`}
                     viewBox={`0 0 ${natural.width} ${natural.height}`}
@@ -2559,20 +2685,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     onPointerDown={startStroke}
                     onPointerMove={keepStroking}
                     onPointerUp={finishStroke}
+                    data-strokes={strokes.length + (stroking === null ? 0 : 1)}
                     data-testid="brush-layer"
-                  >
-                    {[...strokes, ...(stroking === null ? [] : [stroking])].map((stroke, index) => (
-                      <path
-                        key={index}
-                        d={strokePath(stroke.points)}
-                        fill="none"
-                        stroke={stroke.colour}
-                        strokeWidth={stroke.size}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    ))}
-                  </svg>
+                  />
                 )}
                 {natural !== null && tool !== 'brush' && (tool !== null || selection !== null) && (
                   <svg
