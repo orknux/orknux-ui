@@ -118,6 +118,7 @@ export const PL: Record<string, string> = {
   "Open the model": "Otwórz model",
   "Remove layer": "Usuń warstwę",
   "Run input": "Wejście uruchomienia",
+  "Open in Artifacts": "Otwórz w Artefaktach",
   "Export {name}": "Eksportuj {name}",
   "Could not import the models.": "Nie udało się zaimportować modeli.",
   "{count} models added": "Dodano modeli: {count}",

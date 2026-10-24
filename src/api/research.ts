@@ -61,6 +61,8 @@ export interface Research {
   sources: ResearchSource[];
   fileName: string | null;
   fileUrl: string | null;
+  /** The artifact the report was saved as; null where it could not be saved. */
+  artifactId: string | null;
   previewUrl: string | null;
   error: string | null;
   startedBy: string;
@@ -109,7 +111,7 @@ const MODE_FIELDS = 'id kind name workflowId workflowName';
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch status executionId ' +
-  'fileName fileUrl previewUrl error startedBy startedAt finishedAt ' +
+  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt ' +
   'progress { step subQuestions searched level sourcesRead stage } sources { number title url kind }';
 
 export async function fetchResearchModes(workspaceId: string): Promise<ResearchMode[]> {

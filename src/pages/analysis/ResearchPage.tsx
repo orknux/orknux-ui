@@ -353,6 +353,12 @@ function OpenedResearch({ research, workspaceId, onClose }: { research: Research
               {t('Download')} {research.fileName}
             </a>
           )}
+          {/* Already kept there by the research's Save step; this says so and goes to it. */}
+          {research.artifactId !== null && (
+            <Link className={styles.download} to={`/workspace/${workspaceId}/artifacts/${research.artifactId}`} data-research-artifact>
+              {t('Open in Artifacts')}
+            </Link>
+          )}
           {research.outputFormat === 'PDF' && research.previewUrl !== null ? (
             <iframe className={styles.pdf} src={research.previewUrl} title={research.fileName ?? t('Report')} />
           ) : (

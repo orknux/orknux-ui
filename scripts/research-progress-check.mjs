@@ -24,7 +24,7 @@ const RUNNING = {
   id: '424242', question: 'zz progress check: why are there tides?', modeId: null, modeName: 'Deep', workflowId: '1',
   workflowName: 'Research: Deep', modelId: null, modelName: 'Stub', language: 'FORMAL', outputFormat: 'DOCUMENT',
   websitesInclude: [], websitesExclude: [], documentsInclude: ['Harbour log'], documentsExclude: [], useWebSearch: true, status: 'RUNNING',
-  executionId: null, result: null, fileName: null, fileUrl: null, previewUrl: null, error: null, startedBy: 'alice',
+  executionId: null, result: null, fileName: null, fileUrl: null, artifactId: null, previewUrl: null, error: null, startedBy: 'alice',
   startedAt: new Date().toISOString(), finishedAt: null,
   progress: {
     step: 'Reading Tides and the moon', subQuestions: ['tide causes', 'tide timing', 'tide records'],
@@ -33,7 +33,7 @@ const RUNNING = {
   sources: SOURCES,
 };
 const FINISHED = {
-  ...RUNNING, status: 'COMPLETED', finishedAt: new Date().toISOString(),
+  ...RUNNING, status: 'COMPLETED', finishedAt: new Date().toISOString(), fileName: 'tides.md', fileUrl: '/api/artifacts/4242', artifactId: '4242',
   progress: { ...RUNNING.progress, step: 'Finished', stage: 'SAVE' },
   result: '# Tides\n\nThe moon pulls the sea [1], and a spring tide comes every fortnight [2].\n\n## Sources\n\n1. [Tides and the moon](https://one.example.org/tides)\n2. [Harbour log](/api/artifacts/7)',
 };
@@ -74,5 +74,7 @@ record((await opened.locator('[data-step]').count()) === 0, 'and no longer says 
 record((await opened.locator('[data-sources] li').count()) === 2, 'and keeps its sources');
 const lastStage = ((await opened.locator('[data-stage]').textContent().catch(() => '')) ?? '').trim();
 record(lastStage === 'Saving the report', `and the last step it took (${lastStage})`);
+const kept = await opened.locator('[data-research-artifact]').getAttribute('href').catch(() => null);
+record(kept !== null && kept.endsWith('/artifacts/4242'), `and links the report it kept on the Artifacts page (${kept})`);
 
 await finish(browser);
