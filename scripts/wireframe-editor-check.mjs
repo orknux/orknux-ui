@@ -103,15 +103,32 @@ await page.waitForTimeout(600);
 record((await page.locator('[data-element-type="rect"]').count()) === 1 && (await page.locator('[data-element-type="text"]').textContent().catch(() => '')).includes('Welcome back'),
   'the box and the words are there after a reload');
 
+// The history outlives the reload: undo goes back over the words typed before it, like any undo, and redo returns them.
+const undoAfterReload = await page.getByTestId('wireframe-undo').isEnabled();
+await page.getByTestId('wireframe-undo').click({ timeout: 2_000 }).catch(() => undefined);
+await page.waitForTimeout(200);
+const undoneWords = (await page.locator('[data-element-type="text"]').textContent().catch(() => '')) ?? '';
+const undoneUnsaved = await page.getByTestId('wireframe-unsaved').count();
+record(undoAfterReload && !undoneWords.includes('Welcome back') && undoneUnsaved === 1,
+  `undo works after a reload, and leaves the drawing unsaved (${JSON.stringify({ undoAfterReload, undoneWords, undoneUnsaved })})`);
+await page.getByTestId('wireframe-redo').click({ timeout: 2_000 }).catch(() => undefined);
+await page.waitForTimeout(200);
+record((await page.locator('[data-element-type="text"]').textContent().catch(() => '')).includes('Welcome back') && (await page.getByTestId('wireframe-unsaved').count()) === 0,
+  'and redo brings back what is saved');
+
 // A model's drawing, answered here: a button added, taken onto the canvas, and undone as one step.
 const stored = (await gql(`query ($id: ID!) { wireframe(id: $id) { id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt } }`, { id })).data.wireframe;
 const after = JSON.parse(stored.document);
 after.elements.push({ id: 'cta', type: 'button', x: 300, y: 500, w: 160, h: 44, text: 'Sign in', props: { variant: 'primary' } });
 let asked = null;
+// The answer waits until the canvas has been read while the model is still drawing.
+let answer = () => {};
+const answerable = new Promise((resolve) => { answer = resolve; });
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
   if (!(body.query ?? '').includes('askWireframe')) return route.continue();
   asked = body.variables;
+  await answerable;
   return route.fulfill({ json: { data: { askWireframe: {
     answer: 'Added a **Sign in** button.', changed: true,
     wireframe: { ...stored, document: JSON.stringify(after), elementCount: after.elements.length, revision: stored.revision + 1 },
@@ -135,8 +152,44 @@ if (await page.getByTestId('wireframe-chat-send').isDisabled()) {
   // No chat model in this workspace: Send is not offered, and the model's half cannot be driven.
   record(modelShown.includes('no chat model'), `Send is held back only for want of a chat model (${modelShown})`);
 } else {
+  // The box is selected, so that is where the model draws, and where the canvas shows it drawing.
+  const target = await page.locator('[data-element-type="rect"] rect').first().boundingBox();
+  await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2);
+  await page.waitForTimeout(150);
+  const chosen = await page.getByTestId('wireframe-selected').first().boundingBox().catch(() => null);
   await page.getByTestId('wireframe-chat-send').click();
+  const area = page.getByTestId('wireframe-drawing-area');
+  await area.waitFor({ timeout: 5_000 }).catch(() => undefined);
+  const over = await area.boundingBox({ timeout: 2_000 }).catch(() => null);
+  const moving = await area.evaluate((one) => getComputedStyle(one).animationName, null, { timeout: 2_000 }).catch(() => null);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const still = await area.evaluate((one) => getComputedStyle(one).animationName, null, { timeout: 2_000 }).catch(() => null);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  record(chosen !== null && over !== null && ['x', 'y', 'width', 'height'].every((side) => Math.abs(over[side] - chosen[side]) <= 2),
+    `while the model draws, the area it draws into is marked over the selected box (${JSON.stringify({ over, chosen })})`);
+  record(moving !== null && moving !== 'none' && still === 'none', `and moves, unless motion is reduced (${moving}, ${still})`);
+
+  // The conversation has room on both sides: the request's bubble does not run to the panel's edge, and is as far
+  // from it as the status line under it is from the other; nothing in Send spills out of it.
+  const room = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="wireframe-panel"]').getBoundingClientRect();
+    const talk = document.querySelector('[data-testid="wireframe-chat"]');
+    const port = talk.getBoundingClientRect().left + talk.clientLeft + talk.clientWidth;
+    const bubble = [...document.querySelectorAll('[data-testid="wireframe-chat-message"][data-role="user"]')].at(-1)?.getBoundingClientRect();
+    const status = talk.querySelector('[role="status"]')?.getBoundingClientRect();
+    const send = document.querySelector('[data-testid="wireframe-chat-send"]');
+    const spill = Math.max(0, ...[...send.querySelectorAll('*')].map((one) => one.getBoundingClientRect().right - send.getBoundingClientRect().right));
+    if (bubble === undefined || status === undefined) return null;
+    return { right: Math.round(panel.right - bubble.right), left: Math.round(status.left - panel.left), inside: Math.round(port - bubble.right), spill: Math.round(spill) };
+  });
+  record(room !== null && room.inside >= 6 && room.right >= 20 && Math.abs(room.right - room.left) <= 3,
+    `the request's bubble keeps the same room from the panel's edge as the status line does (${JSON.stringify(room)})`);
+  record(room !== null && room.spill <= 1, `nothing spills out of Send while it waits (${JSON.stringify(room)})`);
+  await page.screenshot({ path: shot('wireframe-drawing.png') });
+
+  answer();
   await page.locator('[data-element-type="button"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+  record((await page.getByTestId('wireframe-drawing-area').count()) === 0, 'the mark is gone once the model answers');
   record(asked !== null && asked.messages.at(-1).content === 'Add a sign in button', `the chat sends what was asked (${JSON.stringify(asked?.messages)})`);
   record((await page.locator('[data-element-type="button"]').textContent().catch(() => '')).includes('Sign in'), 'what the model drew is on the canvas');
   const said = await page.getByTestId('wireframe-chat-message').allInnerTexts();
@@ -229,6 +282,35 @@ if (await firstIdea.isEnabled().catch(() => false)) {
   record((await page.getByTestId('wireframe-welcome').count()) === 0, 'and the greeting gives way to the conversation');
 }
 await page.unroute('**/graphql');
+
+// A history kept in this browser is only handed back to the drawing it was kept for: saved elsewhere since, it is dropped.
+await page.reload({ waitUntil: 'domcontentloaded' });
+await svg.waitFor({ timeout: 15_000 }).catch(() => undefined);
+await page.waitForTimeout(400);
+const desk = await svg.boundingBox();
+await page.getByTestId('wireframe-tool-image').click();
+await page.mouse.click(desk.x + desk.width - 260, desk.y + 120);
+await page.getByTestId('wireframe-save').click();
+await page.waitForTimeout(800);
+const keptBefore = await page.evaluate((wireframe) => {
+  try {
+    return JSON.parse(localStorage.getItem(`orknux.wireframe.undo.${wireframe}`) ?? 'null')?.past?.length ?? 0;
+  } catch {
+    return 0;
+  }
+}, id);
+const elsewhere = (await gql(`query ($id: ID!) { wireframe(id: $id) { document revision } }`, { id })).data.wireframe;
+const changed = JSON.parse(elsewhere.document);
+changed.elements.push({ id: 'elsewhere', type: 'note', x: 40, y: 40, w: 180, h: 120, text: 'Saved elsewhere' });
+await gql(`mutation ($id: ID!, $document: String!, $revision: Int) { saveWireframe(id: $id, document: $document, revision: $revision) { revision } }`,
+  { id, document: JSON.stringify(changed), revision: elsewhere.revision });
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.locator('[data-element-type="note"]').waitFor({ timeout: 15_000 }).catch(() => undefined);
+await page.waitForTimeout(400);
+const staleUndo = await page.getByTestId('wireframe-undo').isEnabled().catch(() => true);
+const images = await page.locator('[data-element-type="image"]').count();
+record(keptBefore > 0 && !staleUndo && images === 1 && (await page.locator('[data-element-type="note"]').count()) === 1,
+  `a history kept for a drawing saved elsewhere since is not applied (${JSON.stringify({ keptBefore, staleUndo, images })})`);
 
 await gql(`mutation ($id: ID!) { deleteWireframe(id: $id) }`, { id });
 await finish(browser);
