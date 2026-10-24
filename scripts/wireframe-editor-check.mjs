@@ -45,8 +45,11 @@ record(id !== null, `New opens the editor at the new wireframe (${page.url()})`)
 await page.getByTestId('wireframe-svg').waitFor({ timeout: 15_000 }).catch(() => undefined);
 
 // The editor fills the screen as the image editor does: canvas and panel, edge to edge, the same height.
-async function frameOf(canvasId, panelId) {
-  const canvas = await page.getByTestId(canvasId).boundingBox().catch(() => null);
+// A tools rail left of the canvas (the image editor's) is part of the editor's frame.
+async function frameOf(canvasId, panelId, railId = null) {
+  const drawn = await page.getByTestId(canvasId).boundingBox().catch(() => null);
+  const rail = railId === null ? null : await page.getByTestId(railId).boundingBox().catch(() => null);
+  const canvas = drawn === null || rail === null ? drawn : { ...drawn, x: Math.min(drawn.x, rail.x), width: drawn.x + drawn.width - Math.min(drawn.x, rail.x) };
   const panel = await page.getByTestId(panelId).boundingBox().catch(() => null);
   if (canvas === null || panel === null) return null;
   return { left: canvas.x, right: panel.x + panel.width, top: Math.min(canvas.y, panel.y), bottom: Math.max(canvas.y + canvas.height, panel.y + panel.height), canvas: canvas.width, panel: panel.width };
@@ -55,7 +58,7 @@ const wire = await frameOf('wireframe-canvas', 'wireframe-panel');
 await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/new`, { waitUntil: 'domcontentloaded' });
 await page.getByTestId('editor-canvas').waitFor({ timeout: 15_000 }).catch(() => undefined);
 await page.waitForTimeout(500);
-const image = await frameOf('editor-canvas', 'editor-panel');
+const image = await frameOf('editor-canvas', 'editor-panel', 'editor-tools');
 const near = (a, b) => Math.abs(a - b) <= 2;
 record(
   wire !== null && image !== null && near(wire.left, image.left) && near(wire.right, image.right) && near(wire.top, image.top) && near(wire.bottom, image.bottom) && near(wire.panel, image.panel),
