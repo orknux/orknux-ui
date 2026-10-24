@@ -253,7 +253,7 @@ export function SearchSettings({ search, workspaceId }: { search: SearchSettings
             {t('Also compose a short answer over the results')}
           </label>
           <FieldHint label={t('Also compose a short answer over the results')}>
-            {t('Costs more than a plain search.')}
+            {t('Tavily also writes a short answer to the question from what it found, and the agent reads it beside the results. Picture searches never ask for one.')}
           </FieldHint>
         </div>
       )}

@@ -3546,5 +3546,5 @@ export const PL: Record<string, string> = {
   "Choose the workspace secret the search key is read from.": "Wybierz sekret przestrzeni roboczej, z którego czytany jest klucz wyszukiwania.",
   "The search settings could not be read.": "Nie udało się odczytać ustawień wyszukiwania.",
   "Also compose a short answer over the results": "Ułóż też krótką odpowiedź na podstawie wyników",
-  "Costs more than a plain search.": "Kosztuje więcej niż zwykłe wyszukiwanie.",
+  "Tavily also writes a short answer to the question from what it found, and the agent reads it beside the results. Picture searches never ask for one.": "Tavily pisze też krótką odpowiedź na pytanie na podstawie znalezionych wyników, a agent czyta ją obok nich. Wyszukiwanie obrazów nigdy jej nie zamawia.",
 };
