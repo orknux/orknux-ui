@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
-import { deleteResearch, fetchResearch, fetchResearches } from '../../api/research';
+import { deleteResearch, fetchResearches } from '../../api/research';
 import type { Research, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
@@ -11,14 +11,13 @@ import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loader } from '../../components/Loader';
-import { Markdown } from '../../components/Markdown';
 import { TrashIcon } from '../../components/TrashIcon';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { PAGE_SIZES, usePageSize } from '../../components/pageSize';
 import { shellUser } from '../../session/user';
 import table from '../workspace/CatalogueTable.module.css';
 import { NewResearchDialog } from './NewResearchDialog';
-import { languageLabel, seededLabel, stageLabel, statusLabel } from './researchLabels';
+import { seededLabel, statusLabel } from './researchLabels';
 import styles from './ResearchPage.module.css';
 import { t, tf } from '../../i18n';
 
@@ -35,23 +34,22 @@ const STATUS_CLASS: Record<ResearchStatus, string> = {
 };
 
 /**
- * Explore > Research: the research this workspace has done, the one opened, and
- * starting another. Issue #659.
+ * Explore > Research: the research this workspace has done, and starting
+ * another. Issue #659.
  *
  * A research is a question handed to one of the workspace's own workflows - the
- * mode chosen is which - and what comes back is a report, shown here as the
- * document it is or as the PDF it was laid out as. The list follows a research
- * while it runs; opening one reads its report.
+ * mode chosen is which - and what comes back is a report. The list follows a
+ * research while it runs; opening one goes to its own page,
+ * [ResearchDetailPage], where its progress and its report are read.
  */
 export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
-  const { workspaceId = '', researchId } = useParams();
+  const { workspaceId = '' } = useParams();
   const navigate = useNavigate();
   const [list, setList] = useState<PageOf<Research> | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('research');
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
-  const [opened, setOpened] = useState<Research | null>(null);
   const [removing, setRemoving] = useState<Research | null>(null);
 
   const load = useCallback(() => {
@@ -66,19 +64,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
 
   useEffect(load, [load]);
 
-  const loadOpened = useCallback(() => {
-    if (researchId === undefined) {
-      setOpened(null);
-      return;
-    }
-    fetchResearch(researchId)
-      .then((found) => setOpened(found))
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load research.')));
-  }, [researchId]);
-
-  useEffect(loadOpened, [loadOpened]);
-
-  const running = (list?.content ?? []).some((one) => one.status === 'RUNNING') || opened?.status === 'RUNNING';
+  const running = (list?.content ?? []).some((one) => one.status === 'RUNNING');
 
   return (
     <AppShell
@@ -95,10 +81,7 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         </div>
         <div className={styles.headerActions}>
           <AutoRefresh
-            onRefresh={() => {
-              load();
-              loadOpened();
-            }}
+            onRefresh={load}
             defaultSeconds={5}
             settled={!running}
           />
@@ -110,14 +93,6 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
       </header>
 
       {error !== null && <p className={table.pageError}>{error}</p>}
-
-      {opened !== null && (
-        <OpenedResearch
-          research={opened}
-          workspaceId={workspaceId}
-          onClose={() => navigate(`/workspace/${workspaceId}/explore/research`)}
-        />
-      )}
 
       <section className={table.card} aria-label={t('Research')}>
         <div className={table.tableHeader}>
@@ -214,7 +189,6 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
         onConfirm={async () => {
           if (removing === null) return;
           await deleteResearch(removing.id);
-          if (opened?.id === removing.id) navigate(`/workspace/${workspaceId}/explore/research`);
           setRemoving(null);
           load();
         }}
@@ -233,151 +207,5 @@ function ModelName({ research, workspaceId }: { research: Research; workspaceId:
     <Link className={styles.cellLink} to={`/workspace/${workspaceId}/models/${research.modelId}`} data-model-link>
       {research.modelName ?? research.modelId}
     </Link>
-  );
-}
-
-/** One research opened: what was asked, and the report it came to. */
-function OpenedResearch({ research, workspaceId, onClose }: { research: Research; workspaceId: string; onClose: () => void }) {
-  return (
-    <section className={styles.opened} aria-label={t('Research')} data-opened={research.id}>
-      <header className={styles.openedHeader}>
-        <h2 className={styles.openedTitle}>{research.question}</h2>
-        <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')} title={t('Close')}>
-          ×
-        </button>
-      </header>
-
-      <dl className={styles.facts}>
-        <dt>{t('Mode')}</dt>
-        <dd>{seededLabel(research.modeName)}</dd>
-        <dt>{t('Model')}</dt>
-        <dd data-research-model>
-          <ModelName research={research} workspaceId={workspaceId} />
-        </dd>
-        <dt>{t('Language')}</dt>
-        <dd>{languageLabel(research.language)}</dd>
-        <dt>{t('Status')}</dt>
-        <dd>
-          <span className={`${styles.status} ${STATUS_CLASS[research.status]}`}>{statusLabel(research.status)}</span>
-          {/* Working, said where the status is rather than in front of what it is reading. */}
-          {research.status === 'RUNNING' && (
-            <span className={styles.working} data-working>
-              <Loader label="" size={16} delay={0} />
-            </span>
-          )}
-          {research.executionId !== null && (
-            <>
-              {' '}
-              <Link to={`/workspace/${workspaceId}/executions/${research.executionId}`}>{t('Open the run')}</Link>
-            </>
-          )}
-        </dd>
-        {!research.useWebSearch && (
-          <>
-            <dt>{t('Web search')}</dt>
-            <dd data-web-search-off>{t('Off')}</dd>
-          </>
-        )}
-        {research.websitesInclude.length > 0 && (
-          <>
-            <dt>{t('Websites to use')}</dt>
-            <dd>{research.websitesInclude.join(', ')}</dd>
-          </>
-        )}
-        {research.websitesExclude.length > 0 && (
-          <>
-            <dt>{t('Websites to avoid')}</dt>
-            <dd>{research.websitesExclude.join(', ')}</dd>
-          </>
-        )}
-        {research.documentsInclude.length > 0 && (
-          <>
-            <dt>{t('Documents to use')}</dt>
-            <dd>{research.documentsInclude.join(', ')}</dd>
-          </>
-        )}
-        {research.documentsExclude.length > 0 && (
-          <>
-            <dt>{t('Documents to avoid')}</dt>
-            <dd>{research.documentsExclude.join(', ')}</dd>
-          </>
-        )}
-      </dl>
-
-      {research.error !== null && <p className={styles.errorLine} role="alert">{research.error}</p>}
-
-      {research.progress !== null && (
-        <div className={styles.progress} data-progress>
-          {research.status === 'RUNNING' && (
-            <p className={styles.step} data-step>
-              {research.progress.step}
-            </p>
-          )}
-          <dl className={styles.facts}>
-            {research.progress.stage !== null && (
-              <>
-                <dt>{t('Step')}</dt>
-                <dd data-stage={research.progress.stage}>{stageLabel(research.progress.stage)}</dd>
-              </>
-            )}
-            <dt>{t('Level')}</dt>
-            <dd>{research.progress.level}</dd>
-            <dt>{t('Searches')}</dt>
-            <dd>{research.progress.searched.length}</dd>
-            <dt>{t('Sources read')}</dt>
-            <dd>{research.progress.sourcesRead}</dd>
-          </dl>
-          {research.progress.subQuestions.length > 0 && (
-            <>
-              <h3 className={styles.subheading}>{t('Sub-questions')}</h3>
-              <ol className={styles.subQuestions} data-sub-questions>
-                {research.progress.subQuestions.map((one) => (
-                  <li key={one}>{one}</li>
-                ))}
-              </ol>
-            </>
-          )}
-        </div>
-      )}
-
-      {research.sources.length > 0 && (
-        <>
-          <h3 className={styles.subheading}>{t('Sources')}</h3>
-          <ol className={styles.sources} data-sources>
-            {research.sources.map((source) => (
-              <li key={source.number} value={source.number} title={source.notes}>
-                <a href={source.url} target="_blank" rel="noreferrer noopener">{source.title}</a>
-                {source.kind === 'DOCUMENT' && <span className={styles.muted}> · {t('Document')}</span>}
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-
-      {research.status === 'COMPLETED' && (
-        <div className={styles.report}>
-          {research.fileUrl !== null && (
-            <a className={styles.download} href={research.fileUrl} download={research.fileName ?? undefined}>
-              {t('Download')} {research.fileName}
-            </a>
-          )}
-          {/* Already kept there by the research's Save step; this says so and goes to it. */}
-          {research.artifactId !== null && (
-            <Link className={styles.download} to={`/workspace/${workspaceId}/artifacts/${research.artifactId}`} data-research-artifact>
-              {t('Open in Artifacts')}
-            </Link>
-          )}
-          {research.outputFormat === 'PDF' && research.previewUrl !== null ? (
-            <iframe className={styles.pdf} src={research.previewUrl} title={research.fileName ?? t('Report')} />
-          ) : (
-            research.result != null && (
-              <article className={styles.document}>
-                <Markdown>{research.result}</Markdown>
-              </article>
-            )
-          )}
-        </div>
-      )}
-    </section>
   );
 }

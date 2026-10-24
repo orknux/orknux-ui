@@ -1,0 +1,603 @@
+/* Explore > Research, one research on its own page. Issue #659. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  width: 100%;
+  min-width: 0;
+}
+
+/* ---- the header: the way back, the question, and what it was asked with ---- */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+/* The run page's breadcrumb, so a research and its run are left the same way. */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.crumbLink {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.crumbLink:hover {
+  color: var(--color-text-primary);
+}
+
+.crumbSeparator {
+  color: var(--color-text-muted);
+}
+
+.crumbCurrent {
+  color: var(--color-text-primary);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: var(--text-2xl);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 32px;
+  padding: 0 var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.button:hover {
+  background: var(--color-surface-hover);
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-6);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  border-color: var(--color-border);
+  color: var(--color-danger);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12) var(--space-32);
+  margin: 0;
+  padding: var(--space-16) var(--space-20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.summaryItem dt {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.summaryItem dd {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-base);
+  color: var(--color-text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* The Runs list's status badge, so a research and its run say their state alike. */
+.statusCell {
+  gap: var(--space-8);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-4);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: var(--radius-full);
+}
+
+.running {
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+.completed {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.failed {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.stopped {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+}
+
+.working {
+  display: inline-flex;
+}
+
+.errorLine {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+}
+
+.errorBox {
+  margin: 0;
+  padding: var(--space-12) var(--space-16);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-6);
+  font-size: var(--text-md);
+  color: var(--color-danger);
+  overflow-wrap: anywhere;
+}
+
+/* ---- cards ---- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+  padding: var(--space-20) var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}
+
+.count {
+  padding: 0 var(--space-6);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--space-20);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- progress: the five steps in order ---- */
+
+.stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 900px) {
+  .stages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  min-width: 0;
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.marker {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.stageName {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage_done .marker {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+}
+
+.stage_done .stageName {
+  color: var(--color-text-body);
+}
+
+.stage_current {
+  border-color: var(--color-amber);
+}
+
+.stage_current .marker {
+  background: var(--color-amber-soft);
+  border-color: var(--color-amber);
+  color: var(--color-amber);
+}
+
+.stage_current .stageName {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.stage_failed {
+  border-color: var(--color-danger-border);
+}
+
+.stage_failed .marker {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.stage_failed .stageName {
+  color: var(--color-danger);
+}
+
+.now {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.nowStage {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.nowStep {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 120px;
+  padding: var(--space-10) var(--space-14);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.stat dt {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.stat dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- what it was given ---- */
+
+.given {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  margin: 0;
+}
+
+.givenRow {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: baseline;
+}
+
+.givenRow dt {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.givenRow dd {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  max-width: 100%;
+  padding: var(--space-2) var(--space-8);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  color: var(--color-text-body);
+  overflow-wrap: anywhere;
+}
+
+/* ---- sub-questions and sources: numbered rows ---- */
+
+.subQuestions,
+.sources {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subQuestions {
+  gap: var(--space-8);
+  counter-reset: part;
+}
+
+/* The number is drawn, not written: a sub-question's text is the query and nothing else. */
+.subQuestions li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-10);
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+  counter-increment: part;
+  overflow-wrap: anywhere;
+}
+
+.subQuestions li::before {
+  flex-shrink: 0;
+  min-width: 20px;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  content: counter(part) '.';
+}
+
+.sources {
+  gap: var(--space-6);
+}
+
+.source {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.sourceNumber {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sourceBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sourceTitle {
+  overflow: hidden;
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceTitle:hover {
+  text-decoration: underline;
+}
+
+.sourceMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sourceHost {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  flex-shrink: 0;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ---- the report ---- */
+
+.pdf {
+  width: 100%;
+  height: 80vh;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.document {
+  padding: var(--space-20) var(--space-24);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  color: var(--color-text-body);
+}

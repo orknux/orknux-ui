@@ -17,7 +17,8 @@
  * Documents are picked, not listed: a box finds them by a word, the one picked
  * becomes a row with Include or Exclude and a remove, and a file uploaded right
  * there lands on Artifacts and arrives picked. Start writes the research down,
- * and the list shows it at once.
+ * and opens the research on a page of its own; its Back link leads to the
+ * list, which shows it.
  *
  * A research always has its model, so the picker has no empty row and
  * arrives with the workspace's first chat model chosen; the check makes one
@@ -33,6 +34,10 @@
  * at a medium one, each cell under its heading's left edge - they were four
  * sizes and three weights. The model a research used is a link to the model's
  * page, in the row and on the research.
+ *
+ * A research opened is a page of its own, not a card over the list: a Back
+ * link to the list, the question as the page's title, and not one row of the
+ * list under it.
  */
 import { BASE, WORKSPACE, open, record, finish, optionsOffered, chosenOption, chooseOption } from './suite/harness.mjs';
 
@@ -250,6 +255,23 @@ await dialog.getByRole('button', { name: /^Start$/ }).click();
 await page.locator('dialog[open]').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
 record((await page.locator('dialog[open]').count()) === 0, 'Start closes the dialog');
 
+// --- its own page ------------------------------------------------------------
+await page.waitForURL(/\/explore\/research\/\d+$/, { timeout: 15_000 }).catch(() => undefined);
+record(/\/explore\/research\/\d+$/.test(page.url()), `Start opens the research on its own page (${page.url()})`);
+await page.locator('[data-research-title]').filter({ hasText: question }).waitFor({ timeout: 15_000 }).catch(() => undefined);
+const title = ((await page.locator('h1').first().textContent().catch(() => '')) ?? '').trim();
+record(title === question, `the page's title is the question (${title})`);
+const listRows = await page.locator('[data-research]').count();
+record(listRows === 0, `and no row of the list is drawn on it (${listRows})`);
+const back = page.locator('a[aria-label="Back to Research"]');
+const backHref = (await back.first().getAttribute('href').catch(() => null)) ?? '';
+record((await back.count()) === 1 && backHref.endsWith(`/workspace/${WORKSPACE}/explore/research`), `a Back link leads to the list (${backHref})`);
+const backBox = await back.first().boundingBox().catch(() => null);
+const titleBox = await page.locator('h1').first().boundingBox().catch(() => null);
+record(backBox !== null && titleBox !== null && backBox.y + backBox.height <= titleBox.y + 1, 'above the title, where every detail page has it');
+await back.first().click();
+await page.waitForURL(/\/explore\/research$/, { timeout: 15_000 }).catch(() => undefined);
+
 const row = page.locator('[data-research]').filter({ hasText: question });
 await row.first().waitFor({ timeout: 15_000 }).catch(() => undefined);
 record((await row.count()) === 1, 'the research is in the list at once');
@@ -309,10 +331,12 @@ record(
 const rowModel = (await row.first().locator('[data-cell="model"] a[data-model-link]').getAttribute('href').catch(() => null)) ?? '';
 record(new RegExp(`^/workspace/${WORKSPACE}/models/\\d+$`).test(rowModel), `the row's model links to the model's page (${rowModel})`);
 
-// Opened, it says what was asked.
+// Opened from the list, it is its own page again, and says what was asked.
 await row.first().getByRole('link', { name: question }).click().catch(() => undefined);
 const opened = page.locator('[data-opened]');
 await opened.waitFor({ timeout: 10_000 }).catch(() => undefined);
+await opened.locator('[data-summary]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+record((await page.locator('[data-research]').count()) === 0, 'opened from the list, the list is not drawn under it');
 const facts = ((await opened.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
 record(facts.includes('example.org') && facts.includes('tabloid.example') && facts.includes(fileName), `opened, it shows the websites and the document it was given (${facts.slice(0, 160)})`);
 const usedModel = ((await opened.locator('[data-research-model]').textContent().catch(() => '')) ?? '').trim();

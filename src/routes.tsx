@@ -35,6 +35,7 @@ import { ExecutionDetailPage } from './pages/workspace/ExecutionDetailPage';
 import { WorkspaceArtifactsPage } from './pages/workspace/WorkspaceArtifactsPage';
 import { DesignImagesPage } from './pages/design/DesignImagesPage';
 import { ResearchPage } from './pages/analysis/ResearchPage';
+import { ResearchDetailPage } from './pages/analysis/ResearchDetailPage';
 import { DesignImageEditorRoute } from './pages/design/DesignImageEditorPage';
 import { DesignVideosPage } from './pages/design/DesignVideosPage';
 import { DesignVideoEditorRoute } from './pages/design/DesignVideoEditorPage';
@@ -107,7 +108,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/objects': (session, onSignOut) => <WorkspaceObjectsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/artifacts': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/explore/research': (session, onSignOut) => <ResearchPage session={session} onSignOut={onSignOut} />,
-  '/workspace/:workspaceId/explore/research/:researchId': (session, onSignOut) => <ResearchPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/explore/research/:researchId': (session, onSignOut) => <ResearchDetailPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   // One instance across the editor's own moves between these two, renewed where somebody arrives at New; see DesignImageEditorRoute.

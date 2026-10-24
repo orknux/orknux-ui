@@ -8,6 +8,12 @@
  * link to where it was read. Finished, it shows the report with its [n]
  * citations and the same numbered sources under it.
  *
+ * The steps are drawn as a strip of five in the order the workflow takes them
+ * - in one row at this width, each as wide as the next - with the ones taken
+ * marked done, the one it is in marked current, and the rest waiting. Each
+ * source is a row of its own: its number, its title as a link, where it was
+ * read and what kind it is.
+ *
  * The research itself is answered here, as a run part-way through and then
  * as one finished, so the check does not depend on a model or a search engine
  * - the server's own tests drive the pipeline with stubs of both.
@@ -59,10 +65,65 @@ const stage = ((await opened.locator('[data-stage]').textContent().catch(() => '
 record(stage === 'Gathering sources', `it says which step of the workflow it is in (${stage})`);
 record((await opened.locator('[data-web-search-off]').count()) === 0, 'a research that searched the web says nothing about it');
 record(/Searches\s*2/.test(facts) && /Sources read\s*2/.test(facts), `it counts searches and sources (${facts.slice(0, 120)})`);
+// --- the steps, drawn in order -------------------------------------------------
+const strip = await opened.locator('[data-stages] > li').evaluateAll((all) =>
+  all.map((one) => {
+    const box = one.getBoundingClientRect();
+    return { stage: one.getAttribute('data-stage-step'), state: one.getAttribute('data-state'), name: (one.textContent ?? '').trim(), top: box.top, left: box.left, width: box.width, height: box.height };
+  }),
+);
+record(
+  JSON.stringify(strip.map((one) => one.stage)) === JSON.stringify(['PLAN', 'GATHER', 'FOLLOW_UP', 'WRITE', 'SAVE']),
+  `the five steps are drawn in the order they are taken (${strip.map((one) => one.stage).join(', ')})`,
+);
+record(
+  JSON.stringify(strip.map((one) => one.state)) === JSON.stringify(['done', 'current', 'waiting', 'waiting', 'waiting']),
+  `the ones taken are done, the one it is in is current, the rest wait (${strip.map((one) => one.state).join(', ')})`,
+);
+record(strip.every((one) => one.name.includes(['Plan research', 'Gather sources', 'Deepen findings', 'Write report', 'Save report'][strip.indexOf(one)])), `each by its step's name (${strip.map((one) => one.name).join(' | ')})`);
+const tops = strip.map((one) => Math.round(one.top));
+const widths = strip.map((one) => Math.round(one.width));
+record(strip.length === 5 && Math.max(...tops) - Math.min(...tops) <= 1, `in one row at 1440px (tops ${tops.join(', ')})`);
+record(strip.every((one, at) => at === 0 || one.left > strip[at - 1].left + strip[at - 1].width - 1), `left to right, none over another (${strip.map((one) => Math.round(one.left)).join(', ')})`);
+record(Math.max(...widths) - Math.min(...widths) <= 1 && Math.min(...widths) >= 120, `each as wide as the next (${widths.join(', ')})`);
+const currentBorder = await opened.locator('[data-stage-step="GATHER"]').evaluate((one) => getComputedStyle(one).borderTopColor).catch(() => '');
+const waitingBorder = await opened.locator('[data-stage-step="WRITE"]').evaluate((one) => getComputedStyle(one).borderTopColor).catch(() => '');
+record(currentBorder !== '' && currentBorder !== waitingBorder, `the current step is drawn apart from a waiting one (${currentBorder} against ${waitingBorder})`);
+
+// --- the sources, as rows ------------------------------------------------------
+const rows = await opened.locator('[data-sources] > [data-source]').evaluateAll((all) =>
+  all.map((one) => {
+    const box = one.getBoundingClientRect();
+    return {
+      number: one.querySelector('[aria-hidden="true"]')?.textContent?.trim(),
+      title: one.querySelector('a')?.textContent?.trim(),
+      host: one.querySelector('[data-source-host]')?.textContent?.trim(),
+      kind: one.querySelector('[data-source-kind]')?.textContent?.trim(),
+      top: box.top,
+      height: box.height,
+      bordered: getComputedStyle(one).borderTopStyle !== 'none',
+    };
+  }),
+);
+record(rows.length === 2, `each source is a row of its own (${rows.length})`);
+record(
+  JSON.stringify(rows.map((one) => [one.number, one.title, one.host, one.kind])) ===
+    JSON.stringify([['1', 'Tides and the moon', 'one.example.org', 'Web'], ['2', 'Harbour log', 'Artifacts', 'Document']]),
+  `with its number, its title, where it was read and its kind (${JSON.stringify(rows.map((one) => [one.number, one.title, one.host, one.kind]))})`,
+);
+record(rows.length === 2 && rows[1].top >= rows[0].top + rows[0].height && rows.every((one) => one.bordered), 'one under the other, each a drawn row');
+
 const links = await opened.locator('[data-sources] li a').evaluateAll((all) => all.map((one) => one.getAttribute('href')));
 record(JSON.stringify(links) === JSON.stringify(['https://one.example.org/tides', '/api/artifacts/7']), `it links each source it read, in order (${links.join(', ')})`);
 const numbers = await opened.locator('[data-sources] li').evaluateAll((all) => all.map((one) => one.value));
 record(JSON.stringify(numbers) === JSON.stringify([1, 2]), `numbered as the report cites them (${numbers.join(', ')})`);
+
+// --- its own page --------------------------------------------------------------
+record((await page.locator('[data-research]').count()) === 0, 'it is a page of its own, with no row of the list');
+const heading = ((await page.locator('h1').first().textContent().catch(() => '')) ?? '').trim();
+record(heading === RUNNING.question, `titled with the question (${heading})`);
+record((await page.locator('a[aria-label="Back to Research"]').count()) === 1, 'and a Back link to the list');
+record((await opened.locator('[data-summary] [data-working]').count()) === 1, 'running, its state has the spinner beside it');
 
 // --- finished -----------------------------------------------------------------
 answering = FINISHED;
@@ -72,8 +133,9 @@ const report = ((await opened.locator('article').textContent().catch(() => '')) 
 record(report.includes('The moon pulls the sea [1]'), 'finished, the report is drawn with its citations');
 record((await opened.locator('[data-step]').count()) === 0, 'and no longer says it is working');
 record((await opened.locator('[data-sources] li').count()) === 2, 'and keeps its sources');
-const lastStage = ((await opened.locator('[data-stage]').textContent().catch(() => '')) ?? '').trim();
-record(lastStage === 'Saving the report', `and the last step it took (${lastStage})`);
+const states = await opened.locator('[data-stages] > li').evaluateAll((all) => all.map((one) => one.getAttribute('data-state')));
+record(states.length === 5 && states.every((one) => one === 'done'), `and every step is done (${states.join(', ')})`);
+record((await opened.locator('[data-summary] [data-working]').count()) === 0, 'and the spinner is gone');
 const kept = await opened.locator('[data-research-artifact]').getAttribute('href').catch(() => null);
 record(kept !== null && kept.endsWith('/artifacts/4242'), `and links the report it kept on the Artifacts page (${kept})`);
 
