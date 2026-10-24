@@ -46,6 +46,8 @@ const RESET_INTERVALS: ResetInterval[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'NEVER']
 /** The reasoning effort's words as a person reads them; a word the server adds later shows as it is spelled. */
 export function effortLabel(effort: string): string {
   switch (effort) {
+    case 'none':
+      return t('None');
     case 'minimal':
       return t('Minimal');
     case 'low':
@@ -54,6 +56,10 @@ export function effortLabel(effort: string): string {
       return t('Medium');
     case 'high':
       return t('High');
+    case 'xhigh':
+      return t('Extra high');
+    case 'max':
+      return t('Max');
     default:
       return effort;
   }

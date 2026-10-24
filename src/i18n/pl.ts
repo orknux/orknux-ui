@@ -2786,6 +2786,9 @@ export const PL: Record<string, string> = {
   "Low": "Niski",
   "Medium": "Średni",
   "High": "Wysoki",
+  // The rest of openai-java's words, which OpenAI, llama.cpp and Ollama take; "None" is already "Brak".
+  "Extra high": "Bardzo wysoki",
+  "Max": "Maksymalny",
 
   // Admin -> Settings -> HTTP tools, and the agent form's rows for them. Issue #602.
   "Could not read the HTTP tools settings.": "Nie udało się odczytać ustawień narzędzi HTTP.",

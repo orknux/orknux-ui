@@ -4519,11 +4519,17 @@ ${named}`;
                 image model still decides whether it can be done at all; it now
                 decides whether the *agent* is offered the tool.
               */}
-              {/* How hard the model thinks in this chat, beside the microphone; drawn only where the model takes it. #654. */}
+              {/*
+                The chat's own settings, a pair in this order: how hard the model
+                thinks (#654, drawn only where the model takes it), then how the
+                agent works (#653, only an agent has tools to hold back). Both
+                come before the microphone and voice mode, which are about
+                speaking rather than about how the answer is made.
+                chat-effort-check measures the order and the gaps.
+              */}
               {current !== null && (
                 <ChatEffort chatId={current.id} answeredBy={`${current.agentId ?? ''}:${current.modelId ?? ''}`} />
               )}
-              {/* How the agent works here - Default, Plan or Auto. Only an agent has tools to hold back. #653. */}
               {current.agentId !== null && (
                 <ChatModeSwitch
                   chat={current}

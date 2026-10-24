@@ -1,4 +1,7 @@
-/* The chat's mode, beside the microphone: the same height and border as the buttons in that row. */
+/*
+ * The chat's mode, beside the reasoning effort and before the microphone: the
+ * same height, outline and type as the effort pill, so the two read as a pair.
+ */
 .wrap {
   display: flex;
   flex-shrink: 0;
@@ -6,14 +9,16 @@
 }
 
 .select {
+  gap: var(--space-4);
   height: 32px;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-8);
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-4);
   color: var(--color-text-secondary);
   font: inherit;
   font-size: var(--text-sm);
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -26,14 +31,9 @@
   cursor: default;
 }
 
-/* Plan or Auto: not how chats usually work, so it shows. */
+/* Plan or Auto: not how chats usually work, so it shows - as a chosen effort does beside it. */
 .active {
   border-color: var(--color-accent-brand);
   background: var(--color-accent-brand-soft);
-  color: var(--color-text-primary);
-}
-
-.select option {
-  background: var(--color-surface-raised);
   color: var(--color-text-primary);
 }

@@ -374,7 +374,7 @@ export const TESTS = [
   },
   {
     name: 'chat-mode-check',
-    what: "a chat's mode switch in the composer's row, a choice sent and kept, and a plan drawn as markdown with Approve and Keep planning",
+    what: "a chat's mode switch in the composer's row as the app's own list matching the effort pill, opening above with a one-line hint per row, chosen from the keyboard, sent and kept, and a plan drawn as markdown with Approve and Keep planning",
     needs: ['workspace'],
     // Makes a chat of its own on the workspace's first agent and deletes it; the plan and its answer never reach the server.
   },
@@ -1859,10 +1859,10 @@ export const TESTS = [
 
   {
     name: 'chat-effort-check',
-    what: "the reasoning effort beside the microphone: level with it, offering only the model's words, a pick sent, and no control for a model that takes none",
+    what: "the reasoning effort, then the mode switch, then the microphone: adjacent and level, offering only the model's words, a pick sent, and no control for a model that takes none",
     needs: ['workspace'],
     /*
-     * Makes a chat of its own and deletes it. Which words the model takes, and
+     * Makes a chat of its own on the workspace's first agent and deletes it. Which words the model takes, and
      * the pick, are answered in the page, so no reasoning model has to exist;
      * what the server sends is ChatReasoningEffortTest's. Issue #654.
      */

@@ -1,7 +1,9 @@
 /**
  * The reasoning effort in the chat composer. Issue #654.
  *
- * - It is drawn beside the microphone and voice-mode buttons, level with them.
+ * - It is drawn in the composer's row as one of a pair: the effort pill, then
+ *   the chat's mode switch directly after it, then the microphone or voice
+ *   mode - each next to the one before, level with it and as tall.
  * - Its menu offers "Model default" and exactly the words the chat's model
  *   takes, with no explanation beside any of them.
  * - A pick is sent to the server as the chat's effort, and the control shows it.
@@ -21,8 +23,15 @@ const sent = [];
 
 let chatId = null;
 try {
+  // With an agent, so the mode switch (#653) is drawn beside the pill and the order of the three can be measured.
+  const { workspaceAgents } = await graphql(
+    `query($w: ID!) { workspaceAgents(workspaceId: $w, page: 0, size: 50) { content { id } } }`,
+    { w: WORKSPACE },
+  );
+  const agent = workspaceAgents.content[0];
+  if (agent === undefined) throw new Error('this workspace has no agent, so the mode switch cannot be drawn beside the pill');
   chatId = (await graphql(`mutation($input: StartChatInput!) { startChat(input: $input) { id } }`, {
-    input: { workspaceId: WORKSPACE, title: NAME },
+    input: { workspaceId: WORKSPACE, title: NAME, agentId: agent.id },
   })).startChat.id;
 
   await page.route('**/graphql', async (route) => {
@@ -44,40 +53,47 @@ try {
   await pill.waitFor({ timeout: 20_000 }).catch(() => undefined);
   record((await pill.count()) === 1, 'a chat whose model takes an effort draws the control');
 
-  /* ---- beside the microphone and voice mode ---- */
+  /* ---- effort, then mode, then the microphone or voice mode ---- */
   const placed = await page.evaluate(() => {
     const pill = document.querySelector('[data-testid="chat-effort"]');
+    const mode = document.querySelector('[data-testid="chat-mode"]');
     const box = document.querySelector('#chat-composer');
-    if (!pill || !box) return null;
+    if (!pill || !mode || !box) return null;
     const holder = pill.parentElement;
-    // The next control drawn after it: the microphone, or voice mode where there is no microphone.
-    const neighbours = [
+    // The first speaking control: the microphone, or voice mode where there is no microphone.
+    const speaking = [
       document.querySelector('button[aria-label="Record a message"]'),
       document.querySelector('[data-testid="voice-unavailable"]'),
       document.querySelector('button[aria-label="Enter voice mode"]'),
-    ].filter((one) => one !== null);
-    const next = neighbours
-      .map((one) => ({ one, rect: one.getBoundingClientRect() }))
-      .sort((a, b) => a.rect.left - b.rect.left)[0];
+    ]
+      .filter((one) => one !== null)
+      .map((one) => one.getBoundingClientRect())
+      .sort((a, b) => a.left - b.left)[0];
     const a = pill.getBoundingClientRect();
+    const m = mode.getBoundingClientRect();
     const b = box.getBoundingClientRect();
+    const centre = (r) => r.top + r.height / 2;
     return {
       sameRow: holder?.parentElement === box.parentElement,
       afterBox: Math.round(a.left - b.right),
-      gap: next ? Math.round(next.rect.left - a.right) : null,
-      centres: next ? Math.round(Math.abs(a.top + a.height / 2 - (next.rect.top + next.rect.height / 2))) : null,
-      height: Math.round(a.height),
-      nextHeight: next ? Math.round(next.rect.height) : null,
+      effortToMode: Math.round(m.left - a.right),
+      modeToSpeaking: speaking ? Math.round(speaking.left - m.right) : null,
+      centres: speaking ? Math.round(Math.max(Math.abs(centre(a) - centre(m)), Math.abs(centre(m) - centre(speaking)))) : null,
+      heights: [Math.round(a.height), Math.round(m.height), speaking ? Math.round(speaking.height) : null],
     };
   });
   record(placed !== null && placed.sameRow && placed.afterBox >= 0, `it sits in the composer's row, after the box (${JSON.stringify(placed)})`);
   record(
-    placed !== null && placed.gap !== null && placed.gap >= 0 && placed.gap <= 16,
-    `directly before the microphone or voice-mode button (${placed?.gap}px between)`,
+    placed !== null && placed.effortToMode >= 0 && placed.effortToMode <= 16,
+    `the mode switch comes directly after it (${placed?.effortToMode}px between)`,
   );
   record(
-    placed !== null && placed.centres !== null && placed.centres <= 2 && placed.height === placed.nextHeight,
-    `level with it and as tall (${JSON.stringify(placed)})`,
+    placed !== null && placed.modeToSpeaking !== null && placed.modeToSpeaking >= 0 && placed.modeToSpeaking <= 16,
+    `and the microphone or voice-mode button directly after the switch (${placed?.modeToSpeaking}px between)`,
+  );
+  record(
+    placed !== null && placed.centres !== null && placed.centres <= 2 && new Set(placed.heights).size === 1,
+    `all three level and as tall (${JSON.stringify(placed)})`,
   );
 
   /* ---- the menu ---- */
