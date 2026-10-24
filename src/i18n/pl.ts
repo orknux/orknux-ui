@@ -159,6 +159,12 @@ export const PL: Record<string, string> = {
   "Saves the changes as a new picture and leaves this one as it was": "Zapisuje zmiany jako nowy obraz, a ten zostawia bez zmian",
   "Magic select all": "Magiczne zaznaczenie całości",
   "Magic Select All Shortcut": "Skrót magicznego zaznaczenia całości",
+  // The desktop app's tab keys.
+  "Next Tab Shortcut": "Skrót do następnej karty",
+  "Previous Tab Shortcut": "Skrót do poprzedniej karty",
+  "Moves to the next tab in the desktop app, from the last back to the first; Ctrl+Tab always does too.": "Przechodzi do następnej karty w aplikacji desktopowej, z ostatniej z powrotem do pierwszej; Ctrl+Tab działa zawsze.",
+  "Moves to the previous tab in the desktop app, from the first back to the last; Ctrl+Shift+Tab always does too.": "Przechodzi do poprzedniej karty w aplikacji desktopowej, z pierwszej z powrotem do ostatniej; Ctrl+Shift+Tab działa zawsze.",
+  "{keys} would fire while typing. Hold Ctrl, Alt, Shift or Cmd with it, or use a function key.": "Skrót {keys} zadziałałby podczas pisania. Przytrzymaj z nim Ctrl, Alt, Shift lub Cmd albo użyj klawisza funkcyjnego.",
   "Selects the whole picture in the image editor, to change all of it. Heard only there, never while typing.": "Zaznacza cały obraz w edytorze obrazów, by zmienić go w całości. Działa tylko tam, nigdy podczas pisania.",
   "Magic Rectangle Select Shortcut": "Skrót magicznego zaznaczenia prostokątem",
   "Magic Lasso Select Shortcut": "Skrót magicznego zaznaczenia lassem",

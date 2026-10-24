@@ -21,6 +21,8 @@ const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
 const MAGIC_RECTANGLE_KEY = 'orknux.magicRectangleShortcut';
 const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
 const MAGIC_ALL_KEY = 'orknux.magicAllShortcut';
+const NEXT_TAB_KEY = 'orknux.nextTabShortcut';
+const PREVIOUS_TAB_KEY = 'orknux.previousTabShortcut';
 
 /** What opens the palette when nothing has been chosen. */
 export const DEFAULT_SHORTCUT = 'Ctrl+Q';
@@ -191,6 +193,17 @@ export const DEFAULT_MAGIC_LASSO_SHORTCUT = 'L';
 export const DEFAULT_MAGIC_ALL_SHORTCUT = 'Ctrl+A';
 
 /**
+ * The desktop app's next and previous tab, when nothing has been chosen:
+ * Ctrl+PageDown and Ctrl+PageUp, which every browser and most editors with tabs
+ * answer to. Only the desktop app has tabs of its own, so only it hears these -
+ * `desktop.ts` hands them over - and it hears them whichever tab has the caret.
+ * Ctrl+Tab and Ctrl+Shift+Tab are honoured as well and are not rebindable, as
+ * Ctrl+Y is for redo: they are the other habit.
+ */
+export const DEFAULT_NEXT_TAB_SHORTCUT = 'Ctrl+PageDown';
+export const DEFAULT_PREVIOUS_TAB_SHORTCUT = 'Ctrl+PageUp';
+
+/**
  * Which keystroke opens the command palette, written the way it is shown:
  * modifiers in a fixed order, then the key — `Ctrl+Q`, `Ctrl+Shift+P`, `Alt+G`.
  *
@@ -244,7 +257,7 @@ function remembered(key: string, fallback: Shortcut) {
     return () => listeners.delete(listener);
   };
 
-  return { get, set, use: (): Shortcut => useSyncExternalStore(subscribe, get, get) };
+  return { get, set, subscribe, use: (): Shortcut => useSyncExternalStore(subscribe, get, get) };
 }
 
 const palette = remembered(KEY, DEFAULT_SHORTCUT);
@@ -268,6 +281,8 @@ const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
 const magicRectangle = remembered(MAGIC_RECTANGLE_KEY, DEFAULT_MAGIC_RECTANGLE_SHORTCUT);
 const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
 const magicAll = remembered(MAGIC_ALL_KEY, DEFAULT_MAGIC_ALL_SHORTCUT);
+const nextTab = remembered(NEXT_TAB_KEY, DEFAULT_NEXT_TAB_SHORTCUT);
+const previousTab = remembered(PREVIOUS_TAB_KEY, DEFAULT_PREVIOUS_TAB_SHORTCUT);
 
 export function paletteShortcut(): Shortcut {
   return palette.get();
@@ -519,6 +534,40 @@ export function setMagicAllShortcut(next: Shortcut): void {
 
 export function useMagicAllShortcut(): Shortcut {
   return magicAll.use();
+}
+
+export function nextTabShortcut(): Shortcut {
+  return nextTab.get();
+}
+
+export function setNextTabShortcut(next: Shortcut): void {
+  nextTab.set(next);
+}
+
+export function useNextTabShortcut(): Shortcut {
+  return nextTab.use();
+}
+
+export function previousTabShortcut(): Shortcut {
+  return previousTab.get();
+}
+
+export function setPreviousTabShortcut(next: Shortcut): void {
+  previousTab.set(next);
+}
+
+export function usePreviousTabShortcut(): Shortcut {
+  return previousTab.use();
+}
+
+/** Called whenever either tab shortcut changes; what `desktop.ts` passes on to the app. */
+export function onTabShortcuts(listener: () => void): () => void {
+  const one = nextTab.subscribe(listener);
+  const two = previousTab.subscribe(listener);
+  return () => {
+    one();
+    two();
+  };
 }
 
 /** One key, named as somebody would read it rather than as the browser sends it. */
