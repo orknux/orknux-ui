@@ -57,7 +57,7 @@ type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'start' | 'end
 /** What the pointer is doing between going down and coming up. */
 type Gesture =
   | { kind: 'pan'; from: Point; view: View }
-  | { kind: 'move'; from: Point; before: WireframeElement[]; ids: string[] }
+  | { kind: 'move'; from: Point; before: WireframeElement[]; ids: string[]; only: string | null }
   | { kind: 'resize'; from: Point; before: WireframeElement[]; id: string; handle: Handle }
   | { kind: 'create'; from: Point; before: WireframeElement[]; id: string }
   | { kind: 'marquee'; from: Point; now: Point; kept: string[] };
@@ -71,6 +71,8 @@ const ZOOM_MOST = 6;
 const UNDO_DEPTH = 100;
 /** A drag shorter than this, on screen, is a click: the element is made at its usual size. */
 const CLICK_SLOP = 4;
+/** How near a frame's edge, on screen, a press takes the frame rather than the empty space inside it. */
+const FRAME_EDGE = 8;
 
 /** What each tool makes when clicked rather than dragged, and the words it starts with. */
 const MADE: Record<WireframeElementType, { w: number; h: number; text?: () => string }> = {
@@ -343,7 +345,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
     }
     const at = onDrawing(event);
     const target = (event.target as Element).closest('[data-element-id]');
-    const handle = (event.target as Element).closest('[data-handle]')?.getAttribute('data-handle') as Handle | null;
+    const handle = ((event.target as Element).closest('[data-handle]')?.getAttribute('data-handle') ?? null) as Handle | null;
     event.currentTarget.setPointerCapture(event.pointerId);
 
     if (event.button === 1 || tool === 'hand' || spaceHeld) {
@@ -371,7 +373,18 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
       return;
     }
 
-    const id = target?.getAttribute('data-element-id') ?? null;
+    let id = target?.getAttribute('data-element-id') ?? null;
+    const pressed = id === null ? undefined : elements.find((one) => one.id === id);
+    // A frame is the ground a screen is drawn on, so its empty inside is canvas, as in every drawing tool: a press
+    // there lets the selection go. The frame is taken by its title, its edge, once it is selected, or while empty.
+    if (pressed?.type === 'frame' && !selected.includes(pressed.id) && (event.target as Element).tagName !== 'text') {
+      const edge = FRAME_EDGE / view.zoom;
+      const nearEdge =
+        Math.abs(at.x - pressed.x) <= edge || Math.abs(at.x - (pressed.x + pressed.w)) <= edge ||
+        Math.abs(at.y - pressed.y) <= edge || Math.abs(at.y - (pressed.y + pressed.h)) <= edge;
+      const holds = elements.some((one) => one.id !== pressed.id && touches(one, pressed));
+      if (!nearEdge && holds) id = null;
+    }
     if (id !== null) {
       const next = event.shiftKey
         ? selected.includes(id)
@@ -381,7 +394,9 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
           ? selected
           : [id];
       setSelected(next);
-      if (next.includes(id)) setGesture({ kind: 'move', from: at, before: elements, ids: next });
+      // A click on one of several selected keeps only that one; a drag moves them all.
+      const only = !event.shiftKey && next.length > 1 ? id : null;
+      if (next.includes(id)) setGesture({ kind: 'move', from: at, before: elements, ids: next, only });
       return;
     }
 
@@ -461,6 +476,8 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
     if (JSON.stringify(done.before) !== JSON.stringify(elements)) {
       remember(done.before);
       if (done.kind === 'resize') setElements((held) => held.map(normalised));
+    } else if (done.kind === 'move' && done.only !== null) {
+      setSelected([done.only]);
     }
     void event;
   }

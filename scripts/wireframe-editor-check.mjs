@@ -136,5 +136,41 @@ await card.getByTestId('wireframe-open').click();
 await page.waitForURL(new RegExp(`/design/wireframes/${id}$`), { timeout: 10_000 }).catch(() => undefined);
 record(page.url().endsWith(`/design/wireframes/${id}`), `clicking the card opens it in the editor (${page.url()})`);
 
+// Selection as every drawing tool does it: a press outside what is selected lets it go, a frame's empty
+// inside included, and a click on one of several selected keeps only that one.
+await svg.waitFor({ timeout: 15_000 }).catch(() => undefined);
+await page.waitForTimeout(400);
+const area = await svg.boundingBox();
+await page.getByTestId('wireframe-tool-frame').click();
+await page.mouse.move(area.x + 200, area.y + 150);
+await page.mouse.down();
+await page.mouse.move(area.x + 700, area.y + 600, { steps: 8 });
+await page.mouse.up();
+await page.waitForTimeout(150);
+// A pause after each press, as a hand makes: the editor reads its selection back on the next render.
+const press = async (x, y) => { await page.mouse.click(x, y); await page.waitForTimeout(150); };
+const selectedCount = () => page.getByTestId('wireframe-selected').count();
+const inRect = await page.locator('[data-element-type="rect"] rect').first().boundingBox();
+await press(inRect.x + inRect.width / 2, inRect.y + inRect.height / 2);
+const rectHeld = await selectedCount();
+await press(area.x + 650, area.y + 560);
+record(rectHeld === 1 && (await selectedCount()) === 0, `a click on the frame's empty inside lets the selection go (${rectHeld} then ${await selectedCount()})`);
+await press(inRect.x + inRect.width / 2, inRect.y + inRect.height / 2);
+await press(area.x + area.width - 40, area.y + area.height - 40);
+record((await selectedCount()) === 0, 'and so does a click on the empty canvas');
+const inText = await page.locator('[data-element-type="text"]').boundingBox();
+await press(inRect.x + inRect.width / 2, inRect.y + inRect.height / 2);
+await page.keyboard.down('Shift');
+await press(inText.x + inText.width / 2, inText.y + inText.height / 2);
+await page.keyboard.up('Shift');
+const both = await selectedCount();
+await press(inRect.x + inRect.width / 2, inRect.y + inRect.height / 2);
+record(both === 2 && (await selectedCount()) === 1, `a click on one of two selected keeps only that one (${both} then ${await selectedCount()})`);
+const frameBox = await page.locator('[data-element-type="frame"] rect').first().boundingBox();
+await press(frameBox.x + 2, frameBox.y + frameBox.height / 2);
+const frameSelected = await page.locator('[data-testid="wireframe-selected"]').first().boundingBox().catch(() => null);
+record((await selectedCount()) === 1 && frameSelected !== null && Math.abs(frameSelected.width - frameBox.width) < 4,
+  `a click on the frame's edge still selects the frame (${JSON.stringify(frameSelected)})`);
+
 await gql(`mutation ($id: ID!) { deleteWireframe(id: $id) }`, { id });
 await finish(browser);
