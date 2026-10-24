@@ -688,4 +688,45 @@ record(erased.before === 255 && erased.after === 0 && erased.untouched === 255 &
   `the eraser makes a layer's pixels transparent where it goes and nowhere else, and is off on the picture itself (${JSON.stringify({ erased, eraserOnPicture })})`);
 await tap('editor-brush');
 
+// -- The rail's shortcuts --------------------------------------------------------
+
+// What the tip trials painted is thrown away, so nothing asks before the page is left below.
+await tap('editor-discard');
+await page.waitForTimeout(300);
+/** A key pressed on the editor's canvas, nowhere a caret is: where its shortcuts are heard. */
+const press = async (key) => {
+  await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+  await page.keyboard.press(key);
+};
+const cropOn = async () => (await page.getByTestId('crop-options').isVisible().catch(() => false)) &&
+  (await page.getByTestId('editor-crop').getAttribute('aria-pressed').catch(() => null)) === 'true';
+const cropTitle = await page.getByTestId('editor-crop').getAttribute('title').catch(() => '');
+const layersBefore = await page.getByTestId('layers-panel').isVisible().catch(() => false);
+await press('c');
+const cropByKey = await cropOn();
+await press('c');
+const cropPutDown = !(await cropOn());
+await press('Shift+L');
+const layersAfter = await page.getByTestId('layers-panel').isVisible().catch(() => false);
+record(cropTitle === 'Crop (C)' && cropByKey && cropPutDown && layersBefore !== layersAfter,
+  `a rail tool answers its key, which its button names, and Shift+L shows or hides the layers (${JSON.stringify({ cropTitle, cropByKey, cropPutDown, layersBefore, layersAfter })})`);
+
+// Rebound on Preferences, the tool answers the new key and no longer the old one.
+await page.goto(`${BASE}/preferences`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('imageEditor-crop-shortcut').click({ timeout: 10_000 }).catch(() => undefined);
+await page.keyboard.press('g');
+const recorded = (await page.getByTestId('imageEditor-crop-shortcut').textContent().catch(() => '')) ?? '';
+await page.getByTestId('save-bar').getByRole('button', { name: 'Save' }).click({ timeout: 3_000 }).catch(() => undefined);
+await page.waitForTimeout(300);
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/images/${ORIGINAL.id}/edit`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('editor-picture').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.waitForFunction(() => (document.querySelector('[data-testid="editor-picture"]')?.naturalWidth ?? 0) > 0, null, { timeout: 10_000 }).catch(() => undefined);
+await press('c');
+const oldKey = await cropOn();
+await press('g');
+const newKey = await cropOn();
+const reboundTitle = await page.getByTestId('editor-crop').getAttribute('title').catch(() => '');
+record(recorded.trim() === 'G' && !oldKey && newKey && reboundTitle === 'Crop (G)',
+  `a key chosen on Preferences picks the tool instead of the default, and its button says so (${JSON.stringify({ recorded, oldKey, newKey, reboundTitle })})`);
+
 await finish(browser);

@@ -62,6 +62,8 @@ import {
   useUndoShortcut,
   useZoomInShortcut,
   useZoomOutShortcut,
+  useImageEditorShortcuts,
+  IMAGE_EDITOR_SHORTCUTS,
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import form from '../../components/Dialog.module.css';
@@ -195,6 +197,8 @@ const ASK_EVERY_MS = 1500;
 const ZOOM_STEP = 1.25;
 const ZOOM_LEAST = 0.05;
 const ZOOM_MOST = 8;
+/** Each step of [ and ] on the brush's width, as a share of it - as zoom steps are - and never less than a pixel. */
+const BRUSH_STEP = 1.2;
 /** A selection smaller than this many pixels across is a slip of the hand, not a selection. */
 const SMALLEST_SELECTION = 4;
 
@@ -304,6 +308,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const lassoKey = useMagicLassoShortcut();
   const allKey = useMagicAllShortcut();
   const saveKey = useSaveShortcut();
+  /** The rail's tools, the brush's width and the blur's shapes, as Preferences has them. */
+  const editorKeys = useImageEditorShortcuts();
   const location = useLocation();
   /** Where to go once the leave guard has let go of its history - a copy just saved. */
   const goingTo = useRef<string | null>(null);
@@ -561,8 +567,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const zoomIn = () => zoomBy(ZOOM_STEP);
   const zoomOut = () => zoomBy(1 / ZOOM_STEP);
 
-  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: Tool) => {}, all: () => {}, apply: (): boolean => false, save: async () => true, bringIn: async (_: File, __?: boolean) => {} });
-  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: Tool) => {}, all: () => {}, apply: (): boolean => false, save: async () => true, bringIn: async (_: File, __?: boolean) => {} };
+  const keys = useRef({ undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: Tool) => {}, all: () => {}, apply: (): boolean => false, save: async () => true, bringIn: async (_: File, __?: boolean) => {}, tool: (_: KeyboardEvent): boolean => false });
+  keys.current = { undo, redo, zoomIn, zoomOut, forget: () => {}, pick: (_: Tool) => {}, all: () => {}, apply: (): boolean => false, save: async () => true, bringIn: async (_: File, __?: boolean) => {}, tool: (_: KeyboardEvent): boolean => false };
   // The shortcuts chosen in Preferences; the number pad's + and - zoom too. Not in a text box,
   // where the box's own undo of its text applies.
   useEffect(() => {
@@ -604,6 +610,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       } else if (matches(event, redoKey) || ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'y')) {
         event.preventDefault();
         keys.current.redo();
+      } else if (keys.current.tool(event)) {
+        // One of the editor's own tools, by the key Preferences gives it.
+        event.preventDefault();
       }
     };
     document.addEventListener('keydown', pressed);
@@ -1367,6 +1376,52 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     if (tool === 'brush' && strokes.length > 0) void applyPaint();
     setTool((held) => (held === which ? null : which));
   }
+  /**
+   * One of the editor's own tools, by its key: what its button on the rail,
+   * the brush's width or the blur's bar would do. False for a key that is
+   * none of them, which is then left alone.
+   */
+  keys.current.tool = (event: KeyboardEvent): boolean => {
+    const name = IMAGE_EDITOR_SHORTCUTS.find((one) => matches(event, editorKeys[one]));
+    if (name === undefined) return false;
+    const free = picture !== null && !busy;
+    switch (name) {
+      case 'rotateLeft':
+      case 'rotateRight':
+        if (free) turn(name === 'rotateLeft' ? 'left' : 'right');
+        break;
+      case 'flipHorizontal':
+      case 'flipVertical':
+        if (free) mirror(name === 'flipHorizontal' ? 'horizontal' : 'vertical');
+        break;
+      case 'brush':
+      case 'crop':
+      case 'blur':
+        if (free) pick(name);
+        break;
+      case 'layers':
+        if (picture !== null) setLayersOpen((held) => !held);
+        break;
+      case 'brushSmaller':
+        setBrushSize((held) => (held === null ? held : Math.max(1, Math.min(held - 1, Math.round(held / BRUSH_STEP)))));
+        break;
+      case 'brushLarger':
+        setBrushSize((held) => (held === null ? held : Math.min(brushMost ?? held, Math.max(held + 1, Math.round(held * BRUSH_STEP)))));
+        break;
+      case 'blurRectangle':
+      case 'blurLasso':
+      case 'blurGradual': {
+        if (!free) break;
+        // The blur picked up with that shape, or the shape changed under the blur in hand.
+        const shape: BlurShape = name === 'blurRectangle' ? 'rectangle' : name === 'blurLasso' ? 'lasso' : 'gradient';
+        if (tool === 'blur') forget();
+        else pick('blur');
+        setBlurShape(shape);
+        break;
+      }
+    }
+    return true;
+  };
   /** What Enter applies with the tool in hand; false where it applies nothing, and Enter is left alone. */
   keys.current.apply = () => {
     if (tool === 'crop' && selection !== null) {
@@ -2050,7 +2105,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             className={styles.tool}
             onClick={() => turn('left')}
             disabled={picture === null || busy}
-            title={t('Rotate left')}
+            title={`${t('Rotate left')} (${editorKeys.rotateLeft})`}
             aria-label={t('Rotate left')}
             data-testid="editor-rotate-left"
           >
@@ -2061,7 +2116,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             className={styles.tool}
             onClick={() => turn('right')}
             disabled={picture === null || busy}
-            title={t('Rotate right')}
+            title={`${t('Rotate right')} (${editorKeys.rotateRight})`}
             aria-label={t('Rotate right')}
             data-testid="editor-rotate-right"
           >
@@ -2072,7 +2127,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             className={styles.tool}
             onClick={() => mirror('horizontal')}
             disabled={picture === null || busy}
-            title={t('Flip horizontally')}
+            title={`${t('Flip horizontally')} (${editorKeys.flipHorizontal})`}
             aria-label={t('Flip horizontally')}
             data-testid="editor-flip-horizontal"
           >
@@ -2083,7 +2138,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             className={styles.tool}
             onClick={() => mirror('vertical')}
             disabled={picture === null || busy}
-            title={t('Flip vertically')}
+            title={`${t('Flip vertically')} (${editorKeys.flipVertical})`}
             aria-label={t('Flip vertically')}
             data-testid="editor-flip-vertical"
           >
@@ -2096,7 +2151,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             onClick={() => pick('brush')}
             disabled={picture === null || busy}
             aria-pressed={tool === 'brush'}
-            title={t('Brush')}
+            title={`${t('Brush')} (${editorKeys.brush})`}
             aria-label={t('Brush')}
             data-testid="editor-brush"
           >
@@ -2108,7 +2163,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             onClick={() => pick('crop')}
             disabled={picture === null || busy}
             aria-pressed={tool === 'crop'}
-            title={t('Crop')}
+            title={`${t('Crop')} (${editorKeys.crop})`}
             aria-label={t('Crop')}
             data-testid="editor-crop"
           >
@@ -2120,7 +2175,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             onClick={() => pick('blur')}
             disabled={picture === null || busy}
             aria-pressed={tool === 'blur'}
-            title={t('Blur')}
+            title={`${t('Blur')} (${editorKeys.blur})`}
             aria-label={t('Blur')}
             data-testid="editor-blur"
           >
@@ -2133,7 +2188,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             onClick={() => setLayersOpen((held) => !held)}
             disabled={picture === null}
             aria-pressed={layersOpen}
-            title={t('Layers')}
+            title={`${t('Layers')} (${editorKeys.layers})`}
             aria-label={t('Layers')}
             data-testid="editor-layers"
           >
@@ -2173,6 +2228,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   max={brushMost ?? brushSize ?? 1}
                   value={brushSize ?? 1}
                   onChange={(event) => setBrushSize(Number(event.target.value))}
+                  title={`${editorKeys.brushSmaller} ${editorKeys.brushLarger}`}
                   data-testid="brush-size"
                 />
                 <span className={styles.optionsValue}>{brushSize ?? ''}</span>
@@ -2262,7 +2318,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   setBlurShape('rectangle');
                 }}
                 aria-pressed={blurShape === 'rectangle'}
-                title={t('Rectangle')}
+                title={`${t('Rectangle')} (${editorKeys.blurRectangle})`}
                 aria-label={t('Rectangle')}
                 data-testid="blur-rectangle"
               >
@@ -2276,7 +2332,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   setBlurShape('lasso');
                 }}
                 aria-pressed={blurShape === 'lasso'}
-                title={t('Lasso')}
+                title={`${t('Lasso')} (${editorKeys.blurLasso})`}
                 aria-label={t('Lasso')}
                 data-testid="blur-lasso"
               >
@@ -2290,7 +2346,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   setBlurShape('gradient');
                 }}
                 aria-pressed={blurShape === 'gradient'}
-                title={t('Gradual')}
+                title={`${t('Gradual')} (${editorKeys.blurGradual})`}
                 aria-label={t('Gradual')}
                 data-testid="blur-gradient"
               >
