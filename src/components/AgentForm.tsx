@@ -429,22 +429,13 @@ interface GrantListProps<Item> {
   /**
    * Why this row cannot be switched here, or null where it can.
    *
-   * The built-ins that come with a wider grant - the skill tools with the
-   * skill catalogs, the memories with the memory catalogs, `orknux_*` with
-   * orknux access - are rows so the list is
+   * The built-ins that come with a wider grant - the memories with the memory
+   * catalogs, and `orknux_*` while orknux access is off - are rows so the list is
    * complete, and read Always or Hide off that grant. Their control is
    * disabled and says so, because a control that can be pressed and does
    * nothing is worse than one that is not there. Issue #444.
    */
   fixedOf?: (item: Item) => string | null;
-  /**
-   * Rows whose on-state is Always, and which cycle Hide and Always only.
-   *
-   * The orknux_* tools: they are carried whenever the grant is on - the server
-   * has no Offer for them - so a third state would be a control that changes
-   * nothing. They are switched one by one inside the grant, as asked.
-   */
-  alwaysWhenOn?: (item: Item) => boolean;
   /**
    * Why the installation withholds this row from every agent now, or null.
    *
@@ -520,7 +511,6 @@ function GrantList<Item>({
   marked,
   onMark,
   fixedOf,
-  alwaysWhenOn,
   unavailableOf,
   countedOf,
 }: GrantListProps<Item>) {
@@ -664,7 +654,6 @@ function GrantList<Item>({
   type ToolState = 'hide' | 'offer' | 'always';
   const toolState = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }): ToolState => {
     if (!row.ticked) return 'hide';
-    if (alwaysWhenOn?.(row.item) ?? false) return 'always';
     // A fixed row is carried whenever the grant it comes with is on - there is
     // no mark to read - so its on-state is Always, never Offer. Issue #444.
     if (row.fixed !== null) return 'always';
@@ -673,12 +662,6 @@ function GrantList<Item>({
   const cycleTool = (row: { item: Item; value: string; ticked: boolean; fixed: string | null; unavailable: string | null }) => {
     if (row.fixed !== null || row.unavailable !== null) return;
     const state = toolState(row);
-    if (alwaysWhenOn?.(row.item) ?? false) {
-      // Hide <-> Always, the whole of it for these rows.
-      touch(row.value);
-      onChange(state === 'hide' ? [...granted, row.value] : granted.filter((one) => one !== row.value));
-      return;
-    }
     if (state === 'hide') {
       // Hide -> Offer: the grant.
       touch(row.value);
@@ -1490,11 +1473,12 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   };
   /*
    * The orknux_* rows are the agent's to switch one by one while Orknux access
-   * is on, and are held in `tools` like any other name then. Off, they are
-   * fixed at Hide and say where the grant is.
+   * is on, held in `tools` and `requiredTools` like any other name then, and
+   * cycling Hide, Offer and Always - the server carries one at Offer only where
+   * no tool limit is set, as it does every other row. Off, they are fixed at
+   * Hide and say where the grant is.
    */
   const orknuxNames = toolCatalogue.items.filter((tool) => tool.governance === 'ORKNUX_ACCESS').map((tool) => tool.name);
-  const orknuxOn = orknuxAccess ? tools.filter((name) => orknuxNames.includes(name)) : [];
   const fixedRows = toolCatalogue.items.filter(
     (tool) => fixedBecause(tool.governance) !== null && !(tool.governance === 'ORKNUX_ACCESS' && orknuxAccess),
   );
@@ -1505,7 +1489,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * numbers. A built-in that comes with a grant is carried whenever that grant
    * is on, not searched for, so it counts towards both. Issues #413, #444.
    */
-  const alwaysCarried = requiredTools.length + fixedOn.length + orknuxOn.length;
+  // An orknux_ mark kept while the grant is off carries nothing; the server drops it on save.
+  const alwaysCarried =
+    requiredTools.filter((name) => orknuxAccess || !orknuxNames.includes(name)).length + fixedOn.length;
   /*
    * Granted counts each grant once. `http_allowList` is carried with the HTTP
    * tools, so it is in what always travels, but it is not a grant beside the
@@ -2236,7 +2222,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           styles={styles}
           catalogue={toolCatalogue}
           empty={t("No tools in this workspace yet.")}
-          hint={t('The workspace\'s own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools, the orknux_ tools — reads the state of that grant and is switched there.')}
+          hint={t('The workspace\'s own tools, the tools its plugins offer, and the tools Orknux brings itself, listed under Built in. Each row cycles through its states on a click. Hide: the agent cannot use it. Offer: it is available, and loaded when a job needs it once a tool limit is set below — with no limit every offered tool is simply carried. Always: it is carried in front of the model every turn, which matters once a limit is set. A built-in that comes with a wider grant — the skill and memory tools — reads the state of that grant and is switched there; the orknux_ tools read Hide until Orknux access is on, and then cycle like the rest.')}
           keyOf={(tool) => tool.id}
           nameOf={(tool) => tool.name}
           metaOf={(tool) => tool.plugin ?? (tool.off ? 'off' : null)}
@@ -2274,7 +2260,6 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               : fixedBecause(tool.governance) ??
                 (tool.governance === 'GRANT' && !unsafeBuiltIns ? fixedAsBuiltIn() : null)
           }
-          alwaysWhenOn={(tool) => tool.governance === 'ORKNUX_ACCESS'}
           unavailableOf={(tool) => tool.unavailable}
           // A view of the HTTP tool rows above it, so not a grant of its own to count. Issue #609.
           countedOf={(tool) => tool.governance !== 'HTTP_TOOLS'}
@@ -2426,8 +2411,11 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                 onChange={(event) => {
                   const on = event.target.checked;
                   setOrknuxAccess(on);
-                  // Granted afresh, every orknux_ tool starts on; they are switched one by one below.
-                  if (on) setTools((held) => [...held, ...orknuxNames.filter((name) => !held.includes(name))]);
+                  // Granted afresh, every orknux_ tool starts at Always, as a new agent's do; each is switched below.
+                  if (on) {
+                    setTools((held) => [...held, ...orknuxNames.filter((name) => !held.includes(name))]);
+                    setRequiredTools((held) => [...held, ...orknuxNames.filter((name) => !held.includes(name))]);
+                  }
                 }}
               />
               <span>{t('Let this agent ask orknux about orknux')}</span>

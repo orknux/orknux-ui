@@ -3039,7 +3039,7 @@ export const TESTS = [
   },
   {
     name: 'orknux-tool-switch-check',
-    what: 'an orknux_ tool is switched on its own inside the Orknux access grant, and locked while it is off',
+    what: 'an orknux_ tool cycles Hide, Offer and Always on its own inside the Orknux access grant, and is locked while it is off',
     needs: ['workspace'],
     /* Asked for: the grant was all or nothing. */
   },
