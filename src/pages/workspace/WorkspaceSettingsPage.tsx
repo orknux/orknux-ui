@@ -69,7 +69,7 @@ import { useInstallation } from '../../session/installation';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
 import styles from './WorkspaceSettingsPage.module.css';
-import { SearchSettings } from '../workspace-settings/SearchSettings';
+import { SearchSettings, useSearchSettings } from '../workspace-settings/SearchSettings';
 import { ModelPicker } from '../../components/ModelPicker';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -461,6 +461,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setTouched((held) => (held.has(what) ? held : new Set(held).add(what)));
   }
 
+  /** The web search section's draft, written by Save Changes with the rest. */
+  const search = useSearchSettings(workspaceId, () => touch('search'));
+
   const [saving, setSaving] = useState(false);
   const [savedAll, setSavedAll] = useState(false);
   /** What the server refused, in its own words. Null while nothing has been. */
@@ -805,6 +808,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('chunking')) {
         latest = await setWorkspaceVoiceSpeechChunking(workspaceId, chunking);
       }
+      if (touched.has('search')) {
+        await search.save();
+      }
 
       /*
        * Last, because it is the one the server refuses most: a summary allowed
@@ -846,6 +852,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   function discard() {
     if (workspace === null) return;
     rebuild(workspace);
+    search.discard();
     setMemberRoles({});
     setTouched(new Set());
     setSavedAll(false);
@@ -1951,8 +1958,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         worse answer than no control, and the admin screen is where the switch
         actually is.
       */}
-      {/* What the workspace searches the web with - Research and the search tools read it. Its own save, as on the admin screen. */}
-      <SearchSettings workspaceId={workspaceId} />
+      {/* What the workspace searches the web with - Research and the search tools read it. Saved by Save Changes with the rest. */}
+      <SearchSettings search={search} workspaceId={workspaceId} />
 
       {hasChat && (
       <section className={styles.card}>

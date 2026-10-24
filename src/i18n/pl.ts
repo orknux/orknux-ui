@@ -3529,4 +3529,15 @@ export const PL: Record<string, string> = {
   "Could not change the mode.": "Nie udało się zmienić trybu.",
   "Keep planning": "Planuj dalej",
   "Approved": "Zatwierdzono",
+  // The workspace's web search settings.
+  "What this workspace searches the web with. An agent given the search tools uses this key, and the bill goes to whoever set it.": "Czym ta przestrzeń robocza przeszukuje sieć. Agent z narzędziami wyszukiwania używa tego klucza, a rachunek trafia do tego, kto go ustawił.",
+  "Engine": "Wyszukiwarka",
+  "API key": "Klucz API",
+  "The server makes the call, so the key never reaches a model.": "Zapytanie wysyła serwer, więc klucz nigdy nie trafia do modelu.",
+  "Paste the key": "Wklej klucz",
+  "The workspace secret this key was read from is gone. Choose another, or give it a key of its own.": "Sekret przestrzeni roboczej, z którego czytano ten klucz, zniknął. Wybierz inny albo nadaj mu własny klucz.",
+  "Choose the workspace secret the search key is read from.": "Wybierz sekret przestrzeni roboczej, z którego czytany jest klucz wyszukiwania.",
+  "The search settings could not be read.": "Nie udało się odczytać ustawień wyszukiwania.",
+  "Also compose a short answer over the results": "Ułóż też krótką odpowiedź na podstawie wyników",
+  "Costs more than a plain search.": "Kosztuje więcej niż zwykłe wyszukiwanie.",
 };
