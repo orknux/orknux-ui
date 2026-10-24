@@ -164,6 +164,31 @@ button.toolbarTitle:hover {
   box-shadow: var(--shadow-card);
 }
 
+/* A setting of the tool and its name, on one line. */
+.optionsField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.optionsField input[type='range'] {
+  width: 120px;
+  accent-color: var(--color-accent);
+}
+
+.optionsField input[type='color'] {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  background: none;
+  cursor: pointer;
+}
+
 .optionsValue {
   color: var(--color-text-secondary);
   font-size: 13px;

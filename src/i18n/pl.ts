@@ -3487,4 +3487,7 @@ export const PL: Record<string, string> = {
   "Could not list the pictures.": "Nie udało się wyświetlić obrazów.",
   "No pictures found.": "Nie znaleziono obrazów.",
   "Show more": "Pokaż więcej",
+  "Brush": "Pędzel",
+  "Painted with the brush": "Pomalowano pędzlem",
+  "Apply": "Zastosuj",
 };

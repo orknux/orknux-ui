@@ -6,6 +6,7 @@ import {
   discardDesignImageVersions,
   dismissDesignImageJob,
   fetchDesignImageHistory,
+  fetchDesignImageEditorSettings,
   fetchDesignImageJob,
   fetchWorkspaceArtifact,
   importDesignImage,
@@ -26,6 +27,7 @@ import type { ImageSizePreset } from '../../api/imagePresets';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
+import brushIcon from '../../assets/brush.svg';
 import cropIcon from '../../assets/crop.svg';
 import flipHorizontalIcon from '../../assets/flip-horizontal.svg';
 import flipVerticalIcon from '../../assets/flip-vertical.svg';
@@ -60,8 +62,8 @@ import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
 import { exportPicture, readPictureFile } from './pictureFiles';
 import type { ExportFormat } from './pictureFiles';
-import { boxOf, canvasOf, cropped, mirrored, rotated } from './pictureEdits';
-import type { Point } from './pictureEdits';
+import { boxOf, canvasOf, cropped, mirrored, painted, rotated, strokePath } from './pictureEdits';
+import type { Point, Stroke } from './pictureEdits';
 import { t, tf } from '../../i18n';
 import { Select } from '../../components/Select';
 import { videoFromPicturePath } from './useVideoFromPicture';
@@ -111,13 +113,13 @@ type Shown = { kind: 'picture'; picture: Artifact } | { kind: 'job'; jobId: stri
 type MagicTool = 'rectangle' | 'lasso';
 
 /** What the pointer does on the picture: a Magic selection, or one of the editor's own tools. */
-type Tool = MagicTool | 'crop';
+type Tool = MagicTool | 'crop' | 'brush';
 
 /** Whether a tool selects with a rectangle - two corners - rather than a lasso's outline. */
 const boxed = (tool: Tool | null) => tool === 'rectangle' || tool === 'crop';
 
 /** One step undo goes back to: what the panel held and what was on the canvas. */
-type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null };
+type Snapshot = { prompt: string; modelId: string; asked: Asked; shown: Shown; pendingName: string | null; strokes: Stroke[] };
 
 /** How long typing in the prompt pauses before it counts as one step to undo. */
 const TYPING_SETTLES_MS = 700;
@@ -248,6 +250,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       })
       .catch(() => setModels([]));
     fetchImageSizePresets(workspaceId).then(setPresets).catch(() => setPresets([]));
+    fetchDesignImageEditorSettings(workspaceId)
+      .then((settings) => {
+        setBrushMost(settings.brushMost);
+        setBrushSize((held) => held ?? settings.brush);
+      })
+      .catch(() => undefined);
   }, [workspaceId]);
 
   // The picture opened, and what it was drawn from.
@@ -375,7 +383,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   // -- Undo and redo ------------------------------------------------------
 
-  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName });
+  const now = (): Snapshot => ({ prompt, modelId, asked, shown, pendingName, strokes });
   const settleTyping = () => {
     window.clearTimeout(typingTimer.current);
     const from = typingFrom.current;
@@ -412,6 +420,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setAsked(to.asked);
     show(to.shown);
     setPendingName(to.pendingName);
+    setStrokes(to.strokes);
   };
   const undo = () => {
     settleTyping();
@@ -678,12 +687,30 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     show({ kind: 'job', jobId: queued.id });
   }
 
-  /** The picture shown, on a canvas of its own at its own size; null before it has loaded. */
+  /**
+   * The picture shown, on a canvas of its own at its own size, with what the
+   * brush has painted over it and not yet kept - so a tool used next works on
+   * what is on the screen. Null before it has loaded.
+   */
   const pictureCanvas = (): HTMLCanvasElement | null => {
     const shownPicture = pictureRef.current;
     if (picture === null || shownPicture === null || shownPicture.naturalWidth === 0) return null;
-    return canvasOf(shownPicture);
+    const drawn = canvasOf(shownPicture);
+    return strokes.length === 0 ? drawn : painted(drawn, strokes);
   };
+
+  /** Keeps a change worked out here, and shows it; throws where it could not be kept. */
+  async function keepNow(drawn: HTMLCanvasElement, change: string): Promise<Artifact | null> {
+    if (picture === null) return null;
+    const kept = await keepDesignImageChange({ workspaceId, imageId: picture.id, image: drawn.toDataURL('image/png'), change });
+    // The state it replaces goes on the stack, strokes not yet kept included: undo goes back to them.
+    remember();
+    setStrokes([]);
+    setMade((held) => [{ job: kept }, ...held]);
+    forget();
+    if (kept.image !== null) show({ kind: 'picture', picture: kept.image });
+    return kept.image;
+  }
 
   /**
    * A change worked out here kept as a version of the picture shown - a draft
@@ -695,12 +722,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setBusy(true);
     setError(null);
     try {
-      const kept = await keepDesignImageChange({ workspaceId, imageId: picture.id, image: drawn.toDataURL('image/png'), change });
-      remember();
-      setMade((held) => [{ job: kept }, ...held]);
-      forget();
-      if (kept.image !== null) show({ kind: 'picture', picture: kept.image });
-      return kept.image;
+      return await keepNow(drawn, change);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not keep the change.'));
       return null;
@@ -718,6 +740,41 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     const drawn = pictureCanvas();
     if (drawn !== null) void keepChange(mirrored(drawn, axis), axis === 'horizontal' ? t('Flipped horizontally') : t('Flipped vertically'));
   };
+
+  /*
+   * The brush: strokes painted over the picture, drawn on the screen as they
+   * go and kept as one version when it is applied - or put down, or saved.
+   * Each stroke is a step undo takes back. Its width is in the picture's own
+   * pixels, so zooming does not change it; it starts where Admin Settings says.
+   */
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [stroking, setStroking] = useState<Stroke | null>(null);
+  const [brushSize, setBrushSize] = useState<number | null>(null);
+  const [brushMost, setBrushMost] = useState<number | null>(null);
+  const [brushColour, setBrushColour] = useState('#000000');
+  const startStroke = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (tool !== 'brush' || event.button !== 0 || brushSize === null) return;
+    const at = onPicture(event);
+    if (at === null) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setStroking({ colour: brushColour, size: brushSize, points: [at] });
+  };
+  const keepStroking = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (stroking === null) return;
+    const at = onPicture(event);
+    if (at !== null) setStroking({ ...stroking, points: [...stroking.points, at] });
+  };
+  const finishStroke = () => {
+    if (stroking === null) return;
+    remember();
+    setStrokes((held) => [...held, stroking]);
+    setStroking(null);
+  };
+  /** What the brush painted, kept as a version of the picture. */
+  async function applyPaint(): Promise<void> {
+    const drawn = strokes.length === 0 ? null : pictureCanvas();
+    if (drawn !== null) await keepChange(drawn, t('Painted with the brush'));
+  }
 
   /** The box a crop selection keeps, in the picture's whole pixels; null with nothing selected to crop to. */
   const cropBox = tool === 'crop' && selection !== null && natural !== null ? boxOf(selection, natural.width, natural.height) : null;
@@ -814,6 +871,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   function pick(which: Tool) {
     if (picture === null) return;
     forget();
+    // The brush put down keeps what it painted, so nothing painted is left floating over another tool.
+    if (tool === 'brush' && strokes.length > 0) void applyPaint();
     setTool((held) => (held === which ? null : which));
   }
   /** What Enter applies with the tool in hand; false where it applies nothing, and Enter is left alone. */
@@ -862,14 +921,17 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    */
   async function save(): Promise<boolean> {
     if (picture === null || busy) return !unsaved && !drafted;
-    if (picture.versionOf == null && pendingName === null) return true;
+    if (picture.versionOf == null && pendingName === null && strokes.length === 0) return true;
     setBusy(true);
     setError(null);
     try {
-      let kept = picture;
-      if (picture.versionOf != null) {
-        const of = picture.versionOf;
-        kept = await saveDesignImageVersion(workspaceId, picture.id);
+      // What the brush painted is kept first, and saved with the rest.
+      const painting = strokes.length > 0 ? pictureCanvas() : null;
+      const current = (painting === null ? null : await keepNow(painting, t('Painted with the brush'))) ?? picture;
+      let kept = current;
+      if (current.versionOf != null) {
+        const of = current.versionOf;
+        kept = await saveDesignImageVersion(workspaceId, current.id);
         // The versions are gone; what they were is now the picture.
         setMade((held) => held.filter((one) => one.job.image?.versionOf !== of));
         setPast([]);
@@ -948,6 +1010,12 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
 
   async function discard() {
     if (busy) return;
+    // Strokes not yet kept go first: they are the newest thing on the page.
+    if (strokes.length > 0) {
+      remember();
+      setStrokes([]);
+      return;
+    }
     if (pendingName !== null) {
       setPendingName(null);
       return;
@@ -1016,7 +1084,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
    * What leaving would lose: a rename, which is held on the page alone. Changes
    * drawn here are a draft kept by the server, so leaving loses nothing of them.
    */
-  const unsaved = picture !== null && pendingName !== null;
+  const unsaved = picture !== null && (pendingName !== null || strokes.length > 0);
   /** The picture shown is a draft: changes Save would write over the picture. */
   const drafted = picture !== null && picture.versionOf != null;
   useEffect(() => {
@@ -1183,7 +1251,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setUpscaling(true);
               }}
-              disabled={picture === null || busy || noUpscaler}
+              disabled={picture === null || busy || noUpscaler || strokes.length > 0}
               title={noUpscaler ? undefined : t('Make the picture larger with an upscale model')}
               data-testid="editor-upscale"
             >
@@ -1207,7 +1275,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                 forget();
                 setHarmonizing(true);
               }}
-              disabled={picture === null || busy || noHarmonizer}
+              disabled={picture === null || busy || noHarmonizer || strokes.length > 0}
               title={noHarmonizer ? undefined : t('Redraw the whole picture lightly, so the seams between changed parts blend')}
               data-testid="editor-harmonize"
             >
@@ -1457,6 +1525,18 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <span className={styles.railGap} aria-hidden="true" />
           <button
             type="button"
+            className={`${styles.tool} ${tool === 'brush' ? styles.railOn : ''}`}
+            onClick={() => pick('brush')}
+            disabled={picture === null || busy}
+            aria-pressed={tool === 'brush'}
+            title={t('Brush')}
+            aria-label={t('Brush')}
+            data-testid="editor-brush"
+          >
+            <img src={brushIcon} alt="" width={16} height={16} />
+          </button>
+          <button
+            type="button"
             className={`${styles.tool} ${tool === 'crop' ? styles.railOn : ''}`}
             onClick={() => pick('crop')}
             disabled={picture === null || busy}
@@ -1491,6 +1571,49 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             void bringIn(file);
           }}
         >
+          {tool === 'brush' && (
+            <div className={styles.options} role="toolbar" aria-label={t('Brush')} data-testid="brush-options">
+              <label className={styles.optionsField}>
+                <span>{t('Size')}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={brushMost ?? brushSize ?? 1}
+                  value={brushSize ?? 1}
+                  onChange={(event) => setBrushSize(Number(event.target.value))}
+                  data-testid="brush-size"
+                />
+                <span className={styles.optionsValue}>{brushSize ?? ''}</span>
+              </label>
+              <label className={styles.optionsField}>
+                <span>{t('Colour')}</span>
+                <input type="color" value={brushColour} onChange={(event) => setBrushColour(event.target.value)} data-testid="brush-colour" />
+              </label>
+              <button
+                type="button"
+                className={form.ghost}
+                onClick={() => {
+                  if (strokes.length > 0) {
+                    remember();
+                    setStrokes([]);
+                  }
+                  setTool(null);
+                }}
+                data-testid="brush-cancel"
+              >
+                {t('Cancel')}
+              </button>
+              <button
+                type="button"
+                className={form.filled}
+                onClick={() => void applyPaint().then(() => setTool(null))}
+                disabled={strokes.length === 0 || busy}
+                data-testid="brush-apply"
+              >
+                {t('Apply')}
+              </button>
+            </div>
+          )}
           {tool === 'crop' && (
             <div className={styles.options} role="toolbar" aria-label={t('Crop')} data-testid="crop-options">
               <span className={styles.optionsValue} data-testid="crop-size">
@@ -1643,7 +1766,31 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                   onLoad={(event) => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
                   data-testid="editor-picture"
                 />
-                {natural !== null && (tool !== null || selection !== null) && (
+                {natural !== null && (tool === 'brush' || strokes.length > 0) && (
+                  // What the brush paints, over the picture in its own pixels, as it will be kept.
+                  <svg
+                    className={`${styles.selectLayer} ${tool === 'brush' ? styles.selectLayerOn : ''}`}
+                    viewBox={`0 0 ${natural.width} ${natural.height}`}
+                    preserveAspectRatio="none"
+                    onPointerDown={startStroke}
+                    onPointerMove={keepStroking}
+                    onPointerUp={finishStroke}
+                    data-testid="brush-layer"
+                  >
+                    {[...strokes, ...(stroking === null ? [] : [stroking])].map((stroke, index) => (
+                      <path
+                        key={index}
+                        d={strokePath(stroke.points)}
+                        fill="none"
+                        stroke={stroke.colour}
+                        strokeWidth={stroke.size}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ))}
+                  </svg>
+                )}
+                {natural !== null && tool !== 'brush' && (tool !== null || selection !== null) && (
                   <svg
                     className={`${styles.selectLayer} ${tool !== null ? styles.selectLayerOn : ''}`}
                     viewBox={`0 0 ${natural.width} ${natural.height}`}
@@ -1751,6 +1898,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                       onClick={() => {
                         if (chosen) return;
                         remember();
+                        setStrokes([]);
                         show(one.image !== null ? { kind: 'picture', picture: one.image } : { kind: 'job', jobId: one.id });
                       }}
                       title={one.prompt}

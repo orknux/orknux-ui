@@ -52,6 +52,33 @@ export function mirrored(source: HTMLCanvasElement, axis: 'horizontal' | 'vertic
   return canvas;
 }
 
+/** One stroke of the brush: its colour, its width and the points it passed, in the picture's own pixels. */
+export type Stroke = { colour: string; size: number; points: Point[] };
+
+/** A stroke as an SVG path; a single point is a dot, which a path of one point would not draw. */
+export function strokePath(points: Point[]): string {
+  if (points.length === 0) return '';
+  const [first, ...rest] = points;
+  return rest.length === 0
+    ? `M${first.x} ${first.y}l0.01 0`
+    : `M${first.x} ${first.y}` + rest.map((point) => `L${point.x} ${point.y}`).join('');
+}
+
+/** The strokes painted over the picture, round-ended, as they were drawn over it on the screen. */
+export function painted(source: HTMLCanvasElement, strokes: Stroke[]): HTMLCanvasElement {
+  const { canvas, pen } = blank(source.width, source.height);
+  pen.drawImage(source, 0, 0);
+  pen.lineCap = 'round';
+  pen.lineJoin = 'round';
+  for (const stroke of strokes) {
+    if (stroke.points.length === 0) continue;
+    pen.strokeStyle = stroke.colour;
+    pen.lineWidth = stroke.size;
+    pen.stroke(new Path2D(strokePath(stroke.points)));
+  }
+  return canvas;
+}
+
 /** A box on the picture, in whole pixels. */
 export type Box = { x: number; y: number; width: number; height: number };
 

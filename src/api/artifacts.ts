@@ -316,6 +316,20 @@ export async function queueDesignImageEdit(input: EditDesignImageInput): Promise
   return data.queueDesignImageEdit;
 }
 
+/** Where the image editor's own tools start and how far each may go, in the picture's own pixels: the installation's numbers. */
+export interface ImageEditorSettings {
+  brush: number;
+  brushMost: number;
+}
+
+export async function fetchDesignImageEditorSettings(workspaceId: string): Promise<ImageEditorSettings> {
+  const data = await graphql<{ designImageEditorSettings: ImageEditorSettings }>(
+    `query DesignImageEditorSettings($workspaceId: ID!) { designImageEditorSettings(workspaceId: $workspaceId) { brush brushMost } }`,
+    { workspaceId },
+  );
+  return data.designImageEditorSettings;
+}
+
 /**
  * A change the editor worked out itself - rotated, mirrored, cropped, painted -
  * kept as an unsaved version of the picture, as a model's change is. Answered

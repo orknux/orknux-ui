@@ -36,6 +36,8 @@ const ORIGINAL = picture('DESIGN-701', HALVES, null);
 /** Another picture in Orknux, an agent's, for Import from Orknux; and a document beside it, which is no picture. */
 const OTHER = { ...picture('SAVED-77', HALVES, null), kind: 'SAVED', name: null, prompt: 'zz tools: an agent kept this' };
 const DOCUMENT = { ...picture('SAVED-78', '/api/artifacts/78', null), kind: 'SAVED', contentType: 'application/pdf', filename: 'notes.pdf' };
+/** The installation's numbers for the tools, answered here so what the page starts at is known. */
+const SETTINGS = { brush: 4, brushMost: 50 };
 /** What each keepDesignImageChange was asked to keep, in order. */
 const kept = [];
 let next = 702;
@@ -53,6 +55,9 @@ await page.route('**/graphql', async (route) => {
   }
   if (query.includes('designImageHistory')) return route.fulfill({ json: { data: { designImageHistory: [] } } });
   if (query.includes('imageModelParameters')) return route.fulfill({ json: { data: { imageModelParameters: [] } } });
+  if (query.includes('designImageEditorSettings')) {
+    return route.fulfill({ json: { data: { designImageEditorSettings: SETTINGS } } });
+  }
   if (query.includes('keepDesignImageChange')) {
     const input = body.variables?.input;
     kept.push(input);
@@ -171,6 +176,31 @@ record(cropBar && kept.length === keptBefore + 1 && crop !== null && Math.abs(cr
   said.replace(/\s/g, '') === `${crop.width}×${crop.height}` && crop.colours.join() === 'blue,red',
   `Crop keeps what was selected, the size its bar said, and Enter applies it (${JSON.stringify({ crop, said })})`);
 record(!(await page.getByTestId('crop-options').isVisible().catch(() => false)), 'the crop tool is put down once it is applied');
+
+// -- Brush (#637) ----------------------------------------------------------------
+
+// The cropped picture, about 30x30, blue over red: a green stroke across its middle.
+await page.getByTestId('editor-brush').click();
+await page.getByTestId('brush-options').waitFor({ timeout: 3_000 }).catch(() => undefined);
+const startsAt = await page.getByTestId('brush-size').inputValue().catch(() => '');
+const brushMost = await page.getByTestId('brush-size').getAttribute('max').catch(() => '');
+record(startsAt === '4' && brushMost === '50', `the brush starts at the installation's width, and goes no wider than its most (${JSON.stringify({ startsAt, brushMost })})`);
+await page.getByTestId('brush-colour').fill('#00ff00');
+const keptBeforeBrush = kept.length;
+const middle = await page.evaluate(() => document.querySelector('[data-testid="editor-picture"]').naturalHeight / 2);
+const across = await page.evaluate(() => document.querySelector('[data-testid="editor-picture"]').naturalWidth);
+await drag([1, middle], [across - 1, middle], 10);
+const painted = await page.locator('[data-testid="brush-layer"] path').count();
+await page.getByTestId('editor-undo').click();
+const undoneStroke = await page.locator('[data-testid="brush-layer"] path').count();
+record(painted === 1 && undoneStroke === 0 && kept.length === keptBeforeBrush,
+  `a stroke is drawn over the picture as it goes, and Undo takes it back before anything is kept (${JSON.stringify({ painted, undoneStroke })})`);
+await drag([1, middle], [across - 1, middle], 10);
+await page.getByTestId('brush-apply').click();
+await showsLastKept();
+const brushed = await shown([[0.5, 0.5], [0.5, 0.05], [0.5, 0.95]]);
+record(kept.length === keptBeforeBrush + 1 && brushed?.colours[0] === 'rgb(0,255,0)' && brushed.colours[1] === 'blue' && brushed.colours[2] === 'red',
+  `Apply keeps the painted picture: green where the stroke went, untouched elsewhere (${JSON.stringify(brushed)})`);
 
 // -- Import from Orknux (#632) - last, since it opens another picture -----------
 
