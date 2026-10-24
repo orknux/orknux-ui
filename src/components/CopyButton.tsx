@@ -51,9 +51,12 @@ export function CopyButton({ text, label, className, testId }: CopyButtonProps) 
       >
         <img src={copyIcon} alt="" width={14} height={14} />
       </button>
-      <span className={said === 'failed' ? styles.failed : styles.copied} role="status">
-        {said === 'copied' ? t('Copied') : said === 'failed' ? t('Could not copy - select it and copy by hand') : ''}
-      </span>
+      {/* Only while there is something to say: an idle [role="status"] reads as a page still loading. */}
+      {said !== null && (
+        <span className={said === 'failed' ? styles.failed : styles.copied} role="status">
+          {said === 'copied' ? t('Copied') : t('Could not copy - select it and copy by hand')}
+        </span>
+      )}
     </span>
   );
 }
