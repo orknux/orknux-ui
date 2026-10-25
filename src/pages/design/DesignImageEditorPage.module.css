@@ -792,6 +792,7 @@ button.toolbarTitle:hover {
   box-shadow: var(--shadow-card);
 }
 
+/* The toolbar's size, not whatever the page around it inherits: in the document editor that was the body's, and items wrapped. */
 .exportItems button {
   padding: var(--space-6) var(--space-12);
   border: 0;
@@ -799,6 +800,8 @@ button.toolbarTitle:hover {
   background: none;
   color: var(--color-text);
   font: inherit;
+  font-size: var(--text-md);
+  white-space: nowrap;
   text-align: left;
   cursor: pointer;
 }

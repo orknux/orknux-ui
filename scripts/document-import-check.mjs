@@ -43,14 +43,22 @@ async function importing(item, file) {
 
 const hasImport = (await page.getByTestId('document-import').count()) === 1;
 record(hasImport, 'the toolbar has an Import menu beside Export');
+let drawnItems = [];
 if (hasImport) {
   const items = await (async () => {
     await page.getByTestId('document-import').click();
     const shown = await page.getByTestId('document-import-menu').locator('[role="menuitem"]').allTextContents();
+    // Drawn at the toolbar's size and on one line each: they inherited the page's larger body size and wrapped.
+    drawnItems = await page.getByTestId('document-import-menu').locator('[role="menuitem"]').evaluateAll((all) => all.map((one) => ({
+      size: parseFloat(getComputedStyle(one).fontSize),
+      lines: Math.round(one.getBoundingClientRect().height / parseFloat(getComputedStyle(one).lineHeight || '16')),
+      button: parseFloat(getComputedStyle(document.querySelector('[data-testid="document-import"]')).fontSize),
+    })));
     await page.keyboard.press('Escape');
     return shown;
   })();
   record(items.length === 2 && items.every((one) => one.length <= 30), `it offers two short items (${JSON.stringify(items)})`);
+  record(drawnItems.every((one) => one.size === one.button), `its items are the toolbar button's size (${JSON.stringify(drawnItems)})`);
 
   // Replace: a Markdown file over the whole document.
   await importing('document-import-replace', {
