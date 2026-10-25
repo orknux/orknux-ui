@@ -13,7 +13,7 @@
  * file that plays is a real WebM, recorded in the page from a canvas, so
  * "plays" is a decoded frame and a moving clock rather than an element present.
  */
-import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsOffered } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption, optionsArrived, optionsOffered } from './suite/harness.mjs';
 
 const VIEWPORT = { width: 1440, height: 900 };
 const { browser, page } = await open({ viewport: VIEWPORT });
@@ -356,15 +356,9 @@ record(await dialog.isVisible().catch(() => false), 'which opens the upscale dia
 const upscaleModels = (await optionsOffered(page, page.getByTestId('upscale-model')).catch(() => [])).map((one) => one.label);
 record(upscaleModels.length === 1 && upscaleModels[0].startsWith('Enlarger'), `offering the workspace's upscale models and no video model (${JSON.stringify(upscaleModels)})`);
 // The algorithms are the model's server's, asked when the dialog opens.
-const algorithmsOffered = async () => {
-  for (let i = 0; i < 30; i += 1) {
-    const rows = (await optionsOffered(page, page.getByTestId('upscale-algorithm')).catch(() => [])).map((one) => one.label);
-    if (rows.length > 1) return rows;
-    await page.waitForTimeout(200);
-  }
-  return [];
-};
-const offeredAlgorithms = await algorithmsOffered();
+// Waited for on the closed control: opening one still disabled would hold the click until it timed out.
+await optionsArrived(page, page.getByTestId('upscale-algorithm'), 2, 10_000);
+const offeredAlgorithms = (await optionsOffered(page, page.getByTestId('upscale-algorithm')).catch(() => [])).map((one) => one.label);
 record(offeredAlgorithms.includes('R-ESRGAN 4x+') && offeredAlgorithms.includes('SwinIR 4x'), `with the server's algorithms (${JSON.stringify(offeredAlgorithms)})`);
 // Each scale says what the video becomes: 832 × 480 twice over is 1664 × 960.
 const scalesOffered = (await optionsOffered(page, page.getByTestId('upscale-scale')).catch(() => [])).map((one) => one.label);
