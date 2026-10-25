@@ -28,13 +28,6 @@
   white-space: nowrap;
 }
 
-.colAgents {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  width: 170px;
-}
-
 .colSize {
   flex-shrink: 0;
   width: 190px;
@@ -49,19 +42,20 @@
   width: 100px;
 }
 
-.access {
-  width: 100%;
-  font-size: var(--text-sm);
+.nameLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
 }
 
-.nameInput {
-  width: 100%;
-  padding: var(--space-4) var(--space-8);
+.badge {
+  flex-shrink: 0;
+  padding: 1px var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-6);
-  background: var(--color-bg);
-  color: var(--color-text-primary);
-  font-size: var(--text-md);
+  border-radius: var(--radius-full);
 }
 
 .emptyStart {

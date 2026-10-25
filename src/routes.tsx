@@ -38,6 +38,7 @@ import { ResearchPage } from './pages/analysis/ResearchPage';
 import { ResearchDetailPage } from './pages/analysis/ResearchDetailPage';
 import { DiagramsPage } from './pages/explore/DiagramsPage';
 import { DiagramEditorRoute } from './pages/explore/DiagramEditorPage';
+import { DiagramSettingsPage } from './pages/explore/DiagramSettingsPage';
 import { DesignImageEditorRoute } from './pages/design/DesignImageEditorPage';
 import { DesignVideosPage } from './pages/design/DesignVideosPage';
 import { DesignVideoEditorRoute } from './pages/design/DesignVideoEditorPage';
@@ -117,6 +118,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/explore/diagrams': (session, onSignOut) => <DiagramsPage session={session} onSignOut={onSignOut} />,
   // Keyed on the diagram inside, so moving to another starts its editor afresh rather than carrying this one's drawing.
   '/workspace/:workspaceId/explore/diagrams/:diagramId': (session, onSignOut) => <DiagramEditorRoute session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/explore/diagrams/:diagramId/settings': (session, onSignOut) => <DiagramSettingsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/images/:artifactId': (session, onSignOut) => <DesignImagesPage session={session} onSignOut={onSignOut} />,
   // One instance across the editor's own moves between these two, renewed where somebody arrives at New; see DesignImageEditorRoute.

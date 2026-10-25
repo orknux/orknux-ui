@@ -9,10 +9,8 @@ import {
   fetchDiagramCatalogs,
   fetchDiagrams,
   moveDiagram,
-  renameDiagram,
   renameDiagramCatalog,
   searchDiagrams,
-  setDiagramAgentAccess,
 } from '../../api/diagrams';
 import type { Diagram, DiagramAgentAccess, DiagramCatalog, DiagramHit } from '../../api/diagrams';
 import type { SessionUser } from '../../api/session';
@@ -26,10 +24,8 @@ import searchIcon from '../../assets/search.svg';
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { MoveToCatalog } from '../../components/MoveToCatalog';
-import { Select } from '../../components/Select';
 import { TrashIcon } from '../../components/TrashIcon';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { t, tf } from '../../i18n';
@@ -71,7 +67,6 @@ export function DiagramsPage({ session, onSignOut }: DiagramsPageProps) {
   const [diagrams, setDiagrams] = useState<Diagram[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [naming, setNaming] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<Diagram | null>(null);
   const [removingCatalog, setRemovingCatalog] = useState<DiagramCatalog | null>(null);
   const [search, setSearch] = useState('');
@@ -161,27 +156,7 @@ export function DiagramsPage({ session, onSignOut }: DiagramsPageProps) {
     });
   }
 
-  async function rename() {
-    if (naming === null) return;
-    const held = naming;
-    setNaming(null);
-    const before = diagrams?.find((one) => one.id === held.id);
-    if (before === undefined || held.name.trim() === '' || held.name.trim() === before.name) return;
-    await guard(async () => {
-      const renamed = await renameDiagram(held.id, held.name.trim());
-      setDiagrams((all) => all?.map((one) => (one.id === renamed.id ? renamed : one)) ?? all);
-    });
-  }
-
-  async function setAccess(diagram: Diagram, access: DiagramAgentAccess) {
-    await guard(async () => {
-      const changed = await setDiagramAgentAccess(diagram.id, access);
-      setDiagrams((all) => all?.map((one) => (one.id === changed.id ? changed : one)) ?? all);
-    });
-  }
-
   const listed = (diagrams ?? []).filter((one) => current !== null && one.catalogId === current.id);
-  const options = agentAccessOptions();
 
   return (
     <AppShell
@@ -312,12 +287,6 @@ export function DiagramsPage({ session, onSignOut }: DiagramsPageProps) {
               <section className={`${table.card} ${styles.card}`}>
                 <div className={table.tableHeader}>
                   <span className={styles.colName}>{t('Name')}</span>
-                  <span className={styles.colAgents}>
-                    <span className={table.labelWithHint}>
-                      {t('Agents')}
-                      <FieldHint label={t('Agents')}>{t('What agents may do with the diagram through their tools.')}</FieldHint>
-                    </span>
-                  </span>
                   <span className={styles.colSize}>{t('Size')}</span>
                   <span className={table.colModified}>{t('Updated')}</span>
                   <span className={styles.colActions} />
@@ -327,47 +296,22 @@ export function DiagramsPage({ session, onSignOut }: DiagramsPageProps) {
                 {listed.map((diagram) => (
                   <div key={diagram.id} className={table.row} data-testid="diagram-row" data-diagram-id={diagram.id}>
                     <span className={styles.colName}>
-                      {naming?.id === diagram.id ? (
-                        <input
-                          className={styles.nameInput}
-                          value={naming.name}
-                          onChange={(event) => setNaming({ id: diagram.id, name: event.target.value })}
-                          onBlur={() => void rename()}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') void rename();
-                            if (event.key === 'Escape') setNaming(null);
-                          }}
-                          aria-label={t('Name')}
-                          autoFocus
-                          data-testid="diagram-name-input"
-                        />
-                      ) : (
-                        <>
-                          <Link className={table.name} to={`/workspace/${workspaceId}/explore/diagrams/${diagram.id}`} data-testid="diagram-name">
-                            {diagram.name}
-                          </Link>
-                          {diagram.description !== null && (
-                            <span className={styles.description} title={diagram.description} data-testid="diagram-description">
-                              {diagram.description}
-                            </span>
-                          )}
-                        </>
+                      <span className={styles.nameLine}>
+                        <Link className={table.name} to={`/workspace/${workspaceId}/explore/diagrams/${diagram.id}`} data-testid="diagram-name">
+                          {diagram.name}
+                        </Link>
+                        {/* Only where it is not what a new diagram is: Read and change is the ordinary case. */}
+                        {diagram.agentAccess === 'READ' && (
+                          <span className={styles.badge} title={t('Agents may search and read it, and not change it.')} data-testid="diagram-read-only">
+                            {t('Read only')}
+                          </span>
+                        )}
+                      </span>
+                      {diagram.description !== null && (
+                        <span className={styles.description} title={diagram.description} data-testid="diagram-description">
+                          {diagram.description}
+                        </span>
                       )}
-                    </span>
-                    <span className={styles.colAgents}>
-                      <Select
-                        className={styles.access}
-                        value={diagram.agentAccess}
-                        onChange={(picked) => void setAccess(diagram, picked as DiagramAgentAccess)}
-                        aria-label={tf('Agents for {name}', { name: diagram.name })}
-                        data-testid="diagram-access"
-                      >
-                        {options.map((one) => (
-                          <option key={one.value} value={one.value} data-hint={one.hint}>
-                            {one.label}
-                          </option>
-                        ))}
-                      </Select>
                     </span>
                     <span className={`${styles.colSize} ${table.modified}`}>
                       {tf('{nodes} nodes, {edges} connections', { nodes: diagram.nodeCount, edges: diagram.edgeCount })}
@@ -377,10 +321,10 @@ export function DiagramsPage({ session, onSignOut }: DiagramsPageProps) {
                       <button
                         type="button"
                         className={table.rowAction}
-                        onClick={() => setNaming({ id: diagram.id, name: diagram.name })}
-                        aria-label={t('Rename the diagram')}
-                        title={t('Rename the diagram')}
-                        data-testid="diagram-rename"
+                        onClick={() => navigate(`/workspace/${workspaceId}/explore/diagrams/${diagram.id}/settings`)}
+                        aria-label={tf('Edit {name}', { name: diagram.name })}
+                        title={t('Edit')}
+                        data-testid="diagram-edit"
                       >
                         <img src={pencilIcon} alt="" width={14} height={14} />
                       </button>

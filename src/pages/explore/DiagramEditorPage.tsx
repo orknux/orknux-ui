@@ -44,6 +44,7 @@ import dashboardIcon from '../../assets/layout-dashboard.svg';
 import frameIcon from '../../assets/frame.svg';
 import gitBranchIcon from '../../assets/git-branch.svg';
 import networkIcon from '../../assets/network.svg';
+import chevronIcon from '../../assets/chevron-down.svg';
 import pencilIcon from '../../assets/pencil.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
 import redoIcon from '../../assets/redo.svg';
@@ -58,6 +59,7 @@ import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
 import { Select } from '../../components/Select';
+import { useSieve } from '../../components/sieve';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import form from '../../components/Dialog.module.css';
@@ -254,6 +256,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState<'layout' | 'align' | 'export' | null>(null);
+  /** Whether the Diagram section is folded away, remembered for the person: open unless they folded it. */
+  const [diagramFold, setDiagramFold] = useSieve('diagram.editor.diagram-section');
+  const diagramOpen = diagramFold !== 'closed';
   /** The label being typed over in place, on the canvas. */
   const [labelling, setLabelling] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
 
@@ -892,24 +897,6 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           </span>
         )}
         <div className={shell.toolbarRight}>
-          {diagram !== null && (
-            <Select
-              className={`${form.input} ${form.select} ${styles.accessPill}`}
-              value={diagram.agentAccess}
-              onChange={(picked) => void setAccess(picked as DiagramAgentAccess)}
-              prefix={t('Agents')}
-              aria-label={t('Agents')}
-              title={t('What agents may do with the diagram through their tools.')}
-              data-testid="diagram-editor-access"
-            >
-              {access.map((one) => (
-                <option key={one.value} value={one.value} data-hint={one.hint}>
-                  {one.label}
-                </option>
-              ))}
-            </Select>
-          )}
-          <span className={shell.toolbarGap} aria-hidden="true" />
           <div className={styles.tools} role="toolbar" aria-label={t('Shapes')}>
             {SHAPES.map((one) => (
               <button
@@ -1060,24 +1047,55 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
         </div>
 
         <div className={`${shell.panel} ${chat.panel}`} data-testid="diagram-panel">
-          {diagram !== null && selectedNodes.length === 0 && selectedEdges.length === 0 && (
-            <div className={styles.inspector} data-testid="diagram-about">
-              <label className={styles.field}>
-                <span>{t('Description')}</span>
-                <textarea
-                  key={`${diagram.id}-${diagram.description ?? ''}`}
-                  className={`${form.input} ${styles.description}`}
-                  defaultValue={diagram.description ?? ''}
-                  onBlur={(event) => void describe(event.target.value)}
-                  maxLength={diagram.descriptionCharactersMost}
-                  placeholder={t('What this diagram is for')}
-                  data-testid="diagram-description-input"
-                />
-              </label>
-            </div>
+          {diagram !== null && (
+            <section className={styles.section} data-testid="diagram-section">
+              <button
+                type="button"
+                className={styles.sectionHead}
+                onClick={() => setDiagramFold(diagramOpen ? 'closed' : '')}
+                aria-expanded={diagramOpen}
+                data-testid="diagram-section-toggle"
+              >
+                <img src={chevronIcon} alt="" width={12} height={12} className={diagramOpen ? styles.chevronOpen : styles.chevron} />
+                {t('Diagram')}
+              </button>
+              {diagramOpen && (
+                <div className={styles.sectionBody} data-testid="diagram-about">
+                  <label className={styles.field}>
+                    <span>{t('Description')}</span>
+                    <textarea
+                      key={`${diagram.id}-${diagram.description ?? ''}`}
+                      className={`${form.input} ${styles.description}`}
+                      defaultValue={diagram.description ?? ''}
+                      onBlur={(event) => void describe(event.target.value)}
+                      maxLength={diagram.descriptionCharactersMost}
+                      placeholder={t('What this diagram is for')}
+                      data-testid="diagram-description-input"
+                    />
+                  </label>
+                  <div className={styles.field}>
+                    <span id="diagram-editor-agents">{t('Agents')}</span>
+                    <Select
+                      className={`${form.input} ${form.select}`}
+                      value={diagram.agentAccess}
+                      onChange={(picked) => void setAccess(picked as DiagramAgentAccess)}
+                      aria-labelledby="diagram-editor-agents"
+                      data-testid="diagram-editor-access"
+                    >
+                      {access.map((one) => (
+                        <option key={one.value} value={one.value} data-hint={one.hint}>
+                          {one.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </section>
           )}
           {oneNode !== null && (
             <div className={styles.inspector} data-testid="diagram-inspector">
+              <h3 className={styles.inspectorHeading}>{t('Node')}</h3>
               <label className={styles.field}>
                 <span>{t('Label')}</span>
                 <input
@@ -1158,6 +1176,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           )}
           {oneEdge !== null && (
             <div className={styles.inspector} data-testid="diagram-edge-inspector">
+              <h3 className={styles.inspectorHeading}>{t('Connection')}</h3>
               <label className={styles.field}>
                 <span>{t('Label')}</span>
                 <input

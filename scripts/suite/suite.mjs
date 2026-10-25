@@ -2252,6 +2252,12 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'diagram-settings-check',
+    what: "the list's pencil opens a diagram's settings page, where name, description, catalog and Agents are saved and kept through a reload, leaving unsaved asks first, and the list has no Agents dropdown",
+    needs: ['workspace'],
+    /* Makes its own two catalogs and diagram, and removes them. */
+  },
+  {
     name: 'diagram-description-check',
     what: "a diagram's description is typed in the editor, stored, kept after a reload, and shown on the list on one line",
     needs: ['workspace'],

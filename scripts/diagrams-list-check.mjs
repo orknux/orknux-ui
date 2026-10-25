@@ -4,9 +4,8 @@
  * What is pinned: Explore's menu holds Research and then Diagrams; New catalog
  * makes one and lists it on the left; New diagram opens the editor on one made
  * in the catalog chosen; back on the list the diagram is a row of that catalog,
- * renamed in place; Move sends it to another catalog; the Agents setting is a
- * choice of two plain words, each with a one-line hint, and what is picked is
- * stored; the search finds a node on it by a word in its notes; and Remove asks
+ * with no Agents column, a read-only one carrying a small mark; Move sends it
+ * to another catalog; the search finds a node on it by a word in its notes; and Remove asks
  * first, then takes the row away. A catalog holding diagrams is refused.
  *
  * Makes its own catalogs and diagram, with a stamp in their names, and removes them.
@@ -17,7 +16,6 @@ const { browser, page, graphql } = await open({ viewport: { width: 1440, height:
 const stamp = Date.now();
 const FIRST = `zzMaps ${stamp}`;
 const SECOND = `zzOther ${stamp}`;
-const NAME = `zzLandscape ${stamp}`;
 
 /** What the next New catalog is called: asked in the browser's own box, as the memory page asks it. */
 let naming = FIRST;
@@ -56,30 +54,20 @@ await graphql(
   { id, d: JSON.stringify({ nodes: [{ id: 'gw', kind: 'box', label: 'Gateway', x: 0, y: 0, w: 160, h: 60, notes: `Fronts the zzquokka${stamp} service.` }], edges: [] }) },
 );
 
-// Back on the list: the row, renamed in place.
+// Back on the list: the row, and no Agents control in the table - its details are a page of their own (diagram-settings-check).
 await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/diagrams`, { waitUntil: 'domcontentloaded' });
 await page.locator(`[data-catalog-row="${FIRST}"]`).click({ timeout: 20_000 });
 const row = page.locator(`[data-testid="diagram-row"][data-diagram-id="${id}"]`);
 await row.waitFor({ timeout: 10_000 }).catch(() => undefined);
 record((await row.count()) === 1, 'the diagram is a row of its catalog');
-await row.getByTestId('diagram-rename').click();
-await page.getByTestId('diagram-name-input').fill(NAME);
-await page.getByTestId('diagram-name-input').press('Enter');
-await page.waitForTimeout(600);
-record(((await row.getByTestId('diagram-name').textContent().catch(() => '')) ?? '').includes(NAME), 'renamed in place');
-
-// The Agents setting: two plain words, a hint on each, and what is picked stored.
-await row.getByTestId('diagram-access').click();
-const options = await page.locator('[role="option"]').allInnerTexts();
-const labels = options.map((one) => one.split('\n')[0].trim()).filter((one) => one !== '');
-const hint = (await page.locator('[role="tooltip"][data-select-hint]').textContent({ timeout: 3_000 }).catch(() => '')) ?? '';
-record(hint.trim() !== '' && !hint.includes('\n') && hint.length <= 90, `the option in hand says what it means on one line beside it (${hint})`);
-record(labels.includes('Read only') && labels.includes('Read and change') && labels.every((one) => !one.includes('(')),
-  `the Agents setting offers Read only and Read and change, with no explanation in the label (${JSON.stringify(options)})`);
-await page.locator('[role="option"]', { hasText: 'Read only' }).first().click();
-await page.waitForTimeout(600);
-const access = (await graphql('query ($id: ID!) { diagram(id: $id) { agentAccess } }', { id })).diagram.agentAccess;
-record(access === 'READ', `picking Read only stores it (${access})`);
+const header = (await page.locator('section').filter({ has: row }).first().innerText().catch(() => '')).split('\n').slice(0, 6).join(' ');
+record((await row.getByTestId('diagram-access').count()) === 0 && (await row.locator('button[aria-haspopup]:not([data-move-to]), select, [role="combobox"]').count()) === 0 && !/\bAgents\b/.test(header),
+  `the table has no Agents column and no dropdown in its rows (${header})`);
+// What agents may do is said only where it is not a new diagram's: Read only, as a small mark.
+await graphql('mutation ($id: ID!) { setDiagramAgentAccess(id: $id, access: READ) { id } }', { id });
+await page.reload({ waitUntil: 'domcontentloaded' });
+await row.waitFor({ timeout: 10_000 }).catch(() => undefined);
+record(((await row.getByTestId('diagram-read-only').textContent().catch(() => '')) ?? '') === 'Read only', 'a read-only diagram carries a small Read only mark');
 
 // A catalog holding a diagram is not deleted.
 await page.getByTestId('diagram-delete-catalog').click();
