@@ -522,9 +522,9 @@ const IN_THE_OPEN = [
   },
   {
     file: 'src/components/QuickChat.tsx',
-    says: 'Ask about what is on screen, or about this workspace',
+    says: 'It can look things up in this workspace',
     because: 'status',
-    why: 'an empty conversation, saying what to type into it',
+    why: 'an empty conversation, saying what the assistant may do here',
   },
   {
     file: 'src/pages/admin/AdminNetworkingPage.tsx',
