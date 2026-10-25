@@ -524,6 +524,19 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
         picture={zoomed}
         onClose={close}
         editHref={open !== null && zoomed !== null ? `/workspace/${workspaceId}/design/images/${open.id}/edit` : undefined}
+        onReplace={open !== null && zoomed !== null && open.kind === 'SAVED' ? () => replacer.current?.click() : undefined}
+      />
+      {/* One picker for both viewers: a saved picture and a saved document are replaced the same way. */}
+      <input
+        ref={replacer}
+        type="file"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file !== undefined && open !== null) setReplacing({ artifact: open, file });
+        }}
+        data-reading-replace-file=""
       />
 
       {/*
@@ -574,17 +587,6 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                     title={t('Put another file at this address')}
                     data-reading-replace=""
                   >{t('Replace')}</button>
-                  <input
-                    ref={replacer}
-                    type="file"
-                    hidden
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = '';
-                      if (file !== undefined) setReplacing({ artifact: read, file });
-                    }}
-                    data-reading-replace-file=""
-                  />
                 </>
               )}
               <a

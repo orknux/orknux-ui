@@ -61,4 +61,46 @@ if (id !== null) {
   }
   await graphql('mutation ($id: ID!) { deleteArtifact(id: $id) }', { id }).catch(() => undefined);
 }
+
+/*
+ * A saved picture opens in the picture viewer rather than the document one, and
+ * that viewer had no Replace: a 2x1 PNG is put in place of a 1x1 one, and the
+ * picture drawn at the same address is then two pixels wide.
+ */
+const png = (width) => {
+  // A tiny PNG, built in the browser's canvas so no file is checked in for it.
+  return page.evaluate((w) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = 1;
+    canvas.getContext('2d').fillRect(0, 0, w, 1);
+    return canvas.toDataURL('image/png').split(',')[1];
+  }, width);
+};
+const pictureName = `replace-check-${stamp}.png`;
+await page.goto(`${BASE}/workspace/${WORKSPACE}/artifacts`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('artifacts-upload').waitFor({ timeout: 20_000 }).catch(() => undefined);
+await page.getByTestId('artifacts-upload-file').setInputFiles({ name: pictureName, mimeType: 'image/png', buffer: Buffer.from(await png(1), 'base64') });
+await page.getByText(pictureName).first().waitFor({ timeout: 10_000 }).catch(() => undefined);
+const pictures = await graphql('query ($w: ID!) { workspaceArtifacts(workspaceId: $w, page: 0, size: 50) { content { id filename } } }', { w: WORKSPACE });
+const pictureId = pictures.workspaceArtifacts.content.find((one) => one.filename === pictureName)?.id ?? null;
+if (pictureId === null) {
+  record(false, 'the picture to replace is uploaded');
+} else {
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/artifacts/${pictureId}`, { waitUntil: 'domcontentloaded' });
+  const button = page.locator('[data-picture-replace]');
+  await button.waitFor({ timeout: 15_000 }).catch(() => undefined);
+  record(await button.count() === 1, 'the picture viewer has a Replace');
+  if (await button.count() === 1) {
+    await page.locator('[data-reading-replace-file]').setInputFiles({ name: pictureName, mimeType: 'image/png', buffer: Buffer.from(await png(2), 'base64') });
+    const dialog = page.locator('dialog[open]').filter({ hasText: /link/i });
+    await dialog.waitFor({ timeout: 5_000 }).catch(() => undefined);
+    await dialog.getByRole('button', { name: /^(Replace|Zamień)$/ }).click().catch(() => undefined);
+    await dialog.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => undefined);
+    const wide = async () => page.locator('dialog[open] img').first().evaluate((img) => img.naturalWidth).catch(() => 0);
+    for (let tries = 0; tries < 20 && (await wide()) !== 2; tries += 1) await page.waitForTimeout(500);
+    record((await wide()) === 2, `the picture viewer then shows the new picture (${await wide()}px wide)`);
+  }
+  await graphql('mutation ($id: ID!) { deleteArtifact(id: $id) }', { id: pictureId }).catch(() => undefined);
+}
 await finish(browser);

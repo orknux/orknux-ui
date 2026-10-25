@@ -36,6 +36,8 @@ export interface ImageZoomProps {
   onClose: () => void;
   /** Where the picture is worked on, for a picture that has an editor; no button without one. */
   editHref?: string;
+  /** Puts another file at this picture's address, for one somebody saved; no button without it. */
+  onReplace?: () => void;
 }
 
 /**
@@ -56,7 +58,7 @@ export interface ImageZoomProps {
  * focus stays inside and returns where it was, and it draws in the top layer,
  * so nothing here has to have an opinion about z-index.
  */
-export function ImageZoom({ picture, onClose, editHref }: ImageZoomProps) {
+export function ImageZoom({ picture, onClose, editHref, onReplace }: ImageZoomProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const plateRef = useRef<HTMLDivElement>(null);
 
@@ -188,6 +190,11 @@ export function ImageZoom({ picture, onClose, editHref }: ImageZoomProps) {
                 >
                   <span className={styles.saveIcon} style={{ maskImage: `url("${paletteIcon}")`, WebkitMaskImage: `url("${paletteIcon}")` }} />
                 </Link>
+              )}
+              {onReplace !== undefined && (
+                <button type="button" className={styles.tool} onClick={onReplace} title={t('Put another file at this address')} data-picture-replace="">
+                  {t('Replace')}
+                </button>
               )}
               <a
                 className={styles.tool}
