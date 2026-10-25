@@ -1,6 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 
 import type { DesignDocument } from '../../api/documents';
 import { contentOf } from '../../api/documents';
@@ -111,9 +112,30 @@ export interface DocumentPaperProps {
  */
 export function DocumentPaper({ editor, geometry, pages }: DocumentPaperProps) {
   const stride = geometry.height + geometry.gap;
+
+  /**
+   * A press on the paper outside the words puts the caret where a word
+   * processor would: on the nearest line, or after the last one when below
+   * it. The editable flow is only as tall as its text, so an empty document
+   * was one line at the top of a sheet that took no other press at all.
+   */
+  const place = (event: MouseEvent<HTMLDivElement>) => {
+    if (editor === null || editor.isDestroyed || !editor.isEditable || event.button !== 0) return;
+    const prose = editor.view.dom;
+    if (prose.contains(event.target as Node)) return;
+    event.preventDefault();
+    const box = prose.getBoundingClientRect();
+    const left = Math.min(Math.max(event.clientX, box.left + 1), box.right - 1);
+    const below = event.clientY >= box.bottom;
+    const at = below ? null : editor.view.posAtCoords({ left, top: Math.max(event.clientY, box.top + 1) });
+    const pos = at?.pos ?? editor.state.doc.content.size;
+    editor.chain().focus().setTextSelection(pos).run();
+  };
+
   return (
     <div
       className={styles.paper}
+      onMouseDown={place}
       style={{ width: geometry.width, minHeight: pages * stride - geometry.gap }}
       data-testid="document-paper"
       data-pages={pages}

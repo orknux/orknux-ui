@@ -11,6 +11,7 @@
   position: relative;
   flex: none;
   margin: 0 auto;
+  cursor: text;
 }
 
 .sheet {

@@ -2207,6 +2207,12 @@ export const TESTS = [
     /* Makes its own document and removes it. */
   },
   {
+    name: 'document-caret-check',
+    what: "a press anywhere on a document's sheet - the middle of an empty one, below the text, beside a line - puts the caret there and what is typed lands in the document",
+    needs: ['workspace'],
+    /* Makes its own documents and removes them. */
+  },
+  {
     name: 'document-find-check',
     what: 'Find in a document counts and marks every match across its pages, steps through them, matches whole words and replaces; the view has no bar, no chat and nothing editable, and finds too',
     needs: ['workspace'],
