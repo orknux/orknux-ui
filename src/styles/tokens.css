@@ -222,6 +222,23 @@
   --wireframe-note: #fdf3c4;
   --wireframe-note-edge: #d9c87a;
   --wireframe-select: #2f80ed;
+
+  /*
+   * A diagram is drawn on paper too, the colours the server's PNG, SVG and PDF
+   * draw it in, so what is exported is what was on the screen. Not redefined
+   * for the light theme, for the wireframe's reason. The two inks are for words
+   * on a colour somebody picked: light on a dark one, dark on a light one.
+   */
+  --diagram-desk: #f4f4f5;
+  --diagram-grid: #d4d4d8;
+  --diagram-paper: #ffffff;
+  --diagram-ink: #3f3f46;
+  --diagram-muted: #71717a;
+  --diagram-note: #fef9c3;
+  --diagram-group: #eef2f7;
+  --diagram-select: #2f80ed;
+  --diagram-ink-on-dark: #fafafa;
+  --diagram-ink-on-light: #18181b;
 }
 
 /*

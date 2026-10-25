@@ -1,0 +1,106 @@
+/* Explore -> Diagrams: the memory page's rail on the left, a catalogue table on the right. */
+
+.headingGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.card {
+  margin-top: var(--space-16);
+}
+
+.colName {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.colAgents {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  width: 170px;
+}
+
+.colSize {
+  flex-shrink: 0;
+  width: 190px;
+}
+
+.colActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-6);
+  width: 100px;
+}
+
+.access {
+  width: 100%;
+  font-size: var(--text-sm);
+}
+
+.nameInput {
+  width: 100%;
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--text-md);
+}
+
+.emptyStart {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.hits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: var(--space-16) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.hit:hover {
+  background: var(--color-surface-hover);
+}
+
+.hitWhere {
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.hitNode {
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.hitSnippet {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
