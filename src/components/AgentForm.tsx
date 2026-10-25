@@ -2345,7 +2345,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
               {t('Tools carried at once')}
             </label>
             <FieldHint label={t('Tools carried at once')}>
-              {t('How many tools this agent holds in front of the model at a time. Left empty it holds all of them, up to what the model’s provider allows — which is 200 for llama.cpp, Ollama and OpenAI-compatible servers and 128 for Azure and OpenAI’s own API, and is the number at which a request fails rather than the number at which an agent starts choosing badly. Set one and the agent carries the ones marked "always" plus a tool for searching the rest, finding what a job needs and giving up what it looked up longest ago when the room runs out. Between 5 and 1024.')}
+              {t('How many tools this agent holds in front of the model at a time. Left empty it holds all of them, up to what the model’s provider allows — which is 300 for llama.cpp and Ollama, 200 for OpenAI-compatible servers and 128 for Azure and OpenAI’s own API, and is the number at which a request fails rather than the number at which an agent starts choosing badly. Set one and the agent carries the ones marked "always" plus a tool for searching the rest, finding what a job needs and giving up what it looked up longest ago when the room runs out. Between 5 and 1024.')}
             </FieldHint>
           </span>
           {/* Boxed with its unit, as Tool Rounds is: borderless, the space around it looked like the field. */}

@@ -385,8 +385,8 @@ export const TYPE_TOOL_CAPS: Record<ProviderType, number> = {
   // OpenAI's own API takes 128; the server says so for a provider pointed at it.
   OPENAI: 200,
   AZURE_OPENAI: 128,
-  OLLAMA: 200,
-  LLAMA_CPP: 200,
+  OLLAMA: 300,
+  LLAMA_CPP: 300,
   ANTHROPIC: 256,
   SYSTEM_ONE: 0,
   STABLE_DIFFUSION_CPP: 0,
