@@ -4840,16 +4840,16 @@ export const TESTS = [
   },
 
   {
-    name: 'provider-all-tools-check',
-    what: 'a provider can hand an agent every tool up front, on by default for Ollama and OpenAI, and cap how many a request carries',
+    name: 'provider-tool-cap-check',
+    what: 'a provider caps how many tools a request carries, and no provider offers every tool up front',
     needs: ['workspace'],
     /*
-     * A tool loaded mid-turn changes the top of the prompt, and a local server
-     * then reads the whole session again. `ProviderOfferAllToolsTest` proves
-     * what reaches the wire; this proves somebody can reach the switch and the
-     * cap: following the type's default, saved and read back off the server
-     * and after a reload, and put back under the type. Scratch providers,
-     * removed at both ends.
+     * All tools up front went in 1.2.0: it switched off an agent's own limit
+     * and its Offer marks, and with the tool list fixed per conversation it
+     * saved nothing. `ProviderToolCeilingTest` proves what reaches the wire;
+     * this proves the page draws no switch, and that the cap is saved and read
+     * back off the server and after a reload, and put back under the type.
+     * Scratch providers, removed at both ends.
      */
   },
   {
