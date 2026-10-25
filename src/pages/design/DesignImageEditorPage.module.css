@@ -570,6 +570,16 @@ button.toolbarTitle:hover {
   min-height: 160px;
 }
 
+/*
+ * The box the prompt sits in grows with it. The shared tall box is a fixed
+ * 96px, and a prompt of at least 160px hung out of its border and ran over the
+ * Model label below. Named twice to win over the shared class whichever
+ * stylesheet is injected last.
+ */
+.promptBox.promptBox {
+  height: auto;
+}
+
 .sides {
   display: flex;
   align-items: center;

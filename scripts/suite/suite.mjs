@@ -5175,6 +5175,11 @@ export const TESTS = [
     // The chat and the send are answered in the browser.
   },
   {
+    name: 'design-prompt-box-check',
+    what: 'a long prompt stays inside its box in the image and video editors, above the Model field',
+    needs: ['workspace'],
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],

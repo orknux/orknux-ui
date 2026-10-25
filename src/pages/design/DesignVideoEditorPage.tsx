@@ -461,7 +461,7 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
         <form className={editor.panel} onSubmit={generate} data-testid="video-panel">
           <div className={form.field}>
             <label className={form.label} htmlFor="video-prompt">{t('Prompt')}</label>
-            <div className={`${form.inputWrapper} ${form.inputWrapperTall}`}>
+            <div className={`${form.inputWrapper} ${form.inputWrapperTall} ${editor.promptBox}`}>
               <textarea
                 id="video-prompt"
                 className={`${form.input} ${form.textarea} ${editor.prompt}`}

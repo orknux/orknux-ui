@@ -2829,7 +2829,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         <form className={styles.panelForm} onSubmit={generate} data-testid="editor-panel">
           <div className={form.field}>
             <label className={form.label} htmlFor="image-prompt">{t('Prompt')}</label>
-            <div className={`${form.inputWrapper} ${form.inputWrapperTall}`}>
+            <div className={`${form.inputWrapper} ${form.inputWrapperTall} ${styles.promptBox}`}>
               <textarea
                 id="image-prompt"
                 className={`${form.input} ${form.textarea} ${styles.prompt}`}
