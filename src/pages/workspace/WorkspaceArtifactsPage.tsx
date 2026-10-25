@@ -513,11 +513,15 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 title={t('Open this in a tab of its own')}
               >{t('Open in a tab')}</a>
               <a
-                className={styles.readingOut}
+                className={styles.readingClose}
                 href={read.url}
                 download={read.filename}
+                aria-label={t('Download')}
+                title={t('Download')}
                 data-reading-download=""
-              >{t('Download')}</a>
+              >
+                <img src={downloadIcon} alt="" width={14} height={14} />
+              </a>
               <button
                 type="button"
                 ref={closer}
