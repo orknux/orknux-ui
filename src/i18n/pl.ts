@@ -3327,6 +3327,17 @@ export const PL: Record<string, string> = {
   "Averaged by tokens over {count} calls whose provider reported its speed": "Średnia ważona tokenami z {count} wywołań, których dostawca podał szybkość",
   "Speed over the last call": "Szybkość z ostatniego wywołania",
   "Speed over the last {count} calls": "Szybkość z ostatnich {count} wywołań",
+  // The model page's speed chart.
+  "Speed over time": "Szybkość w czasie",
+  "Minute": "Minuta",
+  "Hour": "Godzina",
+  "Day": "Dzień",
+  "Month": "Miesiąc",
+  "Year": "Rok",
+  "1 call": "1 wywołanie",
+  "{count} calls": "Wywołania: {count}",
+  "No call reported its speed between these dates.": "Żadne wywołanie między tymi datami nie podało szybkości.",
+  "Only the newest {count} periods are drawn, as many as Admin Settings allows.": "Narysowano tylko najnowsze okresy ({count}), tyle, ile pozwalają ustawienia administratora.",
   // Sound in the chat.
   "Takes audio": "Przyjmuje dźwięk",
   "Send an mp3, wav or flac attached in a chat to this model itself; off, a message with one is refused.": "Wysyłaj temu modelowi sam plik mp3, wav lub flac dołączony w czacie; wyłączone, wiadomość z takim plikiem zostaje odrzucona.",

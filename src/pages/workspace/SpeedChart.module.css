@@ -1,0 +1,31 @@
+/* Two panels over one axis; the marks themselves are UsageChart's. */
+.speedChart {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* The panel's top, which is the only scale it has: the tooltip gives the rest. */
+.panelPeak {
+  font-family: var(--font-mono);
+}
+
+/* Shorter than the usage chart's 150px, there being two; two classes so it wins whatever order the sheets load in. */
+.panel .panelChart {
+  height: 110px;
+}

@@ -986,6 +986,12 @@ export const TESTS = [
     /* The session and the model's speed are stubbed; the fields are asked of the running server. Takes any chat model. */
   },
   {
+    name: 'model-speed-chart-check',
+    what: "A model page charts its prompt and generation speed per minute, hour, day, month or year over the usage dates, with a gap where a period had no timed calls",
+    needs: ['workspace'],
+    /* The chart's answers are stubbed and the query asked of the running server; where the server has timed calls, they are counted too. Takes any chat model. */
+  },
+  {
     name: 'session-timers-check',
     what: "A session page's Timers panel lists the reminders its agent set, waiting first and soonest first, with each note and when it comes up",
     needs: ['workspace'],

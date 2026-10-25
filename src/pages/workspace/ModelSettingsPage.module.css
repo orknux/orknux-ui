@@ -230,6 +230,55 @@
   color: var(--color-text-muted);
 }
 
+/* ---- Speed over time ---- */
+
+.speedOverTime {
+  margin-top: var(--space-16);
+}
+
+.speedChartHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+/* The period switch: a segmented strip, as the transfer dialog's filter is. */
+.unitSwitch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.unitSwitch button {
+  padding: var(--space-4) var(--space-8);
+  border: 0;
+  border-radius: var(--radius-4);
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.unitSwitch button:hover {
+  color: var(--color-text-primary);
+}
+
+.unitSwitch .unitOn {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.speedTruncated {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .breakdown {
   display: flex;
   flex-direction: column;
