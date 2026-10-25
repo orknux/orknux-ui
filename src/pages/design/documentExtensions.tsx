@@ -88,7 +88,8 @@ function CodeBlockView({ node, updateAttributes, editor }: ReactNodeViewProps) {
         </button>
       </div>
       <pre className={styles.codePre}>
-        <NodeViewContent<'code'> as="code" className={`hljs language-${language}`} />
+        {/* NodeViewContent writes white-space: pre-wrap on itself unless told otherwise; code scrolls, it does not wrap. */}
+        <NodeViewContent<'code'> as="code" className={`hljs language-${language}`} style={{ whiteSpace: 'pre' }} />
       </pre>
     </NodeViewWrapper>
   );
