@@ -3926,4 +3926,5 @@ export const PL: Record<string, string> = {
   // The document editor's sheets drawn dark, and a diagram's PNG at a scale.
   "Dark page": "Ciemna strona",
   "PNG scale": "Skala PNG",
+  "Always — carried in front of the model every turn, once a tool limit is set. Click to offer it.": "Zawsze — noszone przed modelem w każdej turze, gdy ustawiono limit narzędzi. Kliknij, aby tylko oferować.",
 };

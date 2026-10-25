@@ -106,7 +106,7 @@ record(
 const after = await graphql(
   `query ($w: ID!) {
      workspaceAgents(workspaceId: $w, page: 0, size: 200) {
-       content { id name enabled modelId modelName systemPrompt description tools skillCatalogs memoryCatalogs mcpServers orknuxAccess }
+       content { id name enabled modelId modelName systemPrompt description tools requiredTools skillCatalogs memoryCatalogs mcpServers orknuxAccess }
      }
    }`,
   { w: WORKSPACE },
@@ -120,7 +120,8 @@ const after = await graphql(
  * about orknux unless told not to"). The last only while that grant is on, so
  * an orknux_* tool held without it is still a failure.
  */
-const tools = (await graphql(`{ builtInTools { name governance } }`)).builtInTools;
+const tools = (await graphql(`{ builtInTools { name governance startsOffered } }`)).builtInTools;
+const startsOffered = new Set(tools.filter((one) => one.startsOffered).map((one) => one.name));
 const builtIns = new Set(
   tools.filter((one) => one.governance === 'GRANT' || one.governance === 'GRANT_OPTIONAL').map((one) => one.name),
 );
@@ -151,6 +152,19 @@ if (record(fresh.length === 1, `exactly one agent was made (${fresh.length} appe
       agent.memoryCatalogs.every((name) => workspaceCatalogs.includes(name)) &&
       agent.mcpServers.length === 0,
     `and it is granted nothing beyond what every new agent starts with, which is what makes it something to dress rather than a surprise (${JSON.stringify({ ...agent, tools: agent.tools.filter((name) => !builtIns.has(name) && !(agent.orknuxAccess && orknuxTools.has(name))) })})`,
+  );
+  /*
+   * And it carries Always only what a new agent starts with there: the
+   * built-ins not marked to start at Offer. The rating, picture, MIDI and less
+   * basic reading tools, and every orknux_ tool, start at Offer - found under a
+   * tool limit rather than carried.
+   */
+  const alwaysWanted = [...builtIns].filter((name) => !startsOffered.has(name));
+  const alwaysWrong = agent.requiredTools.filter((name) => startsOffered.has(name));
+  const alwaysMissing = alwaysWanted.filter((name) => !agent.requiredTools.includes(name));
+  record(
+    startsOffered.has('rate_session') && startsOffered.has('orknux_news') && alwaysWrong.length === 0 && alwaysMissing.length === 0,
+    `it starts the tools marked to start at Offer at Offer, and the rest Always (Always but should not be: ${alwaysWrong.join(', ') || 'none'}; missing: ${alwaysMissing.join(', ') || 'none'})`,
   );
   record(landed.endsWith(`/agents/${agent.id}/settings`), 'and the page it landed on is that agent');
 }

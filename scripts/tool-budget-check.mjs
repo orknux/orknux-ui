@@ -83,7 +83,9 @@ if (TOOL === null) {
  * grant below keeps them: `tools` replaces the list, and a fixture that sent
  * only the workspace tool would be measuring an agent nobody has.
  */
-const { builtInTools } = await graphql(`{ builtInTools { name governance } }`);
+const { builtInTools } = await graphql(`{ builtInTools { name governance startsOffered } }`);
+// The ones a new agent starts at Offer rather than Always: rating, pictures, MIDI, the less basic readers.
+const STARTS_OFFERED = new Set(builtInTools.filter((one) => one.startsOffered).map((one) => one.name));
 // GRANT_OPTIONAL - rate_session - is a by-name switch on by default like GRANT;
 // all it lacks is the unsafe-visibility gate in front of the switch.
 const BY_NAME = builtInTools
@@ -141,17 +143,21 @@ record(
  * The list is complete. Issue #444: the server's own tools were switched in
  * five places and shown in one, so the list somebody reads to see what an agent
  * may do said nothing about most of what it could do. Every name the server
- * declares is a row now, and the fresh agent holds every by-name one Always.
+ * declares is a row now, and the fresh agent holds every by-name one - Always,
+ * but the ones the server says start at Offer, which read Offer.
  */
 const rowless = [];
-const notAlways = [];
+const notAsStarted = [];
 for (const name of BY_NAME) {
   const row = page.locator(`[data-grant-name="${name}"] [data-tool-state]`);
   if ((await row.count()) !== 1) rowless.push(name);
-  else if ((await row.getAttribute('data-tool-state')) !== 'always') notAlways.push(name);
+  else if ((await row.getAttribute('data-tool-state')) !== (STARTS_OFFERED.has(name) ? 'offer' : 'always')) notAsStarted.push(name);
 }
 record(rowless.length === 0, `every built-in switched by name is a row (${BY_NAME.length}; missing: ${rowless.join(', ') || 'none'})`);
-record(notAlways.length === 0, `and a fresh agent reads Always on each (not: ${notAlways.join(', ') || 'none'})`);
+record(
+  BY_NAME.some((name) => STARTS_OFFERED.has(name)) && notAsStarted.length === 0,
+  `and a fresh agent reads Offer on the ${BY_NAME.filter((name) => STARTS_OFFERED.has(name)).length} that start there and Always on the rest (wrong: ${notAsStarted.join(', ') || 'none'})`,
+);
 
 /*
  * The ones that come with a wider grant are rows too, read-only: this agent

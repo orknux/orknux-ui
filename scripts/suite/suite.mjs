@@ -2418,6 +2418,12 @@ export const TESTS = [
     /* Makes its own two agents and deletes them. */
   },
   {
+    name: 'tool-offer-start-check',
+    what: 'a new agent starts rating, pictures, MIDI, the less basic readers and the orknux_ tools at Offer, and the form draws and stores them so',
+    needs: ['workspace'],
+    /* Makes its own agent and deletes it; switches the workspace's built-ins gate and puts it back. */
+  },
+  {
     name: 'diagram-palette-check',
     what: 'Quick actions finds a diagram by its name and a node by its label, and opens the editor on that node',
     needs: ['workspace'],
@@ -5647,7 +5653,7 @@ export const TESTS = [
   },
   {
     name: 'boxes-agent-grant-check',
-    what: "an agent's Boxes grant: starts empty, offers the labels boxes carry as you type, chips added and removed, saved as boxLabels; an orkbox_ tool reads Hide without a label and Always with one",
+    what: "an agent's Boxes grant: starts empty, offers the labels boxes carry as you type, chips added and removed, saved as boxLabels; an orkbox_ tool reads Hide without a label, and Offer with one, cycling Offer and Always",
     needs: ['workspace'],
     /* Makes a scratch agent and a scratch box, only so there is a label to offer, and removes both. */
   },

@@ -184,6 +184,8 @@ interface GrantableTool {
   unavailable: string | null;
   /** Whether a grant given afresh leaves it hidden, for its owner to turn on; a built-in's own say. */
   startsHidden?: boolean;
+  /** Whether a grant given afresh leaves it at Offer rather than Always; a built-in's own say. */
+  startsOffered?: boolean;
 }
 
 /**
@@ -282,6 +284,9 @@ function fixedAsBuiltIn(): string {
       'knowing that an agent missing one of these behaves in ways this product cannot stand behind.',
   );
 }
+
+/** The built-in the server carries Always while a workspace keeps its built-ins fixed; see AgentAPI. */
+const FINISH_ANSWER = 'finish_answer';
 
 function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
   switch (governance) {
@@ -454,6 +459,12 @@ interface GrantListProps<Item> {
    * move the count by two - one grant, said twice.
    */
   countedOf?: (item: Item) => boolean;
+  /**
+   * Whether a row cycles Offer and Always only: granted by something wider
+   * that hands over the whole family - the box tools with a box label - so
+   * none of it is hidden on its own, while each may be marked to travel.
+   */
+  unhideableOf?: (item: Item) => boolean;
 }
 
 /**
@@ -515,6 +526,7 @@ function GrantList<Item>({
   fixedOf,
   unavailableOf,
   countedOf,
+  unhideableOf,
 }: GrantListProps<Item>) {
   const [search, setSearch] = useState('');
   /*
@@ -664,7 +676,11 @@ function GrantList<Item>({
   const cycleTool = (row: { item: Item; value: string; ticked: boolean; fixed: string | null; unavailable: string | null }) => {
     if (row.fixed !== null || row.unavailable !== null) return;
     const state = toolState(row);
-    if (state === 'hide') {
+    if (state === 'always' && (unhideableOf?.(row.item) ?? false)) {
+      // Always -> Offer, where the grant is not this row's to take away.
+      touch(row.value);
+      onMark?.((marked ?? []).filter((one) => one !== row.value));
+    } else if (state === 'hide') {
       // Hide -> Offer: the grant.
       touch(row.value);
       onChange([...granted, row.value]);
@@ -689,6 +705,13 @@ function GrantList<Item>({
     always: t('Always — carried in front of the model every turn, once a tool limit is set. Click to hide it.'),
   };
   const STATE_CLASS: Record<ToolState, string> = { hide: own.stateHide, offer: own.stateOffer, always: own.stateAlways };
+  /** What a row's control says on hover: a row that cannot be hidden goes back to Offer. */
+  const stateTitle = (row: { item: Item; value: string; ticked: boolean; fixed: string | null }): string => {
+    const state = toolState(row);
+    return state === 'always' && (unhideableOf?.(row.item) ?? false)
+      ? t('Always — carried in front of the model every turn, once a tool limit is set. Click to offer it.')
+      : STATE_TITLE[state];
+  };
 
   /*
    * What a press of "grant these" acts on: the rows the filter and the search
@@ -702,7 +725,10 @@ function GrantList<Item>({
    */
   // A fixed row is not the press's to grant or clear: it is switched with the
   // grant it comes with, and a press that reached it would do nothing. #444.
-  const picked = rows.filter((row) => row.inGroup && row.matches && row.fixed === null && row.unavailable === null);
+  // Nor a row that cannot be hidden: clearing would hide it, which is not this list's to do.
+  const picked = rows.filter(
+    (row) => row.inGroup && row.matches && row.fixed === null && row.unavailable === null && !(unhideableOf?.(row.item) ?? false),
+  );
   const matching = picked.length;
   /*
    * Ticked rows that the search does not name, and which are on screen anyway.
@@ -936,7 +962,7 @@ function GrantList<Item>({
                       data-tool-fixed={row.fixed === null ? undefined : ''}
                       disabled={row.fixed !== null || row.unavailable !== null}
                       onClick={() => cycleTool(row)}
-                      title={row.unavailable ?? row.fixed ?? STATE_TITLE[toolState(row)]}
+                      title={row.unavailable ?? row.fixed ?? stateTitle(row)}
                       aria-label={`${row.name}: ${STATE_LABEL[toolState(row)]}${row.unavailable !== null ? `. ${row.unavailable}` : row.fixed === null ? '' : `. ${row.fixed}`}`}
                     >
                       {STATE_LABEL[toolState(row)]}
@@ -1405,6 +1431,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         summary: tool.summary,
         unavailable: tool.unavailable,
         startsHidden: tool.startsHidden,
+        startsOffered: tool.startsOffered,
       }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -1486,8 +1513,22 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   const orknuxStartingOn = toolCatalogue.items
     .filter((tool) => tool.governance === 'ORKNUX_ACCESS' && tool.startsHidden !== true)
     .map((tool) => tool.name);
+  /** And the ones among them it marks Always: none start there today, every orknux_ tool starts at Offer. */
+  const orknuxStartingAlways = toolCatalogue.items
+    .filter((tool) => orknuxStartingOn.includes(tool.name) && tool.startsOffered !== true)
+    .map((tool) => tool.name);
+  /*
+   * The box rows, while a label is held: granted as one family by the label,
+   * so never hidden one by one, but each Offer or Always by its mark in
+   * `requiredTools`, which is where the server reads it. Fixed at Hide without
+   * a label, as before.
+   */
+  const boxNames = toolCatalogue.items.filter((tool) => tool.governance === 'BOX_ACCESS').map((tool) => tool.name);
+  const boxesHeld = boxLabels.length > 0;
+  const markedHere = (governance: BuiltInToolGovernance | null): boolean =>
+    (governance === 'ORKNUX_ACCESS' && orknuxAccess) || (governance === 'BOX_ACCESS' && boxesHeld);
   const fixedRows = toolCatalogue.items.filter(
-    (tool) => fixedBecause(tool.governance) !== null && !(tool.governance === 'ORKNUX_ACCESS' && orknuxAccess),
+    (tool) => fixedBecause(tool.governance) !== null && !markedHere(tool.governance),
   );
   const fixedNames = new Set(fixedRows.map((tool) => tool.name));
   const fixedOn = fixedRows.filter((tool) => comesWithGrant(tool.governance)).map((tool) => tool.name);
@@ -1496,15 +1537,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * numbers. A built-in that comes with a grant is carried whenever that grant
    * is on, not searched for, so it counts towards both. Issues #413, #444.
    */
-  // An orknux_ mark kept while the grant is off carries nothing; the server drops it on save.
+  // An orknux_ or orkbox_ mark kept while its grant is off carries nothing; the server drops it on save.
   const alwaysCarried =
-    requiredTools.filter((name) => orknuxAccess || !orknuxNames.includes(name)).length + fixedOn.length;
+    requiredTools.filter(
+      (name) => (orknuxAccess || !orknuxNames.includes(name)) && (boxesHeld || !boxNames.includes(name)),
+    ).length + fixedOn.length;
   /*
    * Granted counts each grant once. `http_allowList` is carried with the HTTP
    * tools, so it is in what always travels, but it is not a grant beside the
    * one that brought it: that one is already a name in `tools`. Issue #609.
    */
-  const grantedTotal = tools.length + fixedRows.filter(
+  const grantedTotal = tools.length + (boxesHeld ? boxNames.length : 0) + fixedRows.filter(
     (tool) => tool.governance !== 'HTTP_TOOLS' && comesWithGrant(tool.governance),
   ).length;
   /*
@@ -2236,16 +2279,21 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
           linkOf={(tool) => tool.link}
           groupOf={(tool) => tool.plugin ?? null}
           // An orknux_ name held while the grant is off is remembered, not granted: the row reads Hide.
-          granted={[...tools.filter((name) => orknuxAccess || !orknuxNames.includes(name)), ...fixedOn]}
+          granted={[
+            ...tools.filter((name) => orknuxAccess || !orknuxNames.includes(name)),
+            ...fixedOn,
+            // The box tools while a label is held: granted by the label, so not names in `tools`.
+            ...(boxesHeld ? boxNames : []),
+          ]}
           onChange={(names) => {
             // The rows that come with a grant are views of it, not grants of
             // their own, so they are taken out before the rest are stored. #444.
-            const kept = names.filter((one) => !fixedNames.has(one));
+            const kept = names.filter((one) => !fixedNames.has(one) && !boxNames.includes(one));
             setTools(kept);
             // A tool that is no longer granted cannot be one that always
             // travels: the mark is about a grant, and one left behind would be
-            // a name nothing resolves. #372.
-            setRequiredTools((held) => held.filter((one) => kept.includes(one)));
+            // a name nothing resolves. #372. A box tool's mark is the label's, kept while it is held.
+            setRequiredTools((held) => held.filter((one) => kept.includes(one) || (boxesHeld && boxNames.includes(one))));
           }}
           /*
             The Always state, kept whether or not a ceiling is set. It has no
@@ -2262,10 +2310,21 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             that is the more specific thing to know. Issue #482.
           */
           fixedOf={(tool) =>
-            tool.governance === 'ORKNUX_ACCESS' && orknuxAccess
+            markedHere(tool.governance)
               ? null
               : fixedBecause(tool.governance) ??
-                (tool.governance === 'GRANT' && !unsafeBuiltIns ? fixedAsBuiltIn() : null)
+                (tool.governance === 'GRANT' && !unsafeBuiltIns && tool.name === FINISH_ANSWER ? fixedAsBuiltIn() : null)
+          }
+          /*
+            And the rows that are Offer or Always but never Hide here: the box
+            tools while a label is held, and the server's own tools while the
+            workspace keeps them - hiding one is what that gate is about, and
+            whether one is carried or found is the agent's choice either way.
+            Not finish_answer, which the server carries while the gate is shut.
+          */
+          unhideableOf={(tool) =>
+            (tool.governance === 'BOX_ACCESS' && boxesHeld) ||
+            (tool.governance === 'GRANT' && !unsafeBuiltIns && tool.name !== FINISH_ANSWER)
           }
           unavailableOf={(tool) => tool.unavailable}
           // A view of the HTTP tool rows above it, so not a grant of its own to count. Issue #609.
@@ -2418,10 +2477,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                 onChange={(event) => {
                   const on = event.target.checked;
                   setOrknuxAccess(on);
-                  // Granted afresh, every orknux_ tool starts at Always, as a new agent's do, but the ones that start hidden; each is switched below.
+                  // Granted afresh, the orknux_ tools start as a new agent's do: at Offer, but the ones that start hidden; each is switched below.
                   if (on) {
                     setTools((held) => [...held, ...orknuxStartingOn.filter((name) => !held.includes(name))]);
-                    setRequiredTools((held) => [...held, ...orknuxStartingOn.filter((name) => !held.includes(name))]);
+                    setRequiredTools((held) => [...held, ...orknuxStartingAlways.filter((name) => !held.includes(name))]);
                   }
                 }}
               />
