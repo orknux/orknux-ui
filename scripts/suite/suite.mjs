@@ -2483,6 +2483,12 @@ export const TESTS = [
     /* The models are the server's own - made where there are too few - and the start is answered here, so nothing runs. */
   },
   {
+    name: 'research-unreviewable-check',
+    what: 'on a research mode whose workflow has no Review step, New research draws Review switched off and unticked, with no reviewer to choose and a (?) on its line saying why in one sentence; a mode with one gives the box back as it was left, and Start sends no review',
+    needs: ['workspace'],
+    /* The modes, the list and the start are answered here; the models are the server's own, made where there are none. */
+  },
+  {
     name: 'research-progress-check',
     what: 'a research shows its step, sub-questions and sources while it runs, and keeps the sources with its report; finished, it lists follow-up questions, each started as a research of its own once confirmed',
     needs: ['workspace'],

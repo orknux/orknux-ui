@@ -22,6 +22,8 @@ export interface ResearchMode {
   /** Null where the workflow it named is no longer in the workspace. */
   workflowId: string | null;
   workflowName: string | null;
+  /** Whether its workflow has a Review step; a research in a mode without one cannot be reviewed. */
+  reviewable: boolean;
 }
 
 /** A file on the Artifacts page a research can read. */
@@ -188,7 +190,7 @@ export interface StartResearchInput {
   followUps?: number | null;
 }
 
-const MODE_FIELDS = 'id kind name workflowId workflowName';
+const MODE_FIELDS = 'id kind name workflowId workflowName reviewable';
 
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +

@@ -3493,6 +3493,7 @@ export const PL: Record<string, string> = {
   "Sub-questions": "Pytania cząstkowe",
   "Use web search": "Używaj wyszukiwania w sieci",
   "Include images": "Dołączaj obrazy",
+  "This mode's workflow has no Review step, so it cannot be reviewed": "Przepływ tego trybu nie ma kroku recenzji, więc nie można go zrecenzować",
   "Web search": "Wyszukiwanie w sieci",
   "No chat model": "Brak modelu czatu",
   "Planning the research": "Planowanie badania",
