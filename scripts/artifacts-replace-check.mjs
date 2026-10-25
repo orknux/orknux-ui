@@ -36,6 +36,12 @@ if (id !== null) {
 
   const replace = page.locator('[data-reading-replace]');
   record(await replace.count() === 1, 'the viewer has a Replace beside Open in a tab');
+  // Icons, as the picture viewer's bar is: Open in a tab, Replace and Download the same round button.
+  const bar = await page.evaluate(() => ['[data-reading-open]', '[data-reading-replace]', '[data-reading-download]'].map((at) => {
+    const box = document.querySelector(at)?.getBoundingClientRect();
+    return box ? `${Math.round(box.width)}x${Math.round(box.height)}` : null;
+  }));
+  record(bar.every((one) => one !== null && one === bar[0]) && (await replace.innerText()).trim() === '', `the document viewer's bar is icons of one size (${bar.join(', ')})`);
   if (await replace.count() === 1) {
     await page.locator('[data-reading-replace-file]').setInputFiles({ name, mimeType: 'text/plain', buffer: Buffer.from(NEW) });
     const dialog = page.locator('dialog[open]');
@@ -91,6 +97,13 @@ if (pictureId === null) {
   const button = page.locator('[data-picture-replace]');
   await button.waitFor({ timeout: 15_000 }).catch(() => undefined);
   record(await button.count() === 1, 'the picture viewer has a Replace');
+  // An icon the size of the bar's others, not a word overflowing a round button into its neighbours.
+  const sized = await page.evaluate(() => {
+    const replace = document.querySelector('[data-picture-replace]')?.getBoundingClientRect();
+    const save = document.querySelector('[data-picture-save]')?.getBoundingClientRect();
+    return replace && save ? { same: Math.abs(replace.width - save.width) <= 1 && Math.abs(replace.height - save.height) <= 1, apart: Math.round(save.left - replace.right) } : null;
+  });
+  record(sized !== null && sized.same && sized.apart >= 0, `its button is the bar's size and does not overlap the next (${JSON.stringify(sized)})`);
   if (await button.count() === 1) {
     await page.locator('[data-reading-replace-file]').setInputFiles({ name: pictureName, mimeType: 'image/png', buffer: Buffer.from(await png(2), 'base64') });
     const dialog = page.locator('dialog[open]').filter({ hasText: /link/i });

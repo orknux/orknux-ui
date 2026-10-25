@@ -309,23 +309,17 @@
   white-space: nowrap;
 }
 
-.readingOut {
-  color: var(--color-accent-brand);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.readingOut:hover { text-decoration: underline; }
-
-/* Replace reads as a link beside Open in a tab, though it is a button. */
-button.readingOut {
-  padding: 0;
-  background: none;
-  border: none;
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
+/* An icon in the bar, drawn in the text's colour so it reads in either theme. */
+.readingIcon {
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
 }
 
 .readingClose {

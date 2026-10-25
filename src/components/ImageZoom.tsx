@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import downloadIcon from '../assets/download.svg';
 import paletteIcon from '../assets/palette.svg';
+import replaceIcon from '../assets/cloud-upload.svg';
 import styles from './ImageZoom.module.css';
 import { t } from '../i18n';
 
@@ -192,8 +193,15 @@ export function ImageZoom({ picture, onClose, editHref, onReplace }: ImageZoomPr
                 </Link>
               )}
               {onReplace !== undefined && (
-                <button type="button" className={styles.tool} onClick={onReplace} title={t('Put another file at this address')} data-picture-replace="">
-                  {t('Replace')}
+                <button
+                  type="button"
+                  className={styles.tool}
+                  onClick={onReplace}
+                  aria-label={t('Replace')}
+                  title={t('Replace')}
+                  data-picture-replace=""
+                >
+                  <span className={styles.saveIcon} style={{ maskImage: `url("${replaceIcon}")`, WebkitMaskImage: `url("${replaceIcon}")` }} />
                 </button>
               )}
               <a

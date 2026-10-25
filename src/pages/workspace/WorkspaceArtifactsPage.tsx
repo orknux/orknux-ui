@@ -7,6 +7,8 @@ import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts, replac
 import type { Artifact } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import downloadIcon from '../../assets/download.svg';
+import openIcon from '../../assets/arrow-up-right.svg';
+import replaceIcon from '../../assets/cloud-upload.svg';
 import paletteIcon from '../../assets/palette.svg';
 import { timeAgo } from '../../api/tools';
 import { AppShell } from '../../components/AppShell';
@@ -570,23 +572,31 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 <span className={styles.dot}>·</span>
                 {read.source}
               </span>
+              {/* Icons, as the picture viewer's bar is: the two viewers of one page read the same. */}
               <a
-                className={styles.readingOut}
+                className={styles.readingClose}
                 href={read.previewUrl ?? read.url}
                 target="_blank"
                 rel="noreferrer noopener"
-                title={t('Open this in a tab of its own')}
-              >{t('Open in a tab')}</a>
+                aria-label={t('Open in a tab')}
+                title={t('Open in a tab')}
+                data-reading-open=""
+              >
+                <span className={styles.readingIcon} style={{ maskImage: `url("${openIcon}")`, WebkitMaskImage: `url("${openIcon}")` }} />
+              </a>
               {/* Only a file somebody saved has one to swap; a drawn picture changes in the image editor. */}
               {read.kind === 'SAVED' && (
                 <>
                   <button
                     type="button"
-                    className={styles.readingOut}
+                    className={styles.readingClose}
                     onClick={() => replacer.current?.click()}
-                    title={t('Put another file at this address')}
+                    aria-label={t('Replace')}
+                    title={t('Replace')}
                     data-reading-replace=""
-                  >{t('Replace')}</button>
+                  >
+                    <span className={styles.readingIcon} style={{ maskImage: `url("${replaceIcon}")`, WebkitMaskImage: `url("${replaceIcon}")` }} />
+                  </button>
                 </>
               )}
               <a
@@ -597,7 +607,7 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 title={t('Download')}
                 data-reading-download=""
               >
-                <img src={downloadIcon} alt="" width={14} height={14} />
+                <span className={styles.readingIcon} style={{ maskImage: `url("${downloadIcon}")`, WebkitMaskImage: `url("${downloadIcon}")` }} />
               </a>
               <button
                 type="button"
