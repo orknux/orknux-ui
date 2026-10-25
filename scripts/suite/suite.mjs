@@ -2197,6 +2197,12 @@ export const TESTS = [
     /* Sets an installation-wide number and puts it back, so nothing may run beside it. */
     alone: true,
   },
+  {
+    name: 'diagram-palette-check',
+    what: 'Quick actions finds a diagram by its name and a node by its label, and opens the editor on that node',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
 
   {
     name: 'negative-prompt-check',
