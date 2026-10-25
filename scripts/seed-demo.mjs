@@ -1140,7 +1140,15 @@ if (imageModel) {
   const always = [...new Set([...(held?.requiredTools ?? []), 'draw_picture', 'picture_link'])];
   await gql('mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }', {
     id: newsletter.id,
-    input: { name: 'Newsletter writer', type: 'LLM', modelId: writerModel.id, requiredTools: always },
+    input: {
+      name: 'Newsletter writer',
+      description: 'Writes the monthly customer newsletter, and draws its pictures.',
+      systemPrompt: NEWSLETTER_PROMPT,
+      type: 'LLM',
+      modelId: writerModel.id,
+      icon: 'file-text',
+      requiredTools: always,
+    },
   });
 }
 log(`${newsletter ? 3 : 2} agents`);
