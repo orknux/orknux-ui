@@ -8,6 +8,7 @@ import {
 } from '../api/artifacts';
 import { t } from '../i18n';
 import styles from './Markdown.module.css';
+import { loadPdfjs } from './pdfjs';
 
 /** What the server shows as a picture, and so what an `<img>` can draw. */
 const PICTURES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'];
@@ -40,26 +41,10 @@ function kindOf(title: string, type: string): string {
  *
  * pdf.js rather than a frame: a browser's own PDF reader is a plugin, and a
  * plugin does not run in the sandboxed frame the server insists a document is
- * read in. Loaded
- * only when there is a PDF to draw, because it is the size of the rest of the
- * application.
+ * read in. `PdfReader` draws the whole document for the same reason.
  */
 async function drawFirstPage(id: string, canvas: HTMLCanvasElement): Promise<void> {
-  const [pdfjs, Worker, bytes] = await Promise.all([
-    import('pdfjs-dist'),
-    /*
-     * Built by Vite as a worker, not handed over by URL: the file pdf.js ships
-     * is `.mjs`, which the image's nginx serves as application/octet-stream,
-     * and a browser refuses a module worker of that type. Vite's own worker
-     * build is a `.js` file like the rest of the bundle.
-     */
-    import('pdfjs-dist/build/pdf.worker.min.mjs?worker'),
-    fetchSavedArtifactBytes(id),
-  ]);
-  // One worker for every miniature on the page, made by the first to need it.
-  if (pdfjs.GlobalWorkerOptions.workerPort === null) {
-    pdfjs.GlobalWorkerOptions.workerPort = new Worker.default();
-  }
+  const [pdfjs, bytes] = await Promise.all([loadPdfjs(), fetchSavedArtifactBytes(id)]);
   const document = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
   try {
     const page = await document.getPage(1);

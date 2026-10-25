@@ -222,6 +222,16 @@
   --wireframe-note: #fdf3c4;
   --wireframe-note-edge: #d9c87a;
   --wireframe-select: #2f80ed;
+
+  /*
+   * A PDF's page, drawn by `PdfReader`. White in both themes for the same
+   * reason as the wireframe: the document says what colour its paper is, and a
+   * page that went dark with the interface would be drawn on a colour its own
+   * text was never chosen against. Its own name so a selection over the text
+   * layer is the one tint, too.
+   */
+  --document-paper: #ffffff;
+  --document-selection: rgb(0 0 255 / 25%);
 }
 
 /*

@@ -349,3 +349,7 @@
   padding: var(--space-24);
   color: var(--color-text-secondary);
 }
+
+.readingPdf {
+  flex: 1;
+}

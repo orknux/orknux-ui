@@ -173,8 +173,20 @@ export async function fetchSavedArtifactType(id: string): Promise<{ type: string
 
 /** A saved artifact's bytes, for a page that draws them itself. */
 export async function fetchSavedArtifactBytes(id: string): Promise<ArrayBuffer> {
-  const answer = await fetch(savedArtifactUrl(id), { credentials: 'same-origin' });
-  if (!answer.ok) throw new Error(`Artifact ${id} answered ${answer.status}`);
+  return fetchDocumentBytes(savedArtifactUrl(id));
+}
+
+/**
+ * A document's bytes, from an address the server gave for it - an artifact's
+ * `url` or `previewUrl`, or a research's.
+ *
+ * For a page that draws the document itself rather than framing it: the
+ * server serves every preview sandboxed, and a browser's own PDF reader does
+ * not run in a sandboxed document, so a PDF is fetched and drawn by pdf.js.
+ */
+export async function fetchDocumentBytes(address: string): Promise<ArrayBuffer> {
+  const answer = await fetch(address, { credentials: 'same-origin' });
+  if (!answer.ok) throw new Error(`${address} answered ${answer.status}`);
   return answer.arrayBuffer();
 }
 

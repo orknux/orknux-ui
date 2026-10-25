@@ -51,6 +51,14 @@ if (document_ === undefined) {
 
 record(true, `a document artifact to look at: ${document_.filename} (${document_.contentType})`);
 
+/*
+ * A PDF is drawn by the page rather than framed: a browser's PDF reader does
+ * not run under the sandbox every preview is served with. What the frame is
+ * asked below, the reader is asked for a PDF; `artifact-pdf-reader-check`
+ * measures the drawing itself.
+ */
+const isPdf = document_.contentType.toLowerCase().split(';')[0].trim() === 'application/pdf';
+
 /* ------------------------------------------------------- what the server says */
 
 /*
@@ -209,11 +217,12 @@ await page.goto(`${BASE}${new URL(document_.previewUrl, BASE).pathname.replace('
 await page.waitForTimeout(2000);
 const cold = await page.evaluate(() => ({
   frame: document.querySelector('iframe[src*="/preview"]')?.getAttribute('src') ?? '',
+  reader: document.querySelectorAll('[role="dialog"] [data-pdf-reader]').length,
   pictureViewer: document.querySelectorAll('dialog[open]').length,
 }));
 record(
-  cold.frame === document_.previewUrl,
-  `a link straight to a document opens it, read where it is (${cold.frame})`,
+  isPdf ? cold.reader === 1 : cold.frame === document_.previewUrl,
+  `a link straight to a document opens it, read where it is (${isPdf ? 'the PDF reader' : cold.frame})`,
 );
 record(
   cold.pictureViewer === 0,
@@ -239,7 +248,7 @@ record(
 await page.keyboard.press('Escape');
 await page.waitForTimeout(600);
 const closed = await page.evaluate(() => ({
-  panel: document.querySelectorAll('[role="dialog"] iframe[src*="/preview"]').length,
+  panel: document.querySelectorAll('[role="dialog"] iframe[src*="/preview"], [role="dialog"] [data-pdf-reader]').length,
   where: window.location.pathname,
 }));
 record(closed.panel === 0, 'Escape closes the document');
@@ -252,11 +261,19 @@ record(
 await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
 await page.waitForTimeout(1500);
 
-const inside = page.frames().find((one) => one.url().includes('/preview'));
-const words = inside === undefined ? '' : await inside.evaluate(() => document.body?.innerText ?? '').catch(() => '');
-record(
-  inside !== undefined && words.trim().length > 0,
-  `the document is drawn inside the frame rather than refused (${words.replace(/\s+/g, ' ').trim().slice(0, 60)})`,
-);
+if (isPdf) {
+  const drawn = await page
+    .waitForSelector('[role="dialog"] canvas[data-drawn="true"]', { timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false);
+  record(drawn, 'the PDF is drawn in the reader rather than refused');
+} else {
+  const inside = page.frames().find((one) => one.url().includes('/preview'));
+  const words = inside === undefined ? '' : await inside.evaluate(() => document.body?.innerText ?? '').catch(() => '');
+  record(
+    inside !== undefined && words.trim().length > 0,
+    `the document is drawn inside the frame rather than refused (${words.replace(/\s+/g, ' ').trim().slice(0, 60)})`,
+  );
+}
 
 await finish(browser);

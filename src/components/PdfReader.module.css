@@ -1,0 +1,165 @@
+/* The reader fills whatever box it is given: the tools on top, the pages scrolling under them. */
+.reader {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-bg);
+}
+
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  padding: var(--space-6) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.tool,
+.level {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.tool {
+  width: 28px;
+  border-radius: 50%;
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.level {
+  min-width: 56px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.tool:hover:not(:disabled),
+.level:hover {
+  border-color: var(--color-accent-brand);
+}
+
+.tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.where {
+  min-width: 96px;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Positioned, so a page's offsetTop is measured from here when the reader turns to it. */
+.pages {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  /* Safe: a page zoomed wider than the reader overflows to the right, where it can be scrolled to, not off the left. */
+  align-items: safe center;
+  gap: var(--space-16);
+  min-height: 0;
+  padding: var(--space-16);
+  overflow: auto;
+}
+
+.note {
+  margin: auto;
+  color: var(--color-text-secondary);
+}
+
+/*
+ * One page, at the size it will be drawn before it is: a document opened at
+ * page six has six pages of height above it whether or not they are drawn yet.
+ */
+.sheet {
+  position: relative;
+  flex: none;
+  background: var(--document-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The page's text, transparent, over the drawing - which is what lets it be
+ * selected and copied. pdf.js places and sizes every span itself; these are
+ * the rules its own viewer's stylesheet gives that layer, less what only its
+ * viewer uses.
+ */
+.text {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.text :is(span, br) {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.text > :not(:global(.markedContent)),
+.text :global(.markedContent) span:not(:global(.markedContent)) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.text :global(.markedContent) {
+  display: contents;
+}
+
+.text ::selection {
+  background: var(--document-selection);
+}
+
+/* What pdf.js puts at the end, so a drag past the last line does not select the whole page. */
+.text :global(.endOfContent) {
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  display: block;
+  cursor: default;
+  user-select: none;
+}
