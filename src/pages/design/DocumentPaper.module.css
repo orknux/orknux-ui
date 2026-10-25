@@ -1,0 +1,355 @@
+/*
+ * A document on its sheets: white paper on a desk, the text flowing over the
+ * sheets drawn behind it, in the editor and in the view alike.
+ *
+ * Every block keeps its space below it and none above, so the space between
+ * two blocks is one number the page layout can add a spacer to without the
+ * browser collapsing margins into something else (see documentPages.ts).
+ */
+
+.paper {
+  position: relative;
+  flex: none;
+  margin: 0 auto;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  background: var(--document-paper);
+  box-shadow: var(--document-sheet-shadow);
+}
+
+.flow {
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* ---- The words ---- */
+
+.prose {
+  min-height: 1.6em;
+  color: var(--document-ink);
+  font-family: var(--font-sans);
+  font-size: 11pt;
+  line-height: 1.55;
+  outline: none;
+  /* Prose wraps: there is never a reason to scroll a page sideways. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  caret-color: var(--document-ink);
+}
+
+.prose :global(p),
+.prose :global(h1),
+.prose :global(h2),
+.prose :global(h3),
+.prose :global(h4),
+.prose :global(h5),
+.prose :global(h6),
+.prose :global(ul),
+.prose :global(ol),
+.prose :global(blockquote),
+.prose :global(table),
+.prose :global(hr) {
+  margin-top: 0;
+  margin-bottom: 0.7em;
+}
+
+.prose :global(h1) {
+  font-size: 22pt;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.prose :global(h2) {
+  font-size: 16pt;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.prose :global(h3) {
+  font-size: 13pt;
+  font-weight: 600;
+}
+
+.prose :global(h4),
+.prose :global(h5),
+.prose :global(h6) {
+  font-size: 11pt;
+  font-weight: 600;
+}
+
+.prose :global(ul),
+.prose :global(ol) {
+  padding-left: 1.5em;
+}
+
+.prose :global(li > p) {
+  margin-bottom: 0.25em;
+}
+
+.prose :global(blockquote) {
+  padding-left: 1em;
+  border-left: 3px solid var(--document-quote);
+  color: var(--document-muted);
+}
+
+.prose :global(a) {
+  color: var(--document-link);
+  text-decoration: underline;
+}
+
+.prose :global(code) {
+  padding: 0 0.2em;
+  background: var(--document-code-bg);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.prose :global(hr) {
+  border: none;
+  border-top: 1px solid var(--document-edge);
+}
+
+.prose :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.prose :global(td),
+.prose :global(th) {
+  position: relative;
+  padding: 4px 8px;
+  border: 1px solid var(--document-edge);
+  vertical-align: top;
+}
+
+.prose :global(th) {
+  background: var(--document-code-bg);
+  font-weight: 600;
+  text-align: left;
+}
+
+.prose :global(td > p),
+.prose :global(th > p) {
+  margin: 0;
+}
+
+.prose :global(.selectedCell) {
+  background: color-mix(in srgb, var(--document-select) 12%, transparent);
+}
+
+.prose :global(.column-resize-handle) {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: 0;
+  width: 4px;
+  background: var(--document-select);
+  pointer-events: none;
+}
+
+.prose :global(.ProseMirror-selectednode) {
+  outline: 2px solid var(--document-select);
+}
+
+.prose :global(.ProseMirror-gapcursor:after) {
+  border-top-color: var(--document-ink);
+}
+
+/* ---- A page break: a dashed line in the editor, nothing on paper ---- */
+
+.pageBreak {
+  height: 0;
+  margin: 0 0 0.7em;
+  border-top: 1px dashed var(--document-edge);
+}
+
+/* ---- Pictures ---- */
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 0.7em;
+}
+
+.figureSelected .pictureFrame {
+  outline: 2px solid var(--document-select);
+}
+
+.pictureFrame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.picture {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Where a picture is dragged wider or narrower: its lower right corner. */
+.resize {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: var(--document-paper);
+  border: 2px solid var(--document-select);
+  border-radius: 2px;
+  cursor: nwse-resize;
+}
+
+.captionInput {
+  width: 80%;
+  padding: 2px 4px;
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  color: var(--document-muted);
+  font: inherit;
+  font-size: 9pt;
+  text-align: center;
+  outline: none;
+}
+
+.captionInput:hover,
+.captionInput:focus {
+  border-color: var(--document-edge);
+}
+
+.caption {
+  color: var(--document-muted);
+  font-size: 9pt;
+  text-align: center;
+}
+
+/* ---- Code: monospace, highlighted, scrolled sideways rather than wrapped ---- */
+
+.codeBlock {
+  margin: 0 0 0.7em;
+  background: var(--document-code-bg);
+  border: 1px solid var(--document-code-edge);
+  border-radius: 4px;
+}
+
+.codeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--document-code-edge);
+}
+
+.codeLanguage,
+.codeCopy {
+  padding: 1px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--document-muted);
+  font: inherit;
+  font-size: 8.5pt;
+  cursor: pointer;
+}
+
+.codeLanguage:hover,
+.codeCopy:hover {
+  border-color: var(--document-code-edge);
+}
+
+.codePre {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 9.5pt;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.codePre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  white-space: pre;
+}
+
+.codePre :global(.hljs-comment),
+.codePre :global(.hljs-quote) {
+  color: var(--document-code-comment);
+  font-style: italic;
+}
+
+.codePre :global(.hljs-string),
+.codePre :global(.hljs-attr),
+.codePre :global(.hljs-symbol),
+.codePre :global(.hljs-addition),
+.codePre :global(.hljs-regexp) {
+  color: var(--document-code-string);
+}
+
+.codePre :global(.hljs-number),
+.codePre :global(.hljs-literal) {
+  color: var(--document-code-number);
+}
+
+.codePre :global(.hljs-keyword),
+.codePre :global(.hljs-selector-tag),
+.codePre :global(.hljs-built_in),
+.codePre :global(.hljs-meta),
+.codePre :global(.hljs-doctag) {
+  color: var(--document-code-keyword);
+}
+
+.codePre :global(.hljs-title),
+.codePre :global(.hljs-type),
+.codePre :global(.hljs-class),
+.codePre :global(.hljs-name),
+.codePre :global(.hljs-section),
+.codePre :global(.hljs-variable),
+.codePre :global(.hljs-template-variable),
+.codePre :global(.hljs-attribute) {
+  color: var(--document-code-type);
+}
+
+/* ---- What is not the document: the suggestion, grammar marks, find ---- */
+
+.ghost {
+  color: var(--document-ghost);
+  pointer-events: none;
+  user-select: none;
+}
+
+.grammar,
+.spelling {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.grammar {
+  text-decoration-color: var(--document-grammar);
+}
+
+.spelling {
+  text-decoration-color: var(--document-spelling);
+}
+
+.prose :global(.ProseMirror-search-match) {
+  background: var(--document-find);
+}
+
+.prose :global(.ProseMirror-active-search-match) {
+  background: var(--document-find-active);
+}

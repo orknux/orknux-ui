@@ -29,6 +29,8 @@ export type ConfirmKind =
   | 'removeArtifact'
   | 'removeImage'
   | 'removeWireframe'
+  | 'removeDocument'
+  | 'removeDocumentCatalog'
   | 'restartResearch'
   | 'removeDiagram'
   | 'removeDiagramCatalog';
@@ -57,6 +59,8 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeArtifact',
   'removeImage',
   'removeWireframe',
+  'removeDocument',
+  'removeDocumentCatalog',
   'removeDiagram',
   'removeDiagramCatalog',
 ]);
@@ -307,6 +311,16 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Remove wireframe'),
       message: <>{t('The wireframe is deleted from this workspace, and there is no way back from this one:')} {name}</>,
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeDocument: {
+      title: t('Delete document'),
+      message: <>{t('The document is deleted from this workspace, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Delete'),
+    },
+    removeDocumentCatalog: {
+      title: t('Delete catalog'),
+      message: <>{t('The catalog is deleted; one that still holds documents is refused:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Delete'),
     },
     /* Not destructive: the research is kept, and what the steps before this one found with it. */
     restartResearch: {

@@ -12,7 +12,6 @@ import dashboardIcon from '../../assets/layout-dashboard.svg';
 import landingIcon from '../../assets/monitor.svg';
 import phoneIcon from '../../assets/smartphone.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
-import sendIcon from '../../assets/send.svg';
 import settingsIcon from '../../assets/sliders-horizontal.svg';
 import buttonIcon from '../../assets/rectangle-button.svg';
 import frameIcon from '../../assets/frame.svg';
@@ -29,8 +28,6 @@ import textIcon from '../../assets/type.svg';
 import undoIcon from '../../assets/undo.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
-import { Markdown } from '../../components/Markdown';
-import { Select } from '../../components/Select';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
 import form from '../../components/Dialog.module.css';
@@ -49,6 +46,8 @@ import shell from './DesignImageEditorPage.module.css';
 import styles from './WireframeEditorPage.module.css';
 import { boundsOf, WireframeShapes } from './WireframeDrawing';
 import { WireframeExport } from './WireframeExport';
+import { DesignChat } from './DesignChat';
+import type { ChatIdea } from './DesignChat';
 import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
 
 export interface WireframeEditorPageProps {
@@ -132,12 +131,7 @@ function touches(element: WireframeElement, area: { x: number; y: number; w: num
 }
 
 /** What an empty chat offers to draw: a pressed card is sent as it is, so each prompt is whole on its own. */
-interface Idea {
-  icon: string;
-  title: () => string;
-  line: () => string;
-  prompt: () => string;
-}
+type Idea = ChatIdea;
 
 const IDEAS: Idea[] = [
   {
@@ -227,7 +221,6 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const talkEnd = useRef<HTMLDivElement | null>(null);
   const fitted = useRef(false);
 
   const undoKey = useUndoShortcut();
@@ -291,7 +284,6 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
     } catch {
       // A conversation that cannot be kept is still a conversation.
     }
-    talkEnd.current?.scrollIntoView({ block: 'end' });
   }, [talk, answering]);
 
   /** A wireframe as the server holds it, taken onto the canvas, with the history this browser kept of it if that history ends here. */
@@ -1086,117 +1078,42 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
             </div>
           )}
 
-          <div className={styles.talk} data-testid="wireframe-chat">
-            {talk.length === 0 && !answering && (
-              <div className={styles.welcome} data-testid="wireframe-welcome">
-                <h2 className={styles.hello}>
-                  {tf('Hi {name}!', { name: firstName })}
-                  <span>{t('What shall we sketch?')}</span>
-                </h2>
-                <div className={styles.ideas}>
-                  {(elements.length > 0 ? [POLISH, ...IDEAS.slice(0, 3)] : IDEAS).map((idea) => (
-                    <button
-                      key={idea.icon}
-                      type="button"
-                      className={styles.idea}
-                      disabled={modelId === '' || wireframe === null}
-                      onClick={() => void ask(undefined, idea.prompt())}
-                      data-testid="wireframe-idea"
-                    >
-                      <span className={styles.ideaIcon}>
-                        <img src={idea.icon} alt="" width={18} height={18} />
-                      </span>
-                      <span className={styles.ideaText}>
-                        <span className={styles.ideaTitle}>{idea.title()}</span>
-                        <span className={styles.ideaLine}>{idea.line()}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {talk.map((turn, index) => (
-              <div
-                key={index}
-                className={turn.role === 'user' ? styles.mine : styles.theirs}
-                data-testid="wireframe-chat-message"
-                data-role={turn.role}
-              >
-                {turn.role === 'user' ? turn.content : <Markdown>{turn.content}</Markdown>}
-              </div>
-            ))}
-            {answering && (
-              <div className={styles.theirs}>
-                <Loader label={t('Drawing…')} delay={0} size={16} />
-              </div>
-            )}
-            {talkError !== null && (
-              <p className={form.error} role="alert" data-testid="wireframe-chat-error">
-                {talkError}
-              </p>
-            )}
-            <div ref={talkEnd} />
-          </div>
-
-          <form className={styles.composer} onSubmit={(event) => void ask(event)}>
-            <div className={styles.askBox}>
-              <textarea
-                className={styles.ask}
-                value={asking}
-                onChange={(event) => setAsking(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    event.currentTarget.form?.requestSubmit();
-                  }
-                }}
-                placeholder={t('Describe a screen to draw')}
-                aria-label={t('What to draw')}
-                data-testid="wireframe-chat-input"
-              />
-              <div className={styles.askBar}>
-                <Select
-                  className={`${form.input} ${form.select} ${styles.modelPill}`}
-                  value={modelId}
-                  onChange={(picked) => {
-                    setModelId(picked);
-                    try {
-                      localStorage.setItem(modelKey(workspaceId), picked);
-                    } catch {
-                      // Remembered for this visit only.
-                    }
-                  }}
-                  disabled={models === null || models.length === 0}
-                  aria-label={t('Model')}
-                  title={t('Model')}
-                  data-testid="wireframe-chat-model"
-                >
-                  {models !== null && models.length === 0 && <option value="">{t('This workspace has no chat model')}</option>}
-                  {(models ?? []).map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name} · {model.providerName}
-                    </option>
-                  ))}
-                </Select>
-                <button
-                  type="submit"
-                  className={styles.send}
-                  disabled={asking.trim() === '' || modelId === '' || answering || wireframe === null}
-                  title={answering ? t('Drawing…') : t('Send')}
-                  aria-label={t('Send')}
-                  data-testid="wireframe-chat-send"
-                >
-                  {answering ? <Loader label="" delay={0} size={14} /> :<img src={sendIcon} alt="" width={16} height={16} data-keeps-colour="" />}
-                </button>
-              </div>
-            </div>
-            {error !== null && wireframe !== null && (
-              <p className={form.error} role="alert">
-                {error}
-              </p>
-            )}
-            <span className={styles.count}>{tf('{count} elements', { count: elements.length })}</span>
-          </form>
+          <DesignChat
+            prefix="wireframe"
+            firstName={firstName}
+            question={t('What shall we sketch?')}
+            ideas={elements.length > 0 ? [POLISH, ...IDEAS.slice(0, 3)] : IDEAS}
+            ready={wireframe !== null}
+            talk={talk}
+            answering={answering}
+            talkError={talkError}
+            working={t('Drawing…')}
+            asking={asking}
+            onAsking={setAsking}
+            onAsk={(event, idea) => void ask(event, idea)}
+            models={models}
+            modelId={modelId}
+            onModel={(picked) => {
+              setModelId(picked);
+              try {
+                localStorage.setItem(modelKey(workspaceId), picked);
+              } catch {
+                // Remembered for this visit only.
+              }
+            }}
+            placeholder={t('Describe a screen to draw')}
+            inputLabel={t('What to draw')}
+            footer={
+              <>
+                {error !== null && wireframe !== null && (
+                  <p className={form.error} role="alert">
+                    {error}
+                  </p>
+                )}
+                <span className={styles.count}>{tf('{count} elements', { count: elements.length })}</span>
+              </>
+            }
+          />
         </div>
       </div>
       <UnsavedWorkDialog

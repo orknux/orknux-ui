@@ -96,6 +96,7 @@ import { VoiceMode } from '../../components/VoiceMode';
 import type { VoiceModeHandle, VoicePhase, VoiceTurnTaking } from '../../components/VoiceMode';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
+import { useInlineCompletion } from '../../components/inlineCompletion';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ReviewDialog } from '../../components/ReviewDialog';
 import { setSidebarCollapsed, useSidebarCollapsed } from '../../session/sidebar';
@@ -1469,8 +1470,6 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * Issue #649.
    */
   const [completionPause, setCompletionPause] = useState<number | null>(null);
-  /** The words the completion model suggested, and the text they follow. */
-  const [suggestion, setSuggestion] = useState<{ after: string; words: string } | null>(null);
   /** The grey copy of the composer the suggestion is drawn in. */
   const ghostRef = useRef<HTMLDivElement>(null);
   /** Whether a chat timer sounds when it ends, where its agent chose nothing: the workspace's setting. */
@@ -2848,41 +2847,17 @@ ${named}`;
    * drawn. A request that fails shows nothing - the person asked for nothing.
    */
   const menuOpen = offered.length > 0 || skillsOffered.length > 0;
-  /**
-   * What of the suggestion is still to come after [text]: the suggestion's
-   * words less what has been typed of them since. Typing the words that were
-   * suggested is taking them a letter at a time, and the rest stays drawn -
-   * it was taken away at the first key, and the same words asked for again.
+  /*
+   * The asking itself is `useInlineCompletion`'s, which the document editor
+   * shares: the pause, the abort, and an answer for text since typed through.
    */
-  const stillSuggested = (text: string) => {
-    if (suggestion === null || !text.startsWith(suggestion.after)) return null;
-    const whole = suggestion.after + suggestion.words;
-    if (!whole.startsWith(text) || whole.length <= text.length) return null;
-    return whole.slice(text.length);
-  };
-  useEffect(() => {
-    if (completionPause === null || currentId === null || sending || menuOpen) return;
-    if (draft.trim() === '' || caret !== draft.length) return;
-    // Being typed through: the rest is on screen already, and asking again would only redraw it.
-    if (draft !== suggestion?.after && stillSuggested(draft) !== null) return;
-    const asked = draft;
-    const chatAsked = currentId;
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      fetchChatCompletion(chatAsked, asked, controller.signal)
-        .then((words) => {
-          if (controller.signal.aborted || words === null || words.trim() === '') return;
-          setSuggestion({ after: asked, words });
-        })
-        .catch(() => undefined);
-    }, completionPause);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-    // `suggestion` is read only to skip a request, never to make one: an answer arriving is not a reason to ask.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completionPause, currentId, sending, menuOpen, draft, caret]);
+  const { setSuggestion, rest: stillSuggested } = useInlineCompletion({
+    pause: completionPause,
+    text: draft,
+    ready: currentId !== null && !sending && !menuOpen && caret === draft.length,
+    scope: currentId,
+    ask: (asked, signal) => (currentId === null ? Promise.resolve(null) : fetchChatCompletion(currentId, asked, signal)),
+  });
 
   /** What is drawn after the caret: only for the text it was asked for, or that text typed on along it, with the caret at its end. */
   const ghost = caret === draft.length && !menuOpen && !sending ? stillSuggested(draft) : null;

@@ -17,6 +17,8 @@ await page.waitForLoadState('networkidle');
 
 /** Each section's anchor, and one setting that has to be under it. */
 const SECTIONS = [
+  // Where the document editor checks grammar: LanguageTool here, or a server of its own.
+  ['grammar', 'grammar-server'],
   ['chat', 'chat-max-rounds'],
   ['agents', 'agent-max-subagents'],
   // The first wait on a rate limit that named none. Issue #608.

@@ -119,6 +119,7 @@ import { AddressSection } from './AddressSection';
 import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import { TunablesSection } from './TunablesSection';
+import { GrammarSection } from './GrammarSection';
 import type { PendingWrite } from './LogLevelsSection';
 import { ReportSwitch, ReportSwitches } from './ReportSwitches';
 import { fetchCommandRunsEnabled, setCommandRuns } from '../../api/commands';
@@ -267,6 +268,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const takeSchedulePending = useCallback((writes: PendingWrite[]) => setSchedulePending(writes), []);
   const [addressPending, setAddressPending] = useState<PendingWrite[]>([]);
   const takeAddressPending = useCallback((writes: PendingWrite[]) => setAddressPending(writes), []);
+  const [grammarPending, setGrammarPending] = useState<PendingWrite[]>([]);
+  const takeGrammarPending = useCallback((writes: PendingWrite[]) => setGrammarPending(writes), []);
   // Admin -> Settings -> Bulkheads, its numbers sent with the page's Save. Issue #616.
   const [bulkheadPending, setBulkheadPending] = useState<PendingWrite[]>([]);
   const takeBulkheadPending = useCallback((writes: PendingWrite[]) => setBulkheadPending(writes), []);
@@ -589,6 +592,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     watcherPending.length > 0 ||
     schedulePending.length > 0 ||
     addressPending.length > 0 ||
+    grammarPending.length > 0 ||
     bulkheadPending.length > 0 ||
     tuningPending.length > 0;
 
@@ -620,6 +624,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
       for (const write of watcherPending) await write();
       for (const write of schedulePending) await write();
       for (const write of addressPending) await write();
+      for (const write of grammarPending) await write();
       for (const write of bulkheadPending) await write();
       for (const write of tuningPending) await write();
       setSettings(held);
@@ -712,6 +717,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         {settings !== null && (
           <>
             <AddressSection onPending={takeAddressPending} busy={busy} />
+
+            <GrammarSection onPending={takeGrammarPending} busy={busy} />
 
             <h2 id="chat" className={styles.sectionHeading}>
               <span className={styles.headingWithHint}>

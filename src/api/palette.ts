@@ -25,6 +25,7 @@ export type EntityKind =
   | 'Skill'
   | 'Tool'
   | 'Issue'
+  | 'Document'
   | 'Diagram'
   | 'Diagram node';
 
@@ -131,6 +132,24 @@ const QUERIES: { kind: EntityKind; query: string; read: (data: any) => NamedEnti
         id: String(one.number),
         name: one.title,
         also: `#${one.number}`,
+      })),
+  },
+  {
+    /*
+     * Documents, by name, with the catalog each is filed in. Their words are
+     * the other half of finding one, and are the server's to search: the
+     * palette asks `searchDocuments` as somebody types, see CommandPalette.
+     */
+    kind: 'Document',
+    query: `query PaletteDocuments($workspaceId: ID!) {
+      documents(workspaceId: $workspaceId) { id name catalogName }
+    }`,
+    read: (data) =>
+      data.documents.map((one: Named & { catalogName: string }) => ({
+        kind: 'Document' as const,
+        id: one.id,
+        name: one.name,
+        catalog: one.catalogName,
       })),
   },
   named('Skill', 'workspaceSkills'),
