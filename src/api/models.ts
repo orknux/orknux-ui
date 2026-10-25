@@ -85,12 +85,8 @@ export interface ModelProvider {
    * False by default; the thinking is captured and shown either way.
    */
   sendsReasoning: boolean;
-  /** Every tool up front from an agent's first round, as set; null is the type's default. */
-  offerAllTools: boolean | null;
   /** How a picture edit's mask is drawn for this server; null is its type's. */
   editMask: EditMask | null;
-  /** Whether it does, the default resolved: on for Ollama unless set. */
-  offersAllTools: boolean;
   /** Whether its models draw with a negative prompt; where they do not, none is offered. Issue #657. */
   takesNegativePrompt: boolean;
   /** The most tools one request carries, as set; null is what the type takes. */
@@ -241,7 +237,7 @@ export interface ModelUsage {
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
   'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi sendsReasoning ' +
-  'offerAllTools offersAllTools takesNegativePrompt maxTools toolCap editMask ' +
+  'takesNegativePrompt maxTools toolCap editMask ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 export const MODEL_FIELDS =
@@ -375,21 +371,10 @@ export interface ProviderInput {
   chatApi?: ChatApi;
   /** Whether the model's earlier thinking is sent back. Undefined is off on create and unchanged on update. */
   sendsReasoning?: boolean;
-  /** Every tool up front; null is the type's default. Sent as given on every save. */
-  offerAllTools?: boolean | null;
   /** Set as given: null is its type's. */
   editMask?: EditMask | null;
   /** The most tools one request carries, 8 to 1024; null is what the type takes. */
   maxTools?: number | null;
-}
-
-/**
- * Whether a provider of this type hands every tool up front when nobody said:
- * Ollama, and OpenAI - whose type is also every OpenAI-compatible local server,
- * llama.cpp among them. The server's `ModelProvider.offersAllTools`, mirrored.
- */
-export function offersAllByDefault(type: ProviderType): boolean {
-  return type === 'OLLAMA' || type === 'OPENAI' || type === 'LLAMA_CPP';
 }
 
 /**

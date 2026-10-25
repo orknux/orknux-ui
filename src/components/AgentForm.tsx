@@ -1553,8 +1553,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
   /*
    * The most tools one request to the chosen model's provider carries, so the
    * form can say when this agent holds more: past it the rest are found as
-   * needed, which is a cost a provider set to offer every tool up front is
-   * there to avoid. Null while unknown, and then nothing is said.
+   * needed, a round each. Null while unknown, and then nothing is said.
    */
   const capOfModel = (() => {
     const model = modelCatalogue.items.find((one) => one.id === modelId);

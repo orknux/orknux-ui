@@ -126,20 +126,10 @@ allowance, and setting a share against it is refused until the number is there.
 
 ### What a provider is sent
 
-Three settings on a provider's page decide the shape of what goes to it, and
-all three are about a local server keeping its **prompt cache**: a server that
-has already read the beginning of a conversation reads only what is new, which
-on a long session is the difference between a second and several minutes.
+Two settings on a provider's page decide the shape of what goes to it.
 
-**All tools up front** hands an agent every tool it holds from its first round,
-with nothing to find or load, so the tool list never changes during a turn and
-the prompt a server has already read stays the prompt it is sent. It is on by
-default for **Ollama**, **OpenAI** and **llama.cpp** - which covers every
-OpenAI-compatible server - and off for the others. It goes past an agent's own
-**Tools carried at once**, up to the provider's limit; switch it off on the
-provider to have such an agent find its tools as it did before.
-
-**Most tools per request** is that limit: how many tools one request may carry.
+**Most tools per request** is how many tools one request may carry, on top of
+an agent's own **Tools carried at once**; the lower of the two wins.
 Left empty it is what the type takes - 128 for OpenAI, Azure, Ollama and
 llama.cpp, 256 for Anthropic - and past it the rest are still found as needed.
 Set it lower for a server that refuses fewer, or to keep a small model's list
@@ -736,9 +726,7 @@ the provider's - is sent the ones marked **Always** and finds the rest. Its
 briefing lists every tool it has, each marked *loaded* or *load it first*.
 `tool_find` searches them by words and loads nothing, `tool_describe` shows one
 in full - its whole description and every parameter - and `tool_load` takes the
-exact names it wants for its next message. On a provider with **All tools up
-front** the agent's own ceiling does not apply and only the provider's does;
-see *What a provider is sent*, above.
+exact names it wants for its next message.
 
 Two settings on a model's page matter most for a local model. **Tool calls per
 reply** set to one stops a confused model filling a reply with repeats; and
