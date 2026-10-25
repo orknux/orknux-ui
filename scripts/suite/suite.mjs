@@ -5109,6 +5109,11 @@ export const TESTS = [
     // The list is answered empty for the first visit; the chat it makes is real and deleted at the end.
   },
   {
+    name: 'header-perspectives-check',
+    what: 'the perspectives in the top bar stand closer together below 1920px, and keep their gap on a wide screen',
+    needs: [],
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],

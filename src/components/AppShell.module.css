@@ -157,6 +157,13 @@
   padding-left: 20px;
 }
 
+/* The pills carry their own padding; 16px between them as well read as 40px between two words on a laptop. */
+@media (max-width: 1919px) {
+  .navLinks {
+    gap: var(--space-4);
+  }
+}
+
 .navDivider {
   width: 1px;
   height: 24px;
