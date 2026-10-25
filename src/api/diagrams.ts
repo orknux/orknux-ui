@@ -244,8 +244,15 @@ export async function askDiagram(id: string, modelId: string, messages: DiagramT
 }
 
 /** Where the server writes a diagram out as a file. */
-export function diagramExportUrl(id: string, format: 'png' | 'svg' | 'pdf' | 'mermaid' | 'json'): string {
-  return `/api/diagrams/${id}/export/${format}`;
+/** The scales a PNG is offered at: so many pixels for each one the diagram is drawn at. */
+export const DIAGRAM_PNG_SCALES = [1, 2, 3] as const;
+
+export type DiagramPngScale = (typeof DIAGRAM_PNG_SCALES)[number];
+
+/** `scale` is for a PNG only; without it the server draws the chat picture's size. */
+export function diagramExportUrl(id: string, format: 'png' | 'svg' | 'pdf' | 'mermaid' | 'json', scale?: DiagramPngScale): string {
+  const base = `/api/diagrams/${id}/export/${format}`;
+  return format === 'png' && scale !== undefined ? `${base}?scale=${scale}` : base;
 }
 
 /** Every labelled node of every diagram, for the Quick actions box. */

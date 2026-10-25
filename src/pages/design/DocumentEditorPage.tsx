@@ -36,6 +36,7 @@ import pencilIcon from '../../assets/pencil.svg';
 import quoteIcon from '../../assets/quote.svg';
 import redoIcon from '../../assets/redo.svg';
 import searchIcon from '../../assets/search.svg';
+import moonIcon from '../../assets/moon.svg';
 import strikeIcon from '../../assets/strikethrough.svg';
 import tableIcon from '../../assets/table.svg';
 import underlineIcon from '../../assets/underline.svg';
@@ -199,6 +200,9 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [completionPause, setCompletionPause] = useState<number | null>(null);
   const [autocomplete, setAutocomplete] = useSieve('document-editor.autocomplete');
   const [grammarSieve, setGrammarSieve] = useSieve('document-editor.grammar');
+  /* The sheets drawn dark: how the page is shown here, never the document or what it exports. */
+  const [pageShade, setPageShade] = useSieve('document-editor.page-shade');
+  const darkPage = pageShade === 'dark';
   const completing = autocomplete !== 'off';
   const grammarOn = grammarSieve !== 'off';
   const [grammar, setGrammar] = useState<GrammarSettings | null>(null);
@@ -870,6 +874,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             {tool(t('Page break'), pageBreakIcon, false, () => run((chain) => chain.setPageBreak()), 'document-page-break-tool')}
             <span className={shell.toolbarGap} aria-hidden="true" />
             {tool(t('Find'), searchIcon, finding, () => setFinding(true), 'document-find-open', editor === null)}
+            {tool(t('Dark page'), moonIcon, darkPage, () => setPageShade(darkPage ? '' : 'dark'), 'document-dark-page', false)}
             <span className={styles.pageCount} data-testid="document-page-count">
               {tf('{count} pages', { count: pages })}
             </span>
@@ -901,7 +906,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           {held === null || editor === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
-            <div className={styles.desk}>
+            <div className={styles.desk} data-document-page={darkPage ? 'dark' : undefined} data-testid="document-desk">
               <DocumentPaper
                 editor={editor}
                 geometry={geometry}

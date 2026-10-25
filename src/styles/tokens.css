@@ -283,6 +283,36 @@
 }
 
 /*
+ * A document's sheets drawn dark, when the person turns it on in the editor's
+ * toolbar: dark paper and light ink, with code, quotes, links and what Find
+ * marks chosen to stand on it. Only how the page is shown - the document, its
+ * colours and every export are the white page above. Set on the desk, not the
+ * root, so nothing outside the sheets changes.
+ */
+[data-document-page='dark'] {
+  --document-paper: #1c1c20;
+  --document-ink: #e4e4e7;
+  --document-muted: #a1a1aa;
+  --document-edge: #3f3f46;
+  --document-link: #7aa7ff;
+  --document-quote: #52525b;
+  --document-code-bg: #141418;
+  --document-code-edge: #34343c;
+  --document-code-comment: #8b949e;
+  --document-code-keyword: #ff7b72;
+  --document-code-string: #a5d6ff;
+  --document-code-number: #79c0ff;
+  --document-code-type: #d2a8ff;
+  --document-ghost: #71717a;
+  --document-grammar: #60a5fa;
+  --document-spelling: #f87171;
+  --document-find: rgba(250, 204, 21, 0.32);
+  --document-find-active: rgba(249, 115, 22, 0.55);
+  --document-note: rgba(245, 158, 11, 0.32);
+  --document-note-edge: #f59e0b;
+}
+
+/*
  * Light mode.
  *
  * Only the colours are redefined — every space, radius and type size is the

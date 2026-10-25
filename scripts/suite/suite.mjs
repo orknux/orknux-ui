@@ -2253,6 +2253,36 @@ export const TESTS = [
     /* Makes its own documents and removes them. */
   },
   {
+    name: 'editor-title-row-check',
+    what: "the row under the top bar in the document, wireframe, video, image and diagram editors draws the back link and the name at one size on one baseline, the name medium and primary, the link secondary and underlined rather than boxed when focused",
+    needs: ['workspace'],
+    /* Makes its own document, wireframe and diagram and removes them. */
+  },
+  {
+    name: 'design-chat-working-check',
+    what: "the working row under a question in the wireframe, document and diagram chats starts where the answers' words do",
+    needs: ['workspace'],
+    /* Answers the first question and holds the second itself, so no model is needed. */
+  },
+  {
+    name: 'accent-default-check',
+    what: 'somebody who never chose an accent gets blue - the page, the swatch shown as chosen and the logo, in both themes - and Moss still applies',
+    needs: ['session'],
+    /* A browser context of its own, so nothing chosen is in its storage. */
+  },
+  {
+    name: 'diagram-export-scale-check',
+    what: "a diagram's PNG from Export is 1×, 2× or 3× its drawn width, 2× by default, and its SVG is vector",
+    needs: ['workspace'],
+    /* Makes its own diagram, wider than the old 1600-pixel ceiling allowed at 2×, and removes it. */
+  },
+  {
+    name: 'document-dark-page-check',
+    what: "the document editor's Dark page switch draws the sheets dark with light ink and code, quote, link and Find colours of their own, is remembered, and leaves the document and its export as they were",
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
+  {
     name: 'document-import-check',
     what: "Import in a document puts a file's heading, bold and list on the page in place of what was there as an unsaved change one Undo takes back, puts a text file at the caret, and says when a file cannot be read",
     needs: ['workspace'],
