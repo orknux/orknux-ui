@@ -815,6 +815,12 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-thinking-live-check',
+    what: "while a turn runs only the thinking still going on is live: the first round's stops once a call follows it",
+    needs: ['workspace'],
+    /* The stream is held open mid-turn by a fetch handed to the page, so no model is needed. */
+  },
+  {
     name: 'chat-thinking-split-check',
     what: "thinking after a tool call is a folded section of its own among the calls, live and reloaded, drawn as the session's thinking card, a step smaller",
     needs: ['workspace'],

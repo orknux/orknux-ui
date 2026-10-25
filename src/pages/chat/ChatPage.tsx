@@ -4094,9 +4094,10 @@ ${named}`;
                           )}
                           <Thinking
                             text={thinking}
-                            live={live}
+                            /* Over once anything follows it: it went on blinking beside the calls for the whole turn. */
+                            live={live && calls.length === 0}
                             /* Above the calls it is the first round only, so its own time and not the whole turn's. */
-                            millis={live ? null : calls.length > 0 ? working.openingMillis : message.thinkingMillis}
+                            millis={calls.length > 0 ? working.openingMillis : live ? null : message.thinkingMillis}
                           />
                           {(() => {
                             const drawn = new Set<string>();
