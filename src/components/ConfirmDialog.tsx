@@ -27,6 +27,7 @@ export type ConfirmKind =
   | 'removeModel'
   | 'removeCertificate'
   | 'removeArtifact'
+  | 'replaceArtifact'
   | 'removeImage'
   | 'removeWireframe'
   | 'removeDocument'
@@ -305,6 +306,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Remove file'),
       message: <>{t('The file is deleted from this workspace, and there is no way back from this one:')} {name}</>,
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    /* Amber rather than red: the artifact stays, only its file goes. */
+    replaceArtifact: {
+      title: t('Replace file'),
+      message: <>{t('The link stays the same and opens the new file; the old file is gone for good:')} {name}</>,
+      button: submitting ? t('Replacing…') : t('Replace'),
     },
     removeImage: {
       title: t('Remove picture'),

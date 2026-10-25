@@ -543,3 +543,21 @@ export async function uploadArtifact(workspaceId: string, file: File, descriptio
   if (said.id === undefined) throw new Error(t('That file could not be uploaded.'));
   return said.id;
 }
+
+/**
+ * A new file behind a saved artifact, at the same key and the same address, so
+ * a link somebody was sent opens the new file. The name follows the new file;
+ * the description stays. Checked against the upload limit before it is sent.
+ */
+export async function replaceArtifact(workspaceId: string, id: string, file: File): Promise<string> {
+  await refuseOversized([file]);
+  const form = new FormData();
+  form.append('file', file, file.name);
+  const said = await sendUpload<{ id?: string }>(
+    `/api/workspaces/${workspaceId}/artifacts/${encodeURIComponent(id)}`,
+    form,
+    t('That file could not be replaced.'),
+  );
+  if (said.id === undefined) throw new Error(t('That file could not be replaced.'));
+  return said.id;
+}

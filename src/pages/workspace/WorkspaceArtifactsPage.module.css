@@ -318,6 +318,16 @@
 
 .readingOut:hover { text-decoration: underline; }
 
+/* Replace reads as a link beside Open in a tab, though it is a button. */
+button.readingOut {
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
 .readingClose {
   display: flex;
   flex: none;

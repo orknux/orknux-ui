@@ -2342,6 +2342,12 @@ export const TESTS = [
     /* Removes what it uploads. */
   },
   {
+    name: 'artifacts-replace-check',
+    what: "an artifact's file is replaced from the viewer after a confirmation, and the same address then shows the new content",
+    needs: ['workspace'],
+    /* Uploads its own file and removes it. */
+  },
+  {
     name: 'document-sort-check',
     what: 'the documents list sorts by Name, Words and Updated, the numbers and dates biggest first, and a second press reverses',
     needs: ['workspace'],
