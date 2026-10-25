@@ -40,6 +40,7 @@ import { DesignImageEditorRoute } from './pages/design/DesignImageEditorPage';
 import { DesignVideosPage } from './pages/design/DesignVideosPage';
 import { DesignVideoEditorRoute } from './pages/design/DesignVideoEditorPage';
 import { DesignWireframesPage } from './pages/design/DesignWireframesPage';
+import { DesignDocumentsPage } from './pages/design/DesignDocumentsPage';
 import { WireframeEditorRoute } from './pages/design/WireframeEditorPage';
 import { ExecutionsPage } from './pages/workspace/ExecutionsPage';
 import { FunctionEditorPage } from './pages/workspace/FunctionEditorPage';
@@ -118,6 +119,7 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/design/videos/new': (session, onSignOut) => <DesignVideoEditorRoute session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/videos/:videoId': (session, onSignOut) => <DesignVideoEditorRoute session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/wireframes': (session, onSignOut) => <DesignWireframesPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/documents': (session, onSignOut) => <DesignDocumentsPage session={session} onSignOut={onSignOut} />,
   // Keyed on the wireframe, so moving to another starts its editor afresh rather than carrying this one's drawing.
   '/workspace/:workspaceId/design/wireframes/:wireframeId': (session, onSignOut) => <WireframeEditorRoute session={session} onSignOut={onSignOut} />,
   /*

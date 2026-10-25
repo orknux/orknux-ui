@@ -2170,6 +2170,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own wireframe and removes it; the HTML is the server's own page. */
   },
+  {
+    name: 'document-list-check',
+    what: "Design -> Documents: Documents after Wireframes in the menu, catalogs made and chosen, a document filed, renamed, moved, found by its words and deleted, and a catalog that holds one refused",
+    needs: ['workspace'],
+    /* Makes its own catalogs and documents and removes them. */
+  },
 
   {
     name: 'negative-prompt-check',

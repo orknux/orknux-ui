@@ -35,6 +35,7 @@ import settingsIcon from './assets/settings.svg';
 import slidersIcon from './assets/sliders-horizontal.svg';
 import toolIcon from './assets/tool.svg';
 import wireframeIcon from './assets/frame.svg';
+import documentIcon from './assets/file-text.svg';
 import { t } from './i18n';
 
 /**
@@ -375,6 +376,12 @@ export const PAGES = [
   },
   /* A wireframe's editor, reached from the list as a picture's is from Images. */
   { path: '/workspace/:workspaceId/design/wireframes/:wireframeId', access: 'signed-in', goTo: false },
+  /* Documents written in pages, filed in catalogs; after the wireframes they are often written about. */
+  {
+    path: '/workspace/:workspaceId/design/documents',
+    access: 'signed-in',
+    goTo: { label: t('Documents'), where: 'Design', icon: documentIcon, also: 'document text writing pages report word processor' },
+  },
   {
     path: '/workspace/:workspaceId/design/images',
     access: 'signed-in',
