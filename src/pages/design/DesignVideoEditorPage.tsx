@@ -27,6 +27,7 @@ import form from '../../components/Dialog.module.css';
 import editor from './DesignImageEditorPage.module.css';
 import styles from './DesignVideos.module.css';
 import { DesignUpscaleDialog } from './DesignUpscaleDialog';
+import { VideoExportMenu } from './VideoExportMenu';
 import { playingTime } from './DesignVideosPage';
 import { paceAfter, paceLine, paceShare } from './videoPace';
 import type { VideoPace } from './videoPace';
@@ -373,6 +374,7 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
               {t('Download')}
             </a>
           )}
+          {video?.status === 'DONE' && video.url !== null && <VideoExportMenu workspaceId={workspaceId} videoId={video.id} />}
           {video !== null && video.status !== 'GENERATING' && (
             <button type="button" className={form.ghost} onClick={() => void remove()} disabled={busy} data-testid="video-remove">
               {t('Remove')}

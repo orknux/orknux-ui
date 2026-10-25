@@ -28,6 +28,10 @@ import { currentLanguage } from '../session/language';
  */
 const PL: Record<string, string> = {
   DesignVideoTooLarge: 'Miałoby {width} × {height}, więcej niż {longest} pikseli, ile może mieć powiększone wideo.',
+  DesignVideoExportUnfinished: 'Wyeksportować można tylko gotowy film.',
+  DesignVideoExportTooLarge: 'Eksport przekroczył {most} MB, ile może mieć eksport.',
+  DesignVideoExportTimedOut: 'Eksport trwał dłużej niż {seconds} s, ile może trwać eksport.',
+  DesignVideoExportFailed: 'Nie udało się wyeksportować filmu jako {format}: {reason}',
   InstallationAddressInvalid:
     '{url} nie jest adresem, pod którym można dotrzeć do tej instalacji. Podaj adres http lub https, na przykład https://orknux.example.com.',
   // --- a name that is required, and one that is taken --------------------

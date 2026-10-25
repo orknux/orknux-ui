@@ -3850,4 +3850,8 @@ export const PL: Record<string, string> = {
   "Start a research on:": "Rozpocząć badanie na temat:",
   "How many questions a finished research here suggests asking next, each a research of its own; 0 suggests none. Left empty, the installation’s number is used.": "Ile pytań na dalsze badania proponuje zakończone badanie w tej przestrzeni roboczej; każde to osobne badanie, 0 nie proponuje żadnego. Puste oznacza liczbę instalacji.",
   "The number the noise a video starts from is drawn with: the same seed, prompt and settings make the same video again, and another seed makes another take of it.": "Liczba, z której losowany jest szum, od którego zaczyna się film: ten sam seed, opis i ustawienia dają ten sam film, a inny seed daje inne jego ujęcie.",
+  "A moving picture, without its sound": "Ruchomy obraz, bez dźwięku",
+  "With its sound, for nearly any player": "Z dźwiękiem, dla niemal każdego odtwarzacza",
+  "With its sound, in a Matroska file": "Z dźwiękiem, w pliku Matroska",
+  "Could not export the video.": "Nie udało się wyeksportować filmu.",
 };

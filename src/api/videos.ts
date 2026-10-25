@@ -170,6 +170,28 @@ export async function removeDesignVideo(workspaceId: string, id: string): Promis
   return data.removeDesignVideo;
 }
 
+/** What a finished video may be exported as. */
+export type VideoExportFormat = 'GIF' | 'MP4' | 'MKV';
+
+/** A video converted for download: where it is, and what it came to. */
+export interface VideoExport {
+  url: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+/** Converts a finished video on the server, while this waits, and answers where to download it from. */
+export async function exportDesignVideo(workspaceId: string, id: string, format: VideoExportFormat): Promise<VideoExport> {
+  const data = await graphql<{ exportDesignVideo: VideoExport }>(
+    `mutation ExportDesignVideo($workspaceId: ID!, $id: ID!, $format: DesignVideoExportFormat!) {
+       exportDesignVideo(workspaceId: $workspaceId, id: $id, format: $format) { url filename contentType sizeBytes }
+     }`,
+    { workspaceId, id, format },
+  );
+  return data.exportDesignVideo;
+}
+
 /** Whether a video is still on its way. */
 export function onTheWay(video: DesignVideo): boolean {
   return video.status === 'QUEUED' || video.status === 'GENERATING';

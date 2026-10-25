@@ -2137,6 +2137,16 @@ export const TESTS = [
      */
   },
   {
+    name: 'design-video-export-check',
+    what: "the video editor's Export menu offers GIF, MP4 and MKV beside Download, says Exporting… while the server converts, downloads the file the server answered under its name, and says a refusal under the button",
+    needs: ['workspace'],
+    /*
+     * Answers the video and the export itself, so it needs no video model.
+     * The conversion - the GIF's own palette, the sound an MP4 and an MKV
+     * keep - is DesignVideoExportTest, on both engines.
+     */
+  },
+  {
     name: 'run-step-parameters-check',
     what: "a run's step lists what it was handed for its parameters, above its input",
     needs: ['workspace'],
