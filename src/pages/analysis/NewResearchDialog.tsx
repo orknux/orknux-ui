@@ -42,6 +42,9 @@ function modeHint(mode: ResearchMode): string {
 
 const LANGUAGES: ResearchLanguage[] = ['ACADEMIC', 'COLLOQUIAL', 'FORMAL'];
 
+/** How many follow-up questions a research suggests for somebody who has never said: the installation's own starting number. */
+const FOLLOW_UPS = 5;
+
 /** What the "runs" choice of a new mode holds: a mode to copy, or a workflow. */
 const COPY = 'copy:';
 const WORKFLOW = 'workflow:';
@@ -66,12 +69,16 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [lastModel, rememberModel] = useSieve(`research.model.${workspaceId}`);
   // On, as every research was before it could be switched off.
   const [webSearch, setWebSearch] = useState(true);
-  // Off: looking for images is asked for, not assumed.
-  const [images, setImages] = useState(false);
+  // On, unless this person last left it off: a report with its pictures is what most research is for.
+  const [lastImages, rememberImages] = useSieve(`research.images.${workspaceId}`);
+  const [images, setImages] = useState(lastImages !== 'off');
   // A second model reading the report before it is saved, and which one: both remembered, as the model is.
   const [lastReview, rememberReview] = useSieve(`research.review.${workspaceId}`);
   const [lastReviewer, rememberReviewer] = useSieve(`research.reviewer.${workspaceId}`);
   const [review, setReview] = useState(lastReview === 'on');
+  // How many questions to suggest once it is finished: the number last chosen here, or five.
+  const [lastFollowUps, rememberFollowUps] = useSieve(`research.followups.${workspaceId}`);
+  const [followUps, setFollowUps] = useState(lastFollowUps === '' ? String(FOLLOW_UPS) : lastFollowUps);
   const [reviewerId, setReviewerId] = useState('');
   const [include, setInclude] = useState<string[]>([]);
   const [exclude, setExclude] = useState<string[]>([]);
@@ -96,7 +103,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       setExclude([]);
       setPicked([]);
       setWebSearch(true);
-      setImages(false);
+      setImages(lastImages !== 'off');
       setReview(lastReview === 'on');
       setAdding(false);
       setError(null);
@@ -174,6 +181,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         includeImages: images,
         review,
         reviewerModelId: review ? reviewerId : null,
+        followUps: followUps.trim() === '' ? null : Math.max(0, Math.min(10, Math.round(Number(followUps)))),
       });
       onStarted(started);
     } catch (cause) {
@@ -307,7 +315,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
                 type="checkbox"
                 id="research-include-images"
                 checked={images}
-                onChange={(event) => setImages(event.target.checked)}
+                onChange={(event) => {
+                  setImages(event.target.checked);
+                  rememberImages(event.target.checked ? 'on' : 'off');
+                }}
                 data-include-images
               />
               {t('Include images')}
@@ -326,6 +337,25 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Review')}
             </label>
+          </div>
+
+          <div className={dialog.field}>
+            <label className={dialog.label} htmlFor="research-follow-ups">{t('Follow-up questions')}</label>
+            <div className={dialog.inputWrapper}>
+              <input
+                id="research-follow-ups"
+                className={dialog.input}
+                type="number"
+                min={0}
+                max={10}
+                value={followUps}
+                onChange={(event) => {
+                  setFollowUps(event.target.value);
+                  rememberFollowUps(event.target.value);
+                }}
+                data-follow-up-count
+              />
+            </div>
           </div>
 
           {review && (

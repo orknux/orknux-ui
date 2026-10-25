@@ -3836,4 +3836,11 @@ export const PL: Record<string, string> = {
   "Reviewed": "Zrecenzowane",
   "Review rounds": "Rundy recenzji",
   "How many times a reviewed research here is read by its reviewer and revised by its writer before it is saved. Left empty, the installation’s number is used.": "Ile razy recenzent czyta, a autor poprawia raport recenzowanego badania w tej przestrzeni roboczej, zanim zostanie zapisany. Puste oznacza liczbę instalacji.",
+  // --- Explore > Research: follow-up questions ---
+  "Follow-up questions": "Pytania uzupełniające",
+  "Follow-up research": "Badania uzupełniające",
+  "Follow-up of": "Uzupełnia",
+  "Start a research": "Rozpocznij badanie",
+  "Start a research on:": "Rozpocząć badanie na temat:",
+  "How many questions a finished research here suggests asking next, each a research of its own; 0 suggests none. Left empty, the installation’s number is used.": "Ile pytań na dalsze badania proponuje zakończone badanie w tej przestrzeni roboczej; każde to osobne badanie, 0 nie proponuje żadnego. Puste oznacza liczbę instalacji.",
 };

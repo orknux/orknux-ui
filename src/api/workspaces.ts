@@ -129,6 +129,9 @@ export interface Workspace {
   /** Rounds of review a reviewed research here gets; null is the installation's. */
   researchReviewRounds: number | null;
   researchReviewRoundsDefault: number;
+  /** Follow-up questions a finished research here suggests; null is the installation's. */
+  researchFollowUps: number | null;
+  researchFollowUpsDefault: number;
   maxToolCallsAtOnceDefault: number;
   sessionCompactAfterTokensDefault: number;
   sessionCompactionKeepTurnsDefault: number;
@@ -229,7 +232,7 @@ const WORKSPACE_FIELDS =
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'completionModelId completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault researchFollowUps researchFollowUpsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
   'voiceSpeechChunking chatShowTimestamps voiceButtonHidden widgetTimerSound sessionCostShown';
@@ -534,6 +537,16 @@ export async function setWorkspaceResearchReviewRounds(workspaceId: string, coun
     { workspaceId, count },
   );
   return data.setWorkspaceResearchReviewRounds;
+}
+
+export async function setWorkspaceResearchFollowUps(workspaceId: string, count: number | null): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceResearchFollowUps: Workspace }>(
+    `mutation SetWorkspaceResearchFollowUps($workspaceId: ID!, $count: Int) {
+       setWorkspaceResearchFollowUps(workspaceId: $workspaceId, count: $count) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, count },
+  );
+  return data.setWorkspaceResearchFollowUps;
 }
 
 export async function setWorkspaceAgentMaxSubagents(

@@ -33,7 +33,8 @@ export type ConfirmKind =
   | 'removeDocumentCatalog'
   | 'restartResearch'
   | 'removeDiagram'
-  | 'removeDiagramCatalog';
+  | 'removeDiagramCatalog'
+  | 'startFollowUp';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -337,6 +338,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Delete catalog'),
       message: <>{t('The catalog is deleted; one holding diagrams is refused until they are moved or deleted:')} {name}</>,
       button: submitting ? t('Removing…') : t('Delete'),
+    },
+    /* Not destructive: a research of its own, the one it follows up left as it is. */
+    startFollowUp: {
+      title: t('Start a research'),
+      message: <>{t('Start a research on:')} {name}</>,
+      button: submitting ? t('Starting…') : t('Start'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

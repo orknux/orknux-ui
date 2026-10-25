@@ -475,6 +475,7 @@ const PL: Record<string, string> = {
   ResearchReviewerUnusable: 'Ten model nie może recenzować badań w tej przestrzeni roboczej',
   ResearchModeNotReviewed: 'Przepływ trybu badania {mode} nie ma kroku recenzji, więc nie można go zrecenzować',
   ResearchReviewRoundsOutOfRange: '{rounds} to nie liczba rund recenzji; wybierz od {least} do {most}',
+  ResearchFollowUpsOutOfRange: '{count} to nie liczba pytań uzupełniających; wybierz od {least} do {most}',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };

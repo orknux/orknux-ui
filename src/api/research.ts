@@ -84,6 +84,21 @@ export interface Research {
   reviewerModelName: string | null;
   /** What each round of review said, in order. Only the one opened asks for it. */
   reviewRounds?: ResearchReviewRound[];
+  /** The questions it suggests asking next, once finished. Only the one opened asks for them. */
+  followUps?: string[];
+  followUpCount?: number | null;
+  /** The research it was started from as a follow-up. */
+  parentId: string | null;
+  parentQuestion?: string | null;
+  /** The research started from it as follow-ups. Only the one opened asks for them. */
+  children?: ResearchChild[];
+}
+
+/** A research started from another as a follow-up, as the parent lists it. */
+export interface ResearchChild {
+  id: string;
+  question: string;
+  status: ResearchStatus;
 }
 
 /** One round of review: the verdict, what was found, and whether the writer revised the report for it. */
@@ -167,6 +182,8 @@ export interface StartResearchInput {
   review: boolean;
   /** Required where review is on. */
   reviewerModelId: string | null;
+  /** How many follow-up questions to suggest once finished; absent is the workspace's number. */
+  followUps?: number | null;
 }
 
 const MODE_FIELDS = 'id kind name workflowId workflowName';
@@ -174,7 +191,7 @@ const MODE_FIELDS = 'id kind name workflowId workflowName';
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
-  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName ' +
+  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName parentId ' +
   'progress { step subQuestions searched level sourcesRead stage reading { title url kind } } sources { number title url kind } ' +
   'images { number caption url page contentType sizeBytes width height artifactId fileUrl previewUrl }';
 
@@ -202,7 +219,7 @@ export async function fetchResearches(workspaceId: string, page: number, size: n
 /** One research, with its report. */
 export async function fetchResearch(id: string): Promise<Research | null> {
   const data = await graphql<{ research: Research | null }>(
-    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } } }`,
+    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } followUps followUpCount parentQuestion children { id question status } } }`,
     { id },
   );
   return data.research;
@@ -255,11 +272,22 @@ export async function startResearch(input: StartResearchInput): Promise<Research
 export async function restartResearch(id: string, fromStage: ResearchStage | null = null): Promise<Research> {
   const data = await graphql<{ restartResearch: Research }>(
     `mutation RestartResearch($id: ID!, $fromStage: ResearchStage) {
-       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } }
+       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } followUps followUpCount parentQuestion children { id question status } }
      }`,
     { id, fromStage },
   );
   return data.restartResearch;
+}
+
+/** A research on one of a finished research's follow-up questions, started with everything the parent was; it comes back running. */
+export async function startFollowUpResearch(parentId: string, question: string): Promise<Research> {
+  const data = await graphql<{ startFollowUpResearch: Research }>(
+    `mutation StartFollowUpResearch($parentId: ID!, $question: String!) {
+       startFollowUpResearch(parentId: $parentId, question: $question) { ${RESEARCH_FIELDS} }
+     }`,
+    { parentId, question },
+  );
+  return data.startFollowUpResearch;
 }
 
 export async function deleteResearch(id: string): Promise<boolean> {
