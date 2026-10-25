@@ -670,6 +670,46 @@ export async function fetchModelSpeed(id: string): Promise<ModelSpeed | null> {
   return data.model?.speed ?? null;
 }
 
+/** How long a period each point of a model's speed chart averages over. */
+export type SpeedUnit = 'MINUTE' | 'HOUR' | 'DAY' | 'MONTH' | 'YEAR';
+
+/** One period that had calls reporting their speed; a period with none is not here. */
+export interface ModelSpeedPoint {
+  /** The period's start, YYYY-MM-DDTHH:mm in the server's time zone. */
+  at: string;
+  calls: number;
+  promptTokensPerSecond: number | null;
+  generatedTokensPerSecond: number | null;
+}
+
+export interface ModelSpeedOverTime {
+  unit: SpeedUnit;
+  /** The window as the server read it, YYYY-MM-DD, which is the usage card's. */
+  from: string;
+  to: string;
+  /** Oldest first. */
+  points: ModelSpeedPoint[];
+  /** More periods had calls than Admin Settings lets one chart draw; these are the newest. */
+  truncated: boolean;
+}
+
+/** A model's speed per period over the same dates as its usage; empty strings are the last thirty days. */
+export async function fetchModelSpeedOverTime(
+  id: string,
+  unit: SpeedUnit,
+  from?: string,
+  to?: string,
+): Promise<ModelSpeedOverTime | null> {
+  const data = await graphql<{ model: { speedOverTime: ModelSpeedOverTime } | null }>(
+    `query SpeedOverTime($id: ID!, $unit: SpeedUnit!, $from: String, $to: String) {
+       model(id: $id) { speedOverTime(unit: $unit, from: $from, to: $to) {
+         unit from to truncated points { at calls promptTokensPerSecond generatedTokensPerSecond } } }
+     }`,
+    { id, unit, from, to },
+  );
+  return data.model?.speedOverTime ?? null;
+}
+
 /** 2666.67 -> "2,667 tok/s", 66.67 -> "66.7 tok/s"; a dash where there is no figure. */
 export function formatSpeed(perSecond: number | null): string {
   if (perSecond === null) return '—';

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
   fetchModelSpeed,
+  fetchModelSpeedOverTime,
   fetchModelUsage,
   formatChange,
   formatCompact,
@@ -12,7 +13,7 @@ import {
   formatTokens,
   removeModel,
 } from '../../api/models';
-import type { ModelSpeed, ModelUsage } from '../../api/models';
+import type { ModelSpeed, ModelSpeedOverTime, ModelUsage, SpeedUnit } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import { AppShell } from '../../components/AppShell';
 import { DiscardButton, SaveBar } from '../../components/SaveBar';
@@ -31,9 +32,31 @@ import {
 } from '../../components/ModelForm';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
+import { SpeedChart, periodLabel } from './SpeedChart';
 import { UsageChart } from './UsageChart';
 import styles from './ModelSettingsPage.module.css';
 import { t, tf } from '../../i18n';
+
+/** The periods the speed chart can average over, in the order the switch draws them. */
+const SPEED_UNITS: { unit: SpeedUnit; label: string }[] = [
+  { unit: 'MINUTE', label: 'Minute' },
+  { unit: 'HOUR', label: 'Hour' },
+  { unit: 'DAY', label: 'Day' },
+  { unit: 'MONTH', label: 'Month' },
+  { unit: 'YEAR', label: 'Year' },
+];
+
+/**
+ * The period the speed chart opens on. A window of one day drawn by the day
+ * would be a single dot, so one day is drawn by the hour and anything longer -
+ * the thirty days the page opens on included - by the day.
+ */
+function openingUnit(from: string, to: string): SpeedUnit {
+  const today = new Date().toLocaleDateString('en-CA');
+  if (from !== '' && to !== '') return from === to ? 'HOUR' : 'DAY';
+  if (from !== '') return from >= today ? 'HOUR' : 'DAY';
+  return 'DAY';
+}
 
 export interface ModelSettingsPageProps {
   session: SessionUser;
@@ -119,6 +142,28 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
       abandoned = true;
     };
   }, [modelId]);
+
+  /*
+   * The same speeds per period, over the usage card's dates - its own request
+   * again, since a unit switched is not a window changed. Until somebody picks
+   * a unit the window decides it, and once they have it stays picked.
+   */
+  const [pickedUnit, setPickedUnit] = useState<SpeedUnit | null>(null);
+  const speedUnit = pickedUnit ?? openingUnit(asked.from, asked.to);
+  const [speedChart, setSpeedChart] = useState<ModelSpeedOverTime | null>(null);
+  useEffect(() => {
+    let abandoned = false;
+    fetchModelSpeedOverTime(modelId, speedUnit, asked.from || undefined, asked.to || undefined)
+      .then((held) => {
+        if (!abandoned) setSpeedChart(held);
+      })
+      .catch(() => {
+        if (!abandoned) setSpeedChart(null);
+      });
+    return () => {
+      abandoned = true;
+    };
+  }, [modelId, asked, speedUnit]);
 
   /** Enter in any box on any of the three cards is the same press as the header's Save. */
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -283,6 +328,51 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
                 <div className={styles.statsRow}>
                   <Stat label={t('Prompt speed')} value={formatSpeed(speed.promptTokensPerSecond)} change={null} good />
                   <Stat label={t('Generation speed')} value={formatSpeed(speed.generatedTokensPerSecond)} change={null} good />
+                </div>
+                {/*
+                  Averaged per period over the dates above, which the figures
+                  beside it are not: those are the newest calls, wherever they fell.
+                */}
+                <div className={`${styles.chartArea} ${styles.speedOverTime}`} data-model-speed-chart="">
+                  <div className={styles.speedChartHead}>
+                    <p className={styles.chartTitle}>{t('Speed over time')}</p>
+                    <div className={styles.unitSwitch} role="group" aria-label={t('Period')}>
+                      {SPEED_UNITS.map(({ unit, label }) => (
+                        <button
+                          key={unit}
+                          type="button"
+                          className={unit === speedUnit ? styles.unitOn : undefined}
+                          aria-pressed={unit === speedUnit}
+                          onClick={() => setPickedUnit(unit)}
+                          data-speed-unit={unit}
+                        >
+                          {t(label)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {speedChart !== null &&
+                    speedChart.unit === speedUnit &&
+                    (speedChart.points.length === 0 ? (
+                      <p className={styles.emptyMetrics}>{t('No call reported its speed between these dates.')}</p>
+                    ) : (
+                      <>
+                        <SpeedChart chart={speedChart} />
+                        <div className={styles.chartDates}>
+                          <span>
+                            {speedChart.truncated ? periodLabel(speedChart.points[0].at, speedChart.unit) : speedChart.from}
+                          </span>
+                          <span>{speedChart.to}</span>
+                        </div>
+                        {speedChart.truncated && (
+                          <p className={styles.speedTruncated} data-speed-truncated="">
+                            {tf('Only the newest {count} periods are drawn, as many as Admin Settings allows.', {
+                              count: speedChart.points.length.toLocaleString('en-US'),
+                            })}
+                          </p>
+                        )}
+                      </>
+                    ))}
                 </div>
               </div>
             )}
