@@ -48,11 +48,19 @@ export function useDocumentEditor({ document, geometry, editable, onChange, onGr
     [],
   );
 
+  /**
+   * Which document the editor in hand was made for. A new document makes a
+   * new editor, but only after the render that brought it - and in that render
+   * the editor is still the old one, empty. Handed out only once it holds the
+   * document, so nothing reads the empty one as the document's content.
+   */
+  const [madeFor, setMadeFor] = useState<string | null>(null);
   const editor = useEditor(
     {
       extensions,
       editable,
       content: document === null ? undefined : contentOf(document),
+      onCreate: () => setMadeFor(document?.id ?? null),
       onUpdate: ({ editor: changed }) => held.current.onChange?.(changed),
       editorProps: {
         attributes: { class: styles.prose, 'data-testid': 'document-prose', spellcheck: 'false' },
@@ -76,16 +84,18 @@ export function useDocumentEditor({ document, geometry, editable, onChange, onGr
     [document?.id],
   );
 
+  const ready = editor !== null && document !== null && madeFor === document.id ? editor : null;
+
   useEffect(() => {
-    editor?.setEditable(editable);
-  }, [editor, editable]);
+    ready?.setEditable(editable);
+  }, [ready, editable]);
 
   // A page of another size changes where every block falls.
   useEffect(() => {
-    if (editor !== null && !editor.isDestroyed) relayPages(editor.view);
-  }, [editor, geometry.width, geometry.height, geometry.margin]);
+    if (ready !== null && !ready.isDestroyed) relayPages(ready.view);
+  }, [ready, geometry.width, geometry.height, geometry.margin]);
 
-  return { editor, pages };
+  return { editor: ready, pages };
 }
 
 export interface DocumentPaperProps {
