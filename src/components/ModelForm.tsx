@@ -630,7 +630,7 @@ export function ModelWindowFields({ form }: SectionProps) {
             <span className={styles.labelWithHint}>
               <label className={styles.label} htmlFor="parallel-tool-calls">{t('Tool Calls Per Reply')}</label>
               <FieldHint label={t('Tool Calls Per Reply')}>
-                {t('Whether one reply may ask for several tools at once. Left to the provider, nothing is sent. One per reply sends parallel_tool_calls false, which a local server such as llama.cpp enforces in its grammar - a model that starts repeating the same calls in one reply then cannot, where otherwise it can write a hundred of them before its output runs out.')}
+                {t('Whether one reply may ask for several tools at once. Server default sends nothing and the model server decides - llama.cpp allows several. One per reply sends parallel_tool_calls false, which a local server such as llama.cpp enforces in its grammar - a model that starts repeating the same calls in one reply then cannot, where otherwise it can write a hundred of them before its output runs out.')}
               </FieldHint>
             </span>
             <Select
@@ -639,7 +639,7 @@ export function ModelWindowFields({ form }: SectionProps) {
               value={fields.parallel}
               onChange={(picked) => fields.setParallel(picked as '' | 'one' | 'several')}
             >
-              <option value="">{t('Unset')}</option>
+              <option value="">{t('Server default')}</option>
               <option value="one">{t('One per reply')}</option>
               <option value="several">{t('Several allowed')}</option>
             </Select>

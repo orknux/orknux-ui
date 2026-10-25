@@ -3927,4 +3927,6 @@ export const PL: Record<string, string> = {
   "Dark page": "Ciemna strona",
   "PNG scale": "Skala PNG",
   "Always — carried in front of the model every turn, once a tool limit is set. Click to offer it.": "Zawsze — noszone przed modelem w każdej turze, gdy ustawiono limit narzędzi. Kliknij, aby tylko oferować.",
+  "Server default": "Domyślne serwera",
+  "Whether one reply may ask for several tools at once. Server default sends nothing and the model server decides - llama.cpp allows several. One per reply sends parallel_tool_calls false, which a local server such as llama.cpp enforces in its grammar - a model that starts repeating the same calls in one reply then cannot, where otherwise it can write a hundred of them before its output runs out.": "Czy jedna odpowiedź może wywołać kilka narzędzi naraz. Domyślne serwera nie wysyła nic i decyduje serwer modelu - llama.cpp pozwala na kilka. Jedno na odpowiedź wysyła parallel_tool_calls false, co serwer lokalny taki jak llama.cpp wymusza w gramatyce - model, który zaczyna powtarzać te same wywołania w jednej odpowiedzi, nie może wtedy tego robić, a inaczej potrafi napisać ich sto, zanim skończy mu się miejsce na odpowiedź.",
 };
