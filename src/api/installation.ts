@@ -15,7 +15,10 @@ export interface InstallationSettings {
   attachmentStorage: string;
   /** The directory they are written under, shown so it can be checked. */
   attachmentLocation: string;
+  /** The largest file any upload may be, in MB: Admin Settings' Largest file, or what the installation started with. */
   attachmentMaxFileSizeMb: number;
+  /** What a fresh installation does - ORKNUX_ATTACHMENTS_MAX_FILE_SIZE_MB; 500 in the desktop app. */
+  attachmentMaxFileSizeMbConfigured: number;
   /** Whether this installation has a chat at all. */
   chatEnabled: boolean;
   chatConfigurable: boolean;
@@ -377,7 +380,7 @@ export interface InstallationSettings {
 }
 
 const FIELDS =
-  'attachmentsEnabled attachmentsConfigurable attachmentStorage attachmentLocation attachmentMaxFileSizeMb ' +
+  'attachmentsEnabled attachmentsConfigurable attachmentStorage attachmentLocation attachmentMaxFileSizeMb attachmentMaxFileSizeMbConfigured ' +
   'chatEnabled chatConfigurable metricsAnonymous metricsAnonymousConfigured ' +
   'revisionRetentionDays revisionRetentionDaysConfigured ' +
   'executionRetentionDays executionRetentionDaysConfigured ' +
@@ -657,6 +660,15 @@ export async function setChatVideoMaxMb(megabytes: number): Promise<Installation
     { megabytes },
   );
   return data.setChatVideoMaxMb;
+}
+
+/** The largest file any upload may be, whichever page it is sent from. */
+export async function setAttachmentMaxFileSizeMb(megabytes: number): Promise<InstallationSettings> {
+  const data = await graphql<{ setAttachmentMaxFileSizeMb: InstallationSettings }>(
+    `mutation SetAttachmentMaxFileSizeMb($megabytes: Int!) { setAttachmentMaxFileSizeMb(megabytes: $megabytes) { ${FIELDS} } }`,
+    { megabytes },
+  );
+  return data.setAttachmentMaxFileSizeMb;
 }
 
 export async function setChatMaxRounds(rounds: number): Promise<InstallationSettings> {

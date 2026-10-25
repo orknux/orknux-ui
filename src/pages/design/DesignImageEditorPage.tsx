@@ -30,6 +30,7 @@ import type { ImageSizePreset } from '../../api/imagePresets';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
+import { refuseOversized } from '../../api/uploads';
 import blurIcon from '../../assets/blur.svg';
 import chevronIcon from '../../assets/chevron-down-12.svg';
 import blurGradientIcon from '../../assets/blur-gradient.svg';
@@ -1330,6 +1331,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     setBusy(true);
     setError(null);
     try {
+      await refuseOversized([file]);
       const read = await readPictureFile(file);
       const kept =
         'archive' in read

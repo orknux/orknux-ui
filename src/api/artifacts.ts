@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { refuseOversized, sendUpload } from './uploads';
 import { graphql } from './client';
 import type { PageOf } from './client';
 
@@ -537,8 +538,8 @@ export async function uploadArtifact(workspaceId: string, file: File, descriptio
   const form = new FormData();
   form.append('file', file, file.name);
   if (description !== undefined && description.trim() !== '') form.append('description', description.trim());
-  const answer = await fetch(`/api/workspaces/${workspaceId}/artifacts`, { method: 'POST', body: form, credentials: 'include' });
-  const said = (await answer.json().catch(() => null)) as { id?: string; error?: string; message?: string } | null;
-  if (!answer.ok || said?.id === undefined) throw new Error(said?.error ?? said?.message ?? t('That file could not be uploaded.'));
+  await refuseOversized([file]);
+  const said = await sendUpload<{ id?: string }>(`/api/workspaces/${workspaceId}/artifacts`, form, t('That file could not be uploaded.'));
+  if (said.id === undefined) throw new Error(t('That file could not be uploaded.'));
   return said.id;
 }

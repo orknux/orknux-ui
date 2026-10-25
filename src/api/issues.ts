@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 import { graphql } from './client';
 import { t } from '../i18n';
+import { refuseOversized, sendUpload } from './uploads';
 
 /**
  * Where an issue is in its life, as the key of one of the workspace's statuses.
@@ -764,22 +765,20 @@ export async function uploadIssueAttachments(
   workspaceId: string,
   files: File[],
 ): Promise<IssueAttachment[]> {
-  const form = new FormData();
-  files.forEach((file) => form.append('files', file, file.name));
-
-  const answer = await fetch(`/api/workspaces/${workspaceId}/issue-attachments`, {
-    method: 'POST',
-    body: form,
-    credentials: 'include',
-  });
-
-  const said = (await answer.json().catch(() => null)) as
-    | { attachments?: IssueAttachment[]; error?: string; message?: string }
-    | null;
-  if (!answer.ok) {
-    throw new Error(said?.error ?? said?.message ?? t('Those files could not be uploaded.'));
+  await refuseOversized(files);
+  const kept: IssueAttachment[] = [];
+  // One file per request, as the chat sends them: a request is never larger than its file.
+  for (const file of files) {
+    const form = new FormData();
+    form.append('files', file, file.name);
+    const said = await sendUpload<{ attachments?: IssueAttachment[] }>(
+      `/api/workspaces/${workspaceId}/issue-attachments`,
+      form,
+      t('Those files could not be uploaded.'),
+    );
+    kept.push(...(said.attachments ?? []));
   }
-  return said?.attachments ?? [];
+  return kept;
 }
 
 /** Says which issue the uploaded files belong to; sent once it has been filed. */

@@ -63,6 +63,7 @@ import {
   setChatReplySuggestionsMaxTokens,
   setChatReplySuggestionsTimeoutMillis,
   setChatVideoMaxMb,
+  setAttachmentMaxFileSizeMb,
   setObjectMaxDepth,
   setPluginMaxSourceKb,
   setPluginTimeoutSeconds,
@@ -175,6 +176,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const [replyTokens, setReplyTokens] = useState('');
   const [replyTimeout, setReplyTimeout] = useState('');
   const [videoMax, setVideoMax] = useState('');
+  /** Largest file: every upload's limit, in MB, as typed. */
+  const [uploadMax, setUploadMax] = useState('');
   const [objectDepth, setObjectDepth] = useState('');
   /** How long one note to self may be, as typed. */
   const [noteLength, setNoteLength] = useState('');
@@ -317,6 +320,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     setReplyTokens(String(held.chatReplySuggestionsMaxTokens));
     setReplyTimeout(String(held.chatReplySuggestionsTimeoutMillis));
     setVideoMax(String(held.chatVideoMaxMb));
+    setUploadMax(String(held.attachmentMaxFileSizeMb));
     setBoxLocation(held.localBoxLocation ?? '');
     setBoxRuntime(held.localBoxRuntime);
     setBoxMaxSessions(String(held.localBoxMaxSessions));
@@ -453,6 +457,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         { typed: replyTokens, held: settings.chatReplySuggestionsMaxTokens, write: setChatReplySuggestionsMaxTokens },
         { typed: replyTimeout, held: settings.chatReplySuggestionsTimeoutMillis, write: setChatReplySuggestionsTimeoutMillis },
         { typed: videoMax, held: settings.chatVideoMaxMb, write: setChatVideoMaxMb },
+        { typed: uploadMax, held: settings.attachmentMaxFileSizeMb, write: setAttachmentMaxFileSizeMb },
         { typed: objectDepth, held: settings.objectMaxDepth, write: setObjectMaxDepth },
         { typed: noteLength, held: settings.noteMaxCharacters, write: setNoteMaxCharacters },
         { typed: noteCount, held: settings.noteMaxCount, write: setNoteMaxCount },
@@ -2720,11 +2725,34 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                 <dt className={styles.factName}>{t('Location')}</dt>
                 <dd className={`${styles.factValue} ${styles.mono}`}>{settings.attachmentLocation}</dd>
               </div>
-              <div className={styles.fact}>
-                <dt className={styles.factName}>{t('Largest file')}</dt>
-                <dd className={styles.factValue}>{settings.attachmentMaxFileSizeMb} MB</dd>
-              </div>
             </dl>
+
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Largest file')}</p>
+                  <FieldHint label={t('Largest file')}>
+                    {t('The largest file any upload may be: in a chat, on an issue, on Artifacts, for a research, or a picture or document imported. Between 1 and 2048.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <input
+                  id="attachment-max-file-size-mb"
+                  name="attachmentMaxFileSizeMb"
+                  className={styles.input}
+                  type="number"
+                  min={1}
+                  max={2048}
+                  value={uploadMax}
+                  onChange={(event) => setUploadMax(event.target.value)}
+                  disabled={busy}
+                  aria-label={t('Largest file')}
+                  data-testid="attachment-max-file-size-mb"
+                />
+                <span className={styles.retentionUnit}>MB</span>
+              </div>
+            </div>
             <h2 id="metrics" className={styles.sectionHeading}>{t('Metrics')}</h2>
 
             <div className={styles.setting}>

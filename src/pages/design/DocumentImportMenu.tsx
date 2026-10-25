@@ -2,6 +2,7 @@ import type { Editor, JSONContent } from '@tiptap/core';
 import { useEffect, useRef, useState } from 'react';
 
 import { importDocumentFile } from '../../api/documents';
+import { refuseOversized } from '../../api/uploads';
 import form from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
 import shell from './DesignImageEditorPage.module.css';
@@ -76,6 +77,7 @@ export function DocumentImportMenu({
     setBusy(true);
     setError(null);
     try {
+      await refuseOversized([file]);
       const read = await importDocumentFile(documentId, file.name, await dataUrl(file));
       const doc = JSON.parse(read.content) as JSONContent;
       // Through the editor, so it is a step Undo goes back over and a change Save writes.

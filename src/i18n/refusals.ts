@@ -204,7 +204,11 @@ const PL: Record<string, string> = {
     'zamiast tego cały wiersz.',
   ActionHeaderVariableElsewhere:
     'Ta zmienna należy do innej przestrzeni roboczej, więc nagłówek „{name}” nie może jej odczytać.',
-  AttachmentTooLarge: '„{name}” jest większy niż {limitMb} MB, ile może mieć załącznik',
+  AttachmentTooLarge:
+    '{name} ma {sizeMb} MB; przesyłane pliki mogą mieć najwyżej {limitMb} MB - administrator może podnieść limit w Ustawieniach administratora → Załączniki',
+  UploadMaxOutOfRange: 'Przesyłanych plików nie można ograniczyć do {megabytes} MB. Wybierz od 1 do 2048.',
+  UploadPastMultipartCap:
+    'To przesłanie jest większe, niż ten serwer czyta w jednym żądaniu - administrator ustawia to zmienną ORKNUX_UPLOAD_MAX_FILE_SIZE',
   AttachmentsDisabled: 'Załączniki są wyłączone w tej instalacji',
   ChatAgentMissing: 'Ta przestrzeń robocza nie ma agenta do rozmowy; najpierw dodaj jednego',
   ChatDisabled: 'Czat jest wyłączony w tej instalacji',
