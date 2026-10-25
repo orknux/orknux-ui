@@ -342,9 +342,16 @@ export function DiagramsPage({ session, onSignOut }: DiagramsPageProps) {
                           data-testid="diagram-name-input"
                         />
                       ) : (
-                        <Link className={table.name} to={`/workspace/${workspaceId}/explore/diagrams/${diagram.id}`} data-testid="diagram-name">
-                          {diagram.name}
-                        </Link>
+                        <>
+                          <Link className={table.name} to={`/workspace/${workspaceId}/explore/diagrams/${diagram.id}`} data-testid="diagram-name">
+                            {diagram.name}
+                          </Link>
+                          {diagram.description !== null && (
+                            <span className={styles.description} title={diagram.description} data-testid="diagram-description">
+                              {diagram.description}
+                            </span>
+                          )}
+                        </>
                       )}
                     </span>
                     <span className={styles.colAgents}>

@@ -2205,6 +2205,12 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'diagram-description-check',
+    what: "a diagram's description is typed in the editor, stored, kept after a reload, and shown on the list on one line",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
     name: 'diagram-delete-tool-check',
     what: 'orknux_delete_diagram starts hidden on a new agent and on one given Orknux access afresh in the form, and its owner turns it on',
     needs: ['workspace'],

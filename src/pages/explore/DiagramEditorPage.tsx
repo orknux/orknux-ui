@@ -16,6 +16,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   askDiagram,
+  describeDiagram,
   DIAGRAM_EDGE_KINDS,
   DIAGRAM_NODE_KINDS,
   diagramExportUrl,
@@ -666,6 +667,17 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     }
   }
 
+  /** The description as typed, written when the field is left; the server's word on it is taken back. */
+  async function describe(said: string) {
+    if (diagram === null || said.trim() === (diagram.description ?? '')) return;
+    try {
+      const changed = await describeDiagram(diagram.id, said);
+      setDiagram({ ...diagram, description: changed.description });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('That could not be saved.'));
+    }
+  }
+
   async function setAccess(access: DiagramAgentAccess) {
     if (diagram === null) return;
     try {
@@ -1000,6 +1012,22 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
         </div>
 
         <div className={`${shell.panel} ${chat.panel}`} data-testid="diagram-panel">
+          {diagram !== null && selectedNodes.length === 0 && selectedEdges.length === 0 && (
+            <div className={styles.inspector} data-testid="diagram-about">
+              <label className={styles.field}>
+                <span>{t('Description')}</span>
+                <textarea
+                  key={`${diagram.id}-${diagram.description ?? ''}`}
+                  className={`${form.input} ${styles.description}`}
+                  defaultValue={diagram.description ?? ''}
+                  onBlur={(event) => void describe(event.target.value)}
+                  maxLength={diagram.descriptionCharactersMost}
+                  placeholder={t('What this diagram is for')}
+                  data-testid="diagram-description-input"
+                />
+              </label>
+            </div>
+          )}
           {oneNode !== null && (
             <div className={styles.inspector} data-testid="diagram-inspector">
               <label className={styles.field}>

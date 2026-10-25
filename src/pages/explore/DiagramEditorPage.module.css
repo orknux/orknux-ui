@@ -279,6 +279,15 @@
   font-size: var(--text-sm);
 }
 
+.description {
+  min-height: 56px;
+  max-height: 160px;
+  padding: var(--space-6) var(--space-8);
+  resize: vertical;
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
 .swatches {
   display: flex;
   flex-wrap: wrap;
