@@ -48,7 +48,7 @@ export async function exportWireframe(
 }
 
 /** CSS properties that decide how a shape looks, written onto each one. */
-const SHAPE_PROPS = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-family', 'font-size', 'font-weight'];
+const SHAPE_PROPS = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'filter', 'font-family', 'font-size', 'font-weight'];
 
 /** And for the words inside a box, which are HTML in a foreignObject. */
 const WORDS_PROPS = [

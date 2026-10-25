@@ -138,6 +138,64 @@
 }
 
 /* A card's drawing is a picture of the wireframe: the card's own pointer carries over it. */
-.preview .element {
+.preview .element,
+.preview .toggle {
   cursor: inherit;
+}
+
+/* A checkbox, a radio button and a switch: the control, then its words beside it. */
+.toggle {
+  cursor: pointer;
+}
+
+.control {
+  fill: var(--wireframe-paper);
+  stroke: var(--wireframe-ink);
+  stroke-width: 1.5;
+}
+
+.controlOn {
+  fill: var(--wireframe-strong);
+  stroke: var(--wireframe-strong);
+  stroke-width: 1.5;
+}
+
+.tick {
+  fill: none;
+  stroke: var(--wireframe-on-strong);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.radioDot {
+  fill: var(--wireframe-ink);
+}
+
+.track {
+  fill: var(--wireframe-paper);
+  stroke: var(--wireframe-pencil);
+  stroke-width: 1.5;
+}
+
+.trackOn {
+  fill: var(--wireframe-strong);
+  stroke: var(--wireframe-strong);
+  stroke-width: 1.5;
+}
+
+.knob {
+  fill: var(--wireframe-pencil);
+}
+
+.knobOn {
+  fill: var(--wireframe-on-strong);
+}
+
+.words > div.controlLabel {
+  display: flex;
+  align-items: center;
+  color: var(--wireframe-ink);
+  font-size: 14px;
+  white-space: nowrap;
 }

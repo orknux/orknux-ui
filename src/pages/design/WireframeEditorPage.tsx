@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
-import { askWireframe, elementsOf, fetchWireframe, isBox, renameWireframe, saveWireframe } from '../../api/wireframes';
+import { askWireframe, elementsOf, fetchWireframe, isBox, isCheckable, renameWireframe, saveWireframe } from '../../api/wireframes';
 import type { Wireframe, WireframeElement, WireframeElementType, WireframeTurn } from '../../api/wireframes';
 import arrowIcon from '../../assets/arrow-up-right.svg';
 import dashboardIcon from '../../assets/layout-dashboard.svg';
@@ -14,6 +14,9 @@ import phoneIcon from '../../assets/smartphone.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
 import settingsIcon from '../../assets/sliders-horizontal.svg';
 import buttonIcon from '../../assets/rectangle-button.svg';
+import checkboxIcon from '../../assets/square-check-big.svg';
+import radioIcon from '../../assets/circle-dot.svg';
+import toggleIcon from '../../assets/toggle-right.svg';
 import frameIcon from '../../assets/frame.svg';
 import imageIcon from '../../assets/image-placeholder.svg';
 import inputIcon from '../../assets/text-cursor-input.svg';
@@ -50,6 +53,9 @@ import { DesignChat, useChatFiles } from './DesignChat';
 import { placedPicture, WireframeImportMenu } from './WireframeImportMenu';
 import type { ChatIdea } from './DesignChat';
 import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
+import { WireframeStylePanel } from './WireframeStylePanel';
+import type { StylePatch } from './WireframeStylePanel';
+import { withProps } from './wireframeStyle';
 
 export interface WireframeEditorPageProps {
   session: SessionUser;
@@ -65,7 +71,7 @@ type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'start' | 'end
 /** What the pointer is doing between going down and coming up. */
 type Gesture =
   | { kind: 'pan'; from: Point; view: View }
-  | { kind: 'move'; from: Point; before: WireframeElement[]; ids: string[]; only: string | null }
+  | { kind: 'move'; from: Point; before: WireframeElement[]; ids: string[]; only: string | null; toggle: string | null }
   | { kind: 'resize'; from: Point; before: WireframeElement[]; id: string; handle: Handle }
   | { kind: 'create'; from: Point; before: WireframeElement[]; id: string }
   | { kind: 'marquee'; from: Point; now: Point; kept: string[] };
@@ -81,6 +87,8 @@ const UNDO_DEPTH = 100;
 const UNDO_KEEP_MS = 250;
 /** A drag shorter than this, on screen, is a click: the element is made at its usual size. */
 const CLICK_SLOP = 4;
+/** How long after one change of a style the next change of it is the same step, so dragging a colour is one undo. */
+const RESTYLE_MS = 800;
 /** How near a frame's edge, on screen, a press takes the frame rather than the empty space inside it. */
 const FRAME_EDGE = 8;
 
@@ -95,6 +103,9 @@ const MADE: Record<WireframeElementType, { w: number; h: number; text?: () => st
   line: { w: 160, h: 0 },
   arrow: { w: 160, h: 0 },
   note: { w: 180, h: 120, text: () => t('Note') },
+  checkbox: { w: 160, h: 24, text: () => t('Option') },
+  radio: { w: 160, h: 24, text: () => t('Option') },
+  toggle: { w: 180, h: 24, text: () => t('Option') },
 };
 
 const TOOLS: { tool: Tool; icon: string; label: () => string }[] = [
@@ -105,6 +116,9 @@ const TOOLS: { tool: Tool; icon: string; label: () => string }[] = [
   { tool: 'text', icon: textIcon, label: () => t('Text') },
   { tool: 'button', icon: buttonIcon, label: () => t('Button') },
   { tool: 'input', icon: inputIcon, label: () => t('Input') },
+  { tool: 'checkbox', icon: checkboxIcon, label: () => t('Checkbox') },
+  { tool: 'radio', icon: radioIcon, label: () => t('Radio button') },
+  { tool: 'toggle', icon: toggleIcon, label: () => t('Toggle switch') },
   { tool: 'image', icon: imageIcon, label: () => t('Image placeholder') },
   { tool: 'line', icon: lineIcon, label: () => t('Line') },
   { tool: 'arrow', icon: arrowIcon, label: () => t('Arrow') },
@@ -224,6 +238,8 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const fitted = useRef(false);
+  /** The style last changed from the panel, and when: see `restyle`. */
+  const restyled = useRef<{ key: string; at: number } | null>(null);
 
   const undoKey = useUndoShortcut();
   const redoKey = useRedoShortcut();
@@ -336,6 +352,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
 
   /** A change worth undoing: the drawing it replaces goes on the stack. */
   function remember(before: WireframeElement[]) {
+    restyled.current = null;
     setPast((held) => [...held, before].slice(-UNDO_DEPTH));
     setFuture([]);
   }
@@ -345,6 +362,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   }
   function undo() {
     if (past.length === 0) return;
+    restyled.current = null;
     const to = past[past.length - 1];
     setPast(past.slice(0, -1));
     setFuture((ahead) => [elements, ...ahead]);
@@ -353,6 +371,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   }
   function redo() {
     if (future.length === 0) return;
+    restyled.current = null;
     const [to, ...rest] = future;
     setFuture(rest);
     setPast((held) => [...held, elements]);
@@ -475,7 +494,9 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
       setSelected(next);
       // A click on one of several selected keeps only that one; a drag moves them all.
       const only = !event.shiftKey && next.length > 1 ? id : null;
-      if (next.includes(id)) setGesture({ kind: 'move', from: at, before: elements, ids: next, only });
+      // A click on a checkbox's own box ticks it, as it would on the screen it stands for.
+      const toggle = event.shiftKey ? null : ((event.target as Element).closest('[data-toggle]')?.getAttribute('data-toggle') ?? null);
+      if (next.includes(id)) setGesture({ kind: 'move', from: at, before: elements, ids: next, only, toggle });
       return;
     }
 
@@ -555,6 +576,10 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
     if (JSON.stringify(done.before) !== JSON.stringify(elements)) {
       remember(done.before);
       if (done.kind === 'resize') setElements((held) => held.map(normalised));
+    } else if (done.kind === 'move' && done.toggle !== null) {
+      const id = done.toggle;
+      change(elements.map((one) => (one.id === id && isCheckable(one.type) ? withProps(one, { checked: one.props?.checked === true ? undefined : true }) : one)));
+      setSelected([id]);
     } else if (done.kind === 'move' && done.only !== null) {
       setSelected([done.only]);
     }
@@ -602,6 +627,21 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   /** One field of the one element selected, from the panel. */
   function setField(id: string, patch: Partial<WireframeElement>) {
     change(elements.map((one) => (one.id === id ? normalised({ ...one, ...patch }) : one)));
+  }
+
+  /**
+   * How the selection looks, from the style panel, written onto every element
+   * selected. A run of changes to one style - a colour being dragged across
+   * the picker - is one step to undo, not one per colour it passed.
+   */
+  function restyle(patch: StylePatch, key: string) {
+    if (selected.length === 0) return;
+    const next = elements.map((one) => (selected.includes(one.id) ? withProps(one, patch) : one));
+    const run = `${selected.join(',')}:${key}`;
+    const now = Date.now();
+    if (restyled.current !== null && restyled.current.key === run && now - restyled.current.at < RESTYLE_MS) setElements(next);
+    else change(next);
+    restyled.current = { key: run, at: now };
   }
 
   // -- Saving -------------------------------------------------------------
@@ -1091,6 +1131,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
               )}
             </div>
           )}
+          {chosen.length > 0 && <WireframeStylePanel chosen={chosen} onStyle={restyle} />}
 
           <DesignChat
             prefix="wireframe"

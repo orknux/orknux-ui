@@ -7,16 +7,35 @@ import type { EditorTurn } from './attachments';
  * same list (`WireframeElementType`), and the model drawing in the editor is
  * told it from there.
  */
-export type WireframeElementType = 'frame' | 'rect' | 'text' | 'button' | 'input' | 'image' | 'line' | 'arrow' | 'note';
+export type WireframeElementType =
+  | 'frame'
+  | 'rect'
+  | 'text'
+  | 'button'
+  | 'input'
+  | 'image'
+  | 'line'
+  | 'arrow'
+  | 'note'
+  | 'checkbox'
+  | 'radio'
+  | 'toggle';
 
 /** Whether a kind is placed by its corner and size, rather than running from one point to another. */
 export function isBox(type: WireframeElementType): boolean {
   return type !== 'line' && type !== 'arrow';
 }
 
+/** Whether a kind is a control drawn with its label beside it, which `props.checked` turns on. */
+export function isCheckable(type: WireframeElementType): boolean {
+  return type === 'checkbox' || type === 'radio' || type === 'toggle';
+}
+
 /**
  * One thing on a wireframe, in whole pixels from the top left. A line or an
- * arrow runs from (x, y) to (x + w, y + h).
+ * arrow runs from (x, y) to (x + w, y + h). How it looks past that - its
+ * background, border, shadow and the colour of its words - is in `props`, read
+ * by `wireframeStyle.ts`.
  */
 export interface WireframeElement {
   id: string;

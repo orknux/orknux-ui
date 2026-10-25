@@ -2211,6 +2211,18 @@ export const TESTS = [
     /* Makes its own wireframe and removes it; the HTML is the server's own page. */
   },
   {
+    name: 'wireframe-checkbox-check',
+    what: 'the wireframe editor draws a checkbox, a radio button and a switch; a press on the box ticks it, undoably, and the tick is kept by Save, drawn on the thumbnail and a checked input in the HTML',
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it. */
+  },
+  {
+    name: 'wireframe-style-check',
+    what: "the wireframe editor's Style gives the selection a colour or a gradient, a text colour, a border and a shadow, as drawn on the canvas, undone a style at a time, and kept by Save, the thumbnail and both exports",
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it. */
+  },
+  {
     name: 'document-list-check',
     what: "Design -> Documents: Documents after Wireframes in the menu, catalogs made and chosen, a document filed, renamed, moved, found by its words and deleted, and a catalog that holds one refused",
     needs: ['workspace'],
