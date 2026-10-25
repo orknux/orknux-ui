@@ -41,6 +41,20 @@ await press('Words');
 record((await ours()).join('') === 'BCA', `Words sorts the longest first (${(await ours()).join('')})`);
 const sortedBy = await page.locator('[aria-sort="descending"]').textContent().catch(() => '');
 record(sortedBy?.includes('Words') === true, `and its heading says it is sorted, descending (${sortedBy})`);
+// A right-aligned column's heading ends where its values do, sorted or not.
+const edges = await page.evaluate(() => {
+  const right = (selector) => Math.round(document.querySelector(selector)?.getBoundingClientRect().right ?? -1);
+  const words = (column) => {
+    const heading = document.querySelector(`[aria-sort][class*="${column}"] button`);
+    const cell = document.querySelector(`[data-testid="document-row"] [class*="${column}"]`);
+    const text = document.createRange();
+    text.selectNodeContents(cell);
+    return { heading: Math.round(heading.getBoundingClientRect().right), value: Math.round(text.getBoundingClientRect().right) };
+  };
+  return { words: words('colWords'), updated: words('colUpdated') };
+});
+record(Math.abs(edges.words.heading - edges.words.value) <= 1 && Math.abs(edges.updated.heading - edges.updated.value) <= 1,
+  `WORDS and UPDATED end where their values do, sorted or not (${JSON.stringify(edges)})`);
 await press('Updated');
 record((await ours()).join('') === 'CAB', `Updated sorts the newest first (${(await ours()).join('')})`);
 

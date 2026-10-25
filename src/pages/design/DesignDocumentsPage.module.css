@@ -61,6 +61,8 @@
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
+  /* Where a sortable heading - a row of its own - sits: at the end, over its right-aligned values. */
+  justify-content: flex-end;
 }
 
 .colUpdated {
@@ -69,6 +71,8 @@
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
   text-align: right;
+  /* Where a sortable heading - a row of its own - sits: at the end, over its right-aligned values. */
+  justify-content: flex-end;
 }
 
 .colActions {

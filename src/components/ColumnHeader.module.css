@@ -47,6 +47,7 @@
  * that looked like a button.
  */
 .press {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
@@ -86,9 +87,14 @@
  * `aria-sort` on the heading, which is what is read out; this is the picture of
  * it.
  */
+/* Hung just past the word rather than beside it in the row, so a right-aligned
+ * heading ends where its column's values do whichever way it is sorted: as a
+ * box of its own, the arrow pushed WORDS and UPDATED left of their numbers. */
 .press[data-sorted]::after {
-  flex-shrink: 0;
-  margin-left: var(--space-4);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-4));
+  transform: translateY(-50%);
   font-size: 8px;
   line-height: 1;
   color: var(--color-accent-brand);
