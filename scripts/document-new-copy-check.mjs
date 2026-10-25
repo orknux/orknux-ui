@@ -40,6 +40,16 @@ try {
     const copyBox = await copyButton.boundingBox();
     record(bar !== null && copyBox !== null && copyBox.x < bar.x && Math.abs(copyBox.y - bar.y) < 4, `beside Save, on its line (${JSON.stringify({ copyBox, bar })})`);
 
+    // Nothing unsaved: New is not asked about - there is nothing to lose - and opens an empty document at once.
+    await newButton.click();
+    await page.waitForFunction((was) => !window.location.pathname.endsWith(`/${was}`), made.id, { timeout: 10_000 }).catch(() => undefined);
+    const straight = idInAddress();
+    if (straight !== null && straight !== made.id) kept.push(straight);
+    record(browserAsked === false && straight !== null && straight !== made.id, `New on a saved document asks nothing and opens a new one (${page.url()})`);
+    await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents/${made.id}`, { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('document-prose').waitFor({ timeout: 20_000 });
+    await page.waitForTimeout(600);
+
     // Unsaved words, then Save as copy: asked first, and Cancel does nothing.
     await page.getByTestId('document-prose').click();
     await page.keyboard.press('Control+End');
@@ -77,8 +87,12 @@ try {
     const original = await documentOf(made.id);
     record(!original.content.includes('Unsaved words.') && original.content.includes('Saved words.'), `the original stays as it was last saved (${original.content})`);
 
-    // New, from the copy: asked first, then an empty document opened.
+    // New, from the copy with words not saved: asked first, says they are lost, then an empty document opened.
     const before = idInAddress();
+    await page.getByTestId('document-prose').click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type(' Not kept.');
+    await page.getByTestId('document-unsaved').waitFor({ timeout: 3_000 }).catch(() => undefined);
     await newButton.click();
     await asking.waitFor({ timeout: 3_000 }).catch(() => undefined);
     record(await asking.count() === 1, 'New asks first, in the application\'s dialog');

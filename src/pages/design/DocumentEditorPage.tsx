@@ -854,13 +854,13 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           <DocumentImportMenu documentId={held?.id ?? null} editor={answering ? null : editor} onImported={() => (imported.current = true)} />
           <DocumentExportMenu documentId={held?.id ?? null} name={held?.name ?? ''} beforeExport={save} />
           {/* A new document, and this one saved as a new one, beside Save as the image editor has them; each asked about first. */}
-          <button type="button" className={form.ghost} onClick={() => setStarting('new')} disabled={held === null || answering} title={t('Start a new document')} data-testid="document-new">
+          <button type="button" className={form.ghost} onClick={() => (unsaved ? setStarting('new') : void startNew())} disabled={held === null || answering} title={t('Start a new document')} data-testid="document-new">
             {t('New')}
           </button>
           <button
             type="button"
             className={form.ghost}
-            onClick={() => setStarting('copy')}
+            onClick={() => (unsaved ? setStarting('copy') : void saveCopy())}
             disabled={held === null || editor === null || answering || busy}
             title={t('Saves what is on screen as a new document and leaves this one as it was')}
             data-testid="document-save-copy"
