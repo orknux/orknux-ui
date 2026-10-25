@@ -1200,18 +1200,8 @@
 /*
  * A video under its message, playing where it is. Wider than a picture's
  * thumbnail because its controls have to fit along the bottom, and never wider
- * than the column it sits in.
+ * than the column it sits in. A sound is AttachmentSound's, as wide as this.
  */
-/*
- * A sound under its message: the browser's own player, as wide as a video so
- * the two line up, and never wider than the column.
- */
-.chatAudio {
-  display: block;
-  width: 320px;
-  max-width: 100%;
-}
-
 .chatVideo {
   display: block;
   width: 320px;

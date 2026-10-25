@@ -139,6 +139,12 @@ export interface VoiceModeHandle {
    * just rejected is not what the press asked for.
    */
   again: () => void;
+  /**
+   * Plays a sound at this address to the person now - what an agent's
+   * `audio_play` sends - ahead of the answer being read, and stopped the way
+   * the answer is.
+   */
+  play: (url: string) => void;
 }
 
 /**
@@ -881,7 +887,48 @@ export function VoiceMode({
     thinkingNow.current = phase === 'thinking';
   }, [phase, onPhase]);
 
-  useImperativeHandle(ref, () => ({ interrupt, again, say }));
+  useImperativeHandle(ref, () => ({ interrupt, again, say, play }));
+
+  /**
+   * Plays a sound the agent asked for, through the same queue the answer is
+   * read from.
+   *
+   * It arrives while the turn is in flight - the agent plays it before it has
+   * an answer to give - so it goes into that turn's reading: heard first, the
+   * answer read when it ends, and stopped by exactly what stops the answer,
+   * talking over it included. A sound with no turn to join gets a reading of
+   * its own that ends back at listening.
+   */
+  function play(url: string) {
+    if (!live.current) return;
+    const held = reading.current;
+    if (held !== null) {
+      held.play(url);
+      return;
+    }
+    const mine = turn.current;
+    const alone = readAloud(
+      workspaceId,
+      {
+        onStart: () => {
+          if (live.current && mine === turn.current) setPhase('speaking');
+        },
+        onEnd: () => {
+          if (live.current && mine === turn.current && reading.current === alone) {
+            reading.current = null;
+            setPhase('listening');
+          }
+        },
+        onFailure: (reason) => {
+          if (live.current && mine === turn.current) setError(reason);
+        },
+      },
+      chunking,
+    );
+    reading.current = alone;
+    alone.play(url);
+    alone.push('', true);
+  }
 
   /**
    * Lets go of everything the turn in flight is holding.
