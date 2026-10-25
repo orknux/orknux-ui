@@ -8,6 +8,7 @@ import type { Research, ResearchLanguage, ResearchMode, ResearchOutputFormat } f
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import dialog from '../../components/Dialog.module.css';
+import { FieldHint } from '../../components/FieldHint';
 import { ModelPicker } from '../../components/ModelPicker';
 import { useSieve } from '../../components/sieve';
 import { Select } from '../../components/Select';
@@ -160,9 +161,13 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
     }
   }
 
+  // A mode whose workflow has no Review step cannot be reviewed: the box says so rather than Start.
+  const reviewable = modes.find((mode) => mode.id === modeId)?.reviewable ?? true;
+  const reviewing = review && reviewable;
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (question.trim() === '' || modeId === '' || modelId === '' || (review && reviewerId === '') || submitting) return;
+    if (question.trim() === '' || modeId === '' || modelId === '' || (reviewing && reviewerId === '') || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -179,8 +184,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         documentsExclude: picked.filter((one) => one.use === 'EXCLUDE').map((one) => one.document.id),
         useWebSearch: webSearch,
         includeImages: images,
-        review,
-        reviewerModelId: review ? reviewerId : null,
+        review: reviewing,
+        reviewerModelId: reviewing ? reviewerId : null,
         followUps: followUps.trim() === '' ? null : Math.max(0, Math.min(10, Math.round(Number(followUps)))),
       });
       onStarted(started);
@@ -328,7 +333,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               <input
                 type="checkbox"
                 id="research-review"
-                checked={review}
+                checked={reviewing}
+                disabled={!reviewable}
                 onChange={(event) => {
                   setReview(event.target.checked);
                   rememberReview(event.target.checked ? 'on' : 'off');
@@ -337,6 +343,11 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Review')}
             </label>
+            {!reviewable && (
+              <span data-review-hint>
+                <FieldHint label={t('Review')}>{t("This mode's workflow has no Review step, so it cannot be reviewed")}</FieldHint>
+              </span>
+            )}
           </div>
 
           <div className={dialog.field}>
@@ -358,7 +369,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
             </div>
           </div>
 
-          {review && (
+          {reviewing && (
             <div className={dialog.field} data-reviewer>
               <label className={dialog.label} htmlFor="research-reviewer">{t('Reviewer')}</label>
               <div className={dialog.inputWrapper}>
@@ -425,7 +436,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           <button
             type="submit"
             className={dialog.filled}
-            disabled={question.trim() === '' || modeId === '' || modelId === '' || (review && reviewerId === '') || submitting}
+            disabled={question.trim() === '' || modeId === '' || modelId === '' || (reviewing && reviewerId === '') || submitting}
           >
             {submitting ? t('Starting…') : t('Start')}
           </button>
