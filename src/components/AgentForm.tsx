@@ -182,6 +182,8 @@ interface GrantableTool {
   summary: string | null;
   /** Why the installation withholds it from every agent now, or null. Issue #602. */
   unavailable: string | null;
+  /** Whether a grant given afresh leaves it hidden, for its owner to turn on; a built-in's own say. */
+  startsHidden?: boolean;
 }
 
 /**
@@ -1402,6 +1404,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         // A built-in's own line is the first sentence of what the model is told, which the server writes.
         summary: tool.summary,
         unavailable: tool.unavailable,
+        startsHidden: tool.startsHidden,
       }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -1479,6 +1482,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
    * Hide and say where the grant is.
    */
   const orknuxNames = toolCatalogue.items.filter((tool) => tool.governance === 'ORKNUX_ACCESS').map((tool) => tool.name);
+  /** The orknux_* tools a grant given afresh leaves hidden, as the server does for a new agent: deleting a diagram. */
+  const orknuxStartingOn = toolCatalogue.items
+    .filter((tool) => tool.governance === 'ORKNUX_ACCESS' && tool.startsHidden !== true)
+    .map((tool) => tool.name);
   const fixedRows = toolCatalogue.items.filter(
     (tool) => fixedBecause(tool.governance) !== null && !(tool.governance === 'ORKNUX_ACCESS' && orknuxAccess),
   );
@@ -2411,10 +2418,10 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
                 onChange={(event) => {
                   const on = event.target.checked;
                   setOrknuxAccess(on);
-                  // Granted afresh, every orknux_ tool starts at Always, as a new agent's do; each is switched below.
+                  // Granted afresh, every orknux_ tool starts at Always, as a new agent's do, but the ones that start hidden; each is switched below.
                   if (on) {
-                    setTools((held) => [...held, ...orknuxNames.filter((name) => !held.includes(name))]);
-                    setRequiredTools((held) => [...held, ...orknuxNames.filter((name) => !held.includes(name))]);
+                    setTools((held) => [...held, ...orknuxStartingOn.filter((name) => !held.includes(name))]);
+                    setRequiredTools((held) => [...held, ...orknuxStartingOn.filter((name) => !held.includes(name))]);
                   }
                 }}
               />

@@ -2198,6 +2198,12 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'diagram-delete-tool-check',
+    what: 'orknux_delete_diagram starts hidden on a new agent and on one given Orknux access afresh in the form, and its owner turns it on',
+    needs: ['workspace'],
+    /* Makes its own two agents and deletes them. */
+  },
+  {
     name: 'diagram-palette-check',
     what: 'Quick actions finds a diagram by its name and a node by its label, and opens the editor on that node',
     needs: ['workspace'],
