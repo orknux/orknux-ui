@@ -5623,7 +5623,7 @@ export const TESTS = [
   },
   {
     name: 'boxes-agent-grant-check',
-    what: "an agent's Boxes grant: starts empty, offers the labels boxes carry as you type, chips added and removed, saved as boxLabels; an orkbox_ tool reads Hide without a label and Always with one",
+    what: "an agent's Boxes grant: starts empty, offers the labels boxes carry as you type, chips added and removed, saved as boxLabels; an orkbox_ tool reads Hide without a label, and Offer with one, cycling Offer and Always",
     needs: ['workspace'],
     /* Makes a scratch agent and a scratch box, only so there is a label to offer, and removes both. */
   },
