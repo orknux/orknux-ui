@@ -5186,6 +5186,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'chat-new-accent-check',
+    what: "the chat list's + New is filled with the main accent",
+    needs: [],
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],
