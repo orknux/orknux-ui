@@ -443,6 +443,7 @@ const PL: Record<string, string> = {
   DiagramCatalogNameInvalid: 'Katalog diagramów potrzebuje nazwy, najwyżej 120 znaków',
   DiagramCatalogNameTaken: 'Katalog diagramów „{name}” już istnieje w tym obszarze roboczym',
   DiagramCatalogNotEmpty: '{name} zawiera diagramy ({count}); najpierw je przenieś albo usuń',
+  DiagramDescriptionTooLong: 'Opis diagramu może mieć najwyżej {most} znaków, a ten ma {length}',
   DiagramNotesTooLong: 'Notatki w {node} mają {length} znaków, a mogą mieć najwyżej {most}',
   DiagramTooLarge: 'Diagram może mieć najwyżej {most} węzłów i połączeń, a ten miałby {count}',
   DiagramChanged: 'Diagram {name} został zmieniony od czasu jego otwarcia; otwórz go ponownie przed zapisaniem',

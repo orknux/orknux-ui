@@ -1,7 +1,10 @@
+import { createContext, useContext, useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, useInternalNode } from '@xyflow/react';
 import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/react';
 
 import type { DiagramEdgeKind, DiagramNodeKind } from '../../api/diagrams';
+import { t } from '../../i18n';
 import styles from './DiagramEditorPage.module.css';
 
 /** What a node on the canvas carries: what it is, and how it is drawn. */
@@ -26,6 +29,64 @@ export type LinkEdge = Edge<LinkData, 'link'>;
  */
 export const SWATCHES = ['#e4e4e7', '#bfdbfe', '#bbf7d0', '#fef08a', '#fed7aa', '#fecaca', '#e9d5ff', '#3f3f46'];
 
+/** Which label is being typed over in place, and what becomes of what is typed. */
+export interface LabelEditing {
+  target: { kind: 'node' | 'edge'; id: string } | null;
+  commit: (text: string) => void;
+  cancel: () => void;
+}
+
+export const LabelEditingContext = createContext<LabelEditing>({ target: null, commit: () => {}, cancel: () => {} });
+
+/**
+ * A label typed over where it is drawn: a text box over the words, in their
+ * font and their centring, sized to the shape, its text selected to type over.
+ *
+ * Enter puts it down, Shift+Enter starts a new line where a label may have
+ * lines, Escape puts the old one back, and leaving it puts it down. Its keys
+ * stop here: Delete, the arrows and every shortcut are the box's while it is
+ * open, and React Flow is told not to drag, pan or zoom from it.
+ */
+export function InPlaceLabel({ initial, className, multiline, style }: { initial: string; className: string; multiline: boolean; style?: CSSProperties }) {
+  const editing = useContext(LabelEditingContext);
+  const box = useRef<HTMLTextAreaElement | null>(null);
+  /** Set once Enter or Escape has decided, so the blur that follows does not decide again. */
+  const done = useRef(false);
+  useEffect(() => {
+    const held = box.current;
+    if (held === null) return;
+    held.focus();
+    held.select();
+  }, []);
+  return (
+    <textarea
+      ref={box}
+      className={`nodrag nopan nowheel ${className}`}
+      style={style}
+      defaultValue={initial}
+      rows={1}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          done.current = true;
+          editing.cancel();
+        } else if (event.key === 'Enter' && !(multiline && event.shiftKey)) {
+          event.preventDefault();
+          done.current = true;
+          editing.commit(event.currentTarget.value);
+        }
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onBlur={(event) => {
+        if (!done.current) editing.commit(event.currentTarget.value);
+      }}
+      aria-label={t('Label')}
+      data-testid="diagram-label-editor"
+    />
+  );
+}
+
 /** Whether words on this fill want to be light. */
 function dark(fill: string): boolean {
   if (!/^#[0-9a-f]{6}$/i.test(fill)) return false;
@@ -40,7 +101,9 @@ function dark(fill: string): boolean {
  * loosely - because which side a line leaves from is drawn, not stored: a line
  * runs between the two boxes' edges wherever they are (see [FloatingLink]).
  */
-export function ShapeNodeView({ data, selected }: NodeProps<ShapeNode>) {
+export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNode>) {
+  const editing = useContext(LabelEditingContext);
+  const typing = editing.target?.kind === 'node' && editing.target.id === id;
   const filled = data.color !== undefined;
   const style = filled ? { background: data.color, color: dark(data.color as string) ? 'var(--diagram-ink-on-dark)' : 'var(--diagram-ink-on-light)' } : undefined;
   return (
@@ -51,13 +114,23 @@ export function ShapeNodeView({ data, selected }: NodeProps<ShapeNode>) {
           <svg className={styles.diamond} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <polygon points="50,1 99,50 50,99 1,50" style={filled ? { fill: data.color } : undefined} />
           </svg>
-          <span className={styles.shapeLabel} style={filled ? { color: style?.color } : undefined}>
-            {data.label}
-          </span>
+          {typing ? (
+            <InPlaceLabel initial={data.label} className={`${styles.shapeLabel} ${styles.labelEditor}`} multiline style={filled ? { color: style?.color } : undefined} />
+          ) : (
+            <span className={styles.shapeLabel} style={filled ? { color: style?.color } : undefined} data-testid="diagram-node-label-text">
+              {data.label}
+            </span>
+          )}
         </div>
       ) : (
         <div className={`${styles.shape} ${styles[`shape_${data.kind}`] ?? ''}`} style={style} data-testid="diagram-node-shape" data-kind={data.kind}>
-          <span className={data.kind === 'group' ? styles.groupLabel : styles.shapeLabel}>{data.label}</span>
+          {typing ? (
+            <InPlaceLabel initial={data.label} className={`${data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} ${styles.labelEditor}`} multiline />
+          ) : (
+            <span className={data.kind === 'group' ? styles.groupLabel : styles.shapeLabel} data-testid="diagram-node-label-text">
+              {data.label}
+            </span>
+          )}
         </div>
       )}
       {data.noted && <span className={styles.notedMark} title="" aria-hidden="true" data-testid="diagram-node-noted" />}
@@ -96,6 +169,8 @@ function border(box: { cx: number; cy: number; hw: number; hh: number }, tx: num
  * being dragged and survives the node objects being rebuilt.
  */
 export function FloatingLink({ id, source, target, data, selected, markerEnd, markerStart }: EdgeProps<LinkEdge>) {
+  const editing = useContext(LabelEditingContext);
+  const typing = editing.target?.kind === 'edge' && editing.target.id === id;
   const from = useInternalNode(source);
   const to = useInternalNode(target);
   if (from === undefined || to === undefined) return null;
@@ -116,7 +191,18 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
         style={kind === 'dashed' ? { strokeDasharray: '6 4' } : undefined}
         interactionWidth={16}
       />
-      {data?.label !== undefined && data.label !== '' && (
+      {typing && (
+        <EdgeLabelRenderer>
+          <div
+            className={`${styles.linkLabel} ${styles.linkLabelEditing}`}
+            style={{ transform: `translate(-50%, -50%) translate(${(start.x + end.x) / 2}px, ${(start.y + end.y) / 2}px)` }}
+          >
+            {/* One line: a connection's label is drawn on one. */}
+            <InPlaceLabel initial={data?.label ?? ''} className={styles.linkLabelEditor} multiline={false} />
+          </div>
+        </EdgeLabelRenderer>
+      )}
+      {!typing && data?.label !== undefined && data.label !== '' && (
         <EdgeLabelRenderer>
           <div
             className={`${styles.linkLabel} ${selected ? styles.linkLabelSelected : ''}`}

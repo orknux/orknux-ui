@@ -12,8 +12,20 @@
 }
 
 .colName {
+  display: flex;
   flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--space-2);
   min-width: 0;
+}
+
+/* What it is for, on one line, cut where it runs out; the whole of it on hover. */
+.description {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .colAgents {

@@ -18,7 +18,8 @@ const { createDiagram: made } = await graphql(
 );
 
 async function offered(typed) {
-  await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows`, { waitUntil: 'domcontentloaded' });
+  // A page of this workspace: /workflows is not one, and the catch-all sends it to the last workspace opened.
+  await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/diagrams`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(BOX, { timeout: 20_000 });
   await page.click(BOX);
   await page.fill(BOX, typed);

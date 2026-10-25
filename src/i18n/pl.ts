@@ -3630,6 +3630,7 @@ export const PL: Record<string, string> = {
   "Writing…": "Pisanie…",
   "Time left": "Pozostało",
   // Diagrams in Explore.
+  "What this diagram is for": "Do czego służy ten diagram",
   "Diagrams": "Diagramy",
   "Diagram editor": "Edytor diagramów",
   "DIAGRAM CATALOGS": "KATALOGI DIAGRAMÓW",

@@ -58,6 +58,10 @@ export interface Diagram {
   catalogId: string;
   catalogName: string;
   name: string;
+  /** What it is for, in a sentence or two; null where nobody has said. */
+  description: string | null;
+  /** How long a description may be on this installation. */
+  descriptionCharactersMost: number;
   agentAccess: DiagramAgentAccess;
   document: string;
   nodeCount: number;
@@ -76,7 +80,7 @@ export interface DiagramHit {
   diagramId: string;
   diagramName: string;
   catalogName: string;
-  field: 'label' | 'notes' | 'edge' | 'name';
+  field: 'label' | 'notes' | 'edge' | 'name' | 'description';
   nodeId: string | null;
   nodeLabel: string | null;
   edgeId: string | null;
@@ -95,7 +99,7 @@ export interface DiagramAnswer {
 }
 
 const FIELDS =
-  'id workspaceId catalogId catalogName name agentAccess document nodeCount edgeCount revision noteCharactersMost createdBy createdAt updatedBy updatedAt';
+  'id workspaceId catalogId catalogName name description descriptionCharactersMost agentAccess document nodeCount edgeCount revision noteCharactersMost createdBy createdAt updatedBy updatedAt';
 const CATALOG_FIELDS = 'id workspaceId name diagramCount';
 
 /** The drawing of a stored diagram; one that cannot be read is an empty drawing. */
@@ -185,6 +189,15 @@ export async function renameDiagram(id: string, name: string): Promise<Diagram> 
     { id, name },
   );
   return data.renameDiagram;
+}
+
+/** What the diagram is for; blank takes it away. */
+export async function describeDiagram(id: string, description: string): Promise<Diagram> {
+  const data = await graphql<{ describeDiagram: Diagram }>(
+    `mutation ($id: ID!, $description: String) { describeDiagram(id: $id, description: $description) { ${FIELDS} } }`,
+    { id, description },
+  );
+  return data.describeDiagram;
 }
 
 export async function moveDiagram(id: string, catalogId: string): Promise<Diagram> {

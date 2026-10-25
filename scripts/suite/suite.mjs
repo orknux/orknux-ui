@@ -2210,6 +2210,18 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'diagram-label-edit-check',
+    what: "a double-click or F2 types over a node's or a connection's label in place; Enter keeps it through a reload, Escape puts the old one back, and Delete or the arrows typed in it touch nothing else",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-description-check',
+    what: "a diagram's description is typed in the editor, stored, kept after a reload, and shown on the list on one line",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
     name: 'diagram-delete-tool-check',
     what: 'orknux_delete_diagram starts hidden on a new agent and on one given Orknux access afresh in the form, and its owner turns it on',
     needs: ['workspace'],
