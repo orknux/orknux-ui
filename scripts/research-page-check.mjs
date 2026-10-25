@@ -284,14 +284,17 @@ record((await chosenOption(page, documents.locator(`[data-picked="${fileName}"]`
 // --- starting one -----------------------------------------------------------
 await webSearch.uncheck();
 record(!(await webSearch.isChecked()), 'unticked, it stays unticked');
+// Ticked from the start; unticked it stays so, and ticked again it is sent - which is what the research is asked for below.
 await images.uncheck();
 record(!(await images.isChecked()), 'unticked, Include images stays unticked');
+await images.check();
+record(await images.isChecked(), 'and ticked again, it stays ticked');
 await dialog.locator('textarea#research-question').fill(question);
 // What Start sends, read off the request itself.
 const sent = page.waitForRequest((request) => (request.postData() ?? '').includes('StartResearch'), { timeout: 15_000 }).catch(() => null);
 await dialog.getByRole('button', { name: /^Start$/ }).click();
 const startInput = JSON.parse((await sent)?.postData() ?? '{}')?.variables?.input ?? {};
-record(startInput.includeImages === false && startInput.useWebSearch === false, `Start sends both switches as they were left (${JSON.stringify({ includeImages: startInput.includeImages, useWebSearch: startInput.useWebSearch })})`);
+record(startInput.includeImages === true && startInput.useWebSearch === false, `Start sends both switches as they were left (${JSON.stringify({ includeImages: startInput.includeImages, useWebSearch: startInput.useWebSearch })})`);
 await page.locator('dialog[open]').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
 record((await page.locator('dialog[open]').count()) === 0, 'Start closes the dialog');
 
