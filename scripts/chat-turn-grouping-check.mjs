@@ -109,7 +109,7 @@ const read = (probes) =>
     const names = document.querySelectorAll('[class*="assistantName"]').length;
     const copies = document.querySelectorAll('[aria-label="Copy this answer"]').length;
     const textNode = (text) => {
-      const walk = document.createTreeWalker(document.querySelector('[class*="_log"]') ?? document.body, NodeFilter.SHOW_TEXT);
+      const walk = document.createTreeWalker(document.querySelector('[data-turn-line]')?.parentElement ?? document.body, NodeFilter.SHOW_TEXT);
       for (let node = walk.nextNode(); node !== null; node = walk.nextNode()) {
         if ((node.textContent ?? '').includes(text)) return node.parentElement;
       }
