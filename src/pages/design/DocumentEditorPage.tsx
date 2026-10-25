@@ -57,10 +57,13 @@ import shell from './DesignImageEditorPage.module.css';
 import { DesignChat, useChatFiles, useChatModels } from './DesignChat';
 import type { ChatIdea } from './DesignChat';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
+import { DocumentColour } from './DocumentColour';
 import { DocumentExportMenu } from './DocumentExportMenu';
 import { DocumentImportMenu } from './DocumentImportMenu';
 import { DocumentFind } from './DocumentFind';
 import { DocumentPaper, geometryOf, useDocumentEditor } from './DocumentPaper';
+import { DocumentSelectionTools } from './DocumentSelectionTools';
+import { DocumentSide } from './DocumentSide';
 import type { ChangedRange } from './DocumentPaper';
 import { aroundCaret, documentImageSource, markGrammar, suggest, textblocks } from './documentExtensions';
 import type { GrammarMark } from './documentExtensions';
@@ -194,6 +197,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [changed, setChanged] = useState<ChangedRange | null>(null);
   const writingNow = useRef(false);
   const [talkError, setTalkError] = useState<string | null>(null);
+  /** The chat answering about the document - Explain, Summarise - which writes nothing, so the page stays editable. */
+  const [consulting, setConsulting] = useState(false);
 
   const scope = useRef<HTMLDivElement | null>(null);
   const upload = useRef<HTMLInputElement | null>(null);
@@ -409,6 +414,32 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
       setAnswering(false);
     }
   }
+
+  /**
+   * A turn that asks about the document rather than in it: Explain and
+   * Summarise. The model is offered only the tools that read it, so nothing is
+   * saved, the page is not followed and stays editable, and the answer is in
+   * the chat. The whole document is summarised as it is saved, so what is on
+   * screen is saved first; a selection travels in the turn itself.
+   */
+  async function consult(said: string, wholeDocument: boolean) {
+    if (modelId === '' || held === null || answering || consulting) return;
+    setTalkError(null);
+    if (wholeDocument && unsaved && !(await save())) return;
+    const sent: DocumentTurn[] = [...talk, { role: 'user', content: said }];
+    setTalk(sent);
+    setConsulting(true);
+    try {
+      const answered = await askDocument(held.id, modelId, sent, true);
+      setTalk([...sent, { role: 'assistant', content: answered.answer }]);
+    } catch (cause) {
+      setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.'));
+    } finally {
+      setConsulting(false);
+    }
+  }
+
+  const quoted = (words: string) => `“${words.trim()}”`;
 
   // -- The suggestion while typing -------------------------------------------
 
@@ -646,6 +677,16 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             {t('Grammar')}
           </button>
           <span className={shell.toolbarGap} aria-hidden="true" />
+          <button
+            type="button"
+            className={form.ghost}
+            onClick={() => void consult(t('Summarise the whole document.'), true)}
+            disabled={held === null || modelId === '' || answering || consulting}
+            title={t('Summarise the document in the chat')}
+            data-testid="document-summarise"
+          >
+            {t('Summarise')}
+          </button>
           <div className={styles.menuHolder}>
             <button type="button" className={form.ghost} onClick={() => setPageMenu((open) => !open)} aria-expanded={pageMenu} data-testid="document-page-settings">
               {t('Page')}
@@ -743,6 +784,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             {tool(t('Strikethrough'), strikeIcon, active('strike'), () => run((chain) => chain.toggleStrike()), 'document-strike')}
             {tool(t('Inline code'), codeIcon, active('code'), () => run((chain) => chain.toggleCode()), 'document-code')}
             {tool(t('Link'), linkIcon, active('link'), link, 'document-link')}
+            <DocumentColour editor={editor} disabled={!can} />
             <span className={shell.toolbarGap} aria-hidden="true" />
             {tool(t('Bulleted list'), listIcon, active('bulletList'), () => run((chain) => chain.toggleBulletList()), 'document-bullets')}
             {tool(t('Numbered list'), listOrderedIcon, active('orderedList'), () => run((chain) => chain.toggleOrderedList()), 'document-numbers')}
@@ -795,6 +837,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
               data-testid="document-image-file"
             />
           </div>
+        <div className={styles.body}>
+        {editor !== null && <DocumentSide editor={editor} scope={scope} tick={tick} />}
         <div className={styles.canvas} ref={scope}>
           <DocumentFind editor={editor} replacing scope={scope} open={finding} onOpen={setFinding} />
           {held === null || editor === null ? (
@@ -809,6 +853,18 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
                 changed={changed}
               />
             </div>
+          )}
+          {editor !== null && held !== null && (
+            <DocumentSelectionTools
+              editor={editor}
+              documentId={held.id}
+              modelId={modelId}
+              canAsk={modelId !== '' && !answering && !consulting}
+              language={settings.language !== '' ? settings.language : currentLanguage()}
+              scope={scope}
+              onExplain={(words) => void consult(`${t('Explain this, as it is used in the document:')}\n${quoted(words)}`, false)}
+              onSummarise={(words) => void consult(`${t('Summarise this part of the document:')}\n${quoted(words)}`, false)}
+            />
           )}
           {picked !== null && (
             <div className={styles.grammarCard} style={{ left: picked.left, top: picked.top }} role="dialog" data-testid="document-grammar-card">
@@ -852,6 +908,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           )}
         </div>
         </div>
+        </div>
 
         <div className={`${shell.panel} ${wire.panel}`} data-testid="document-panel">
           <DesignChat
@@ -861,9 +918,9 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             ideas={IDEAS}
             ready={held !== null}
             talk={talk}
-            answering={answering}
+            answering={answering || consulting}
             talkError={talkError}
-            working={t('Writing…')}
+            working={consulting ? t('Thinking…') : t('Writing…')}
             asking={asking}
             onAsking={setAsking}
             onAsk={(event, idea) => void ask(event, idea)}

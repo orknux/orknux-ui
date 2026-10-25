@@ -277,15 +277,37 @@ export async function deleteDocument(id: string): Promise<boolean> {
   return data.deleteDocument;
 }
 
-/** Asks a chat model to write in the document; what it writes is saved as it goes. */
-export async function askDocument(id: string, modelId: string, messages: DocumentTurn[]): Promise<DocumentAnswer> {
+/**
+ * Asks a chat model to write in the document; what it writes is saved as it goes. With [readOnly]
+ * it is asked about the document instead - Explain, Summarise - offered only the tools that read it.
+ */
+export async function askDocument(id: string, modelId: string, messages: DocumentTurn[], readOnly = false): Promise<DocumentAnswer> {
   const data = await graphql<{ askDocument: DocumentAnswer }>(
-    `mutation ($id: ID!, $modelId: ID!, $messages: [DocumentChatTurnInput!]!) {
-       askDocument(id: $id, modelId: $modelId, messages: $messages) { answer changed document { ${FIELDS} } }
+    `mutation ($id: ID!, $modelId: ID!, $messages: [DocumentChatTurnInput!]!, $readOnly: Boolean) {
+       askDocument(id: $id, modelId: $modelId, messages: $messages, readOnly: $readOnly) { answer changed document { ${FIELDS} } }
      }`,
-    { id, modelId, messages: editorTurnsInput(messages) },
+    { id, modelId, messages: editorTurnsInput(messages), readOnly },
   );
   return data.askDocument;
+}
+
+/** The languages Translate offers, by the codes the server takes. */
+export const TRANSLATION_LANGUAGES = ['en', 'pl', 'de', 'fr', 'es', 'it', 'pt', 'nl', 'cs', 'uk'] as const;
+export type TranslationLanguage = (typeof TRANSLATION_LANGUAGES)[number];
+
+/** A selection put into another language by a chat model; nothing is written - the editor puts it in place. */
+export async function translateDocumentText(
+  id: string,
+  modelId: string,
+  asked: { text: string; language: TranslationLanguage; before: string; after: string },
+): Promise<string> {
+  const data = await graphql<{ translateDocumentText: string }>(
+    `mutation ($id: ID!, $modelId: ID!, $text: String!, $language: String!, $before: String, $after: String) {
+       translateDocumentText(id: $id, modelId: $modelId, text: $text, language: $language, before: $before, after: $after)
+     }`,
+    { id, modelId, ...asked },
+  );
+  return data.translateDocumentText;
 }
 
 /** The formats a document is exported in, as the server's download addresses name them. */

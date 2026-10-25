@@ -432,3 +432,11 @@
 .prose :global(.ProseMirror-active-search-match) {
   background: var(--document-find-active);
 }
+
+/* A highlight with a note: yellow under the words, in the editor, the view and the exports alike. */
+.note {
+  background: var(--document-note);
+  color: inherit;
+  border-bottom: 2px solid var(--document-note-edge);
+  cursor: pointer;
+}

@@ -2270,6 +2270,42 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own document, wireframe and diagram and removes them; the upload and the model's answer are answered here, so no file is stored and no model is asked. */
   },
+  {
+    name: 'document-colour-check',
+    what: "a word coloured from the format bar is drawn in its colour, kept by Save and after a reload, taken off by Default colour, and carried into the PDF and the ODT",
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
+  {
+    name: 'document-explain-check',
+    what: "a selection offers Explain, Summarise, Translate and Highlight above it; Explain asks the chat read-only about the words, its answer is in the chat, and the document is unchanged and editable throughout",
+    needs: ['workspace'],
+    /* The model's answer is given by the page's network, so no model is needed. Makes its own document and removes it. */
+  },
+  {
+    name: 'document-summarise-check',
+    what: "Summarise over a selection asks the chat read-only about that fragment alone, and Summarise in the top bar about the whole document, saved first; both answers are in the chat and the document holds no summary",
+    needs: ['workspace'],
+    /* The model's answers are given by the page's network. Makes its own document and removes it. */
+  },
+  {
+    name: 'document-translate-check',
+    what: "Translate sends the selection with the words around it, shows the translation, asks again in another language, and Replace puts it in place as one step undo takes back",
+    needs: ['workspace'],
+    /* The translation is given by the page's network. Makes its own document and removes it. */
+  },
+  {
+    name: 'document-highlight-check',
+    what: "Highlight marks the selection and asks for a note; the highlight and note are kept by Save and after a reload, hovering shows the note, a press opens it to change, and Remove highlight leaves the words",
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
+  {
+    name: 'document-outline-check',
+    what: "left of the sheets, the headings indented by level jump the desk and the caret to a section and mark the one in view as it scrolls, the highlights list their notes and select their words, and the column and its sections fold and stay folded",
+    needs: ['workspace'],
+    /* Makes its own document and removes it; clears the column's remembered folds first. */
+  },
 
   // --- Explore -> Diagrams -------------------------------------------------------
   {

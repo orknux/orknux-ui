@@ -1,0 +1,350 @@
+/*
+ * The document editor's tools around the words: the bar over a selection, the
+ * Translate and note cards, the text colour in the format bar, and the column
+ * of outline and highlights left of the sheets.
+ */
+
+/* ---- Over a selection ---- */
+
+/* Above the first selected line, on its left edge. */
+.selectionMenu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  transform: translateY(calc(-100% - var(--space-6)));
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+}
+
+.selectionButton {
+  height: 26px;
+  padding: 0 var(--space-8);
+  background: none;
+  border: none;
+  border-radius: var(--radius-6);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.selectionButton:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.selectionButton:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+/* ---- Translate, and a highlight's note ---- */
+
+.card {
+  position: fixed;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 340px;
+  padding: var(--space-12);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+}
+
+.cardRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.cardTitle {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.cardSelect {
+  flex: 1;
+}
+
+.cardWaiting {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  color: var(--color-text-secondary);
+}
+
+.cardText {
+  min-height: 96px;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+
+.cardNote {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-6);
+}
+
+/* ---- The text colour, in the format bar ---- */
+
+.colourHolder {
+  position: relative;
+}
+
+.colourTool {
+  flex-direction: column;
+  gap: 1px;
+}
+
+.colourLetter {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* The colour at the caret; the ordinary ink where it has none. */
+.colourBar {
+  width: 14px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--color-text-primary);
+}
+
+.colourMenu {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: var(--shadow-menu);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 22px);
+  gap: var(--space-4);
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.swatchOn {
+  outline: 2px solid var(--color-violet);
+  outline-offset: 1px;
+}
+
+.colourRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.colourPlain {
+  padding: 2px var(--space-6);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.colourCustom input {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+/* ---- The column left of the sheets ---- */
+
+.side {
+  display: flex;
+  flex: 0 0 240px;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-8) 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.sideFolded {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.sideHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-8);
+}
+
+.sectionToggle {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-6);
+  height: 28px;
+  padding: 0 var(--space-4);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.chevron {
+  width: 10px;
+  color: var(--color-text-muted);
+}
+
+.sideToggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-6);
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sideToggle:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.sideCount {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* Each list caps and scrolls inside itself; the column never scrolls of its own. */
+.sideList {
+  display: flex;
+  flex-direction: column;
+  max-height: 38vh;
+  margin-bottom: var(--space-8);
+  padding: 0 var(--space-8);
+  overflow-y: auto;
+}
+
+.sideEmpty {
+  margin: 0;
+  padding: var(--space-4) var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.outlineItem {
+  flex: none;
+  overflow: hidden;
+  padding: var(--space-4) var(--space-8);
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-4) var(--radius-4) 0;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.outlineItem:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.outlineCurrent {
+  border-left-color: var(--color-violet);
+  background: color-mix(in srgb, var(--color-violet) 10%, transparent);
+  color: var(--color-text-primary);
+}
+
+.highlightItem {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-6) var(--space-8);
+  background: none;
+  border: none;
+  border-left: 3px solid var(--document-note-edge);
+  border-radius: 0 var(--radius-4) var(--radius-4) 0;
+  margin-bottom: var(--space-4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.highlightItem:hover {
+  background: var(--color-surface-hover);
+}
+
+.highlightText {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highlightNote {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
