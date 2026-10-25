@@ -2389,6 +2389,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own document and removes it; clears the column's remembered folds first. */
   },
+  {
+    name: 'document-selection-settle-check',
+    what: "the bar over a selection is not drawn while the mouse button is held mid-sweep or while Shift is held with the arrows, and is drawn once the button or Shift is let go",
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
 
   // --- Explore -> Diagrams -------------------------------------------------------
   {
