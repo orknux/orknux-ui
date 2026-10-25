@@ -66,6 +66,11 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'quick-chat-welcome-check',
+    what: 'the quick chat opens on a greeting and questions to ask, under a button that says Ask AI',
+    needs: ['workspace'],
+  },
+  {
     name: 'quick-chat-stop-check',
     what: 'stopping the quick chat mid-request, with the answer held open so no model decides the timing',
     needs: ['workspace'],
