@@ -2,7 +2,10 @@
  * A diagram's description: typed in the editor's panel while nothing is
  * selected, stored when the field is left, there after a reload, and shown on
  * the list under the name on one line, cut with an ellipsis where it is long,
- * the whole of it on hover.
+ * the whole of it on hover. And the Diagram section that holds it is in the
+ * panel whatever is selected: with a node selected it is still there, folds
+ * and opens again, remembers being folded across a reload, and the
+ * description typed in it then is stored too.
  *
  * Makes its own diagram and removes it.
  */
@@ -11,8 +14,8 @@ import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 const stamp = Date.now();
 const { createDiagram: made } = await graphql(
-  'mutation ($w: ID!, $n: String!) { createDiagram(workspaceId: $w, name: $n) { id catalogId } }',
-  { w: WORKSPACE, n: `zzDescribed ${stamp}` },
+  'mutation ($w: ID!, $n: String!, $d: String) { createDiagram(workspaceId: $w, name: $n, document: $d) { id catalogId } }',
+  { w: WORKSPACE, n: `zzDescribed ${stamp}`, d: JSON.stringify({ nodes: [{ id: 'n', kind: 'box', label: 'Shop', x: 0, y: 0, w: 160, h: 60 }], edges: [] }) },
 );
 const SAID = `How a card payment travels from the shop to the ledger and back again, every hop of it, ${stamp}.`;
 
@@ -28,6 +31,26 @@ record(stored === SAID, `leaving the field stores it (${stored})`);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await field.waitFor({ timeout: 20_000 }).catch(() => undefined);
 record((await field.inputValue().catch(() => '')) === SAID, 'and it is there after a reload');
+
+// With a node selected, the Diagram section is still there; folded, it remembers; opened again, it still saves.
+await page.locator('.react-flow__node[data-id="n"]').click({ timeout: 10_000 });
+await page.getByTestId('diagram-inspector').waitFor({ timeout: 5_000 }).catch(() => undefined);
+const section = page.getByTestId('diagram-section');
+record((await section.count()) === 1 && (await page.getByTestId('diagram-inspector').count()) === 1, 'with a node selected the Diagram section is still in the panel, beside the node');
+await page.getByTestId('diagram-section-toggle').click();
+record((await field.count()) === 0 && (await page.getByTestId('diagram-section-toggle').getAttribute('aria-expanded')) === 'false', 'it folds away');
+await page.reload({ waitUntil: 'domcontentloaded' });
+await section.waitFor({ timeout: 20_000 }).catch(() => undefined);
+record((await page.getByTestId('diagram-section-toggle').getAttribute('aria-expanded')) === 'false' && (await field.count()) === 0, 'and stays folded after a reload');
+await page.locator('.react-flow__node[data-id="n"]').click({ timeout: 10_000 });
+await page.getByTestId('diagram-section-toggle').click();
+const AGAIN = `Where the shop's orders go, ${stamp}.`;
+await field.fill(AGAIN);
+await page.locator('.react-flow__pane').click({ position: { x: 30, y: 30 } });
+await page.waitForTimeout(800);
+const again = (await graphql('query ($id: ID!) { diagram(id: $id) { description } }', { id: made.id })).diagram.description;
+record(again === AGAIN, `opened with a node selected, it shows the description and saves it (${again})`);
+await graphql('mutation ($id: ID!, $d: String) { describeDiagram(id: $id, description: $d) { id } }', { id: made.id, d: SAID });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/diagrams?catalog=${made.catalogId}`, { waitUntil: 'domcontentloaded' });
 const shown = page.locator(`[data-testid="diagram-row"][data-diagram-id="${made.id}"] [data-testid="diagram-description"]`);

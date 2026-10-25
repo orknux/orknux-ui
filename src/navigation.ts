@@ -374,6 +374,8 @@ export const PAGES = [
   },
   /* A diagram's editor, reached from the list or from a search hit, which names a node with ?node=. */
   { path: '/workspace/:workspaceId/explore/diagrams/:diagramId', access: 'signed-in', goTo: false },
+  /* A diagram's details - name, description, catalog, what agents may do - reached from the list's pencil. */
+  { path: '/workspace/:workspaceId/explore/diagrams/:diagramId/settings', access: 'signed-in', goTo: false },
 
   // ---- Design: what a model drew, and drawing more ----
   /* Screens sketched by hand or drawn by a model, first in Design, before the pictures drawn from them. Issue #655. */
