@@ -5151,6 +5151,12 @@ export const TESTS = [
     // The research and the stop are answered in the browser.
   },
   {
+    name: 'chat-waiting-row-check',
+    what: 'a chat waiting for its answer draws one message, the wait under the answer’s name, not a second row',
+    needs: [],
+    // The chat and the send are answered in the browser.
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],

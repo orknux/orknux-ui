@@ -3451,6 +3451,13 @@ ${named}`;
         ? tf('{tokens} and {pictures}', { tokens: spentPart, pictures: drawnPart })
         : (spentPart ?? drawnPart);
 
+  /** Sent and not begun: the last turn is still empty and nothing has been looked up on the way. */
+  const waitingNow = sending && messages[messages.length - 1]?.content === '' && !anyWorking(working);
+  const waitingLine = (
+    <p className={styles.waiting} data-waiting="">
+      {tf('Waiting for {name}…', { name: current?.agentName ?? current?.modelName ?? t('the model') })}
+    </p>
+  );
   return (
     <AppShell
       user={shellUser(session)}
@@ -3988,6 +3995,8 @@ ${named}`;
                     {turnHead.has(index) && sentAt(message.at) !== null && (
                       <span className={styles.sentAt}>{sentAt(message.at)}</span>
                     )}
+                    {/* The answer not begun yet: said here, under its name, rather than as a second message with the same icon. */}
+                    {waitingNow && index === messages.length - 1 && waitingLine}
                     {/* Only the answer just given has a time behind it. */}
                     {/* The time of the turn that wrote this answer, on that answer: a new turn's answer shows none until its own. */}
                     {message.spend !== undefined && index === messages.length - 1 && (
@@ -4395,12 +4404,13 @@ ${named}`;
               does produce lookups on the way: once one of those is drawn, the
               wait has visibly stopped being a wait.
             */}
-            {sending && messages[messages.length - 1]?.content === '' && !anyWorking(working) && (
+            {/* A row of its own only where the empty answer draws none; otherwise the wait is said inside that answer's row. */}
+            {waitingNow && carried.has(messages.length - 1) && (
               <div className={styles.assistantRow}>
                 <span className={styles.assistantAvatar} aria-hidden="true">
                   <img src={cpuIcon} alt="" width={16} height={16} />
                 </span>
-                <p className={styles.waiting}>Waiting for {current.agentName ?? current.modelName ?? 'the model'}…</p>
+                {waitingLine}
               </div>
             )}
             {/* A question still waiting for an answer is the last thing in the chat, so it cannot be scrolled past. */}

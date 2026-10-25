@@ -3138,6 +3138,8 @@ export const PL: Record<string, string> = {
   "Answering": "Odpowiada",
   "Not answering": "Nie odpowiada",
   "Waiting for approval": "Czeka na zgodę",
+  "Waiting for {name}…": "Czekam na {name}…",
+  "the model": "model",
   "Refused": "Odrzucony",
   "Allow": "Zezwól",
   "Enable": "Włącz",
