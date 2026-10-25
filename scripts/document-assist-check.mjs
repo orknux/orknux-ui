@@ -81,6 +81,15 @@ const fix = page.getByTestId('document-grammar-replacement').first();
 await fix.waitFor({ timeout: 3_000 }).catch(() => undefined);
 record(((await page.getByTestId('document-grammar-card').textContent().catch(() => '')) ?? '').includes('Possible spelling mistake found.'),
   'pressing the mark says what is wrong');
+// A press anywhere else closes it - on the desk beside the paper, away from the mark.
+const paper = await page.getByTestId('document-paper').boundingBox();
+await page.mouse.click(paper.x - 20, paper.y + 200);
+await page.waitForTimeout(200);
+record(await page.getByTestId('document-grammar-card').count() === 0, 'a press outside the card closes it');
+// Opened again for the replacement below, once the marks have settled after the editor lost the focus.
+await page.waitForTimeout(500);
+await mark.click().catch(() => undefined);
+await fix.waitFor({ timeout: 3_000 }).catch(() => undefined);
 await fix.click().catch(() => undefined);
 await page.waitForTimeout(400);
 const fixed = await page.locator('[data-testid="document-prose"] > p').first().textContent().catch(() => '');

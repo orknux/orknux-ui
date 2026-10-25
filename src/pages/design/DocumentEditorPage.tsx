@@ -207,6 +207,23 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const grammarOn = grammarSieve !== 'off';
   const [grammar, setGrammar] = useState<GrammarSettings | null>(null);
   const [picked, setPicked] = useState<{ mark: GrammarMark; left: number; top: number } | null>(null);
+
+  // The spelling card closes on a press anywhere else, or on Escape, as the editor's other cards do.
+  useEffect(() => {
+    if (picked === null) return;
+    const away = (event: MouseEvent) => {
+      if (!(event.target instanceof Element) || event.target.closest('[data-testid="document-grammar-card"]') === null) setPicked(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPicked(null);
+    };
+    window.addEventListener('mousedown', away);
+    window.addEventListener('keydown', escape);
+    return () => {
+      window.removeEventListener('mousedown', away);
+      window.removeEventListener('keydown', escape);
+    };
+  }, [picked]);
   const ignored = useRef(new Set<string>());
   const checked = useRef(new Map<string, GrammarMatch[]>());
 
