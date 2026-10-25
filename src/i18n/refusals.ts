@@ -452,6 +452,12 @@ const PL: Record<string, string> = {
   ResearchModeWorkflowNotFound: 'W tej przestrzeni roboczej nie ma przepływu o identyfikatorze {id}',
   ResearchModeWorkflowNotChosen: 'Wybierz przepływ, który uruchamia ten tryb, albo tryb do skopiowania',
   ResearchModeSeeded: '{mode} to jeden z trzech trybów badania, które ma każda przestrzeń robocza, i zostaje',
+  ResearchNotFound: 'Nie ma badania o identyfikatorze {id}',
+  ResearchStillRunning: 'Badanie {id} wciąż trwa; można je uruchomić ponownie, gdy się zakończy, nie powiedzie lub zostanie zatrzymane',
+  ResearchNeverRan: 'Badanie {id} nie uruchomiło przebiegu, który można by powtórzyć',
+  ResearchStageNotInRun: 'Przebieg tego badania nie ma kroku {stage}, od którego można by zacząć',
+  ResearchNothingToRestart: 'Każdy krok tego badania się zakończył; wskaż, od którego kroku zacząć',
+  ResearchRestartRefused: 'Nie można uruchomić badania ponownie od tego miejsca: {reason}',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };

@@ -3618,4 +3618,10 @@ export const PL: Record<string, string> = {
   "The search settings could not be read.": "Nie udało się odczytać ustawień wyszukiwania.",
   "Also compose a short answer over the results": "Ułóż też krótką odpowiedź na podstawie wyników",
   "Tavily also writes a short answer to the question from what it found, and the agent reads it beside the results. Picture searches never ask for one.": "Tavily pisze też krótką odpowiedź na pytanie na podstawie znalezionych wyników, a agent czyta ją obok nich. Wyszukiwanie obrazów nigdy jej nie zamawia.",
+  // --- Explore > Research: restarting, and what is shown while it runs ---
+  "Restart research": "Uruchom badanie ponownie",
+  "The research runs again from this step, and every step after it is done again:": "Badanie zostanie uruchomione ponownie od tego kroku, a każdy krok po nim zostanie wykonany od nowa:",
+  "Restart from here": "Uruchom ponownie od tego kroku",
+  "Writing…": "Pisanie…",
+  "Time left": "Pozostało",
 };

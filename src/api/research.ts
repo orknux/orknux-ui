@@ -72,6 +72,12 @@ export interface Research {
   startedBy: string;
   startedAt: string;
   finishedAt: string | null;
+  /** The runs it was on before executionId, oldest first: a restart moves it onto a new run. */
+  earlierExecutionIds: string[];
+  /** While its writer is writing, the report so far, in markdown. Only the one opened asks for it. */
+  draft?: string | null;
+  /** About how many seconds it has left, measured from the ones before it. Only the one opened asks for it. */
+  estimatedSecondsLeft?: number | null;
 }
 
 /** Where a research has got to, as the pipeline last said. */
@@ -84,6 +90,15 @@ export interface ResearchProgress {
   sourcesRead: number;
   /** The step doing it; null where the workflow did it in one. */
   stage: ResearchStage | null;
+  /** The page or document being read this moment, before it is a source. */
+  reading: ResearchReading | null;
+}
+
+/** A page or document on its way to being a source: one the model notes nothing in never becomes one. */
+export interface ResearchReading {
+  title: string;
+  url: string;
+  kind: 'WEB' | 'DOCUMENT';
 }
 
 /** A picture a research kept, saved on the Artifacts page as a file of its own. */
@@ -133,8 +148,8 @@ const MODE_FIELDS = 'id kind name workflowId workflowName';
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
-  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt ' +
-  'progress { step subQuestions searched level sourcesRead stage } sources { number title url kind } ' +
+  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt earlierExecutionIds ' +
+  'progress { step subQuestions searched level sourcesRead stage reading { title url kind } } sources { number title url kind } ' +
   'images { number caption url page contentType sizeBytes width height artifactId fileUrl previewUrl }';
 
 export async function fetchResearchModes(workspaceId: string): Promise<ResearchMode[]> {
@@ -161,7 +176,7 @@ export async function fetchResearches(workspaceId: string, page: number, size: n
 /** One research, with its report. */
 export async function fetchResearch(id: string): Promise<Research | null> {
   const data = await graphql<{ research: Research | null }>(
-    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result sources { number notes } } }`,
+    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } } }`,
     { id },
   );
   return data.research;
@@ -205,6 +220,20 @@ export async function startResearch(input: StartResearchInput): Promise<Research
     { input },
   );
   return data.startResearch;
+}
+
+/**
+ * Runs a research again from one of its steps, as the same research: from the
+ * one it failed or stopped at where no stage is given. It comes back running.
+ */
+export async function restartResearch(id: string, fromStage: ResearchStage | null = null): Promise<Research> {
+  const data = await graphql<{ restartResearch: Research }>(
+    `mutation RestartResearch($id: ID!, $fromStage: ResearchStage) {
+       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } }
+     }`,
+    { id, fromStage },
+  );
+  return data.restartResearch;
 }
 
 export async function deleteResearch(id: string): Promise<boolean> {
