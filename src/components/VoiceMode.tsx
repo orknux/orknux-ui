@@ -89,13 +89,16 @@ export interface VoiceModeProps {
    * and the first word is however long the model takes to finish - and a long
    * answer makes that pause longer, which is exactly backwards.
    *
+   * `settled` says the text so far ends on a whole utterance with more still
+   * to come - a line the agent wrote before its calls - so it is read at once.
+   *
    * `signal` is this turn's, and it is aborted when the turn is cut short. It
    * has to reach the request rather than be checked around it: this panel used
    * to stop listening to an answer and leave the model writing it, which is a
    * turn still in flight when the next thing is said - and a bill for every
    * word of an answer nobody heard. Issue #299.
    */
-  onSay: (text: string, onProgress: (soFar: string) => void, signal: AbortSignal) => Promise<string>;
+  onSay: (text: string, onProgress: (soFar: string, settled?: boolean) => void, signal: AbortSignal) => Promise<string>;
   /**
    * Asks the last question again and resolves with the second answer.
    *
@@ -104,7 +107,7 @@ export interface VoiceModeProps {
    * chat. Optional, so a panel opened somewhere with nothing to ask again is
    * simply never asked to.
    */
-  onAgain?: (onProgress: (soFar: string) => void, signal: AbortSignal) => Promise<string>;
+  onAgain?: (onProgress: (soFar: string, settled?: boolean) => void, signal: AbortSignal) => Promise<string>;
   onClose: () => void;
   /**
    * Told whenever listening becomes thinking becomes speaking.
@@ -536,6 +539,10 @@ export function VoiceMode({
           onEnd: () => {
             if (live.current && mine === turn.current) nextTurn.current();
           },
+          // The agent said what it is doing and went back to doing it: thinking again until it next speaks.
+          onPause: () => {
+            if (live.current && mine === turn.current) setPhase('thinking');
+          },
           onFailure: (reason) => {
             if (live.current && mine === turn.current) setError(reason);
           },
@@ -547,9 +554,10 @@ export function VoiceMode({
 
       void (async () => {
         try {
-          const watch = (soFar: string) => {
+          // Handed over and returned at once: the reading queues and plays on its own, and never holds the turn back.
+          const watch = (soFar: string, settled?: boolean) => {
             if (!live.current || mine !== turn.current) return;
-            say.push(soFar, false);
+            say.push(soFar, false, settled === true);
           };
           /*
            * Asking again is the same turn with a different door into the model.

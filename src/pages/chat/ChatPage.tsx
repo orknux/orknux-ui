@@ -93,6 +93,8 @@ import { AppShell } from '../../components/AppShell';
 import { CatalogueNote, useCatalogue } from '../../components/Catalogue';
 import { VoiceMeter } from '../../components/VoiceMeter';
 import { VoiceMode } from '../../components/VoiceMode';
+import { voicedTurn } from '../../components/voicedTurn';
+import type { VoicedTurn } from '../../components/voicedTurn';
 import type { VoiceModeHandle, VoicePhase, VoiceTurnTaking } from '../../components/VoiceMode';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
@@ -1965,10 +1967,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   async function handleVoiceTurn(
     text: string,
-    onProgress: (soFar: string) => void,
+    onProgress: (soFar: string, settled?: boolean) => void,
     signal: AbortSignal,
   ): Promise<string> {
     if (currentId === null) return '';
+    // The agent's words between its calls are read as they come, then the answer. Issue #671.
+    const voiced = voicedTurn(onProgress);
 
     // What the composer had attached when this was typed, if it was typed and
     // if this is the turn that ended up carrying it.
@@ -2014,9 +2018,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
             // still being written, so it is handed the answer so far rather
             // than the piece: what it needs to know is how much of it it has
             // already read.
-            onProgress(answer);
+            voiced.answered(answer);
           },
-          ...watchWorking(),
+          ...watchWorking(voiced),
           // A sound the agent plays goes into the panel's speaker queue, ahead of the answer it reads.
           onPlay: (sound) => voiceControls.current?.play(sound.url),
           onDone: (spend) => keepThinkingOnAnswer(spend),
@@ -2038,7 +2042,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     } finally {
       setSending(false);
     }
-    return answer;
+    return voiced.text();
   }
 
   /**
@@ -2053,8 +2057,11 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * null result, which `CallLine` shows as running; the result lands on it by
    * `at`. Matched rather than appended blind, because a round may make several
    * calls and nothing promises the first one to answer is the first one made.
+   *
+   * `voiced` is a voice turn's reading, which hears what the agent says
+   * between its calls as well as drawing it.
    */
-  function watchWorking(): Pick<
+  function watchWorking(voiced?: VoicedTurn): Pick<
     ChatStreamHandlers,
     'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
@@ -2242,14 +2249,16 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           return drawnAbove === undefined ? present : present.filter((_, index) => index !== drawnAbove.index);
         });
       },
-      onSaid: (text) =>
+      onSaid: (text) => {
+        voiced?.said(text);
         setWorking((held) => ({
           ...held,
           calls: [
             ...held.calls,
             { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, said: text, seenAt: Date.now() },
           ],
-        })),
+        }));
+      },
       onWriting: (writing) => setWorking((held) => ({ ...held, writing })),
       // The call it was writing has arrived, so the line saying so goes.
       onCall: (call) =>
@@ -2638,10 +2647,11 @@ ${named}`;
    * nobody is looking at.
    */
   async function handleVoiceAgain(
-    onProgress: (soFar: string) => void,
+    onProgress: (soFar: string, settled?: boolean) => void,
     signal: AbortSignal,
   ): Promise<string> {
     if (currentId === null) return '';
+    const voiced = voicedTurn(onProgress);
     const at = messages.length - 1;
     const unanswered = messages[at]?.role === 'user';
     if (messages[at]?.role !== 'assistant' && !unanswered) return '';
@@ -2671,9 +2681,9 @@ ${named}`;
           });
           // How much of the answer there is, not the piece: what the panel has
           // to work out is how much of it it has already read.
-          onProgress(answer);
+          voiced.answered(answer);
         },
-        ...watchWorking(),
+        ...watchWorking(voiced),
         onPlay: (sound) => voiceControls.current?.play(sound.url),
         onDone: (spend) => keepThinkingOnAnswer(spend),
         onError: (reason) => {
@@ -2705,7 +2715,7 @@ ${named}`;
        */
       if (!signal.aborted) setSending(false);
     }
-    return answer;
+    return voiced.text();
   }
 
   /**
