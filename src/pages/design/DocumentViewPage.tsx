@@ -14,6 +14,8 @@ import shell from './DesignImageEditorPage.module.css';
 import { DocumentExportMenu } from './DocumentExportMenu';
 import { DocumentFind } from './DocumentFind';
 import { DocumentPaper, geometryOf, useDocumentEditor } from './DocumentPaper';
+import { NoteCard, useNoteHover } from './DocumentSelectionTools';
+import { DocumentSide } from './DocumentSide';
 import styles from './DocumentEditorPage.module.css';
 
 export interface DocumentViewPageProps {
@@ -31,7 +33,9 @@ export function DocumentViewRoute(props: DocumentViewPageProps) {
  * chat, nothing that can change it - at an address of its own, so it can be
  * linked to and sent to anybody in the workspace. The same editor and the same
  * paper as the editor, made read-only, so what is read is what was written.
- * Find works here as it does there; Replace does not.
+ * Find works here as it does there; Replace does not. Its outline and its
+ * highlights are in the column on the left, and a highlight's note is read by
+ * hovering it or pressing it - read, never changed or taken off.
  */
 export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) {
   const { workspaceId = '', documentId = '' } = useParams();
@@ -40,6 +44,7 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
   const [error, setError] = useState<string | null>(null);
   const [finding, setFinding] = useState(false);
   const scope = useRef<HTMLDivElement | null>(null);
+  const [noteOpen, setNoteOpen] = useNoteHover(scope);
 
   useEffect(() => {
     if (documentId === '') return;
@@ -113,6 +118,8 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
         </div>
       </div>
       <div className={shell.editor}>
+        <div className={styles.body}>
+        {editor !== null && <DocumentSide editor={editor} scope={scope} tick={0} />}
         <div className={styles.canvas} ref={scope} tabIndex={-1} data-testid="document-view">
           <DocumentFind editor={editor} replacing={false} scope={scope} open={finding} onOpen={setFinding} />
           {held === null || editor === null ? (
@@ -122,6 +129,16 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
               <DocumentPaper editor={editor} geometry={geometry} pages={pages} />
             </div>
           )}
+          {editor !== null && noteOpen !== null && (
+            <NoteCard
+              key={noteOpen.id}
+              editor={editor}
+              open={noteOpen}
+              onPin={() => setNoteOpen({ ...noteOpen, pinned: true })}
+              onClose={() => setNoteOpen(null)}
+            />
+          )}
+        </div>
         </div>
       </div>
     </AppShell>

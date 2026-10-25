@@ -2307,6 +2307,18 @@ export const TESTS = [
     /* Makes its own document and removes it. */
   },
   {
+    name: 'document-view-notes-check',
+    what: "a document's View shows a highlight's note on hover and keeps it open on a press, only to read - no box, no Remove highlight - and lists the highlights with their notes in the column on the left",
+    needs: ['workspace'],
+    /* Makes its own document and removes it; clears the column's remembered folds first. */
+  },
+  {
+    name: 'document-history-check',
+    what: "History lists a document's versions with who saved each and through which door, opens one over the desk with the blocks and words its save added and took out marked, and Restore asks in the application's dialog, saves what is on screen first and puts the version back as a version of its own",
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
+  {
     name: 'document-outline-check',
     what: "left of the sheets, the headings indented by level jump the desk and the caret to a section and mark the one in view as it scrolls, the highlights list their notes and select their words, and the column and its sections fold and stay folded",
     needs: ['workspace'],

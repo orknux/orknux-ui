@@ -3896,4 +3896,12 @@ export const PL: Record<string, string> = {
   "Put a picture from a file or from Orknux on the wireframe": "Umieść na makiecie obraz z pliku albo z Orknux",
   "Could not import the picture.": "Nie udało się zaimportować obrazu.",
   "Watch the box session": "Obserwuj sesję w skrzynce",
+  // --- Design > Documents: history ---
+  "Current": "Bieżąca",
+  "Restored": "Przywrócona",
+  "Text edited": "Zmieniony tekst",
+  "The oldest version kept": "Najstarsza zachowana wersja",
+  "{added} added, {removed} removed, {changed} changed": "dodane: {added}, usunięte: {removed}, zmienione: {changed}",
+  "The document is put back to this version, and what it says now is kept in its history:": "Dokument wraca do tej wersji, a jego obecna treść zostaje zachowana w historii:",
+  "Restoring…": "Przywracanie…",
 };

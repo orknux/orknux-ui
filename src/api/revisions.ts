@@ -7,8 +7,9 @@ import { graphql } from './client';
  * versioned by publishing, and one without is versioned by saving. A workflow
  * is the only kind with a draft, so its versions are its publications and it is
  * read through `fetchWorkflowPublications` rather than through the four here.
+ * A Design document is versioned by saving too, and its `readable` is Markdown.
  */
-export type ComponentRevisionKind = 'FUNCTION' | 'TOOL' | 'SKILL' | 'AGENT';
+export type ComponentRevisionKind = 'FUNCTION' | 'TOOL' | 'SKILL' | 'AGENT' | 'DOCUMENT';
 
 /** One line of a component's history: what it was, and when it stopped being it. */
 export interface ComponentRevision {
@@ -24,6 +25,8 @@ export interface ComponentRevision {
   recordedAt: string;
   /** What the save that made this state changed; null where no older version is kept. */
   changes?: RevisionChange[] | null;
+  /** Which door saved it, where the kind says: a document's EDITOR, IMPORT, CHAT, TOOL or RESTORE. */
+  door?: string | null;
 }
 
 /**
@@ -43,8 +46,9 @@ export interface ComponentCurrentVersion {
   savedAt: string;
   savedBy: string;
   changes: RevisionChange[];
-  /** The live state as pretty JSON, ids named. */
+  /** The live state as pretty JSON, ids named; a document's as Markdown. */
   readable: string;
+  door?: string | null;
 }
 
 /** One revision with what it held. Asked for when a row is opened. */
@@ -63,7 +67,7 @@ export interface ComponentRevisionDetail extends ComponentRevision {
   readable: string;
 }
 
-const SUMMARY = 'id kind componentId name savedAt savedBy recordedAt';
+const SUMMARY = 'id kind componentId name savedAt savedBy recordedAt door';
 const CHANGES = 'changes { field before after added removed }';
 
 export async function fetchComponentRevisions(
@@ -104,7 +108,7 @@ export async function fetchComponentCurrentVersion(
 ): Promise<ComponentCurrentVersion | null> {
   const data = await graphql<{ componentCurrentVersion: ComponentCurrentVersion | null }>(
     `query ComponentCurrentVersion($kind: ComponentRevisionKind!, $componentId: ID!) {
-       componentCurrentVersion(kind: $kind, componentId: $componentId) { savedAt savedBy ${CHANGES} readable }
+       componentCurrentVersion(kind: $kind, componentId: $componentId) { savedAt savedBy ${CHANGES} readable door }
      }`,
     { kind, componentId },
   );
