@@ -38,6 +38,7 @@ import { shellUser } from '../../session/user';
 import rail from '../workspace/WorkspaceMemoryPage.module.css';
 import table from '../workspace/CatalogueTable.module.css';
 import styles from './DesignDocumentsPage.module.css';
+import { ColumnHeader } from '../../components/ColumnHeader';
 
 export interface DesignDocumentsPageProps {
   session: SessionUser;
@@ -67,6 +68,22 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
   const [catalogs, setCatalogs] = useState<DocumentCatalog[] | null>(null);
   const [selected, setSelected] = useState<string>(() => addressed.get('catalog') ?? ALL);
   const [documents, setDocuments] = useState<DesignDocument[] | null>(null);
+  /** The column the list is sorted by, or none: the server's order, the one worked on last first. */
+  const [order, setOrder] = useState<DocumentOrder | null>(null);
+  const [ascending, setAscending] = useState(true);
+  const sortBy = (by: DocumentOrder) => {
+    if (by === order) {
+      setAscending((held) => !held);
+      return;
+    }
+    setOrder(by);
+    // Numbers and dates are asked for biggest and newest first; words from A.
+    setAscending(by === 'NAME' || by === 'CATALOG');
+  };
+  const sorted = documents === null || order === null ? documents : [...documents].sort((a, b) => {
+    const by = compareDocuments(a, b, order);
+    return ascending ? by : -by;
+  });
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -305,10 +322,12 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
 
           <div className={table.card}>
             <div className={table.tableHeader}>
-              <span className={styles.colName}>{t('Name')}</span>
-              {selected === ALL && <span className={styles.colCatalog}>{t('Catalog')}</span>}
-              <span className={styles.colWords}>{t('Words')}</span>
-              <span className={styles.colUpdated}>{t('Updated')}</span>
+              <ColumnHeader label={t('Name')} order="NAME" current={order ?? undefined} ascending={ascending} onSort={sortBy} className={styles.colName} />
+              {selected === ALL && (
+                <ColumnHeader label={t('Catalog')} order="CATALOG" current={order ?? undefined} ascending={ascending} onSort={sortBy} className={styles.colCatalog} />
+              )}
+              <ColumnHeader label={t('Words')} order="WORDS" current={order ?? undefined} ascending={ascending} onSort={sortBy} className={styles.colWords} />
+              <ColumnHeader label={t('Updated')} order="UPDATED" current={order ?? undefined} ascending={ascending} onSort={sortBy} className={styles.colUpdated} />
               <span className={styles.colActions}>{t('Actions')}</span>
             </div>
             {documents === null && (
@@ -321,7 +340,7 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
                 {searching ? t('No document matches what you typed.') : t('No documents yet.')}
               </p>
             )}
-            {documents?.map((document) => (
+            {sorted?.map((document) => (
               <div key={document.id} className={table.row} data-testid="document-row" data-document-id={document.id} data-name={document.name}>
                 <span className={styles.colName}>
                   {naming?.id === document.id ? (
@@ -445,4 +464,21 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
       />
     </AppShell>
   );
+}
+
+type DocumentOrder = 'NAME' | 'CATALOG' | 'WORDS' | 'UPDATED';
+
+/** Two documents in the order of one column, ascending; ties fall back to the name. */
+function compareDocuments(a: DesignDocument, b: DesignDocument, order: DocumentOrder): number {
+  const byName = a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+  switch (order) {
+    case 'NAME':
+      return byName;
+    case 'CATALOG':
+      return a.catalogName.localeCompare(b.catalogName, undefined, { sensitivity: 'base' }) || byName;
+    case 'WORDS':
+      return a.words - b.words || byName;
+    case 'UPDATED':
+      return Date.parse(a.updatedAt) - Date.parse(b.updatedAt) || byName;
+  }
 }

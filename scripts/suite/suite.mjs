@@ -2301,6 +2301,12 @@ export const TESTS = [
     /* The model's answer is held back by the page's network, so no model is needed. Makes its own document and removes it. */
   },
   {
+    name: 'document-sort-check',
+    what: 'the documents list sorts by Name, Words and Updated, the numbers and dates biggest first, and a second press reverses',
+    needs: ['workspace'],
+    /* Makes its own documents and removes them. */
+  },
+  {
     name: 'document-find-check',
     what: 'Find in a document counts and marks every match across its pages, steps through them, matches whole words and replaces; the view has no bar, no chat and nothing editable, and finds too',
     needs: ['workspace'],
