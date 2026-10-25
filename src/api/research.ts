@@ -12,7 +12,7 @@ export type ResearchLanguage = 'ACADEMIC' | 'COLLOQUIAL' | 'FORMAL';
 export type ResearchOutputFormat = 'PDF' | 'DOCUMENT';
 export type ResearchStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
 /** The steps of a mode's workflow, left to right. */
-export type ResearchStage = 'PLAN' | 'GATHER' | 'FOLLOW_UP' | 'WRITE' | 'SAVE';
+export type ResearchStage = 'PLAN' | 'GATHER' | 'FOLLOW_UP' | 'WRITE' | 'REVIEW' | 'SAVE';
 
 /** How deep a research goes, said as the workflow that does it. */
 export interface ResearchMode {
@@ -78,6 +78,29 @@ export interface Research {
   draft?: string | null;
   /** About how many seconds it has left, measured from the ones before it. Only the one opened asks for it. */
   estimatedSecondsLeft?: number | null;
+  /** Whether a second model reviews the report before it is saved. */
+  review: boolean;
+  reviewerModelId: string | null;
+  reviewerModelName: string | null;
+  /** What each round of review said, in order. Only the one opened asks for it. */
+  reviewRounds?: ResearchReviewRound[];
+}
+
+/** One round of review: the verdict, what was found, and whether the writer revised the report for it. */
+export interface ResearchReviewRound {
+  round: number;
+  verdict: 'ACCEPT' | 'REVISE';
+  summary: string;
+  issues: ResearchReviewIssue[];
+  revised: boolean;
+  charactersBefore: number;
+  charactersAfter: number | null;
+}
+
+export interface ResearchReviewIssue {
+  kind: 'UNSUPPORTED' | 'MISSING' | 'CITATION' | 'CONTRADICTION' | 'FORMATTING' | 'OTHER';
+  issue: string;
+  fix: string;
 }
 
 /** Where a research has got to, as the pipeline last said. */
@@ -141,6 +164,9 @@ export interface StartResearchInput {
   documentsExclude: string[];
   useWebSearch: boolean;
   includeImages: boolean;
+  review: boolean;
+  /** Required where review is on. */
+  reviewerModelId: string | null;
 }
 
 const MODE_FIELDS = 'id kind name workflowId workflowName';
@@ -148,7 +174,7 @@ const MODE_FIELDS = 'id kind name workflowId workflowName';
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
-  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt earlierExecutionIds ' +
+  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName ' +
   'progress { step subQuestions searched level sourcesRead stage reading { title url kind } } sources { number title url kind } ' +
   'images { number caption url page contentType sizeBytes width height artifactId fileUrl previewUrl }';
 
@@ -176,7 +202,7 @@ export async function fetchResearches(workspaceId: string, page: number, size: n
 /** One research, with its report. */
 export async function fetchResearch(id: string): Promise<Research | null> {
   const data = await graphql<{ research: Research | null }>(
-    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } } }`,
+    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } } }`,
     { id },
   );
   return data.research;
@@ -229,7 +255,7 @@ export async function startResearch(input: StartResearchInput): Promise<Research
 export async function restartResearch(id: string, fromStage: ResearchStage | null = null): Promise<Research> {
   const data = await graphql<{ restartResearch: Research }>(
     `mutation RestartResearch($id: ID!, $fromStage: ResearchStage) {
-       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } }
+       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } }
      }`,
     { id, fromStage },
   );

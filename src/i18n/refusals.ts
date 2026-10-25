@@ -470,6 +470,10 @@ const PL: Record<string, string> = {
   ResearchStageNotInRun: 'Przebieg tego badania nie ma kroku {stage}, od którego można by zacząć',
   ResearchNothingToRestart: 'Każdy krok tego badania się zakończył; wskaż, od którego kroku zacząć',
   ResearchRestartRefused: 'Nie można uruchomić badania ponownie od tego miejsca: {reason}',
+  ResearchReviewerMissing: 'Wybierz model czatu, który zrecenzuje badanie',
+  ResearchReviewerUnusable: 'Ten model nie może recenzować badań w tej przestrzeni roboczej',
+  ResearchModeNotReviewed: 'Przepływ trybu badania {mode} nie ma kroku recenzji, więc nie można go zrecenzować',
+  ResearchReviewRoundsOutOfRange: '{rounds} to nie liczba rund recenzji; wybierz od {least} do {most}',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };

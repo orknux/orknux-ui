@@ -30,6 +30,10 @@
  * restarts from where it stopped - and the page shows it running. A step taken
  * offers Restart from here on hover, and that sends its own stage.
  *
+ * Reviewed, the strip draws Review as a step like the others and a Review
+ * panel says each round's verdict and what it found, and that the report was
+ * revised for it; the summary names the reviewer's model.
+ *
  * The research itself is answered here, as a run part-way through and then
  * as one finished, so the check does not depend on a model or a search engine
  * - the server's own tests drive the pipeline with stubs of both.
@@ -114,17 +118,17 @@ const strip = await opened.locator('[data-stages] > li').evaluateAll((all) =>
   }),
 );
 record(
-  JSON.stringify(strip.map((one) => one.stage)) === JSON.stringify(['PLAN', 'GATHER', 'FOLLOW_UP', 'WRITE', 'SAVE']),
-  `the five steps are drawn in the order they are taken (${strip.map((one) => one.stage).join(', ')})`,
+  JSON.stringify(strip.map((one) => one.stage)) === JSON.stringify(['PLAN', 'GATHER', 'FOLLOW_UP', 'WRITE', 'REVIEW', 'SAVE']),
+  `the six steps are drawn in the order they are taken (${strip.map((one) => one.stage).join(', ')})`,
 );
 record(
-  JSON.stringify(strip.map((one) => one.state)) === JSON.stringify(['done', 'current', 'waiting', 'waiting', 'waiting']),
-  `the ones taken are done, the one it is in is current, the rest wait (${strip.map((one) => one.state).join(', ')})`,
+  JSON.stringify(strip.map((one) => one.state)) === JSON.stringify(['done', 'current', 'waiting', 'waiting', 'skipped', 'waiting']),
+  `the ones taken are done, the one it is in is current, the rest wait, and a review not asked for is skipped (${strip.map((one) => one.state).join(', ')})`,
 );
-record(strip.every((one) => one.name.includes(['Plan research', 'Gather sources', 'Deepen findings', 'Write report', 'Save report'][strip.indexOf(one)])), `each by its step's name (${strip.map((one) => one.name).join(' | ')})`);
+record(strip.every((one) => one.name.includes(['Plan research', 'Gather sources', 'Deepen findings', 'Write report', 'Review report', 'Save report'][strip.indexOf(one)])), `each by its step's name (${strip.map((one) => one.name).join(' | ')})`);
 const tops = strip.map((one) => Math.round(one.top));
 const widths = strip.map((one) => Math.round(one.width));
-record(strip.length === 5 && Math.max(...tops) - Math.min(...tops) <= 1, `in one row at 1440px (tops ${tops.join(', ')})`);
+record(strip.length === 6 && Math.max(...tops) - Math.min(...tops) <= 1, `in one row at 1440px (tops ${tops.join(', ')})`);
 record(strip.every((one, at) => at === 0 || one.left > strip[at - 1].left + strip[at - 1].width - 1), `left to right, none over another (${strip.map((one) => Math.round(one.left)).join(', ')})`);
 record(Math.max(...widths) - Math.min(...widths) <= 1 && Math.min(...widths) >= 120, `each as wide as the next (${widths.join(', ')})`);
 const currentBorder = await opened.locator('[data-stage-step="GATHER"]').evaluate((one) => getComputedStyle(one).borderTopColor).catch(() => '');
@@ -175,7 +179,10 @@ record(report.includes('The moon pulls the sea [1]'), 'finished, the report is d
 record((await opened.locator('[data-step]').count()) === 0, 'and no longer says it is working');
 record((await opened.locator('[data-sources] li').count()) === 2, 'and keeps its sources');
 const states = await opened.locator('[data-stages] > li').evaluateAll((all) => all.map((one) => one.getAttribute('data-state')));
-record(states.length === 5 && states.every((one) => one === 'done'), `and every step is done (${states.join(', ')})`);
+record(
+  states.length === 6 && JSON.stringify(states) === JSON.stringify(['done', 'done', 'done', 'done', 'skipped', 'done']),
+  `and every step is done, the review it was not asked for skipped (${states.join(', ')})`,
+);
 record((await opened.locator('[data-summary] [data-working]').count()) === 0, 'and the spinner is gone');
 const kept = await opened.locator('[data-research-artifact]').getAttribute('href').catch(() => null);
 record(kept !== null && kept.endsWith('/artifacts/4242'), `and links the report it kept on the Artifacts page (${kept})`);
@@ -357,5 +364,35 @@ record(fromHere.includes('Deepen findings'), `it asks first, naming that step ($
 await asking.locator('button', { hasText: /^Restart$/ }).click().catch(() => undefined);
 await opened.locator('[data-summary] [data-status="RUNNING"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
 record(restarts.length === 2 && restarts[1].fromStage === 'FOLLOW_UP', `and sends that step (${JSON.stringify(restarts[1] ?? null)})`);
+
+// --- a reviewed research ---------------------------------------------------------
+answering = {
+  ...FINISHED, review: true, reviewerModelId: '5', reviewerModelName: 'Careful model',
+  reviewRounds: [
+    {
+      round: 1, verdict: 'REVISE', summary: 'One claim has no source.', revised: true, charactersBefore: 1200, charactersAfter: 1100,
+      issues: [{ kind: 'UNSUPPORTED', issue: 'The claim about the sun is in no note.', fix: 'Cite [1] or cut it.' }],
+    },
+  ],
+};
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-review-panel]').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const reviewedStates = await opened.locator('[data-stages] > li').evaluateAll((all) => all.map((one) => `${one.getAttribute('data-stage-step')}:${one.getAttribute('data-state')}`));
+record(reviewedStates.includes('REVIEW:done') && reviewedStates.length === 6, `reviewed, Review is a step it took (${reviewedStates.join(', ')})`);
+const reviewRounds = await opened.locator('[data-review-panel] [data-review-round]').evaluateAll((all) =>
+  all.map((one) => ({
+    verdict: one.querySelector('[data-verdict-label]')?.textContent?.trim(),
+    outcome: one.querySelector('[data-review-outcome]')?.textContent?.trim(),
+    issues: [...one.querySelectorAll('[data-issue]')].map((issue) => (issue.textContent ?? '').replace(/\s+/g, ' ').trim()),
+  })),
+);
+record(reviewRounds.length === 1 && reviewRounds[0].verdict === 'Changes asked for', `a Review panel gives each round's verdict (${JSON.stringify(reviewRounds)})`);
+record(
+  reviewRounds[0]?.issues.length === 1 && reviewRounds[0].issues[0].includes('Unsupported claim') && reviewRounds[0].issues[0].includes('Cite [1] or cut it.'),
+  `with what it found, by kind, and the fix (${reviewRounds[0]?.issues.join(' | ')})`,
+);
+record((reviewRounds[0]?.outcome ?? '').includes('revised') && (reviewRounds[0]?.outcome ?? '').includes('1200') && (reviewRounds[0]?.outcome ?? '').includes('1100'), `and that the report was revised for it (${reviewRounds[0]?.outcome})`);
+const reviewer = ((await opened.locator('[data-research-reviewer]').textContent().catch(() => '')) ?? '').trim();
+record(reviewer === 'Careful model', `the summary names the reviewer's model (${reviewer})`);
 
 await finish(browser);

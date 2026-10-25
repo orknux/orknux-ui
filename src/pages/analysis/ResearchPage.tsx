@@ -116,7 +116,10 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
             <Link className={`${styles.colQuestion} ${styles.question}`} to={`/workspace/${workspaceId}/explore/research/${one.id}`} title={one.question} data-cell="question">
               {one.question}
             </Link>
-            <span className={`${styles.colMode} ${styles.cell}`} data-cell="mode">{seededLabel(one.modeName)}</span>
+            <span className={`${styles.colMode} ${styles.cell}`} data-cell="mode">
+              {seededLabel(one.modeName)}
+              {one.review && <span className={styles.reviewed} data-reviewed>{t('Reviewed')}</span>}
+            </span>
             <span className={`${styles.colModel} ${styles.cell}`} data-cell="model">
               <ModelName research={one} workspaceId={workspaceId} />
             </span>

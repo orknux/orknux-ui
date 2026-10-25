@@ -126,6 +126,9 @@ export interface Workspace {
   chatMaxRounds: number | null;
   /** The installation's number, which an empty `chatMaxRounds` falls back to. */
   chatMaxRoundsDefault: number;
+  /** Rounds of review a reviewed research here gets; null is the installation's. */
+  researchReviewRounds: number | null;
+  researchReviewRoundsDefault: number;
   maxToolCallsAtOnceDefault: number;
   sessionCompactAfterTokensDefault: number;
   sessionCompactionKeepTurnsDefault: number;
@@ -226,7 +229,7 @@ const WORKSPACE_FIELDS =
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'completionModelId completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
-  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
+  'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
   'voicePauseEndsTurnMs voiceSpeechOverRoomPercent voiceUnattendedMicrophoneMs voiceBargeInMs voiceBargeInWhileThinking ' +
   'voiceSpeechChunking chatShowTimestamps voiceButtonHidden widgetTimerSound sessionCostShown';
@@ -521,6 +524,16 @@ export async function setWorkspaceChatMaxRounds(workspaceId: string, count: numb
     { workspaceId, count },
   );
   return data.setWorkspaceChatMaxRounds;
+}
+
+export async function setWorkspaceResearchReviewRounds(workspaceId: string, count: number | null): Promise<Workspace> {
+  const data = await graphql<{ setWorkspaceResearchReviewRounds: Workspace }>(
+    `mutation SetWorkspaceResearchReviewRounds($workspaceId: ID!, $count: Int) {
+       setWorkspaceResearchReviewRounds(workspaceId: $workspaceId, count: $count) { ${WORKSPACE_FIELDS} }
+     }`,
+    { workspaceId, count },
+  );
+  return data.setWorkspaceResearchReviewRounds;
 }
 
 export async function setWorkspaceAgentMaxSubagents(
