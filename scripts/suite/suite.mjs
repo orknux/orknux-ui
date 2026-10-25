@@ -66,6 +66,11 @@ export const TESTS = [
     alone: true,
   },
   {
+    name: 'quick-chat-welcome-check',
+    what: 'the quick chat opens on a greeting and questions to ask, under a button that says Ask AI',
+    needs: ['workspace'],
+  },
+  {
     name: 'quick-chat-stop-check',
     what: 'stopping the quick chat mid-request, with the answer held open so no model decides the timing',
     needs: ['workspace'],
@@ -1427,6 +1432,13 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'artifact-pdf-reader-check',
+    what: 'a PDF artifact is drawn in the reader, pages and text, centred in the window, and so is a research report; an HTML one stays in a sandboxed frame',
+    // Uploads its own PDF and HTML file through the research-documents upload
+    // and deletes them after; the research is answered by a route, so no model.
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-command-highlight-check',
     what: 'a block of commands in an answer is coloured: the command, its flags, and the Windows spellings',
     // Stubs the answer: a seeded installation has no model to ask.
@@ -2205,6 +2217,45 @@ export const TESTS = [
     what: 'Quick actions finds a document by a word in its text, with its catalog and the words around the match, and opens it',
     needs: ['workspace'],
     /* Makes its own catalog and document and removes them. */
+  },
+
+  // --- Explore -> Diagrams -------------------------------------------------------
+  {
+    name: 'diagrams-list-check',
+    what: "Explore -> Diagrams lists diagrams by catalog: catalogs made, a diagram made in one, renamed, moved, its Agents setting stored, found by a word in a node's notes, and removed after asking",
+    needs: ['workspace'],
+    /* Makes its own two catalogs and diagram, stamped, and removes them. */
+  },
+  {
+    name: 'diagram-editor-check',
+    what: "the diagram editor adds shapes, joins two with a line, counts a node's notes to the cap, keeps it all after a reload, puts its chat where the wireframe editor's is, and takes a model's change as one undoable step",
+    needs: ['workspace'],
+    /* Makes its own diagram and a wireframe to measure against, and removes both; the model's answer is answered here. */
+  },
+  {
+    name: 'diagram-layout-check',
+    what: 'Arrange lays a piled chain of boxes out left to right and top to bottom, from the button and the shortcut, and undo puts the pile back',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-note-cap-check',
+    what: "the note cap is a row under Admin Settings' Limits, 5000 by default, and the number set there is what the editor's notes stop at and the server refuses past",
+    needs: ['workspace'],
+    /* Sets an installation-wide number and puts it back, so nothing may run beside it. */
+    alone: true,
+  },
+  {
+    name: 'diagram-delete-tool-check',
+    what: 'orknux_delete_diagram starts hidden on a new agent and on one given Orknux access afresh in the form, and its owner turns it on',
+    needs: ['workspace'],
+    /* Makes its own two agents and deletes them. */
+  },
+  {
+    name: 'diagram-palette-check',
+    what: 'Quick actions finds a diagram by its name and a node by its label, and opens the editor on that node',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
   },
 
   {

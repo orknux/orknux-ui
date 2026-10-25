@@ -56,7 +56,7 @@ await page.route('**/quick-chat', async (route) => {
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1500);
 
-const fab = page.getByRole('button', { name: 'Ask about this page' }).last();
+const fab = page.getByRole('button', { name: 'Ask AI' }).last();
 await fab.click();
 await page.waitForTimeout(400);
 

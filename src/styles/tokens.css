@@ -250,6 +250,33 @@
   --document-find: rgba(250, 204, 21, 0.45);
   --document-find-active: rgba(249, 115, 22, 0.6);
   --document-select: #2f80ed;
+
+  /*
+   * A PDF's page, drawn by `PdfReader`. White in both themes for the same
+   * reason as the wireframe: the document says what colour its paper is, and a
+   * page that went dark with the interface would be drawn on a colour its own
+   * text was never chosen against. Its own name so a selection over the text
+   * layer is the one tint, too. Its paper is `--document-paper`, above: the
+   * document editor's sheets and a PDF's pages are one white.
+   */
+  --document-selection: rgb(0 0 255 / 25%);
+
+  /*
+   * A diagram is drawn on paper too, the colours the server's PNG, SVG and PDF
+   * draw it in, so what is exported is what was on the screen. Not redefined
+   * for the light theme, for the wireframe's reason. The two inks are for words
+   * on a colour somebody picked: light on a dark one, dark on a light one.
+   */
+  --diagram-desk: #f4f4f5;
+  --diagram-grid: #d4d4d8;
+  --diagram-paper: #ffffff;
+  --diagram-ink: #3f3f46;
+  --diagram-muted: #71717a;
+  --diagram-note: #fef9c3;
+  --diagram-group: #eef2f7;
+  --diagram-select: #2f80ed;
+  --diagram-ink-on-dark: #fafafa;
+  --diagram-ink-on-light: #18181b;
 }
 
 /*

@@ -1,5 +1,6 @@
 import type { DesignVideo } from '../../api/videos';
 import { playingTime } from './DesignVideosPage';
+import { roughly } from '../../components/timeLeft';
 import { t, tf } from '../../i18n';
 
 /**
@@ -57,17 +58,6 @@ export function paceAfter(held: VideoPace | null, video: DesignVideo | null, cli
   // Gone back: counted afresh from here, since the pass before says nothing of how long this one takes.
   if (same !== null && progress !== null && same.progress !== null && progress < same.progress) from = { at: readAt, progress };
   return { videoId: video.id, skew, startedAt, progress, readAt, from, samplingOnly: video.progressSamplingOnly === true };
-}
-
-/** About how long, said as roughly as it is known: minutes past a minute and a half, five seconds under. */
-function roughly(millis: number, samplingOnly: boolean): string {
-  const seconds = millis / 1000;
-  if (seconds >= 90) {
-    const minutes = Math.round(seconds / 60);
-    return samplingOnly ? tf('about {minutes} min of sampling left', { minutes }) : tf('about {minutes} min left', { minutes });
-  }
-  const rounded = Math.max(5, Math.ceil(seconds / 5) * 5);
-  return samplingOnly ? tf('about {seconds} s of sampling left', { seconds: rounded }) : tf('about {seconds} s left', { seconds: rounded });
 }
 
 /**

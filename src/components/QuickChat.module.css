@@ -142,6 +142,93 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * Before anything is asked: a greeting and four questions worth asking on any
+ * page, the way the wireframe and diagram editors open their chats.
+ */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  margin-top: auto;
+  padding: var(--space-16) var(--space-4) var(--space-4);
+  background: radial-gradient(120% 70% at 100% 100%, color-mix(in srgb, var(--color-violet) 16%, transparent), transparent 70%);
+  border-radius: var(--radius-12);
+}
+
+.hello {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-xl);
+  font-weight: 300;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.hello span {
+  color: var(--color-text-muted);
+}
+
+.ideas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.idea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-6) var(--space-10) var(--space-6) var(--space-6);
+  text-align: left;
+  color: var(--color-text-primary);
+  font: inherit;
+  background: color-mix(in srgb, var(--color-surface-raised) 85%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-12);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.idea:hover,
+.idea:focus-visible {
+  background: var(--color-surface-hover);
+  border-color: color-mix(in srgb, var(--color-violet) 45%, var(--color-border));
+  transform: translateY(-1px);
+}
+
+.ideaIcon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: color-mix(in srgb, var(--color-violet) 18%, var(--color-surface));
+  border-radius: var(--radius-8);
+}
+
+.ideaText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ideaTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.ideaLine {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* What was asked, against the answer: the same shapes the Chat page uses. */
 .asked {
   align-self: flex-end;

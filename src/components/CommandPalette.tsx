@@ -17,6 +17,7 @@ import fileTextIcon from '../assets/file-text.svg';
 import filterIcon from '../assets/filter.svg';
 import lockKeyholeIcon from '../assets/lock-keyhole.svg';
 import memoryIcon from '../assets/memory.svg';
+import networkIcon from '../assets/network.svg';
 import plusIcon from '../assets/plus.svg';
 import searchIcon from '../assets/search.svg';
 import bugIcon from '../assets/bug.svg';
@@ -73,6 +74,8 @@ const KIND_ICON: Record<EntityKind, string> = {
   Tool: toolIcon,
   Issue: bugIcon,
   Document: fileTextIcon,
+  Diagram: networkIcon,
+  'Diagram node': networkIcon,
 };
 
 /** How many are worth showing at once; the rest are found by typing more. */
@@ -101,6 +104,9 @@ const EDIT_PATH: Record<EntityKind, (workspace: string, id: string) => string> =
   Skill: (workspace, id) => `${workspace}/skills/${id}`,
   Tool: (workspace, id) => `${workspace}/tools/${id}`,
   Document: (workspace, id) => `${workspace}/design/documents/${id}`,
+  Diagram: (workspace, id) => `${workspace}/explore/diagrams/${id}`,
+  // The diagram, opened on the node: the id carries both.
+  'Diagram node': (workspace, id) => `${workspace}/explore/diagrams/${id}`,
 };
 
 /**

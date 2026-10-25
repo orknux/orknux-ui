@@ -19,6 +19,17 @@
  * caption, and a link to where it came from - which opens the picture over
  * the page, and the given-settings card says images were on.
  *
+ * While it runs, the page being read is a row of its own under the sources,
+ * marked as being read and not numbered, and each source arrives as it is
+ * read; the report is drawn as its writer writes it, marked as being written,
+ * and grows; and the summary says about how long is left where the server
+ * measured it, and nothing where it did not.
+ *
+ * A failed or stopped research has a Restart in its header, and a finished or
+ * running one has none; pressing it asks first, sends no stage - the server
+ * restarts from where it stopped - and the page shows it running. A step taken
+ * offers Restart from here on hover, and that sends its own stage.
+ *
  * The research itself is answered here, as a run part-way through and then
  * as one finished, so the check does not depend on a model or a search engine
  * - the server's own tests drive the pipeline with stubs of both.
@@ -61,6 +72,8 @@ const FINISHED = {
   result: '# Tides\n\nThe moon pulls the sea [1], and a spring tide comes every fortnight [2].\n\n## Sources\n\n1. [Tides and the moon](https://one.example.org/tides)\n2. [Harbour log](/api/artifacts/7)',
 };
 let answering = RUNNING;
+/** What each restart was asked with, in order. */
+const restarts = [];
 
 /** A picture of one pixel, which is what every kept image's preview is answered with here. */
 const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
@@ -68,6 +81,11 @@ await page.route('**/api/artifacts/*/preview', (route) => route.fulfill({ status
 
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
+  if ((body.query ?? '').includes('restartResearch(')) {
+    restarts.push(body.variables ?? {});
+    answering = { ...RUNNING, progress: { ...RUNNING.progress, step: 'Restarting' } };
+    return route.fulfill({ json: { data: { restartResearch: answering } } });
+  }
   if ((body.query ?? '').includes('research(id:')) return route.fulfill({ json: { data: { research: answering } } });
   return route.continue();
 });
@@ -231,5 +249,113 @@ record(next === '/api/artifacts/9002/preview', `and steps on to the next (${next
 await page.keyboard.press('Escape');
 await viewer.waitFor({ state: 'detached', timeout: 5_000 }).catch(() => undefined);
 record((await page.locator('dialog[open]').count()) === 0, 'and Escape closes it');
+
+// --- while it runs: what is being read, sources as they come, the report as it is written ---
+answering = {
+  ...RUNNING, sources: SOURCES.slice(0, 1), estimatedSecondsLeft: 240,
+  progress: { ...RUNNING.progress, sourcesRead: 1, step: 'Reading Harbour log', reading: { title: 'Harbour log', url: '/api/artifacts/7', kind: 'DOCUMENT' } },
+};
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-source-reading]').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const live = async () => ({
+  sources: await opened.locator('[data-sources] > [data-source]').count(),
+  reading: ((await opened.locator('[data-source-reading]').textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim(),
+  counter: ((await opened.locator('[data-stat="sources"]').textContent().catch(() => '')) ?? '').trim(),
+});
+const one = await live();
+record(one.sources === 1 && one.counter === '1', `one source read, one row and a counter of one (${one.sources}, ${one.counter})`);
+record(one.reading.includes('Harbour log') && one.reading.includes('Reading…'), `the one being read is a row of its own, marked as being read (${one.reading})`);
+const unnumbered = ((await opened.locator('[data-source-reading] [aria-hidden="true"]').first().textContent().catch(() => '')) ?? '').trim();
+record(unnumbered === '…', `and not numbered, since it is not a source yet (${unnumbered})`);
+const left = ((await opened.locator('[data-summary] [data-time-left]').textContent().catch(() => '')) ?? '').trim();
+record(left === 'about 4 min left', `the summary says about how long is left (${left})`);
+const leftBox = await opened.locator('[data-time-left]').boundingBox().catch(() => null);
+const startedBox = await opened.locator('[data-summary] dd[title]').first().boundingBox().catch(() => null);
+record(
+  leftBox !== null && startedBox !== null && Math.abs(leftBox.y - startedBox.y) <= 2 && leftBox.x > startedBox.x,
+  `beside Started, on the same line (${leftBox?.x},${leftBox?.y} after ${startedBox?.x},${startedBox?.y})`,
+);
+
+answering = { ...answering, sources: SOURCES, progress: { ...answering.progress, sourcesRead: 2, reading: null } };
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-sources] > [data-source="2"]').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const two = await live();
+record(two.sources === 2 && two.counter === '2' && two.reading === '', `the next one read is a source, and nothing is being read (${two.sources}, ${two.counter}, "${two.reading}")`);
+
+answering = {
+  ...RUNNING, estimatedSecondsLeft: null, draft: '# Tides\n\nThe moon',
+  progress: { ...RUNNING.progress, stage: 'WRITE', step: 'Writing the report' },
+};
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-draft] article').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const drafted = ((await opened.locator('[data-draft] article').textContent().catch(() => '')) ?? '').trim();
+record(drafted.startsWith('Tides') && drafted.includes('The moon'), `the report is drawn as it is being written (${drafted})`);
+record((await opened.locator('[data-draft] article h1').count()) === 1, 'as markdown, its heading a heading');
+record((await opened.locator('[data-draft] [data-writing]').count()) === 1, 'marked as being written');
+record((await opened.locator('[data-report]').count()) === 0, 'and is not yet the report');
+record((await opened.locator('[data-time-left]').count()) === 0, 'with no estimate to go on, no time left is said');
+answering = { ...answering, draft: '# Tides\n\nThe moon pulls the sea [1], and a spring tide comes every fortnight [2].' };
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-draft] article').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const grown = ((await opened.locator('[data-draft] article').textContent().catch(() => '')) ?? '').trim();
+record(grown.includes('a spring tide comes every fortnight'), `and grows as it is written (${grown.slice(0, 80)})`);
+record(
+  (await opened.locator('[data-restart]').count()) === 0 && (await opened.locator('[data-restart-from]').count()) === 0,
+  'running, nothing offers to restart it',
+);
+
+// --- a failed research restarts from where it stopped ---------------------------
+answering = {
+  ...RUNNING, status: 'FAILED', executionId: '777', error: 'Gather was interrupted by a restart', finishedAt: new Date().toISOString(),
+  progress: { ...RUNNING.progress, stage: 'GATHER', step: 'Reading Tides and the moon' },
+};
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-restart]').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const restart = opened.locator('[data-restart]');
+record((await restart.count()) === 1, 'a failed research has a Restart in its header');
+const restartBox = await restart.boundingBox().catch(() => null);
+const runBox = await opened.locator('[data-open-run]').boundingBox().catch(() => null);
+record(
+  restartBox !== null && runBox !== null && Math.abs(restartBox.y - runBox.y) <= 2 && Math.abs(restartBox.x + restartBox.width - runBox.x) <= 24,
+  `beside Open the run (${restartBox?.x},${restartBox?.y} and ${runBox?.x},${runBox?.y})`,
+);
+const restartFill = await restart.evaluate((one) => getComputedStyle(one).backgroundColor).catch(() => '');
+const runFill = await opened.locator('[data-open-run]').evaluate((one) => getComputedStyle(one).backgroundColor).catch(() => '');
+record(restartFill !== '' && restartFill !== runFill, `drawn as the action, apart from the link beside it (${restartFill} against ${runFill})`);
+await restart.click().catch(() => undefined);
+const asking = page.locator('dialog[open]');
+await asking.waitFor({ timeout: 5_000 }).catch(() => undefined);
+const askingText = ((await asking.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+record(askingText.includes('Restart research') && askingText.includes('Gather sources'), `it asks first, naming the step it starts from (${askingText.slice(0, 140)})`);
+await asking.locator('button', { hasText: /^Restart$/ }).click().catch(() => undefined);
+await opened.locator('[data-summary] [data-status="RUNNING"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+record(
+  restarts.length === 1 && restarts[0].id === '424242' && (restarts[0].fromStage ?? null) === null,
+  `and restarts from where it stopped, sending no stage (${JSON.stringify(restarts)})`,
+);
+record((await opened.locator('[data-summary] [data-status="RUNNING"]').count()) === 1, 'after which the page shows it running');
+record((await opened.locator('[data-restart]').count()) === 0, 'with no Restart any more');
+
+// --- a finished one restarts from a step taken --------------------------------
+answering = FINISHED;
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('article').waitFor({ timeout: 20_000 }).catch(() => undefined);
+record((await opened.locator('[data-restart]').count()) === 0, 'a finished research has no Restart in its header');
+const offers = await opened.locator('[data-restart-from]').count();
+record(offers === 5, `each step taken offers Restart from here (${offers})`);
+const offer = opened.locator('[data-restart-from="FOLLOW_UP"]');
+await page.mouse.move(0, 0);
+const hidden = await offer.evaluate((one) => getComputedStyle(one).opacity).catch(() => '');
+await opened.locator('[data-stage-step="FOLLOW_UP"]').hover().catch(() => undefined);
+await page.waitForTimeout(100);
+const pointed = await offer.evaluate((one) => getComputedStyle(one).opacity).catch(() => '');
+record(hidden === '0' && pointed === '1', `only to somebody pointing at the step (${hidden} then ${pointed})`);
+await offer.click().catch(() => undefined);
+await asking.waitFor({ timeout: 5_000 }).catch(() => undefined);
+const fromHere = ((await asking.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+record(fromHere.includes('Deepen findings'), `it asks first, naming that step (${fromHere.slice(0, 140)})`);
+await asking.locator('button', { hasText: /^Restart$/ }).click().catch(() => undefined);
+await opened.locator('[data-summary] [data-status="RUNNING"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+record(restarts.length === 2 && restarts[1].fromStage === 'FOLLOW_UP', `and sends that step (${JSON.stringify(restarts[1] ?? null)})`);
 
 await finish(browser);

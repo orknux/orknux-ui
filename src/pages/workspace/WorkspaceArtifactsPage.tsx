@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
@@ -14,6 +15,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ImageZoom } from '../../components/ImageZoom';
 import type { Picture } from '../../components/ImageZoom';
 import { Loader } from '../../components/Loader';
+import { PdfReader } from '../../components/PdfReader';
 import { SearchBox, SearchRow } from '../../components/SearchBox';
 import { TrashIcon } from '../../components/TrashIcon';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
@@ -65,6 +67,11 @@ function readableSize(bytes: number): string {
 function drawable(contentType: string): boolean {
   const type = contentType.toLowerCase().split(';')[0].trim();
   return ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'].includes(type);
+}
+
+/** A PDF, which the reader draws itself rather than framing; see `PdfReader`. */
+function isPdf(contentType: string): boolean {
+  return contentType.toLowerCase().split(';')[0].trim() === 'application/pdf';
 }
 
 /** A glyph standing in for the thing, where there is no thumbnail to draw. */
@@ -472,8 +479,16 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
         page an agent wrote cannot reach anything of ours. The address is the
         artifact's, which is the point of the route: this is a thing that can
         be sent to somebody.
+
+        Put on the body rather than where it is written. The shell's content
+        area rises in with a transform animation that fills forwards, and an
+        element with a transform in effect is the containing block of every
+        `position: fixed` inside it - so the panel was fixed to the scrolled
+        content area rather than to the window, and sat low and to the right of
+        wherever somebody was looking. `ImageZoom` never had this, being a
+        `<dialog>` in the top layer.
       */}
-      {read !== null && (
+      {read !== null && createPortal(
         <div
           className={styles.reading}
           role="dialog"
@@ -497,6 +512,16 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 rel="noreferrer noopener"
                 title={t('Open this in a tab of its own')}
               >{t('Open in a tab')}</a>
+              <a
+                className={styles.readingClose}
+                href={read.url}
+                download={read.filename}
+                aria-label={t('Download')}
+                title={t('Download')}
+                data-reading-download=""
+              >
+                <img src={downloadIcon} alt="" width={14} height={14} />
+              </a>
               <button
                 type="button"
                 ref={closer}
@@ -510,6 +535,14 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
               <p className={styles.readingNone}>
                 {t('Nothing here renders this kind of file. The download is on its card.')}
               </p>
+            ) : isPdf(read.contentType) ? (
+              /*
+                Drawn here, not framed: a browser's PDF reader does not run in
+                the sandboxed frame below, nor under the sandbox the server
+                sends with every preview, and Chrome draws its broken-document
+                icon instead. The lock stays on; the PDF is read without it.
+              */
+              <PdfReader className={styles.readingPdf} src={read.previewUrl} name={read.filename} />
             ) : (
               /*
                 `sandbox` with nothing allowed, on top of the header the server
@@ -524,7 +557,8 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
               />
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <ConfirmDialog

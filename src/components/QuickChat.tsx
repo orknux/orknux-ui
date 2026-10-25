@@ -8,16 +8,57 @@ import { CodeSuggestion } from './CodeSuggestion';
 import { ToolSuggestion } from './ToolSuggestion';
 import type { QuickChatToolSuggestion, QuickChatTurn } from '../api/quickChat';
 import { fetchWorkspace } from '../api/workspaces';
+import activityIcon from '../assets/activity.svg';
+import alertIcon from '../assets/alert-triangle.svg';
 import botIcon from '../assets/bot.svg';
+import helpIcon from '../assets/circle-help.svg';
+import scanIcon from '../assets/scan-search.svg';
 import { Markdown } from './Markdown';
 import { PAGES } from '../navigation';
 import styles from './QuickChat.module.css';
-import { t } from '../i18n';
+import { t, tf } from '../i18n';
 
 export interface QuickChatProps {
   /** The workspace it asks about, or undefined while none is known. */
   workspacePath?: string;
+  /** Who is asking, for the greeting; the first word is used. */
+  userName?: string;
 }
+
+/** A question somebody is likely to have on any page, offered before they have typed one. */
+interface Idea {
+  icon: string;
+  title: () => string;
+  line: () => string;
+  prompt: () => string;
+}
+
+const IDEAS: Idea[] = [
+  {
+    icon: helpIcon,
+    title: () => t('What is this page for?'),
+    line: () => t('What it shows and what I can do here'),
+    prompt: () => t('What is this page for, and what can I do on it?'),
+  },
+  {
+    icon: scanIcon,
+    title: () => t('Explain what I see'),
+    line: () => t('What is on screen, in plain words'),
+    prompt: () => t('Explain what is on this page right now, in plain words.'),
+  },
+  {
+    icon: alertIcon,
+    title: () => t('What went wrong lately?'),
+    line: () => t('Recent failed runs and why'),
+    prompt: () => t('Which runs failed in this workspace recently, and why?'),
+  },
+  {
+    icon: activityIcon,
+    title: () => t('Sum up this workspace'),
+    line: () => t('Workflows, agents and what they did'),
+    prompt: () => t('Sum up this workspace: its workflows, its agents and what ran recently.'),
+  },
+];
 
 /**
  * What the interface calls the page somebody is on.
@@ -63,7 +104,8 @@ function labelFor(pathname: string): string | null {
  * It appears only where the workspace has chosen a model for it. A button that
  * opens onto an apology is worse than no button.
  */
-export function QuickChat({ workspacePath }: QuickChatProps) {
+export function QuickChat({ workspacePath, userName }: QuickChatProps) {
+  const firstName = userName?.trim().split(/\s+/)[0] ?? '';
   const { pathname } = useLocation();
   const workspaceId = workspacePath?.split('/').filter(Boolean)[1];
 
@@ -295,21 +337,44 @@ export function QuickChat({ workspacePath }: QuickChatProps) {
       {open && (
         <section ref={panel} className={styles.panel} aria-label={t('Quick chat')}>
           <header className={styles.header}>
-            <span className={styles.title}>{t('Ask about this page')}</span>
+            <span className={styles.title}>{t('Ask AI')}</span>
             <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label={t('Close')}>
               ×
             </button>
           </header>
 
           <div className={styles.log} ref={logRef}>
-            {said.length === 0 && (
-              <p className={styles.empty}>
-                Ask about what is on screen, or about this workspace — its workflows, its runs and what they
-                did.{' '}
-                {mayWrite
-                  ? t('It can look those up, and change things here if you ask it to.')
-                  : t('It can look those up; it cannot change anything.')}
-              </p>
+            {said.length === 0 && !asking && (
+              <div className={styles.welcome} data-testid="quick-chat-welcome">
+                <h2 className={styles.hello}>
+                  {firstName === '' ? t('Hi!') : tf('Hi {name}!', { name: firstName })}
+                  <span>{t('How can I help?')}</span>
+                </h2>
+                <div className={styles.ideas}>
+                  {IDEAS.map((idea) => (
+                    <button
+                      key={idea.icon}
+                      type="button"
+                      className={styles.idea}
+                      onClick={() => void send(idea.prompt())}
+                      data-testid="quick-chat-idea"
+                    >
+                      <span className={styles.ideaIcon}>
+                        <img src={idea.icon} alt="" width={16} height={16} />
+                      </span>
+                      <span className={styles.ideaText}>
+                        <span className={styles.ideaTitle}>{idea.title()}</span>
+                        <span className={styles.ideaLine}>{idea.line()}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className={styles.empty}>
+                  {mayWrite
+                    ? t('It can look things up in this workspace, and change things if you ask it to.')
+                    : t('It can look things up in this workspace; it cannot change anything.')}
+                </p>
+              </div>
             )}
             {said.map((turn, index) =>
               turn.role === 'user' ? (
@@ -384,11 +449,11 @@ export function QuickChat({ workspacePath }: QuickChatProps) {
         className={open ? `${styles.launcher} ${styles.launcherOpen}` : styles.launcher}
         onClick={() => setOpen((was) => !was)}
         aria-expanded={open}
-        aria-label={open ? t('Close the quick chat') : t('Ask about this page')}
-        title={open ? 'Close' : t('Ask about this page')}
+        aria-label={open ? t('Close the quick chat') : t('Ask AI')}
+        title={open ? t('Close') : t('Ask AI')}
       >
         <img src={botIcon} alt="" width={18} height={18} />
-        <span className={styles.launcherLabel}>AI</span>
+        <span className={styles.launcherLabel}>{t('Ask AI')}</span>
       </button>
     </>
   );

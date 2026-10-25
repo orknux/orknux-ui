@@ -53,6 +53,7 @@ import {
   setAddShortcut,
   setSelectShortcut,
   setZoomInShortcut,
+  setArrangeShortcut,
   setMagicRectangleShortcut,
   setMagicLassoShortcut,
   setMagicAllShortcut,
@@ -71,6 +72,7 @@ import {
   useAddShortcut,
   useSelectShortcut,
   useZoomInShortcut,
+  useArrangeShortcut,
   useMagicRectangleShortcut,
   useMagicLassoShortcut,
   useMagicAllShortcut,
@@ -91,6 +93,7 @@ import {
   addShortcut,
   selectShortcut,
   zoomInShortcut,
+  arrangeShortcut,
   magicRectangleShortcut,
   magicLassoShortcut,
   magicAllShortcut,
@@ -99,6 +102,7 @@ import {
   DEFAULT_MAGIC_LASSO_SHORTCUT,
   zoomOutShortcut,
   DEFAULT_ZOOM_IN_SHORTCUT,
+  DEFAULT_ARRANGE_SHORTCUT,
   DEFAULT_ZOOM_OUT_SHORTCUT,
   undoShortcut,
   redoShortcut,
@@ -149,6 +153,7 @@ type ShortcutKey =
   | 'voiceMute'
   | 'zoomIn'
   | 'zoomOut'
+  | 'arrange'
   | 'magicRectangle'
   | 'magicLasso'
   | 'magicAll'
@@ -212,6 +217,7 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'voiceMute', stored: voiceMuteShortcut, store: setVoiceMuteShortcut },
   { key: 'zoomIn', stored: zoomInShortcut, store: setZoomInShortcut },
   { key: 'zoomOut', stored: zoomOutShortcut, store: setZoomOutShortcut },
+  { key: 'arrange', stored: arrangeShortcut, store: setArrangeShortcut },
   { key: 'magicRectangle', stored: magicRectangleShortcut, store: setMagicRectangleShortcut },
   { key: 'magicLasso', stored: magicLassoShortcut, store: setMagicLassoShortcut },
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
@@ -287,6 +293,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const zoomIn = shortcutDrafts.zoomIn ?? storedZoomIn;
   const storedZoomOut = useZoomOutShortcut();
   const zoomOut = shortcutDrafts.zoomOut ?? storedZoomOut;
+  const storedArrange = useArrangeShortcut();
+  const arrange = shortcutDrafts.arrange ?? storedArrange;
   const storedRedo = useRedoShortcut();
   const redo = shortcutDrafts.redo ?? storedRedo;
   const storedDuplicate = useDuplicateShortcut();
@@ -325,6 +333,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'voiceMute'
     | 'zoomIn'
     | 'zoomOut'
+    | 'arrange'
     | 'magicRectangle'
     | 'magicLasso'
     | 'magicAll'
@@ -388,6 +397,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
       else if (recording === 'voiceMute') draftShortcut('voiceMute', said);
       else if (recording === 'zoomIn') draftShortcut('zoomIn', said);
       else if (recording === 'zoomOut') draftShortcut('zoomOut', said);
+      else if (recording === 'arrange') draftShortcut('arrange', said);
       else if (recording === 'magicRectangle') draftShortcut('magicRectangle', said);
       else if (recording === 'magicLasso') draftShortcut('magicLasso', said);
       else if (recording === 'magicAll') draftShortcut('magicAll', said);
@@ -1336,6 +1346,36 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                 )}
               </div>
               {recording === 'zoomOut' && (
+                <p className={styles.settingNote}>
+                  {t('Press the combination you want. Escape leaves it as it is.')}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="arrange-shortcut">{t('Arrange Shortcut')}</span>
+                <FieldHint label={t('Arrange Shortcut')}>
+                  {t('Lays a diagram out again, in the diagram editor.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'arrange' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'arrange' ? null : 'arrange'));
+                  }}
+                  data-testid="arrange-shortcut"
+                >
+                  {recording === 'arrange' ? t('Press any keys…') : arrange}
+                </button>
+                {arrange !== DEFAULT_ARRANGE_SHORTCUT && recording !== 'arrange' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('arrange', DEFAULT_ARRANGE_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'arrange' && (
                 <p className={styles.settingNote}>
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>

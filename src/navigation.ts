@@ -26,6 +26,7 @@ import globeIcon from './assets/globe.svg';
 import lockKeyholeIcon from './assets/lock-keyhole.svg';
 import memoryIcon from './assets/memory.svg';
 import messageSquareIcon from './assets/message-square.svg';
+import networkIcon from './assets/network.svg';
 import packageIcon from './assets/package.svg';
 import plugIcon from './assets/plug.svg';
 import puzzleIcon from './assets/puzzle.svg';
@@ -366,6 +367,14 @@ export const PAGES = [
   },
   /* One research, on a page of its own: its progress, its sources and its report. */
   { path: '/workspace/:workspaceId/explore/research/:researchId', access: 'signed-in', goTo: false },
+  /* Diagrams of how the workspace's systems and processes fit together, in catalogs, drawn by hand or by a model. */
+  {
+    path: '/workspace/:workspaceId/explore/diagrams',
+    access: 'signed-in',
+    goTo: { label: t('Diagrams'), where: 'Explore', icon: networkIcon, also: 'architecture systems flowchart boxes map' },
+  },
+  /* A diagram's editor, reached from the list or from a search hit, which names a node with ?node=. */
+  { path: '/workspace/:workspaceId/explore/diagrams/:diagramId', access: 'signed-in', goTo: false },
 
   // ---- Design: what a model drew, and drawing more ----
   /* Screens sketched by hand or drawn by a model, first in Design, before the pictures drawn from them. Issue #655. */

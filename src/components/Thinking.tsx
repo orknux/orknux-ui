@@ -123,7 +123,13 @@ export function Thinking({ text, live = false, millis = null, startOpen = false 
    * to nothing looks like a fault, and it is how this shipped saying only
    * "Thought" with no time at all.
    */
-  const shown = live ? since : (millis ?? since);
+  /*
+   * Except that a count the page never really took is no duration: reasoning
+   * that arrived in one burst was "live" for a few milliseconds and read "0.0
+   * seconds", which is not how long anybody waited. Without the server's
+   * figure, the count stands only once it has ticked at least once.
+   */
+  const shown = live ? since : (millis ?? (since >= TICK ? since : 0));
 
   return (
     <div className={styles.thinking} data-testid="thinking" data-live={live}>
@@ -149,7 +155,8 @@ export function Thinking({ text, live = false, millis = null, startOpen = false 
           how long somebody waited for the thinking.
         */}
         <span className={styles.badge}>{t('Thinking')}</span>
-        {shown > 0 && (
+        {/* Nothing that would round to "0.0 seconds": a time too short to say is no time. */}
+        {shown >= 50 && (
           /* While it runs, the session's breathing "still thinking" ink; settled, its quiet duration. */
           <span className={live ? styles.still : styles.size} data-testid="thinking-elapsed">
             {/* The joining word belongs to the duration, not to the label: the

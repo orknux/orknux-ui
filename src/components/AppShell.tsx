@@ -546,7 +546,7 @@ export function AppShell({
         floating over the one already open — two boxes to type a question into,
         one of which keeps no history.
       */}
-      {where !== 'Chat' && <QuickChat workspacePath={workspaceHere} />}
+      {where !== 'Chat' && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
 
       {/*
         The attribution the licence asks to be kept visible. In the shell rather

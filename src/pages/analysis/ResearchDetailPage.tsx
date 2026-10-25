@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { deleteResearch, fetchResearch } from '../../api/research';
-import type { Research, ResearchImage, ResearchSource, ResearchStage, ResearchStatus } from '../../api/research';
+import { deleteResearch, fetchResearch, restartResearch } from '../../api/research';
+import type { Research, ResearchImage, ResearchStage, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
 import { formatDuration } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
 import checkIcon from '../../assets/check.svg';
+import rotateIcon from '../../assets/rotate-cw.svg';
 import { AppShell } from '../../components/AppShell';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
 import { AutoRefresh } from '../../components/AutoRefresh';
@@ -14,7 +15,9 @@ import { BackLink } from '../../components/BackLink';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
+import { PdfReader } from '../../components/PdfReader';
 import { TrashIcon } from '../../components/TrashIcon';
+import { roughly } from '../../components/timeLeft';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
 import { languageLabel, seededLabel, stageLabel, statusLabel, stepLabel } from './researchLabels';
@@ -55,7 +58,7 @@ function stagesOf(research: Research): StageState[] {
 }
 
 /** Where a source was read: a website's host, or the Artifacts page for a document. */
-function hostOf(source: ResearchSource): string {
+function hostOf(source: { url: string; kind: string }): string {
   if (source.kind === 'DOCUMENT') return t('Artifacts');
   try {
     return new URL(source.url).hostname.replace(/^www\./, '');
@@ -79,6 +82,8 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
   const [research, setResearch] = useState<Research | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  /** The restart being asked about: from a stage, or from where it stopped when that is null. */
+  const [restarting, setRestarting] = useState<{ stage: ResearchStage | null; label: string } | null>(null);
   const listPath = `/workspace/${workspaceId}/explore/research`;
 
   const load = useCallback(() => {
@@ -94,6 +99,9 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
   useEffect(load, [load]);
 
   const running = research?.status === 'RUNNING';
+  const restartable = research?.status === 'FAILED' || research?.status === 'STOPPED';
+  /** Where a restart without a stage begins: the step it stopped at, as the strip names it. */
+  const stoppedAt = research?.progress?.stage ?? null;
 
   return (
     <AppShell
@@ -120,6 +128,17 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
             </h1>
             <div className={styles.actions}>
               <AutoRefresh onRefresh={load} defaultSeconds={5} settled={research !== null && !running} />
+              {/* From the step it failed or stopped at, keeping every step before it. */}
+              {restartable && research !== null && (
+                <button
+                  type="button"
+                  className={`${styles.button} ${styles.primaryButton}`}
+                  onClick={() => setRestarting({ stage: null, label: stoppedAt === null ? research.question : stepLabel(stoppedAt) })}
+                  data-restart
+                >
+                  {t('Restart')}
+                </button>
+              )}
               {research?.executionId != null && (
                 <Link className={styles.button} to={`/workspace/${workspaceId}/executions/${research.executionId}`} data-open-run>
                   {t('Open the run')}
@@ -148,17 +167,34 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
         {research !== null && (
           <>
             {research.error !== null && <p className={styles.errorBox} role="alert">{research.error}</p>}
-            <Progress research={research} />
+            <Progress
+              research={research}
+              onRestartFrom={running ? undefined : (stage) => setRestarting({ stage, label: stepLabel(stage) })}
+            />
             <Given research={research} />
             <div className={styles.columns}>
               <SubQuestions research={research} />
               <Sources research={research} />
             </div>
             {research.status === 'COMPLETED' && <Report research={research} workspaceId={workspaceId} />}
+            {running && <Draft research={research} />}
             <Images research={research} />
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        subject={restarting?.label ?? null}
+        kind="restartResearch"
+        onClose={() => setRestarting(null)}
+        onConfirm={async () => {
+          if (research === null || restarting === null) return;
+          const restarted = await restartResearch(research.id, restarting.stage);
+          setResearch(restarted);
+          setError(null);
+          setRestarting(null);
+        }}
+      />
 
       <ConfirmDialog
         subject={removing ? (research?.question ?? null) : null}
@@ -222,6 +258,13 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
         <dt>{t('Started')}</dt>
         <dd title={research.startedAt}>{timeAgo(research.startedAt)}</dd>
       </div>
+      {/* Measured from the workspace's finished research in this mode; absent where there are too few. */}
+      {research.status === 'RUNNING' && research.estimatedSecondsLeft != null && research.estimatedSecondsLeft > 0 && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Time left')}</dt>
+          <dd data-time-left>{roughly(research.estimatedSecondsLeft * 1000)}</dd>
+        </div>
+      )}
       {/* How long it took, once it is over: from the start to the moment it finished, failed or was stopped. */}
       {research.finishedAt !== null && (
         <div className={styles.summaryItem}>
@@ -235,8 +278,12 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
   );
 }
 
-/** The five steps in order, with the one it is in, what it is doing now, and how much it has searched and read. */
-function Progress({ research }: { research: Research }) {
+/**
+ * The five steps in order, with the one it is in, what it is doing now, and
+ * how much it has searched and read. A step taken offers, on hover, to run the
+ * research again from it, where it is not running.
+ */
+function Progress({ research, onRestartFrom }: { research: Research; onRestartFrom?: (stage: ResearchStage) => void }) {
   const states = stagesOf(research);
   const progress = research.progress;
   const running = research.status === 'RUNNING';
@@ -250,6 +297,18 @@ function Progress({ research }: { research: Research }) {
               {states[index] === 'done' ? <img src={checkIcon} alt="" width={12} height={12} /> : index + 1}
             </span>
             <span className={styles.stageName}>{stepLabel(stage)}</span>
+            {onRestartFrom !== undefined && states[index] === 'done' && (
+              <button
+                type="button"
+                className={styles.stageRestart}
+                onClick={() => onRestartFrom(stage)}
+                aria-label={t('Restart from here')}
+                title={t('Restart from here')}
+                data-restart-from={stage}
+              >
+                <img src={rotateIcon} alt="" width={12} height={12} />
+              </button>
+            )}
           </li>
         ))}
       </ol>
@@ -351,15 +410,20 @@ function SubQuestions({ research }: { research: Research }) {
   );
 }
 
-/** The sources read, numbered as the report cites them. */
+/**
+ * The sources read, numbered as the report cites them - and, while it runs,
+ * the page being read now as a row on its way: not numbered, because one the
+ * model notes nothing in never becomes a source.
+ */
 function Sources({ research }: { research: Research }) {
+  const reading = research.status === 'RUNNING' ? (research.progress?.reading ?? null) : null;
   return (
     <section className={styles.card} aria-label={t('Sources')}>
       <h2 className={styles.cardTitle}>
         {t('Sources')}
         <span className={styles.count}>{research.sources.length}</span>
       </h2>
-      {research.sources.length === 0 ? (
+      {research.sources.length === 0 && reading === null ? (
         <p className={styles.empty}>—</p>
       ) : (
         <ol className={styles.sources} data-sources>
@@ -379,8 +443,44 @@ function Sources({ research }: { research: Research }) {
               </span>
             </li>
           ))}
+          {reading !== null && (
+            <li className={`${styles.source} ${styles.sourceReading}`} data-source-reading title={reading.url}>
+              <span className={styles.sourceNumber} aria-hidden="true">…</span>
+              <span className={styles.sourceBody}>
+                <a className={styles.sourceTitle} href={reading.url} target="_blank" rel="noreferrer noopener">
+                  {reading.title}
+                </a>
+                <span className={styles.sourceMeta}>
+                  <span className={styles.sourceHost} data-source-host>{hostOf(reading)}</span>
+                  <span className={styles.kind} data-source-kind={reading.kind}>
+                    {reading.kind === 'DOCUMENT' ? t('Document') : t('Web')}
+                  </span>
+                  <span className={styles.readingNow}>{t('Reading…')}</span>
+                </span>
+              </span>
+            </li>
+          )}
         </ol>
       )}
+    </section>
+  );
+}
+
+/** The report as its writer writes it, while the research runs; the finished one takes its place. */
+function Draft({ research }: { research: Research }) {
+  if (research.draft == null || research.draft.trim() === '') return null;
+  return (
+    <section className={styles.card} aria-label={t('Report')} data-draft>
+      <div className={styles.cardHeader}>
+        <h2 className={styles.cardTitle}>{t('Report')}</h2>
+        <span className={styles.writing} data-writing>
+          <Loader label="" size={14} delay={0} />
+          {t('Writing…')}
+        </span>
+      </div>
+      <article className={styles.document}>
+        <Markdown>{research.draft}</Markdown>
+      </article>
     </section>
   );
 }
@@ -406,7 +506,11 @@ function Report({ research, workspaceId }: { research: Research; workspaceId: st
         </div>
       </div>
       {research.outputFormat === 'PDF' && research.previewUrl !== null ? (
-        <iframe className={styles.pdf} src={research.previewUrl} title={research.fileName ?? t('Report')} />
+        /*
+          Drawn here rather than framed: the preview is served sandboxed, and a
+          browser's own PDF reader does not run in a sandboxed document.
+        */
+        <PdfReader className={styles.pdf} src={research.previewUrl} name={research.fileName ?? t('Report')} />
       ) : (
         research.result != null && (
           <article className={styles.document}>

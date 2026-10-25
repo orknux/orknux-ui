@@ -436,6 +436,18 @@ const PL: Record<string, string> = {
   WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
   WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
+  // --- Explore > Diagrams --------------------------------------------------
+  DiagramNotFound: 'Nie ma diagramu o identyfikatorze {id}',
+  DiagramCatalogNotFound: 'Nie ma katalogu diagramów o identyfikatorze {id}',
+  DiagramNameInvalid: 'Diagram potrzebuje nazwy, najwyżej 200 znaków',
+  DiagramCatalogNameInvalid: 'Katalog diagramów potrzebuje nazwy, najwyżej 120 znaków',
+  DiagramCatalogNameTaken: 'Katalog diagramów „{name}” już istnieje w tym obszarze roboczym',
+  DiagramCatalogNotEmpty: '{name} zawiera diagramy ({count}); najpierw je przenieś albo usuń',
+  DiagramNotesTooLong: 'Notatki w {node} mają {length} znaków, a mogą mieć najwyżej {most}',
+  DiagramTooLarge: 'Diagram może mieć najwyżej {most} węzłów i połączeń, a ten miałby {count}',
+  DiagramChanged: 'Diagram {name} został zmieniony od czasu jego otwarcia; otwórz go ponownie przed zapisaniem',
+  DiagramReadOnly: 'Diagram {name} jest dla agentów tylko do odczytu; można to zmienić w jego ustawieniu Agenci',
+  DiagramAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
   // --- Explore > Research, issue #659 --------------------------------------
   ResearchQuestionMissing: 'Napisz, co zbadać',
   ResearchQuestionTooLong: 'Pytanie badania może mieć najwyżej {most} znaków',
@@ -452,6 +464,12 @@ const PL: Record<string, string> = {
   ResearchModeWorkflowNotFound: 'W tej przestrzeni roboczej nie ma przepływu o identyfikatorze {id}',
   ResearchModeWorkflowNotChosen: 'Wybierz przepływ, który uruchamia ten tryb, albo tryb do skopiowania',
   ResearchModeSeeded: '{mode} to jeden z trzech trybów badania, które ma każda przestrzeń robocza, i zostaje',
+  ResearchNotFound: 'Nie ma badania o identyfikatorze {id}',
+  ResearchStillRunning: 'Badanie {id} wciąż trwa; można je uruchomić ponownie, gdy się zakończy, nie powiedzie lub zostanie zatrzymane',
+  ResearchNeverRan: 'Badanie {id} nie uruchomiło przebiegu, który można by powtórzyć',
+  ResearchStageNotInRun: 'Przebieg tego badania nie ma kroku {stage}, od którego można by zacząć',
+  ResearchNothingToRestart: 'Każdy krok tego badania się zakończył; wskaż, od którego kroku zacząć',
+  ResearchRestartRefused: 'Nie można uruchomić badania ponownie od tego miejsca: {reason}',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };
