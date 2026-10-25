@@ -28,7 +28,8 @@ export type ConfirmKind =
   | 'removeCertificate'
   | 'removeArtifact'
   | 'removeImage'
-  | 'removeWireframe';
+  | 'removeWireframe'
+  | 'restartResearch';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -302,6 +303,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Remove wireframe'),
       message: <>{t('The wireframe is deleted from this workspace, and there is no way back from this one:')} {name}</>,
       button: submitting ? t('Removing…') : t('Remove'),
+    },
+    /* Not destructive: the research is kept, and what the steps before this one found with it. */
+    restartResearch: {
+      title: t('Restart research'),
+      message: <>{t('The research runs again from this step, and every step after it is done again:')} {name}</>,
+      button: submitting ? t('Restarting…') : t('Restart'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

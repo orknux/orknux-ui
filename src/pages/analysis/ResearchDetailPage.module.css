@@ -670,3 +670,64 @@
 .imageSource:hover {
   text-decoration: underline;
 }
+
+/* ---- restarting ---- */
+
+/* The header's Restart: the one thing to do with a research that stopped, so it is drawn as the action. */
+.primaryButton {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.primaryButton:hover {
+  background: var(--color-accent);
+  opacity: 0.9;
+}
+
+/* A step taken offers to start again from it, but only to somebody pointing at it: the header's Restart is the usual way. */
+.stageRestart {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.stage:hover .stageRestart,
+.stageRestart:focus-visible {
+  opacity: 1;
+}
+
+.stageRestart:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+/* ---- while it runs ---- */
+
+/* The page being read now: a row on its way to being a source, drawn quieter than the ones that are. */
+.sourceReading {
+  border-style: dashed;
+}
+
+.readingNow {
+  flex-shrink: 0;
+  color: var(--color-amber);
+}
+
+.writing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-amber);
+}
