@@ -6,7 +6,8 @@
  * ticking it grants it. A label granted that no box carries any more stays on
  * the list as a kept row, as a connection that has gone does. The box_ tools
  * are rows on the Tools list that read this grant: Hide while it holds no
- * label, Always once it holds one, and not pressable either way.
+ * label, and not pressable then; once it holds one, Offer - as a label given
+ * afresh starts them - cycling Offer and Always, never Hide, the mark saved.
  *
  * Makes a scratch agent and a scratch box at an address under `.invalid` - the
  * box only so there is a label in use to be offered - and removes both,
@@ -100,13 +101,34 @@ if (boxTool !== undefined) {
 /* Ticking it grants it, and the box tool follows before anything is saved. */
 await tick.check();
 record(await tick.isChecked(), 'ticking the row grants the label');
-if (boxTool !== undefined) record((await toolState()) === 'always', `${boxTool} reads Always once a label is held`);
+const boxButton = () => page.locator(`[data-grant-name="${boxTool}"] [data-tool-state]`).first();
+if (boxTool !== undefined) {
+  record((await toolState()) === 'offer', `${boxTool} reads Offer once a label is held (${await toolState()})`);
+  record(
+    (await page.locator(`[data-grant-name="${boxTool}"] [data-tool-fixed]`).count()) === 0,
+    'and its row is pressable then',
+  );
+  await boxButton().click();
+  const marked = await toolState();
+  await boxButton().click();
+  const back = await toolState();
+  record(marked === 'always' && back === 'offer', `a press marks it Always and the next puts it back to Offer, never Hide (${marked} -> ${back})`);
+  await boxButton().click();
+}
 
 /* Saved, it is the agent's boxLabels. */
 await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2_000);
-const stored = (await graphql(`query ($id: ID!) { agent(id: $id) { boxLabels } }`, { id: agent.id })).agent.boxLabels;
+const saved = (await graphql(`query ($id: ID!) { agent(id: $id) { boxLabels requiredTools } }`, { id: agent.id })).agent;
+const stored = saved.boxLabels;
 record(stored.length === 1 && stored[0] === OFFERED, `Save stores the label ticked (${JSON.stringify(stored)})`);
+if (boxTool !== undefined) {
+  const others = boxTools.filter((one) => one !== boxTool);
+  record(
+    saved.requiredTools.includes(boxTool) && others.every((one) => !saved.requiredTools.includes(one)),
+    `and ${boxTool} marked Always, the other box tools left at Offer (${JSON.stringify(saved.requiredTools.filter((one) => boxTools.includes(one)))})`,
+  );
+}
 
 /* And the page opens on it again. */
 await page.reload({ waitUntil: 'domcontentloaded' });

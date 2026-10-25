@@ -2388,6 +2388,12 @@ export const TESTS = [
     /* Makes its own two agents and deletes them. */
   },
   {
+    name: 'tool-offer-start-check',
+    what: 'a new agent starts rating, pictures, MIDI, the less basic readers and the orknux_ tools at Offer, and the form draws and stores them so',
+    needs: ['workspace'],
+    /* Makes its own agent and deletes it; switches the workspace's built-ins gate and puts it back. */
+  },
+  {
     name: 'diagram-palette-check',
     what: 'Quick actions finds a diagram by its name and a node by its label, and opens the editor on that node',
     needs: ['workspace'],

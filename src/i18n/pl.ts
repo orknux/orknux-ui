@@ -3923,4 +3923,5 @@ export const PL: Record<string, string> = {
   "{added} added, {removed} removed, {changed} changed": "dodane: {added}, usunięte: {removed}, zmienione: {changed}",
   "The document is put back to this version, and what it says now is kept in its history:": "Dokument wraca do tej wersji, a jego obecna treść zostaje zachowana w historii:",
   "Restoring…": "Przywracanie…",
+  "Always — carried in front of the model every turn, once a tool limit is set. Click to offer it.": "Zawsze — noszone przed modelem w każdej turze, gdy ustawiono limit narzędzi. Kliknij, aby tylko oferować.",
 };
