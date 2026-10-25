@@ -18,6 +18,7 @@ const PUBLISH_KEY = 'orknux.publishShortcut';
 const VOICE_MUTE_KEY = 'orknux.voiceMuteShortcut';
 const ZOOM_IN_KEY = 'orknux.zoomInShortcut';
 const ZOOM_OUT_KEY = 'orknux.zoomOutShortcut';
+const ARRANGE_KEY = 'orknux.arrangeShortcut';
 const MAGIC_RECTANGLE_KEY = 'orknux.magicRectangleShortcut';
 const MAGIC_LASSO_KEY = 'orknux.magicLassoShortcut';
 const MAGIC_ALL_KEY = 'orknux.magicAllShortcut';
@@ -183,6 +184,12 @@ export const DEFAULT_ZOOM_IN_SHORTCUT = 'Ctrl+=';
 export const DEFAULT_ZOOM_OUT_SHORTCUT = 'Ctrl+-';
 
 /**
+ * Laying a diagram out again, in the diagram editor: Ctrl+Shift+L, L for
+ * layout, with Shift because Ctrl+L is the browser's address bar.
+ */
+export const DEFAULT_ARRANGE_SHORTCUT = 'Ctrl+Shift+L';
+
+/**
  * Magic edit's two ways of selecting, in the image editor: M for the rectangle
  * (a marquee) and L for the lasso, as image editors have them. A bare letter,
  * because it is heard only on the editor's canvas and never in a text box.
@@ -315,6 +322,7 @@ const publishing = remembered(PUBLISH_KEY, DEFAULT_PUBLISH_SHORTCUT);
 const voiceMuting = remembered(VOICE_MUTE_KEY, DEFAULT_VOICE_MUTE_SHORTCUT);
 const zoomingIn = remembered(ZOOM_IN_KEY, DEFAULT_ZOOM_IN_SHORTCUT);
 const zoomingOut = remembered(ZOOM_OUT_KEY, DEFAULT_ZOOM_OUT_SHORTCUT);
+const arranging = remembered(ARRANGE_KEY, DEFAULT_ARRANGE_SHORTCUT);
 const magicRectangle = remembered(MAGIC_RECTANGLE_KEY, DEFAULT_MAGIC_RECTANGLE_SHORTCUT);
 const magicLasso = remembered(MAGIC_LASSO_KEY, DEFAULT_MAGIC_LASSO_SHORTCUT);
 const magicAll = remembered(MAGIC_ALL_KEY, DEFAULT_MAGIC_ALL_SHORTCUT);
@@ -535,6 +543,18 @@ export function setZoomOutShortcut(next: Shortcut): void {
 
 export function useZoomOutShortcut(): Shortcut {
   return zoomingOut.use();
+}
+
+export function arrangeShortcut(): Shortcut {
+  return arranging.get();
+}
+
+export function setArrangeShortcut(next: Shortcut): void {
+  arranging.set(next);
+}
+
+export function useArrangeShortcut(): Shortcut {
+  return arranging.use();
 }
 
 export function magicRectangleShortcut(): Shortcut {

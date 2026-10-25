@@ -191,6 +191,8 @@ export interface BuiltInTool {
    * switched off in Admin Settings. Null where nothing withholds it. Issue #602.
    */
   unavailable: string | null;
+  /** Whether an agent starts with it hidden, for its owner to turn on - deleting a diagram is the one. */
+  startsHidden: boolean;
 }
 
 /**
@@ -200,7 +202,7 @@ export interface BuiltInTool {
  * row, is the fault #444 was filed about.
  */
 export async function fetchBuiltInTools(): Promise<BuiltInTool[]> {
-  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary unavailable } }`);
+  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary unavailable startsHidden } }`);
   return data.builtInTools;
 }
 

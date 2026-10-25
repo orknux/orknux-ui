@@ -29,7 +29,9 @@ export type ConfirmKind =
   | 'removeArtifact'
   | 'removeImage'
   | 'removeWireframe'
-  | 'restartResearch';
+  | 'restartResearch'
+  | 'removeDiagram'
+  | 'removeDiagramCatalog';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -55,6 +57,8 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeArtifact',
   'removeImage',
   'removeWireframe',
+  'removeDiagram',
+  'removeDiagramCatalog',
 ]);
 
 export interface ConfirmDialogProps {
@@ -309,6 +313,16 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Restart research'),
       message: <>{t('The research runs again from this step, and every step after it is done again:')} {name}</>,
       button: submitting ? t('Restarting…') : t('Restart'),
+    },
+    removeDiagram: {
+      title: t('Remove diagram'),
+      message: <>{t('The diagram is deleted from this workspace, with its notes, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeDiagramCatalog: {
+      title: t('Delete catalog'),
+      message: <>{t('The catalog is deleted; one holding diagrams is refused until they are moved or deleted:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Delete'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

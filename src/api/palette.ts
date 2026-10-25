@@ -1,4 +1,5 @@
 import { graphql } from './client';
+import { fetchDiagramNodeIndex, fetchDiagrams } from './diagrams';
 
 /**
  * The things in a workspace that have names, for finding them by one.
@@ -23,7 +24,9 @@ export type EntityKind =
   | 'Model'
   | 'Skill'
   | 'Tool'
-  | 'Issue';
+  | 'Issue'
+  | 'Diagram'
+  | 'Diagram node';
 
 export interface NamedEntity {
   kind: EntityKind;
@@ -187,7 +190,7 @@ export async function fetchWorkspaceEntities(workspaceId: string): Promise<Named
     return one.read(data);
   });
 
-  const settled = await Promise.allSettled([...asked, memories(workspaceId)]);
+  const settled = await Promise.allSettled([...asked, memories(workspaceId), diagramEntities(workspaceId)]);
   return settled.flatMap((one) => (one.status === 'fulfilled' ? one.value : []));
 }
 
@@ -230,4 +233,23 @@ async function memories(workspaceId: string): Promise<NamedEntity[]> {
       catalog: catalog.name,
     })),
   );
+}
+
+/**
+ * The diagrams by name, and every labelled node on them by its label, so
+ * typing what a box is called finds the box. A node's id is the diagram's
+ * with the node after it, which is how the editor's address names one.
+ * Its own provider, added beside the others rather than folded into them.
+ */
+async function diagramEntities(workspaceId: string): Promise<NamedEntity[]> {
+  const [diagrams, nodes] = await Promise.all([fetchDiagrams(workspaceId), fetchDiagramNodeIndex(workspaceId)]);
+  return [
+    ...diagrams.map((one) => ({ kind: 'Diagram' as const, id: one.id, name: one.name, catalog: one.catalogName })),
+    ...nodes.slice(0, PER_TYPE * 5).map((one) => ({
+      kind: 'Diagram node' as const,
+      id: `${one.diagramId}?node=${encodeURIComponent(one.nodeId)}`,
+      name: one.label,
+      catalog: one.diagramName,
+    })),
+  ];
 }

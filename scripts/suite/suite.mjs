@@ -2178,6 +2178,45 @@ export const TESTS = [
     /* Makes its own wireframe and removes it; the HTML is the server's own page. */
   },
 
+  // --- Explore -> Diagrams -------------------------------------------------------
+  {
+    name: 'diagrams-list-check',
+    what: "Explore -> Diagrams lists diagrams by catalog: catalogs made, a diagram made in one, renamed, moved, its Agents setting stored, found by a word in a node's notes, and removed after asking",
+    needs: ['workspace'],
+    /* Makes its own two catalogs and diagram, stamped, and removes them. */
+  },
+  {
+    name: 'diagram-editor-check',
+    what: "the diagram editor adds shapes, joins two with a line, counts a node's notes to the cap, keeps it all after a reload, puts its chat where the wireframe editor's is, and takes a model's change as one undoable step",
+    needs: ['workspace'],
+    /* Makes its own diagram and a wireframe to measure against, and removes both; the model's answer is answered here. */
+  },
+  {
+    name: 'diagram-layout-check',
+    what: 'Arrange lays a piled chain of boxes out left to right and top to bottom, from the button and the shortcut, and undo puts the pile back',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
+    name: 'diagram-note-cap-check',
+    what: "the note cap is a row under Admin Settings' Limits, 5000 by default, and the number set there is what the editor's notes stop at and the server refuses past",
+    needs: ['workspace'],
+    /* Sets an installation-wide number and puts it back, so nothing may run beside it. */
+    alone: true,
+  },
+  {
+    name: 'diagram-delete-tool-check',
+    what: 'orknux_delete_diagram starts hidden on a new agent and on one given Orknux access afresh in the form, and its owner turns it on',
+    needs: ['workspace'],
+    /* Makes its own two agents and deletes them. */
+  },
+  {
+    name: 'diagram-palette-check',
+    what: 'Quick actions finds a diagram by its name and a node by its label, and opens the editor on that node',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+
   {
     name: 'negative-prompt-check',
     what: 'a negative prompt is offered where the model draws with one, on its page and in the image editor, and sent',
