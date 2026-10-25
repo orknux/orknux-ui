@@ -419,6 +419,15 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * What a setting costs, under the switch that chose it: one line, in the
+ * caution colour, because it is a price and not a failure.
+ */
+.joinWarning {
+  font-size: var(--text-sm);
+  color: var(--color-amber);
+}
+
 /* Back to the type's default, beside a switch somebody has pressed. */
 .linkButton {
   padding: 0;

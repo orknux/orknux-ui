@@ -11,6 +11,7 @@ import {
   removeProvider,
   revealProviderSecret,
   checkProviderDraft,
+  joinsLoadedByDefault,
   TYPE_TOOL_CAPS,
   updateProvider,
 } from '../../api/models';
@@ -143,6 +144,15 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
    * thinking is what some providers need and others drop, so it is asked for.
    */
   const [sendsReasoning, setSendsReasoning] = useState(false);
+  /** Whether an agent on this provider is handed every tool up front. Off unless somebody turns it on. */
+  const [offerAllTools, setOfferAllTools] = useState(false);
+  /*
+   * Whether a tool loaded mid-conversation joins the tool list at the next
+   * turn. Null is the type's default - off for llama.cpp - and stays null
+   * until somebody presses the switch, so a provider moved to another type
+   * follows that type.
+   */
+  const [joinLoadedTools, setJoinLoadedTools] = useState<boolean | null>(null);
   /** The most tools one request carries, as typed; empty is what the type takes. */
   const [maxTools, setMaxTools] = useState('');
   /*
@@ -286,6 +296,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
     setScope(found.scope ?? DEFAULT_SCOPE);
     setCheckEnabled(found.checkEnabled);
     setSendsReasoning(found.sendsReasoning);
+    setOfferAllTools(found.offersAllTools);
+    setJoinLoadedTools(found.joinLoadedTools);
     setMaxTools(found.maxTools === null ? '' : String(found.maxTools));
     setThrottleTokens(found.throttleTokensPerSecond === null ? '' : String(found.throttleTokensPerSecond));
     setThrottleRequests(found.throttleRequestsPerSecond === null ? '' : String(found.throttleRequestsPerSecond));
@@ -392,6 +404,8 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
       scope: entra ? scope.trim() || null : null,
       checkEnabled,
       sendsReasoning,
+      offerAllTools,
+      joinLoadedTools: joinLoadedTools ?? undefined,
       maxTools: toNumber(maxTools),
       throttleTokensPerSecond: toNumber(throttleTokens),
       throttleRequestsPerSecond: toNumber(throttleRequests),
@@ -798,6 +812,88 @@ function ProviderSettingsView({ session, onSignOut, onDiscard }: ProviderSetting
                     {sendsReasoning ? t('Earlier thinking is sent back') : t('Earlier thinking is left out')}
                   </span>
                 </span>
+              </div>
+            </div>
+
+            {/*
+              How an agent reaches the tools it does not carry from the start.
+              The provider's settings, because what they trade is the
+              provider's prompt cache: a tool list that changes makes a local
+              server read the whole conversation again.
+            */}
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <span className={styles.label} id="provider-all-tools-label">{t('All tools up front')}</span>
+                  <FieldHint label={t('All tools up front')}>
+                    {t('Hands an agent every tool it holds from its first request, past its own limit and its Offer marks, up to the most tools per request. Nothing has to be loaded, and the first prompt is larger.')}
+                  </FieldHint>
+                </span>
+                <span className={styles.statusRow}>
+                  <button
+                    type="button"
+                    className={styles.toggle}
+                    onClick={() => {
+                      setOfferAllTools(!offerAllTools);
+                      setSaved(false);
+                    }}
+                    role="switch"
+                    aria-checked={offerAllTools}
+                    aria-labelledby="provider-all-tools-label"
+                    data-testid="provider-all-tools-toggle"
+                  >
+                    <img src={offerAllTools ? toggleOnIcon : toggleOffIcon} alt="" width={36} height={20} data-keeps-colour />
+                  </button>
+                  <span className={offerAllTools ? styles.checkOn : styles.checkOff}>
+                    {offerAllTools ? t('Every tool goes out up front') : t('Tools past the agent’s limit are loaded as needed')}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <span className={styles.labelWithHint}>
+                  <span className={styles.label} id="provider-join-tools-label">{t('Extend the tool list with loaded tools')}</span>
+                  <FieldHint label={t('Extend the tool list with loaded tools')}>
+                    {t('Whether a tool an agent loads joins its tool list at the next turn, to be called by its own name. Off, it is called through tool_run for the rest of the conversation. Off by default for llama.cpp, on for every other type.')}
+                  </FieldHint>
+                </span>
+                <span className={styles.statusRow}>
+                  <button
+                    type="button"
+                    className={styles.toggle}
+                    onClick={() => {
+                      setJoinLoadedTools(!(joinLoadedTools ?? joinsLoadedByDefault(type)));
+                      setSaved(false);
+                    }}
+                    role="switch"
+                    aria-checked={joinLoadedTools ?? joinsLoadedByDefault(type)}
+                    aria-labelledby="provider-join-tools-label"
+                    data-testid="provider-join-tools-toggle"
+                  >
+                    <img
+                      src={(joinLoadedTools ?? joinsLoadedByDefault(type)) ? toggleOnIcon : toggleOffIcon}
+                      alt=""
+                      width={36}
+                      height={20}
+                      data-keeps-colour
+                    />
+                  </button>
+                  <span className={(joinLoadedTools ?? joinsLoadedByDefault(type)) ? styles.checkOn : styles.checkOff}>
+                    {(joinLoadedTools ?? joinsLoadedByDefault(type)) ? t('Loaded tools join the list at the next turn') : t('Loaded tools are called through tool_run')}
+                  </span>
+                </span>
+                {/*
+                  What switching it on costs on llama.cpp, said where it is
+                  switched, with the way round it: its chat template writes the
+                  tools at the top of the prompt.
+                */}
+                {type === 'LLAMA_CPP' && (joinLoadedTools ?? joinsLoadedByDefault(type)) && (
+                  <span className={styles.joinWarning} data-testid="provider-join-tools-warning">
+                    {t('Each turn after a tool is loaded re-reads the whole conversation; All tools up front avoids that at the cost of a larger first prompt.')}
+                  </span>
+                )}
               </div>
             </div>
 
