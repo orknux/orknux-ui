@@ -78,7 +78,7 @@ import {
 import { shellUser } from '../../session/user';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
-import { EDGE_TYPES, NODE_TYPES, SWATCHES } from './DiagramCanvas';
+import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCHES } from './DiagramCanvas';
 import type { LinkEdge, ShapeNode } from './DiagramCanvas';
 import { agentAccessOptions } from './DiagramsPage';
 import styles from './DiagramEditorPage.module.css';
@@ -254,6 +254,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState<'layout' | 'align' | 'export' | null>(null);
+  /** The label being typed over in place, on the canvas. */
+  const [labelling, setLabelling] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
 
   const [models, setModels] = useState<Model[] | null>(null);
   const [modelId, setModelId] = useState('');
@@ -636,6 +638,31 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     setDrawing((held) => ({ ...held, edges: held.edges.map((edge) => (edge.id === id ? { ...edge, ...patch } : edge)) }));
   }
 
+  /** A label typed in place, put down as one step through the ordinary change. */
+  function commitLabel(text: string) {
+    const target = labelling;
+    setLabelling(null);
+    if (target === null) return;
+    if (target.kind === 'node') {
+      const label = text.trim();
+      const node = drawing.nodes.find((one) => one.id === target.id);
+      if (node === undefined || node.label === label) return;
+      change({ ...drawing, nodes: drawing.nodes.map((one) => (one.id === target.id ? { ...one, label } : one)) });
+    } else {
+      const label = text.replace(/\s+/g, ' ').trim();
+      const edge = drawing.edges.find((one) => one.id === target.id);
+      if (edge === undefined || (edge.label ?? '') === label) return;
+      change({ ...drawing, edges: drawing.edges.map((one) => (one.id === target.id ? { ...one, label: label === '' ? undefined : label } : one)) });
+    }
+  }
+
+  const labelEditing = useMemo(
+    () => ({ target: labelling, commit: commitLabel, cancel: () => setLabelling(null) }),
+    // The commit reads the drawing as it is now, so it is made again with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [labelling, drawing],
+  );
+
   // -- Saving -------------------------------------------------------------
 
   async function save(): Promise<boolean> {
@@ -736,7 +763,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   // -- Keys ---------------------------------------------------------------
 
-  const keys = useRef({ undo, redo, save, remove, duplicate, copy, cut, paste: () => paste(), nudge, arrange, escape: () => {} });
+  /** Enter or F2 on the one node or line selected types over its label. */
+  function startLabelling() {
+    if (selectedNodes.length === 1 && selectedEdges.length === 0) setLabelling({ kind: 'node', id: selectedNodes[0] });
+    else if (selectedEdges.length === 1 && selectedNodes.length === 0) setLabelling({ kind: 'edge', id: selectedEdges[0] });
+  }
+
+  const keys = useRef({ undo, redo, save, remove, duplicate, copy, cut, paste: () => paste(), nudge, arrange, label: () => {}, escape: () => {} });
   keys.current = {
     undo,
     redo,
@@ -748,6 +781,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     paste: () => paste(),
     nudge,
     arrange,
+    label: startLabelling,
     escape: () => {
       setSelectedNodes([]);
       setSelectedEdges([]);
@@ -769,6 +803,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
         action();
       };
       if (event.key === 'Escape') keys.current.escape();
+      else if ((event.key === 'Enter' || event.key === 'F2') && !event.ctrlKey && !event.metaKey && !event.altKey) run(keys.current.label);
       else if (event.key === 'Delete' || event.key === 'Backspace') run(keys.current.remove);
       else if (matches(event, duplicateKey)) run(keys.current.duplicate);
       else if (matches(event, copyKey)) run(keys.current.copy);
@@ -978,6 +1013,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           {diagram === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
+            <LabelEditingContext.Provider value={labelEditing}>
             <ReactFlow<ShapeNode, LinkEdge>
               nodes={nodes}
               edges={edges}
@@ -987,6 +1023,17 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onNodeDragStart={() => begin()}
+              onNodeDoubleClick={(_, node) => {
+                setSelectedNodes([node.id]);
+                setSelectedEdges([]);
+                setLabelling({ kind: 'node', id: node.id });
+              }}
+              onEdgeDoubleClick={(_, edge) => {
+                setSelectedEdges([edge.id]);
+                setSelectedNodes([]);
+                setLabelling({ kind: 'edge', id: edge.id });
+              }}
+              zoomOnDoubleClick={false}
               onNodeDragStop={(_, __, dragged) => onDragStop(dragged.map((node) => node.id))}
               onPaneClick={() => setMenu(null)}
               connectionMode={ConnectionMode.Loose}
@@ -1000,6 +1047,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             >
               <Background variant={BackgroundVariant.Dots} gap={GRID * 3} size={1.5} />
             </ReactFlow>
+            </LabelEditingContext.Provider>
           )}
           {answering && (
             <div className={chat.drawing} data-testid="diagram-drawing">
