@@ -1,4 +1,6 @@
 import { graphql } from './client';
+import { editorTurnsInput } from './attachments';
+import type { EditorTurn } from './attachments';
 
 /**
  * What a node can be drawn as. The server checks a drawing against the same
@@ -87,10 +89,8 @@ export interface DiagramHit {
   snippet: string;
 }
 
-export interface DiagramTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
+/** One turn of the editor's chat, with the files sent on it. */
+export type DiagramTurn = EditorTurn;
 
 export interface DiagramAnswer {
   answer: string;
@@ -238,7 +238,7 @@ export async function askDiagram(id: string, modelId: string, messages: DiagramT
     `mutation ($id: ID!, $modelId: ID!, $messages: [DiagramChatTurnInput!]!) {
        askDiagram(id: $id, modelId: $modelId, messages: $messages) { answer changed diagram { ${FIELDS} } }
      }`,
-    { id, modelId, messages },
+    { id, modelId, messages: editorTurnsInput(messages) },
   );
   return data.askDiagram;
 }

@@ -46,7 +46,7 @@ import shell from './DesignImageEditorPage.module.css';
 import styles from './WireframeEditorPage.module.css';
 import { boundsOf, WireframeShapes } from './WireframeDrawing';
 import { WireframeExport } from './WireframeExport';
-import { DesignChat } from './DesignChat';
+import { DesignChat, useChatFiles } from './DesignChat';
 import type { ChatIdea } from './DesignChat';
 import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
 
@@ -216,6 +216,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   const [modelId, setModelId] = useState('');
   const [talk, setTalk] = useState<WireframeTurn[]>([]);
   const [asking, setAsking] = useState('');
+  const files = useChatFiles(workspaceId);
   const [answering, setAnswering] = useState(false);
   const [talkError, setTalkError] = useState<string | null>(null);
 
@@ -644,12 +645,13 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
     event?.preventDefault();
     const said = (idea ?? asking).trim();
-    if (said === '' || modelId === '' || wireframe === null || answering) return;
+    if ((said === '' && files.attached.length === 0) || modelId === '' || wireframe === null || answering || files.attaching) return;
     commitEditing();
     setTalkError(null);
     // The model draws on what is saved, so what is on screen is saved first.
     if (unsaved && !(await save())) return;
-    const sent: WireframeTurn[] = [...talk, { role: 'user', content: said }];
+    const attachments = files.take();
+    const sent: WireframeTurn[] = [...talk, { role: 'user', content: said, ...(attachments.length > 0 ? { attachments } : {}) }];
     setTalk(sent);
     setAsking('');
     setAnswering(true);
@@ -1103,6 +1105,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
             }}
             placeholder={t('Describe a screen to draw')}
             inputLabel={t('What to draw')}
+            files={files}
             footer={
               <>
                 {error !== null && wireframe !== null && (

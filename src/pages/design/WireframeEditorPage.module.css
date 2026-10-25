@@ -442,3 +442,131 @@
   font-size: var(--text-xs);
   text-align: right;
 }
+
+/* ---- Files in an editor's chat: dropped on it, picked with the paperclip, chips above the box ---- */
+
+/* The conversation and its composer, together: what a file is dropped on, and what the drop zone covers. */
+.chatArea {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-height: 0;
+}
+
+.dropZone {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--color-violet);
+  border-radius: var(--radius-12);
+  background: var(--color-bg);
+  opacity: 0.92;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  pointer-events: none;
+}
+
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.file,
+.sentFile {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-8);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+}
+
+.sentFile {
+  text-decoration: none;
+}
+
+.sentFile:hover .fileName {
+  text-decoration: underline;
+}
+
+.sentFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  white-space: normal;
+}
+
+.fileName {
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileThumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-4);
+  object-fit: cover;
+}
+
+.fileRemove {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: var(--text-base);
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.fileRemove:hover {
+  color: var(--color-text-primary);
+}
+
+.attach {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-8);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.attach:hover:not(:disabled) {
+  border-color: var(--color-border);
+  opacity: 1;
+}
+
+.attach:disabled {
+  cursor: default;
+}
+
+.filePicker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

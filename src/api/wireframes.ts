@@ -1,4 +1,6 @@
 import { graphql } from './client';
+import { editorTurnsInput } from './attachments';
+import type { EditorTurn } from './attachments';
 
 /**
  * What a wireframe can be drawn with. The server checks a drawing against the
@@ -42,10 +44,8 @@ export interface Wireframe {
   updatedAt: string;
 }
 
-export interface WireframeTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
+/** One turn of the editor's chat, with the files sent on it. */
+export type WireframeTurn = EditorTurn;
 
 export interface WireframeAnswer {
   answer: string;
@@ -137,7 +137,7 @@ export async function askWireframe(id: string, modelId: string, messages: Wirefr
     `mutation ($id: ID!, $modelId: ID!, $messages: [WireframeChatTurnInput!]!) {
        askWireframe(id: $id, modelId: $modelId, messages: $messages) { answer changed wireframe { ${FIELDS} } }
      }`,
-    { id, modelId, messages },
+    { id, modelId, messages: editorTurnsInput(messages) },
   );
   return data.askWireframe;
 }

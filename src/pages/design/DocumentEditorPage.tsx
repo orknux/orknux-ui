@@ -54,7 +54,7 @@ import { currentLanguage } from '../../session/language';
 import { matches, useSaveShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import shell from './DesignImageEditorPage.module.css';
-import { DesignChat, useChatModels } from './DesignChat';
+import { DesignChat, useChatFiles, useChatModels } from './DesignChat';
 import type { ChatIdea } from './DesignChat';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DocumentExportMenu } from './DocumentExportMenu';
@@ -187,6 +187,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
   const [talk, setTalk] = useState<DocumentTurn[]>([]);
   const [asking, setAsking] = useState('');
+  const files = useChatFiles(workspaceId);
   const [answering, setAnswering] = useState(false);
   /** What the model has changed in this turn, so the page marks it rather than the whole text. */
   const [changed, setChanged] = useState<ChangedRange | null>(null);
@@ -370,11 +371,12 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
     event?.preventDefault();
     const said = (idea ?? asking).trim();
-    if (said === '' || modelId === '' || held === null || answering) return;
+    if ((said === '' && files.attached.length === 0) || modelId === '' || held === null || answering || files.attaching) return;
     setTalkError(null);
     // The model writes in what is saved, so what is on screen is saved first.
     if (unsaved && !(await save())) return;
-    const sent: DocumentTurn[] = [...talk, { role: 'user', content: said }];
+    const attachments = files.take();
+    const sent: DocumentTurn[] = [...talk, { role: 'user', content: said, ...(attachments.length > 0 ? { attachments } : {}) }];
     setTalk(sent);
     setAsking('');
     setAnswering(true);
@@ -868,6 +870,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             onModel={choose}
             placeholder={t('Describe what to write')}
             inputLabel={t('What to write')}
+            files={files}
             footer={
               <>
                 {error !== null && held !== null && (

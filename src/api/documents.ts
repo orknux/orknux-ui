@@ -1,4 +1,6 @@
 import { graphql } from './client';
+import { editorTurnsInput } from './attachments';
+import type { EditorTurn } from './attachments';
 
 /**
  * Documents in Design: rich text in pages, filed in catalogs, written by hand
@@ -70,10 +72,8 @@ export interface DocumentHit {
   snippet: string;
 }
 
-export interface DocumentTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
+/** One turn of the editor's chat, with the files sent on it. */
+export type DocumentTurn = EditorTurn;
 
 export interface DocumentAnswer {
   answer: string;
@@ -283,7 +283,7 @@ export async function askDocument(id: string, modelId: string, messages: Documen
     `mutation ($id: ID!, $modelId: ID!, $messages: [DocumentChatTurnInput!]!) {
        askDocument(id: $id, modelId: $modelId, messages: $messages) { answer changed document { ${FIELDS} } }
      }`,
-    { id, modelId, messages },
+    { id, modelId, messages: editorTurnsInput(messages) },
   );
   return data.askDocument;
 }
