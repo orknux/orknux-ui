@@ -882,7 +882,7 @@ const SHOTS = [
      */
     path: `/workspace/${ws}/executions`,
     prepare: async (page) => {
-      await page.click('button[aria-label="Ask about this page"]');
+      await page.click('button[aria-label="Ask AI"]');
       await page.waitForSelector('section[aria-label="Quick chat"]', { timeout: 10_000 });
       /*
        * A question this page can actually answer. It used to ask which run
@@ -1351,7 +1351,7 @@ for (const shot of CHOSEN) {
      * good picture of a page over a missing corner is the wrong trade.
      */
     if (shot.path.startsWith('/workspace/')) {
-      for (const corner of ['button[aria-label="Selected workspace"]', 'button[aria-label="Ask about this page"]']) {
+      for (const corner of ['button[aria-label="Selected workspace"]', 'button[aria-label="Ask AI"]']) {
         try {
           await page.waitForSelector(corner, { timeout: 10_000 });
         } catch {
