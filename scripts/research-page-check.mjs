@@ -218,7 +218,7 @@ record(order !== null && order >= 0, `it stands with the sources, above the webs
 
 // --- images -----------------------------------------------------------------
 const images = dialog.locator('input[type="checkbox"][data-include-images]');
-record((await images.count()) === 1 && !(await images.isChecked()), 'Include images is a box, unticked until somebody ticks it');
+record((await images.count()) === 1 && (await images.isChecked()), 'Include images is a box, ticked until somebody unticks it');
 const imagesLabel = ((await images.locator('xpath=..').textContent()) ?? '').trim();
 record(imagesLabel === 'Include images', `and it says so in one line (${imagesLabel})`);
 const beside = await page.evaluate(() => {
@@ -284,14 +284,14 @@ record((await chosenOption(page, documents.locator(`[data-picked="${fileName}"]`
 // --- starting one -----------------------------------------------------------
 await webSearch.uncheck();
 record(!(await webSearch.isChecked()), 'unticked, it stays unticked');
-await images.check();
-record(await images.isChecked(), 'ticked, Include images stays ticked');
+await images.uncheck();
+record(!(await images.isChecked()), 'unticked, Include images stays unticked');
 await dialog.locator('textarea#research-question').fill(question);
 // What Start sends, read off the request itself.
 const sent = page.waitForRequest((request) => (request.postData() ?? '').includes('StartResearch'), { timeout: 15_000 }).catch(() => null);
 await dialog.getByRole('button', { name: /^Start$/ }).click();
 const startInput = JSON.parse((await sent)?.postData() ?? '{}')?.variables?.input ?? {};
-record(startInput.includeImages === true && startInput.useWebSearch === false, `Start sends both switches as they were left (${JSON.stringify({ includeImages: startInput.includeImages, useWebSearch: startInput.useWebSearch })})`);
+record(startInput.includeImages === false && startInput.useWebSearch === false, `Start sends both switches as they were left (${JSON.stringify({ includeImages: startInput.includeImages, useWebSearch: startInput.useWebSearch })})`);
 await page.locator('dialog[open]').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
 record((await page.locator('dialog[open]').count()) === 0, 'Start closes the dialog');
 

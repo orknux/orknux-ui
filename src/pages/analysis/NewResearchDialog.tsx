@@ -66,8 +66,9 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [lastModel, rememberModel] = useSieve(`research.model.${workspaceId}`);
   // On, as every research was before it could be switched off.
   const [webSearch, setWebSearch] = useState(true);
-  // Off: looking for images is asked for, not assumed.
-  const [images, setImages] = useState(false);
+  // On, unless this person last left it off: a report with its pictures is what most research is for.
+  const [lastImages, rememberImages] = useSieve(`research.images.${workspaceId}`);
+  const [images, setImages] = useState(lastImages !== 'off');
   // A second model reading the report before it is saved, and which one: both remembered, as the model is.
   const [lastReview, rememberReview] = useSieve(`research.review.${workspaceId}`);
   const [lastReviewer, rememberReviewer] = useSieve(`research.reviewer.${workspaceId}`);
@@ -96,7 +97,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       setExclude([]);
       setPicked([]);
       setWebSearch(true);
-      setImages(false);
+      setImages(lastImages !== 'off');
       setReview(lastReview === 'on');
       setAdding(false);
       setError(null);
@@ -307,7 +308,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
                 type="checkbox"
                 id="research-include-images"
                 checked={images}
-                onChange={(event) => setImages(event.target.checked)}
+                onChange={(event) => {
+                  setImages(event.target.checked);
+                  rememberImages(event.target.checked ? 'on' : 'off');
+                }}
                 data-include-images
               />
               {t('Include images')}
