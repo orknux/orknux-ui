@@ -264,7 +264,7 @@
   background: var(--color-surface-hover);
   border-radius: var(--radius-8);
   color: var(--color-text-primary);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   white-space: pre-wrap;
 }
 
@@ -272,7 +272,7 @@
   align-self: flex-start;
   max-width: 100%;
   color: var(--color-text-primary);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
 }
 
 .composer {
@@ -391,7 +391,7 @@
   resize: none;
   color: var(--color-text-primary);
   font: inherit;
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   background: none;
   border: 0;
   outline: none;

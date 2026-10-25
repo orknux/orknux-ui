@@ -2208,9 +2208,15 @@ export const TESTS = [
   },
   {
     name: 'document-caret-check',
-    what: "a press anywhere on a document's sheet - the middle of an empty one, below the text, beside a line - puts the caret there and what is typed lands in the document",
+    what: "a press anywhere on a document's sheet - the middle of an empty one, below the text, beside a line - puts the caret there and what is typed lands in the document; the Page menu closes on a press elsewhere and on Escape; the chat is at the body size",
     needs: ['workspace'],
     /* Makes its own documents and removes them. */
+  },
+  {
+    name: 'document-writing-check',
+    what: "while a model writes in a document the Writing pill sits centred on the sheet in the middle of the view, scrolled or not, and the whole text is outlined until the model's save shows what it changed, then only that",
+    needs: ['workspace'],
+    /* The model's answer is held back by the page's network, so no model is needed. Makes its own document and removes it. */
   },
   {
     name: 'document-find-check',

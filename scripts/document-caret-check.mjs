@@ -7,6 +7,9 @@
  * sheet, and below and beside the lines of a written one, and what is typed is
  * read back off the editor.
  *
+ * Also: the Page menu closes on a press elsewhere and on Escape, and the
+ * chat beside the document is written at the body size.
+ *
  * Makes its own documents and removes them.
  */
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
@@ -60,6 +63,24 @@ await page.keyboard.type(' beside');
 await page.waitForTimeout(300);
 lines = await typed();
 record(lines[0] === 'First beside', `a press in the margin beside a line types at that line's end (${JSON.stringify(lines)})`);
+
+// The Page menu closes on a press anywhere else, and on Escape.
+await page.getByTestId('document-page-settings').click();
+await page.getByTestId('document-page-menu').waitFor({ timeout: 5_000 });
+await page.mouse.click(sheet.x + sheet.width / 2, sheet.y + 300);
+await page.waitForTimeout(200);
+record(await page.getByTestId('document-page-menu').count() === 0, 'the Page menu closes on a press on the sheet');
+await page.getByTestId('document-page-settings').click();
+await page.getByTestId('document-page-size').selectOption('A5');
+await page.waitForTimeout(200);
+record(await page.getByTestId('document-page-menu').count() === 1, 'but stays open while one of its own fields is used');
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
+record(await page.getByTestId('document-page-menu').count() === 0, 'and closes on Escape');
+
+// The chat beside it reads at the body size, not the small print.
+const chatSize = await page.getByTestId('document-chat-input').evaluate((one) => parseFloat(getComputedStyle(one).fontSize));
+record(chatSize >= 14, `the document chat is written at 14px or more (${chatSize}px)`);
 
 for (const id of [empty, written]) await graphql('mutation ($id: ID!) { deleteDocument(id: $id) }', { id });
 await finish(browser);

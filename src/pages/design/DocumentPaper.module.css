@@ -26,6 +26,84 @@
   box-sizing: border-box;
 }
 
+/* ---- A model writing: a pill centred on the sheet in view, over where it works ---- */
+
+/* No height of its own, so it takes no room; sticky, so the pill stays in the middle of what is in view as the desk scrolls. */
+.writingHold {
+  position: sticky;
+  top: 50%;
+  z-index: 4;
+  height: 0;
+  pointer-events: none;
+}
+
+.writing {
+  position: absolute;
+  left: 50%;
+  padding: var(--space-6) var(--space-12);
+  transform: translate(-50%, -50%);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-menu);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Outlined, breathing and swept by a soft light, as the wireframe editor marks where a model draws. */
+.writingArea {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-violet) 6%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-violet) 70%, transparent);
+  border-radius: var(--radius-4);
+  pointer-events: none;
+  transition: top 0.3s ease, height 0.3s ease;
+  animation: writingBreathe 1.6s ease-in-out infinite;
+}
+
+.writingArea::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  content: '';
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-violet) 18%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: writingSweep 1.8s ease-in-out infinite;
+}
+
+@keyframes writingBreathe {
+  0%,
+  100% {
+    border-color: color-mix(in srgb, var(--color-violet) 45%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-violet) 30%, transparent);
+  }
+  50% {
+    border-color: var(--color-violet);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-violet) 18%, transparent);
+  }
+}
+
+@keyframes writingSweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(200%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writingArea,
+  .writingArea::after {
+    animation: none;
+  }
+}
+
 /* ---- The words ---- */
 
 .prose {

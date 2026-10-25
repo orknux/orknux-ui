@@ -60,6 +60,7 @@ import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DocumentExportMenu } from './DocumentExportMenu';
 import { DocumentFind } from './DocumentFind';
 import { DocumentPaper, geometryOf, useDocumentEditor } from './DocumentPaper';
+import type { ChangedRange } from './DocumentPaper';
 import { aroundCaret, documentImageSource, markGrammar, suggest, textblocks } from './documentExtensions';
 import type { GrammarMark } from './documentExtensions';
 import { MARGIN_SETTINGS, ORIENTATIONS, pageOf, settingsOf } from './documentSettings';
@@ -154,6 +155,25 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [finding, setFinding] = useState(false);
   const [picking, setPicking] = useState(false);
   const [pageMenu, setPageMenu] = useState(false);
+
+  // The page's settings close on a press anywhere else, or on Escape, as the export menu's do.
+  useEffect(() => {
+    if (!pageMenu) return;
+    const away = (event: MouseEvent) => {
+      if (!(event.target instanceof Element) || event.target.closest('[data-testid="document-page-menu"], [data-testid="document-page-settings"]') === null) {
+        setPageMenu(false);
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPageMenu(false);
+    };
+    window.addEventListener('mousedown', away);
+    window.addEventListener('keydown', escape);
+    return () => {
+      window.removeEventListener('mousedown', away);
+      window.removeEventListener('keydown', escape);
+    };
+  }, [pageMenu]);
   const [completionPause, setCompletionPause] = useState<number | null>(null);
   const [autocomplete, setAutocomplete] = useSieve('document-editor.autocomplete');
   const [grammarSieve, setGrammarSieve] = useSieve('document-editor.grammar');
@@ -168,6 +188,9 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [talk, setTalk] = useState<DocumentTurn[]>([]);
   const [asking, setAsking] = useState('');
   const [answering, setAnswering] = useState(false);
+  /** What the model has changed in this turn, so the page marks it rather than the whole text. */
+  const [changed, setChanged] = useState<ChangedRange | null>(null);
+  const writingNow = useRef(false);
   const [talkError, setTalkError] = useState<string | null>(null);
 
   const scope = useRef<HTMLDivElement | null>(null);
@@ -308,7 +331,14 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   /** A document as the server holds it now, taken onto the page as one step undo goes back over. */
   function take(found: DesignDocument) {
     if (editor === null) return;
+    const before = editor.state.doc;
     editor.commands.setContent(contentOf(found), { emitUpdate: false });
+    if (writingNow.current) {
+      const after = editor.state.doc;
+      const start = before.content.findDiffStart(after.content);
+      const end = before.content.findDiffEnd(after.content);
+      if (start !== null) setChanged({ from: start, to: Math.max(start, end?.b ?? start) });
+    }
     setHeld(found);
     setSettings(settingsOf(found));
     setSaved(fingerprint(editor, settingsOf(found)));
@@ -348,6 +378,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     setTalk(sent);
     setAsking('');
     setAnswering(true);
+    setChanged(null);
+    writingNow.current = true;
     let revision = held.revision;
     // The page follows the model while it works: each save it makes appears as it is made.
     const following = window.setInterval(() => {
@@ -370,6 +402,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
       if (now !== null && now.revision !== revision) take(now);
     } finally {
       window.clearInterval(following);
+      writingNow.current = false;
       setAnswering(false);
     }
   }
@@ -764,12 +797,13 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
             <div className={styles.desk}>
-              <DocumentPaper editor={editor} geometry={geometry} pages={pages} />
-            </div>
-          )}
-          {answering && (
-            <div className={wire.drawing} data-testid="document-writing">
-              <Loader label={t('Writing…')} delay={0} size={20} />
+              <DocumentPaper
+                editor={editor}
+                geometry={geometry}
+                pages={pages}
+                writing={answering ? <Loader label={t('Writing…')} delay={0} size={20} /> : null}
+                changed={changed}
+              />
             </div>
           )}
           {picked !== null && (

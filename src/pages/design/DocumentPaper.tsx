@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 
 import type { DesignDocument } from '../../api/documents';
 import { contentOf } from '../../api/documents';
@@ -99,10 +99,25 @@ export function useDocumentEditor({ document, geometry, editable, onChange, onGr
   return { editor: ready, pages };
 }
 
+/** Where in the document a model's change landed: positions in the document as it now is. */
+export interface ChangedRange {
+  from: number;
+  to: number;
+}
+
 export interface DocumentPaperProps {
   editor: Editor | null;
   geometry: PageGeometry;
   pages: number;
+  /** Drawn while a model writes: centred on the sheet in view, over an outline of where it works. */
+  writing?: ReactNode;
+  /** What the model has changed so far, marked in place of the whole text. */
+  changed?: ChangedRange | null;
+}
+
+interface Band {
+  top: number;
+  height: number;
 }
 
 /**
@@ -110,8 +125,33 @@ export interface DocumentPaperProps {
  * the paper it is set to, behind one flow of text that starts inside the
  * first sheet's margins. `documentPages` keeps the flow's blocks off the gaps.
  */
-export function DocumentPaper({ editor, geometry, pages }: DocumentPaperProps) {
+export function DocumentPaper({ editor, geometry, pages, writing, changed }: DocumentPaperProps) {
   const stride = geometry.height + geometry.gap;
+  const paper = useRef<HTMLDivElement>(null);
+  const [band, setBand] = useState<Band | null>(null);
+  const marking = writing !== undefined && writing !== null;
+
+  /**
+   * The band the model is working in, measured off what is drawn: the blocks
+   * it changed once a save has shown them, the whole text until then - it is
+   * not told a selection, so it may write anywhere.
+   */
+  useLayoutEffect(() => {
+    if (!marking || editor === null || editor.isDestroyed || paper.current === null) {
+      setBand(null);
+      return;
+    }
+    const origin = paper.current.getBoundingClientRect();
+    const prose = editor.view.dom.getBoundingClientRect();
+    if (changed === null || changed === undefined) {
+      setBand({ top: prose.top - origin.top, height: Math.max(prose.height, 24) });
+      return;
+    }
+    const size = editor.state.doc.content.size;
+    const from = editor.view.coordsAtPos(Math.min(Math.max(changed.from, 0), size));
+    const to = editor.view.coordsAtPos(Math.min(Math.max(changed.to, 0), size));
+    setBand({ top: from.top - origin.top, height: Math.max(to.bottom - from.top, 24) });
+  }, [marking, editor, changed, pages, geometry.width, geometry.height, geometry.margin]);
 
   /**
    * A press on the paper outside the words puts the caret where a word
@@ -134,12 +174,21 @@ export function DocumentPaper({ editor, geometry, pages }: DocumentPaperProps) {
 
   return (
     <div
+      ref={paper}
       className={styles.paper}
       onMouseDown={place}
       style={{ width: geometry.width, minHeight: pages * stride - geometry.gap }}
       data-testid="document-paper"
       data-pages={pages}
     >
+      {/* First, so that sticky has somewhere above the view to pull it down from. */}
+      {marking && (
+        <div className={styles.writingHold}>
+          <div className={styles.writing} data-testid="document-writing">
+            {writing}
+          </div>
+        </div>
+      )}
       {Array.from({ length: pages }, (_, at) => (
         <div
           key={at}
@@ -152,6 +201,15 @@ export function DocumentPaper({ editor, geometry, pages }: DocumentPaperProps) {
       <div className={styles.flow} style={{ padding: `${geometry.margin}px ${geometry.margin}px` }}>
         <EditorContent editor={editor} />
       </div>
+      {marking && band !== null && (
+        <div
+          className={styles.writingArea}
+          style={{ top: band.top - 6, height: band.height + 12, left: geometry.margin - 8, width: geometry.width - 2 * geometry.margin + 16 }}
+          data-testid="document-writing-area"
+          data-changed={changed === null || changed === undefined ? undefined : ''}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }
