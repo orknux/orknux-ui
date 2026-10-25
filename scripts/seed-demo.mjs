@@ -103,6 +103,15 @@ const OLLAMA_MODEL_ID = process.env.ORKNUX_DEMO_MODEL ?? 'gemma-4-31B-it-Q5_K_M'
  */
 const IMAGE_ENDPOINT = process.env.ORKNUX_DEMO_IMAGE_ENDPOINT ?? '';
 
+/*
+ * A real drawing server for the pictures, where one is given: a
+ * stable-diffusion.cpp server on the LAN, so the manual shows pictures the
+ * product drew with a model rather than the stand-in's. The stand-in at
+ * IMAGE_ENDPOINT stays for the scripted writer, which a real server cannot be.
+ */
+const PICTURE_ENDPOINT = process.env.ORKNUX_DEMO_PICTURE_ENDPOINT ?? '';
+const PICTURE_MODEL_ID = process.env.ORKNUX_DEMO_PICTURE_MODEL ?? 'sd-cpp-local';
+
 /**
  * The role that opens the demonstration workspace, and the colleague who holds
  * it. Both exist so that something can happen to somebody: see the comment
@@ -378,6 +387,17 @@ if (IMAGE_ENDPOINT !== '') {
     },
   });
   imageModel = createModel;
+  if (PICTURE_ENDPOINT !== '') {
+    // The pictures from the real server; the stand-in keeps only the writer below.
+    const { createModelProvider: studio } = await gql(
+      'mutation($input: CreateModelProviderInput!) { createModelProvider(input: $input) { id name status } }',
+      { input: { workspaceId: ws, name: 'Picture server (on the LAN)', endpoint: PICTURE_ENDPOINT, type: 'STABLE_DIFFUSION_CPP' } },
+    );
+    const { createModel: painter } = await gql('mutation($input: CreateModelInput!) { createModel(input: $input) { id name } }', {
+      input: { providerId: studio.id, name: 'Painter', modelId: PICTURE_MODEL_ID, kind: 'IMAGE', imageCostPerImage: 0 },
+    });
+    imageModel = painter;
+  }
   /*
    * And the model the newsletter agent below answers with, on the same server.
    * Scripted: see "the writer" in screens-draw.mjs for why the agent that asks
