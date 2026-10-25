@@ -18,7 +18,7 @@ const id = (await graphql(
   { w: WORKSPACE, c: catalog, n: `Field notes ${stamp}`, d: JSON.stringify(content) },
 )).createDocument.id;
 
-await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents`, { waitUntil: 'domcontentloaded' });
 const box = page.getByRole('combobox', { name: 'Quick actions' }).or(page.locator('input[aria-label="Quick actions"]')).first();
 await box.waitFor({ timeout: 20_000 });
 
@@ -39,7 +39,7 @@ await page.waitForURL(new RegExp(`/design/documents/${id}$`), { timeout: 10_000 
 record(page.url().endsWith(`/design/documents/${id}`), `choosing it opens the editor (${page.url()})`);
 
 // By name, as anything else in the workspace is.
-await page.goto(`${BASE}/workspace/${WORKSPACE}/workflows`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents`, { waitUntil: 'domcontentloaded' });
 await box.waitFor({ timeout: 20_000 });
 await box.click();
 await box.fill(`Field notes ${stamp}`);

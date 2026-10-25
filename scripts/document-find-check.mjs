@@ -39,6 +39,8 @@ const active = () => page.locator('.ProseMirror-active-search-match').first().bo
 
 // The keystroke opens Find, not the browser's.
 await page.locator('[data-testid="document-prose"] > p').first().click();
+// Find steps on from the caret, as a word processor's does: from the very start, the first match is the first.
+await page.keyboard.press('Control+Home');
 await page.keyboard.press('Control+f');
 await page.getByTestId('document-find').waitFor({ timeout: 3_000 }).catch(() => undefined);
 record(await page.getByTestId('document-find-input').evaluate((one) => one === document.activeElement).catch(() => false), 'Ctrl+F opens Find, with the box ready to type in');
