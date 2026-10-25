@@ -235,9 +235,17 @@ export interface DesignImageJob {
   upscaler: string | null;
   /** How many times larger an upscale makes the picture; null for anything else. */
   scale: number | null;
+  /** How far its Stable Diffusion WebUI says it is, 0 to 100, while DRAWING; null where its server reports nothing. */
+  progress?: number | null;
+  /** How many seconds its WebUI reckons are left, as of asOf; null where it says nothing. */
+  secondsLeft?: number | null;
+  /** The median of how long the same model's newest pictures of this kind took, in seconds; null with too few. */
+  typicalSeconds?: number | null;
+  /** The server's clock when this was read. */
+  asOf?: string | null;
 }
 
-const JOB_FIELDS = `id status prompt modelId model size quality style negativePrompt requestedBy requestedAt startedAt reason ahead name sourceId upscaler scale image { ${ARTIFACT_FIELDS} }`;
+const JOB_FIELDS = `id status prompt modelId model size quality style negativePrompt requestedBy requestedAt startedAt reason ahead name sourceId upscaler scale progress secondsLeft typicalSeconds asOf image { ${ARTIFACT_FIELDS} }`;
 
 /** Queues a picture and answers at once; a refusal of what could never be drawn throws with its reason. */
 export async function queueDesignImage(input: DrawDesignImageInput): Promise<DesignImageJob> {

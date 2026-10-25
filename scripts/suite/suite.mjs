@@ -1994,6 +1994,12 @@ export const TESTS = [
     /* Answers the picture, the models and the job itself. */
   },
   {
+    name: 'design-image-eta-check',
+    what: "a picture being drawn says how long it has taken, a WebUI's time left as about and a time from the model's usual one as estimated, and only the time taken where nothing is known",
+    needs: ['workspace'],
+    /* Answers the picture, the models and the job's progress itself. */
+  },
+  {
     name: 'design-upscale-stop-check',
     what: 'a large picture being upscaled leaves its wait and Stop in view, and Stop stops the upscale',
     needs: ['workspace'],
