@@ -813,6 +813,12 @@ export const TESTS = [
     what: 'an answered question is drawn inside the answer of the turn that asked it',
     needs: ['workspace'],
   },
+  {
+    name: 'chat-question-once-check',
+    what: 'a question an agent asked is drawn once, in the turn that asked it: live, once the turn is over, and after a reload - not again in the answer before',
+    needs: ['workspace'],
+    /* The stream is held open mid-turn by a fetch handed to the page, and the question is answered by the page's own network. */
+  },
 
   {
     name: 'chat-box-watch-check',

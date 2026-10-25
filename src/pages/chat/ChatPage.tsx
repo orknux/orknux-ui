@@ -1382,13 +1382,22 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     requestsInAnswer.set(at, placed);
     placedRequests.delete(at);
   }
-  /** The questions of the turn on screen, each before the first call the page heard of after it was asked. */
-  const requestsBefore = (seenAt: number | undefined, drawn: Set<string>) =>
-    turnRequests.filter((request) => {
-      if (drawn.has(request.id) || seenAt === undefined || Date.parse(request.createdAt) >= seenAt) return false;
-      drawn.add(request.id);
-      return true;
-    });
+  /*
+   * The questions of the turn on screen, each given one place among its calls:
+   * before the first call the page heard of after it was asked, or after the
+   * last. Decided here once per request rather than by each list of calls as it
+   * was drawn, because every answer with kept thinking draws a working section
+   * too - its list of calls is empty, and the "after the last" there took every
+   * question of the turn running below it, so one question was drawn twice.
+   */
+  const requestsAtCall = new Map<number, InteractionRequest[]>();
+  const requestsAtTurnEnd: InteractionRequest[] = [];
+  for (const request of turnRequests) {
+    const asked = Date.parse(request.createdAt);
+    const call = working.calls.find((one) => one.seenAt !== undefined && asked < one.seenAt);
+    if (call === undefined) requestsAtTurnEnd.push(request);
+    else requestsAtCall.set(call.at, [...(requestsAtCall.get(call.at) ?? []), request]);
+  }
   /** Every file this chat holds, for the viewer's arrows. */
   const chatFiles = messages.flatMap((message) => message.attachments ?? []);
   /**
@@ -4115,10 +4124,9 @@ ${named}`;
                             millis={calls.length > 0 ? working.openingMillis : live ? null : message.thinkingMillis}
                           />
                           {(() => {
-                            const drawn = new Set<string>();
-                            const before = (seenAt: number | undefined) =>
-                              requestsBefore(seenAt, drawn).map((request) => (
-                                <div key={`request-${request.id}`} className={styles.requestInTurn}>
+                            const cards = (placed: InteractionRequest[] | undefined) =>
+                              (placed ?? []).map((request) => (
+                                <div key={`request-${request.id}`} className={styles.requestInTurn} data-request-in-turn="">
                                   <InteractionCard request={request} onAnswered={answeredRequest} />
                                 </div>
                               ));
@@ -4126,7 +4134,7 @@ ${named}`;
                               <>
                           {calls.map((call) => (
                             <Fragment key={call.at}>
-                            {before(call.seenAt)}
+                            {cards(requestsAtCall.get(call.at))}
                             {call.person !== undefined ? (
                               <div key={call.at} className={styles.personInTurn} data-person-in-turn="">
                                 <div className={styles.personInTurnText}>{call.person}</div>
@@ -4176,7 +4184,8 @@ ${named}`;
                             )}
                             </Fragment>
                           ))}
-                          {before(Number.POSITIVE_INFINITY)}
+                          {/* Only where the turn's calls are drawn: an older answer's working has none, and is not this turn. */}
+                          {calls.length > 0 && cards(requestsAtTurnEnd)}
                               </>
                             );
                           })()}
