@@ -10,6 +10,7 @@ import {
   askDocument,
   checkGrammar,
   contentOf,
+  createDocument,
   documentPath,
   fetchDocument,
   fetchDocumentCompletion,
@@ -176,6 +177,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [version, setVersion] = useState<OpenVersion | null>(null);
   /** The version Restore is asking about. */
   const [restoring, setRestoring] = useState<OpenVersion | null>(null);
+  /** New or Save as copy, asked about before either is done. */
+  const [starting, setStarting] = useState<'new' | 'copy' | null>(null);
   /** Whether what is unsaved came in by Import, which the history says of the save that keeps it. */
   const imported = useRef(false);
 
@@ -407,6 +410,32 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     }
     setVersion(null);
     setRestoring(null);
+  }
+
+  /** An empty document in this one's catalog, opened; what is not saved here is left behind, as the question said. */
+  async function startNew() {
+    if (held === null) return;
+    const made = await createDocument(workspaceId, t('Untitled document'), held.catalogId);
+    setStarting(null);
+    guard.leaveTo(documentPath(workspaceId, made.id));
+  }
+
+  /**
+   * What is on screen made a document of its own beside this one, and opened:
+   * the content and page as they are now, saved or not, while this document
+   * stays as it was last saved. Made holding the content, so the copy's history
+   * does not start with an empty version; saved once more only for the settings
+   * `createDocument` does not take.
+   */
+  async function saveCopy() {
+    if (held === null || editor === null) return;
+    const content = editor.getJSON();
+    let copy = await createDocument(workspaceId, tf('{name} (copy)', { name: held.name }), held.catalogId, { content, pageSize: settings.pageSize });
+    if (copy.orientation !== settings.orientation || copy.margins !== settings.margins || (copy.language ?? '') !== settings.language) {
+      copy = await saveDocument(copy.id, content, copy.revision, settings);
+    }
+    setStarting(null);
+    guard.leaveTo(documentPath(workspaceId, copy.id));
   }
 
   // -- Pictures -------------------------------------------------------------
@@ -824,6 +853,20 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           </button>
           <DocumentImportMenu documentId={held?.id ?? null} editor={answering ? null : editor} onImported={() => (imported.current = true)} />
           <DocumentExportMenu documentId={held?.id ?? null} name={held?.name ?? ''} beforeExport={save} />
+          {/* A new document, and this one saved as a new one, beside Save as the image editor has them; each asked about first. */}
+          <button type="button" className={form.ghost} onClick={() => setStarting('new')} disabled={held === null || answering} title={t('Start a new document')} data-testid="document-new">
+            {t('New')}
+          </button>
+          <button
+            type="button"
+            className={form.ghost}
+            onClick={() => setStarting('copy')}
+            disabled={held === null || editor === null || answering || busy}
+            title={t('Saves what is on screen as a new document and leaves this one as it was')}
+            data-testid="document-save-copy"
+          >
+            {t('Save as copy')}
+          </button>
           <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy || answering} title={`${t('Save')} (${saveKey})`} data-testid="document-save">
             {t('Save')}
           </button>
@@ -1052,6 +1095,18 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
         kind="restoreDocumentVersion"
         onClose={() => setRestoring(null)}
         onConfirm={() => (restoring === null ? Promise.resolve() : restore(restoring))}
+      />
+      <ConfirmDialog
+        subject={starting === 'new' ? (held?.name ?? '') : null}
+        kind="newDocument"
+        onClose={() => setStarting(null)}
+        onConfirm={startNew}
+      />
+      <ConfirmDialog
+        subject={starting === 'copy' ? (held?.name ?? '') : null}
+        kind="copyDocument"
+        onClose={() => setStarting(null)}
+        onConfirm={saveCopy}
       />
       <UnsavedWorkDialog
         subject={guard.asking ? (held?.name ?? t('This document')) : null}

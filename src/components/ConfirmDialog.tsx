@@ -35,7 +35,9 @@ export type ConfirmKind =
   | 'removeDiagram'
   | 'removeDiagramCatalog'
   | 'startFollowUp'
-  | 'restoreDocumentVersion';
+  | 'restoreDocumentVersion'
+  | 'newDocument'
+  | 'copyDocument';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -341,6 +343,18 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       button: submitting ? t('Removing…') : t('Delete'),
     },
     /* Not destructive: a research of its own, the one it follows up left as it is. */
+    /* Not destructive to what is saved; what is on screen and not saved is what New leaves behind. */
+    newDocument: {
+      title: t('New document'),
+      message: <>{t('A new empty document is made and opened, and changes not saved here are lost:')} {name}</>,
+      button: submitting ? t('Making…') : t('Continue'),
+    },
+    /* Not destructive: the copy takes what is on screen, and the document it was made from stays as it was last saved. */
+    copyDocument: {
+      title: t('Save as copy'),
+      message: <>{t('A copy of what is on screen is made and opened, and this document stays as it was last saved:')} {name}</>,
+      button: submitting ? t('Copying…') : t('Continue'),
+    },
     /* Not destructive: what the document says now is kept as a version, and restoring it again takes this back. */
     restoreDocumentVersion: {
       title: t('Restore this version'),

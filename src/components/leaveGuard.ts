@@ -69,6 +69,8 @@ export interface LeaveGuard {
   leave: () => void;
   /** Store it first, then go. False if the save was refused, and we stayed. */
   saveAndLeave: () => Promise<boolean>;
+  /** Go somewhere without asking, for a page that has already asked in words of its own - New, Save as copy. */
+  leaveTo: (to: string) => void;
 }
 
 /**
@@ -281,6 +283,7 @@ export function useLeaveGuard({ unsaved, backTo, save }: LeaveGuardOptions): Lea
     asking: leaving !== null,
     stay: () => setLeaving(null),
     leave: () => leaveNow(leaving?.to ?? null),
+    leaveTo: (to: string) => leaveNow(to),
     saveAndLeave: async () => {
       const to = leaving?.to ?? null;
       /*

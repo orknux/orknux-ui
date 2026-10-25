@@ -152,10 +152,47 @@ export function DocumentSelectionTools({ editor, documentId, modelId, canAsk, la
     };
   }, [editor]);
 
+  /*
+   * Whether the selection is still being made: the mouse button held down after
+   * a press in the text, or Shift held from the keyboard. The bar waits for it
+   * to settle - the button let go, Shift let go - rather than jumping along
+   * under the pointer while the words are being swept over.
+   */
+  const [selecting, setSelecting] = useState(false);
+  useEffect(() => {
+    // Read at the event rather than bound to the editor's element, which is not there until the paper has mounted it.
+    const inText = (event: Event) => event.target instanceof Node && !editor.isDestroyed && editor.view.dom.contains(event.target);
+    const pressed = (event: MouseEvent) => {
+      if (event.button === 0 && inText(event)) setSelecting(true);
+    };
+    const shifted = (event: KeyboardEvent) => {
+      if (event.key === 'Shift' && inText(event)) setSelecting(true);
+    };
+    // The button may be let go anywhere, the text or not.
+    const released = (event: MouseEvent) => {
+      if (event.button === 0) setSelecting(false);
+    };
+    const unshifted = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') setSelecting(false);
+    };
+    const gone = () => setSelecting(false);
+    window.addEventListener('mousedown', pressed, true);
+    window.addEventListener('keydown', shifted, true);
+    window.addEventListener('mouseup', released, true);
+    window.addEventListener('keyup', unshifted, true);
+    window.addEventListener('blur', gone);
+    return () => {
+      window.removeEventListener('mousedown', pressed, true);
+      window.removeEventListener('keydown', shifted, true);
+      window.removeEventListener('mouseup', released, true);
+      window.removeEventListener('keyup', unshifted, true);
+      window.removeEventListener('blur', gone);
+    };
+  }, [editor]);
 
   const { from, to, empty } = editor.state.selection;
   const words = empty ? '' : selectedText(editor, from, to);
-  const showing = editor.isEditable && editor.isFocused && !empty && words.trim() !== '' && translating === null;
+  const showing = editor.isEditable && editor.isFocused && !selecting && !empty && words.trim() !== '' && translating === null;
   let place: { left: number; top: number } | null = null;
   if (showing) {
     const start = editor.view.coordsAtPos(from);
