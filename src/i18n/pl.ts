@@ -760,7 +760,7 @@ export const PL: Record<string, string> = {
   "File": "Plik",
   "Files in chats": "Pliki w czatach",
   "Largest file": "Największy plik",
-  "The largest file any upload may be: in a chat, on an issue, on Artifacts, for a research, or a picture or document imported. Between 1 and 2048.": "Największy plik, jaki można przesłać: w czacie, w zgłoszeniu, na Artefaktach, do badania albo jako importowany obraz lub dokument. Od 1 do 2048.",
+  "The largest file any upload may be: in a chat, on an issue, on Artifacts, for a research, or a picture or document imported. 1 MB or more.": "Największy plik, jaki można przesłać: w czacie, w zgłoszeniu, na Artefaktach, do badania albo jako importowany obraz lub dokument. Co najmniej 1 MB.",
   "Attachments": "Załączniki",
   "Location": "Położenie",
   "Address": "Adres",

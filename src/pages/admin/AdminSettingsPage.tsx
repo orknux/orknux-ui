@@ -2732,7 +2732,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                 <span className={styles.labelWithHint}>
                   <p className={styles.settingLabel}>{t('Largest file')}</p>
                   <FieldHint label={t('Largest file')}>
-                    {t('The largest file any upload may be: in a chat, on an issue, on Artifacts, for a research, or a picture or document imported. Between 1 and 2048.')}
+                    {t('The largest file any upload may be: in a chat, on an issue, on Artifacts, for a research, or a picture or document imported. 1 MB or more.')}
                   </FieldHint>
                 </span>
               </div>
@@ -2743,7 +2743,6 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
                   className={styles.input}
                   type="number"
                   min={1}
-                  max={2048}
                   value={uploadMax}
                   onChange={(event) => setUploadMax(event.target.value)}
                   disabled={busy}
