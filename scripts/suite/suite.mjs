@@ -1427,6 +1427,13 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'artifact-pdf-reader-check',
+    what: 'a PDF artifact is drawn in the reader, pages and text, centred in the window, and so is a research report; an HTML one stays in a sandboxed frame',
+    // Uploads its own PDF and HTML file through the research-documents upload
+    // and deletes them after; the research is answered by a route, so no model.
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-command-highlight-check',
     what: 'a block of commands in an answer is coloured: the command, its flags, and the Windows spellings',
     // Stubs the answer: a seeded installation has no model to ask.

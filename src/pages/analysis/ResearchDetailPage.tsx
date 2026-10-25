@@ -14,6 +14,7 @@ import { BackLink } from '../../components/BackLink';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
+import { PdfReader } from '../../components/PdfReader';
 import { TrashIcon } from '../../components/TrashIcon';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
@@ -406,7 +407,11 @@ function Report({ research, workspaceId }: { research: Research; workspaceId: st
         </div>
       </div>
       {research.outputFormat === 'PDF' && research.previewUrl !== null ? (
-        <iframe className={styles.pdf} src={research.previewUrl} title={research.fileName ?? t('Report')} />
+        /*
+          Drawn here rather than framed: the preview is served sandboxed, and a
+          browser's own PDF reader does not run in a sandboxed document.
+        */
+        <PdfReader className={styles.pdf} src={research.previewUrl} name={research.fileName ?? t('Report')} />
       ) : (
         research.result != null && (
           <article className={styles.document}>

@@ -15,6 +15,13 @@
  * of English on an otherwise Polish screen.
  */
 export const PL: Record<string, string> = {
+  // The PDF reader on the Artifacts and Research pages.
+  "Pages": "Strony",
+  "Previous page": "Poprzednia strona",
+  "Next page": "Następna strona",
+  "Page {page} of {pages}": "Strona {page} z {pages}",
+  "Fit to width": "Dopasuj do szerokości",
+  "This file could not be read as a PDF.": "Tego pliku nie da się odczytać jako PDF.",
   // The Workflow node: one workflow running another.
   "Which of this workspace’s workflows this node runs. It is handed this node’s parameters, and this node waits for it to finish.": "Który przepływ tej przestrzeni roboczej uruchamia ten węzeł. Dostaje parametry tego węzła, a węzeł czeka, aż się zakończy.",
   "Opens the workflow this node runs": "Otwiera przepływ, który uruchamia ten węzeł",
