@@ -143,3 +143,16 @@ export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/** A turn of an editor's chat - the document, wireframe and diagram chats - with the files sent on it. */
+export interface EditorTurn {
+  role: 'user' | 'assistant';
+  content: string;
+  /** What was attached to this turn; the server is sent their ids and reads them for the model. */
+  attachments?: Attachment[];
+}
+
+/** The turns as an editor's ask mutation takes them: each turn's files by id. */
+export function editorTurnsInput(turns: EditorTurn[]): { role: string; content: string; attachmentIds: string[] }[] {
+  return turns.map((turn) => ({ role: turn.role, content: turn.content, attachmentIds: (turn.attachments ?? []).map((file) => file.id) }));
+}

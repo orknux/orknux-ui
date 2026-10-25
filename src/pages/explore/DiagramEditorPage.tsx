@@ -36,8 +36,6 @@ import type {
   DiagramNodeKind,
   DiagramTurn,
 } from '../../api/diagrams';
-import { fetchModels } from '../../api/models';
-import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import circleIcon from '../../assets/circle-dot.svg';
 import dashboardIcon from '../../assets/layout-dashboard.svg';
@@ -49,7 +47,6 @@ import pencilIcon from '../../assets/pencil.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
 import redoIcon from '../../assets/redo.svg';
 import roundedIcon from '../../assets/rectangle-button.svg';
-import sendIcon from '../../assets/send.svg';
 import squareIcon from '../../assets/square.svg';
 import stickyIcon from '../../assets/sticky-note.svg';
 import diamondIcon from '../../assets/diamond.svg';
@@ -57,7 +54,6 @@ import undoIcon from '../../assets/undo.svg';
 import usersIcon from '../../assets/users.svg';
 import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
-import { Markdown } from '../../components/Markdown';
 import { Select } from '../../components/Select';
 import { useSieve } from '../../components/sieve';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
@@ -78,6 +74,8 @@ import {
   useZoomOutShortcut,
 } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
+import { DesignChat, useChatFiles, useChatModels } from '../design/DesignChat';
+import type { ChatIdea } from '../design/DesignChat';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
 import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCHES } from './DiagramCanvas';
@@ -143,12 +141,7 @@ const snap = (value: number) => Math.round(value / GRID) * GRID;
 let clipboard: DiagramDrawing | null = null;
 
 /** What an empty chat offers: a pressed card is sent as it is. */
-interface Idea {
-  icon: string;
-  title: () => string;
-  line: () => string;
-  prompt: () => string;
-}
+type Idea = ChatIdea;
 
 const IDEAS: Idea[] = [
   {
@@ -262,14 +255,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   /** The label being typed over in place, on the canvas. */
   const [labelling, setLabelling] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
 
-  const [models, setModels] = useState<Model[] | null>(null);
-  const [modelId, setModelId] = useState('');
+  const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
   const [talk, setTalk] = useState<DiagramTurn[]>([]);
   const [asking, setAsking] = useState('');
+  const files = useChatFiles(workspaceId);
   const [answering, setAnswering] = useState(false);
   const [talkError, setTalkError] = useState<string | null>(null);
 
-  const talkEnd = useRef<HTMLDivElement | null>(null);
   /** The drawing as it was when a drag, a resize or a typed field began, so the whole gesture is one step. */
   const gestureStart = useRef<DiagramDrawing | null>(null);
 
@@ -330,30 +322,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   }, [diagramId]);
 
   useEffect(() => {
-    if (workspaceId === '') return;
-    fetchModels(workspaceId)
-      .then((all) => {
-        const usable = all.filter((one) => one.kind === 'CHAT' && one.enabled !== false);
-        setModels(usable);
-        let remembered: string | null = null;
-        try {
-          remembered = localStorage.getItem(modelKey(workspaceId));
-        } catch {
-          remembered = null;
-        }
-        setModelId(usable.some((one) => one.id === remembered) ? (remembered ?? '') : (usable[0]?.id ?? ''));
-      })
-      .catch(() => setModels([]));
-  }, [workspaceId]);
-
-  useEffect(() => {
     try {
       if (diagramId !== '') sessionStorage.setItem(talkKey(diagramId), JSON.stringify(talk));
     } catch {
       // A conversation that cannot be kept is still a conversation.
     }
-    talkEnd.current?.scrollIntoView({ block: 'end' });
-  }, [talk, answering, diagramId]);
+  }, [talk, diagramId]);
 
   /** A diagram as the server holds it, taken onto the canvas. */
   function take(found: Diagram) {
@@ -739,11 +713,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
     event?.preventDefault();
     const said = (idea ?? asking).trim();
-    if (said === '' || modelId === '' || diagram === null || answering) return;
+    if ((said === '' && files.attached.length === 0) || modelId === '' || diagram === null || answering || files.attaching) return;
     setTalkError(null);
     // The model works on what is saved, so what is on screen is saved first.
     if (unsaved && !(await save())) return;
-    const sent: DiagramTurn[] = [...talk, { role: 'user', content: said }];
+    const attachments = files.take();
+    const sent: DiagramTurn[] = [...talk, { role: 'user', content: said, ...(attachments.length > 0 ? { attachments } : {}) }];
     setTalk(sent);
     setAsking('');
     setAnswering(true);
@@ -1213,112 +1188,36 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             </p>
           )}
 
-          <div className={chat.talk} data-testid="diagram-chat">
-            {talk.length === 0 && !answering && (
-              <div className={chat.welcome} data-testid="diagram-welcome">
-                <h2 className={chat.hello}>
-                  {tf('Hi {name}!', { name: firstName })}
-                  <span>{t('What shall we map?')}</span>
-                </h2>
-                <div className={chat.ideas}>
-                  {(drawing.nodes.length > 0 ? [POLISH, ...IDEAS.slice(0, 3)] : IDEAS).map((idea) => (
-                    <button
-                      key={idea.icon}
-                      type="button"
-                      className={chat.idea}
-                      disabled={modelId === '' || diagram === null}
-                      onClick={() => void ask(undefined, idea.prompt())}
-                      data-testid="diagram-idea"
-                    >
-                      <span className={chat.ideaIcon}>
-                        <img src={idea.icon} alt="" width={18} height={18} />
-                      </span>
-                      <span className={chat.ideaText}>
-                        <span className={chat.ideaTitle}>{idea.title()}</span>
-                        <span className={chat.ideaLine}>{idea.line()}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {talk.map((turn, index) => (
-              <div key={index} className={turn.role === 'user' ? chat.mine : chat.theirs} data-testid="diagram-chat-message" data-role={turn.role}>
-                {turn.role === 'user' ? turn.content : <Markdown>{turn.content}</Markdown>}
-              </div>
-            ))}
-            {answering && (
-              <div className={chat.theirs}>
-                <Loader label={t('Working on the diagram…')} delay={0} size={16} />
-              </div>
-            )}
-            {talkError !== null && (
-              <p className={form.error} role="alert" data-testid="diagram-chat-error">
-                {talkError}
-              </p>
-            )}
-            <div ref={talkEnd} />
-          </div>
-
-          <form className={chat.composer} onSubmit={(event) => void ask(event)}>
-            <div className={chat.askBox}>
-              <textarea
-                className={chat.ask}
-                value={asking}
-                onChange={(event) => setAsking(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    event.currentTarget.form?.requestSubmit();
-                  }
-                }}
-                placeholder={t('Describe what to draw or change')}
-                aria-label={t('What to draw')}
-                data-testid="diagram-chat-input"
-              />
-              <div className={chat.askBar}>
-                <Select
-                  className={`${form.input} ${form.select} ${chat.modelPill}`}
-                  value={modelId}
-                  onChange={(picked) => {
-                    setModelId(picked);
-                    try {
-                      localStorage.setItem(modelKey(workspaceId), picked);
-                    } catch {
-                      // Remembered for this visit only.
-                    }
-                  }}
-                  disabled={models === null || models.length === 0}
-                  aria-label={t('Model')}
-                  title={t('Model')}
-                  data-testid="diagram-chat-model"
-                >
-                  {models !== null && models.length === 0 && <option value="">{t('This workspace has no chat model')}</option>}
-                  {(models ?? []).map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name} · {model.providerName}
-                    </option>
-                  ))}
-                </Select>
-                <button
-                  type="submit"
-                  className={chat.send}
-                  disabled={asking.trim() === '' || modelId === '' || answering || diagram === null}
-                  title={answering ? t('Working on the diagram…') : t('Send')}
-                  aria-label={t('Send')}
-                  data-testid="diagram-chat-send"
-                >
-                  {answering ? <Loader label="" delay={0} size={14} /> : <img src={sendIcon} alt="" width={16} height={16} data-keeps-colour="" />}
-                </button>
-              </div>
-            </div>
-            {error !== null && diagram !== null && (
-              <p className={form.error} role="alert" data-testid="diagram-error">
-                {error}
-              </p>
-            )}
-            <span className={chat.count}>{tf('{nodes} nodes, {edges} connections', { nodes: drawing.nodes.length, edges: drawing.edges.length })}</span>
-          </form>
+          <DesignChat
+            prefix="diagram"
+            firstName={firstName}
+            question={t('What shall we map?')}
+            ideas={drawing.nodes.length > 0 ? [POLISH, ...IDEAS.slice(0, 3)] : IDEAS}
+            ready={diagram !== null}
+            talk={talk}
+            answering={answering}
+            talkError={talkError}
+            working={t('Working on the diagram…')}
+            asking={asking}
+            onAsking={setAsking}
+            onAsk={(event, idea) => void ask(event, idea)}
+            models={models}
+            modelId={modelId}
+            onModel={choose}
+            placeholder={t('Describe what to draw or change')}
+            inputLabel={t('What to draw')}
+            files={files}
+            footer={
+              <>
+                {error !== null && diagram !== null && (
+                  <p className={form.error} role="alert" data-testid="diagram-error">
+                    {error}
+                  </p>
+                )}
+                <span className={chat.count}>{tf('{nodes} nodes, {edges} connections', { nodes: drawing.nodes.length, edges: drawing.edges.length })}</span>
+              </>
+            }
+          />
         </div>
       </div>
       <UnsavedWorkDialog
