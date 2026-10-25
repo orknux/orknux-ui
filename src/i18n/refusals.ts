@@ -435,6 +435,7 @@ const PL: Record<string, string> = {
   WireframeNameInvalid: 'Makieta potrzebuje nazwy, najwyżej 200 znaków',
   WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
   WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
+  DocumentSelectionTooLong: 'Zaznaczenie wysyłane do modelu może mieć najwyżej {most} znaków, a to ma {characters}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
   // --- Explore > Diagrams --------------------------------------------------
   DiagramNotFound: 'Nie ma diagramu o identyfikatorze {id}',

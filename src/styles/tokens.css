@@ -250,6 +250,9 @@
   --document-find: rgba(250, 204, 21, 0.45);
   --document-find-active: rgba(249, 115, 22, 0.6);
   --document-select: #2f80ed;
+  /* A highlight with a note: the yellow the PDF and ODT exports draw it in too (DocumentHtml.NOTE_COLOUR). */
+  --document-note: #fde68a;
+  --document-note-edge: #f59e0b;
 
   /*
    * A PDF's page, drawn by `PdfReader`. White in both themes for the same

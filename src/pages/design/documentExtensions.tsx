@@ -1,7 +1,8 @@
-import { Extension, Node, mergeAttributes } from '@tiptap/core';
+import { Extension, Mark, Node, mergeAttributes } from '@tiptap/core';
 import type { AnyExtension, Editor } from '@tiptap/core';
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
+import { Color, TextStyle } from '@tiptap/extension-text-style';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorState } from '@tiptap/pm/state';
 import type { Node as PmNode } from '@tiptap/pm/model';
@@ -233,6 +234,130 @@ declare module '@tiptap/core' {
   }
 }
 
+// -- Highlights with a note --------------------------------------------------
+
+/**
+ * A highlight with a note written on it: a mark, so it is part of the document
+ * and saved with it, carrying the note and an id that tells two highlights
+ * apart - a highlight across a bold word is three runs of text, and the id is
+ * what makes them one highlight in the side panel and in the note's card. Not
+ * inclusive: typing at its edge writes ordinary text, as a word processor's
+ * comment does. The server keeps the same two attributes (`DocumentContent`).
+ */
+export const Note = Mark.create({
+  name: 'note',
+  inclusive: false,
+
+  addAttributes() {
+    return {
+      note: {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-note') ?? '',
+        renderHTML: (attributes) => ({ 'data-note': attributes.note as string }),
+      },
+      id: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-note-id'),
+        renderHTML: (attributes) => (attributes.id ? { 'data-note-id': attributes.id as string } : {}),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'mark[data-note-id]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['mark', mergeAttributes(HTMLAttributes, { class: styles.note, 'data-testid': 'document-note' }), 0];
+  },
+});
+
+/** One highlight in the document: its words, its note, and where it is. */
+export interface Highlight {
+  id: string;
+  note: string;
+  text: string;
+  from: number;
+  to: number;
+}
+
+/** Every highlight in the document, in reading order, each once however many runs of text it spans. */
+export function highlightsOf(doc: PmNode): Highlight[] {
+  const found = new Map<string, Highlight>();
+  doc.descendants((node, pos) => {
+    if (!node.isText) return true;
+    const mark = node.marks.find((one) => one.type.name === 'note');
+    if (mark === undefined) return false;
+    // A highlight saved without an id is told apart by where it starts.
+    const id = (mark.attrs.id as string | null) ?? `at-${pos}`;
+    const held = found.get(id);
+    if (held !== undefined && held.to === pos) {
+      held.to = pos + node.nodeSize;
+      held.text += node.text ?? '';
+    } else if (held === undefined) {
+      found.set(id, { id, note: (mark.attrs.note as string | null) ?? '', text: node.text ?? '', from: pos, to: pos + node.nodeSize });
+    } else {
+      // The same id further on - a highlight split by something that is not text - reads as one, ending there.
+      held.text += ` ${node.text ?? ''}`;
+      held.to = pos + node.nodeSize;
+    }
+    return false;
+  });
+  return [...found.values()];
+}
+
+/** A new highlight's id: short, and only letters, digits and dashes, which is what the server keeps. */
+export function newNoteId(): string {
+  return `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** Writes [note] on every run of the highlight [id], as one step undo goes back over. */
+export function setNote(editor: Editor, id: string, note: string) {
+  const type = editor.schema.marks.note;
+  const tr = editor.state.tr;
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText) return true;
+    const mark = node.marks.find((one) => one.type === type && one.attrs.id === id);
+    if (mark !== undefined) tr.addMark(pos, pos + node.nodeSize, type.create({ ...mark.attrs, note }));
+    return false;
+  });
+  if (tr.docChanged) editor.view.dispatch(tr);
+}
+
+/** Takes the highlight [id] off its words, which stay. */
+export function removeNote(editor: Editor, id: string) {
+  const type = editor.schema.marks.note;
+  const tr = editor.state.tr;
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText) return true;
+    if (node.marks.some((one) => one.type === type && one.attrs.id === id)) tr.removeMark(pos, pos + node.nodeSize, type);
+    return false;
+  });
+  if (tr.docChanged) editor.view.dispatch(tr);
+}
+
+// -- The document's headings, for the outline ---------------------------------
+
+export interface OutlineHeading {
+  /** Where the heading node starts. */
+  pos: number;
+  level: number;
+  text: string;
+}
+
+export function headingsOf(doc: PmNode): OutlineHeading[] {
+  const found: OutlineHeading[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'heading') {
+      found.push({ pos, level: (node.attrs.level as number | undefined) ?? 1, text: node.textContent });
+      return false;
+    }
+    // Headings are blocks; nothing inline holds one.
+    return !node.isTextblock;
+  });
+  return found;
+}
+
 // -- The inline suggestion ---------------------------------------------------
 
 export const suggestionKey = new PluginKey<{ words: string | null; at: number }>('documentSuggestion');
@@ -454,6 +579,10 @@ export function documentExtensions(options: {
     TableRow,
     TableHeader,
     TableCell,
+    // A colour on the words, and nothing else TextStyle could carry: the server keeps the colour alone.
+    TextStyle,
+    Color,
+    Note,
     DocumentImage,
     PageBreak,
     DocumentPages.configure({ geometry: options.geometry, onPages: options.onPages }),
