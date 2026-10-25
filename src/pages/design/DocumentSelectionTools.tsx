@@ -246,14 +246,20 @@ function TranslateCard({ editor, documentId, modelId, language, held, onClose }:
   const card = useRef<HTMLDivElement | null>(null);
   const text = selectedText(editor, held.from, held.to);
 
+  /*
+   * The request for this language, kept across the effect running twice: in
+   * development React mounts the card, unmounts it and mounts it again, and each
+   * mount asked the model - two calls, two different answers, every line twice
+   * in the session.
+   */
+  const asking = useRef<{ language: string; answer: Promise<string> } | null>(null);
+
   useEffect(() => {
     const controller = { left: false };
     setTranslated(null);
     setError(null);
-    const doc = editor.state.doc;
-    const before = doc.textBetween(Math.max(0, held.from - SENT_AROUND), held.from, '\n', ' ');
-    const after = doc.textBetween(held.to, Math.min(doc.content.size, held.to + SENT_AROUND), '\n', ' ');
-    translateDocumentText(documentId, modelId, { text, language: into, before, after })
+    if (asking.current?.language !== into) asking.current = { language: into, answer: ask() };
+    asking.current.answer
       .then((answer) => {
         if (!controller.left) setTranslated(answer);
       })
@@ -266,6 +272,13 @@ function TranslateCard({ editor, documentId, modelId, language, held, onClose }:
     // Asked again only when the language changes; the selection is the one the card was opened on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [into]);
+
+  function ask(): Promise<string> {
+    const doc = editor.state.doc;
+    const before = doc.textBetween(Math.max(0, held.from - SENT_AROUND), held.from, '\n', ' ');
+    const after = doc.textBetween(held.to, Math.min(doc.content.size, held.to + SENT_AROUND), '\n', ' ');
+    return translateDocumentText(documentId, modelId, { text, language: into, before, after });
+  }
 
   // A press outside the card, or Escape, closes it.
   useEffect(() => {

@@ -47,6 +47,8 @@ await page.getByTestId('document-translate-result').waitFor({ timeout: 8_000 });
 const first = asked[0] ?? {};
 record(first.text === 'editor' && first.before === 'We ship the ' && first.after === ' in May.', `the words are sent with the text around them (${JSON.stringify(first)})`);
 record(first.language === 'pl', `an English document is offered Polish first (${first.language})`);
+// One request for one press: React's development double mount used to ask twice, and every line of the session came twice.
+record(asked.length === 1, `opening the card asks the model once (${asked.length})`);
 record(await page.getByTestId('document-translate-result').inputValue() === 'edytor', 'the card shows the translation');
 record(await page.getByTestId('document-prose').innerText() === 'We ship the editor in May.', 'the document is not changed until Replace');
 await page.screenshot({ path: shot('document-translate-card.png') });
@@ -56,6 +58,7 @@ await page.getByTestId('document-translate-language').click();
 await page.getByRole('option', { name: 'German' }).click();
 await page.waitForFunction(() => document.querySelector('[data-testid="document-translate-result"]')?.value === 'den Editor', null, { timeout: 8_000 });
 record(asked.at(-1)?.language === 'de', `picking German asks for German (${asked.at(-1)?.language})`);
+record(asked.length === 2, `and asks once more, not twice (${asked.length})`);
 
 await page.getByTestId('document-translate-replace').click();
 await page.waitForTimeout(300);
