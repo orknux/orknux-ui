@@ -281,7 +281,7 @@
 
 .stages {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-8);
   margin: 0;
   padding: 0;
@@ -730,4 +730,91 @@
   gap: var(--space-6);
   font-size: var(--text-sm);
   color: var(--color-amber);
+}
+
+/* ---- the review ---- */
+
+.stage_skipped {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.rounds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.round {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+}
+
+.roundHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.verdict {
+  flex-shrink: 0;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-weight: 500;
+  font-size: var(--text-sm);
+}
+
+.verdictAccepted {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.verdictRevise {
+  border-color: var(--color-amber);
+  color: var(--color-amber);
+}
+
+.roundMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.roundSummary {
+  margin: 0;
+  color: var(--color-text-body);
+}
+
+.issues {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-8);
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.issueText {
+  min-width: 0;
+}
+
+.issueFix {
+  color: var(--color-text-muted);
 }

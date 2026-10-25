@@ -63,8 +63,28 @@ export function stepLabel(stage: ResearchStage): string {
       return t('Deepen findings');
     case 'WRITE':
       return t('Write report');
+    case 'REVIEW':
+      return t('Review report');
     case 'SAVE':
       return t('Save report');
+  }
+}
+
+/** What a reviewer found wrong, by its kind. */
+export function issueLabel(kind: string): string {
+  switch (kind) {
+    case 'UNSUPPORTED':
+      return t('Unsupported claim');
+    case 'MISSING':
+      return t('Missing part');
+    case 'CITATION':
+      return t('Wrong citation');
+    case 'CONTRADICTION':
+      return t('Contradicts a source');
+    case 'FORMATTING':
+      return t('Formatting');
+    default:
+      return t('Other');
   }
 }
 
@@ -79,6 +99,8 @@ export function stageLabel(stage: ResearchStage): string {
       return t('Deepening findings');
     case 'WRITE':
       return t('Writing the report');
+    case 'REVIEW':
+      return t('Reviewing the report');
     case 'SAVE':
       return t('Saving the report');
   }

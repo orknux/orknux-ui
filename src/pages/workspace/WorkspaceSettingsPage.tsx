@@ -32,6 +32,7 @@ import {
   setWorkspaceTaskMaxTurns,
   setWorkspaceAgentMaxSubagents,
   setWorkspaceChatMaxRounds,
+  setWorkspaceResearchReviewRounds,
   setWorkspaceMaxToolCallsAtOnce,
   setWorkspaceSessionCompaction,
   setWorkspaceUnsafeBuiltInTools,
@@ -331,6 +332,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   /** How many other agents one agent here may ask in one conversation, as typed; empty is the installation's. Issue #380. */
   const [asks, setAsks] = useState('');
   const [rounds, setRounds] = useState('');
+  /** Rounds of review a reviewed research here gets, as typed; empty is the installation's. */
+  const [reviewRounds, setReviewRounds] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [sessionAfter, setSessionAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
@@ -491,6 +494,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setShare(found?.defaultMemoryShare ?? null);
         setTurns(found?.taskMaxTurns === null || found?.taskMaxTurns === undefined ? '' : String(found.taskMaxTurns));
         setRounds(found?.chatMaxRounds === null || found?.chatMaxRounds === undefined ? '' : String(found.chatMaxRounds));
+        setReviewRounds(found?.researchReviewRounds === null || found?.researchReviewRounds === undefined ? '' : String(found.researchReviewRounds));
         setAsks(
           found?.agentMaxSubagents === null || found?.agentMaxSubagents === undefined
             ? ''
@@ -722,6 +726,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('rounds')) {
         latest = await setWorkspaceChatMaxRounds(workspaceId, rounds.trim() === '' ? null : Number(rounds));
       }
+      if (touched.has('reviewRounds')) {
+        latest = await setWorkspaceResearchReviewRounds(workspaceId, reviewRounds.trim() === '' ? null : Number(reviewRounds));
+      }
       if (touched.has('asks')) {
         latest = await setWorkspaceAgentMaxSubagents(workspaceId, asks.trim() === '' ? null : Number(asks));
       }
@@ -867,6 +874,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setTurns(held.taskMaxTurns === null ? '' : String(held.taskMaxTurns));
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
     setRounds(held.chatMaxRounds === null ? '' : String(held.chatMaxRounds));
+    setReviewRounds(held.researchReviewRounds === null ? '' : String(held.researchReviewRounds));
     setCallsAtOnce(held.maxToolCallsAtOnce === null ? '' : String(held.maxToolCallsAtOnce));
     setSessionAfter(
       held.sessionCompactAfterTokens === null ? '' : String(held.sessionCompactAfterTokens),
@@ -1960,6 +1968,37 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       */}
       {/* What the workspace searches the web with - Research and the search tools read it. Saved by Save Changes with the rest. */}
       <SearchSettings search={search} workspaceId={workspaceId} />
+
+      {/* What a research here does, where the workspace says otherwise than the installation. Saved by Save Changes. */}
+      <section className={styles.card} data-research-settings>
+        <div className={styles.sectionTitle}>
+          <h2 id="research" className={styles.sectionHeading}>{t('Research')}</h2>
+          <div className={styles.rule} />
+        </div>
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-review-rounds">
+              {t('Review rounds')}
+            </label>
+            <FieldHint label={t('Review rounds')}>
+              {t('How many times a reviewed research here is read by its reviewer and revised by its writer before it is saved. Left empty, the installation’s number is used.')}
+            </FieldHint>
+          </span>
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-review-rounds"
+              className={styles.input}
+              type="number"
+              min={1}
+              max={10}
+              placeholder={workspace === null ? '' : String(workspace.researchReviewRoundsDefault)}
+              value={reviewRounds}
+              onChange={(event) => { touch('reviewRounds'); setReviewRounds(event.target.value); }}
+              data-review-rounds
+            />
+          </div>
+        </div>
+      </section>
 
       {hasChat && (
       <section className={styles.card}>

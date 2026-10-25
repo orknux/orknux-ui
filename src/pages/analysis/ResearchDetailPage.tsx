@@ -20,9 +20,9 @@ import { TrashIcon } from '../../components/TrashIcon';
 import { roughly } from '../../components/timeLeft';
 import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { shellUser } from '../../session/user';
-import { languageLabel, seededLabel, stageLabel, statusLabel, stepLabel } from './researchLabels';
+import { issueLabel, languageLabel, seededLabel, stageLabel, statusLabel, stepLabel } from './researchLabels';
 import styles from './ResearchDetailPage.module.css';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 
 export interface ResearchDetailPageProps {
   session: SessionUser;
@@ -37,10 +37,10 @@ const STATUS_CLASS: Record<ResearchStatus, string> = {
 };
 
 /** The steps of a mode's workflow, in the order it takes them. */
-const STAGES: ResearchStage[] = ['PLAN', 'GATHER', 'FOLLOW_UP', 'WRITE', 'SAVE'];
+const STAGES: ResearchStage[] = ['PLAN', 'GATHER', 'FOLLOW_UP', 'WRITE', 'REVIEW', 'SAVE'];
 
-/** Where one step stands: taken, being taken, where the research stopped, or still ahead. */
-type StageState = 'done' | 'current' | 'failed' | 'waiting';
+/** Where one step stands: taken, being taken, where the research stopped, still ahead, or not asked for. */
+type StageState = 'done' | 'current' | 'failed' | 'waiting' | 'skipped';
 
 /**
  * Each step's state, read off the step the research last said it was in and
@@ -48,9 +48,12 @@ type StageState = 'done' | 'current' | 'failed' | 'waiting';
  * stopped stopped at the step it was in.
  */
 function stagesOf(research: Research): StageState[] {
-  if (research.status === 'COMPLETED') return STAGES.map(() => 'done');
+  // Review is a step only of a research that asked for one; any other goes past it.
+  const asked = (stage: ResearchStage) => stage !== 'REVIEW' || research.review;
+  if (research.status === 'COMPLETED') return STAGES.map((stage) => (asked(stage) ? 'done' : 'skipped'));
   const at = research.progress?.stage == null ? -1 : STAGES.indexOf(research.progress.stage);
-  return STAGES.map((_, index) => {
+  return STAGES.map((stage, index) => {
+    if (!asked(stage)) return 'skipped';
     if (index < at) return 'done';
     if (index > at) return 'waiting';
     return research.status === 'RUNNING' ? 'current' : 'failed';
@@ -178,6 +181,7 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
             </div>
             {research.status === 'COMPLETED' && <Report research={research} workspaceId={workspaceId} />}
             {running && <Draft research={research} />}
+            <Review research={research} />
             <Images research={research} />
           </>
         )}
@@ -246,6 +250,12 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
           )}
         </dd>
       </div>
+      {research.review && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Reviewer')}</dt>
+          <dd data-research-reviewer>{research.reviewerModelName ?? '—'}</dd>
+        </div>
+      )}
       <div className={styles.summaryItem}>
         <dt>{t('Language')}</dt>
         <dd>{languageLabel(research.language)}</dd>
@@ -462,6 +472,55 @@ function Sources({ research }: { research: Research }) {
           )}
         </ol>
       )}
+    </section>
+  );
+}
+
+/**
+ * What the review said, round by round: the verdict, what was found and what
+ * to do about it, and whether the writer revised the report for it.
+ */
+function Review({ research }: { research: Research }) {
+  const rounds = research.reviewRounds ?? [];
+  if (!research.review || rounds.length === 0) return null;
+  return (
+    <section className={styles.card} aria-label={t('Review')} data-review-panel>
+      <h2 className={styles.cardTitle}>
+        {t('Review')}
+        <span className={styles.count}>{rounds.length}</span>
+      </h2>
+      <ol className={styles.rounds}>
+        {rounds.map((round) => (
+          <li key={round.round} className={styles.round} data-review-round={round.round} data-verdict={round.verdict}>
+            <div className={styles.roundHead}>
+              <span className={`${styles.verdict} ${round.verdict === 'ACCEPT' ? styles.verdictAccepted : styles.verdictRevise}`} data-verdict-label>
+                {round.verdict === 'ACCEPT' ? t('Accepted') : t('Changes asked for')}
+              </span>
+              <span className={styles.roundMeta} data-review-outcome>
+                {round.revised
+                  ? tf('{issues} issues · revised, {before} → {after} characters', {
+                      issues: round.issues.length,
+                      before: round.charactersBefore,
+                      after: round.charactersAfter ?? round.charactersBefore,
+                    })
+                  : tf('{issues} issues', { issues: round.issues.length })}
+              </span>
+            </div>
+            {round.summary !== '' && <p className={styles.roundSummary}>{round.summary}</p>}
+            {round.issues.length > 0 && (
+              <ul className={styles.issues}>
+                {round.issues.map((issue, at) => (
+                  <li key={at} className={styles.issue} data-issue={issue.kind}>
+                    <span className={styles.kind}>{issueLabel(issue.kind)}</span>
+                    <span className={styles.issueText}>{issue.issue}</span>
+                    {issue.fix !== '' && <span className={styles.issueFix}>{issue.fix}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

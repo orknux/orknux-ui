@@ -68,6 +68,11 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [webSearch, setWebSearch] = useState(true);
   // Off: looking for images is asked for, not assumed.
   const [images, setImages] = useState(false);
+  // A second model reading the report before it is saved, and which one: both remembered, as the model is.
+  const [lastReview, rememberReview] = useSieve(`research.review.${workspaceId}`);
+  const [lastReviewer, rememberReviewer] = useSieve(`research.reviewer.${workspaceId}`);
+  const [review, setReview] = useState(lastReview === 'on');
+  const [reviewerId, setReviewerId] = useState('');
   const [include, setInclude] = useState<string[]>([]);
   const [exclude, setExclude] = useState<string[]>([]);
   const [picked, setPicked] = useState<PickedDocument[]>([]);
@@ -92,6 +97,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       setPicked([]);
       setWebSearch(true);
       setImages(false);
+      setReview(lastReview === 'on');
       setAdding(false);
       setError(null);
       setSubmitting(false);
@@ -109,6 +115,9 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               : chat.some((model) => model.id === lastModel)
                 ? lastModel
                 : (chat[0]?.id ?? ''));
+          // The reviewer chosen last; none until somebody picks one, since reviewing with the writer's own model is a choice.
+          setReviewerId((chosen) =>
+            chat.some((model) => model.id === chosen) ? chosen : chat.some((model) => model.id === lastReviewer) ? lastReviewer : '');
         })
         .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load what a research needs.')));
     } else if (!open && held.open) {
@@ -146,7 +155,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (question.trim() === '' || modeId === '' || modelId === '' || submitting) return;
+    if (question.trim() === '' || modeId === '' || modelId === '' || (review && reviewerId === '') || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -163,6 +172,8 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         documentsExclude: picked.filter((one) => one.use === 'EXCLUDE').map((one) => one.document.id),
         useWebSearch: webSearch,
         includeImages: images,
+        review,
+        reviewerModelId: review ? reviewerId : null,
       });
       onStarted(started);
     } catch (cause) {
@@ -301,7 +312,42 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Include images')}
             </label>
+
+            <label className={dialog.checkboxField}>
+              <input
+                type="checkbox"
+                id="research-review"
+                checked={review}
+                onChange={(event) => {
+                  setReview(event.target.checked);
+                  rememberReview(event.target.checked ? 'on' : 'off');
+                }}
+                data-review
+              />
+              {t('Review')}
+            </label>
           </div>
+
+          {review && (
+            <div className={dialog.field} data-reviewer>
+              <label className={dialog.label} htmlFor="research-reviewer">{t('Reviewer')}</label>
+              <div className={dialog.inputWrapper}>
+                <ModelPicker
+                  id="research-reviewer"
+                  className={dialog.input}
+                  value={reviewerId}
+                  models={models}
+                  onChange={(picked) => {
+                    setReviewerId(picked);
+                    rememberReviewer(picked);
+                  }}
+                  none={t('Choose a model')}
+                  required
+                  workspaceId={workspaceId}
+                />
+              </div>
+            </div>
+          )}
 
           <fieldset className={styles.group}>
             <legend className={dialog.label}>{t('Websites')}</legend>
@@ -346,7 +392,11 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           <button type="button" className={dialog.ghost} onClick={onClose} disabled={submitting}>
             {t('Cancel')}
           </button>
-          <button type="submit" className={dialog.filled} disabled={question.trim() === '' || modeId === '' || modelId === '' || submitting}>
+          <button
+            type="submit"
+            className={dialog.filled}
+            disabled={question.trim() === '' || modeId === '' || modelId === '' || (review && reviewerId === '') || submitting}
+          >
             {submitting ? t('Starting…') : t('Start')}
           </button>
         </div>
