@@ -18,6 +18,7 @@ import {
   saveDocument,
 } from '../../api/documents';
 import type { DesignDocument, DocumentSettings, DocumentTurn, GrammarMatch, GrammarSettings, Margins, Orientation, PageSize } from '../../api/documents';
+import { restoreComponentRevision } from '../../api/revisions';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspace } from '../../api/workspaces';
 import boldIcon from '../../assets/bold.svg';
@@ -43,6 +44,7 @@ import listChecksIcon from '../../assets/list-checks.svg';
 import notebookIcon from '../../assets/notebook-pen.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
 import { AppShell } from '../../components/AppShell';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import form from '../../components/Dialog.module.css';
 import { useInlineCompletion } from '../../components/inlineCompletion';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
@@ -61,6 +63,8 @@ import { DocumentColour } from './DocumentColour';
 import { DocumentExportMenu } from './DocumentExportMenu';
 import { DocumentImportMenu } from './DocumentImportMenu';
 import { DocumentFind } from './DocumentFind';
+import { DocumentHistory, DocumentVersionView } from './DocumentHistory';
+import type { OpenVersion } from './DocumentHistory';
 import { DocumentPaper, geometryOf, useDocumentEditor } from './DocumentPaper';
 import { DocumentSelectionTools } from './DocumentSelectionTools';
 import { DocumentSide } from './DocumentSide';
@@ -142,6 +146,12 @@ function dataUrl(file: File): Promise<string> {
  * undo goes back over. While typing, the workspace's completion model suggests
  * how the sentence goes on and the paragraphs changed are checked for grammar -
  * each with a switch in the bar, remembered for the person.
+ *
+ * History, in the bar, puts the document's versions down the right in place of
+ * the chat: every save keeps the version it replaced, whichever door it came
+ * through. A version opens over the desk with what it changed marked, and
+ * Restore puts it back as a save of its own - what is on screen saved first, so
+ * nothing typed is lost, and asked about before it is done.
  */
 export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPageProps) {
   const firstName = (session.displayName?.trim() || session.username).split(/\s+/)[0];
@@ -159,6 +169,14 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [finding, setFinding] = useState(false);
   const [picking, setPicking] = useState(false);
   const [pageMenu, setPageMenu] = useState(false);
+  /** The versions down the right, in place of the chat. */
+  const [historyOpen, setHistoryOpen] = useState(false);
+  /** A version opened over the desk. */
+  const [version, setVersion] = useState<OpenVersion | null>(null);
+  /** The version Restore is asking about. */
+  const [restoring, setRestoring] = useState<OpenVersion | null>(null);
+  /** Whether what is unsaved came in by Import, which the history says of the save that keeps it. */
+  const imported = useRef(false);
 
   // The page's settings close on a press anywhere else, or on Escape, as the export menu's do.
   useEffect(() => {
@@ -294,7 +312,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     setBusy(true);
     setError(null);
     try {
-      const written = await saveDocument(held.id, editor.getJSON(), held.revision, settings);
+      const written = await saveDocument(held.id, editor.getJSON(), held.revision, settings, imported.current ? 'IMPORT' : undefined);
+      imported.current = false;
       setHeld(written);
       setSaved(fingerprint(editor, settings));
       return true;
@@ -349,6 +368,24 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     setHeld(found);
     setSettings(settingsOf(found));
     setSaved(fingerprint(editor, settingsOf(found)));
+  }
+
+  /**
+   * Puts the version Restore asked about back. What is on screen is saved first,
+   * so it is a version too and nothing typed is lost; then the server writes the
+   * version as a save of its own and the page takes the document up as it now is.
+   */
+  async function restore(asked: OpenVersion) {
+    if (held === null || editor === null || asked.entry.id === null) return;
+    if (unsaved && !(await save())) throw new Error(t('Could not save the document.'));
+    await restoreComponentRevision(asked.entry.id);
+    const now = await fetchDocument(held.id);
+    if (now !== null) {
+      take(now);
+      setTick((at) => at + 1);
+    }
+    setVersion(null);
+    setRestoring(null);
   }
 
   // -- Pictures -------------------------------------------------------------
@@ -746,7 +783,20 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
               </div>
             )}
           </div>
-          <DocumentImportMenu documentId={held?.id ?? null} editor={answering ? null : editor} />
+          <button
+            type="button"
+            className={`${form.ghost} ${historyOpen ? wire.toolOn : ''}`}
+            onClick={() => {
+              setHistoryOpen((was) => !was);
+              setVersion(null);
+            }}
+            aria-pressed={historyOpen}
+            disabled={held === null}
+            data-testid="document-history"
+          >
+            {t('History')}
+          </button>
+          <DocumentImportMenu documentId={held?.id ?? null} editor={answering ? null : editor} onImported={() => (imported.current = true)} />
           <DocumentExportMenu documentId={held?.id ?? null} name={held?.name ?? ''} beforeExport={save} />
           <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy || answering} title={`${t('Save')} (${saveKey})`} data-testid="document-save">
             {t('Save')}
@@ -838,6 +888,13 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             />
           </div>
         <div className={styles.body}>
+        {version !== null && (
+          <DocumentVersionView
+            version={version}
+            onRestore={version.entry.id === null || answering ? undefined : () => setRestoring(version)}
+            onClose={() => setVersion(null)}
+          />
+        )}
         {editor !== null && <DocumentSide editor={editor} scope={scope} tick={tick} />}
         <div className={styles.canvas} ref={scope}>
           <DocumentFind editor={editor} replacing scope={scope} open={finding} onOpen={setFinding} />
@@ -911,6 +968,14 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
         </div>
 
         <div className={`${shell.panel} ${wire.panel}`} data-testid="document-panel">
+          {historyOpen && held !== null ? (
+            <DocumentHistory
+              documentId={held.id}
+              revision={held.revision}
+              openKey={version === null ? null : (version.entry.id ?? 'current')}
+              onOpen={setVersion}
+            />
+          ) : (
           <DesignChat
             prefix="document"
             firstName={firstName}
@@ -941,6 +1006,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
               </>
             }
           />
+          )}
         </div>
       </div>
 
@@ -953,6 +1019,12 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           setPicking(false);
           insertPicture(picture.id, picture.name ?? picture.prompt, null);
         }}
+      />
+      <ConfirmDialog
+        subject={restoring === null ? null : new Date(restoring.entry.savedAt).toLocaleString()}
+        kind="restoreDocumentVersion"
+        onClose={() => setRestoring(null)}
+        onConfirm={() => (restoring === null ? Promise.resolve() : restore(restoring))}
       />
       <UnsavedWorkDialog
         subject={guard.asking ? (held?.name ?? t('This document')) : null}

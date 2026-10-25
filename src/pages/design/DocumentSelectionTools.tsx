@@ -57,7 +57,7 @@ interface Held {
 }
 
 /** A highlight's note open in its card: hovered, or pinned by a press. */
-interface OpenNote {
+export interface OpenNote {
   id: string;
   left: number;
   top: number;
@@ -80,33 +80,12 @@ export interface DocumentSelectionToolsProps {
 }
 
 /**
- * What a selection offers, in a small bar over it: Explain and Summarise ask
- * the document's chat about the words and change nothing; Translate opens a
- * card with the translation and a Replace that puts it in place as one step
- * undo goes back over; Highlight marks the words and asks for a note. And the
- * card a highlight's note is read, changed and taken off in, open while the
- * pointer is over the highlight and pinned by a press on it.
+ * Which highlight's note is open: the one the pointer is over, or the one
+ * pressed, which stays open until a press elsewhere. The editor's and the
+ * view's, so a note reads the same in both.
  */
-export function DocumentSelectionTools({ editor, documentId, modelId, canAsk, language, scope, onExplain, onSummarise }: DocumentSelectionToolsProps) {
-  const [translating, setTranslating] = useState<Held | null>(null);
+export function useNoteHover(scope: RefObject<HTMLDivElement | null>) {
   const [noteOpen, setNoteOpen] = useState<OpenNote | null>(null);
-  const [, redraw] = useState(0);
-
-  // The bar follows the selection; the editor's own events are what say it moved.
-  useEffect(() => {
-    const moved = () => redraw((at) => at + 1);
-    editor.on('selectionUpdate', moved);
-    editor.on('focus', moved);
-    editor.on('blur', moved);
-    editor.on('update', moved);
-    return () => {
-      editor.off('selectionUpdate', moved);
-      editor.off('focus', moved);
-      editor.off('blur', moved);
-      editor.off('update', moved);
-    };
-  }, [editor]);
-
   // A highlight shows its note while the pointer is over it, and a press on it keeps the card open.
   useEffect(() => {
     const desk = scope.current;
@@ -142,6 +121,37 @@ export function DocumentSelectionTools({ editor, documentId, modelId, canAsk, la
       desk.removeEventListener('click', pressed);
     };
   }, [scope]);
+  return [noteOpen, setNoteOpen] as const;
+}
+
+/**
+ * What a selection offers, in a small bar over it: Explain and Summarise ask
+ * the document's chat about the words and change nothing; Translate opens a
+ * card with the translation and a Replace that puts it in place as one step
+ * undo goes back over; Highlight marks the words and asks for a note. And the
+ * card a highlight's note is read, changed and taken off in, open while the
+ * pointer is over the highlight and pinned by a press on it.
+ */
+export function DocumentSelectionTools({ editor, documentId, modelId, canAsk, language, scope, onExplain, onSummarise }: DocumentSelectionToolsProps) {
+  const [translating, setTranslating] = useState<Held | null>(null);
+  const [noteOpen, setNoteOpen] = useNoteHover(scope);
+  const [, redraw] = useState(0);
+
+  // The bar follows the selection; the editor's own events are what say it moved.
+  useEffect(() => {
+    const moved = () => redraw((at) => at + 1);
+    editor.on('selectionUpdate', moved);
+    editor.on('focus', moved);
+    editor.on('blur', moved);
+    editor.on('update', moved);
+    return () => {
+      editor.off('selectionUpdate', moved);
+      editor.off('focus', moved);
+      editor.off('blur', moved);
+      editor.off('update', moved);
+    };
+  }, [editor]);
+
 
   const { from, to, empty } = editor.state.selection;
   const words = empty ? '' : selectedText(editor, from, to);
@@ -347,15 +357,18 @@ function TranslateCard({ editor, documentId, modelId, language, held, onClose }:
   );
 }
 
-interface NoteCardProps {
+export interface NoteCardProps {
   editor: Editor;
   open: OpenNote;
   onPin: () => void;
   onClose: () => void;
 }
 
-/** A highlight's note: read while hovered, written and kept when the card closes, and the highlight taken off. */
-function NoteCard({ editor, open, onPin, onClose }: NoteCardProps) {
+/**
+ * A highlight's note: read while hovered, written and kept when the card closes, and the highlight taken off.
+ * In an editor that is not editable - the view - it is read and nothing else.
+ */
+export function NoteCard({ editor, open, onPin, onClose }: NoteCardProps) {
   const noteOf = () => {
     let found: string | null = null;
     editor.state.doc.descendants((node) => {

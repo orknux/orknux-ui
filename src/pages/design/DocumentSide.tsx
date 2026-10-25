@@ -166,6 +166,7 @@ export function DocumentSide({ editor, scope, tick }: DocumentSideProps) {
                 type="button"
                 className={styles.highlightItem}
                 onClick={() => jump(one.from, one.to)}
+                title={one.note === '' ? undefined : one.note}
                 data-testid="document-highlight-item"
                 data-note-id={one.id}
               >

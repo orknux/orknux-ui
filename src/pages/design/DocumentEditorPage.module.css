@@ -142,8 +142,9 @@
   min-height: 0;
 }
 
-/* Under the format bar: the outline and highlights, and the desk beside them. */
+/* Under the format bar: the outline and highlights, and the desk beside them; a version opened from History lies over both. */
 .body {
+  position: relative;
   display: flex;
   flex: 1 0 0;
   min-width: 0;

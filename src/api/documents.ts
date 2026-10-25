@@ -64,6 +64,8 @@ export interface DesignDocument {
   createdAt: string;
   updatedBy: string;
   updatedAt: string;
+  /** Which door the live state was saved through: EDITOR, IMPORT, CHAT, TOOL or RESTORE; null before doors were recorded. */
+  updatedVia?: string | null;
 }
 
 export interface DocumentHit {
@@ -84,7 +86,7 @@ export interface DocumentAnswer {
 
 /** What the list reads: everything but the content. */
 const LISTED =
-  'id workspaceId catalogId catalogName name pageSize orientation margins language page { widthMm heightMm marginMm } revision words excerpt images createdBy createdAt updatedBy updatedAt';
+  'id workspaceId catalogId catalogName name pageSize orientation margins language page { widthMm heightMm marginMm } revision words excerpt images createdBy createdAt updatedBy updatedAt updatedVia';
 /** What the editor and the view read. */
 const FIELDS = `${LISTED} content`;
 const CATALOG = 'id workspaceId name documentCount createdBy createdAt';
@@ -182,12 +184,22 @@ export interface DocumentSettings {
 }
 
 /** Writes the whole document; refused when it was saved since `revision`. */
-export async function saveDocument(id: string, content: unknown, revision: number, settings: DocumentSettings): Promise<DesignDocument> {
+/**
+ * Writes the editor's document over the stored one. `via` is `IMPORT` where what
+ * is saved came in by Import, which the document's history says.
+ */
+export async function saveDocument(
+  id: string,
+  content: unknown,
+  revision: number,
+  settings: DocumentSettings,
+  via?: 'IMPORT',
+): Promise<DesignDocument> {
   const data = await graphql<{ saveDocument: DesignDocument }>(
-    `mutation ($id: ID!, $content: String!, $revision: Int, $pageSize: String, $orientation: String, $margins: String, $language: String) {
-       saveDocument(id: $id, content: $content, revision: $revision, pageSize: $pageSize, orientation: $orientation, margins: $margins, language: $language) { ${FIELDS} }
+    `mutation ($id: ID!, $content: String!, $revision: Int, $pageSize: String, $orientation: String, $margins: String, $language: String, $via: String) {
+       saveDocument(id: $id, content: $content, revision: $revision, pageSize: $pageSize, orientation: $orientation, margins: $margins, language: $language, via: $via) { ${FIELDS} }
      }`,
-    { id, content: JSON.stringify(content), revision, ...settings },
+    { id, content: JSON.stringify(content), revision, ...settings, via: via ?? null },
   );
   return data.saveDocument;
 }

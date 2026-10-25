@@ -31,7 +31,16 @@ function dataUrl(file: File): Promise<string> {
  * carries are kept as the workspace's pictures, as a pasted one is. The
  * wireframe editor's menu and classes, as Export's are.
  */
-export function DocumentImportMenu({ documentId, editor }: { documentId: string | null; editor: Editor | null }) {
+export function DocumentImportMenu({
+  documentId,
+  editor,
+  onImported,
+}: {
+  documentId: string | null;
+  editor: Editor | null;
+  /** Told when a file is on the page, so the save that keeps it can say it was an import. */
+  onImported?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +81,7 @@ export function DocumentImportMenu({ documentId, editor }: { documentId: string 
       // Through the editor, so it is a step Undo goes back over and a change Save writes.
       if (into.current === 'replace') editor.chain().focus().setContent(doc, { emitUpdate: true }).run();
       else editor.chain().focus().insertContent(doc.content ?? []).run();
+      onImported?.();
       if (read.picturesLeftOut > 0) setError(tf('{count} pictures were left out.', { count: read.picturesLeftOut }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not import the file.'));

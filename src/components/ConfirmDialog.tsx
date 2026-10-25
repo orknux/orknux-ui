@@ -34,7 +34,8 @@ export type ConfirmKind =
   | 'restartResearch'
   | 'removeDiagram'
   | 'removeDiagramCatalog'
-  | 'startFollowUp';
+  | 'startFollowUp'
+  | 'restoreDocumentVersion';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -340,6 +341,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       button: submitting ? t('Removing…') : t('Delete'),
     },
     /* Not destructive: a research of its own, the one it follows up left as it is. */
+    /* Not destructive: what the document says now is kept as a version, and restoring it again takes this back. */
+    restoreDocumentVersion: {
+      title: t('Restore this version'),
+      message: <>{t('The document is put back to this version, and what it says now is kept in its history:')} {name}</>,
+      button: submitting ? t('Restoring…') : t('Restore'),
+    },
     startFollowUp: {
       title: t('Start a research'),
       message: <>{t('Start a research on:')} {name}</>,
