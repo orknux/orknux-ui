@@ -187,7 +187,7 @@ export function DesignChat(props: DesignChatProps) {
           </div>
         ))}
         {answering && (
-          <div className={styles.theirs}>
+          <div className={styles.theirs} data-testid={`${prefix}-chat-working`}>
             <Loader label={props.working} delay={0} size={16} />
           </div>
         )}

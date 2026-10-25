@@ -71,7 +71,9 @@ for (const editor of editors) {
     const words = range.getBoundingClientRect();
     const row = talk.querySelector('[role="status"]').getBoundingClientRect();
     const question = [...talk.querySelectorAll('[data-role="user"]')].pop().getBoundingClientRect();
+    const working = talk.querySelector('[data-testid$="-chat-working"]')?.getBoundingClientRect();
     return {
+      below: working === undefined ? null : Math.round(working.top - question.bottom),
       answerInset: Math.round(words.left - panel.left),
       rowInset: Math.round(row.left - panel.left),
       questionInset: Math.round(panel.right - question.right),
@@ -81,6 +83,8 @@ for (const editor of editors) {
   await chat.screenshot({ path: shot(`design-chat-working-${editor.prefix}.png`) });
 
   record(drawn.rowInset === drawn.answerInset, `${editor.prefix}: the working row starts where the answers' words do (${drawn.rowInset}px and ${drawn.answerInset}px from the edge)`);
+  // It sat 8px under the question, the list's own gap, and read as part of the bubble.
+  record(drawn.below !== null && drawn.below >= 16, `${editor.prefix}: the working row stands 16px or more under the question (${drawn.below}px)`);
   record(drawn.rowInset === drawn.questionInset, `${editor.prefix}: the same inset as the question has on the right (${drawn.questionInset}px)`);
 
   await page.unrouteAll({ behavior: 'ignoreErrors' });
