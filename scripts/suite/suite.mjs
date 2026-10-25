@@ -1930,6 +1930,18 @@ export const TESTS = [
      * them. Whether a model is sent the video, and refused it, is ChatVideoTest's.
      */
   },
+  {
+    name: 'upload-limit-check',
+    what: "Largest file is a box under Attachments on Admin Settings and a save is kept; a chat file past it is refused before it is sent, and one the server refuses is shown in the server's words - its size, the limit and Admin Settings → Attachments - never as Failed to fetch",
+    needs: ['workspace'],
+    /*
+     * Sets the installation-wide upload limit and puts it back, so `alone`: an
+     * upload beside it would be held to whichever limit it caught. The server
+     * half sends 26 MB, past the multipart cap that used to reset the
+     * connection; UploadLimitHttpTest is the same through Tomcat alone.
+     */
+    alone: true,
+  },
 
   {
     name: 'chat-pin-check',

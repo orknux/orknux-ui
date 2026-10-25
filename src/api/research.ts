@@ -1,6 +1,7 @@
 import { graphql } from './client';
 import type { PageOf } from './client';
 import { t } from '../i18n';
+import { refuseOversized, sendUpload } from './uploads';
 
 /**
  * Explore > Research: a question researched by one of the workspace's own
@@ -246,18 +247,20 @@ export async function fetchResearchDocuments(workspaceId: string, search = '', l
  * bytes.
  */
 export async function uploadResearchDocuments(workspaceId: string, files: File[]): Promise<ResearchDocument[]> {
-  const form = new FormData();
-  files.forEach((file) => form.append('files', file, file.name));
-  const answer = await fetch(`/api/workspaces/${workspaceId}/research-documents`, {
-    method: 'POST',
-    body: form,
-    credentials: 'include',
-  });
-  const said = (await answer.json().catch(() => null)) as
-    | { documents?: Array<ResearchDocument & { id: string | number }>; error?: string; message?: string }
-    | null;
-  if (!answer.ok) throw new Error(said?.error ?? said?.message ?? t('Those files could not be uploaded.'));
-  return (said?.documents ?? []).map((one) => ({ ...one, id: String(one.id) }));
+  await refuseOversized(files);
+  const kept: ResearchDocument[] = [];
+  // One file per request, as the chat sends them: a request is never larger than its file.
+  for (const file of files) {
+    const form = new FormData();
+    form.append('files', file, file.name);
+    const said = await sendUpload<{ documents?: Array<ResearchDocument & { id: string | number }> }>(
+      `/api/workspaces/${workspaceId}/research-documents`,
+      form,
+      t('Those files could not be uploaded.'),
+    );
+    kept.push(...(said.documents ?? []).map((one) => ({ ...one, id: String(one.id) })));
+  }
+  return kept;
 }
 
 /** Writes the research down and starts its mode's workflow; it comes back running. */

@@ -56,6 +56,15 @@ export function useInstallation(): InstallationSettings | null {
 }
 
 /**
+ * What this installation allows, for code outside a component - an upload
+ * checking a file against the current limit before it sends it. The cached
+ * answer when there is one; forgetInstallation keeps it current.
+ */
+export function installationNow(): Promise<InstallationSettings> {
+  return cached !== null ? Promise.resolve(cached) : load();
+}
+
+/**
  * Drops the cache and refetches, for when a switch has just been pressed.
  * Everything showing the settings hears the answer.
  */

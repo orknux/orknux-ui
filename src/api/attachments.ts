@@ -1,5 +1,6 @@
 import { graphql } from './client';
 import { t } from '../i18n';
+import { refuseOversized, sendUpload } from './uploads';
 
 /**
  * Files attached to a chat.
@@ -18,23 +19,25 @@ export interface Attachment {
   sizeBytes: number;
 }
 
+/**
+ * Checked against the installation's limit first, then sent one file per
+ * request: a request is then never larger than its file, which is what the
+ * server's multipart cap is sized for.
+ */
 export async function uploadAttachments(workspaceId: string, files: File[]): Promise<Attachment[]> {
-  const form = new FormData();
-  files.forEach((file) => form.append('files', file, file.name));
-
-  const answer = await fetch(`/api/workspaces/${workspaceId}/attachments`, {
-    method: 'POST',
-    body: form,
-    credentials: 'include',
-  });
-
-  const said = (await answer.json().catch(() => null)) as
-    | { attachments?: Attachment[]; error?: string; message?: string }
-    | null;
-  if (!answer.ok) {
-    throw new Error(said?.error ?? said?.message ?? t('Those files could not be uploaded.'));
+  await refuseOversized(files);
+  const kept: Attachment[] = [];
+  for (const file of files) {
+    const form = new FormData();
+    form.append('files', file, file.name);
+    const said = await sendUpload<{ attachments?: Attachment[] }>(
+      `/api/workspaces/${workspaceId}/attachments`,
+      form,
+      t('Those files could not be uploaded.'),
+    );
+    kept.push(...(said.attachments ?? []));
   }
-  return said?.attachments ?? [];
+  return kept;
 }
 
 /**

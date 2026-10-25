@@ -22,6 +22,7 @@ import type { DesignDocument, DocumentSettings, DocumentTurn, GrammarMatch, Gram
 import { restoreComponentRevision } from '../../api/revisions';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspace } from '../../api/workspaces';
+import { refuseOversized } from '../../api/uploads';
 import boldIcon from '../../assets/bold.svg';
 import codeIcon from '../../assets/code.svg';
 import eyeIcon from '../../assets/eye.svg';
@@ -451,6 +452,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     setError(null);
     for (const file of files) {
       try {
+        await refuseOversized([file]);
         const kept = await importDesignImage({ workspaceId, image: await dataUrl(file), name: file.name.replace(/\.[^.]+$/, '') });
         insertPicture(kept.id, kept.name, at);
       } catch (cause) {
