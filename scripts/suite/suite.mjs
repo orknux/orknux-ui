@@ -2395,6 +2395,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own document and removes it. */
   },
+  {
+    name: 'document-new-copy-check',
+    what: "New and Save as copy in the document editor ask first in the application's dialog; Cancel does nothing, Save as copy opens a copy of what is on screen and leaves the original as last saved, New opens an empty document in the same catalog",
+    needs: ['workspace'],
+    /* Makes its own document and removes it, the copy and the new one. */
+  },
 
   // --- Explore -> Diagrams -------------------------------------------------------
   {

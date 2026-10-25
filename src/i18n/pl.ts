@@ -3928,4 +3928,13 @@ export const PL: Record<string, string> = {
   "Back to wireframes": "Wróć do makiet",
   "Back to documents": "Wróć do dokumentów",
   "Back to diagrams": "Wróć do diagramów",
+  // The document editor's New and Save as copy, and the question asked before each.
+  "Start a new document": "Zacznij nowy dokument",
+  "Saves what is on screen as a new document and leaves this one as it was": "Zapisuje to, co na ekranie, jako nowy dokument, a ten zostawia bez zmian",
+  "New document": "Nowy dokument",
+  "A new empty document is made and opened, and changes not saved here are lost:": "Powstaje i otwiera się nowy pusty dokument, a niezapisane tu zmiany przepadają:",
+  "A copy of what is on screen is made and opened, and this document stays as it was last saved:": "Powstaje i otwiera się kopia tego, co na ekranie, a ten dokument zostaje taki, jak przy ostatnim zapisie:",
+  "Copying…": "Kopiowanie…",
+  "Continue": "Kontynuuj",
+  "{name} (copy)": "{name} (kopia)",
 };

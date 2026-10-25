@@ -148,12 +148,24 @@ export async function searchDocuments(workspaceId: string, text: string, limit?:
   return data.searchDocuments;
 }
 
-export async function createDocument(workspaceId: string, name: string, catalogId?: string | null): Promise<DesignDocument> {
+/** A document made empty, or - for Save as copy - holding `content` (ProseMirror JSON) on `pageSize`. */
+export async function createDocument(
+  workspaceId: string,
+  name: string,
+  catalogId?: string | null,
+  holding?: { content: unknown; pageSize: PageSize },
+): Promise<DesignDocument> {
   const data = await graphql<{ createDocument: DesignDocument }>(
-    `mutation ($workspaceId: ID!, $catalogId: ID, $name: String!) {
-       createDocument(workspaceId: $workspaceId, catalogId: $catalogId, name: $name) { ${FIELDS} }
+    `mutation ($workspaceId: ID!, $catalogId: ID, $name: String!, $content: String, $pageSize: String) {
+       createDocument(workspaceId: $workspaceId, catalogId: $catalogId, name: $name, content: $content, pageSize: $pageSize) { ${FIELDS} }
      }`,
-    { workspaceId, catalogId: catalogId ?? null, name },
+    {
+      workspaceId,
+      catalogId: catalogId ?? null,
+      name,
+      content: holding === undefined ? null : JSON.stringify(holding.content),
+      pageSize: holding?.pageSize ?? null,
+    },
   );
   return data.createDocument;
 }
