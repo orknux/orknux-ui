@@ -85,6 +85,14 @@ export interface ModelProvider {
    * False by default; the thinking is captured and shown either way.
    */
   sendsReasoning: boolean;
+  /** Every tool up front from an agent's first request, up to the cap, as set; null is off. */
+  offerAllTools: boolean | null;
+  /** Whether it does. */
+  offersAllTools: boolean;
+  /** Whether a tool loaded with tool_load joins the tool list at the next turn, as set; null is the type's default. */
+  joinLoadedTools: boolean | null;
+  /** Whether it does, the default resolved: off for llama.cpp, on for the rest. */
+  joinsLoadedTools: boolean;
   /** How a picture edit's mask is drawn for this server; null is its type's. */
   editMask: EditMask | null;
   /** Whether its models draw with a negative prompt; where they do not, none is offered. Issue #657. */
@@ -237,7 +245,7 @@ export interface ModelUsage {
 const PROVIDER_FIELDS =
   'id workspaceId name type endpoint authMethod apiVersion deploymentName region tenantId clientId scope ' +
   'checkEnabled throttleTokensPerSecond throttleRequestsPerSecond acceptRetryAfter chatApi sendsReasoning ' +
-  'takesNegativePrompt maxTools toolCap editMask ' +
+  'offerAllTools offersAllTools joinLoadedTools joinsLoadedTools takesNegativePrompt maxTools toolCap editMask ' +
   'status lastCheckMessage lastCheckedAt secretSet ' +
   'secretVariableId secretVariableName secretVariableCatalog secretVariableMissing';
 export const MODEL_FIELDS =
@@ -371,10 +379,24 @@ export interface ProviderInput {
   chatApi?: ChatApi;
   /** Whether the model's earlier thinking is sent back. Undefined is off on create and unchanged on update. */
   sendsReasoning?: boolean;
+  /** Every tool up front. Undefined is off on create and unchanged on update. */
+  offerAllTools?: boolean;
+  /** Whether a loaded tool joins the tool list at the next turn. Undefined is the type's default on create and unchanged on update. */
+  joinLoadedTools?: boolean;
   /** Set as given: null is its type's. */
   editMask?: EditMask | null;
   /** The most tools one request carries, 8 to 1024; null is what the type takes. */
   maxTools?: number | null;
+}
+
+/**
+ * Whether a tool loaded mid-conversation joins the tool list at the next turn
+ * on a provider of this type, when nobody said: everywhere but llama.cpp, where
+ * the turn after a load reads the whole conversation again. The server's
+ * `ProviderType.joinsLoadedTools`, mirrored.
+ */
+export function joinsLoadedByDefault(type: ProviderType): boolean {
+  return type !== 'LLAMA_CPP';
 }
 
 /**

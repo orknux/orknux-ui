@@ -798,6 +798,18 @@ export const PL: Record<string, string> = {
     "Czy model widzi swoje wcześniejsze rozumowanie. Wyłączone pasuje do modeli, których szablon czatu i tak pomija dawne rozumowanie, jak Gemma na llama.cpp; włącz je dla dostawców, którzy go potrzebują, na przykład dla modeli rozumujących, które bez niego gubią swój plan.",
   "Earlier thinking is sent back": "Wcześniejsze rozumowanie jest odsyłane",
   "Earlier thinking is left out": "Wcześniejsze rozumowanie jest pomijane",
+  "All tools up front": "Wszystkie narzędzia od razu",
+  "Hands an agent every tool it holds from its first request, past its own limit and its Offer marks, up to the most tools per request. Nothing has to be loaded, and the first prompt is larger.":
+    "Daje agentowi wszystkie jego narzędzia od pierwszego zapytania, ponad jego własny limit i oznaczenia Offer, do limitu narzędzi na zapytanie. Nic nie trzeba wczytywać, a pierwszy prompt jest większy.",
+  "Every tool goes out up front": "Wszystkie narzędzia idą od razu",
+  "Tools past the agent’s limit are loaded as needed": "Narzędzia ponad limit agenta są wczytywane w razie potrzeby",
+  "Extend the tool list with loaded tools": "Rozszerzaj listę narzędzi o wczytane narzędzia",
+  "Whether a tool an agent loads joins its tool list at the next turn, to be called by its own name. Off, it is called through tool_run for the rest of the conversation. Off by default for llama.cpp, on for every other type.":
+    "Czy narzędzie wczytane przez agenta dołącza do jego listy narzędzi w następnej turze i jest wywoływane po własnej nazwie. Wyłączone - jest wywoływane przez tool_run do końca rozmowy. Domyślnie wyłączone dla llama.cpp, włączone dla każdego innego typu.",
+  "Loaded tools join the list at the next turn": "Wczytane narzędzia dołączają do listy w następnej turze",
+  "Loaded tools are called through tool_run": "Wczytane narzędzia są wywoływane przez tool_run",
+  "Each turn after a tool is loaded re-reads the whole conversation; All tools up front avoids that at the cost of a larger first prompt.":
+    "Każda tura po wczytaniu narzędzia czyta całą rozmowę od nowa; Wszystkie narzędzia od razu tego unikają kosztem większego pierwszego promptu.",
   "App-Level Token": "Token poziomu aplikacji",
   "User Token": "Token użytkownika",
   "Bot token": "Token bota",

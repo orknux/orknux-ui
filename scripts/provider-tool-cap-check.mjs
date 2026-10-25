@@ -1,15 +1,12 @@
 /**
- * How many tools one request to a provider carries, and that nothing on its
- * page offers every tool up front any more.
+ * How many tools one request to a provider carries, and that no provider offers
+ * every tool up front unless somebody switched it on.
  *
- * A provider could once hand an agent every tool from its first round, past the
- * agent's own limit and its Offer marks. The tool list is fixed for a
- * conversation now, so that saved nothing, and the switch went in 1.2.0: the
- * page draws no switch, and the server answers `offersAllTools` false for every
- * type.
+ * All tools up front is off by default for every type; its switch and the
+ * join switch beside it are `provider-tool-loading-check`'s.
  *
  * The server half is `ProviderToolCeilingTest` (what reaches the wire, the cap,
- * the field accepted and ignored). What is here is that somebody can reach the
+ * the defaults). What is here is that somebody can reach the
  * cap: empty under the type's number, a number typed saved and read back **off
  * the server** and after a reload, and cleared back to the type's.
  *
@@ -45,7 +42,7 @@ const drawnAs = async () => {
   return {
     cap: await cap.inputValue(),
     placeholder: (await cap.getAttribute('placeholder')) ?? '',
-    switches: await page.locator('[data-testid="provider-all-tools-toggle"]').count(),
+    allTools: (await page.locator('[data-testid="provider-all-tools-toggle"]').getAttribute('aria-checked')) === 'true',
   };
 };
 
@@ -70,19 +67,19 @@ async function saveIt() {
   await page.waitForTimeout(1500);
 }
 
-/* ------------------------------------------- no provider offers them all */
+/* ------------------------------------- no provider offers them all by default */
 
 const ollama = await make('OLLAMA');
 const openai = await make('OPENAI');
 const anthropic = await make('ANTHROPIC');
 record(
   [ollama, openai, anthropic].every((one) => one.offersAllTools === false),
-  `no type offers every tool up front (${[ollama, openai, anthropic].map((one) => one.offersAllTools).join(', ')})`,
+  `no type offers every tool up front by default (${[ollama, openai, anthropic].map((one) => one.offersAllTools).join(', ')})`,
 );
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/models/providers/${openai.id}`, { waitUntil: 'domcontentloaded' });
 const fresh = await drawnAs();
-record(fresh.switches === 0, `the provider's page draws no All tools up front switch (${fresh.switches})`);
+record(!fresh.allTools, `the provider's page draws All tools up front off (${fresh.allTools})`);
 record(
   fresh.cap === '' && fresh.placeholder === String(openai.toolCap),
   `its cap is empty, showing the type's ${openai.toolCap} (${fresh.cap} / ${fresh.placeholder})`,

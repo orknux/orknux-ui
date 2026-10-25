@@ -4864,14 +4864,27 @@ export const TESTS = [
 
   {
     name: 'provider-tool-cap-check',
-    what: 'a provider caps how many tools a request carries, and no provider offers every tool up front',
+    what: 'a provider caps how many tools a request carries, and no provider offers every tool up front by default',
     needs: ['workspace'],
     /*
-     * All tools up front went in 1.2.0: it switched off an agent's own limit
-     * and its Offer marks, and with the tool list fixed per conversation it
-     * saved nothing. `ProviderToolCeilingTest` proves what reaches the wire;
-     * this proves the page draws no switch, and that the cap is saved and read
-     * back off the server and after a reload, and put back under the type.
+     * `ProviderToolCeilingTest` proves what reaches the wire; this proves All
+     * tools up front is drawn off on a provider nobody set, and that the cap is
+     * saved and read back off the server and after a reload, and put back
+     * under the type. Scratch providers, removed at both ends.
+     */
+  },
+  {
+    name: 'provider-tool-loading-check',
+    what: 'a provider offers All tools up front, off for every type, and joining loaded tools to the list, off for llama.cpp alone, with a one-line warning on llama.cpp when it is on',
+    needs: ['workspace'],
+    /*
+     * A loaded tool joining the tool list makes llama.cpp read the whole
+     * conversation again at the next turn, so the join is off there by
+     * default and its cost is said under the switch once somebody turns it
+     * on. `ProviderToolCeilingTest` and `StablePromptOnLoadTest` prove what
+     * reaches the wire; this proves the defaults are drawn per type, the
+     * warning appears only where it should and in its words, and both
+     * switches are saved and read back off the server and after a reload.
      * Scratch providers, removed at both ends.
      */
   },

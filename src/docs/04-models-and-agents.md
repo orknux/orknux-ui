@@ -126,7 +126,24 @@ allowance, and setting a share against it is refused until the number is there.
 
 ### What a provider is sent
 
-Two settings on a provider's page decide the shape of what goes to it.
+Four settings on a provider's page decide the shape of what goes to it.
+
+**All tools up front** hands an agent every tool it holds from its first
+request, past its own **Tools carried at once** and its Offer marks, up to the
+provider's limit, so nothing has to be loaded. It is off by default for every
+type, and the price of switching it on is a first prompt as large as the
+agent's whole toolset.
+
+**Extend the tool list with loaded tools** decides what happens to a tool an
+agent loads with `tool_load`. On, it joins the tool list at the agent's next
+turn and is called by its own name from then on. Off, the list stays as it was
+for the conversation and the tool is called through `tool_run` - until the
+conversation is compacted or a new one starts, when it is in the list from the
+beginning. It is **off by default for llama.cpp** and on for every other type:
+llama.cpp writes the tools at the top of the prompt, so each turn after a load
+reads the whole conversation again, a minute and more on a long one. With it
+off, an agent on llama.cpp is told plainly that `tool_run` is the only way to
+call a tool it loaded. **All tools up front** avoids the question altogether.
 
 **Most tools per request** is how many tools one request may carry, on top of
 an agent's own **Tools carried at once**; the lower of the two wins.
@@ -726,7 +743,9 @@ the provider's - is sent the ones marked **Always** and finds the rest. Its
 briefing lists every tool it has, each marked *loaded* or *load it first*.
 `tool_find` searches them by words and loads nothing, `tool_describe` shows one
 in full - its whole description and every parameter - and `tool_load` takes the
-exact names it wants for its next message.
+exact names it wants for its next message. How a loaded tool is called after
+that, and whether the agent's own ceiling applies at all, are the provider's
+settings; see *What a provider is sent*, above.
 
 Two settings on a model's page matter most for a local model. **Tool calls per
 reply** set to one stops a confused model filling a reply with repeats; and
