@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
-import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts } from '../../api/artifacts';
+import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts, uploadArtifact } from '../../api/artifacts';
 import type { Artifact } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import downloadIcon from '../../assets/download.svg';
@@ -240,6 +240,24 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
    * Deleting the only artifact on page three leaves somebody looking at an
    * empty grid that says there are none, on a page that no longer exists.
    */
+  /** Files put onto the page from the header's Upload, one after another; the list then shows them. */
+  const picker = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  async function upload(files: File[]) {
+    if (files.length === 0 || workspaceId === '') return;
+    setUploading(true);
+    setError(null);
+    try {
+      for (const file of files) await uploadArtifact(workspaceId, file);
+      if (page !== 1) setPage(1);
+      else load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('That file could not be uploaded.'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function remove(artifact: Artifact) {
     await deleteArtifact(artifact.id);
     if (artifacts?.content.length === 1 && page > 1) setPage(page - 1);
@@ -259,6 +277,27 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
           <h1 className={table.title}>{t('Artifacts')}</h1>
           <p className={table.subtitle}>{t('Every artifact this workspace has produced.')}</p>
         </div>
+        <button
+          type="button"
+          className={table.createButton}
+          onClick={() => picker.current?.click()}
+          disabled={uploading}
+          data-testid="artifacts-upload"
+        >
+          {uploading ? t('Uploading…') : t('Upload')}
+        </button>
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          onChange={(event) => {
+            const files = [...(event.target.files ?? [])];
+            event.target.value = '';
+            void upload(files);
+          }}
+          data-testid="artifacts-upload-file"
+        />
       </header>
 
       <SearchRow>

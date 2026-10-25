@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { graphql } from './client';
 import type { PageOf } from './client';
 
@@ -524,4 +525,20 @@ export async function importDesignImage(input: {
     { input },
   );
   return data.importDesignImage;
+}
+
+/**
+ * A file put onto the workspace's Artifacts page by the person signed in,
+ * kept as a saved artifact. Answers the artifact's id, which the page opens it
+ * at; a refusal - attachments off, a file past the limit - comes back as the
+ * server said it.
+ */
+export async function uploadArtifact(workspaceId: string, file: File, description?: string): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  if (description !== undefined && description.trim() !== '') form.append('description', description.trim());
+  const answer = await fetch(`/api/workspaces/${workspaceId}/artifacts`, { method: 'POST', body: form, credentials: 'include' });
+  const said = (await answer.json().catch(() => null)) as { id?: string; error?: string; message?: string } | null;
+  if (!answer.ok || said?.id === undefined) throw new Error(said?.error ?? said?.message ?? t('That file could not be uploaded.'));
+  return said.id;
 }

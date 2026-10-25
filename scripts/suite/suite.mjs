@@ -2301,6 +2301,17 @@ export const TESTS = [
     /* The model's answer is held back by the page's network, so no model is needed. Makes its own document and removes it. */
   },
   {
+    name: 'missing-back-check',
+    what: 'a wireframe, document or diagram that is not there says so and links back to its list',
+    needs: ['workspace'],
+  },
+  {
+    name: 'artifacts-upload-check',
+    what: "a file can be put onto the Artifacts page from its header's Upload, and is kept as a saved artifact under its name",
+    needs: ['workspace'],
+    /* Removes what it uploads. */
+  },
+  {
     name: 'document-sort-check',
     what: 'the documents list sorts by Name, Words and Updated, the numbers and dates biggest first, and a second press reverses',
     needs: ['workspace'],

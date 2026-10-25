@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
@@ -817,7 +817,12 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
         sidebar={null}
         hideSidebar
       >
-        <p className={styles.missing}>{t('There is no such wireframe here.')}</p>
+        <p className={styles.missing}>
+          {t('There is no such wireframe here.')}{' '}
+          <Link to={`/workspace/${workspaceId}/design/wireframes`} data-testid="missing-back">
+            {t('Back to wireframes')}
+          </Link>
+        </p>
       </AppShell>
     );
   }

@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import type { Connection, EdgeChange, NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   askDiagram,
@@ -822,7 +822,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   if (missing) {
     return (
       <AppShell title={t('Diagram editor')} user={shellUser(session)} workspacePath={`/workspace/${workspaceId}`} showAdmin={session.admin} onSignOut={onSignOut} sidebar={null} hideSidebar>
-        <p className={styles.missing}>{t('There is no such diagram here.')}</p>
+        <p className={styles.missing}>
+          {t('There is no such diagram here.')}{' '}
+          <Link to={`/workspace/${workspaceId}/explore/diagrams`} data-testid="missing-back">
+            {t('Back to diagrams')}
+          </Link>
+        </p>
       </AppShell>
     );
   }

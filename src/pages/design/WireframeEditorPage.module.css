@@ -275,6 +275,11 @@
   font-size: var(--text-base);
 }
 
+/* A reply - the working row or the answer - stands off the question it follows: the list's own gap left "Drawing…" hard under the bubble. */
+.mine + .theirs {
+  margin-top: var(--space-8);
+}
+
 .composer {
   display: flex;
   flex-direction: column;
@@ -569,4 +574,10 @@
   border: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+/* The way back from an address that holds nothing: the list it came from. */
+.missing a {
+  color: var(--color-accent-brand);
+  text-decoration: underline;
 }

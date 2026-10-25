@@ -637,7 +637,12 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   if (missing) {
     return (
       <AppShell title={t('Document editor')} user={shellUser(session)} workspacePath={`/workspace/${workspaceId}`} showAdmin={session.admin} onSignOut={onSignOut} sidebar={null} hideSidebar>
-        <p className={styles.missing}>{t('There is no such document here.')}</p>
+        <p className={styles.missing}>
+          {t('There is no such document here.')}{' '}
+          <Link to={`/workspace/${workspaceId}/design/documents`} data-testid="missing-back">
+            {t('Back to documents')}
+          </Link>
+        </p>
       </AppShell>
     );
   }
