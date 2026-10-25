@@ -67,6 +67,8 @@ export interface Research {
   fileUrl: string | null;
   /** The artifact the report was saved as; null where it could not be saved. */
   artifactId: string | null;
+  /** The artifact as the Artifacts page addresses it, SAVED-70; what a link to it opens. */
+  artifactKey: string | null;
   previewUrl: string | null;
   error: string | null;
   startedBy: string;
@@ -191,7 +193,7 @@ const MODE_FIELDS = 'id kind name workflowId workflowName';
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
-  'fileName fileUrl artifactId previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName parentId ' +
+  'fileName fileUrl artifactId artifactKey previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName parentId ' +
   'progress { step subQuestions searched level sourcesRead stage reading { title url kind } } sources { number title url kind } ' +
   'images { number caption url page contentType sizeBytes width height artifactId fileUrl previewUrl }';
 

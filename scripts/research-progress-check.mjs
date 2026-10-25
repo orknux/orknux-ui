@@ -56,7 +56,7 @@ const RUNNING = {
   workflowName: 'Research: Deep', modelId: null, modelName: 'Stub', language: 'FORMAL', outputFormat: 'DOCUMENT',
   websitesInclude: [], websitesExclude: [], documentsInclude: ['Harbour log'], documentsExclude: [], useWebSearch: true,
   includeImages: false, images: [], status: 'RUNNING',
-  executionId: null, result: null, fileName: null, fileUrl: null, artifactId: null, previewUrl: null, error: null, startedBy: 'alice',
+  executionId: null, result: null, fileName: null, fileUrl: null, artifactId: null, artifactKey: null, previewUrl: null, error: null, startedBy: 'alice',
   startedAt: new Date().toISOString(), finishedAt: null,
   progress: {
     step: 'Reading Tides and the moon', subQuestions: ['tide causes', 'tide timing', 'tide records'],
@@ -65,7 +65,7 @@ const RUNNING = {
   sources: SOURCES,
 };
 const FINISHED = {
-  ...RUNNING, status: 'COMPLETED', startedAt: new Date(Date.now() - 125_000).toISOString(), finishedAt: new Date().toISOString(), fileName: 'tides.md', fileUrl: '/api/artifacts/4242', artifactId: '4242',
+  ...RUNNING, status: 'COMPLETED', startedAt: new Date(Date.now() - 125_000).toISOString(), finishedAt: new Date().toISOString(), fileName: 'tides.md', fileUrl: '/api/artifacts/4242', artifactId: '4242', artifactKey: 'SAVED-4242',
   progress: { ...RUNNING.progress, step: 'Finished', stage: 'SAVE' },
   includeImages: true,
   images: [
@@ -197,7 +197,7 @@ record(
 );
 record((await opened.locator('[data-summary] [data-working]').count()) === 0, 'and the spinner is gone');
 const kept = await opened.locator('[data-research-artifact]').getAttribute('href').catch(() => null);
-record(kept !== null && kept.endsWith('/artifacts/4242'), `and links the report it kept on the Artifacts page (${kept})`);
+record(kept !== null && kept.endsWith('/artifacts/SAVED-4242'), `and links the report it kept, as the Artifacts page addresses it - the bare row opened only the list (${kept})`);
 const took = ((await opened.locator('[data-took]').textContent().catch(() => '')) ?? '').trim();
 record(took === '2m 5s', `and says how long it took, start to finish (${took})`);
 const rounds = ((await opened.locator('[data-stat="level"]').locator('xpath=preceding-sibling::dt').textContent().catch(() => '')) ?? '').trim();

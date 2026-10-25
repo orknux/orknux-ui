@@ -628,8 +628,8 @@ function Report({ research, workspaceId }: { research: Research; workspaceId: st
             </a>
           )}
           {/* Already kept there by the research's Save step; this says so and goes to it. */}
-          {research.artifactId !== null && (
-            <Link className={styles.button} to={`/workspace/${workspaceId}/artifacts/${research.artifactId}`} data-research-artifact>
+          {research.artifactKey !== null && (
+            <Link className={styles.button} to={`/workspace/${workspaceId}/artifacts/${research.artifactKey}`} data-research-artifact>
               {t('Open in Artifacts')}
             </Link>
           )}

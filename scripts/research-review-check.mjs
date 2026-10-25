@@ -38,7 +38,7 @@ const ROW = {
   id: '434343', question: 'zz review check: why are there tides?', modeId: null, modeName: 'Shallow', workflowId: '1', workflowName: 'Research: Shallow',
   modelId: null, modelName: 'Stub', language: 'FORMAL', outputFormat: 'DOCUMENT', websitesInclude: [], websitesExclude: [], documentsInclude: [],
   documentsExclude: [], useWebSearch: true, includeImages: false, images: [], status: 'COMPLETED', executionId: null, fileName: null, fileUrl: null,
-  artifactId: null, previewUrl: null, error: null, startedBy: 'alice', startedAt: new Date(Date.now() - 60_000).toISOString(), finishedAt: new Date().toISOString(),
+  artifactId: null, artifactKey: null, previewUrl: null, error: null, startedBy: 'alice', startedAt: new Date(Date.now() - 60_000).toISOString(), finishedAt: new Date().toISOString(),
   earlierExecutionIds: [], review: true, reviewerModelId: null, reviewerModelName: 'Careful model',
   progress: { step: 'Finished', subQuestions: [], searched: [], level: 1, sourcesRead: 0, stage: 'SAVE', reading: null }, sources: [],
 };
