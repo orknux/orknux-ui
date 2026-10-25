@@ -22,6 +22,7 @@ import { AppShell } from '../../components/AppShell';
 import { Loader } from '../../components/Loader';
 import { Select } from '../../components/Select';
 import { shellUser } from '../../session/user';
+import { FieldHint } from '../../components/FieldHint';
 import form from '../../components/Dialog.module.css';
 import editor from './DesignImageEditorPage.module.css';
 import styles from './DesignVideos.module.css';
@@ -537,7 +538,16 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
             .filter((one) => !(sized && (one.name === 'width' || one.name === 'height')))
             .map((one) => (
               <div key={one.name} className={form.field} data-testid={`video-field-${one.name}`}>
-                <label className={form.label} htmlFor={`video-${one.name}`}>{labelOf(one.name)}</label>
+                {one.name === 'seed' ? (
+                  <span className={form.labelWithHint}>
+                    <label className={form.label} htmlFor={`video-${one.name}`}>{labelOf(one.name)}</label>
+                    <FieldHint label={labelOf(one.name)}>
+                      {t('The number the noise a video starts from is drawn with: the same seed, prompt and settings make the same video again, and another seed makes another take of it.')}
+                    </FieldHint>
+                  </span>
+                ) : (
+                  <label className={form.label} htmlFor={`video-${one.name}`}>{labelOf(one.name)}</label>
+                )}
                 <div className={form.inputWrapper}>{numberField(one)}</div>
               </div>
             ))}
