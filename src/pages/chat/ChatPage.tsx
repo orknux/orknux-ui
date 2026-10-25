@@ -136,6 +136,8 @@ interface Working {
    * one block of thought above everything it did.
    */
   opening: string;
+  /** How long the round before the first call thought, once the server has said. */
+  openingMillis: number | null;
   /** The lookups it made, in the order it made them. */
   calls: ChatCall[];
   /**
@@ -155,7 +157,7 @@ interface Working {
 /** How long a short-lived notice stays on screen. */
 const PASSING_MS = 8000;
 
-const NOTHING_YET: Working = { thinking: '', opening: '', calls: [], compacting: false, writing: null };
+const NOTHING_YET: Working = { thinking: '', opening: '', openingMillis: null, calls: [], compacting: false, writing: null };
 
 /** Whether there is anything of the working to draw. */
 const anyWorking = (working: Working) =>
@@ -1311,6 +1313,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         return;
       }
       if (carried.has(at)) return;
+      if (message.role === THOUGHT_ROLE && (message.thinking ?? '').trim() === '') return;
       turn.push(at);
     });
     close();
@@ -2039,7 +2042,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(): Pick<
     ChatStreamHandlers,
-    'onThinking' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     return {
       onThinking: (piece) => {
@@ -2109,6 +2112,33 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
           return [...present.slice(0, at), drawn, present[at]];
         });
       },
+      /*
+       * A round's thinking is over, with how long it took. Put on the line the
+       * pieces were drawn into - the opening, or the round's line among the
+       * calls - or, for a round whose pieces never arrived, a line of its own.
+       * Before this a line carried the page's own count, which read "0.0
+       * seconds" for thinking that arrived at once and nothing for a line that
+       * was never the last one while it grew; and the opening carried the whole
+       * turn's total, which read as that one round taking all of it.
+       */
+      onThought: (text, millis) =>
+        setWorking((held) => {
+          if (held.calls.length === 0) {
+            return { ...held, opening: held.opening.trim() === '' ? text : held.opening, openingMillis: millis };
+          }
+          const last = held.calls[held.calls.length - 1];
+          if (last.thought !== undefined) {
+            const settled = { ...last, thought: last.thought.trim() === '' ? text : last.thought, thoughtMillis: millis };
+            return { ...held, calls: [...held.calls.slice(0, -1), settled] };
+          }
+          return {
+            ...held,
+            calls: [
+              ...held.calls,
+              { at: -1 - held.calls.length, tool: '', arguments: '', result: '', failed: false, thought: text, thoughtMillis: millis, seenAt: Date.now() },
+            ],
+          };
+        }),
       onCompacting: () => setWorking((held) => ({ ...held, compacting: true })),
       /*
        * The summary is in the thread now and the messages it replaced are gone,
@@ -3887,7 +3917,7 @@ ${named}`;
                   <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} folded />
                 </div>
                 </>
-              ) : message.role === THOUGHT_ROLE ? (
+              ) : message.role === THOUGHT_ROLE && (message.thinking ?? '').trim() === '' ? null : message.role === THOUGHT_ROLE ? (
                 /*
                   One round's thinking, read back in its place among the calls
                   - the same section the live turn drew there, so a reload
@@ -4090,7 +4120,8 @@ ${named}`;
                           <Thinking
                             text={thinking}
                             live={live}
-                            millis={live ? null : message.thinkingMillis}
+                            /* Above the calls it is the first round only, so its own time and not the whole turn's. */
+                            millis={live ? null : calls.length > 0 ? working.openingMillis : message.thinkingMillis}
                           />
                           {(() => {
                             const drawn = new Set<string>();
@@ -4116,9 +4147,16 @@ ${named}`;
                                 </span>
                               </div>
                             ) : call.thought !== undefined ? (
+                              /* A round that thought nothing has no line. */
+                              call.thought.trim() === '' ? null : (
                               <div key={call.at} data-thought="">
-                                <Thinking text={call.thought} live={live && call === calls[calls.length - 1]} millis={null} />
+                                <Thinking
+                                  text={call.thought}
+                                  live={live && call === calls[calls.length - 1] && call.thoughtMillis === undefined}
+                                  millis={call.thoughtMillis ?? null}
+                                />
                               </div>
+                              )
                             ) : call.said !== undefined ? (
                               <div key={call.at} className={styles.said} data-said="">
                                 <Markdown>{call.said}</Markdown>

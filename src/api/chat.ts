@@ -437,6 +437,8 @@ export interface ChatCall {
    * drawn where it thought it rather than added to the section above the calls.
    */
   thought?: string;
+  /** How long that round thought, as the server measured it, once the round has ended. */
+  thoughtMillis?: number;
   /** Set on a line that is no call either: what the person wrote while the agent was working. */
   person?: string;
   /** Whether the agent has read [person] yet: until then it waits in the inbox for the agent's next step. */
@@ -464,6 +466,12 @@ export interface ChatStreamHandlers {
    * wrong, and getting it wrong means the thinking is read aloud.
    */
   onThinking: (text: string) => void;
+  /**
+   * A round's thinking is over: all of it, and how long the round thought as
+   * the server measured it. Sent before whatever the round went on to do, and
+   * never for a round that thought nothing.
+   */
+  onThought?: (text: string, millis: number) => void;
   /** A lookup, the moment the agent makes it and before its tool has run. */
   /**
    * A picture the round drew, as the markdown that shows it.
@@ -889,6 +897,7 @@ async function read(
     if (frame.event === 'following') handlers.onFollowing?.();
     else if (frame.event === 'chunk' && payload.text !== undefined) handlers.onChunk(payload.text);
     else if (frame.event === 'thinking' && payload.text !== undefined) handlers.onThinking(payload.text);
+    else if (frame.event === 'thought' && payload.text !== undefined) handlers.onThought?.(payload.text, Number(payload.millis ?? 0));
     else if (frame.event === 'drew' && payload.markdown !== undefined) handlers.onDrew(payload.markdown);
     else if (frame.event === 'play' && payload.url !== undefined) {
       handlers.onPlay?.({ url: payload.url, filename: payload.filename ?? '', contentType: payload.contentType ?? '' });

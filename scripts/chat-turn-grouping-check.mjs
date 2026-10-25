@@ -7,6 +7,11 @@
  * avatar, name, time and Copy. A turn now has one header, its lines follow
  * under it in the order they came, and only its answer has a Copy.
  *
+ * And its thinking is drawn once a round, where the round thought, with the
+ * time the server measured for it: never the whole turn's total on the first
+ * round, never "0.0 seconds" for reasoning that arrived at once, and no empty
+ * row for a round that thought nothing.
+ *
  * The history, the stream and the agent on the chat list are stubbed, so this
  * needs a chat and nothing else.
  */
@@ -51,6 +56,8 @@ const FIRST = [
   line('assistant', "I'll check the workspace's skills first, then draw it.", AGENT, 10),
   line('tool', '{"query":"skills"}', 'tool_find', 11),
   line('tool', '{}', 'skill_list', 12),
+  // A round that thought nothing: no row.
+  line('thought', '', AGENT, 13, { thinking: '', thinkingMillis: null }),
   line('assistant', 'Loading done - a screen mockup goes in the wireframe editor.', AGENT, 20),
   line('tool', '{"name":"Login"}', 'orknux_create_wireframe', 21),
   line('thought', '', AGENT, 30, { thinking: 'The form wants an email, a password and a button.', thinkingMillis: 94000 }),
@@ -61,8 +68,10 @@ const FIRST = [
 const SECOND = [
   ...FIRST,
   line('user', 'make the button wider', null, 140),
+  line('thought', '', AGENT, 141, { thinking: 'Which width?', thinkingMillis: 4200 }),
   line('assistant', 'Widening it now.', AGENT, 141),
   line('tool', '{"width":320}', 'orknux_change_wireframe', 142),
+  line('thought', '', AGENT, 144, { thinking: 'Wider by a third.', thinkingMillis: 2100 }),
   line('assistant', '![](/api/attachments/90402)', 'image model', 150),
   line('assistant', 'The button is wider.', AGENT, 151),
 ];
@@ -86,15 +95,24 @@ await page.route('**/graphql', async (route) => {
   await route.continue();
 });
 
-/** The second turn, live: a line said, a call, a picture, then the answer. */
+/**
+ * The second turn, live: a round that thinks, says a line and makes a call,
+ * then a round that thinks again, draws and answers. Each round's thinking is
+ * closed with the time the server measured; the turn's total, 6.3 seconds, is
+ * what the answer is given at the end.
+ */
 await page.route('**/api/chats/*/stream', async (route) => {
   const frames = [
+    'event: thinking', 'data: {"text":"Which width?"}', '',
+    'event: thought', 'data: {"text":"Which width?","millis":4200}', '',
     'event: said', 'data: {"text":"Widening it now."}', '',
     'event: call', 'data: {"at":0,"tool":"orknux_change_wireframe","arguments":"{}"}', '',
     'event: called', 'data: {"at":0,"result":"changed","failed":false}', '',
+    'event: thinking', 'data: {"text":"Wider by a third."}', '',
+    'event: thought', 'data: {"text":"Wider by a third.","millis":2100}', '',
     'event: drew', 'data: {"markdown":"![](/api/attachments/90402)"}', '',
     'event: chunk', 'data: {"text":"The button is wider."}', '',
-    'event: done', 'data: {"millis":120,"thinkingMillis":0,"inputTokens":3,"outputTokens":4,"cost":null}', '', '',
+    'event: done', 'data: {"millis":120,"thinkingMillis":6300,"inputTokens":3,"outputTokens":4,"cost":null}', '', '',
   ].join(String.fromCharCode(10));
   history = SECOND;
   await route.fulfill({ status: 200, contentType: 'text/event-stream', body: frames });
@@ -125,6 +143,19 @@ const read = (probes) =>
     return { avatars, names, copies, missing, inOrder };
   }, probes);
 
+/** The thinking drawn after the person's second message: each block's time as shown, and rows drawn empty. */
+const thinkingOfSecondTurn = () =>
+  page.evaluate(() => {
+    const asked = [...document.querySelectorAll('[class*="userBubble"]')].find((one) => (one.textContent ?? '').includes('make the button wider'));
+    const after = (one) => asked !== undefined && (asked.compareDocumentPosition(one) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    const blocks = [...document.querySelectorAll('[data-testid="thinking"]')].filter(after);
+    return {
+      times: blocks.map((one) => one.querySelector('[data-testid="thinking-elapsed"]')?.textContent?.trim() ?? null),
+      empty: [...document.querySelectorAll('[data-thought]')].filter((row) => row.querySelector('[data-testid="thinking"]') === null).length,
+      zero: [...document.querySelectorAll('[data-testid="thinking-elapsed"]')].filter((one) => /0\.0 seconds/.test(one.textContent ?? '')).length,
+    };
+  });
+
 const FIRST_ORDER = [
   "I'll check the workspace's skills first",
   'tool_find',
@@ -150,6 +181,10 @@ if (await drawn(page, 'the chat log')) {
     return (copy?.closest('[class*="assistantRow"]')?.textContent ?? '').includes('Done - the login form mockup');
   });
   record(copied, 'the Copy is the answer’s');
+  const emptyRows = await page.evaluate(
+    () => [...document.querySelectorAll('[data-thought]')].filter((row) => row.querySelector('[data-testid="thinking"]') === null).length,
+  );
+  record(emptyRows === 0, `a round that thought nothing draws no thinking row (${emptyRows} empty)`);
 
   // Live: the second turn is one message too, beside the first.
   const box = page.locator('#chat-composer');
@@ -161,6 +196,12 @@ if (await drawn(page, 'the chat log')) {
   const live = await read([...FIRST_ORDER, 'make the button wider', 'Widening it now.', 'orknux_change_wireframe', 'img:/api/attachments/90402', 'The button is wider.']);
   record(live.avatars === 2 && live.names === 2, `live, the new turn adds one message: two avatars and two names in all (${JSON.stringify(live)})`);
   record(live.inOrder, `in the order they came (${JSON.stringify(live.missing)} missing)`);
+  const liveThinking = await thinkingOfSecondTurn();
+  record(
+    JSON.stringify(liveThinking.times) === JSON.stringify(['for 4 seconds', 'for 2 seconds']),
+    `live, each round's thinking is drawn once with the server's time for that round (${JSON.stringify(liveThinking)})`,
+  );
+  record(liveThinking.zero === 0 && liveThinking.empty === 0, `and nothing reads "0.0 seconds" or is drawn empty (${JSON.stringify(liveThinking)})`);
 
   // Reloaded, the same.
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -170,6 +211,13 @@ if (await drawn(page, 'the chat log')) {
     const again = await read([...FIRST_ORDER, 'make the button wider', 'Widening it now.', 'orknux_change_wireframe', 'img:/api/attachments/90402', 'The button is wider.']);
     record(again.avatars === 2 && again.names === 2 && again.copies === 2, `after a reload, still one message a turn (${JSON.stringify(again)})`);
     record(again.inOrder, `in the order they came (${JSON.stringify(again.missing)} missing)`);
+    const reloadedThinking = await thinkingOfSecondTurn();
+    record(
+      JSON.stringify(reloadedThinking.times) === JSON.stringify(['for 4 seconds', 'for 2 seconds']) &&
+        reloadedThinking.zero === 0 &&
+        reloadedThinking.empty === 0,
+      `after a reload, each round's thinking once, with its time, none empty (${JSON.stringify(reloadedThinking)})`,
+    );
   }
 }
 
