@@ -2176,6 +2176,30 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own catalogs and documents and removes them. */
   },
+  {
+    name: 'document-editor-check',
+    what: 'the document editor draws its document on sheets measured to their paper, keeps paragraphs off the gaps and starts a page after a break, turns and resizes the sheets with the page settings, draws an uploaded picture, puts its chat where the wireframe editor does, and downloads its exports',
+    needs: ['workspace'],
+    /* Makes its own document and wireframe and removes them; the picture is drawn in the page and kept as a Design picture. */
+  },
+  {
+    name: 'document-assist-check',
+    what: "the document editor's suggestion while typing - drawn after the caret, taken with Tab - and its grammar marks and replacements, and that switched off neither asks anything",
+    needs: ['workspace'],
+    /* The completion and the grammar check are answered here, since CI has neither model nor LanguageTool to wait for. */
+  },
+  {
+    name: 'document-code-check',
+    what: 'a code block typed as a fence is Kotlin, coloured, monospace and scrolled rather than wrapped, after a reload too, and its picker changes its language',
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
+  {
+    name: 'document-find-check',
+    what: 'Find in a document counts and marks every match across its pages, steps through them, matches whole words and replaces; the view has no bar, no chat and nothing editable, and finds too',
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
 
   {
     name: 'negative-prompt-check',

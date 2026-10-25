@@ -6,14 +6,17 @@ import {
   createDocumentCatalog,
   deleteDocument,
   deleteDocumentCatalog,
+  PAGE_SIZES,
   documentPath,
   fetchDocumentCatalogs,
+  fetchDocumentPageSizeDefault,
+  setDocumentPageSizeDefault,
   fetchDocuments,
   moveDocument,
   renameDocument,
   renameDocumentCatalog,
 } from '../../api/documents';
-import type { DesignDocument, DocumentCatalog } from '../../api/documents';
+import type { DesignDocument, DocumentCatalog, PageSize } from '../../api/documents';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import eyeIcon from '../../assets/eye.svg';
@@ -75,6 +78,13 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
   const [catalogDialog, setCatalogDialog] = useState<{ renaming: DocumentCatalog | null } | null>(null);
   /** Bumped after a change, so the list is asked again. */
   const [revision, setRevision] = useState(0);
+  /** The page a new document starts on: a workspace setting. */
+  const [pageDefault, setPageDefault] = useState<PageSize | null>(null);
+
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchDocumentPageSizeDefault(workspaceId).then(setPageDefault).catch(() => setPageDefault(null));
+  }, [workspaceId]);
 
   const current = catalogs?.find((catalog) => catalog.id === selected) ?? null;
 
@@ -256,6 +266,25 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
                 </button>
               </div>
             )}
+            <label className={styles.pageDefault}>
+              <span>{t('New documents')}</span>
+              <select
+                value={pageDefault ?? 'A4'}
+                onChange={(event) => {
+                  const chosen = event.target.value as PageSize;
+                  void guard(async () => setPageDefault(await setDocumentPageSizeDefault(workspaceId, chosen)));
+                }}
+                disabled={pageDefault === null}
+                aria-label={t('The page new documents start on')}
+                data-testid="document-page-default"
+              >
+                {PAGE_SIZES.map((one) => (
+                  <option key={one.value} value={one.value}>
+                    {one.value === 'LETTER' ? t('Letter') : one.value === 'LEGAL' ? t('Legal') : one.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               className={`${table.createButton} ${styles.newDocument}`}

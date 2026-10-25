@@ -382,6 +382,9 @@ export const PAGES = [
     access: 'signed-in',
     goTo: { label: t('Documents'), where: 'Design', icon: documentIcon, also: 'document text writing pages report word processor' },
   },
+  /* A document's editor, and the same document to be read, at an address of its own to send. */
+  { path: '/workspace/:workspaceId/design/documents/:documentId', access: 'signed-in', goTo: false },
+  { path: '/workspace/:workspaceId/design/documents/:documentId/view', access: 'signed-in', goTo: false },
   {
     path: '/workspace/:workspaceId/design/images',
     access: 'signed-in',
@@ -669,6 +672,7 @@ export const PAGES = [
     access: 'admin',
     goTo: { label: t('Settings'), where: 'Admin', icon: settingsIcon, also: 'attachments chat installation' },
     sections: [
+      { label: t('Grammar'), at: '#grammar', also: 'languagetool spelling spell check documents' },
       { label: t('Chat'), at: '#chat', also: 'rounds' },
       { label: t('Agents'), at: '#agents', also: 'sleep subagents asks at once rate limit backoff' },
       { label: t('Tool calls'), at: '#tool-calls', also: 'per reply repeated loop warnings' },

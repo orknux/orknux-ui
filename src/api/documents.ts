@@ -17,7 +17,25 @@ export interface DocumentCatalog {
   createdAt: string;
 }
 
-export type PageSize = 'A4' | 'LETTER';
+export type PageSize = 'A3' | 'A4' | 'A5' | 'LETTER' | 'LEGAL';
+export type Orientation = 'PORTRAIT' | 'LANDSCAPE';
+export type Margins = 'NORMAL' | 'NARROW' | 'WIDE';
+
+/** What a page is set up as, in the order the editor's menu offers them. */
+export const PAGE_SIZES: { value: PageSize; label: string }[] = [
+  { value: 'A4', label: 'A4' },
+  { value: 'LETTER', label: 'Letter' },
+  { value: 'A5', label: 'A5' },
+  { value: 'LEGAL', label: 'Legal' },
+  { value: 'A3', label: 'A3' },
+];
+
+/** A document's page as laid out, in millimetres: its size turned the way it is, and its margin. */
+export interface DocumentPage {
+  widthMm: number;
+  heightMm: number;
+  marginMm: number;
+}
 
 export interface DesignDocument {
   id: string;
@@ -28,6 +46,11 @@ export interface DesignDocument {
   /** `{"type":"doc","content":[...]}`; absent where a list did not ask for it. */
   content?: string;
   pageSize: PageSize;
+  orientation: Orientation;
+  margins: Margins;
+  /** en or pl, what its grammar is checked in; null is the reader's own. */
+  language: string | null;
+  page: DocumentPage;
   /** Counts the saves; a save sent with an older one is refused. */
   revision: number;
   words: number;
@@ -60,7 +83,8 @@ export interface DocumentAnswer {
 }
 
 /** What the list reads: everything but the content. */
-const LISTED = 'id workspaceId catalogId catalogName name pageSize revision words excerpt images createdBy createdAt updatedBy updatedAt';
+const LISTED =
+  'id workspaceId catalogId catalogName name pageSize orientation margins language page { widthMm heightMm marginMm } revision words excerpt images createdBy createdAt updatedBy updatedAt';
 /** What the editor and the view read. */
 const FIELDS = `${LISTED} content`;
 const CATALOG = 'id workspaceId name documentCount createdBy createdAt';
@@ -148,15 +172,104 @@ export async function moveDocument(id: string, catalogId: string): Promise<Desig
   return data.moveDocument;
 }
 
+/** How a document's pages are set up, and what it is written in: saved with it. */
+export interface DocumentSettings {
+  pageSize: PageSize;
+  orientation: Orientation;
+  margins: Margins;
+  /** Empty for the reader's own. */
+  language: string;
+}
+
 /** Writes the whole document; refused when it was saved since `revision`. */
-export async function saveDocument(id: string, content: unknown, revision: number, pageSize: PageSize): Promise<DesignDocument> {
+export async function saveDocument(id: string, content: unknown, revision: number, settings: DocumentSettings): Promise<DesignDocument> {
   const data = await graphql<{ saveDocument: DesignDocument }>(
-    `mutation ($id: ID!, $content: String!, $revision: Int, $pageSize: String) {
-       saveDocument(id: $id, content: $content, revision: $revision, pageSize: $pageSize) { ${FIELDS} }
+    `mutation ($id: ID!, $content: String!, $revision: Int, $pageSize: String, $orientation: String, $margins: String, $language: String) {
+       saveDocument(id: $id, content: $content, revision: $revision, pageSize: $pageSize, orientation: $orientation, margins: $margins, language: $language) { ${FIELDS} }
      }`,
-    { id, content: JSON.stringify(content), revision, pageSize },
+    { id, content: JSON.stringify(content), revision, ...settings },
   );
   return data.saveDocument;
+}
+
+/** The page a new document in the workspace starts on. */
+export async function fetchDocumentPageSizeDefault(workspaceId: string): Promise<PageSize> {
+  const data = await graphql<{ documentPageSizeDefault: PageSize }>(
+    `query ($workspaceId: ID!) { documentPageSizeDefault(workspaceId: $workspaceId) }`,
+    { workspaceId },
+  );
+  return data.documentPageSizeDefault;
+}
+
+export async function setDocumentPageSizeDefault(workspaceId: string, pageSize: PageSize): Promise<PageSize> {
+  const data = await graphql<{ setDocumentPageSizeDefault: PageSize }>(
+    `mutation ($workspaceId: ID!, $pageSize: String!) { setDocumentPageSizeDefault(workspaceId: $workspaceId, pageSize: $pageSize) }`,
+    { workspaceId, pageSize },
+  );
+  return data.setDocumentPageSizeDefault;
+}
+
+/** How the sentence at the caret might go on, from the workspace's completion model; null for nothing. */
+export async function fetchDocumentCompletion(
+  id: string,
+  around: { before: string; after: string; page: number },
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const data = await graphql<{ documentCompletion: string | null }>(
+    `query DocumentCompletion($id: ID!, $before: String!, $after: String, $page: Int) {
+       documentCompletion(id: $id, before: $before, after: $after, page: $page)
+     }`,
+    { id, ...around },
+    signal,
+  );
+  return data.documentCompletion;
+}
+
+/** One mistake in a text, at characters into it. */
+export interface GrammarMatch {
+  offset: number;
+  length: number;
+  message: string;
+  shortMessage: string | null;
+  replacements: string[];
+  rule: string;
+  spelling: boolean;
+}
+
+export interface GrammarSettings {
+  pauseMillis: number;
+  textMost: number;
+  languages: string[];
+  server: string | null;
+  serverConfigured: string | null;
+}
+
+export async function fetchGrammarSettings(): Promise<GrammarSettings> {
+  const data = await graphql<{ grammarSettings: GrammarSettings }>(
+    '{ grammarSettings { pauseMillis textMost languages server serverConfigured } }',
+  );
+  return data.grammarSettings;
+}
+
+/** Points grammar checking at a LanguageTool server; empty goes back to the built-in one. */
+export async function setGrammarServer(url: string): Promise<GrammarSettings> {
+  const data = await graphql<{ setGrammarServer: GrammarSettings }>(
+    'mutation ($url: String) { setGrammarServer(url: $url) { pauseMillis textMost languages server serverConfigured } }',
+    { url },
+  );
+  return data.setGrammarServer;
+}
+
+/** Where the mistakes in a paragraph are. */
+export async function checkGrammar(language: string, text: string, signal?: AbortSignal): Promise<GrammarMatch[]> {
+  const data = await graphql<{ grammarCheck: GrammarMatch[] }>(
+    `query GrammarCheck($language: String!, $text: String!) {
+       grammarCheck(language: $language, text: $text) { offset length message shortMessage replacements rule spelling }
+     }`,
+    { language, text },
+    signal,
+  );
+  return data.grammarCheck;
 }
 
 export async function deleteDocument(id: string): Promise<boolean> {

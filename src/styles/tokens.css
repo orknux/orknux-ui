@@ -222,6 +222,34 @@
   --wireframe-note: #fdf3c4;
   --wireframe-note-edge: #d9c87a;
   --wireframe-select: #2f80ed;
+
+  /*
+   * A document is printed on white paper whichever way up the interface is,
+   * as a word processor's page is - so the paper, its ink and the colours of
+   * code on it are not redefined for the light theme. Only the desk the
+   * sheets lie on follows the screen around it.
+   */
+  --document-desk: #26262b;
+  --document-paper: #ffffff;
+  --document-ink: #1f1f23;
+  --document-muted: #6b6b74;
+  --document-edge: #d4d4d8;
+  --document-sheet-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.25);
+  --document-link: #1d4ed8;
+  --document-quote: #c8c8ce;
+  --document-code-bg: #f6f8fa;
+  --document-code-edge: #d0d7de;
+  --document-code-comment: #6a737d;
+  --document-code-keyword: #cf222e;
+  --document-code-string: #0a3069;
+  --document-code-number: #0550ae;
+  --document-code-type: #8250df;
+  --document-ghost: #9b9ba3;
+  --document-grammar: #2563eb;
+  --document-spelling: #dc2626;
+  --document-find: rgba(250, 204, 21, 0.45);
+  --document-find-active: rgba(249, 115, 22, 0.6);
+  --document-select: #2f80ed;
 }
 
 /*
@@ -237,6 +265,9 @@
  * white card on a white page has nothing to stand on.
  */
 :root[data-theme='light'] {
+  /* The desk a document's sheets lie on; the sheets themselves are white in both. */
+  --document-desk: #e4e4e8;
+  --document-sheet-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 6px 18px rgba(0, 0, 0, 0.08);
   /* Scrollbars and controls follow the theme the same way the tokens do. */
   color-scheme: light;
 

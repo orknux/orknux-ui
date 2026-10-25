@@ -1,0 +1,466 @@
+import { Extension, Node, mergeAttributes } from '@tiptap/core';
+import type { AnyExtension, Editor } from '@tiptap/core';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { EditorState } from '@tiptap/pm/state';
+import type { Node as PmNode } from '@tiptap/pm/model';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import type { ReactNodeViewProps } from '@tiptap/react';
+import { StarterKit } from '@tiptap/starter-kit';
+import { common, createLowlight } from 'lowlight';
+import { search } from 'prosemirror-search';
+import { useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+
+import { t } from '../../i18n';
+import { DocumentPages } from './documentPages';
+import type { PageGeometry } from './documentPages';
+import styles from './DocumentPaper.module.css';
+
+/**
+ * The editor's vocabulary: what a document can hold, and the parts of the
+ * editor that are not the document - pages, the inline suggestion, grammar
+ * marks, find. The server checks a saved document against the same node names
+ * (`DocumentContent`), so a node added here is a node added there.
+ */
+
+/** highlight.js's common languages: every one the picker offers is among them. */
+export const lowlight = createLowlight(common);
+
+/** The languages a code block's picker offers, by highlight.js's names; the server's exports know the same. */
+export const CODE_LANGUAGES: { value: string; label: string }[] = [
+  { value: 'plaintext', label: 'Plain text' },
+  { value: 'kotlin', label: 'Kotlin' },
+  { value: 'java', label: 'Java' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'json', label: 'JSON' },
+  { value: 'yaml', label: 'YAML' },
+  { value: 'bash', label: 'Bash' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'c', label: 'C' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'xml', label: 'XML' },
+  { value: 'markdown', label: 'Markdown' },
+];
+
+/** A code block, with its language picked above it and a copy of its text a press away. */
+function CodeBlockView({ node, updateAttributes, editor }: ReactNodeViewProps) {
+  const [copied, setCopied] = useState(false);
+  const language = (node.attrs.language as string | null) ?? 'plaintext';
+  return (
+    <NodeViewWrapper className={styles.codeBlock} data-testid="document-code-block" data-language={language}>
+      <div className={styles.codeBar} contentEditable={false}>
+        <select
+          className={styles.codeLanguage}
+          value={CODE_LANGUAGES.some((one) => one.value === language) ? language : 'plaintext'}
+          onChange={(event) => updateAttributes({ language: event.target.value })}
+          disabled={!editor.isEditable}
+          aria-label={t('Language')}
+          data-testid="document-code-language"
+        >
+          {CODE_LANGUAGES.map((one) => (
+            <option key={one.value} value={one.value}>
+              {one.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className={styles.codeCopy}
+          onClick={() => {
+            void navigator.clipboard?.writeText(node.textContent).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1500);
+            });
+          }}
+          data-testid="document-code-copy"
+        >
+          {copied ? t('Copied') : t('Copy')}
+        </button>
+      </div>
+      <pre className={styles.codePre}>
+        <NodeViewContent<'code'> as="code" className={`hljs language-${language}`} />
+      </pre>
+    </NodeViewWrapper>
+  );
+}
+
+/** Where a picture's bytes are, for whoever may see the workspace: the server says the same of a saved one. */
+export function documentImageSource(workspaceId: string, artifact: string): string {
+  return `/api/workspaces/${workspaceId}/document-images/${artifact}`;
+}
+
+/** A picture: drawn at a width in percent of the page's text, dragged wider or narrower, with a caption under it. */
+function ImageView({ node, updateAttributes, selected, editor }: ReactNodeViewProps) {
+  const figure = useRef<HTMLElement | null>(null);
+  const width = (node.attrs.width as number | null) ?? null;
+  const [dragging, setDragging] = useState<number | null>(null);
+  const shown = dragging ?? width;
+
+  function down(event: ReactPointerEvent<HTMLSpanElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    const holder = figure.current?.parentElement?.closest('.ProseMirror') as HTMLElement | null;
+    const room = holder?.getBoundingClientRect().width ?? 600;
+    const left = figure.current?.querySelector('img')?.getBoundingClientRect().left ?? 0;
+    const move = (moving: PointerEvent) => setDragging(Math.max(5, Math.min(100, Math.round(((moving.clientX - left) / room) * 100))));
+    const up = (ending: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      const done = Math.max(5, Math.min(100, Math.round(((ending.clientX - left) / room) * 100)));
+      setDragging(null);
+      updateAttributes({ width: done });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  return (
+    <NodeViewWrapper
+      as="figure"
+      ref={figure}
+      className={`${styles.figure} ${selected ? styles.figureSelected : ''}`}
+      data-testid="document-image"
+      data-artifact={node.attrs.artifact as string}
+      data-drag-handle=""
+    >
+      <span className={styles.pictureFrame} style={shown === null ? undefined : { width: `${shown}%` }}>
+        <img src={node.attrs.src as string} alt={(node.attrs.alt as string | null) ?? ''} className={styles.picture} draggable={false} />
+        {editor.isEditable && (
+          <span
+            className={styles.resize}
+            onPointerDown={down}
+            role="separator"
+            aria-label={t('Resize the picture')}
+            title={t('Resize the picture')}
+            data-testid="document-image-resize"
+          />
+        )}
+      </span>
+      {editor.isEditable ? (
+        <input
+          className={styles.captionInput}
+          value={(node.attrs.caption as string | null) ?? ''}
+          placeholder={t('Caption')}
+          onChange={(event) => updateAttributes({ caption: event.target.value === '' ? null : event.target.value })}
+          onKeyDown={(event) => event.stopPropagation()}
+          aria-label={t('Caption')}
+          data-testid="document-image-caption"
+        />
+      ) : (
+        (node.attrs.caption as string | null) && <figcaption className={styles.caption}>{node.attrs.caption as string}</figcaption>
+      )}
+    </NodeViewWrapper>
+  );
+}
+
+const DocumentImage = Node.create({
+  name: 'image',
+  group: 'block',
+  atom: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      artifact: { default: null },
+      src: { default: null },
+      alt: { default: null },
+      caption: { default: null },
+      width: { default: null },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'figure[data-artifact]', getAttrs: (dom) => ({ artifact: (dom as HTMLElement).getAttribute('data-artifact') }) }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['figure', mergeAttributes({ 'data-artifact': HTMLAttributes.artifact }), ['img', { src: HTMLAttributes.src, alt: HTMLAttributes.alt ?? '' }]];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageView, {
+      // The caption is typed in its own box, which the editor leaves alone.
+      stopEvent: ({ event }) => (event.target as HTMLElement | null)?.tagName === 'INPUT',
+    });
+  },
+});
+
+/** A page break: what follows starts on a new page, in the editor and in every export. */
+const PageBreak = Node.create({
+  name: 'pageBreak',
+  group: 'block',
+  atom: true,
+  selectable: true,
+
+  parseHTML() {
+    return [{ tag: 'div[data-page-break]' }];
+  },
+
+  renderHTML() {
+    return ['div', { 'data-page-break': '', class: styles.pageBreak, 'data-testid': 'document-page-break' }];
+  },
+
+  addCommands() {
+    return {
+      setPageBreak:
+        () =>
+        ({ commands }) =>
+          commands.insertContent({ type: 'pageBreak' }),
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return { 'Mod-Enter': () => this.editor.commands.setPageBreak() };
+  },
+});
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    pageBreak: {
+      setPageBreak: () => ReturnType;
+    };
+  }
+}
+
+// -- The inline suggestion ---------------------------------------------------
+
+export const suggestionKey = new PluginKey<{ words: string | null; at: number }>('documentSuggestion');
+
+/**
+ * The words the completion model suggests, drawn grey after the caret for Tab
+ * to take - the chat composer's suggestion, in a page. The asking is
+ * `useInlineCompletion`'s; this only draws what it was given and takes it.
+ */
+const InlineSuggestion = Extension.create({
+  name: 'inlineSuggestion',
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: suggestionKey,
+        state: {
+          init: () => ({ words: null as string | null, at: 0 }),
+          apply(tr, held) {
+            const given = tr.getMeta(suggestionKey) as { words: string | null; at: number } | undefined;
+            if (given !== undefined) return given;
+            // Anything typed or moved takes it away: it was for the text as it stood.
+            if (tr.docChanged || tr.selectionSet) return { words: null, at: 0 };
+            return held;
+          },
+        },
+        props: {
+          decorations(state) {
+            const held = suggestionKey.getState(state);
+            if (held?.words == null || held.at !== state.selection.head) return null;
+            return DecorationSet.create(state.doc, [
+              Decoration.widget(
+                held.at,
+                () => {
+                  const ghost = document.createElement('span');
+                  ghost.className = styles.ghost;
+                  ghost.setAttribute('data-testid', 'document-suggestion');
+                  ghost.textContent = held.words;
+                  return ghost;
+                },
+                { side: 1, key: `ghost-${held.at}-${held.words}` },
+              ),
+            ]);
+          },
+          handleKeyDown(view, event) {
+            const held = suggestionKey.getState(view.state);
+            if (held?.words == null || held.at !== view.state.selection.head) return false;
+            if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+              event.preventDefault();
+              view.dispatch(view.state.tr.insertText(held.words, held.at).setMeta(suggestionKey, { words: null, at: 0 }));
+              return true;
+            }
+            if (event.key === 'Escape') {
+              view.dispatch(view.state.tr.setMeta(suggestionKey, { words: null, at: 0 }));
+              return true;
+            }
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
+
+/** Puts a suggestion after the caret, or takes it away with null. */
+export function suggest(editor: Editor, words: string | null) {
+  editor.view.dispatch(editor.state.tr.setMeta(suggestionKey, { words, at: editor.state.selection.head }));
+}
+
+// -- Grammar -----------------------------------------------------------------
+
+/** One mistake in the document, at document positions. */
+export interface GrammarMark {
+  from: number;
+  to: number;
+  message: string;
+  replacements: string[];
+  rule: string;
+  spelling: boolean;
+}
+
+export const grammarKey = new PluginKey<{ marks: GrammarMark[]; set: DecorationSet }>('documentGrammar');
+
+export interface GrammarOptions {
+  /** A mark was pressed: show what is wrong, where. */
+  onPick: (mark: GrammarMark, at: { left: number; top: number; bottom: number }) => void;
+}
+
+/** The grammar check's findings, underlined; the asking is the page's. */
+const Grammar = Extension.create<GrammarOptions>({
+  name: 'documentGrammar',
+
+  addOptions() {
+    return { onPick: () => undefined };
+  },
+
+  addProseMirrorPlugins() {
+    const options = this.options;
+    return [
+      new Plugin({
+        key: grammarKey,
+        state: {
+          init: () => ({ marks: [] as GrammarMark[], set: DecorationSet.empty }),
+          apply(tr, held, _before, after) {
+            const given = tr.getMeta(grammarKey) as GrammarMark[] | undefined;
+            if (given !== undefined) {
+              return {
+                marks: given,
+                set: DecorationSet.create(
+                  after.doc,
+                  given
+                    .filter((mark) => mark.to <= after.doc.content.size && mark.from < mark.to)
+                    .map((mark) =>
+                      Decoration.inline(mark.from, mark.to, {
+                        class: mark.spelling ? styles.spelling : styles.grammar,
+                        'data-testid': 'document-grammar-mark',
+                      }),
+                    ),
+                ),
+              };
+            }
+            if (!tr.docChanged) return held;
+            const marks = held.marks
+              .map((mark) => ({ ...mark, from: tr.mapping.map(mark.from, 1), to: tr.mapping.map(mark.to, -1) }))
+              .filter((mark) => mark.from < mark.to);
+            return { marks, set: held.set.map(tr.mapping, tr.doc) };
+          },
+        },
+        props: {
+          decorations: (state) => grammarKey.getState(state)?.set,
+          handleClick(view, pos) {
+            const held = grammarKey.getState(view.state);
+            const mark = held?.marks.find((one) => pos >= one.from && pos <= one.to);
+            if (mark === undefined) return false;
+            const start = view.coordsAtPos(mark.from);
+            options.onPick(mark, { left: start.left, top: start.top, bottom: start.bottom });
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
+
+/** A paragraph's words, and the document position of each, for turning a check's offsets into places. */
+export interface Textblock {
+  text: string;
+  /** The document position of each character of [text]. */
+  positions: number[];
+}
+
+/** Every block of words a grammar check reads: paragraphs and headings, wherever they are, but no code. */
+export function textblocks(doc: PmNode): Textblock[] {
+  const found: Textblock[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'codeBlock') return false;
+    if (!node.isTextblock) return true;
+    let text = '';
+    const positions: number[] = [];
+    node.forEach((child, offset) => {
+      if (child.isText) {
+        const words = child.text ?? '';
+        for (let at = 0; at < words.length; at += 1) positions.push(pos + 1 + offset + at);
+        text += words;
+      } else {
+        // A line break or anything else inline reads as a space, at its own place.
+        positions.push(pos + 1 + offset);
+        text += ' ';
+      }
+    });
+    if (text.trim() !== '') found.push({ text, positions });
+    return false;
+  });
+  return found;
+}
+
+/** Puts the grammar check's findings on the document, replacing what was there. */
+export function markGrammar(editor: Editor, marks: GrammarMark[]) {
+  editor.view.dispatch(editor.state.tr.setMeta(grammarKey, marks).setMeta('addToHistory', false));
+}
+
+/** The text before the caret and after it, as the completion model is shown them. */
+export function aroundCaret(state: EditorState): { before: string; after: string; inBlock: string; atEnd: boolean; blockStart: number } {
+  const { $head } = state.selection;
+  const block = $head.parent;
+  const blockStart = $head.start();
+  const before = state.doc.textBetween(0, $head.pos, '\n', ' ');
+  const after = state.doc.textBetween($head.pos, state.doc.content.size, '\n', ' ');
+  const inBlock = block.textBetween(0, $head.parentOffset, undefined, ' ');
+  const atEnd = $head.parentOffset === block.content.size;
+  return { before, after, inBlock, atEnd, blockStart };
+}
+
+/** Every extension a document is edited and viewed with. */
+export function documentExtensions(options: {
+  geometry: () => PageGeometry;
+  onPages: (count: number) => void;
+  onGrammarPick: GrammarOptions['onPick'];
+}): AnyExtension[] {
+  return [
+    StarterKit.configure({
+      codeBlock: false,
+      link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } },
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
+    }),
+    CodeBlockLowlight.extend({
+      addNodeView() {
+        return ReactNodeViewRenderer(CodeBlockView);
+      },
+      addKeyboardShortcuts() {
+        return {
+          ...this.parent?.(),
+          // Tab indents inside a block of code, rather than leaving it.
+          Tab: () => (this.editor.isActive('codeBlock') ? this.editor.commands.insertContent('    ') : false),
+        };
+      },
+    }).configure({ lowlight, defaultLanguage: 'plaintext' }),
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell,
+    DocumentImage,
+    PageBreak,
+    DocumentPages.configure({ geometry: options.geometry, onPages: options.onPages }),
+    InlineSuggestion,
+    Grammar.configure({ onPick: options.onGrammarPick }),
+    Extension.create({
+      name: 'documentFind',
+      addProseMirrorPlugins: () => [search()],
+    }),
+  ];
+}

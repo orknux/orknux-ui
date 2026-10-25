@@ -118,6 +118,10 @@ import {
   imageEditorShortcut,
   setImageEditorShortcut,
   useImageEditorShortcuts,
+  DEFAULT_FIND_SHORTCUT,
+  findShortcut,
+  setFindShortcut,
+  useFindShortcut,
 } from '../../session/shortcut';
 import type { ImageEditorShortcut } from '../../session/shortcut';
 import { inDesktopApp, recordingKeys } from '../../session/desktop';
@@ -150,6 +154,7 @@ type ShortcutKey =
   | 'magicAll'
   | 'nextTab'
   | 'previousTab'
+  | 'find'
   | ImageEditorShortcut;
 
 /** Whether a shortcut is one of the image editor's own: heard only on its canvas, so a bare key will do. */
@@ -212,6 +217,7 @@ const SHORTCUTS: { key: ShortcutKey; stored: () => string; store: (next: string)
   { key: 'magicAll', stored: magicAllShortcut, store: setMagicAllShortcut },
   { key: 'nextTab', stored: nextTabShortcut, store: setNextTabShortcut },
   { key: 'previousTab', stored: previousTabShortcut, store: setPreviousTabShortcut },
+  { key: 'find', stored: findShortcut, store: setFindShortcut },
   ...IMAGE_EDITOR_SHORTCUTS.map((name) => ({
     key: name,
     stored: () => imageEditorShortcut(name),
@@ -273,6 +279,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const storedPreviousTab = usePreviousTabShortcut();
   const previousTabKey = shortcutDrafts.previousTab ?? storedPreviousTab;
   const storedImageEditor = useImageEditorShortcuts();
+  const storedFind = useFindShortcut();
+  const findKey = shortcutDrafts.find ?? storedFind;
   const storedMagicLasso = useMagicLassoShortcut();
   const magicLassoKey = shortcutDrafts.magicLasso ?? storedMagicLasso;
   const storedZoomIn = useZoomInShortcut();
@@ -322,6 +330,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     | 'magicAll'
     | 'nextTab'
     | 'previousTab'
+    | 'find'
     | ImageEditorShortcut
     | null
   >(null);
@@ -1421,6 +1430,32 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
                   {t('Press the combination you want. Escape leaves it as it is.')}
                 </p>
               )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="find-shortcut">{t('Find Shortcut')}</span>
+                <FieldHint label={t('Find Shortcut')}>
+                  {t('Opens Find in a document, in its editor and its view, instead of the browser’s own.')}
+                </FieldHint>
+              </span>
+              <div className={styles.options}>
+                <button
+                  type="button"
+                  className={recording === 'find' ? styles.optionCurrent : styles.option}
+                  onClick={() => {
+                    setRefused(null);
+                    setRecording((held) => (held === 'find' ? null : 'find'));
+                  }}
+                  data-testid="find-shortcut"
+                >
+                  {recording === 'find' ? t('Press any keys…') : findKey}
+                </button>
+                {findKey !== DEFAULT_FIND_SHORTCUT && recording !== 'find' && (
+                  <button type="button" className={styles.option} onClick={() => draftShortcut('find', DEFAULT_FIND_SHORTCUT)}>{t('Reset')}</button>
+                )}
+              </div>
+              {recording === 'find' && <p className={styles.settingNote}>{t('Press the combination you want. Escape leaves it as it is.')}</p>}
             </div>
 
             {IMAGE_EDITOR_SHORTCUTS.map((which) => {

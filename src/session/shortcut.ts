@@ -597,6 +597,27 @@ export function usePreviousTabShortcut(): Shortcut {
   return previousTab.use();
 }
 
+/**
+ * What opens Find in a document, in the editor and the view: Ctrl+F, the
+ * browser's own find, which the page then keeps from opening - its find cannot
+ * see past the page layout, and does not replace.
+ */
+export const DEFAULT_FIND_SHORTCUT = 'Ctrl+F';
+
+const finding = remembered('orknux.findShortcut', DEFAULT_FIND_SHORTCUT);
+
+export function findShortcut(): Shortcut {
+  return finding.get();
+}
+
+export function setFindShortcut(next: Shortcut): void {
+  finding.set(next);
+}
+
+export function useFindShortcut(): Shortcut {
+  return finding.use();
+}
+
 /** Each of the image editor's own shortcuts, remembered as every other one is, under a key of its own. */
 const imageEditor = Object.fromEntries(
   IMAGE_EDITOR_SHORTCUTS.map((name) => [name, remembered(`orknux.imageEditor.${name}Shortcut`, DEFAULT_IMAGE_EDITOR_SHORTCUTS[name])]),
