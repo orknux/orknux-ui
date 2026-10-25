@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import type { PageOf } from '../../api/client';
-import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts, uploadArtifact } from '../../api/artifacts';
+import { deleteArtifact, fetchWorkspaceArtifact, fetchWorkspaceArtifacts, replaceArtifact, uploadArtifact } from '../../api/artifacts';
 import type { Artifact } from '../../api/artifacts';
 import type { SessionUser } from '../../api/session';
 import downloadIcon from '../../assets/download.svg';
@@ -256,6 +256,19 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
     } finally {
       setUploading(false);
     }
+  }
+
+  /**
+   * A new file for the open artifact, held until it is confirmed. The address
+   * stays, so the viewer is shown the new file at the one it already has.
+   */
+  const replacer = useRef<HTMLInputElement | null>(null);
+  const [replacing, setReplacing] = useState<{ artifact: Artifact; file: File } | null>(null);
+  async function replace(artifact: Artifact, file: File) {
+    await replaceArtifact(workspaceId, artifact.id, file);
+    const found = await fetchWorkspaceArtifact(workspaceId, artifact.id).catch(() => null);
+    if (found !== null) setAddressed(found);
+    load();
   }
 
   async function remove(artifact: Artifact) {
@@ -551,6 +564,29 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 rel="noreferrer noopener"
                 title={t('Open this in a tab of its own')}
               >{t('Open in a tab')}</a>
+              {/* Only a file somebody saved has one to swap; a drawn picture changes in the image editor. */}
+              {read.kind === 'SAVED' && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.readingOut}
+                    onClick={() => replacer.current?.click()}
+                    title={t('Put another file at this address')}
+                    data-reading-replace=""
+                  >{t('Replace')}</button>
+                  <input
+                    ref={replacer}
+                    type="file"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file !== undefined) setReplacing({ artifact: read, file });
+                    }}
+                    data-reading-replace-file=""
+                  />
+                </>
+              )}
               <a
                 className={styles.readingClose}
                 href={read.url}
@@ -599,6 +635,17 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
         </div>,
         document.body,
       )}
+
+      <ConfirmDialog
+        subject={replacing?.artifact.filename ?? null}
+        kind="replaceArtifact"
+        detail={replacing === null ? undefined : <span>{t('New file:')} {replacing.file.name}</span>}
+        onClose={() => setReplacing(null)}
+        onConfirm={async () => {
+          if (replacing !== null) await replace(replacing.artifact, replacing.file);
+          setReplacing(null);
+        }}
+      />
 
       <ConfirmDialog
         subject={removing?.filename ?? null}
