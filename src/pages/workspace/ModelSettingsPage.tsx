@@ -38,13 +38,23 @@ import styles from './ModelSettingsPage.module.css';
 import { t, tf } from '../../i18n';
 
 /** The periods the speed chart can average over, in the order the switch draws them. */
-const SPEED_UNITS: { unit: SpeedUnit; label: string }[] = [
-  { unit: 'MINUTE', label: 'Minute' },
-  { unit: 'HOUR', label: 'Hour' },
-  { unit: 'DAY', label: 'Day' },
-  { unit: 'MONTH', label: 'Month' },
-  { unit: 'YEAR', label: 'Year' },
-];
+const SPEED_UNITS: SpeedUnit[] = ['MINUTE', 'HOUR', 'DAY', 'MONTH', 'YEAR'];
+
+/** A period as the switch says it; read at render, since the language is chosen after this module loads. */
+function speedUnitLabel(unit: SpeedUnit): string {
+  switch (unit) {
+    case 'MINUTE':
+      return t('Minute');
+    case 'HOUR':
+      return t('Hour');
+    case 'DAY':
+      return t('Day');
+    case 'MONTH':
+      return t('Month');
+    case 'YEAR':
+      return t('Year');
+  }
+}
 
 /**
  * The period the speed chart opens on. A window of one day drawn by the day
@@ -337,7 +347,7 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
                   <div className={styles.speedChartHead}>
                     <p className={styles.chartTitle}>{t('Speed over time')}</p>
                     <div className={styles.unitSwitch} role="group" aria-label={t('Period')}>
-                      {SPEED_UNITS.map(({ unit, label }) => (
+                      {SPEED_UNITS.map((unit) => (
                         <button
                           key={unit}
                           type="button"
@@ -346,7 +356,7 @@ function ModelSettingsView({ session, onSignOut, onDiscard }: ModelSettingsPageP
                           onClick={() => setPickedUnit(unit)}
                           data-speed-unit={unit}
                         >
-                          {t(label)}
+                          {speedUnitLabel(unit)}
                         </button>
                       ))}
                     </div>

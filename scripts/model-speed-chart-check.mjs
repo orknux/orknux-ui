@@ -136,18 +136,18 @@ await page.locator('[data-model-speed]').screenshot({ path: shot('model-speed-ch
 
 /* Switching the period asks again and draws that many points. */
 for (const [unit, count] of [['HOUR', 9], ['MINUTE', 12], ['MONTH', 1], ['YEAR', 1], ['DAY', 6]]) {
-  await page.locator(`[data-speed-unit="${unit}"]`).click();
+  await page.locator(`[data-speed-unit="${unit}"]`).click({ timeout: 5_000 }).catch(() => undefined);
   const seen = await settles(() => drawn('[data-speed-point]'), count);
   record(seen === count && asked.at(-1) === unit, `${unit.toLowerCase()}: ${count} points drawn (${seen}, asked for ${asked.at(-1)})`);
 }
 record((await drawn('[data-speed-dot]')) === 1 && (await drawn('[data-speed-run]')) === 2, 'back on Day, the same lines and dot');
-await page.locator('[data-speed-unit="MONTH"]').click();
+await page.locator('[data-speed-unit="MONTH"]').click({ timeout: 5_000 }).catch(() => undefined);
 await settles(() => drawn('[data-speed-point]'), 1);
 record((await drawn('[data-speed-dot]')) === 1 && (await drawn('[data-speed-run]')) === 0, 'one month with calls is a dot, not a line of no length');
 
 /* Cut short by the server: the newest periods, and one line saying so. */
 truncate = true;
-await page.locator('[data-speed-unit="HOUR"]').click();
+await page.locator('[data-speed-unit="HOUR"]').click({ timeout: 5_000 }).catch(() => undefined);
 await settles(() => drawn('[data-speed-point]'), 4);
 const note = page.locator('[data-speed-truncated]');
 const noteBox = await note.boundingBox().catch(() => null);
@@ -171,7 +171,7 @@ if (live.YEAR === 0) {
   await showModel();
   await chart.waitFor({ timeout: 15_000 }).catch(() => undefined);
   for (const unit of UNITS) {
-    await page.locator(`[data-speed-unit="${unit}"]`).click();
+    await page.locator(`[data-speed-unit="${unit}"]`).click({ timeout: 5_000 }).catch(() => undefined);
     const seen = await settles(() => drawn('[data-speed-point]'), live[unit]);
     record(seen === live[unit], `live, ${unit.toLowerCase()}: the server's ${live[unit]} points are drawn (${seen})`);
   }
