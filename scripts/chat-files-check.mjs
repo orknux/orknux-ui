@@ -93,9 +93,14 @@ const strip = await page.evaluate(
 record(strip === 0, `there is no strip of files above the composer (${strip})`);
 
 /* Sent with a message: under it at once, with no reload. */
+await page.locator('#chat-composer').fill('Here');
+await page.locator('#chat-composer').blur();
 await page.locator('input[type="file"]').first().setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('notes') });
 await page.waitForTimeout(400);
-await page.locator('#chat-composer').click();
+// What comes after a file is what to say about it: the box has the caret, at the end of what was typed.
+const caret = await page.evaluate(() => ({ focused: document.activeElement?.id, at: document.activeElement?.selectionStart }));
+record(caret.focused === 'chat-composer' && caret.at === 4, `a file added puts the caret in the message box, after what was typed (${JSON.stringify(caret)})`);
+await page.locator('#chat-composer').fill('');
 await page.keyboard.type('And here are my notes.');
 await page.keyboard.press('Enter');
 await page.waitForSelector('[data-message-file="801"]', { timeout: 10_000 }).catch(() => {});

@@ -1860,6 +1860,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     try {
       const held = await uploadAttachments(workspaceId, Array.from(files));
       setAttached((current) => [...current, ...held]);
+      // What comes after a file is what to say about it: the caret goes to the end of the box.
+      const box = composerRef.current;
+      if (box !== null && !box.disabled) {
+        box.focus();
+        box.setSelectionRange(box.value.length, box.value.length);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Those files could not be uploaded.'));
     } finally {
