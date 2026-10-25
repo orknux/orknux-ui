@@ -26,14 +26,20 @@ const PAD = 24;
 const PNG_SCALE = 2;
 
 /** Saves the wireframe to the computer, named after it. */
-export async function exportWireframe(id: string, name: string, elements: WireframeElement[], format: WireframeExportFormat): Promise<void> {
+export async function exportWireframe(
+  id: string,
+  name: string,
+  elements: WireframeElement[],
+  format: WireframeExportFormat,
+  workspaceId?: string,
+): Promise<void> {
   const base = fileBase(name);
   if (format === 'html') {
     const page = await exportWireframeHtml(id, elements);
     save(new Blob([page], { type: 'text/html;charset=utf-8' }), `${base}.html`);
     return;
   }
-  const svg = drawn(elements);
+  const svg = await drawn(elements, workspaceId);
   if (format === 'svg') {
     save(new Blob([svg.text], { type: 'image/svg+xml;charset=utf-8' }), `${base}.svg`);
     return;
@@ -69,8 +75,13 @@ const WORDS_PROPS = [
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** The drawing as a standalone SVG document, and its size in the drawing's pixels. */
-function drawn(elements: WireframeElement[]): { text: string; width: number; height: number } {
+/**
+ * The drawing as a standalone SVG document, and its size in the drawing's
+ * pixels. A picture on it is carried in the file as a `data:` address: a file
+ * taken away has no server to fetch it from, and a PNG is drawn from an SVG
+ * that may not fetch anything at all.
+ */
+async function drawn(elements: WireframeElement[], workspaceId?: string): Promise<{ text: string; width: number; height: number }> {
   const bounds = boundsOf(elements) ?? { x: 0, y: 0, w: 100, h: 60 };
   const width = Math.ceil(bounds.w + PAD * 2);
   const height = Math.ceil(bounds.h + PAD * 2);
@@ -88,7 +99,7 @@ function drawn(elements: WireframeElement[]): { text: string; width: number; hei
         createElement(
           'svg',
           { xmlns: SVG_NS, width, height, viewBox },
-          createElement(WireframeShapes, { elements, markerId: 'wireframe-export-arrow' }),
+          createElement(WireframeShapes, { elements, markerId: 'wireframe-export-arrow', workspaceId }),
         ),
       ),
     );
@@ -104,10 +115,32 @@ function drawn(elements: WireframeElement[]): { text: string; width: number; hei
     background.setAttribute('height', String(height));
     background.setAttribute('fill', desk);
     copy.insertBefore(background, copy.firstChild);
+    await carried(copy);
     return { text: `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(copy)}`, width, height };
   } finally {
     root.unmount();
     host.remove();
+  }
+}
+
+/** Each picture's address replaced by its bytes; one that cannot be had is left out rather than left pointing at this server. */
+async function carried(svg: SVGSVGElement) {
+  for (const picture of Array.from(svg.querySelectorAll('image'))) {
+    const source = picture.getAttribute('href') ?? '';
+    try {
+      const answer = await fetch(source, { credentials: 'same-origin' });
+      if (!answer.ok) throw new Error(String(answer.status));
+      const bytes = await answer.blob();
+      const address = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error ?? new Error('unreadable'));
+        reader.readAsDataURL(bytes);
+      });
+      picture.setAttribute('href', address);
+    } catch {
+      picture.remove();
+    }
   }
 }
 

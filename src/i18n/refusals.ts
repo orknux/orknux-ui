@@ -436,6 +436,10 @@ const PL: Record<string, string> = {
   WireframeChanged: 'Makieta {name} została zmieniona od czasu jej otwarcia; otwórz ją ponownie przed zapisaniem',
   WireframeTooLarge: 'Makieta może mieć najwyżej {most} elementów, a ta miałaby {count}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
+  WireframePictureRefused: 'Nie można umieścić obrazu na makiecie: {why}',
+  DocumentImportFormatUnknown: 'Dokument importuje się z pliku PDF, Markdown, ODT, DOCX, HTML albo tekstowego, a {filename} nie jest żadnym z nich',
+  DocumentImportTooLarge: '{filename} ma {megabytes} MB, a dokument importuje najwyżej {most} MB',
+  DocumentImportUnreadable: 'Nie udało się odczytać pliku {filename}: {reason}',
   // --- Explore > Diagrams --------------------------------------------------
   DiagramNotFound: 'Nie ma diagramu o identyfikatorze {id}',
   DiagramCatalogNotFound: 'Nie ma katalogu diagramów o identyfikatorze {id}',

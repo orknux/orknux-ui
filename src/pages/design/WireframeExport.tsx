@@ -20,7 +20,18 @@ const FORMATS: { format: WireframeExportFormat; label: string; hint: () => strin
  * as an HTML page, an SVG or a PNG named after the wireframe. The same menu,
  * and the same classes, as the image editor's.
  */
-export function WireframeExport({ id, name, elements }: { id: string | null; name: string; elements: WireframeElement[] }) {
+export function WireframeExport({
+  id,
+  name,
+  elements,
+  workspaceId,
+}: {
+  id: string | null;
+  name: string;
+  elements: WireframeElement[];
+  /** Whose pictures the drawing's image elements name, so an SVG or a PNG carries them. */
+  workspaceId?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +53,7 @@ export function WireframeExport({ id, name, elements }: { id: string | null; nam
     setBusy(true);
     setError(null);
     try {
-      await exportWireframe(id, name, elements, format);
+      await exportWireframe(id, name, elements, format, workspaceId);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not export the wireframe.'));
     } finally {

@@ -3850,4 +3850,11 @@ export const PL: Record<string, string> = {
   "Start a research on:": "Rozpocząć badanie na temat:",
   "How many questions a finished research here suggests asking next, each a research of its own; 0 suggests none. Left empty, the installation’s number is used.": "Ile pytań na dalsze badania proponuje zakończone badanie w tej przestrzeni roboczej; każde to osobne badanie, 0 nie proponuje żadnego. Puste oznacza liczbę instalacji.",
   "The number the noise a video starts from is drawn with: the same seed, prompt and settings make the same video again, and another seed makes another take of it.": "Liczba, z której losowany jest szum, od którego zaczyna się film: ten sam seed, opis i ustawienia dają ten sam film, a inny seed daje inne jego ujęcie.",
+  "Replace the document…": "Zastąp dokument…",
+  "Insert at the caret…": "Wstaw w miejscu kursora…",
+  "Could not import the file.": "Nie udało się zaimportować pliku.",
+  "{count} pictures were left out.": "Pominięto obrazy: {count}.",
+  "Read a PDF, Markdown, ODT, DOCX, HTML or text file into the document": "Wczytaj do dokumentu plik PDF, Markdown, ODT, DOCX, HTML albo tekstowy",
+  "Put a picture from a file or from Orknux on the wireframe": "Umieść na makiecie obraz z pliku albo z Orknux",
+  "Could not import the picture.": "Nie udało się zaimportować obrazu.",
 };

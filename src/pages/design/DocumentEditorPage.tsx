@@ -58,6 +58,7 @@ import { DesignChat, useChatFiles, useChatModels } from './DesignChat';
 import type { ChatIdea } from './DesignChat';
 import { DesignPicturePickerDialog } from './DesignPicturePickerDialog';
 import { DocumentExportMenu } from './DocumentExportMenu';
+import { DocumentImportMenu } from './DocumentImportMenu';
 import { DocumentFind } from './DocumentFind';
 import { DocumentPaper, geometryOf, useDocumentEditor } from './DocumentPaper';
 import type { ChangedRange } from './DocumentPaper';
@@ -704,6 +705,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
               </div>
             )}
           </div>
+          <DocumentImportMenu documentId={held?.id ?? null} editor={answering ? null : editor} />
           <DocumentExportMenu documentId={held?.id ?? null} name={held?.name ?? ''} beforeExport={save} />
           <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy || answering} title={`${t('Save')} (${saveKey})`} data-testid="document-save">
             {t('Save')}

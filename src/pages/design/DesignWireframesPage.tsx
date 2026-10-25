@@ -149,7 +149,7 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
                   title={t('Open in editor')}
                   data-testid="wireframe-open"
                 >
-                  <WireframePreview elements={elementsOf(wireframe)} id={wireframe.id} />
+                  <WireframePreview elements={elementsOf(wireframe)} id={wireframe.id} workspaceId={wireframe.workspaceId} />
                 </button>
                 <figcaption className={`${gallery.caption} ${styles.caption}`}>
                   <div className={styles.nameRow}>

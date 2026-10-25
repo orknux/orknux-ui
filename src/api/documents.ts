@@ -311,3 +311,26 @@ export function contentOf(document: Pick<DesignDocument, 'content'>): Record<str
 export function documentPath(workspaceId: string, id: string, view = false): string {
   return `/workspace/${workspaceId}/design/documents/${id}${view ? '/view' : ''}`;
 }
+
+/** A file read into a document's vocabulary on the server, not yet on its page. */
+export interface DocumentImport {
+  /** `{"type":"doc","content":[...]}`, checked as a save is. */
+  content: string;
+  /** What it was read as: PDF, Markdown, ODT, DOCX, HTML or Text. */
+  format: string;
+  /** How many pictures it brought, now Design pictures of the workspace. */
+  pictures: number;
+  /** How many it carried that were not kept. */
+  picturesLeftOut: number;
+}
+
+/** Reads a file into the document's vocabulary; nothing is saved, the editor puts it on the page. */
+export async function importDocumentFile(id: string, filename: string, file: string): Promise<DocumentImport> {
+  const data = await graphql<{ importDocumentFile: DocumentImport }>(
+    `mutation ImportDocumentFile($id: ID!, $filename: String!, $file: String!) {
+       importDocumentFile(id: $id, filename: $filename, file: $file) { content format pictures picturesLeftOut }
+     }`,
+    { id, filename, file },
+  );
+  return data.importDocumentFile;
+}

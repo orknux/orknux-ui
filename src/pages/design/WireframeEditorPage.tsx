@@ -47,6 +47,7 @@ import styles from './WireframeEditorPage.module.css';
 import { boundsOf, WireframeShapes } from './WireframeDrawing';
 import { WireframeExport } from './WireframeExport';
 import { DesignChat, useChatFiles } from './DesignChat';
+import { placedPicture, WireframeImportMenu } from './WireframeImportMenu';
 import type { ChatIdea } from './DesignChat';
 import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
 
@@ -896,7 +897,18 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
           <button type="button" className={form.ghost} onClick={remove} disabled={selected.length === 0} title={t('Delete')} data-testid="wireframe-delete">
             {t('Delete')}
           </button>
-          <WireframeExport id={wireframe?.id ?? null} name={wireframe?.name ?? ''} elements={elements} />
+          <WireframeImportMenu
+            workspaceId={workspaceId}
+            wireframeId={wireframe?.id ?? null}
+            onPicture={(picture, size) => {
+              const area = canvasRef.current?.getBoundingClientRect();
+              const visible = { x: -view.x / view.zoom, y: -view.y / view.zoom, w: (area?.width ?? 800) / view.zoom, h: (area?.height ?? 600) / view.zoom };
+              const made = placedPicture(elements, selected, visible, size, picture);
+              change([...elements, made]);
+              setSelected([made.id]);
+            }}
+          />
+          <WireframeExport id={wireframe?.id ?? null} name={wireframe?.name ?? ''} elements={elements} workspaceId={workspaceId} />
           <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy} title={`${t('Save')} (${saveKey})`} data-testid="wireframe-save">
             {t('Save')}
           </button>
@@ -925,7 +937,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
               </defs>
               <rect width="100%" height="100%" fill="url(#wireframe-grid)" />
               <g transform={`translate(${view.x} ${view.y}) scale(${view.zoom})`}>
-                <WireframeShapes elements={elements} markerId="wireframe-editor-arrow" />
+                <WireframeShapes elements={elements} markerId="wireframe-editor-arrow" workspaceId={workspaceId} />
                 {chosenBounds !== null && selected.length > 1 && (
                   <rect
                     x={chosenBounds.x}
