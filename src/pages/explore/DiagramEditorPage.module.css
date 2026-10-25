@@ -84,6 +84,44 @@
   background: var(--color-surface-hover);
 }
 
+/* PNG and the scale it is drawn at, on one row: the item takes the room, the scales sit at its end. */
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.menuRow .menuItem {
+  flex: 1;
+}
+
+.scales {
+  display: flex;
+  gap: var(--space-2);
+  padding-right: var(--space-4);
+}
+
+.scale {
+  padding: var(--space-2) var(--space-6);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+.scale:hover {
+  color: var(--color-text-primary);
+}
+
+.scaleOn {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  background: var(--color-surface-hover);
+}
+
 /* ---- A node: one box, its words in the middle ---- */
 
 .shape {

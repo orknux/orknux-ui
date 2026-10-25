@@ -10,15 +10,30 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/*
+ * The back link and the name, the same in every editor that has this row -
+ * documents, wireframes, images, videos and diagrams all use these two classes.
+ * They used to inherit the font of the page around them, so the row changed size
+ * and weight from one editor to the next. Both are --text-md, the size of the
+ * toolbar's own buttons (Edit, Import, Export) on the same line: the bar reads
+ * as one line of one size, and 13px is still the body size of every list.
+ */
+.back,
+.toolbarTitle {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 20px;
+  white-space: nowrap;
+}
+
 /* One line whatever the bar holds: squeezed, "Images" broke under its arrow. */
 .back {
   flex-shrink: 0;
-  padding: 0;
-  white-space: nowrap;
-  background: none;
-  border: 0;
   color: var(--color-text-secondary);
-  font: inherit;
+  font-weight: 400;
   cursor: pointer;
 }
 
@@ -26,17 +41,21 @@
   color: var(--color-text-primary);
 }
 
+/* Reached by the keyboard it is underlined, not boxed: a ring round it read as a stuck focus. */
+.back:focus-visible {
+  outline: none;
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* The name, or the prompt cut short: one line, never wider than half the bar. */
 .toolbarTitle {
   min-width: 0;
   max-width: 50%;
-  padding: 0;
   overflow: hidden;
-  background: none;
-  border: 0;
   color: var(--color-text-primary);
-  font: inherit;
-  white-space: nowrap;
+  font-weight: 500;
   text-overflow: ellipsis;
   text-align: left;
 }
@@ -57,7 +76,9 @@ button.toolbarTitle:hover {
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-6);
   color: var(--color-text-primary);
-  font: inherit;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 500;
 }
 
 .toolbarRight {

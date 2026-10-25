@@ -3923,4 +3923,7 @@ export const PL: Record<string, string> = {
   "{added} added, {removed} removed, {changed} changed": "dodane: {added}, usunięte: {removed}, zmienione: {changed}",
   "The document is put back to this version, and what it says now is kept in its history:": "Dokument wraca do tej wersji, a jego obecna treść zostaje zachowana w historii:",
   "Restoring…": "Przywracanie…",
+  // The document editor's sheets drawn dark, and a diagram's PNG at a scale.
+  "Dark page": "Ciemna strona",
+  "PNG scale": "Skala PNG",
 };

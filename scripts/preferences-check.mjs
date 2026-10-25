@@ -185,38 +185,39 @@ for (const viewport of SIZES) {
     return said;
   });
   const disc = (name) => page.evaluate((one) => getComputedStyle(document.querySelector(`[data-swatch="${one}"]`)).backgroundColor, name);
-  const moss = await brand();
+  // Blue is the default (accent-default-check); Moss, the brand's, is the one chosen here.
+  const blue = await brand();
 
   record((await page.locator('[data-accent-option]').count()) >= 5, 'Preferences offers a row of accent colours');
-  await page.getByRole('radio', { name: 'Blue' }).click();
-  record((await brand()) === moss, 'a swatch picked is not applied before Save');
+  await page.getByRole('radio', { name: 'Moss' }).click();
+  record((await brand()) === blue, 'a swatch picked is not applied before Save');
   await save.click();
   await page.waitForTimeout(300);
-  const blue = await brand();
-  record(blue !== moss, `Save applies it (${moss} -> ${blue})`);
-  record(blue === (await disc('blue')), `the Blue swatch is the colour Blue gives the page (${await disc('blue')})`);
-  // The logo too: its triad is the accent, not the moss a file behind an <img> kept.
+  const moss = await brand();
+  record(moss !== blue, `Save applies it (${blue} -> ${moss})`);
+  record(moss === (await disc('moss')), `the Moss swatch is the colour Moss gives the page (${await disc('moss')})`);
+  // The logo too: its triad is the accent, not the colour a file behind an <img> kept.
   const mark = await page.evaluate(() => {
     const node = document.querySelector('[data-orknux-mark] circle');
     return node === null ? null : getComputedStyle(node).fill;
   });
-  record(mark === blue, `the logo in the shell is drawn in it (${mark})`);
-  await page.screenshot({ path: 'screenshots/accent-blue.png', clip: { x: 0, y: 0, width: 420, height: 120 } });
+  record(mark === moss, `the logo in the shell is drawn in it (${mark})`);
+  await page.screenshot({ path: 'screenshots/accent-moss.png', clip: { x: 0, y: 0, width: 420, height: 120 } });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-testid="accent"]', { timeout: 20_000 });
-  record((await brand()) === blue, 'and it is kept over a reload');
-  record((await page.getByRole('radio', { name: 'Blue' }).getAttribute('aria-checked')) === 'true', 'with Blue shown as chosen');
-  // The other theme: its own blue, and the disc still the same as the page.
+  record((await brand()) === moss, 'and it is kept over a reload');
+  record((await page.getByRole('radio', { name: 'Moss' }).getAttribute('aria-checked')) === 'true', 'with Moss shown as chosen');
+  // The other theme: its own moss, and the disc still the same as the page.
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
-  const lightBlue = await brand();
-  record(lightBlue !== blue && lightBlue === (await disc('blue')), `in the light theme too (${lightBlue} / ${await disc('blue')})`);
+  const lightMoss = await brand();
+  record(lightMoss !== moss && lightMoss === (await disc('moss')), `in the light theme too (${lightMoss} / ${await disc('moss')})`);
   await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
 
   // Put back.
-  await page.getByRole('radio', { name: 'Moss' }).click();
+  await page.getByRole('radio', { name: 'Blue' }).click();
   await save.click();
   await page.waitForTimeout(300);
-  record((await brand()) === moss, 'and Moss puts the brand colour back');
+  record((await brand()) === blue, 'and Blue puts the default back');
   await context.close();
 }
 // Everything above is recorded; `ok` is only what the log says out loud.

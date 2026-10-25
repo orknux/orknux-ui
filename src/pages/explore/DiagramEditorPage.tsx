@@ -19,6 +19,7 @@ import {
   describeDiagram,
   DIAGRAM_EDGE_KINDS,
   DIAGRAM_NODE_KINDS,
+  DIAGRAM_PNG_SCALES,
   diagramExportUrl,
   drawingOf,
   fetchDiagram,
@@ -28,6 +29,7 @@ import {
 } from '../../api/diagrams';
 import type {
   Diagram,
+  DiagramPngScale,
   DiagramAgentAccess,
   DiagramDrawing,
   DiagramEdgeData,
@@ -249,6 +251,12 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState<'layout' | 'align' | 'export' | null>(null);
+  /*
+   * How many pixels a PNG has for each one the diagram is drawn at. Twice by
+   * default, so it is sharp on a high-density screen and in a slide; the server
+   * draws it, and holds it to the widest picture it draws at all.
+   */
+  const [pngScale, setPngScale] = useState<DiagramPngScale>(2);
   /** Whether the Diagram section is folded away, remembered for the person: open unless they folded it. */
   const [diagramFold, setDiagramFold] = useSieve('diagram.editor.diagram-section');
   const diagramOpen = diagramFold !== 'closed';
@@ -699,7 +707,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     setMenu(null);
     if (diagram === null || !(await save())) return;
     const link = document.createElement('a');
-    link.href = diagramExportUrl(diagram.id, format);
+    link.href = diagramExportUrl(diagram.id, format, pngScale);
     link.download = '';
     document.body.appendChild(link);
     link.click();
@@ -956,11 +964,34 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             </button>
             {menu === 'export' && (
               <div className={`${styles.menu} ${styles.menuRight}`} role="menu">
-                {(['png', 'svg', 'pdf', 'mermaid', 'json'] as const).map((format) => (
-                  <button key={format} type="button" role="menuitem" className={styles.menuItem} onClick={() => void exportAs(format)} data-testid={`diagram-export-${format}`}>
-                    {format === 'mermaid' ? 'Mermaid' : format.toUpperCase()}
-                  </button>
-                ))}
+                {(['png', 'svg', 'pdf', 'mermaid', 'json'] as const).map((format) =>
+                  format === 'png' ? (
+                    <div key={format} className={styles.menuRow}>
+                      <button type="button" role="menuitem" className={styles.menuItem} onClick={() => void exportAs(format)} data-testid="diagram-export-png">
+                        PNG
+                      </button>
+                      <span className={styles.scales} role="radiogroup" aria-label={t('PNG scale')} data-testid="diagram-export-scale">
+                        {DIAGRAM_PNG_SCALES.map((scale) => (
+                          <button
+                            key={scale}
+                            type="button"
+                            role="radio"
+                            aria-checked={pngScale === scale}
+                            className={pngScale === scale ? `${styles.scale} ${styles.scaleOn}` : styles.scale}
+                            onClick={() => setPngScale(scale)}
+                            data-testid={`diagram-export-scale-${scale}`}
+                          >
+                            {scale}×
+                          </button>
+                        ))}
+                      </span>
+                    </div>
+                  ) : (
+                    <button key={format} type="button" role="menuitem" className={styles.menuItem} onClick={() => void exportAs(format)} data-testid={`diagram-export-${format}`}>
+                      {format === 'mermaid' ? 'Mermaid' : format.toUpperCase()}
+                    </button>
+                  ),
+                )}
               </div>
             )}
           </div>
