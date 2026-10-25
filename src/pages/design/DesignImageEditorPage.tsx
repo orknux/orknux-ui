@@ -31,6 +31,7 @@ import { fetchModels } from '../../api/models';
 import type { Model } from '../../api/models';
 import type { SessionUser } from '../../api/session';
 import blurIcon from '../../assets/blur.svg';
+import chevronIcon from '../../assets/chevron-down-12.svg';
 import blurGradientIcon from '../../assets/blur-gradient.svg';
 import brushIcon from '../../assets/brush.svg';
 import brushHardIcon from '../../assets/brush-hard.svg';
@@ -892,9 +893,16 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   const layersFor = useRef<string | null>(null);
   // Whether the layers panel is open, remembered for whoever uses the editor, as a list's filter is.
   const [layersRemembered, rememberLayers] = useSieve('image-editor.layers');
-  const layersOpen = layersRemembered === 'open';
+  // Shown unless somebody closed it: it sits in the side panel now, out of the picture's way.
+  const layersOpen = layersRemembered !== 'closed';
   const setLayersOpen = (next: boolean | ((held: boolean) => boolean)) =>
-    rememberLayers((typeof next === 'function' ? next(layersOpen) : next) ? 'open' : '');
+    rememberLayers((typeof next === 'function' ? next(layersOpen) : next) ? 'open' : 'closed');
+  const layersSection = useRef<HTMLDivElement>(null);
+  /** The rail's Layers and its key open the section and bring it into view; its heading is what folds it. */
+  const showLayers = () => {
+    setLayersOpen(true);
+    window.requestAnimationFrame(() => layersSection.current?.scrollIntoView({ block: 'nearest' }));
+  };
   /** How many layers a picture may keep over the picture itself: the installation's number. */
   const [layersMost, setLayersMost] = useState<number | null>(null);
   const layerCount = useRef(0);
@@ -1424,7 +1432,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         if (free) pick(name);
         break;
       case 'layers':
-        if (picture !== null) setLayersOpen((held) => !held);
+        if (picture !== null) showLayers();
         break;
       case 'brushSmaller':
         setBrushSize((held) => (held === null ? held : Math.max(1, Math.min(held - 1, Math.round(held / BRUSH_STEP)))));
@@ -2233,7 +2241,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           <button
             type="button"
             className={`${styles.tool} ${layersOpen ? styles.railOn : ''}`}
-            onClick={() => setLayersOpen((held) => !held)}
+            onClick={showLayers}
             disabled={picture === null}
             aria-pressed={layersOpen}
             title={`${t('Layers')} (${editorKeys.layers})`}
@@ -2445,171 +2453,6 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
               <button type="button" className={form.filled} onClick={applyBlur} disabled={selection === null || blurRadius === null || busy} data-testid="blur-apply">
                 {t('Blur')}
               </button>
-            </div>
-          )}
-          {layersOpen && picture !== null && (
-            <div className={styles.layersPanel} role="group" aria-label={t('Layers')} data-testid="layers-panel">
-              <div className={styles.layersHead}>
-                <span>{t('Layers')}</span>
-                <button
-                  type="button"
-                  className={form.ghost}
-                  onClick={newLayer}
-                  disabled={natural === null || (layersMost !== null && layers.length >= layersMost)}
-                  title={layersMost !== null && layers.length >= layersMost ? tf('At most {count} layers', { count: layersMost }) : undefined}
-                  data-testid="layers-new"
-                >
-                  {t('New layer')}
-                </button>
-                <button type="button" className={form.ghost} onClick={() => void flattenLayers()} disabled={layers.length === 0 || busy} data-testid="layers-flatten">
-                  {t('Flatten')}
-                </button>
-              </div>
-              {/* The top of the stack first, as it is seen; the picture itself at the foot, where it always is. */}
-              {layers
-                .map((layer, at) => ({ layer, at }))
-                .reverse()
-                .map(({ layer, at }) => (
-                  <div
-                    key={layer.id}
-                    className={`${styles.layerRow} ${layer.id === layerId ? styles.layerRowOn : ''} ${movingRow === layer.id ? styles.layerRowMoving : ''}`}
-                    onClick={() => chooseLayer(layer.id)}
-                    draggable={renaming?.id !== layer.id}
-                    onDragStart={(event) => {
-                      event.dataTransfer.effectAllowed = 'move';
-                      setMovingRow(layer.id);
-                    }}
-                    onDragOver={(event) => {
-                      if (movingRow !== null) event.preventDefault();
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      if (movingRow !== null) moveLayer(movingRow, at);
-                      setMovingRow(null);
-                    }}
-                    onDragEnd={() => setMovingRow(null)}
-                    aria-selected={layer.id === layerId}
-                    data-testid="layer-row"
-                    data-id={layer.id}
-                  >
-                    <div className={styles.layerTop}>
-                      <LayerView pixels={layer.pixels} className={`${styles.layerThumb} ${styles.layerThumbClear}`} />
-                      {renaming?.id === layer.id ? (
-                        <input
-                          className={`${form.input} ${styles.layerNameInput}`}
-                          value={renaming.name}
-                          onChange={(event) => setRenaming({ id: layer.id, name: event.target.value })}
-                          onBlur={finishRenaming}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') finishRenaming();
-                            if (event.key === 'Escape') setRenaming(null);
-                          }}
-                          onClick={(event) => event.stopPropagation()}
-                          aria-label={t('Name')}
-                          maxLength={255}
-                          autoFocus
-                          data-testid="layer-name-input"
-                        />
-                      ) : (
-                        <span
-                          className={styles.layerName}
-                          title={layer.name}
-                          onDoubleClick={() => setRenaming({ id: layer.id, name: layer.name })}
-                          data-testid="layer-name"
-                        >
-                          {layer.name}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className={styles.tool}
-                        onClick={() => setRenaming({ id: layer.id, name: layer.name })}
-                        title={t('Rename')}
-                        aria-label={t('Rename')}
-                        data-testid="layer-rename"
-                      >
-                        <img src={pencilIcon} alt="" width={12} height={12} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.tool}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removeLayer(layer.id);
-                        }}
-                        title={t('Remove layer')}
-                        aria-label={t('Remove layer')}
-                        data-testid="layer-remove"
-                      >
-                        <img src={trashIcon} alt="" width={12} height={12} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.tool}
-                        onClick={() => showLayer(layer.id)}
-                        aria-pressed={!layer.visible}
-                        title={layer.visible ? t('Hide') : t('Show')}
-                        aria-label={layer.visible ? t('Hide') : t('Show')}
-                        data-testid="layer-visible"
-                      >
-                        {layer.visible ? '◉' : '○'}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.tool}
-                        onClick={() => moveLayer(layer.id, at + 1)}
-                        disabled={at === layers.length - 1}
-                        title={t('Move up')}
-                        aria-label={t('Move up')}
-                        data-testid="layer-up"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.tool}
-                        onClick={() => moveLayer(layer.id, at - 1)}
-                        disabled={at === 0}
-                        title={t('Move down')}
-                        aria-label={t('Move down')}
-                        data-testid="layer-down"
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              <div
-                className={`${styles.layerRow} ${styles.layerBase} ${layerId === PICTURE_LAYER ? styles.layerRowOn : ''}`}
-                onClick={() => chooseLayer(PICTURE_LAYER)}
-                onDragOver={(event) => {
-                  if (movingRow !== null) event.preventDefault();
-                }}
-                onDrop={(event) => {
-                  // Dropped on the picture: as low as a layer goes, just over it.
-                  event.preventDefault();
-                  if (movingRow !== null) moveLayer(movingRow, 0);
-                  setMovingRow(null);
-                }}
-                aria-selected={layerId === PICTURE_LAYER}
-                data-testid="layer-base"
-              >
-                <div className={styles.layerTop}>
-                  <img src={baseUrl ?? picture.url} alt="" className={styles.layerThumb} />
-                  <span className={styles.layerName}>{t('Picture')}</span>
-                  <button
-                    type="button"
-                    className={styles.tool}
-                    onClick={() => showLayer(PICTURE_LAYER)}
-                    aria-pressed={!baseVisible}
-                    title={baseVisible ? t('Hide') : t('Show')}
-                    aria-label={baseVisible ? t('Hide') : t('Show')}
-                    data-testid="layer-base-visible"
-                  >
-                    {baseVisible ? '◉' : '○'}
-                  </button>
-                </div>
-              </div>
             </div>
           )}
           {tool === 'crop' && (
@@ -2980,7 +2823,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
           )}
         </div>
 
-        <form className={styles.panel} onSubmit={generate} data-testid="editor-panel">
+        <div className={styles.panel}>
+        <form className={styles.panelForm} onSubmit={generate} data-testid="editor-panel">
           <div className={form.field}>
             <label className={form.label} htmlFor="image-prompt">{t('Prompt')}</label>
             <div className={`${form.inputWrapper} ${form.inputWrapperTall}`}>
@@ -3159,6 +3003,186 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
             {t('Generate')}
           </button>
         </form>
+          {/* Beside the prompt rather than over the picture, where it covered what was being painted. */}
+          {picture !== null && (
+            <div ref={layersSection} className={styles.layersPanel} role="group" aria-label={t('Layers')} data-testid="layers-panel">
+              <div className={styles.layersHead}>
+                <button
+                  type="button"
+                  className={styles.layersToggle}
+                  onClick={() => setLayersOpen((held) => !held)}
+                  aria-expanded={layersOpen}
+                  data-testid="layers-collapse"
+                >
+                  <img src={chevronIcon} alt="" width={12} height={12} className={layersOpen ? undefined : styles.layersToggleShut} />
+                  {t('Layers')}
+                </button>
+                <button
+                  type="button"
+                  className={form.ghost}
+                  onClick={newLayer}
+                  disabled={natural === null || (layersMost !== null && layers.length >= layersMost)}
+                  title={layersMost !== null && layers.length >= layersMost ? tf('At most {count} layers', { count: layersMost }) : undefined}
+                  data-testid="layers-new"
+                >
+                  {t('New layer')}
+                </button>
+                <button type="button" className={form.ghost} onClick={() => void flattenLayers()} disabled={layers.length === 0 || busy} data-testid="layers-flatten">
+                  {t('Flatten')}
+                </button>
+              </div>
+              {layersOpen && (
+                <>
+              {/* The top of the stack first, as it is seen; the picture itself at the foot, where it always is. */}
+              {layers
+                .map((layer, at) => ({ layer, at }))
+                .reverse()
+                .map(({ layer, at }) => (
+                  <div
+                    key={layer.id}
+                    className={`${styles.layerRow} ${layer.id === layerId ? styles.layerRowOn : ''} ${movingRow === layer.id ? styles.layerRowMoving : ''}`}
+                    onClick={() => chooseLayer(layer.id)}
+                    draggable={renaming?.id !== layer.id}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      setMovingRow(layer.id);
+                    }}
+                    onDragOver={(event) => {
+                      if (movingRow !== null) event.preventDefault();
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (movingRow !== null) moveLayer(movingRow, at);
+                      setMovingRow(null);
+                    }}
+                    onDragEnd={() => setMovingRow(null)}
+                    aria-selected={layer.id === layerId}
+                    data-testid="layer-row"
+                    data-id={layer.id}
+                  >
+                    <div className={styles.layerTop}>
+                      <LayerView pixels={layer.pixels} className={`${styles.layerThumb} ${styles.layerThumbClear}`} />
+                      {renaming?.id === layer.id ? (
+                        <input
+                          className={`${form.input} ${styles.layerNameInput}`}
+                          value={renaming.name}
+                          onChange={(event) => setRenaming({ id: layer.id, name: event.target.value })}
+                          onBlur={finishRenaming}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') finishRenaming();
+                            if (event.key === 'Escape') setRenaming(null);
+                          }}
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label={t('Name')}
+                          maxLength={255}
+                          autoFocus
+                          data-testid="layer-name-input"
+                        />
+                      ) : (
+                        <span
+                          className={styles.layerName}
+                          title={layer.name}
+                          onDoubleClick={() => setRenaming({ id: layer.id, name: layer.name })}
+                          data-testid="layer-name"
+                        >
+                          {layer.name}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => setRenaming({ id: layer.id, name: layer.name })}
+                        title={t('Rename')}
+                        aria-label={t('Rename')}
+                        data-testid="layer-rename"
+                      >
+                        <img src={pencilIcon} alt="" width={12} height={12} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeLayer(layer.id);
+                        }}
+                        title={t('Remove layer')}
+                        aria-label={t('Remove layer')}
+                        data-testid="layer-remove"
+                      >
+                        <img src={trashIcon} alt="" width={12} height={12} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => showLayer(layer.id)}
+                        aria-pressed={!layer.visible}
+                        title={layer.visible ? t('Hide') : t('Show')}
+                        aria-label={layer.visible ? t('Hide') : t('Show')}
+                        data-testid="layer-visible"
+                      >
+                        {layer.visible ? '◉' : '○'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => moveLayer(layer.id, at + 1)}
+                        disabled={at === layers.length - 1}
+                        title={t('Move up')}
+                        aria-label={t('Move up')}
+                        data-testid="layer-up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tool}
+                        onClick={() => moveLayer(layer.id, at - 1)}
+                        disabled={at === 0}
+                        title={t('Move down')}
+                        aria-label={t('Move down')}
+                        data-testid="layer-down"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              <div
+                className={`${styles.layerRow} ${styles.layerBase} ${layerId === PICTURE_LAYER ? styles.layerRowOn : ''}`}
+                onClick={() => chooseLayer(PICTURE_LAYER)}
+                onDragOver={(event) => {
+                  if (movingRow !== null) event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  // Dropped on the picture: as low as a layer goes, just over it.
+                  event.preventDefault();
+                  if (movingRow !== null) moveLayer(movingRow, 0);
+                  setMovingRow(null);
+                }}
+                aria-selected={layerId === PICTURE_LAYER}
+                data-testid="layer-base"
+              >
+                <div className={styles.layerTop}>
+                  <img src={baseUrl ?? picture.url} alt="" className={styles.layerThumb} />
+                  <span className={styles.layerName}>{t('Picture')}</span>
+                  <button
+                    type="button"
+                    className={styles.tool}
+                    onClick={() => showLayer(PICTURE_LAYER)}
+                    aria-pressed={!baseVisible}
+                    title={baseVisible ? t('Hide') : t('Show')}
+                    aria-label={baseVisible ? t('Hide') : t('Show')}
+                    data-testid="layer-base-visible"
+                  >
+                    {baseVisible ? '◉' : '○'}
+                  </button>
+                </div>
+              </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <DesignUpscaleDialog
         open={upscaling}

@@ -410,10 +410,10 @@ await page.getByTestId('editor-zoom').click();
 /** Clicks what is there; a control that is not leaves the step undone, and the record after it says so. */
 const tap = (id) => page.getByTestId(id).first().click({ timeout: 3_000 }).catch(() => undefined);
 /** The layers panel open or closed, whichever it was: the editor remembers it between pages, so a press alone may close what it meant to open. */
+const layersExpanded = async () => (await page.getByTestId('layers-collapse').getAttribute('aria-expanded').catch(() => null)) === 'true';
 const layersTo = async (want) => {
-  await page.getByTestId('editor-layers').waitFor({ timeout: 10_000 }).catch(() => undefined);
-  const shown = (await page.getByTestId('layers-panel').count()) > 0;
-  if (shown !== (want === 'open')) await tap('editor-layers');
+  await page.getByTestId('layers-collapse').waitFor({ timeout: 10_000 }).catch(() => undefined);
+  if ((await layersExpanded()) !== (want === 'open')) await tap('layers-collapse');
 };
 /** The layers' names, the top of the stack first, and which is chosen. */
 const stack = () => page.evaluate(() => [...document.querySelectorAll('[data-testid="layer-row"]')].map((row) =>
@@ -708,15 +708,16 @@ const press = async (key) => {
 const cropOn = async () => (await page.getByTestId('crop-options').isVisible().catch(() => false)) &&
   (await page.getByTestId('editor-crop').getAttribute('aria-pressed').catch(() => null)) === 'true';
 const cropTitle = await page.getByTestId('editor-crop').getAttribute('title').catch(() => '');
-const layersBefore = await page.getByTestId('layers-panel').isVisible().catch(() => false);
+await layersTo('closed');
+const layersBefore = await layersExpanded();
 await press('c');
 const cropByKey = await cropOn();
 await press('c');
 const cropPutDown = !(await cropOn());
 await press('Shift+L');
-const layersAfter = await page.getByTestId('layers-panel').isVisible().catch(() => false);
-record(cropTitle === 'Crop (C)' && cropByKey && cropPutDown && layersBefore !== layersAfter,
-  `a rail tool answers its key, which its button names, and Shift+L shows or hides the layers (${JSON.stringify({ cropTitle, cropByKey, cropPutDown, layersBefore, layersAfter })})`);
+const layersAfter = await layersExpanded();
+record(cropTitle === 'Crop (C)' && cropByKey && cropPutDown && !layersBefore && layersAfter,
+  `a rail tool answers its key, which its button names, and Shift+L opens the folded layers (${JSON.stringify({ cropTitle, cropByKey, cropPutDown, layersBefore, layersAfter })})`);
 
 // Rebound on Preferences, the tool answers the new key and no longer the old one.
 await page.goto(`${BASE}/preferences`, { waitUntil: 'domcontentloaded' });
@@ -737,18 +738,30 @@ record(recorded.trim() === 'G' && !oldKey && newKey && reboundTitle === 'Crop (G
   `a key chosen on Preferences picks the tool instead of the default, and its button says so (${JSON.stringify({ recorded, oldKey, newKey, reboundTitle })})`);
 
 // The layers panel is remembered for whoever uses the editor: open stays open over a reload, closed stays closed.
-const layersShown = async () => (await page.getByTestId('layers-panel').count()) > 0;
+const layersShown = layersExpanded;
 const reopen = async () => {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByTestId('editor-layers').waitFor({ timeout: 20_000 }).catch(() => undefined);
   await page.waitForTimeout(500);
 };
-if (!(await layersShown())) await tap('editor-layers');
+if (!(await layersShown())) await tap('layers-collapse');
 await reopen();
 const keptOpen = await layersShown();
-await tap('editor-layers');
+await tap('layers-collapse');
 await reopen();
 const keptClosed = !(await layersShown());
 record(keptOpen && keptClosed, `the layers panel is remembered across a reload, open or closed (${JSON.stringify({ keptOpen, keptClosed })})`);
+
+// It is a section of the side panel, beside the picture rather than over it, and the rail's Layers opens it folded.
+const placed = await page.evaluate(() => {
+  const panel = document.querySelector('[data-testid="layers-panel"]')?.getBoundingClientRect();
+  const side = document.querySelector('[data-testid="editor-panel"]')?.parentElement?.getBoundingClientRect();
+  const canvas = document.querySelector('[data-testid="editor-canvas"]')?.getBoundingClientRect();
+  return panel && side && canvas ? { inSide: panel.left >= side.left - 1 && panel.right <= side.right + 1, clearOfCanvas: panel.left >= canvas.right - 1 } : null;
+});
+await tap('editor-layers');
+const openedByRail = await layersExpanded();
+record(placed !== null && placed.inSide && placed.clearOfCanvas && openedByRail,
+  `the layers sit in the side panel, clear of the picture, and the rail's Layers unfolds them (${JSON.stringify({ placed, openedByRail })})`);
 
 await finish(browser);
