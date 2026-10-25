@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { deleteResearch, fetchResearch, restartResearch, startFollowUpResearch } from '../../api/research';
 import type { Research, ResearchImage, ResearchStage, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
-import { formatDuration } from '../../api/executions';
+import { formatDuration, stopExecution } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
 import checkIcon from '../../assets/check.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
@@ -104,6 +104,23 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
   useEffect(load, [load]);
 
   const running = research?.status === 'RUNNING';
+  const [stopping, setStopping] = useState(false);
+  /**
+   * Stops the research by stopping its run, as the run's own page does: the
+   * engine ends it before its next step, and the auto-refresh reads it stopped.
+   */
+  const stop = async () => {
+    if (research?.executionId == null || stopping) return;
+    setStopping(true);
+    try {
+      await stopExecution(research.executionId);
+      load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Could not stop the run.'));
+    } finally {
+      setStopping(false);
+    }
+  };
   const restartable = research?.status === 'FAILED' || research?.status === 'STOPPED';
   /** Where a restart without a stage begins: the step it stopped at, as the strip names it. */
   const stoppedAt = research?.progress?.stage ?? null;
@@ -142,6 +159,11 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
                   data-restart
                 >
                   {t('Restart')}
+                </button>
+              )}
+              {running && research?.executionId != null && (
+                <button type="button" className={styles.button} onClick={() => void stop()} disabled={stopping} data-stop>
+                  {t('Stop')}
                 </button>
               )}
               {research?.executionId != null && (

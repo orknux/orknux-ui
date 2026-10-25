@@ -5133,6 +5133,12 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'research-stop-check',
+    what: 'a running research draws Stop, which stops its run, and a stopped one draws none',
+    needs: [],
+    // The research and the stop are answered in the browser.
+  },
+  {
     name: 'header-display-name-check',
     what: 'the top bar calls somebody by their display name, and by their username only where there is none',
     needs: [],
