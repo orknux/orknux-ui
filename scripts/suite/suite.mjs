@@ -2235,6 +2235,18 @@ export const TESTS = [
     /* Makes its own documents and removes them. */
   },
   {
+    name: 'document-import-check',
+    what: "Import in a document puts a file's heading, bold and list on the page in place of what was there as an unsaved change one Undo takes back, puts a text file at the caret, and says when a file cannot be read",
+    needs: ['workspace'],
+    /* Makes its own document and removes it. */
+  },
+  {
+    name: 'wireframe-import-check',
+    what: 'Import in a wireframe places a picture from a file, one from Orknux and an SVG as image elements that draw the picture inside the frame with its shape kept, each one step Undo takes back',
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it; the pictures it brings in stay in Design, as any imported picture does. */
+  },
+  {
     name: 'document-writing-check',
     what: "while a model writes in a document the Writing pill sits centred on the sheet in the middle of the view, scrolled or not, and the whole text is outlined until the model's save shows what it changed, then only that",
     needs: ['workspace'],

@@ -3854,4 +3854,11 @@ export const PL: Record<string, string> = {
   "With its sound, for nearly any player": "Z dźwiękiem, dla niemal każdego odtwarzacza",
   "With its sound, in a Matroska file": "Z dźwiękiem, w pliku Matroska",
   "Could not export the video.": "Nie udało się wyeksportować filmu.",
+  "Replace the document…": "Zastąp dokument…",
+  "Insert at the caret…": "Wstaw w miejscu kursora…",
+  "Could not import the file.": "Nie udało się zaimportować pliku.",
+  "{count} pictures were left out.": "Pominięto obrazy: {count}.",
+  "Read a PDF, Markdown, ODT, DOCX, HTML or text file into the document": "Wczytaj do dokumentu plik PDF, Markdown, ODT, DOCX, HTML albo tekstowy",
+  "Put a picture from a file or from Orknux on the wireframe": "Umieść na makiecie obraz z pliku albo z Orknux",
+  "Could not import the picture.": "Nie udało się zaimportować obrazu.",
 };

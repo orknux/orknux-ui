@@ -118,6 +118,27 @@ export async function deleteWireframe(id: string): Promise<boolean> {
   return data.deleteWireframe;
 }
 
+/** A picture ready to be placed on a wireframe: what an image element names in `props.artifact`, and where it is drawn from. */
+export interface WireframePicture {
+  artifact: string;
+  name: string;
+  src: string;
+}
+
+/** Brings a picture onto a wireframe: one already in Orknux by its id, or a file (a data URL) kept as a new one. */
+export async function importWireframePicture(
+  id: string,
+  picture: { artifact?: string; image?: string; name?: string },
+): Promise<WireframePicture> {
+  const data = await graphql<{ importWireframePicture: WireframePicture }>(
+    `mutation ImportWireframePicture($id: ID!, $artifact: String, $image: String, $name: String) {
+       importWireframePicture(id: $id, artifact: $artifact, image: $image, name: $name) { artifact name src }
+     }`,
+    { id, artifact: picture.artifact ?? null, image: picture.image ?? null, name: picture.name ?? null },
+  );
+  return data.importWireframePicture;
+}
+
 /**
  * The drawing as one HTML page, written by the server so the editor's export and
  * `orknux_wireframe_html` are the same page. The elements sent are what is on

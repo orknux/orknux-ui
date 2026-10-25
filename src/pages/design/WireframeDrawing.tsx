@@ -19,8 +19,23 @@ export function boundsOf(elements: WireframeElement[]): { x: number; y: number; 
   return { x: left, y: top, w: Math.max(1, right - left), h: Math.max(1, bottom - top) };
 }
 
-/** The same elements, as drawn on the canvas and on a card in the list. */
-export function WireframeShapes({ elements, markerId }: { elements: WireframeElement[]; markerId: string }) {
+/** The artifact ids a picture is named by, as the server's `DocumentContent.ARTIFACT` reads them. */
+const ARTIFACT = /^(IMAGE|TASK|SAVED|DESIGN)-[0-9]{1,18}$/;
+
+/**
+ * Where an image element's picture is drawn from: the address a document's
+ * pictures are drawn from (`DocumentContent.source`), which serves the
+ * workspace's own pictures to whoever may see it. Null for an image element
+ * that names none, which is drawn as a placeholder.
+ */
+export function pictureSource(element: WireframeElement, workspaceId: string | undefined): string | null {
+  const artifact = element.props?.artifact;
+  if (workspaceId === undefined || workspaceId === '' || typeof artifact !== 'string' || !ARTIFACT.test(artifact)) return null;
+  return `/api/workspaces/${workspaceId}/document-images/${artifact}`;
+}
+
+/** The same elements, as drawn on the canvas and on a card in the list; a picture is drawn where the workspace is known. */
+export function WireframeShapes({ elements, markerId, workspaceId }: { elements: WireframeElement[]; markerId: string; workspaceId?: string }) {
   return (
     <>
       <defs>
@@ -29,13 +44,13 @@ export function WireframeShapes({ elements, markerId }: { elements: WireframeEle
         </marker>
       </defs>
       {elements.map((element) => (
-        <WireframeShape key={element.id} element={element} markerId={markerId} />
+        <WireframeShape key={element.id} element={element} markerId={markerId} workspaceId={workspaceId} />
       ))}
     </>
   );
 }
 
-function WireframeShape({ element, markerId }: { element: WireframeElement; markerId: string }) {
+function WireframeShape({ element, markerId, workspaceId }: { element: WireframeElement; markerId: string; workspaceId?: string }) {
   const { x, y, w, h, type } = element;
   const text = element.text ?? '';
   const props = element.props ?? {};
@@ -108,7 +123,17 @@ function WireframeShape({ element, markerId }: { element: WireframeElement; mark
           {label(styles.placeholder)}
         </g>
       );
-    case 'image':
+    case 'image': {
+      const source = pictureSource(element, workspaceId);
+      if (source !== null) {
+        return (
+          <g {...common} className={styles.element}>
+            <rect x={x} y={y} width={w} height={h} className={styles.textHit} />
+            <image href={source} x={x} y={y} width={Math.max(1, w)} height={Math.max(1, h)} preserveAspectRatio="xMidYMid meet" data-testid="wireframe-picture" />
+            {label(styles.caption)}
+          </g>
+        );
+      }
       return (
         <g {...common} className={styles.element}>
           <rect x={x} y={y} width={w} height={h} rx={4} className={styles.rect} />
@@ -117,6 +142,7 @@ function WireframeShape({ element, markerId }: { element: WireframeElement; mark
           {label(styles.caption)}
         </g>
       );
+    }
     case 'note':
       return (
         <g {...common} className={styles.element}>
@@ -135,7 +161,7 @@ function textStyle(props: Record<string, string | number | boolean>) {
 }
 
 /** A small picture of a whole wireframe, fitted to its box: the list's cards. */
-export function WireframePreview({ elements, id }: { elements: WireframeElement[]; id: string }) {
+export function WireframePreview({ elements, id, workspaceId }: { elements: WireframeElement[]; id: string; workspaceId?: string }) {
   const bounds = boundsOf(elements);
   const pad = 24;
   return (
@@ -145,7 +171,7 @@ export function WireframePreview({ elements, id }: { elements: WireframeElement[
       preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
     >
-      <WireframeShapes elements={elements} markerId={`wireframe-preview-arrow-${id}`} />
+      <WireframeShapes elements={elements} markerId={`wireframe-preview-arrow-${id}`} workspaceId={workspaceId} />
     </svg>
   );
 }
