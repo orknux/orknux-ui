@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { deleteResearch, fetchResearch, restartResearch } from '../../api/research';
+import { deleteResearch, fetchResearch, restartResearch, startFollowUpResearch } from '../../api/research';
 import type { Research, ResearchImage, ResearchStage, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
 import { formatDuration } from '../../api/executions';
@@ -87,6 +87,8 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
   const [removing, setRemoving] = useState(false);
   /** The restart being asked about: from a stage, or from where it stopped when that is null. */
   const [restarting, setRestarting] = useState<{ stage: ResearchStage | null; label: string } | null>(null);
+  /** The follow-up question somebody is being asked to confirm a research on. */
+  const [following, setFollowing] = useState<string | null>(null);
   const listPath = `/workspace/${workspaceId}/explore/research`;
 
   const load = useCallback(() => {
@@ -180,12 +182,26 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
               <Sources research={research} />
             </div>
             {research.status === 'COMPLETED' && <Report research={research} workspaceId={workspaceId} />}
+            {research.status === 'COMPLETED' && <FollowUps research={research} onPick={setFollowing} />}
+            <Children research={research} workspaceId={workspaceId} />
             {running && <Draft research={research} />}
             <Review research={research} />
             <Images research={research} />
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        subject={following}
+        kind="startFollowUp"
+        onClose={() => setFollowing(null)}
+        onConfirm={async () => {
+          if (research === null || following === null) return;
+          const started = await startFollowUpResearch(research.id, following);
+          setFollowing(null);
+          navigate(`${listPath}/${started.id}`);
+        }}
+      />
 
       <ConfirmDialog
         subject={restarting?.label ?? null}
@@ -264,6 +280,16 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
         <dt>{t('Output')}</dt>
         <dd>{research.outputFormat === 'PDF' ? 'PDF' : t('Document')}</dd>
       </div>
+      {research.parentId != null && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Follow-up of')}</dt>
+          <dd data-parent title={research.parentQuestion ?? undefined}>
+            <Link className={styles.link} to={`/workspace/${workspaceId}/explore/research/${research.parentId}`} data-parent-link>
+              #{research.parentId}
+            </Link>
+          </dd>
+        </div>
+      )}
       <div className={styles.summaryItem}>
         <dt>{t('Started')}</dt>
         <dd title={research.startedAt}>{timeAgo(research.startedAt)}</dd>
@@ -521,6 +547,51 @@ function Review({ research }: { research: Research }) {
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+/** What to research next, as the finished research suggests: each a research of its own, once confirmed. */
+function FollowUps({ research, onPick }: { research: Research; onPick: (question: string) => void }) {
+  const questions = research.followUps ?? [];
+  if (questions.length === 0) return null;
+  return (
+    <section className={styles.card} aria-label={t('Follow-up questions')} data-follow-ups>
+      <h2 className={styles.cardTitle}>
+        {t('Follow-up questions')}
+        <span className={styles.count}>{questions.length}</span>
+      </h2>
+      <ul className={styles.followUps}>
+        {questions.map((question) => (
+          <li key={question}>
+            <button type="button" className={styles.followUp} onClick={() => onPick(question)} data-follow-up={question}>
+              {question}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** The research started from this one as follow-ups. */
+function Children({ research, workspaceId }: { research: Research; workspaceId: string }) {
+  const children = research.children ?? [];
+  if (children.length === 0) return null;
+  return (
+    <section className={styles.card} aria-label={t('Follow-up research')} data-children>
+      <h2 className={styles.cardTitle}>
+        {t('Follow-up research')}
+        <span className={styles.count}>{children.length}</span>
+      </h2>
+      <ul className={styles.followUps}>
+        {children.map((child) => (
+          <li key={child.id} className={styles.child} data-child={child.id}>
+            <Link className={styles.link} to={`/workspace/${workspaceId}/explore/research/${child.id}`}>{child.question}</Link>
+            <span className={`${styles.status} ${STATUS_CLASS[child.status]}`}>{statusLabel(child.status)}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

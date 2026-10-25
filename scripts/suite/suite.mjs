@@ -2203,13 +2203,13 @@ export const TESTS = [
   },
   {
     name: 'research-review-check',
-    what: 'New research offers Review, the reviewer picker shows only when it is ticked, Start sends both, and the list says a research was reviewed',
+    what: 'New research offers Review, the reviewer picker shows only when it is ticked, and a number of follow-up questions, five until somebody says; Start sends them, the next research remembers them, and the list says a research was reviewed',
     needs: ['workspace'],
     /* The models are the server's own - made where there are too few - and the start is answered here, so nothing runs. */
   },
   {
     name: 'research-progress-check',
-    what: 'a research shows its step, sub-questions and sources while it runs, and keeps the sources with its report',
+    what: 'a research shows its step, sub-questions and sources while it runs, and keeps the sources with its report; finished, it lists follow-up questions, each started as a research of its own once confirmed',
     needs: ['workspace'],
     /* Answers the research itself, running and then finished; the pipeline is the server suite's. */
   },

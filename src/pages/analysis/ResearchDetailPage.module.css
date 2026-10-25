@@ -818,3 +818,37 @@
 .issueFix {
   color: var(--color-text-muted);
 }
+
+/* ---- what to research next ---- */
+
+.followUps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.followUp {
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font: inherit;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.followUp:hover {
+  background: var(--color-surface-hover);
+}
+
+.child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}

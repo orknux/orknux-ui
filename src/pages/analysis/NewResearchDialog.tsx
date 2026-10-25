@@ -42,6 +42,9 @@ function modeHint(mode: ResearchMode): string {
 
 const LANGUAGES: ResearchLanguage[] = ['ACADEMIC', 'COLLOQUIAL', 'FORMAL'];
 
+/** How many follow-up questions a research suggests for somebody who has never said: the installation's own starting number. */
+const FOLLOW_UPS = 5;
+
 /** What the "runs" choice of a new mode holds: a mode to copy, or a workflow. */
 const COPY = 'copy:';
 const WORKFLOW = 'workflow:';
@@ -73,6 +76,9 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   const [lastReview, rememberReview] = useSieve(`research.review.${workspaceId}`);
   const [lastReviewer, rememberReviewer] = useSieve(`research.reviewer.${workspaceId}`);
   const [review, setReview] = useState(lastReview === 'on');
+  // How many questions to suggest once it is finished: the number last chosen here, or five.
+  const [lastFollowUps, rememberFollowUps] = useSieve(`research.followups.${workspaceId}`);
+  const [followUps, setFollowUps] = useState(lastFollowUps === '' ? String(FOLLOW_UPS) : lastFollowUps);
   const [reviewerId, setReviewerId] = useState('');
   const [include, setInclude] = useState<string[]>([]);
   const [exclude, setExclude] = useState<string[]>([]);
@@ -175,6 +181,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         includeImages: images,
         review,
         reviewerModelId: review ? reviewerId : null,
+        followUps: followUps.trim() === '' ? null : Math.max(0, Math.min(10, Math.round(Number(followUps)))),
       });
       onStarted(started);
     } catch (cause) {
@@ -330,6 +337,25 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Review')}
             </label>
+          </div>
+
+          <div className={dialog.field}>
+            <label className={dialog.label} htmlFor="research-follow-ups">{t('Follow-up questions')}</label>
+            <div className={dialog.inputWrapper}>
+              <input
+                id="research-follow-ups"
+                className={dialog.input}
+                type="number"
+                min={0}
+                max={10}
+                value={followUps}
+                onChange={(event) => {
+                  setFollowUps(event.target.value);
+                  rememberFollowUps(event.target.value);
+                }}
+                data-follow-up-count
+              />
+            </div>
           </div>
 
           {review && (

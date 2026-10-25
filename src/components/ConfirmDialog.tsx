@@ -29,7 +29,8 @@ export type ConfirmKind =
   | 'removeArtifact'
   | 'removeImage'
   | 'removeWireframe'
-  | 'restartResearch';
+  | 'restartResearch'
+  | 'startFollowUp';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -309,6 +310,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Restart research'),
       message: <>{t('The research runs again from this step, and every step after it is done again:')} {name}</>,
       button: submitting ? t('Restarting…') : t('Restart'),
+    },
+    /* Not destructive: a research of its own, the one it follows up left as it is. */
+    startFollowUp: {
+      title: t('Start a research'),
+      message: <>{t('Start a research on:')} {name}</>,
+      button: submitting ? t('Starting…') : t('Start'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

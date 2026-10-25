@@ -33,6 +33,7 @@ import {
   setWorkspaceAgentMaxSubagents,
   setWorkspaceChatMaxRounds,
   setWorkspaceResearchReviewRounds,
+  setWorkspaceResearchFollowUps,
   setWorkspaceMaxToolCallsAtOnce,
   setWorkspaceSessionCompaction,
   setWorkspaceUnsafeBuiltInTools,
@@ -334,6 +335,8 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
   const [rounds, setRounds] = useState('');
   /** Rounds of review a reviewed research here gets, as typed; empty is the installation's. */
   const [reviewRounds, setReviewRounds] = useState('');
+  /** Follow-up questions a finished research here suggests, as typed; empty is the installation's. */
+  const [followUpCount, setFollowUpCount] = useState('');
   const [callsAtOnce, setCallsAtOnce] = useState('');
   const [sessionAfter, setSessionAfter] = useState('');
   const [compactKeep, setCompactKeep] = useState('');
@@ -495,6 +498,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setTurns(found?.taskMaxTurns === null || found?.taskMaxTurns === undefined ? '' : String(found.taskMaxTurns));
         setRounds(found?.chatMaxRounds === null || found?.chatMaxRounds === undefined ? '' : String(found.chatMaxRounds));
         setReviewRounds(found?.researchReviewRounds === null || found?.researchReviewRounds === undefined ? '' : String(found.researchReviewRounds));
+        setFollowUpCount(found?.researchFollowUps === null || found?.researchFollowUps === undefined ? '' : String(found.researchFollowUps));
         setAsks(
           found?.agentMaxSubagents === null || found?.agentMaxSubagents === undefined
             ? ''
@@ -726,6 +730,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
       if (touched.has('rounds')) {
         latest = await setWorkspaceChatMaxRounds(workspaceId, rounds.trim() === '' ? null : Number(rounds));
       }
+      if (touched.has('followUpCount')) {
+        latest = await setWorkspaceResearchFollowUps(workspaceId, followUpCount.trim() === '' ? null : Number(followUpCount));
+      }
       if (touched.has('reviewRounds')) {
         latest = await setWorkspaceResearchReviewRounds(workspaceId, reviewRounds.trim() === '' ? null : Number(reviewRounds));
       }
@@ -875,6 +882,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setAsks(held.agentMaxSubagents === null ? '' : String(held.agentMaxSubagents));
     setRounds(held.chatMaxRounds === null ? '' : String(held.chatMaxRounds));
     setReviewRounds(held.researchReviewRounds === null ? '' : String(held.researchReviewRounds));
+    setFollowUpCount(held.researchFollowUps === null ? '' : String(held.researchFollowUps));
     setCallsAtOnce(held.maxToolCallsAtOnce === null ? '' : String(held.maxToolCallsAtOnce));
     setSessionAfter(
       held.sessionCompactAfterTokens === null ? '' : String(held.sessionCompactAfterTokens),
@@ -1995,6 +2003,29 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               value={reviewRounds}
               onChange={(event) => { touch('reviewRounds'); setReviewRounds(event.target.value); }}
               data-review-rounds
+            />
+          </div>
+        </div>
+        <div className={styles.field}>
+          <span className={styles.labelWithHint}>
+            <label className={styles.label} htmlFor="workspace-follow-ups">
+              {t('Follow-up questions')}
+            </label>
+            <FieldHint label={t('Follow-up questions')}>
+              {t('How many questions a finished research here suggests asking next, each a research of its own; 0 suggests none. Left empty, the installation’s number is used.')}
+            </FieldHint>
+          </span>
+          <div className={styles.shareRow}>
+            <input
+              id="workspace-follow-ups"
+              className={styles.input}
+              type="number"
+              min={0}
+              max={10}
+              placeholder={workspace === null ? '' : String(workspace.researchFollowUpsDefault)}
+              value={followUpCount}
+              onChange={(event) => { touch('followUpCount'); setFollowUpCount(event.target.value); }}
+              data-follow-ups-setting
             />
           </div>
         </div>

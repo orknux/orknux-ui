@@ -34,6 +34,11 @@
  * panel says each round's verdict and what it found, and that the report was
  * revised for it; the summary names the reviewer's model.
  *
+ * Finished, it lists the questions it suggests asking next under the report.
+ * One pressed asks first, naming it; Cancel sends nothing, and Start starts a
+ * research on it with this one as its parent and opens it, where it says whose
+ * follow-up it is; and the parent lists the follow-ups started from it.
+ *
  * The research itself is answered here, as a run part-way through and then
  * as one finished, so the check does not depend on a model or a search engine
  * - the server's own tests drive the pipeline with stubs of both.
@@ -78,6 +83,8 @@ const FINISHED = {
 let answering = RUNNING;
 /** What each restart was asked with, in order. */
 const restarts = [];
+/** What each follow-up start was asked with, in order. */
+const followed = [];
 
 /** A picture of one pixel, which is what every kept image's preview is answered with here. */
 const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
@@ -85,6 +92,11 @@ await page.route('**/api/artifacts/*/preview', (route) => route.fulfill({ status
 
 await page.route('**/graphql', async (route) => {
   const body = route.request().postDataJSON() ?? {};
+  if ((body.query ?? '').includes('startFollowUpResearch(')) {
+    followed.push(body.variables ?? {});
+    answering = { ...RUNNING, id: '525252', question: body.variables?.question ?? '', parentId: '424242', parentQuestion: RUNNING.question };
+    return route.fulfill({ json: { data: { startFollowUpResearch: answering } } });
+  }
   if ((body.query ?? '').includes('restartResearch(')) {
     restarts.push(body.variables ?? {});
     answering = { ...RUNNING, progress: { ...RUNNING.progress, step: 'Restarting' } };
@@ -364,6 +376,45 @@ record(fromHere.includes('Deepen findings'), `it asks first, naming that step ($
 await asking.locator('button', { hasText: /^Restart$/ }).click().catch(() => undefined);
 await opened.locator('[data-summary] [data-status="RUNNING"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
 record(restarts.length === 2 && restarts[1].fromStage === 'FOLLOW_UP', `and sends that step (${JSON.stringify(restarts[1] ?? null)})`);
+
+// --- what to research next -----------------------------------------------------------
+const NEXT = ['How do spring and neap tides differ?', 'Do lakes have tides?'];
+answering = { ...FINISHED, parentId: null, followUps: NEXT, children: [{ id: '515151', question: 'How are tides predicted?', status: 'COMPLETED' }] };
+await page.reload({ waitUntil: 'domcontentloaded' });
+await opened.locator('[data-follow-ups]').waitFor({ timeout: 20_000 }).catch(() => undefined);
+const offered = await opened.locator('[data-follow-ups] [data-follow-up]').allTextContents();
+record(JSON.stringify(offered.map((one) => one.trim())) === JSON.stringify(NEXT), `finished, it lists the questions to research next (${offered.join(' | ')})`);
+const reportAt = await opened.locator('[data-report]').boundingBox().catch(() => null);
+const nextAt = await opened.locator('[data-follow-ups]').boundingBox().catch(() => null);
+record(reportAt !== null && nextAt !== null && nextAt.y >= reportAt.y + reportAt.height - 1, 'under the report');
+const children = await opened.locator('[data-children] [data-child]').count();
+record(children === 1, `and the follow-ups already started from it (${children})`);
+
+await opened.locator(`[data-follow-up="${NEXT[1]}"]`).click().catch(() => undefined);
+const confirming = page.locator('dialog[open]');
+await confirming.waitFor({ timeout: 5_000 }).catch(() => undefined);
+const confirmText = ((await confirming.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+record(confirmText.includes('Start a research on:') && confirmText.includes(NEXT[1]), `pressing one asks first, naming it (${confirmText.slice(0, 120)})`);
+await confirming.locator('button', { hasText: /^Cancel$/ }).click().catch(() => undefined);
+await page.waitForTimeout(300);
+record(followed.length === 0 && (await page.locator('dialog[open]').count()) === 0, `Cancel starts nothing (${followed.length})`);
+
+await opened.locator(`[data-follow-up="${NEXT[1]}"]`).click().catch(() => undefined);
+await confirming.waitFor({ timeout: 5_000 }).catch(() => undefined);
+await confirming.locator('button', { hasText: /^Start$/ }).click().catch(() => undefined);
+await page.waitForURL(/\/explore\/research\/525252$/, { timeout: 10_000 }).catch(() => undefined);
+record(
+  followed.length === 1 && followed[0].parentId === '424242' && followed[0].question === NEXT[1],
+  `Start starts a research on it, this one its parent (${JSON.stringify(followed)})`,
+);
+record(/\/explore\/research\/525252$/.test(page.url()), `and opens it (${page.url()})`);
+await page.locator('[data-opened="525252"] [data-parent-link]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+const parentLink = await page.locator('[data-opened="525252"] [data-parent-link]').getAttribute('href').catch(() => null);
+const parentText = ((await page.locator('[data-opened="525252"] [data-parent-link]').textContent().catch(() => '')) ?? '').trim();
+record(parentLink !== null && parentLink.endsWith('/explore/research/424242') && parentText === '#424242', `which says whose follow-up it is (${parentText} ${parentLink})`);
+answering = FINISHED;
+await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/research/424242`, { waitUntil: 'domcontentloaded' });
+await opened.waitFor({ timeout: 20_000 }).catch(() => undefined);
 
 // --- a reviewed research ---------------------------------------------------------
 answering = {

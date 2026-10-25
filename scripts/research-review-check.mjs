@@ -7,6 +7,9 @@
  * both, as they were left. A research that was reviewed says so beside its
  * mode on the list.
  *
+ * Follow-up questions is a number beside them, five for somebody who never
+ * said and what they said last otherwise, and Start sends it.
+ *
  * The models are the server's own, made here where the workspace has too few;
  * the list and the start are answered in the browser, so nothing runs.
  */
@@ -59,6 +62,7 @@ await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/research`, { waitUntil: 
 await page.evaluate((w) => {
   window.localStorage.removeItem(`orknux.research.review.${w}.sieve`);
   window.localStorage.removeItem(`orknux.research.reviewer.${w}.sieve`);
+  window.localStorage.removeItem(`orknux.research.followups.${w}.sieve`);
 }, WORKSPACE);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.locator('[data-research="434343"]').waitFor({ timeout: 20_000 }).catch(() => undefined);
@@ -76,6 +80,9 @@ record((await box.count()) === 1 && !(await box.isChecked()), 'Review is a box, 
 const label = ((await box.locator('xpath=..').textContent()) ?? '').trim();
 record(label === 'Review', `and it says so in one word (${label})`);
 record((await dialog.locator('[data-reviewer]').count()) === 0, 'unticked, there is no reviewer to choose');
+const count = await dialog.locator('input[data-follow-up-count]').inputValue().catch(() => '');
+record(count === '5', `Follow-up questions starts at five for somebody who never said (${count})`);
+await dialog.locator('input[data-follow-up-count]').fill('2');
 
 await box.check();
 await dialog.locator('#research-reviewer').waitFor({ timeout: 5_000 }).catch(() => undefined);
@@ -92,6 +99,7 @@ record(await start.isEnabled(), 'chosen, Start can be pressed');
 await start.click();
 await page.waitForFunction(() => document.querySelector('dialog[open]') === null, null, { timeout: 10_000 }).catch(() => undefined);
 record(started !== null && started.review === true && started.reviewerModelId === reviewer, `Start sends the review and its model (${JSON.stringify({ review: started?.review, reviewerModelId: started?.reviewerModelId })})`);
+record(started?.followUps === 2, `and the number of follow-up questions (${started?.followUps})`);
 
 // --- remembered ----------------------------------------------------------------------
 await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/research`, { waitUntil: 'domcontentloaded' });
@@ -101,5 +109,7 @@ await page.waitForFunction((want) => document.querySelector('#research-reviewer'
 const again = page.locator('dialog[open] input[type="checkbox"][data-review]');
 const kept = (await page.locator('#research-reviewer').getAttribute('data-value').catch(() => null)) ?? '';
 record((await again.isChecked()) && kept === reviewer, `the next research starts with the review and the reviewer last chosen (${kept})`);
+const keptCount = await page.locator('dialog[open] input[data-follow-up-count]').inputValue().catch(() => '');
+record(keptCount === '2', `and the number of follow-up questions last chosen (${keptCount})`);
 
 await finish(browser);
