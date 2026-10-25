@@ -85,6 +85,8 @@ export const WORKSPACE_NAME = copy(process.env.ORKNUX_DEMO_WORKSPACE ?? 'Northwi
  */
 const OLLAMA_ENDPOINT = process.env.ORKNUX_DEMO_ENDPOINT ?? 'http://localhost:11434';
 const OLLAMA_MODEL_ID = process.env.ORKNUX_DEMO_MODEL ?? 'gemma-4-31B-it-Q5_K_M';
+/** The provider type the chat model is reached as: Ollama by default, LLAMA_CPP for a llama.cpp server, which has no /api/tags. */
+const PROVIDER_TYPE = process.env.ORKNUX_DEMO_TYPE ?? 'OLLAMA';
 
 /*
  * Where the demo draws, if anywhere.
@@ -310,9 +312,9 @@ const { createModelProvider: provider } = await gql(
   {
     input: {
       workspaceId: ws,
-      name: 'Ollama (on the LAN)',
+      name: PROVIDER_TYPE === 'LLAMA_CPP' ? 'llama.cpp (on the LAN)' : 'Ollama (on the LAN)',
       endpoint: OLLAMA_ENDPOINT,
-      type: 'OLLAMA',
+      type: PROVIDER_TYPE,
       // Ollama itself ignores this; the provider will not be called without one.
       secret: process.env.ORKNUX_DEMO_SECRET ?? 'ollama',
     },
