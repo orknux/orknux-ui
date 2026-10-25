@@ -1391,6 +1391,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'skill-tools-always-check',
+    what: 'the skill tools and finish_answer are held at Always while built-ins are fixed, and their rows are drawn fixed at Always',
+    // Session 896: a skill tool at Offer under a tool limit was behind the search while the briefing made it the first step.
+    needs: ['workspace'],
+  },
+  {
     name: 'chat-drawn-file-check',
     what: "a picture the model draws is in the chat's files at once, not after a reload",
     // Stubs the turn: a seeded installation has no image model to ask, and

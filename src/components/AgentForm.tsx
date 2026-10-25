@@ -186,6 +186,8 @@ interface GrantableTool {
   startsHidden?: boolean;
   /** Whether a grant given afresh leaves it at Offer rather than Always; a built-in's own say. */
   startsOffered?: boolean;
+  /** A built-in held at Always while the workspace keeps its built-ins fixed; see the server's BuiltInTools.FIXED_ALWAYS. */
+  fixedAlways?: boolean;
 }
 
 /**
@@ -284,9 +286,6 @@ function fixedAsBuiltIn(): string {
       'knowing that an agent missing one of these behaves in ways this product cannot stand behind.',
   );
 }
-
-/** The built-in the server carries Always while a workspace keeps its built-ins fixed; see AgentAPI. */
-const FINISH_ANSWER = 'finish_answer';
 
 function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
   switch (governance) {
@@ -1432,6 +1431,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         unavailable: tool.unavailable,
         startsHidden: tool.startsHidden,
         startsOffered: tool.startsOffered,
+        fixedAlways: tool.fixedAlways,
       }));
       rows.push(...held.content.map((tool) => ({
         id: tool.id,
@@ -1531,6 +1531,17 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     (tool) => fixedBecause(tool.governance) !== null && !markedHere(tool.governance),
   );
   const fixedNames = new Set(fixedRows.map((tool) => tool.name));
+  /*
+   * The built-ins the server holds at Always while the gate is shut -
+   * finish_answer and the skill tools - read Always here whatever the agent
+   * had stored, because the save puts the mark back. Session 896: a skill tool
+   * left at Offer under a tool limit was behind the search, while the briefing
+   * made calling it the first step.
+   */
+  const fixedAlwaysNames = unsafeBuiltIns
+    ? []
+    : toolCatalogue.items.filter((tool) => tool.fixedAlways === true && tools.includes(tool.name)).map((tool) => tool.name);
+  const markedNow = [...requiredTools, ...fixedAlwaysNames.filter((name) => !requiredTools.includes(name))];
   const fixedOn = fixedRows.filter((tool) => comesWithGrant(tool.governance)).map((tool) => tool.name);
   /*
    * What is always carried, and what is granted in all - the counter's two
@@ -2300,7 +2311,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             is carried - but the choice is remembered for when a limit is set,
             so the control reads the same three states at all times. #372, #413.
           */
-          marked={requiredTools}
+          marked={markedNow}
           onMark={setRequiredTools}
           /*
             Read-only while the workspace has not allowed it, for every row the
@@ -2312,18 +2323,19 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
             markedHere(tool.governance)
               ? null
               : fixedBecause(tool.governance) ??
-                (tool.governance === 'GRANT' && !unsafeBuiltIns && tool.name === FINISH_ANSWER ? fixedAsBuiltIn() : null)
+                (tool.governance === 'GRANT' && !unsafeBuiltIns && tool.fixedAlways === true ? fixedAsBuiltIn() : null)
           }
           /*
             And the rows that are Offer or Always but never Hide here: the box
             tools while a label is held, and the server's own tools while the
             workspace keeps them - hiding one is what that gate is about, and
             whether one is carried or found is the agent's choice either way.
-            Not finish_answer, which the server carries while the gate is shut.
+            Not finish_answer and the skill tools, which the server carries
+            Always while the gate is shut: those rows are fixed at Always.
           */
           unhideableOf={(tool) =>
             (tool.governance === 'BOX_ACCESS' && boxesHeld) ||
-            (tool.governance === 'GRANT' && !unsafeBuiltIns && tool.name !== FINISH_ANSWER)
+            (tool.governance === 'GRANT' && !unsafeBuiltIns && tool.fixedAlways !== true)
           }
           unavailableOf={(tool) => tool.unavailable}
           // A view of the HTTP tool rows above it, so not a grant of its own to count. Issue #609.

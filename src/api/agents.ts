@@ -195,6 +195,11 @@ export interface BuiltInTool {
   startsHidden: boolean;
   /** Whether an agent, or a grant given afresh, starts with it at Offer rather than Always. */
   startsOffered: boolean;
+  /**
+   * Whether it is held at Always while the workspace keeps its built-ins fixed,
+   * whatever is sent: finish_answer and the skill tools. The row is drawn fixed.
+   */
+  fixedAlways: boolean;
 }
 
 /**
@@ -204,7 +209,7 @@ export interface BuiltInTool {
  * row, is the fault #444 was filed about.
  */
 export async function fetchBuiltInTools(): Promise<BuiltInTool[]> {
-  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary unavailable startsHidden startsOffered } }`);
+  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary unavailable startsHidden startsOffered fixedAlways } }`);
   return data.builtInTools;
 }
 
