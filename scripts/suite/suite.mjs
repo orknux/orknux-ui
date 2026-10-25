@@ -2226,7 +2226,7 @@ export const TESTS = [
   },
   {
     name: 'design-chat-files-check',
-    what: "a file dropped on the document, wireframe or diagram editor's chat, or picked with its paperclip, waits in a chip that can be taken off, and Send carries its id with the turn and shows it under the message",
+    what: "a file dropped on the document, wireframe or diagram editor's chat, or picked with its paperclip, waits in a chip that can be taken off with the text box focused, and Send carries its id with the turn and shows it under the message",
     needs: ['workspace'],
     /* Makes its own document, wireframe and diagram and removes them; the upload and the model's answer are answered here, so no file is stored and no model is asked. */
   },

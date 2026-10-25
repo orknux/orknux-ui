@@ -7,7 +7,8 @@
  * dragging files over the conversation says it will take them, letting go
  * uploads them into a chip above the box - which can be taken off again - and
  * Send carries their ids in the ask mutation, after which the chip moves into
- * the sent message.
+ * the sent message. Dropping or picking a file puts the focus in the text box,
+ * caret at the end, so the words about it come next.
  *
  * The upload and the model's answer are answered here, the installation is
  * said to allow attachments and the workspace is given a chat model where it
@@ -30,6 +31,12 @@ const addresses = {
   diagram: `${BASE}/workspace/${WORKSPACE}/explore/diagrams/${made.diagram}`,
 };
 const mutations = { document: 'askDocument', wireframe: 'askWireframe', diagram: 'askDiagram' };
+
+/** Whether the editor's chat box has the focus, and where its caret is. */
+const focused = (editor) => page.getByTestId(`${editor}-chat-input`).evaluate((field) => ({
+  focused: document.activeElement === field,
+  caret: field.selectionStart === field.selectionEnd ? field.selectionStart : -1,
+}));
 
 let uploaded = 0;
 /** What each ask mutation was sent, by editor. */
@@ -84,6 +91,9 @@ try {
     await page.waitForTimeout(150);
     record((await page.getByTestId(`${editor}-chat-drop-zone`).count()) === 1, `${editor}: dragging a file over the chat says it will take it`);
 
+    // Something already typed, and the focus elsewhere, so the drop has to bring it back with the caret at the end.
+    await input.fill('Read these');
+    await input.evaluate((field) => field.blur());
     const before = uploaded;
     await input.dispatchEvent('drop', { dataTransfer: transfer });
     await page.getByTestId(`${editor}-chat-attachment`).first().waitFor({ timeout: 5_000 }).catch(() => undefined);
@@ -92,12 +102,17 @@ try {
     record((await chips.count()) === 1 && (await chips.first().innerText()).includes(`${editor}-notes.txt`), `${editor}: it waits in a chip above the box`);
     record((await page.getByTestId(`${editor}-chat-drop-zone`).count()) === 0, `${editor}: the drop zone goes`);
     record(page.url() === addresses[editor], `${editor}: the page is still the editor, not the dropped file`);
+    const focusAfterDrop = await focused(editor);
+    record(focusAfterDrop.focused && focusAfterDrop.caret === 'Read these'.length, `${editor}: the drop focuses the text box with the caret at the end (${JSON.stringify(focusAfterDrop)})`);
 
     // A second file picked with the paperclip, and taken off again.
     if (!record((await page.getByTestId(`${editor}-chat-attach`).count()) === 1, `${editor}: the composer has an attach button`)) continue;
+    await input.evaluate((field) => field.blur());
     await page.getByTestId(`${editor}-chat-file-input`).setInputFiles({ name: 'second.png', mimeType: 'image/png', buffer: Buffer.from([137, 80, 78, 71]) });
     await page.waitForTimeout(600);
     record((await chips.count()) === 2, `${editor}: a file picked with the attach button is a second chip (${await chips.count()})`);
+    const focusAfterPick = await focused(editor);
+    record(focusAfterPick.focused && focusAfterPick.caret === 'Read these'.length, `${editor}: a picked file focuses the text box too (${JSON.stringify(focusAfterPick)})`);
     await chips.filter({ hasText: 'second.png' }).getByTestId(`${editor}-chat-attachment-remove`).click();
     record((await chips.count()) === 1, `${editor}: removing a chip takes it off`);
 

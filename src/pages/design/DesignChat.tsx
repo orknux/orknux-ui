@@ -81,6 +81,17 @@ export function DesignChat(props: DesignChatProps) {
   const { prefix, talk, answering, files } = props;
   const talkEnd = useRef<HTMLDivElement | null>(null);
   const picker = useRef<HTMLInputElement | null>(null);
+  const box = useRef<HTMLTextAreaElement | null>(null);
+
+  /** Files dropped or picked, and the box focused with the caret at the end, so the words about them come next. */
+  function attach(picked: File[]) {
+    if (picked.length === 0) return;
+    files.add(picked);
+    const field = box.current;
+    if (field === null) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }
   const [dropping, setDropping] = useState(false);
 
   useEffect(() => {
@@ -110,7 +121,7 @@ export function DesignChat(props: DesignChatProps) {
         if (!event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
         setDropping(false);
-        if (files.allowed) files.add(Array.from(event.dataTransfer.files));
+        if (files.allowed) attach(Array.from(event.dataTransfer.files));
       }}
       data-testid={`${prefix}-chat-area`}
     >
@@ -214,6 +225,7 @@ export function DesignChat(props: DesignChatProps) {
             </div>
           )}
           <textarea
+            ref={box}
             className={styles.ask}
             value={props.asking}
             onChange={(event) => props.onAsking(event.target.value)}
@@ -264,7 +276,7 @@ export function DesignChat(props: DesignChatProps) {
                   type="file"
                   multiple
                   onChange={(event) => {
-                    files.add(Array.from(event.target.files ?? []));
+                    attach(Array.from(event.target.files ?? []));
                     // Cleared so the same file can be picked twice in a row.
                     event.target.value = '';
                   }}
