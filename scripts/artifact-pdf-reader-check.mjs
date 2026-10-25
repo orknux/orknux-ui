@@ -145,6 +145,19 @@ record(
   `the reader is centred in the window (${off === null ? 'not drawn' : `${off.x}px across, ${off.y}px down from the centre`})`,
 );
 
+/* The reader offers the file itself, not only a tab to read it in. */
+const download = await page.evaluate(() => {
+  const link = document.querySelector('[role="dialog"] a[data-reading-download]');
+  return link === null ? null : { href: link.getAttribute('href'), name: link.getAttribute('download') };
+});
+const disposition = download === null || download.href === null
+  ? null
+  : await page.evaluate(async (href) => (await fetch(href)).headers.get('content-disposition'), download.href);
+record(
+  download !== null && download.name !== null && download.name.endsWith('.pdf') && /^attachment/.test(disposition ?? ''),
+  `the reader has a Download that hands over the file (${JSON.stringify(download)}, ${disposition})`,
+);
+
 /* ---------------------------------------------- an HTML file is still locked in */
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/artifacts/${html.id}`, { waitUntil: 'domcontentloaded' });

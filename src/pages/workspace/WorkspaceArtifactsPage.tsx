@@ -512,6 +512,12 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
                 rel="noreferrer noopener"
                 title={t('Open this in a tab of its own')}
               >{t('Open in a tab')}</a>
+              <a
+                className={styles.readingOut}
+                href={read.url}
+                download={read.filename}
+                data-reading-download=""
+              >{t('Download')}</a>
               <button
                 type="button"
                 ref={closer}
