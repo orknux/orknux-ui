@@ -500,6 +500,14 @@ button.toolbarTitle:hover {
   flex-shrink: 0;
 }
 
+/* How long it has taken and how long is left: on the wait's line, before Stop, in figures that do not jitter. */
+.pace {
+  flex-shrink: 0;
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* Over the picture the change was asked of, which stays in view under it. */
 .failedOver {
   max-width: 720px;

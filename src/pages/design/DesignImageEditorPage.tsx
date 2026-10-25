@@ -21,6 +21,8 @@ import {
   stopDesignImageJob,
 } from '../../api/artifacts';
 import type { Artifact, DesignImageJob } from '../../api/artifacts';
+import { imagePaceLine, imagePaceOf } from './imagePace';
+import type { ImagePace } from './imagePace';
 import { fetchImageModelParameters } from '../../api/graph';
 import type { ImageParameterSpec } from '../../api/graph';
 import { fetchImageSizePresets } from '../../api/imagePresets';
@@ -476,6 +478,17 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
     }, ASK_EVERY_MS);
     return () => window.clearInterval(ask);
   }, [waiting.join(','), workspaceId]);
+
+  // How long the picture shown has taken, and how long is left where anything knows; see imagePaceLine.
+  const [pace, setPace] = useState<ImagePace | null>(null);
+  useEffect(() => setPace(imagePaceOf(job, Date.now())), [job]);
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (pace === null) return;
+    const tick = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(tick);
+  }, [pace === null]);
+  const paceSaid = pace === null || pace.jobId !== job?.id ? null : imagePaceLine(pace, Math.max(clock, Date.now()));
 
   // -- Undo and redo ------------------------------------------------------
 
@@ -2690,6 +2703,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                           delay={0}
                           size={40}
                         />
+                        {paceSaid !== null && (
+                          <span className={styles.pace} data-testid="editor-drawing-time">
+                            {paceSaid}
+                          </span>
+                        )}
                         <button type="button" className={`${form.ghost} ${styles.stop}`} onClick={() => void stop()} disabled={busy} data-testid="editor-stop">
                           {t('Stop')}
                         </button>
@@ -2709,6 +2727,11 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
                     delay={0}
                     size={72}
                   />
+                  {paceSaid !== null && (
+                    <span className={styles.pace} data-testid="editor-drawing-time">
+                      {paceSaid}
+                    </span>
+                  )}
                   <button type="button" className={`${form.ghost} ${styles.stop}`} onClick={() => void stop()} disabled={busy} data-testid="editor-stop">
                     {t('Stop')}
                   </button>

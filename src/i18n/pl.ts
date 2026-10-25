@@ -3385,6 +3385,9 @@ export const PL: Record<string, string> = {
   "about {seconds} s of sampling left": "próbkowania zostało około {seconds} s",
   "Estimating…": "Szacowanie…",
   "Finishing…": "Kończenie…",
+  // A picture being drawn whose server says nothing of its progress: measured off the model's recent pictures of the same kind.
+  "estimated {minutes} min left": "szacunkowo zostało {minutes} min",
+  "estimated {seconds} s left": "szacunkowo zostało {seconds} s",
   // Wireframes in Design, issue #655.
   "Wireframes": "Makiety",
   "Wireframe editor": "Edytor makiet",
