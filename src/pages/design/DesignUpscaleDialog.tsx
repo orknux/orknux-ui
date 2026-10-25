@@ -58,6 +58,11 @@ export function DesignUpscaleDialog({ open, workspaceId, models, width, height, 
     }
   }, [open]);
 
+  // Models that arrive after the window opened - a page whose model list was still loading - choose the first.
+  useEffect(() => {
+    if (open && (modelId === '' || !models.some((one) => one.id === modelId)) && models.length > 0) setModelId(models[0].id);
+  }, [open, models]);
+
   // Each model's server has its own algorithms: asked again whenever the model changes.
   useEffect(() => {
     if (!open || modelId === '') return;
