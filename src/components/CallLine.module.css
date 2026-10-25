@@ -165,3 +165,12 @@
 .fold:hover {
   text-decoration: underline;
 }
+
+/* Where a box session the call opened is watched: a link of its own under the call's line, folded or not. */
+.watch {
+  align-self: flex-start;
+  margin-top: var(--space-4);
+  color: var(--color-accent-brand);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+}

@@ -97,6 +97,7 @@ export function CallLine({ actor, content, result, failed = false, when, folded 
    */
   const [open, setOpen] = useState(!folded);
   const showing = !folded || open;
+  const watch = useMemo(() => watchOf(actor, result), [actor, result]);
 
   return (
     <article
@@ -141,6 +142,12 @@ export function CallLine({ actor, content, result, failed = false, when, folded 
         );
       })()}
 
+      {watch !== null && (
+        <a className={styles.watch} href={watch} target="_blank" rel="noreferrer" data-testid="call-watch">
+          {t('Watch the box session')}
+        </a>
+      )}
+
       {showing &&
         (asked.text.trim() === '' ? (
         <p className={styles.note}>{t('Called with nothing.')}</p>
@@ -160,6 +167,22 @@ export function CallLine({ actor, content, result, failed = false, when, folded 
       )}
     </article>
   );
+}
+
+/**
+ * Where a box session the call opened can be watched, read off what the call
+ * returned. Drawn by the page rather than left to the model to copy into its
+ * answer: Qwen, asked to, wrote a link to a task that had nothing to do with
+ * it (session 870) - the address it was handed was right.
+ */
+function watchOf(actor: string | null, result: string | null | undefined): string | null {
+  if (actor !== 'orkbox_open' || result === null || result === undefined) return null;
+  try {
+    const url = (JSON.parse(result) as { url?: unknown }).url;
+    return typeof url === 'string' && /^(https?:\/\/|\/)/.test(url) ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 /** One block of code, folded while it is longer than a line should be. */

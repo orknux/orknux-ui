@@ -3895,4 +3895,5 @@ export const PL: Record<string, string> = {
   "Read a PDF, Markdown, ODT, DOCX, HTML or text file into the document": "Wczytaj do dokumentu plik PDF, Markdown, ODT, DOCX, HTML albo tekstowy",
   "Put a picture from a file or from Orknux on the wireframe": "Umieść na makiecie obraz z pliku albo z Orknux",
   "Could not import the picture.": "Nie udało się zaimportować obrazu.",
+  "Watch the box session": "Obserwuj sesję w skrzynce",
 };

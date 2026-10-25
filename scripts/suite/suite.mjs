@@ -815,6 +815,12 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-box-watch-check',
+    what: "a box session an agent opens is watched from a link on the orkbox_open line, read off what the call returned, and no other call grows one",
+    needs: ['workspace'],
+    /* The turn is answered by the page's own network, so no model or box is needed. */
+  },
+  {
     name: 'chat-thinking-live-check',
     what: "while a turn runs only the thinking still going on is live: the first round's stops once a call follows it",
     needs: ['workspace'],
