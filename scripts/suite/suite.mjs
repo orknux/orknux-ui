@@ -2200,6 +2200,12 @@ export const TESTS = [
     needs: ['workspace'],
     /* Makes its own document and removes it. */
   },
+  {
+    name: 'document-search-check',
+    what: 'Quick actions finds a document by a word in its text, with its catalog and the words around the match, and opens it',
+    needs: ['workspace'],
+    /* Makes its own catalog and document and removes them. */
+  },
 
   {
     name: 'negative-prompt-check',

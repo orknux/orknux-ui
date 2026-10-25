@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
 
+import { searchDocuments } from '../api/documents';
 import { fetchWorkspaceEntities } from '../api/palette';
 import { goToPages, goToSections, namesOneThing, quickActions, sectionAt } from '../navigation';
 import type { EntityKind, NamedEntity } from '../api/palette';
@@ -12,6 +13,7 @@ import boxIcon from '../assets/box.svg';
 import chartNetworkIcon from '../assets/chart-network.svg';
 import codeIcon from '../assets/code.svg';
 import databaseIcon from '../assets/database.svg';
+import fileTextIcon from '../assets/file-text.svg';
 import filterIcon from '../assets/filter.svg';
 import lockKeyholeIcon from '../assets/lock-keyhole.svg';
 import memoryIcon from '../assets/memory.svg';
@@ -45,6 +47,8 @@ interface Command {
   icon: string;
   /** Words somebody might type for it that are not in the label. */
   also?: string;
+  /** The words around where a search found what was typed, shown under the label. */
+  snippet?: string;
 }
 
 /**
@@ -68,6 +72,7 @@ const KIND_ICON: Record<EntityKind, string> = {
   Skill: bookIcon,
   Tool: toolIcon,
   Issue: bugIcon,
+  Document: fileTextIcon,
 };
 
 /** How many are worth showing at once; the rest are found by typing more. */
@@ -95,6 +100,7 @@ const EDIT_PATH: Record<EntityKind, (workspace: string, id: string) => string> =
   Model: (workspace, id) => `${workspace}/models/${id}`,
   Skill: (workspace, id) => `${workspace}/skills/${id}`,
   Tool: (workspace, id) => `${workspace}/tools/${id}`,
+  Document: (workspace, id) => `${workspace}/design/documents/${id}`,
 };
 
 /**
@@ -112,6 +118,10 @@ const EDIT_PATH: Record<EntityKind, (workspace: string, id: string) => string> =
 const REMEMBERED: string[] = [
   ...new Set(Object.values(EDIT_PATH).map((at) => at('/workspace/:workspaceId', ':id'))),
 ].filter(namesOneThing);
+
+/** How long the typing pauses before documents are searched for what was typed, and how much of it there has to be. */
+const DOCUMENT_SEARCH_PAUSE_MS = 200;
+const DOCUMENT_SEARCH_LEAST = 2;
 
 /** How many recently opened things the resting list makes room for. */
 const RECENT_AT_REST = 3;
@@ -184,6 +194,14 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
    */
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const remembered = useRecentlyOpened();
+  /**
+   * Documents whose words hold what is typed, and the words around where:
+   * the one search this box sends to the server, because a document is found
+   * by what it says as often as by its name, and its words are not fetched
+   * ahead. Asked once the typing pauses; never waited on - rows found by name
+   * are drawn at once and these join them.
+   */
+  const [documentHits, setDocumentHits] = useState<Command[]>([]);
 
   /** This workspace's address without its trailing slash, or null without one. */
   const workspace = workspacePath === undefined ? null : workspacePath.replace(/\/$/, '');
@@ -296,6 +314,38 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
     }));
   }, [entities, workspace]);
 
+  useEffect(() => {
+    const needle = text.trim();
+    if (!open || workspace === null || needle.length < DOCUMENT_SEARCH_LEAST) {
+      setDocumentHits([]);
+      return;
+    }
+    const workspaceId = workspace.split('/').pop() ?? '';
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      searchDocuments(workspaceId, needle)
+        .then((hits) => {
+          if (controller.signal.aborted) return;
+          setDocumentHits(
+            hits.map((hit) => ({
+              label: hit.document.name,
+              where: `Document in ${hit.document.catalogName}`,
+              to: EDIT_PATH.Document(workspace, hit.document.id),
+              icon: KIND_ICON.Document,
+              // Found by its words: matched on them, so the row survives the ranking below.
+              also: needle,
+              snippet: hit.snippet,
+            })),
+          );
+        })
+        .catch(() => undefined);
+    }, DOCUMENT_SEARCH_PAUSE_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [text, open, workspace]);
+
   /** Whether the names this workspace's recent list has to be read against are here. */
   const ready = workspace === null || readyFor === workspace;
 
@@ -382,7 +432,14 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
        * typing "variables" wants the page, and its two halves under it - not one
        * of the halves ahead of the whole.
        */
-      found: [...actions, ...commands, ...sections, ...named]
+      found: [
+        ...actions,
+        ...commands,
+        ...sections,
+        // A document found by its name and by its words is one row, the one with the words around the match.
+        ...named.filter((one) => !documentHits.some((hit) => hit.to === one.to)),
+        ...documentHits,
+      ]
         .map((one) => ({ one, at: rank(one, needle) }))
         .filter((scored) => scored.at >= 0)
         // Stable, so pages keep their place ahead of contents at the same rank.
@@ -392,7 +449,7 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
       headings: new Map<number, string>(),
       empty: 'unfound' as const,
     };
-  }, [actions, commands, sections, named, recent, text, onRecent, ready]);
+  }, [actions, commands, sections, named, documentHits, recent, text, onRecent, ready]);
 
   /*
    * The shortcuts work wherever the caret is, which is the point of one.
@@ -550,7 +607,14 @@ export function CommandPalette({ workspacePath, showAdmin = true, showChat = tru
                   style={{ maskImage: `url("${one.icon}")`, WebkitMaskImage: `url("${one.icon}")` }}
                   aria-hidden="true"
                 />
-                <span className={styles.resultLabel}>{one.label}</span>
+                <span className={styles.resultLabel}>
+                  {one.label}
+                  {one.snippet !== undefined && one.snippet !== '' && (
+                    <span className={styles.resultSnippet} data-testid="palette-snippet">
+                      {one.snippet}
+                    </span>
+                  )}
+                </span>
                 <span className={styles.resultWhere}>{one.where}</span>
               </button>
             </li>
