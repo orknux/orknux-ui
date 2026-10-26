@@ -1580,7 +1580,7 @@ function NodeDetailsPanel({
         an action's arguments. The input below is only what the run was carrying,
         which for the first step after a trigger is the trigger's payload.
       */}
-      {parameters.length > 0 && (
+      {(parameters.length > 0 || step.kind === 'AGENT') && (
         <>
           <h3 className={styles.panelHeading}>
             <FoldToggle open={parametersOpen} onToggle={toggleParameters} controls="run-step-parameters">
@@ -1600,6 +1600,13 @@ function NodeDetailsPanel({
                   </dd>
                 </div>
               ))}
+              {/* The run's copy of the node's setting: whether what the agent said went on as it was said, or with its answer. */}
+              {step.kind === 'AGENT' && (
+                <div className={styles.parameter} data-step-streaming={step.streamOutput ? 'on' : 'off'}>
+                  <dt className={styles.parameterName}>{t('Output streaming')}</dt>
+                  <dd className={styles.parameterValue}>{step.streamOutput ? t('On') : t('Off')}</dd>
+                </div>
+              )}
             </dl>
           </FoldBody>
         </>

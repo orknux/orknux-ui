@@ -2225,6 +2225,13 @@ export const TESTS = [
     /* Reads a real run of the workspace whose steps were handed something. */
   },
   {
+    name: 'run-step-streaming-check',
+    what: "a run's agent step says whether it streamed what its agent said",
+    needs: ['workspace'],
+    /* Read off the newest real run with an agent step. */
+  },
+
+  {
     name: 'editor-catalogue-pages-check',
     what: "the workflow editor's pickers hold every page of their catalogue, so a node's action past the first hundred is shown",
     needs: ['workspace'],

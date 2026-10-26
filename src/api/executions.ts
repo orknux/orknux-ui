@@ -88,6 +88,8 @@ export interface ExecutionStep {
   agentId: string | null;
   /** The LLM session an agent step talked into, so the run links to it; null for a step that kept none. */
   sessionId: string | null;
+  /** Whether an agent step handed on what its agent said as it said it, as the run copied the node's setting. */
+  streamOutput: boolean;
   /**
    * Which way out of itself this step sent the run; null where it answered
    * nothing. FAILURE means the step failed and the run went on down the node's
@@ -348,7 +350,7 @@ const EXECUTION_DETAIL_FIELDS = `
   stoppedAtNodeKey stoppedReason startedFrom parentExecutionId
   version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
   parameters { nodeKey name value reference expression }
-  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId branch branchOption childExecutionId attempts carriedOver enabled x y }
+  steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId streamOutput branch branchOption childExecutionId attempts carriedOver enabled x y }
   edges { source target branch option }
   logs { id nodeKey at level message }
   pictures { id nodeKey url prompt filename contentType }
