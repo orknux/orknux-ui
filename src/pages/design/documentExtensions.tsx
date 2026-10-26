@@ -15,7 +15,7 @@ import { search } from 'prosemirror-search';
 import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import { DocumentPages } from './documentPages';
 import type { PageGeometry } from './documentPages';
 import styles from './DocumentPaper.module.css';
@@ -194,6 +194,87 @@ const DocumentImage = Node.create({
       // The caption is typed in its own box, which the editor leaves alone.
       stopEvent: ({ event }) => (event.target as HTMLElement | null)?.tagName === 'INPUT',
     });
+  },
+});
+
+/** What a link to another document is followed with: the page it opens, from the editor or from the view. */
+export interface DocumentLinkOptions {
+  href: (id: string, editing: boolean) => string;
+  open: (id: string, editing: boolean) => void;
+}
+
+/**
+ * A link to another of the workspace's documents, drawn with that document's
+ * name. Followed on Ctrl+click while editing - a plain click puts the caret
+ * there, as on any link a word processor holds - and on a click in the view.
+ */
+function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
+  const id = String(node.attrs.document ?? '');
+  const missing = node.attrs.missing === true;
+  const name = (node.attrs.name as string | null) || tf('Document {id}', { id });
+  const links = (extension.options as { links?: DocumentLinkOptions }).links;
+  const editing = editor.isEditable;
+  return (
+    <NodeViewWrapper as="span" className={styles.documentLinkHolder}>
+      <a
+        href={missing || links === undefined ? undefined : links.href(id, editing)}
+        className={`${styles.documentLink} ${missing ? styles.documentLinkGone : ''}`}
+        title={missing ? t('This document was deleted') : editing ? t('Ctrl+click to open') : undefined}
+        onClick={(event) => {
+          event.preventDefault();
+          if (missing || links === undefined) return;
+          if (editing && !(event.ctrlKey || event.metaKey)) return;
+          links.open(id, editing);
+        }}
+        data-testid="document-doc-link"
+        data-document={id}
+        data-missing={missing ? '' : undefined}
+      >
+        {name}
+      </a>
+    </NodeViewWrapper>
+  );
+}
+
+/** A link to another document, by its id; the server puts the document's current name on it. */
+export const DocumentLink = Node.create<{ links?: DocumentLinkOptions }>({
+  name: 'documentLink',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+
+  addOptions() {
+    return { links: undefined };
+  },
+
+  addAttributes() {
+    return {
+      document: {
+        default: null,
+        parseHTML: (element) => Number(element.getAttribute('data-document')) || null,
+        renderHTML: (attributes) => ({ 'data-document': String(attributes.document ?? '') }),
+      },
+      name: {
+        default: '',
+        parseHTML: (element) => element.textContent ?? '',
+        renderHTML: () => ({}),
+      },
+      // Said by the server of a link whose document is gone; never saved.
+      missing: { default: false, rendered: false },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'a[data-document-link]' }];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    return ['a', mergeAttributes(HTMLAttributes, { 'data-document-link': '' }), (node.attrs.name as string) || ''];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(DocumentLinkView, { as: 'span' });
   },
 });
 
@@ -556,6 +637,7 @@ export function documentExtensions(options: {
   geometry: () => PageGeometry;
   onPages: (count: number) => void;
   onGrammarPick: GrammarOptions['onPick'];
+  documentLinks?: DocumentLinkOptions;
 }): AnyExtension[] {
   return [
     StarterKit.configure({
@@ -584,6 +666,7 @@ export function documentExtensions(options: {
     Color,
     Note,
     DocumentImage,
+    DocumentLink.configure({ links: options.documentLinks }),
     PageBreak,
     DocumentPages.configure({ geometry: options.geometry, onPages: options.onPages }),
     InlineSuggestion,

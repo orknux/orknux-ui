@@ -440,3 +440,22 @@
   border-bottom: 2px solid var(--document-note-edge);
   cursor: pointer;
 }
+
+/* ---- A link to another document: the link colour, dotted, so it reads as a place in Orknux ---- */
+
+.documentLinkHolder {
+  white-space: normal;
+}
+
+.documentLink {
+  color: var(--document-link);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.documentLinkGone {
+  color: var(--document-muted);
+  text-decoration: line-through;
+  cursor: default;
+}

@@ -2362,6 +2362,12 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'document-links-check',
+    what: "a link to another document shows that document's name after a rename, opens it on Ctrl+click in the editor and on a click in View, its editor lists who mentions it, the Documents button puts one in, and deleting a mentioned document names who mentions it",
+    needs: ['workspace'],
+    /* Makes its own two documents and removes them. */
+  },
+  {
     name: 'document-dark-page-check',
     what: "the document editor's Dark page switch draws the sheets dark with light ink and code, quote, link and Find colours of their own, is remembered, and leaves the document and its export as they were",
     needs: ['workspace'],

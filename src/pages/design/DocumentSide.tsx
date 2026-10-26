@@ -3,6 +3,7 @@ import { TextSelection } from '@tiptap/pm/state';
 import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 
+import type { DocumentReference } from '../../api/documents';
 import { useSieve } from '../../components/sieve';
 import { t } from '../../i18n';
 import { headingsOf, highlightsOf } from './documentExtensions';
@@ -14,6 +15,10 @@ export interface DocumentSideProps {
   scope: RefObject<HTMLDivElement | null>;
   /** Counts every change to the document, so the lists are read again. */
   tick: number;
+  /** The documents that link to this one, listed where the document is edited; absent in the view. */
+  mentionedBy?: DocumentReference[];
+  /** Opens one of [mentionedBy]. */
+  onOpen?: (id: string) => void;
 }
 
 /** How far below the top of the desk a heading counts as the section being read. A layout, not a behaviour. */
@@ -25,10 +30,12 @@ const READING_LINE = 48;
  * The column, and each of its two sections, folds away - remembered for
  * whoever uses the editor, as the image editor's layers panel is.
  */
-export function DocumentSide({ editor, scope, tick }: DocumentSideProps) {
+export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: DocumentSideProps) {
   const [side, rememberSide] = useSieve('document-editor.side');
   const [outlineFold, rememberOutline] = useSieve('document-editor.outline');
   const [notesFold, rememberNotes] = useSieve('document-editor.highlights');
+  const [mentionsFold, rememberMentions] = useSieve('document-editor.mentioned-by');
+  const mentionsOpen = mentionsFold !== 'closed';
   const open = side !== 'closed';
   const outlineOpen = outlineFold !== 'closed';
   const notesOpen = notesFold !== 'closed';
@@ -176,6 +183,47 @@ export function DocumentSide({ editor, scope, tick }: DocumentSideProps) {
             ))
           )}
         </div>
+      )}
+
+      {mentionedBy !== undefined && (
+        <>
+          <div className={styles.sideHead}>
+            <button
+              type="button"
+              className={styles.sectionToggle}
+              onClick={() => rememberMentions(mentionsOpen ? 'closed' : '')}
+              aria-expanded={mentionsOpen}
+              data-testid="document-mentioned-by-toggle"
+            >
+              <span className={styles.chevron} aria-hidden="true">
+                {mentionsOpen ? '▾' : '▸'}
+              </span>
+              {t('Mentioned by')}
+              {mentionedBy.length > 0 && <span className={styles.sideCount}>{mentionedBy.length}</span>}
+            </button>
+          </div>
+          {mentionsOpen && (
+            <nav className={styles.sideList} aria-label={t('Mentioned by')} data-testid="document-mentioned-by">
+              {mentionedBy.length === 0 ? (
+                <p className={styles.sideEmpty}>{t('No document links here')}</p>
+              ) : (
+                mentionedBy.map((one) => (
+                  <button
+                    key={one.id}
+                    type="button"
+                    className={styles.outlineItem}
+                    onClick={() => onOpen?.(one.id)}
+                    title={one.catalogName === '' ? one.name : `${one.name} · ${one.catalogName}`}
+                    data-testid="document-mentioned-by-item"
+                    data-id={one.id}
+                  >
+                    {one.name}
+                  </button>
+                ))
+              )}
+            </nav>
+          )}
+        </>
       )}
     </aside>
   );

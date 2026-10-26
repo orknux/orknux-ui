@@ -12,11 +12,12 @@ import {
   fetchDocumentPageSizeDefault,
   setDocumentPageSizeDefault,
   fetchDocuments,
+  fetchDocumentMentions,
   moveDocument,
   renameDocument,
   renameDocumentCatalog,
 } from '../../api/documents';
-import type { DesignDocument, DocumentCatalog, PageSize } from '../../api/documents';
+import type { DesignDocument, DocumentCatalog, DocumentReference, PageSize } from '../../api/documents';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import eyeIcon from '../../assets/eye.svg';
@@ -90,6 +91,17 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
   /** The row being renamed, and what is typed. */
   const [naming, setNaming] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<DesignDocument | null>(null);
+  /** The documents that link to the one about to be deleted, named in the warning; null until asked. */
+  const [removingMentions, setRemovingMentions] = useState<DocumentReference[] | null>(null);
+
+  /** Asks to delete [document], having first found out who links to it, so the warning can say. */
+  function askToRemove(document: DesignDocument) {
+    setRemovingMentions(null);
+    setRemoving(document);
+    fetchDocumentMentions(document.id)
+      .then(setRemovingMentions)
+      .catch(() => setRemovingMentions([]));
+  }
   const [removingCatalog, setRemovingCatalog] = useState<DocumentCatalog | null>(null);
   /** The catalog dialog: a new one, or the one being renamed. */
   const [catalogDialog, setCatalogDialog] = useState<{ renaming: DocumentCatalog | null } | null>(null);
@@ -404,7 +416,7 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
                   <button
                     type="button"
                     className={rail.iconButton}
-                    onClick={() => setRemoving(document)}
+                    onClick={() => askToRemove(document)}
                     aria-label={tf('Delete {name}', { name: document.name })}
                     title={t('Delete')}
                     data-testid="document-delete"
@@ -441,6 +453,13 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
       <ConfirmDialog
         subject={removing?.name ?? null}
         kind="removeDocument"
+        detail={
+          removingMentions !== null && removingMentions.length > 0 ? (
+            <span data-testid="document-delete-mentioned">
+              {tf('Mentioned by {names}', { names: removingMentions.map((one) => one.name).join(', ') })}
+            </span>
+          ) : undefined
+        }
         onClose={() => setRemoving(null)}
         onConfirm={async () => {
           if (removing === null) return;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { documentPath, fetchDocument } from '../../api/documents';
 import type { DesignDocument } from '../../api/documents';
@@ -64,7 +64,16 @@ export function DocumentViewPage({ session, onSignOut }: DocumentViewPageProps) 
   }, [documentId]);
 
   const geometry = useMemo(() => geometryOf({ page: held?.page ?? { widthMm: 210, heightMm: 297, marginMm: 25 } }), [held]);
-  const { editor, pages } = useDocumentEditor({ document: held, geometry, editable: false });
+  const navigate = useNavigate();
+  const { editor, pages } = useDocumentEditor({
+    document: held,
+    geometry,
+    editable: false,
+    documentLinks: {
+      href: (id) => documentPath(workspaceId, id, true),
+      open: (id) => navigate(documentPath(workspaceId, id, true)),
+    },
+  });
 
   if (missing) {
     return (

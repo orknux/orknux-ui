@@ -14,11 +14,12 @@ import {
   documentPath,
   fetchDocument,
   fetchDocumentCompletion,
+  fetchDocumentMentions,
   fetchGrammarSettings,
   renameDocument,
   saveDocument,
 } from '../../api/documents';
-import type { DesignDocument, DocumentSettings, DocumentTurn, GrammarMatch, GrammarSettings, Margins, Orientation, PageSize } from '../../api/documents';
+import type { DesignDocument, DocumentReference, DocumentSettings, DocumentTurn, GrammarMatch, GrammarSettings, Margins, Orientation, PageSize } from '../../api/documents';
 import { restoreComponentRevision } from '../../api/revisions';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspace } from '../../api/workspaces';
@@ -70,6 +71,7 @@ import { DocumentHistory, DocumentVersionView } from './DocumentHistory';
 import type { OpenVersion } from './DocumentHistory';
 import { DocumentPaper, geometryOf, useDocumentEditor } from './DocumentPaper';
 import { DocumentSelectionTools } from './DocumentSelectionTools';
+import { DocumentLinkPickerDialog } from './DocumentLinkPickerDialog';
 import { DocumentSide } from './DocumentSide';
 import type { ChangedRange } from './DocumentPaper';
 import { aroundCaret, documentImageSource, markGrammar, suggest, textblocks } from './documentExtensions';
@@ -171,6 +173,10 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const [tick, setTick] = useState(0);
   const [finding, setFinding] = useState(false);
   const [picking, setPicking] = useState(false);
+  /** The window a link to another document is chosen in. */
+  const [linking, setLinking] = useState(false);
+  /** The documents that link to this one; null until asked. */
+  const [mentions, setMentions] = useState<DocumentReference[] | null>(null);
   const [pageMenu, setPageMenu] = useState(false);
   /** The versions down the right, in place of the chat. */
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -257,7 +263,17 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     onChange: () => setTick((at) => at + 1),
     onGrammarPick: (mark, at) => setPicked({ mark, left: at.left, top: at.bottom + 4 }),
     onFiles: (files, at) => void insertFiles(files, at),
+    documentLinks: {
+      href: (id, editing) => documentPath(workspaceId, id, !editing),
+      open: (id, editing) => openDocument(id, !editing),
+    },
   });
+
+  /** Another document, its editor or its view, asked about first where something here is unsaved. */
+  function openDocument(id: string, view = false) {
+    const to = documentPath(workspaceId, id, view);
+    if (!askBeforeLeaving(to)) navigate(to);
+  }
 
   const fingerprint = (editorNow: Editor | null, now: DocumentSettings) =>
     editorNow === null ? '' : JSON.stringify({ content: editorNow.getJSON(), settings: now });
@@ -281,6 +297,14 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
       })
       .catch((cause: unknown) => {
         if (!left) setError(cause instanceof Error ? cause.message : t('Could not load the document.'));
+      });
+    setMentions(null);
+    fetchDocumentMentions(documentId)
+      .then((found) => {
+        if (!left) setMentions(found);
+      })
+      .catch(() => {
+        if (!left) setMentions([]);
       });
     try {
       const kept = sessionStorage.getItem(talkKey(documentId));
@@ -937,6 +961,18 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             >
               {t('Pictures')}
             </button>
+            <button
+              type="button"
+              className={`${shell.tool} ${styles.wordTool}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setLinking(true)}
+              disabled={!can}
+              title={t('Link a document')}
+              aria-label={t('Link a document')}
+              data-testid="document-link-document"
+            >
+              {t('Documents')}
+            </button>
             {tool(t('Horizontal line'), minusIcon, false, () => run((chain) => chain.setHorizontalRule()), 'document-rule')}
             {tool(t('Page break'), pageBreakIcon, false, () => run((chain) => chain.setPageBreak()), 'document-page-break-tool')}
             <span className={shell.toolbarGap} aria-hidden="true" />
@@ -967,7 +1003,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             onClose={() => setVersion(null)}
           />
         )}
-        {editor !== null && <DocumentSide editor={editor} scope={scope} tick={tick} />}
+        {editor !== null && <DocumentSide editor={editor} scope={scope} tick={tick} mentionedBy={mentions ?? undefined} onOpen={(id) => openDocument(id)} />}
         <div className={styles.canvas} ref={scope}>
           <DocumentFind editor={editor} replacing scope={scope} open={finding} onOpen={setFinding} />
           {held === null || editor === null ? (
@@ -1082,6 +1118,16 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
         </div>
       </div>
 
+      <DocumentLinkPickerDialog
+        open={linking}
+        workspaceId={workspaceId}
+        exceptId={documentId}
+        onClose={() => setLinking(false)}
+        onPick={(picked) => {
+          setLinking(false);
+          run((chain) => chain.insertContent({ type: 'documentLink', attrs: { document: Number(picked.id), name: picked.name } }));
+        }}
+      />
       <DesignPicturePickerDialog
         open={picking}
         workspaceId={workspaceId}

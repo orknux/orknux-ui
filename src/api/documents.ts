@@ -296,6 +296,22 @@ export async function checkGrammar(language: string, text: string, signal?: Abor
   return data.grammarCheck;
 }
 
+/** A document another one names. */
+export interface DocumentReference {
+  id: string;
+  name: string;
+  catalogName: string;
+}
+
+/** The workspace's other documents that link to this one, by name. */
+export async function fetchDocumentMentions(id: string): Promise<DocumentReference[]> {
+  const data = await graphql<{ document: { mentionedBy: DocumentReference[] } | null }>(
+    `query ($id: ID!) { document(id: $id) { mentionedBy { id name catalogName } } }`,
+    { id },
+  );
+  return data.document?.mentionedBy ?? [];
+}
+
 export async function deleteDocument(id: string): Promise<boolean> {
   const data = await graphql<{ deleteDocument: boolean }>(`mutation ($id: ID!) { deleteDocument(id: $id) }`, { id });
   return data.deleteDocument;

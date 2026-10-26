@@ -6,7 +6,7 @@ import type { MouseEvent, ReactNode } from 'react';
 import type { DesignDocument } from '../../api/documents';
 import { contentOf } from '../../api/documents';
 import { documentExtensions } from './documentExtensions';
-import type { GrammarMark } from './documentExtensions';
+import type { DocumentLinkOptions, GrammarMark } from './documentExtensions';
 import { mmToPx, relayPages } from './documentPages';
 import type { PageGeometry } from './documentPages';
 import styles from './DocumentPaper.module.css';
@@ -27,6 +27,8 @@ export interface DocumentEditorOptions {
   onGrammarPick?: (mark: GrammarMark, at: { left: number; top: number; bottom: number }) => void;
   /** Files pasted or dropped in: kept, and put in where they landed. */
   onFiles?: (files: File[], at: number | null) => void;
+  /** Where a link to another document goes, and what following it does. */
+  documentLinks?: DocumentLinkOptions;
 }
 
 /**
@@ -34,10 +36,10 @@ export interface DocumentEditorOptions {
  * same extensions, so a page is drawn the same in both and the view is what
  * the editor will save.
  */
-export function useDocumentEditor({ document, geometry, editable, onChange, onGrammarPick, onFiles }: DocumentEditorOptions) {
+export function useDocumentEditor({ document, geometry, editable, onChange, onGrammarPick, onFiles, documentLinks }: DocumentEditorOptions) {
   const [pages, setPages] = useState(1);
-  const held = useRef({ geometry, onChange, onGrammarPick, onFiles });
-  held.current = { geometry, onChange, onGrammarPick, onFiles };
+  const held = useRef({ geometry, onChange, onGrammarPick, onFiles, documentLinks });
+  held.current = { geometry, onChange, onGrammarPick, onFiles, documentLinks };
 
   const extensions = useMemo(
     () =>
@@ -45,6 +47,10 @@ export function useDocumentEditor({ document, geometry, editable, onChange, onGr
         geometry: () => held.current.geometry,
         onPages: (count) => setPages(count),
         onGrammarPick: (mark, at) => held.current.onGrammarPick?.(mark, at),
+        documentLinks: {
+          href: (id, editing) => held.current.documentLinks?.href(id, editing) ?? '#',
+          open: (id, editing) => held.current.documentLinks?.open(id, editing),
+        },
       }),
     [],
   );

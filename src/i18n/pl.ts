@@ -3993,4 +3993,13 @@ export const PL: Record<string, string> = {
   "Copying…": "Kopiowanie…",
   "Continue": "Kontynuuj",
   "{name} (copy)": "{name} (kopia)",
+  "Link a document": "Połącz z dokumentem",
+  "No documents found.": "Nie znaleziono dokumentów.",
+  "Could not list the documents.": "Nie udało się wyświetlić dokumentów.",
+  "Document {id}": "Dokument {id}",
+  "This document was deleted": "Ten dokument został usunięty",
+  "Ctrl+click to open": "Ctrl+kliknięcie otwiera",
+  "Mentioned by": "Wspomniany w",
+  "No document links here": "Żaden dokument tu nie prowadzi",
+  "Mentioned by {names}": "Wspomniany w: {names}",
 };
