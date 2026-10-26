@@ -32,6 +32,11 @@ export type DiagramEndStyle = 'none' | 'arrow' | 'open' | 'triangle' | 'diamond'
 
 export const DIAGRAM_END_STYLES: DiagramEndStyle[] = ['none', 'arrow', 'open', 'triangle', 'diamond', 'filled-diamond', 'circle'];
 
+/** How a connection finds its way between its nodes (`DiagramRouting`); absent is straight, as every line was. */
+export type DiagramRouting = 'straight' | 'right-angles' | 'curved';
+
+export const DIAGRAM_ROUTINGS: DiagramRouting[] = ['straight', 'right-angles', 'curved'];
+
 /** What an agent may do with a diagram through the orknux_* tools. */
 export type DiagramAgentAccess = 'READ' | 'CHANGE';
 
@@ -61,6 +66,7 @@ export interface DiagramEdgeData {
   start?: DiagramEndStyle;
   /** At `to`. */
   end?: DiagramEndStyle;
+  routing?: DiagramRouting;
 }
 
 export interface DiagramDrawing {

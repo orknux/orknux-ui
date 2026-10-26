@@ -2431,6 +2431,13 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'diagram-tidy-check',
+    what: "a wide shape keeps its side features to its height, a node's notes dot is quiet, and a line runs straight, in right angles or curved",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+
+  {
     name: 'documents-import-check',
     what: 'the documents list keeps its page-size picker apart from the buttons beside it, and Import takes several files at once, each a document named after its file, naming any that could not be read',
     needs: ['workspace'],

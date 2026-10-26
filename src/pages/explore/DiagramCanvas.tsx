@@ -3,10 +3,11 @@ import type { CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, useInternalNode } from '@xyflow/react';
 import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/react';
 
-import type { DiagramLineStyle, DiagramNodeKind } from '../../api/diagrams';
+import type { DiagramLineStyle, DiagramNodeKind, DiagramRouting } from '../../api/diagrams';
 import { t } from '../../i18n';
 import { dashesOf } from './DiagramLineStyles';
-import { ICON_LABEL, OUTLINES, OutlinePieces, compartments, rimBorder } from './DiagramShapes';
+import { routeOf } from './DiagramRoutes';
+import { ICON_LABEL, OutlinePieces, compartments, outlineOf, rimBorder } from './DiagramShapes';
 import type { Outline } from './DiagramShapes';
 import styles from './DiagramEditorPage.module.css';
 
@@ -22,7 +23,7 @@ export type ShapeData = {
 export type ShapeNode = Node<ShapeData, 'shape'>;
 
 /** A connection's line style and words; its two ends arrive as the edge's own markers, none where it carries none. */
-export type LinkData = { line: DiagramLineStyle; label?: string };
+export type LinkData = { line: DiagramLineStyle; label?: string; routing?: DiagramRouting };
 
 export type LinkEdge = Edge<LinkData, 'link'>;
 
@@ -117,16 +118,18 @@ function dark(fill: string): boolean {
  * loosely - because which side a line leaves from is drawn, not stored: a line
  * runs between the two boxes' edges wherever they are (see [FloatingLink]).
  */
-export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNode>) {
+export function ShapeNodeView({ id, data, selected, width, height }: NodeProps<ShapeNode>) {
   const editing = useContext(LabelEditingContext);
   const typing = editing.target?.kind === 'node' && editing.target.id === id;
   const filled = data.color !== undefined;
   const style = filled ? { background: data.color, color: dark(data.color as string) ? 'var(--diagram-ink-on-dark)' : 'var(--diagram-ink-on-light)' } : undefined;
+  // Fitted to the node's own size, so a wide one keeps small features at its sides.
+  const outline = outlineOf(data.kind, width ?? 100, height ?? 100);
   return (
     <>
       <NodeResizer isVisible={selected} minWidth={24} minHeight={24} lineClassName={styles.resizeLine} handleClassName={styles.resizeHandle} />
-      {OUTLINES[data.kind] !== undefined ? (
-        <OutlinedShape kind={data.kind} outline={OUTLINES[data.kind] as Outline} label={data.label} typing={typing} fill={data.color} ink={filled ? style?.color : undefined} />
+      {outline !== undefined ? (
+        <OutlinedShape kind={data.kind} outline={outline} label={data.label} typing={typing} fill={data.color} ink={filled ? style?.color : undefined} />
       ) : data.kind === 'diamond' ? (
         <div className={styles.shapeDiamondBox} data-testid="diagram-node-shape" data-kind={data.kind}>
           <svg className={styles.diamond} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -236,9 +239,10 @@ function border(box: { cx: number; cy: number; hw: number; hh: number }, tx: num
 }
 
 /**
- * A connection, drawn straight between the edges of the two boxes it joins
- * and read off React Flow's own record of where they are, so it follows a box
- * being dragged and survives the node objects being rebuilt.
+ * A connection between the edges of the two boxes it joins - straight, in
+ * right angles or curved, as its routing says - read off React Flow's own
+ * record of where they are, so it follows a box being dragged and survives
+ * the node objects being rebuilt.
  */
 export function FloatingLink({ id, source, target, data, selected, markerEnd, markerStart }: EdgeProps<LinkEdge>) {
   const editing = useContext(LabelEditingContext);
@@ -250,9 +254,10 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
   const b = boxOf(to);
   const fromKind = (from.data as ShapeData | undefined)?.kind;
   const toKind = (to.data as ShapeData | undefined)?.kind;
-  const start = rimBorder(fromKind, a, b.cx, b.cy) ?? border(a, b.cx, b.cy);
-  const end = rimBorder(toKind, b, a.cx, a.cy) ?? border(b, a.cx, a.cy);
-  const path = `M ${start.x},${start.y} L ${end.x},${end.y}`;
+  const edge = (kind: DiagramNodeKind | undefined, box: typeof a, tx: number, ty: number) => rimBorder(kind, box, tx, ty) ?? border(box, tx, ty);
+  const route = routeOf(a, b, data?.routing ?? 'straight', (box, tx, ty) => edge(box === a ? fromKind : toKind, box, tx, ty));
+  const path = route.d;
+  const middle = route.label;
   const dashes = dashesOf(data?.line ?? 'solid');
   return (
     <>
@@ -269,7 +274,7 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
         <EdgeLabelRenderer>
           <div
             className={`${styles.linkLabel} ${styles.linkLabelEditing}`}
-            style={{ transform: `translate(-50%, -50%) translate(${(start.x + end.x) / 2}px, ${(start.y + end.y) / 2}px)` }}
+            style={{ transform: `translate(-50%, -50%) translate(${middle.x}px, ${middle.y}px)` }}
           >
             {/* One line: a connection's label is drawn on one. */}
             <InPlaceLabel initial={data?.label ?? ''} className={styles.linkLabelEditor} multiline={false} />
@@ -280,7 +285,7 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
         <EdgeLabelRenderer>
           <div
             className={`${styles.linkLabel} ${selected ? styles.linkLabelSelected : ''}`}
-            style={{ transform: `translate(-50%, -50%) translate(${(start.x + end.x) / 2}px, ${(start.y + end.y) / 2}px)` }}
+            style={{ transform: `translate(-50%, -50%) translate(${middle.x}px, ${middle.y}px)` }}
             data-testid="diagram-edge-label"
           >
             {data.label}

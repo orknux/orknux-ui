@@ -1,4 +1,4 @@
-import type { DiagramEdgeData, DiagramEdgeKind, DiagramEndStyle, DiagramLineStyle } from '../../api/diagrams';
+import type { DiagramEdgeData, DiagramEdgeKind, DiagramEndStyle, DiagramLineStyle, DiagramRouting } from '../../api/diagrams';
 import { t } from '../../i18n';
 
 /** What each of the four old kinds is, as a line style and two ends - the server's `DiagramEdgeKind`. */
@@ -50,6 +50,27 @@ export function endStyleLabel(style: DiagramEndStyle): string {
     case 'circle':
       return t('Circle');
   }
+}
+
+export function routingLabel(routing: DiagramRouting): string {
+  switch (routing) {
+    case 'straight':
+      return t('Straight');
+    case 'right-angles':
+      return t('Right angles');
+    case 'curved':
+      return t('Curved');
+  }
+}
+
+/** A routing drawn as a short line from one corner to the other, for the picker. */
+export function RoutingIcon({ routing }: { routing: DiagramRouting }) {
+  const d = routing === 'straight' ? 'M 2 11 L 26 1' : routing === 'right-angles' ? 'M 2 11 L 14 11 L 14 1 L 26 1' : 'M 2 11 C 14 11 14 1 26 1';
+  return (
+    <svg width={28} height={12} viewBox="0 0 28 12" aria-hidden="true" data-routing-icon={routing}>
+      <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 /** The dash pattern a line style is drawn with; null for solid. */

@@ -340,15 +340,27 @@
 }
 
 /* A node with notes: a small fold in its corner. */
+/*
+ * That a node has notes: a small, quiet dot, in the selection's colour only
+ * on the node being looked at. Bright on every noted node, a diagram whose
+ * nodes all had notes wore a row of blue dots that read as something wrong.
+ */
 .notedMark {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
-  background: var(--diagram-select);
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  background: var(--diagram-muted);
   border-radius: 50%;
+  opacity: 0.5;
   pointer-events: none;
+}
+
+:global(.react-flow__node):hover .notedMark,
+:global(.react-flow__node.selected) .notedMark {
+  background: var(--diagram-select);
+  opacity: 1;
 }
 
 .handle {

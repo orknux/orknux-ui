@@ -23,6 +23,7 @@ import {
   DIAGRAM_LINE_STYLES,
   DIAGRAM_NODE_KINDS,
   DIAGRAM_PNG_SCALES,
+  DIAGRAM_ROUTINGS,
   deleteDiagram,
   diagramExportUrl,
   drawingOf,
@@ -43,6 +44,7 @@ import type {
   DiagramLineStyle,
   DiagramNodeData,
   DiagramNodeKind,
+  DiagramRouting,
   DiagramTurn,
 } from '../../api/diagrams';
 import type { SessionUser } from '../../api/session';
@@ -92,7 +94,7 @@ import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
 import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCH_ROW, SWATCHES } from './DiagramCanvas';
 import type { LinkEdge, ShapeNode } from './DiagramCanvas';
-import { EndIcon, LineIcon, MarkerDefs, endStyleLabel, lineStyleLabel, markerId, nearestKind, styleOf } from './DiagramLineStyles';
+import { EndIcon, LineIcon, MarkerDefs, RoutingIcon, endStyleLabel, lineStyleLabel, markerId, nearestKind, routingLabel, styleOf } from './DiagramLineStyles';
 import { ShapeIcon } from './DiagramShapes';
 import { agentAccessOptions } from './DiagramsPage';
 import styles from './DiagramEditorPage.module.css';
@@ -515,7 +517,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           source: edge.from,
           target: edge.to,
           type: 'link' as const,
-          data: { line, label: edge.label },
+          data: { line, label: edge.label, routing: edge.routing ?? 'straight' },
           markerEnd: mark(end, true),
           markerStart: mark(start, false),
           selected: selectedEdges.includes(edge.id),
@@ -704,7 +706,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   function arrange(direction: LayoutDirection) {
     if (drawing.nodes.length === 0) return;
-    change(laidOut(drawing, direction));
+    /*
+     * Laid out in rows or columns, a line reads best in right angles between
+     * them - so a line still straight, as every line starts, is bent; one a
+     * person made curved is theirs and is left curved.
+     */
+    const laid = laidOut(drawing, direction);
+    change({ ...laid, edges: laid.edges.map((edge) => ((edge.routing ?? 'straight') === 'straight' ? { ...edge, routing: 'right-angles' } : edge)) });
     setMenu(null);
     window.requestAnimationFrame(() => void flow.fitView({ padding: 0.2, maxZoom: 1, duration: 200 }));
   }
@@ -1509,6 +1517,27 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                             <span className={styles.styleOption}>
                               <LineIcon style={line} />
                               {lineStyleLabel(line)}
+                            </span>
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label className={styles.field}>
+                      <span>{t('Routing')}</span>
+                      <Select
+                        className={`${form.input} ${form.select}`}
+                        value={oneEdge.routing ?? 'straight'}
+                        onChange={(picked) =>
+                          change({ ...drawing, edges: drawing.edges.map((edge) => (edge.id === oneEdge.id ? { ...edge, routing: picked as DiagramRouting } : edge)) })
+                        }
+                        aria-label={t('Routing')}
+                        data-testid="diagram-edge-routing"
+                      >
+                        {DIAGRAM_ROUTINGS.map((routing) => (
+                          <option key={routing} value={routing}>
+                            <span className={styles.styleOption}>
+                              <RoutingIcon routing={routing} />
+                              {routingLabel(routing)}
                             </span>
                           </option>
                         ))}

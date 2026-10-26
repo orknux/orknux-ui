@@ -27,10 +27,61 @@ function poly(points: [number, number][]): Piece {
   return { d: `M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} Z` };
 }
 
-const HEXAGON: [number, number][] = [[15, 0], [85, 0], [100, 50], [85, 100], [15, 100], [0, 50]];
-const PARALLELOGRAM: [number, number][] = [[15, 0], [100, 0], [85, 100], [0, 100]];
-const TRAPEZOID: [number, number][] = [[0, 0], [100, 0], [85, 100], [15, 100]];
 const TRIANGLE: [number, number][] = [[50, 0], [100, 100], [0, 100]];
+
+/*
+ * The features that run across a shape, in the hundred-unit box of a square
+ * node, and how many of the node's heights each may be at most - the server's
+ * `DiagramOutline`. Stretched with the width alone, a hexagon a thousand
+ * pixels wide had slants of a hundred and fifty; so each is the smaller of the
+ * two, and a wide shape stays a box with small features at its sides.
+ */
+const SLANT = 15;
+const SLANT_HEIGHTS = 0.4;
+const TABS = 20;
+const TABS_HEIGHTS = 0.35;
+const TAB = 40;
+const TAB_HEIGHTS = 1.2;
+const DEPTH = 12;
+
+function hexagon(s: number): Outline {
+  const rim: [number, number][] = [[s, 0], [100 - s, 0], [100, 50], [100 - s, 100], [s, 100], [0, 50]];
+  return { pieces: [poly(rim)], inside: { left: s + 1, top: 4, right: 99 - s, bottom: 96 }, rim };
+}
+
+function slanted(rim: [number, number][], s: number): Outline {
+  return { pieces: [poly(rim)], inside: { left: s + 2, top: 4, right: 98 - s, bottom: 96 }, rim };
+}
+
+const parallelogram = (s: number) => slanted([[s, 0], [100, 0], [100 - s, 100], [0, 100]], s);
+const trapezoid = (s: number) => slanted([[0, 0], [100, 0], [100 - s, 100], [s, 100]], s);
+
+function component(tab: number): Outline {
+  const body = tab / 2;
+  return {
+    pieces: [poly([[body, 0], [100, 0], [100, 100], [body, 100]]), poly([[0, 20], [tab, 20], [tab, 35], [0, 35]]), poly([[0, 55], [tab, 55], [tab, 70], [0, 70]])],
+    inside: { left: tab + 2, top: 4, right: 96, bottom: 96 },
+    rim: [[body, 0], [100, 0], [100, 100], [body, 100]],
+  };
+}
+
+function packaged(tab: number): Outline {
+  return {
+    pieces: [poly([[0, 0], [tab, 0], [tab, 15], [0, 15]]), poly([[0, 15], [100, 15], [100, 100], [0, 100]])],
+    inside: { left: 4, top: 19, right: 96, bottom: 96 },
+    rim: [[0, 0], [tab, 0], [tab, 15], [100, 15], [100, 100], [0, 100]],
+  };
+}
+
+/** A box seen from a corner: `d` across, as deep as the 12 units it is down, in pixels. */
+function device(d: number): Outline {
+  const far = 100 - d;
+  return {
+    pieces: [poly([[0, 12], [far, 12], [far, 100], [0, 100]]), poly([[0, 12], [d, 0], [100, 0], [far, 12]]), poly([[far, 12], [100, 0], [100, 88], [far, 100]])],
+    inside: { left: 4, top: 16, right: far - 4, bottom: 96 },
+    rim: [[0, 12], [d, 0], [100, 0], [100, 88], [far, 100], [0, 100]],
+  };
+}
 
 export const OUTLINES: Partial<Record<DiagramNodeKind, Outline>> = {
   database: {
@@ -43,30 +94,18 @@ export const OUTLINES: Partial<Record<DiagramNodeKind, Outline>> = {
     inside: { left: 4, top: 4, right: 96, bottom: 80 },
     rim: [[0, 0], [100, 0], [100, 85], [50, 90], [0, 88]],
   },
-  hexagon: { pieces: [poly(HEXAGON)], inside: { left: 16, top: 4, right: 84, bottom: 96 }, rim: HEXAGON },
-  parallelogram: { pieces: [poly(PARALLELOGRAM)], inside: { left: 17, top: 4, right: 83, bottom: 96 }, rim: PARALLELOGRAM },
-  trapezoid: { pieces: [poly(TRAPEZOID)], inside: { left: 17, top: 4, right: 83, bottom: 96 }, rim: TRAPEZOID },
+  hexagon: hexagon(SLANT),
+  parallelogram: parallelogram(SLANT),
+  trapezoid: trapezoid(SLANT),
   triangle: { pieces: [poly(TRIANGLE)], inside: { left: 18, top: 45, right: 82, bottom: 96 }, rim: TRIANGLE },
   cloud: {
     pieces: [{ d: 'M 25 85 C 5 85 0 60 15 52 C 5 35 25 15 42 25 C 50 5 80 5 85 28 C 100 30 105 55 90 65 C 100 80 85 95 70 88 C 60 100 35 100 25 85 Z' }],
     inside: { left: 18, top: 30, right: 82, bottom: 84 },
     rim: [[25, 85], [6, 70], [15, 52], [18, 30], [42, 25], [62, 9], [85, 28], [98, 45], [90, 65], [90, 84], [70, 88], [47, 96]],
   },
-  component: {
-    pieces: [poly([[10, 0], [100, 0], [100, 100], [10, 100]]), poly([[0, 20], [20, 20], [20, 35], [0, 35]]), poly([[0, 55], [20, 55], [20, 70], [0, 70]])],
-    inside: { left: 22, top: 4, right: 96, bottom: 96 },
-    rim: [[10, 0], [100, 0], [100, 100], [10, 100]],
-  },
-  package: {
-    pieces: [poly([[0, 0], [40, 0], [40, 15], [0, 15]]), poly([[0, 15], [100, 15], [100, 100], [0, 100]])],
-    inside: { left: 4, top: 19, right: 96, bottom: 96 },
-    rim: [[0, 0], [40, 0], [40, 15], [100, 15], [100, 100], [0, 100]],
-  },
-  device: {
-    pieces: [poly([[0, 12], [88, 12], [88, 100], [0, 100]]), poly([[0, 12], [12, 0], [100, 0], [88, 12]]), poly([[88, 12], [100, 0], [100, 88], [88, 100]])],
-    inside: { left: 4, top: 16, right: 84, bottom: 96 },
-    rim: [[0, 12], [12, 0], [100, 0], [100, 88], [88, 100], [0, 100]],
-  },
+  component: component(TABS),
+  package: packaged(TAB),
+  device: device(DEPTH),
   class: { pieces: [poly([[0, 0], [100, 0], [100, 100], [0, 100]])], inside: FULL },
   actor: {
     pieces: [{ cx: 50, cy: 14, r: 11 }, { d: 'M 50 25 L 50 62 M 22 38 L 78 38 M 50 62 L 26 96 M 50 62 L 74 96', open: true }],
@@ -78,6 +117,34 @@ export const OUTLINES: Partial<Record<DiagramNodeKind, Outline>> = {
   control: { pieces: [{ cx: 50, cy: 55, r: 35 }, { d: 'M 58 11 L 47 20 L 58 29', open: true }], inside: FULL, icon: true },
   entity: { pieces: [{ cx: 50, cy: 45, r: 35 }, { d: 'M 15 88 L 85 88', open: true }], inside: FULL, icon: true },
 };
+
+/**
+ * A kind's outline for a node `w` by `h` pixels: the square one, with the
+ * features that run across it no wider than their share of the height - the
+ * server's `DiagramOutline.of`. Undefined for a kind drawn without one.
+ */
+export function outlineOf(kind: DiagramNodeKind, w: number, h: number): Outline | undefined {
+  const square = OUTLINES[kind];
+  if (square === undefined) return undefined;
+  const heights = (h / Math.max(w, 1)) * 100;
+  const across = (units: number, most: number) => Math.min(units, most * heights);
+  switch (kind) {
+    case 'hexagon':
+      return hexagon(across(SLANT, SLANT_HEIGHTS));
+    case 'parallelogram':
+      return parallelogram(across(SLANT, SLANT_HEIGHTS));
+    case 'trapezoid':
+      return trapezoid(across(SLANT, SLANT_HEIGHTS));
+    case 'component':
+      return component(across(TABS, TABS_HEIGHTS));
+    case 'package':
+      return packaged(across(TAB, TAB_HEIGHTS));
+    case 'device':
+      return device(across(DEPTH, DEPTH / 100));
+    default:
+      return square;
+  }
+}
 
 /**
  * A class's label as its compartments: the first line is the name, and a line
@@ -137,7 +204,7 @@ export function rimBorder(kind: DiagramNodeKind | undefined, box: { cx: number; 
     const t = 1 / Math.sqrt((dx * dx) / (box.hw * box.hw) + (dy * dy) / (box.hh * box.hh));
     return { x: box.cx + dx * t, y: box.cy + dy * t };
   }
-  const outline = kind === undefined ? undefined : OUTLINES[kind];
+  const outline = kind === undefined ? undefined : outlineOf(kind, box.hw * 2, box.hh * 2);
   const rim: [number, number][] | undefined = kind === 'diamond' ? [[50, 0], [100, 50], [50, 100], [0, 50]] : outline?.icon ? undefined : outline?.rim;
   if (rim === undefined) return null;
   const left = box.cx - box.hw;
