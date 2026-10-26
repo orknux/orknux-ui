@@ -265,8 +265,9 @@
   color: var(--color-text-primary);
 }
 
+/* Beside its heading, not out at the column's far edge where it read as belonging to nothing. */
 .sideCount {
-  margin-left: auto;
+  margin-left: var(--space-6);
   color: var(--color-text-muted);
   font-weight: 400;
 }

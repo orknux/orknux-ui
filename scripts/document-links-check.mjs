@@ -39,6 +39,17 @@ try {
   // And the linking document lists what it mentions, the other half of Mentioned by.
   const mentioned = await page.getByTestId('document-mentions-item').allTextContents().catch(() => []);
   record(mentioned.length === 1 && mentioned[0].trim() === RENAMED, `its editor lists the documents it mentions (${JSON.stringify(mentioned)})`);
+  // Its count beside the heading, not out at the column's far edge.
+  const countGap = await page.evaluate(() => {
+    const toggle = document.querySelector('[data-testid="document-mentions-toggle"]');
+    const number = toggle?.querySelector('[class*="_sideCount_"]');
+    const words = toggle ? [...toggle.childNodes].find((one) => one.nodeType === 3 && one.textContent.trim() !== '') : null;
+    if (!number || !words) return null;
+    const range = document.createRange();
+    range.selectNodeContents(words);
+    return Math.round(number.getBoundingClientRect().left - range.getBoundingClientRect().right);
+  });
+  record(countGap !== null && countGap >= 0 && countGap <= 12, `the count sits beside Mentions (${countGap}px)`);
 
   // Resting on a link shows what it points at, as the quick-actions palette shows a document.
   if (drawn) await link.first().hover();
