@@ -42,7 +42,6 @@ import { shellUser } from '../../session/user';
 import rail from '../workspace/WorkspaceMemoryPage.module.css';
 import table from '../workspace/CatalogueTable.module.css';
 import styles from './DesignDocumentsPage.module.css';
-import form from '../../components/Dialog.module.css';
 import { ACCEPTED, dataUrl } from './DocumentImportMenu';
 import { settingsOf } from './documentSettings';
 import { ColumnHeader } from '../../components/ColumnHeader';
@@ -353,7 +352,7 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
             </label>
             <button
               type="button"
-              className={`${form.ghost} ${styles.importDocuments}`}
+              className={styles.importDocuments}
               onClick={() => importPicker.current?.click()}
               disabled={importing !== null}
               title={t('Import files as documents')}

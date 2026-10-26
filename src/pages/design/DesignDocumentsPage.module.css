@@ -25,11 +25,24 @@
 }
 
 /* The picker reads as a setting of its own, not as part of the buttons beside it. */
+/* New document's twin, outlined rather than filled: the same padding and type, one pixel less for the border, so the two stand the same height. */
 .importDocuments {
-  width: auto;
+  flex-shrink: 0;
   margin-left: var(--space-20);
-  padding: 0 var(--space-10);
-  font-size: var(--text-sm);
+  padding: calc(var(--space-8) - 1px) calc(var(--space-14) - 1px);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.importDocuments:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .newDocument {

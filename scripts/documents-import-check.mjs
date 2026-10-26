@@ -38,6 +38,19 @@ try {
   const make = await page.getByTestId('new-document').boundingBox();
   const between = right === null || make === null ? -1 : Math.round(make.x - (right.x + right.width));
   record(there && between >= 6 && between <= 12, `Import sits close beside New document (${between}px)`);
+  // And the two read as a pair: the same height, the same type, the same inset.
+  const pair = await page.evaluate(() => {
+    const read = (id) => {
+      const el = document.querySelector(`[data-testid="${id}"]`);
+      if (!el) return null;
+      const css = getComputedStyle(el);
+      return { height: Math.round(el.getBoundingClientRect().height), size: css.fontSize, left: parseFloat(css.paddingLeft) + parseFloat(css.borderLeftWidth) };
+    };
+    return { importing: read('documents-import'), making: read('new-document') };
+  });
+  const matched = pair.importing !== null && pair.making !== null &&
+    pair.importing.height === pair.making.height && pair.importing.size === pair.making.size && pair.importing.left === pair.making.left;
+  record(matched, `Import and New document stand the same height, in the same type and inset (${JSON.stringify(pair)})`);
 
   await page.getByTestId('documents-import-file').setInputFiles(files).catch(() => undefined);
   const error = page.getByTestId('documents-error');
