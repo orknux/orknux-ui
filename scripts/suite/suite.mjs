@@ -1066,6 +1066,12 @@ export const TESTS = [
     // Changes the first agent's level and the first agent node's, and puts both back.
   },
   {
+    name: 'workflow-node-effort-check',
+    what: "an agent node chooses how hard its model thinks from the words its model takes, saved as its own parameter and not drawn as a raw row",
+    needs: ['workspace'],
+    // Makes its own provider, model, agent and workflow, and removes them.
+  },
+  {
     name: 'template-publish-closes-check',
     what: 'publishing a template closes the dialog rather than opening a message to close',
     needs: ['workspace'],

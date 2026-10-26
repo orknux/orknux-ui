@@ -73,7 +73,8 @@ import type { WorkspaceFunction } from '../../api/functions';
 import { fetchWorkspaceConnections } from '../../api/integrations';
 import type { WorkspaceConnection } from '../../api/integrations';
 import { createObject, createObjectFromSchema, fetchObject, fetchWorkspaceObjects, updateObject } from '../../api/objects';
-import { fetchModels } from '../../api/models';
+import { fetchChatModelParameters, fetchModels } from '../../api/models';
+import { effortLabel } from '../../components/ModelForm';
 import type { Model } from '../../api/models';
 import { fetchImageSizePresets } from '../../api/imagePresets';
 import type { ImageSizePreset } from '../../api/imagePresets';
@@ -3474,6 +3475,12 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   const [imageModels, setImageModels] = useState<Model[]>([]);
   /** The workspace's decision models, for a decision node's model picker. Issue #577. */
   const [decisionModels, setDecisionModels] = useState<Model[]>([]);
+  /** The workspace's chat models, whose providers say which reasoning efforts an agent node may ask for. Issue #674. */
+  const [chatModels, setChatModels] = useState<Model[]>([]);
+  /** The reasoning efforts the open agent node's model takes; empty where it takes none. */
+  const [effortChoices, setEffortChoices] = useState<string[]>([]);
+  /** What each provider was found to take, so moving between nodes does not ask again. */
+  const effortsByProvider = useRef(new Map<string, Promise<string[]>>());
   /** The workspace's other workflows, which a Workflow node may run. */
   const [callable, setCallable] = useState<{ id: string; name: string }[]>([]);
   /**
@@ -3485,6 +3492,43 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
   /** The workspace's size presets, for the Preset menu beside Width and Height. */
   const [imagePresets, setImagePresets] = useState<ImageSizePreset[]>([]);
   const [managingPresets, setManagingPresets] = useState(false);
+
+  /*
+   * The reasoning efforts the open agent node may ask for: its own model's,
+   * where the node names one outright, and its agent's otherwise. A model read
+   * off the run is not known until it runs, so every chat model's are offered,
+   * and the run says so in its log when the one it got takes no such word.
+   * Issue #674.
+   */
+  const nodeModel = draft?.kind === 'AGENT' ? draft.mappings.find((one) => one.name === 'model') : undefined;
+  const nodeModelNamed = nodeModel !== undefined && nodeModel.expression.trim() !== '';
+  const nodeModelKnown = !nodeModelNamed || nodeModel?.mode === 'VALUE';
+  const nodeModelId = nodeModelNamed
+    ? (nodeModel?.mode === 'VALUE' ? nodeModel.expression.trim() : null)
+    : (agents.find((one) => one.id === draft?.agentId)?.modelId ?? null);
+  useEffect(() => {
+    if (draft?.kind !== 'AGENT') return;
+    const considered = nodeModelKnown ? chatModels.filter((model) => model.id === nodeModelId) : chatModels;
+    const providers = [...new Set(considered.map((model) => model.providerId))];
+    let live = true;
+    Promise.all(
+      providers.map((providerId) => {
+        let held = effortsByProvider.current.get(providerId);
+        if (held === undefined) {
+          held = fetchChatModelParameters(providerId)
+            .then((specs) => specs.find((spec) => spec.name === 'reasoningEffort')?.choices ?? [])
+            .catch(() => []);
+          effortsByProvider.current.set(providerId, held);
+        }
+        return held;
+      }),
+    ).then((lists) => {
+      if (live) setEffortChoices([...new Set(lists.flat())]);
+    });
+    return () => {
+      live = false;
+    };
+  }, [draft?.kind, nodeModelId, nodeModelKnown, chatModels]);
 
   /*
    * Where the graph has been, so Ctrl+Z can put it back.
@@ -3779,10 +3823,12 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
         setImageModels(all.filter((model) => model.kind === 'IMAGE' && model.enabled));
         // Either kind answers a decision node: a decision model natively, a chat model in the same shape.
         setDecisionModels(all.filter((model) => (model.kind === 'DECISION' || model.kind === 'CHAT') && model.enabled));
+        setChatModels(all.filter((model) => model.kind === 'CHAT'));
       })
       .catch(() => {
         setImageModels([]);
         setDecisionModels([]);
+        setChatModels([]);
       });
     fetchImageSizePresets(workspaceId)
       .then(setImagePresets)
@@ -8088,7 +8134,7 @@ Change the keystroke in Preferences.`}
                             with it, and the next Backspace reached the canvas — where
                             it deleted the selected node.
                           */}
-                          {draft.mappings.map((mapping, index) => (draft.kind === 'AGENT' && mapping.name === 'chattiness') ? null : (
+                          {draft.mappings.map((mapping, index) => (draft.kind === 'AGENT' && (mapping.name === 'chattiness' || mapping.name === 'reasoningEffort')) ? null : (
                             <div className={styles.parameter} key={index} data-mapping-name={mapping.name}>
                               <span className={styles.parameterHead}>
                                 {(draft.kind === 'OBJECT' && draft.objectId === null) || draft.kind === 'WORKFLOW' ? (
@@ -8480,6 +8526,48 @@ Change the keystroke in Preferences.`}
                     </div>
                   </div>
                 )}
+
+                {/*
+                  How hard the model thinks on this node only: its own
+                  reasoningEffort parameter, sent in place of the model's.
+                  Offered where the node's model takes one, and kept where a
+                  word is already set, so it can be cleared. Issue #674.
+                */}
+                {draft.kind === 'AGENT' && (() => {
+                  const held = draft.mappings.find((one) => one.name === 'reasoningEffort')?.expression ?? '';
+                  if (effortChoices.length === 0 && held === '') return null;
+                  const choices = held === '' || effortChoices.includes(held) ? effortChoices : [...effortChoices, held];
+                  return (
+                    <div className={styles.field}>
+                      <span className={styles.labelWithHint}>
+                        <label className={styles.label} htmlFor="node-reasoning-effort">{t('Reasoning effort')}</label>
+                        <FieldHint label={t('Reasoning effort')}>
+                          {t('How hard the model thinks on this node, in place of its own setting. Default uses the model’s.')}
+                        </FieldHint>
+                      </span>
+                      <div className={styles.inputWrapper}>
+                        <Select
+                          id="node-reasoning-effort"
+                          className={`${styles.input} ${styles.select}`}
+                          data-node-reasoning-effort=""
+                          value={held}
+                          onChange={(picked) => {
+                            const others = draft.mappings.filter((one) => one.name !== 'reasoningEffort');
+                            setDraft({
+                              ...draft,
+                              mappings: picked === '' ? others : [...others, { name: 'reasoningEffort', expression: picked, mode: 'VALUE' as MappingMode }],
+                            });
+                          }}
+                        >
+                          <option value="">{t('Default')}</option>
+                          {choices.map((effort) => (
+                            <option key={effort} value={effort}>{effortLabel(effort)}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {handlesFailure(draft.kind) && (
                   <RetryPolicyFields draft={draft} onChange={(patch) => setDraft({ ...draft, ...patch })} />
