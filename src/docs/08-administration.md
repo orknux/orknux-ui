@@ -15,13 +15,76 @@ any of the workspace's agents is used by a node in a workflow — the workflow
 still points at the agent, so the workspace will not go. Empty the graphs that
 use them, or remove the workflows, and the delete goes through.
 
-**Duplicating** one copies its setup: connections, model providers with their
-models, MCP servers, objects, functions, conditions, tools, skills, actions,
-agents, triggers and workflows. Its runs and sessions stay behind - a copy is
-how a workspace is set up, not what it has done - and so do credentials:
-connections, providers and secret variables arrive without them, and the answer
-lists every one that needs setting. Anything that could not come is counted,
-with the reason for each one step away.
+### Copying a workspace
+
+**Duplicate**, on a workspace's row, copies its setup into a new workspace, and
+asks **what to take** first - each kind can be left behind:
+
+- connections, MCP servers, and model providers with their models;
+- **variables**, secrets included **with their values** - a copy made to set up
+  a second team should not mean typing every key in again;
+- **memories**, the catalogs and what is in them;
+- objects, functions, conditions, tools, skills, actions, agents, triggers and
+  workflows.
+
+The workspace's own settings always come. Its **workflows arrive published**,
+so a copy runs the way the original does from its first trigger rather than
+waiting for somebody to open and publish each one.
+
+Its runs and sessions stay behind - a copy is how a workspace is set up, not
+what it has done - and so do the credentials of connections, providers and MCP
+servers: they arrive without them, and the answer names every one that needs
+setting, and every variable that could not bring its value. Anything that could
+not come is counted, with the reason for each one step away. A large copy shows
+how far it has got - *Copying agents: 4 of 12* - as it goes.
+
+### Workspace members
+
+![A workspace's Members: everybody whose roles open it, and who among them
+administers it](/screens/workspace-members.png)
+
+Who **opens** a workspace is decided by roles, under Roles below. Who **changes
+its settings** is decided on the workspace itself. **Members**, on a workspace's
+settings page, lists everybody whose roles open it, with those roles, and makes
+any of them a **Workspace admin**, or an ordinary **User** of it again. An
+installation administrator is shown as **Installation admin** and always may.
+
+**A workspace's settings are its admins' to change.** Every setting on that page
+- its models, its chat, its agents' defaults, its sharing - needs somebody who
+administers it: a role marked as administering in Admin, or a member made a
+workspace admin here. The **Settings** entry is offered in the workspace's menu
+only to them. On the upgrade that brought this, somebody who used to change a
+workspace's settings without administering it found the page refused until an
+administrator made them a workspace admin.
+
+Somebody let in by a directory group alone is listed once they have signed in -
+until then the installation does not know they exist.
+
+### Sharing between workspaces
+
+![A workspace lending its GPU box provider to another](/screens/workspace-sharing.png)
+
+A workspace can **lend** another its **variable catalogs** and its **model
+providers**, from **Sharing** on its settings page: choose what to share and
+**With workspace**, and **Share**. The borrower's agents, model pickers and
+variable pickers use what was lent as though it were their own - the GPU box one
+team pays for answering another team's agents, one set of API keys kept in one
+place. The borrower sees what it has been lent under **Shared with this
+workspace**, from which workspace and by whom.
+
+**Stop sharing** takes it back **at once**: the borrower's agents stop seeing the
+provider and its models, and its pickers stop offering the catalog, from their
+next request. Nothing is copied, so there is nothing left behind to clean up -
+and nothing the borrower does changes what the lender has.
+
+### Bulk import
+
+**Import** on a component page takes **several files at once**, and **Use
+template** takes several ticked templates, as **one import plan**: everything
+they would create, change or leave alone, in one list, before anything is done.
+The plan can be filtered by what will happen to each row - created, renamed
+because the name was taken, left out - so a hundred rows can be checked for the
+three that matter.
 
 ## Roles
 
@@ -65,6 +128,18 @@ the current one.
 Internal users are tried before the directory when somebody signs in, so an
 installation that authenticates everybody else through a single sign-on provider
 still lets them in. Their roles then work exactly as anybody else's do.
+
+The list says when each person **Last Signed In**, which is how to find an
+account nobody has used since the spring. **A row opens the user**: press
+anywhere on it rather than hunting for a button. Saving a user keeps you on the
+page, with a **Saved.** note beside the button, so a second change does not mean
+finding them again.
+
+**Setting somebody's password ends their other sessions**, and so does changing
+your own: every browser they were signed in on is signed out, and the one you
+are in stays. The usual reason to change a password is that somebody else may
+know the old one, and a new password that left them signed in would change
+nothing.
 
 ## The first administrator
 
@@ -189,16 +264,31 @@ A token is a way of being a user without a browser: it is what an agent, a
 script or the MCP endpoint uses. An administrator makes them on a user's page
 under **Access Tokens**, and anybody with an internal account makes their own
 under the same name in **Preferences**. Each is named for what it is for, and
-the secret is shown once, with a copy button beside it. Making and revoking one
-is written to the organisation audit log.
+the secret is shown once - **Copy it now - it is not shown again** - with a copy
+button beside it and **Dismiss** to put it away once it is copied. Making and
+revoking one is written to the organisation audit log.
+
+The tokens are a table: **Name**, **Access**, **Created**, **Last used** - or
+*never used* - and **Revoke** under **Actions**.
+
+**A token can be read-only.** **What the token may do** is chosen when it is
+made, beside its name: **Read and write**, or **Read-only**. A read-only token
+answers every query and is refused every change; over MCP it is offered only the
+tools that read; and any other request that is not a read is refused. That is
+the token to hand a dashboard, a report script or an assistant that should look
+and never touch. Tokens made before the choice existed are read and write.
+
+**A token cannot make another token.** Tokens are made from a signed-in session
+only - the page, or the API called with a session - so a token that leaks cannot
+be used to mint a second one that outlives revoking the first.
 
 - It begins `orkx_`, so one that has leaked is recognisable on sight in a log or
   a paste.
 - Only a hash of it is stored, which is why there is no way to see it again.
 - It is sent as `Authorization: Bearer orkx_…`, and that is what reaches both
   the API and the MCP endpoint.
-- It carries its owner's roles and nothing else. There are no scopes and no
-  narrower grant: a token is that user by another door.
+- It carries its owner's roles and nothing more. Read-only is the one narrower
+  grant there is: otherwise a token is that user by another door.
 - It does not expire. Revoking is how one ends, and each row says when it was
   last used - or that it never has been - so one nobody needs is easy to find.
 
@@ -281,16 +371,21 @@ Value Size** (8 MB, up to 256) and **Session Store Keys** (200) for what an agen
 keeps in its session's store - large enough for an exported project to be
 handed to an upload tool.
 
-The rest of the page is in sections, each reachable from Quick actions: **Agents**
-(how long one may sleep, how many others it may ask and at once, and how long to
-wait out a rate limit that names no time), **Tool calls** (how many per reply,
-and when a repeated call counts as a loop), **Tool list**, **HTTP tools**
-(whether agents may make requests at all, and where to), **Watchers**,
-**Bulkheads**, **Sessions** (when a long one is summarised, how much of each
-value a transcript keeps, and whether a conversation can be removed at all),
-**Scratchpads** (how much text and how much in files a session keeps),
-**Boxes**, **Drawing**, **Commands**, and further down the ones about the
-installation itself - runs, history, plugins, logging and **Server updates**.
+The rest of the page is in sections, listed in a menu down its side and each
+reachable from Quick actions: **Address** (where the installation is reached),
+**Grammar**, **Chat**, **Agents** (how long one may sleep, how many others it
+may ask and at once, and how long to wait out a rate limit that names no time),
+**Tool calls** (how many per reply, and when a repeated call counts as a loop),
+**Tool list**, **HTTP tools** (whether agents may make requests at all, and
+where to), **Watchers**, **Schedules**, **Bulkheads**, **Sessions** (when a long
+one is summarised, how much of each value a transcript keeps, and whether a
+conversation can be removed at all), **Scratchpads** (how much text and how much
+in files a session keeps), **Boxes**, **Drawing**, **Commands**,
+**Attachments** (the largest upload), **Metrics**, **Reports** (what is recorded
+for Admin → Reports), and further down the ones about the installation itself -
+component history, runs, queued tasks, objects, plugins, workspace copies,
+**Server updates** - and last **Limits**. Every one of them is listed, with its
+default, at the end of this chapter's settings sections.
 
 Below each switch, in grey, is what the operator set in the configuration file:
 where attachments are written, what storage they use, and how large one file may
@@ -500,6 +595,500 @@ it, between 1 and 10; `ORKNUX_INLINE_RESTART_ATTEMPTS` is the starting value.
 On either engine an agent step asked a second time does not write its question
 into the session again, so the model is not shown it twice and the transcript
 does not say it was asked twice.
+
+### Limits
+
+![Admin → Settings → Limits: the numbers the server used to keep in its code, each
+with what it is now and the range it may take](/screens/admin-settings-limits.png)
+
+Below the named settings, **Limits** lists every number the server behaves by
+that used to be written into its code: how long a Retry-After is waited out,
+how many rows one read of a spreadsheet answers, how many pictures one run may
+draw, how long a library may take to install. Each is a box with what it counts
+beside it and its meaning behind the (?).
+
+- **A change applies at once**, without a restart, and is written to the
+  organisation audit log with who made it.
+- **Each starts at its `ORKNUX_TUNING_*` environment variable** - the one named in
+  the table below - and at the number in the table where the variable is not set.
+  An administrator's choice here wins over the variable; clearing the box hands it
+  back to the variable.
+- **Out of range is refused**, saying the range, rather than saved and ignored.
+
+The tables are the whole list, grouped as the page groups them.
+
+#### Model calls
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **The longest Retry-After a model call waits out** | 120 seconds | 0-3,600 | A provider answering 429 with a Retry-After is waited out on the spot, below any node's own retry policy, when the model accepts it. A longer wait than this is handed back to the node instead of holding a worker. Zero never waits. `ORKNUX_TUNING_MODEL_RETRY_AFTER_LONGEST_SECONDS` |
+| **How many Retry-Afters one model call waits out** | 2 times | 0-20 | After this many, the call fails and the node's retry policy decides what happens next. `ORKNUX_TUNING_MODEL_RETRY_AFTER_ATTEMPTS` |
+| **The longest a throttled model call is held** | 60 seconds | 1-3,600 | A model or provider with a token rate holds calls that would overshoot it. The hold grows with how far over the rate the window is, and stops growing here, so an overshoot is a delay and not an outage. `ORKNUX_TUNING_MODEL_THROTTLE_LONGEST_DELAY_SECONDS` |
+| **How long fetching a drawn picture may take** | 60 seconds | 1-600 | Some image models answer with a link rather than the picture; this is how long collecting it from that link may take. `ORKNUX_TUNING_MODEL_IMAGE_FETCH_SECONDS` |
+| **How many recent calls a model's speed is averaged over** | 50 | 1-1,000 | A model's page averages the speeds its provider reported over this many of its newest calls, and a session's page lists this many of its newest calls with theirs. Only providers that report timings, such as llama.cpp, have any. `ORKNUX_TUNING_MODEL_SPEED_CALLS` |
+| **How many points a model's speed chart draws** | 1,000 | 10-50,000 | A model's speed chart averages its calls per minute, hour, day, month or year over the dates chosen. Past this many periods that had calls, it draws the newest this many and says so; minutes over thirty days are 43,200. `ORKNUX_TUNING_MODEL_SPEED_POINTS` |
+
+#### Agents
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long agent_wait waits when not told** | 30 seconds | 1-3,600 | An agent that has asked other agents may wait for them with agent_wait; this is how long, when it does not say. It returns as soon as one of them finishes. `ORKNUX_TUNING_AGENT_WAIT_DEFAULT_SECONDS` |
+| **The longest agent_wait may wait** | 300 seconds | 1-3,600 | A model that may sleep for an hour will. An agent asking for longer is given this. `ORKNUX_TUNING_AGENT_WAIT_LONGEST_SECONDS` |
+| **How many findable tools one search loads** | 8 | 1-50 | An agent with more tools than its briefing names finds the rest with tool_find. This is how many of the matches one search hands it at once; the rest are counted and a narrower search finds them. `ORKNUX_TUNING_TOOLS_LOADED_AT_ONCE` |
+| **How many names or searches one tool_find call may carry** | 8 | 1-50 | What an agent asks for beyond this in one call is ignored. `ORKNUX_TUNING_TOOLS_SEARCHES_AT_ONCE` |
+| **How much of the model's window one tool result may take** | 10% | 1-90 | A longer answer is cut to this share of the model's context window, counted at the characters a token below, and the model is told how long it was and how to read the rest. Applies to models whose window is known. `ORKNUX_TUNING_TOOL_RESULT_WINDOW_PERCENT` |
+| **How many characters a token is counted as against the window** | 1 characters | 1-8 | What turns a share of the model's window into a length to cut at. One never lets a result past its share; markup and numbers come to barely more than one a token, prose to about four. `ORKNUX_TUNING_TURN_WINDOW_CHARS_PER_TOKEN` |
+| **How much of the model's window a shrunk turn leaves free** | 25% | 5-75 | A turn the provider refuses as too long is summarised and cut until it fits the window less this share, which is left for the tool list, the instructions and the answer. `ORKNUX_TUNING_TURN_WINDOW_RESERVE_PERCENT` |
+| **How many scratchpads one session may open** | 50 | 1-1,000 | Scratchpads are an agent's working files; what they may hold in bytes is set under Scratchpads. `ORKNUX_TUNING_SCRATCHPAD_PADS` |
+| **How many rows one read of a CSV or a workbook answers** | 200 | 1-10,000 | An agent reading an attached sheet is handed this many rows at a time and told where the rest begin, so a large file is read in pages rather than all at once. `ORKNUX_TUNING_SHEET_ROWS_MOST` |
+| **How much of a sheet one read hands a model** | 60,000 characters | 1,000-10,000,000 | A page of rows stops early once its cells come to this many characters. A model pays for every character it is handed. `ORKNUX_TUNING_SHEET_ANSWER_CHARACTERS` |
+| **The most one part of a workbook may unpack to** | 100 MB | 1-2,000 | An .xlsx or an .ods is a zip, and a small one can unpack to gigabytes. A workbook with a part larger than this is refused rather than read. `ORKNUX_TUNING_SHEET_UNPACKED_MB` |
+| **How many matches one XML or SVG question lists** | 50 | 1-5,000 | An agent querying an XML file or measuring an SVG is handed this many nodes or rows at a time, with the total counted, and pages through the rest. `ORKNUX_TUNING_XML_MATCHES_MOST` |
+| **The largest XML or SVG file an agent may query or measure** | 20 MB | 1-500 | A larger file is refused rather than parsed. Parsing holds the whole document in memory, several times its size. `ORKNUX_TUNING_XML_FILE_MB` |
+| **How much of a long attribute or text an XML query shows** | 200 characters | 20-100,000 | A longer value, such as an SVG path's d, is cut to this with its length said, unless the agent asks for it in full. `ORKNUX_TUNING_XML_ATTRIBUTE_CHARACTERS` |
+| **How close SVG shapes must be to be grouped, when the agent gives no gap** | 100% | 1-10,000 | Grouping shapes by proximity, such as pads into footprints, joins two whose edges are within this share of the shapes' median nearest-neighbour pitch. `ORKNUX_TUNING_SVG_GROUP_GAP_PERCENT` |
+| **How much text around each PDF search match is shown** | 200 characters | 20-5,000 | A search of a PDF answers the page of each match and this much of the text around it. `ORKNUX_TUNING_PDF_SNIPPET_CHARACTERS` |
+| **How many matches one PDF search lists** | 20 | 1-1,000 | The total is always counted; past this the agent is told how many more there are. `ORKNUX_TUNING_PDF_MATCHES_MOST` |
+| **How much text one PDF read answers** | 200,000 characters | 1,000-2,000,000 | A read stops at the last whole page under this and says which page to read on from. `ORKNUX_TUNING_PDF_READ_CHARACTERS` |
+| **How many PDFs' text is kept for searching again** | 16 | 0-1,000 | The text of a searched PDF is kept in memory by its content, per session, so a second search does not read the file again. The least recently searched goes first; 0 keeps none. `ORKNUX_TUNING_PDF_TEXT_DOCUMENTS` |
+| **Pages from which an attached PDF is read a part at a time** | 20 | 1-100,000 | An agent handed a PDF of at least this many pages is told to read it a few pages at a time and summarise each part before going on, rather than reading it whole. `ORKNUX_TUNING_PDF_LONG_PAGES` |
+| **Pages in one part of a long attached PDF** | 5 | 1-1,000 | How many pages the agent is told to read at a time from a PDF long enough to be read in parts. `ORKNUX_TUNING_PDF_STEP_PAGES` |
+| **How long one regular expression somebody wrote may take to match** | 2 seconds | 1-60 | Watcher conditions, scratchpad searches, workflow conditions and HTTP tool rules run patterns this server did not write. One still matching after this is stopped and counts as no match; a watcher it belongs to ends and tells its agent why. `ORKNUX_TUNING_REGEX_MATCH_SECONDS` |
+| **The longest result a watcher's regular expression is held against** | 1,000,000 characters | 10,000-10,000,000 | A watcher whose tool answers with more than this ends, and tells its agent to point tool_result_path at the part that matters. `ORKNUX_TUNING_WATCHER_MATCH_CHARACTERS` |
+| **How much of a watcher's result is kept and shown to its agent** | 10,000 characters | 500-1,000,000 | Each check keeps the beginning of what the tool returned, and the message that wakes the agent carries the same; the rest is cut, and the message says how much. The condition is still held against all of it. `ORKNUX_TUNING_WATCHER_RESULT_CHARACTERS` |
+
+#### Functions and HTTP
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long one HTTP request from a tool may take** | 30 seconds | 1-600 | The http_request and download tools an agent calls. A function's own orknux.http is bounded by the function's timeout instead. `ORKNUX_TUNING_HTTP_TIMEOUT_SECONDS` |
+| **How much of an HTTP answer a tool hands a model** | 200,000 characters | 1,000-10,000,000 | The rest is cut. A model pays for every character it is handed, so this is a cost as much as a size. `ORKNUX_TUNING_HTTP_BODY_CHARACTERS` |
+| **The largest file a tool may download** | 5 MB | 1-500 | What the download tool fetches is kept in the session's store; anything larger is refused before it is kept. `ORKNUX_TUNING_HTTP_DOWNLOAD_MB` |
+| **The largest picture an agent may fetch from an address to look at** | 5 MB | 1-100 | picture_view given an image's address fetches it into the session's store and shows it; a larger answer is refused as it is read, and nothing of it is kept. `ORKNUX_TUNING_PICTURE_URL_MB` |
+| **The most results one web search may ask for** | 20 | 1-100 | An agent asking for more is given this many. `ORKNUX_TUNING_SEARCH_RESULTS_MOST` |
+| **How long one web search may take** | 20 seconds | 1-300 | Counted for the search provider's answer, not for reading the pages it names. `ORKNUX_TUNING_SEARCH_TIMEOUT_SECONDS` |
+| **How many lines one function call may log back** | 500 lines | 10-100,000 | The lines are handed back with the answer and shown on the run; past this many they still reach the server's log but no longer travel with the result. `ORKNUX_TUNING_SCRIPT_LOG_LINES` |
+
+#### Commands from the chat
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long a command run from the chat may take** | 600 seconds | 1-86,400 | A command run with the Run button on a chat answer is stopped after this long. An elevated one counts the time the administrator prompt waits for an answer. Its output stays readable for as long again after it ends. `ORKNUX_TUNING_COMMAND_TIMEOUT_SECONDS` |
+| **How much of a command's output is kept** | 200,000 characters | 1,000-10,000,000 | What a command run from the chat prints past this is dropped, and the page says it was cut. The command runs on regardless. `ORKNUX_TUNING_COMMAND_OUTPUT_CHARACTERS` |
+
+#### Pictures and speech
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How many pictures one workflow run or task may draw** | 20 | 0-1,000 | Drawing is the most expensive call there is. Zero refuses every drawing. `ORKNUX_TUNING_PICTURES_PER_RUN` |
+| **How many times one workflow run may speak** | 20 | 0-1,000 | Each is a call to a speech model. Zero refuses every one. `ORKNUX_TUNING_SPEECHES_PER_RUN` |
+| **How fast answers are read aloud** | 100% | 25-400 | For whoever has not chosen a speed in voice mode; 100 is the speech model's own pace. `ORKNUX_TUNING_SPEECH_SPEED_PERCENT` |
+| **The largest sound a chat message may send to a model** | 20 MB | 1-1,024 | An mp3, wav or flac goes to a model that takes audio as itself, in base64 on every round of its turn; a larger one is refused before the model is asked. `ORKNUX_TUNING_CHAT_AUDIO_MAX_MB` |
+| **How many notes midi_read lists from one file** | 2,000 | 10-100,000 | Past this many the answer stops listing them and says how many more there were; the tracks, tempo and time signature are still given whole. `ORKNUX_TUNING_MIDI_READ_NOTES` |
+| **The longest piece midi_render turns into sound** | 300 seconds | 1-3,600 | A MIDI file that plays for longer is refused before anything is synthesised; the sound it would make is kept whole in the session, so this also bounds its size. `ORKNUX_TUNING_MIDI_RENDER_LONGEST_SECONDS` |
+| **The sample rate midi_render synthesises at** | 44,100 Hz | 8,000-48,000 | Every format is rendered at this rate, in stereo: 44100 is a CD's, 48000 a video's, and lower makes smaller files that sound duller. `ORKNUX_TUNING_MIDI_RENDER_SAMPLE_RATE` |
+| **The bitrate of an MP3 midi_render encodes** | 192 kbit/s | 32-320 | Higher is closer to the FLAC and larger; FLAC and WAV are lossless and take no bitrate. `ORKNUX_TUNING_MIDI_RENDER_MP3_KBITS` |
+| **How many elements one wireframe may hold** | 2,000 | 10-100,000 | A save, from the editor or from a model drawing in it, that would leave more is refused and says how many there were. `ORKNUX_TUNING_WIREFRAME_ELEMENTS_MOST` |
+| **How long a wireframe's HTML may be and still be handed to a model** | 100,000 characters | 1,000-5,000,000 | A longer page is answered with the link to download it instead of the page itself. `ORKNUX_TUNING_WIREFRAME_HTML_INLINE_CHARACTERS` |
+| **How wide the picture of a wireframe an agent drew may be** | 1,600 pixels | 200-4,096 | The picture put in a chat beside the wireframe's link; a wider drawing is scaled down to this. `ORKNUX_TUNING_WIREFRAME_PICTURE_PIXELS` |
+| **How long a diagram node's notes may be** | 5,000 characters | 100-100,000 | A save, from the editor or from an agent, with longer notes on a node is refused and names the node. `ORKNUX_TUNING_DIAGRAM_NOTE_CHARACTERS` |
+| **How long a diagram's description may be** | 2,000 characters | 100-20,000 | A longer one is refused, from the editor and from an agent alike. `ORKNUX_TUNING_DIAGRAM_DESCRIPTION_CHARACTERS` |
+| **How many nodes and connections one diagram may hold** | 2,000 | 10-100,000 | A save that would leave more is refused and says how many there were. `ORKNUX_TUNING_DIAGRAM_ITEMS_MOST` |
+| **How many hits a diagram search answers with** | 20 | 1-500 | The best matches first; an agent searching for more narrows its words. `ORKNUX_TUNING_DIAGRAM_SEARCH_HITS` |
+| **How much of each node's notes a whole diagram read shows** | 200 characters | 0-100,000 | Notes past this are cut and marked; reading one node gives its notes whole. `ORKNUX_TUNING_DIAGRAM_NOTES_SHOWN_CHARACTERS` |
+| **How wide the picture of a diagram may be** | 1,600 pixels | 200-4,096 | The picture put in a chat beside the diagram's link, and the PNG and PDF an agent exports; a wider drawing is scaled down to this. `ORKNUX_TUNING_DIAGRAM_PICTURE_PIXELS` |
+| **How long one document's stored content may be** | 2,000,000 characters | 10,000-50,000,000 | A save, from the editor or from a model writing in it, that would make it longer is refused and says how long it was. `ORKNUX_TUNING_DOCUMENT_CHARACTERS_MOST` |
+| **How much of a document's Markdown is handed to a model** | 100,000 characters | 1,000-5,000,000 | A longer document is handed over cut at this length, with a note saying how long it is. `ORKNUX_TUNING_DOCUMENT_MARKDOWN_INLINE_CHARACTERS` |
+| **How much rewritten text keeps its colours and highlights** | 20,000 characters | 0-1,000,000 | When a model rewrites more than this, colours and highlights it did not write back are not carried over, and the highlights lost are named in its answer. `ORKNUX_TUNING_DOCUMENT_MARKS_CARRY_CHARACTERS` |
+| **How wide an SVG put in a document is drawn** | 1,600 pixels | 200-4,096 | A drawing an agent hands over as SVG is kept as a picture this many pixels wide. `ORKNUX_TUNING_DOCUMENT_SVG_PIXELS` |
+| **How large a file a document imports** | 25 MB | 1-1,024 | A larger file is refused by the editor's Import, which says how large it was. `ORKNUX_TUNING_DOCUMENT_IMPORT_MB` |
+| **How many pictures one import keeps** | 200 | 0-5,000 | Past it the file's other pictures are left out and counted; its words still come in. `ORKNUX_TUNING_DOCUMENT_IMPORT_PICTURES_MOST` |
+| **How many rows a table read from a PDF has at least** | 2 | 2-50 | Fewer, and its words come in as paragraphs. `ORKNUX_TUNING_DOCUMENT_IMPORT_TABLE_ROWS_LEAST` |
+| **How many columns a table read from a PDF has at least** | 2 | 2-20 | Fewer, and its words come in as paragraphs. `ORKNUX_TUNING_DOCUMENT_IMPORT_TABLE_COLUMNS_LEAST` |
+| **How wide a gap between words in a PDF, against their type size, starts a column** | 150% | 50-1,000 | Only for a table with no ruling lines; a narrower gap is a space between words. `ORKNUX_TUNING_DOCUMENT_IMPORT_TABLE_COLUMN_GAP_PERCENT` |
+| **How many rows of an unruled table in a PDF have a word in every column** | 75% | 1-100 | Fewer, and the lines come in as paragraphs. `ORKNUX_TUNING_DOCUMENT_IMPORT_TABLE_ROWS_FULL_PERCENT` |
+| **How long the cells of an unruled table in a PDF are on average, at most** | 30 characters | 1-1,000 | Longer, and the lines are read as columns of prose, not as a table. `ORKNUX_TUNING_DOCUMENT_IMPORT_TABLE_CELL_CHARACTERS` |
+| **How many items in a row a list read from a PDF has at least** | 2 | 1-20 | Fewer, and a line opening with a dash or a number stays in its paragraph. `ORKNUX_TUNING_DOCUMENT_IMPORT_LIST_ITEMS_LEAST` |
+| **How long a LanguageTool server has to check a paragraph** | 15 seconds | 1-120 | Only where Admin Settings names a LanguageTool server; the checker built into the server has no wait. Past it the editor says the server did not answer. `ORKNUX_TUNING_GRAMMAR_SERVER_TIMEOUT_SECONDS` |
+| **How much of a document the inline suggestion reads** | 2,000 characters | 100-50,000 | The text before the caret is cut to this many characters, and the text after it to a quarter as many. `ORKNUX_TUNING_DOCUMENT_COMPLETION_CONTEXT_CHARACTERS` |
+| **How much of the files on one editor chat message a model reads** | 100,000 characters | 1,000-2,000,000 | Counted across every file sent with one message in the document, wireframe or diagram chat; the text past it is left out and the model is told so. `ORKNUX_TUNING_EDITOR_CHAT_FILE_CHARACTERS` |
+| **How long the typing pauses before grammar is checked** | 800 ms | 100-10,000 | Only the paragraphs changed since the last check are sent. `ORKNUX_TUNING_GRAMMAR_PAUSE_MILLIS` |
+| **How much text one grammar check takes** | 20,000 characters | 1,000-200,000 | A longer paragraph is not checked; the editor sends paragraphs one request each. `ORKNUX_TUNING_GRAMMAR_TEXT_MOST` |
+| **How many documents a search answers** | 20 | 1-200 | Quick actions and orknux_search_documents list at most this many, names that match first. `ORKNUX_TUNING_DOCUMENT_SEARCH_RESULTS` |
+| **How much selected text Translate sends a model** | 8,000 characters | 100-200,000 | A longer selection is refused and says how long it was. `ORKNUX_TUNING_DOCUMENT_SELECTION_CHARACTERS` |
+| **How much text around a selection Translate sends** | 600 characters | 0-20,000 | The text before the selection and the text after it are each cut to this, so a word is translated as the document means it. `ORKNUX_TUNING_DOCUMENT_SELECTION_CONTEXT_CHARACTERS` |
+| **How much of a document a search shows around a match** | 160 characters | 40-1,000 | Also how much of a document's start the Documents list shows under its name. `ORKNUX_TUNING_DOCUMENT_SNIPPET_CHARACTERS` |
+| **How many versions of each document are kept** | 50 | 0-10,000 | The oldest go first as a save adds one; 0 keeps them all. The days component history is kept for do not apply to documents. `ORKNUX_TUNING_DOCUMENT_VERSIONS_KEPT` |
+| **How many videos are made at once** | 1 | 1-16 | Videos asked for in Design wait their turn past this many. A local video server makes one at a time however many it is sent. `ORKNUX_TUNING_VIDEOS_AT_ONCE` |
+| **How often a video being made is asked about** | 5 seconds | 1-300 | Each ask is one request to the video's server; the page's progress moves this often. `ORKNUX_TUNING_VIDEO_POLL_SECONDS` |
+| **How long one video may take** | 120 minutes | 1-1,440 | A video still not made after this is given up on, and said to have failed. `ORKNUX_TUNING_VIDEO_LONGEST_MINUTES` |
+| **The largest video kept** | 200 MB | 1-4,096 | A video larger than this is not collected from its server, and is said to have failed. `ORKNUX_TUNING_VIDEO_MAX_MB` |
+| **Most frames sent in one upscale call** | 8 | 1-64 | A video's frames go to the upscale model's server this many at a time. More is fewer calls and a larger request each; the progress moves once a batch. `ORKNUX_TUNING_VIDEO_UPSCALE_BATCH_FRAMES` |
+| **The longest side of an upscaled video** | 3,840 pixels | 64-16,384 | An upscale that would make a video longer than this on either side is refused before it starts. `ORKNUX_TUNING_VIDEO_UPSCALE_MAX_PIXELS` |
+| **Most frames a second in a GIF export** | 15 | 1-50 | A video at a faster rate is exported as a GIF at this one; a slower one keeps its own. `ORKNUX_TUNING_VIDEO_EXPORT_GIF_FPS` |
+| **The widest a GIF export is** | 480 pixels | 16-3,840 | A wider video is made this wide as a GIF, at the same shape; a narrower one keeps its own size. `ORKNUX_TUNING_VIDEO_EXPORT_GIF_WIDTH` |
+| **The largest video export** | 200 MB | 1-4,096 | An export that comes to more than this is stopped and refused. `ORKNUX_TUNING_VIDEO_EXPORT_MAX_MB` |
+| **How long one video export may take** | 300 seconds | 5-3,600 | An export still converting after this is stopped and refused. `ORKNUX_TUNING_VIDEO_EXPORT_SECONDS` |
+| **How many video exports are kept to hand out again** | 8 | 0-100 | The newest exports are kept in the server's temporary directory, so the same video asked for again in the same format is not converted twice. Zero keeps none. `ORKNUX_TUNING_VIDEO_EXPORT_KEPT` |
+| **How wide the image editor's brush starts** | 12 pixels | 1-500 | In the picture's own pixels, so zooming does not change it. Whoever paints can choose another width, up to the most this may be set to. `ORKNUX_TUNING_IMAGES_BRUSH_PIXELS` |
+| **How opaque the image editor's brush starts** | 100% | 1-100 | Every tip but the marker starts here. Whoever paints can choose another. `ORKNUX_TUNING_IMAGES_BRUSH_OPACITY_PERCENT` |
+| **How hard the soft brush's edge starts** | 50% | 0-100 | The soft tip and the eraser fade across what is left of their width; zero fades across half of it. Whoever paints can choose another. `ORKNUX_TUNING_IMAGES_BRUSH_HARDNESS_PERCENT` |
+| **How opaque the image editor's marker starts** | 50% | 1-100 | A marker's strokes are see-through, and darken what they cross. Whoever paints can choose another. `ORKNUX_TUNING_IMAGES_MARKER_OPACITY_PERCENT` |
+| **How strongly the image editor's blur starts** | 12 pixels | 1-254 | The blur's radius in the picture's own pixels. Whoever blurs can choose another, up to the most this may be set to. `ORKNUX_TUNING_IMAGES_BLUR_PIXELS` |
+| **How far the image editor's blur fades at its edge** | 0 pixels | 0-500 | Inside a rectangle or lasso, the blur weakens towards the edge across this many of the picture's own pixels. Zero is a hard edge. Whoever blurs can choose another. `ORKNUX_TUNING_IMAGES_BLUR_FALLOFF_PIXELS` |
+| **How far a Magic edit's edge is feathered** | 8 pixels | 0-256 | The redrawn part blends into the picture across about this many of its own pixels either side of the selection's edge. Zero is a hard edge. Whoever edits can choose another. `ORKNUX_TUNING_IMAGES_FEATHER_PIXELS` |
+| **How many layers a picture may keep** | 32 | 1-256 | Over the picture itself, in the image editor. Each is a picture the same size, kept with every unsaved version, so more layers take more disk. `ORKNUX_TUNING_IMAGES_LAYERS_MOST` |
+| **How often a picture being drawn is asked about** | 2 seconds | 1-60 | Only a Stable Diffusion WebUI says how far it is. Each ask is one request to it, and the image editor's time left moves this often. `ORKNUX_TUNING_IMAGES_PROGRESS_POLL_SECONDS` |
+| **How many of a model's newest pictures a time left looks at** | 10 | 1-200 | Where a model's server says nothing of its progress, the time left is the middle of how long these took, less the time taken so far. `ORKNUX_TUNING_IMAGES_ESTIMATE_JOBS` |
+| **How many timed pictures a time left needs** | 3 | 1-50 | Fewer drawn by the same model in the same way, and the image editor says only how long it has taken. `ORKNUX_TUNING_IMAGES_ESTIMATE_LEAST` |
+
+#### Workflows and triggers
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How often a waiting action asks again** | 30 seconds | 1-86,400 | An action that waits for something - a reply, a condition - asks again this often when it does not say for itself. `ORKNUX_TUNING_ACTION_RETRY_SECONDS` |
+| **How long a waiting action waits when it does not say** | 3,600 seconds | 1-2,592,000 | Written onto a condition action when it is saved without a timeout of its own; an action saved earlier keeps what it was given. `ORKNUX_TUNING_ACTION_WAIT_SECONDS` |
+| **How long a trigger remembers an event it ran on** | 10 minutes | 1-1,440 | The same message arriving twice - a retry, a second listener - starts one run, not two, within this time. `ORKNUX_TUNING_TRIGGER_REMEMBER_MINUTES` |
+| **How many events a trigger remembers** | 5,000 | 100-1,000,000 | The oldest is forgotten first once this many are held. `ORKNUX_TUNING_TRIGGER_REMEMBERED` |
+| **The most times one node may repeat in a run** | 100 times | 2-10,000 | A node set to repeat more often is saved at this many, and a run already holding a higher number stops here. `ORKNUX_TUNING_NODE_REPEATS_MOST` |
+| **The longest timeout a node may be given** | 86,400 seconds | 1-604,800 | A node given a longer one is saved at this, and a run already holding a longer one is held to it. `ORKNUX_TUNING_NODE_TIMEOUT_MOST_SECONDS` |
+| **How many runs one schedule may start in one tick** | 60 | 1-10,000 | A schedule finer than the tick starts every occurrence that came due since the last one; past this many in one round the rest are dropped and a warning is logged. `ORKNUX_TUNING_SCHEDULES_PER_TICK` |
+| **How much of the chosen documents a research is handed** | 200,000 characters | 1,000-5,000,000 | Counted across every document included in one research; the text past it is left out and the research is told so. `ORKNUX_TUNING_RESEARCH_DOCUMENT_CHARACTERS` |
+| **The most sources one research may read** | 100 | 1-1,000 | Whatever a mode's workflow asks for; each source read is a model call, so this bounds what one research costs. `ORKNUX_TUNING_RESEARCH_SOURCES_MOST` |
+| **How much of one page a research reads** | 20,000 characters | 1,000-500,000 | One web page, or one page of a document; the rest is not read. The research's own pages-per-source decides how many. `ORKNUX_TUNING_RESEARCH_PAGE_CHARACTERS` |
+| **How many times a research mode's step is tried again** | 2 times | 0-9 | Written on every step of the research modes' workflows when they are made, as each node's retry policy; a step that failed in a way that could come out differently is tried again this many times. A workflow already made keeps what its nodes say. `ORKNUX_TUNING_RESEARCH_STEP_RETRIES` |
+| **How long a research mode's step waits before trying again** | 10 seconds | 0-3,600 | Written on the research modes' steps with the number of tries, as the wait before each one. `ORKNUX_TUNING_RESEARCH_STEP_RETRY_SECONDS` |
+| **The most images one research keeps** | 6 | 1-50 | Only for a research started with Include images; it stops looking once it has this many, and each one is kept on the Artifacts page. `ORKNUX_TUNING_RESEARCH_IMAGES_MOST` |
+| **The largest image a research keeps** | 2 MB | 1-20 | An image larger than this is skipped rather than kept or laid out in the report; never more than the largest file a tool may download. `ORKNUX_TUNING_RESEARCH_IMAGE_MB` |
+| **How many times a research step a restart cut short is run again** | 2 times | 0-9 | Plan, Gather, Deepen and Write change nothing outside the research, so one a server restart cut short is run again when the server is back; 0 fails it, to be restarted from its page. Save is never run again. `ORKNUX_TUNING_RESEARCH_RESUME_AFTER_RESTART` |
+| **How many rounds of review a research gets** | 1 times | 1-10 | For a research started with Review: the reviewer reads the report and the writer revises it where asked, at most this many times, before it is saved. A workspace may set its own number. `ORKNUX_TUNING_RESEARCH_REVIEW_ROUNDS` |
+| **How many follow-up questions a finished research suggests** | 5 | 0-10 | Each one starts a research of its own when clicked; 0 suggests none and asks the model nothing. A workspace, and the start form, may say otherwise. `ORKNUX_TUNING_RESEARCH_FOLLOWUPS` |
+| **How long a research's follow-up questions may be in all** | 400 tokens | 50-4,000 | The most the model may write when it is asked for them, with its thinking off. `ORKNUX_TUNING_RESEARCH_FOLLOWUPS_TOKENS` |
+| **How many finished research a time left is measured from** | 3 | 1-50 | A running research says about how long it has left once the workspace has finished this many in the same mode; fewer, and it says nothing. `ORKNUX_TUNING_RESEARCH_ESTIMATE_RUNS` |
+| **How many of the newest finished research a time left looks at** | 20 | 1-500 | The newest in the same mode; older ones ran on whatever the models and the workflow were then. `ORKNUX_TUNING_RESEARCH_ESTIMATE_LOOKBACK` |
+| **The shortest side an image a research keeps may have** | 120 pixels | 0-4,000 | Icons, logos and spacers are smaller than a picture worth placing in a report; 0 keeps images of any size. `ORKNUX_TUNING_RESEARCH_IMAGE_PIXELS` |
+
+#### Plugins and libraries
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **The largest text answer a plugin's request may read** | 2 MB | 1-100 | What a plugin reads as text through orknux.http; a larger answer is refused. `ORKNUX_TUNING_PLUGIN_HTTP_BODY_MB` |
+| **The largest binary answer a plugin's request may read** | 5 MB | 1-500 | Counted on the bytes rather than the base64 the sandbox is handed, which is a third again larger. `ORKNUX_TUNING_PLUGIN_DOWNLOAD_MB` |
+| **The largest file a plugin may upload** | 10 MB | 1-500 | A file a plugin sends on from the session's store, as a picture to Slack. `ORKNUX_TUNING_PLUGIN_UPLOAD_MB` |
+| **The largest script library a workspace may add** | 4 MB | 1-100 | A library is JavaScript every function in the workspace may import. `ORKNUX_TUNING_LIBRARY_MB` |
+| **The largest npm package fetched for a library** | 32 MB | 1-500 | Counted for one package's archive, as the registry serves it. `ORKNUX_TUNING_NPM_ARCHIVE_MB` |
+| **The most npm packages one library may pull in** | 60 | 1-1,000 | A package and everything it depends on, counted together. `ORKNUX_TUNING_NPM_PACKAGES_MOST` |
+| **How long a marketplace icon is kept before it is fetched again** | 6 hours | 1-720 | Icons are fetched once and kept, so the plugin list does not reach the marketplace on every view. `ORKNUX_TUNING_MARKETPLACE_ICON_HOURS` |
+
+### How large an upload may be
+
+**Largest file**, under **Attachments**, holds **every upload** to one number: a
+file in a chat, on an issue, on the Artifacts page, for a research, a picture or
+a document imported. It starts at `ORKNUX_ATTACHMENTS_MAX_FILE_SIZE_MB` - 25 MB
+unless that says otherwise - until an administrator sets it here, at 1 MB or
+more with no ceiling, and the change is audited.
+
+A file past it is refused **before it is sent**, in one line naming its size, the
+limit and where to raise it - not after a long upload has finished - and the
+server refuses it too if something sends it anyway.
+
+### The installation's address
+
+**Address**, at the top of the page, is where this installation is reached:
+`https://orknux.example.com`. **Every link the server sends out is built on it** -
+a password reset mail, the link an `orknux_*` tool answers an agent with, a
+picture handed to a model by address - and every one of them is absolute,
+because a path with no host in front of it means nothing once it has been pasted
+into somebody's chat. An agent that wants to put one of the installation's pages
+in front of a person - in Slack, in a mail - asks `app_link`, which turns a path
+such as `/workspace/9/tasks/28` into the full address on the same host. Left
+empty, the address falls back to `ORKNUX_BASE_URL`.
+
+It is a setting rather than something read off each request, because a request's
+`Host` header is written by whoever sent it, and an address in a reset link is
+exactly the thing not to let a caller choose.
+
+### What a transcript keeps
+
+![Admin → Settings → Sessions: when a long session is summarised, and how much of
+one value a transcript keeps](/screens/admin-settings-transcript.png)
+
+A session's transcript records every tool call: what the agent sent and what came
+back. Most are a few short fields. Some carry a payload - a picture in base64, a
+rendered SVG, a file's bytes - that would make one line of the record kilobytes
+long and bury the two arguments that say what happened.
+
+So **each value over a length is shortened when it is stored**: **Longest value
+kept in a transcript**, 1,000 characters unless changed, between 100 and 100,000.
+It is cut **value by value**, not line by line: a call that sent a picture and a
+channel keeps the channel exactly and loses only the picture, and the cut says
+how long the value was - `… (trimmed from 5867 characters …)` - so nobody reading
+the row mistakes it for a short one.
+
+**An answer that is JSON written as text is read inside.** An MCP server answers
+with its result as one long piece of text - ten log lines from Kibana arrive as a
+single 3,600-character value - and cutting that whole would keep the first
+thousand characters of the first few lines. Instead the text is read as the JSON
+it is, and only the values in it that are themselves too long are cut; ten short
+log lines are kept whole.
+
+This is the **record**, not the conversation. Within the turn the agent is given
+the tool's whole answer (up to its share of the model's window). What the record
+decides is what a later turn sees when the conversation is carried on from what
+was said - after it has been summarised, or when a Slack thread is answered
+again - which is why a later turn can only ever see as much of an old answer as
+was kept. Raise the number where agents keep needing more of what they read
+earlier; a larger record costs database space and nothing else.
+
+### Every other setting on the page
+
+The page's own settings, section by section in the order the page draws them,
+with the default a fresh installation starts at. Where a section has a chapter
+of its own here - boxes, watchers, bulkheads, HTTP tools - that chapter says more.
+
+#### Chat
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Chat** | On |  | Whether this installation has a chat at all; see *Settings*, above. |
+| **Tool Rounds** | 100 rounds | 2-10,000 | A round is one call to the model: it answers, or it asks for tools and what it asks for is run and handed back. An agent that has not answered by the last one is stopped, because a model talking to itself is billed for every round. This is the number every agent follows; one whose work is longer can be given its own on its page. |
+| **Rename Chats Every** | 20 exchanges | 0-1,000 | A chat is named by a model after its first exchange, and named again from its latest messages after this many more. 0 names it once. A title somebody typed is never replaced. |
+| **Chat Title Time Limit** | 30 seconds | 1-600 | How long the workspace's companion model has to name a chat. Past it, or when it fails, the chat's own model names it. |
+| **Completion Context** | 6 messages | 0-50 | How many of the chat’s latest messages the completion model is shown, so a suggestion reads as a reply. |
+| **Completion Length** | 64 tokens | 1-500 | The most tokens one suggestion may be. |
+| **Completion Time Limit** | 4,000 ms | 200-60,000 | How long a suggestion may take before it is given up on and nothing is shown. |
+| **Completion Pause** | 300 ms | 100-10,000 | How long the chat waits after the last keystroke before asking for a suggestion. |
+| **Suggested Replies** | 3 replies | 0-6 | How many replies are suggested under the latest answer; 0 suggests none. |
+| **Suggested Replies Length** | 150 tokens | 1-1,000 | The most tokens all of an answer’s suggested replies together may be. |
+| **Suggested Replies Time Limit** | 8,000 ms | 200-60,000 | How long suggested replies may take before they are given up on and none are shown. |
+| **Video Attachment Limit** | 20 MB | 1-1,024 | The largest video a chat message may send to a model that takes video. |
+| **Note Length** | 2,000 characters | 100-10,000 | How long one note an agent writes to itself may be. Every note is read back on every later turn, so a longer limit is paid for on every turn. |
+| **Notes Per Conversation** | 100 notes | 1-1,000 | How many notes an agent may write to itself in one conversation; past that it is told it is full. Every note is read back on every later turn. |
+| **Empty Answer Retries** | 5 times | 0-20 | How many times a round is asked again when the model sends nothing back - a dropped stream, a busy server. |
+| **Unusable Reply Retries** | 2 times | 0-10 | How many times a reply the server could not use - a broken tool call, arguments that are not JSON - is put back to the model to fix. |
+| **Model Answer Time Limit** | 60 minutes | 1-1,440 | How long one call to a model may take before it is given up on - raise it for a slow local model that thinks for a long time. |
+| **Writing Progress Interval** | 1,000 ms | 200-10,000 | How often the chat and the session page are told how much a model has written of a long answer or tool call. |
+| **Writing Progress Forgotten After** | 30 seconds | 5-600 | How long a session page keeps saying a model is writing when no new report arrives - so a turn that died does not say it for ever. |
+| **Reading Progress Shown After** | 5 seconds | 0-120 | How long a llama.cpp server has to have been reading a prompt before the chat and the session page say so - a read shorter than this is never shown. 0 shows it at once. |
+| **Widgets Per Chat** | 8 widgets | 1-50 | How many widgets - timers and stopwatches an agent puts above the message box - one chat may hold at once. |
+| **Longest Chat Timer** | 86,400 seconds | 60-604,800 | The longest a timer an agent puts in a chat may run. |
+| **Session Value Size** | 8 MB | 1-256 | The most one value an agent keeps in its session may be - an exported archive, a drawn picture, a file a plugin wrote. |
+| **Session Store Keys** | 200 keys | 10-10,000 | How many values one session may keep at once. |
+| **Local box** | On |  | A box inside this server, so agents can run commands without a remote Orkbox. Off, it is not listed under Admin → Boxes and no new session opens in it. |
+| **Local box location** | orknux-box in the system temporary directory |  | The directory local sessions keep their workspaces under. Leave it empty for the default shown in the box. |
+| **Local box runtime** | local |  | What a local session runs in. Local runs commands as processes of this server, under its account; Docker runs each session in a container of its own. |
+| **Local box sessions at most** | 50 sessions | 1-1,000 | How many sessions may work on the local box at once - being made or running a command. Idle ones do not count. |
+| **Local session lifetime** | 7,200 seconds | 60-604,800 | How long a local session lasts when the agent asks for no particular time, counted from when it opened. |
+| **Longest local session lifetime** | 86,400 seconds | 60-604,800 | The longest a local session may be asked to last. |
+| **Local session idle timeout** | 900 seconds | 60-86,400 | A local session nothing has run in for this long is closed. |
+| **Local box output kept** | 1,024 KB | 0-16,384 | How much of each local command's output is kept for reading in a session's Box tab. |
+| **Command wait** | 300 seconds | 1-3,600 | How long a box tool waits for a command to finish before handing the agent its output so far, with the command still running. |
+| **Command timeout** | 1,800 seconds | 1-86,400 | How long one command may run at all before it is stopped. |
+| **Command output kept** | 64 KB | 1-4,096 | How much of what a command prints is handed back to the agent; the rest is cut and the agent is told so. |
+| **Box output shown** | 4,096 KB | 64-65,536 | How much of one command's output a session's Box tab reads and holds before it stops and says so. |
+| **Box request timeout** | 30 seconds | 1-600 | How long this server waits for a box to answer one request before giving up on it. |
+| **Box edit undo steps** | 10 | 0-100 | How many of an agent's file edits and writes it can undo in one box session. Kept in memory, so a restart forgets them; 0 keeps none. |
+| **Box session idle timeout** | 7,200 seconds | 60-86,400 | How long a box session an agent opens may go with no command before its box stops it, unless the agent asks for another. Waiting for a person counts as idle. |
+| **Box ports per session** | 5 | 0-20 | How many ports one box session may have asked for or open at once. An agent asks, and a person allows each one; 0 lets an agent ask for none. |
+| **Box port check interval** | 15 seconds | 2-600 | How long a look at whether an exposed port answers is believed before the session page looks again. Each look starts a connection through the box. |
+| **Box port check wait** | 1,500 ms | 100-10,000 | How long a look at an exposed port waits for the box to close a connection nothing inside took. Longer for a slow box. |
+| **Files in chats** | On |  | Whether messages and issues may carry attachments; see *Settings*, above. |
+| **Largest file** | 25 MB | 1 or more | The largest file any upload may be: in a chat, on an issue, on Artifacts, for a research, or a picture or document imported. 1 MB or more. |
+
+#### Agents
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **The longest an agent may wait before it is asked again** | 3,600 seconds | 1-86,400 | An agent can end its turn by asking to be woken instead of answering, when what it needs has not happened yet - a build still running, a colleague who has been asked. The step stops there and the run comes back to it when the time is up, so nothing is held and no model is billed while it passes. An agent asking for longer than this is given this instead. |
+| **How many times in a row an agent may wait** | 10 times | 0-100 | Waiting is a decision the agent takes again every time it wakes, so the one that matters is not the first but the twentieth: without a bound, an agent that keeps deciding to wait a little longer never finishes. Counted per step, and an agent that has spent them all is told to finish. Zero means no agent may wait at all. |
+| **How many other agents an agent may ask** | 25 agents | 0-100 | Each ask starts a conversation of its own, with its own model calls and tools, on the asking agent’s say-so - so this is the number that bounds what one question can fan out into. Counted per conversation, and an agent that has spent them is told so and answers with what it has. Zero takes the tool off the table. A workspace may carry its own number in its settings, which wins over this one. |
+| **How many of those may work at once** | 3 at once | 1-20 | A different number from the one above: that bounds how many an agent may ask in a conversation, this bounds how many are working at the same time. It began to matter when asking stopped blocking - before that they ran one after another whatever this said. An ask past the ceiling waits its turn rather than being refused, because a refusal would send the model round again with the same ask in other words. Counted per conversation, so one busy conversation cannot starve the rest. |
+| **How long to wait out a rate limit that names no time** | 5 seconds | 1-60 | A provider can refuse a streaming answer for a rate limit part way through without saying when to come back. The call waits this long and asks again, twice as long the next time, before it hands the refusal to the step retry policy. 5 seconds unless somebody says otherwise; every call reads it fresh, so no restart is needed. |
+
+#### Tool calls
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Tool calls allowed in one message** | 50 calls | 1-500 | How many tools one message may ask for at once. The guard above counts across rounds and cannot see a single message that asks for the same thing a hundred times, which is what a decode looks like when it comes apart. Calls over this are refused with the rule quoted back, not dropped, so the model is told why. |
+| **Identical tool calls before a turn is stopped** | 10 calls | 2-50 | The same tool, the same arguments and the same answer, that many times inside the window below, and the turn is told it is going round in circles. Repetition on its own is fine - an agent watching something calls the same tool and is working - so what makes it a loop is how close together the calls are. Two sessions once spent their whole budget this way, one of them calling the same pair a hundred and fifty times. |
+| **Counted within** | 10 seconds | 1-86,400 | How close together those calls have to be. Calls further apart than this do not count, which is what lets an agent poll something deliberately: it checks, waits, and checks again, and the older calls fall outside the window. Set it below the interval anything here is meant to poll at. |
+| **Warnings before the turn ends** | 2 warnings | 1-10 | A turn that is going round in circles is first told so, and asked to finish with what it has - which is usually something, since the work often happened before the loop started. This is how many times it is told before the turn is ended instead. |
+
+#### Tool list
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How many findable tools are named outright** | 40 tools | 0-500 | An agent granted more tools than it carries is given tool_find to find the rest. Up to this many of them, tool_find names every one in its own description and when a search finds nothing, so the model asks for a tool by name instead of guessing words for a search; above it, the tool says only how many there are. Names are short, so a few dozen cost less than one tool’s full declaration; a small model may read a long list less well than a large one. Zero never names them. |
+| **Tools whose summary is kept in full** | 100 tools | 10-1,000 | An agent’s system prompt names every tool it holds with a short phrase, so it knows what it has instead of guessing words for a search. Up to this many tools each phrase is kept whole; for every further block of this many, the percentage below comes off what is kept, cut from the end so the first words survive. |
+| **Trimmed off each further block** | 25 percent | 0-50 | How much comes off a tool’s phrase for each further block of tools past the number above: at 25%, an agent holding twice that many keeps three quarters of each phrase and one holding three times keeps half. Cut from the end, so what is written first survives. Zero switches the trimming off. |
+
+#### Sessions
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Compact a session past** | 40,000 tokens | 0-1,000,000 | How long a session’s log may grow before its older turns are read once, replaced by a summary of them, and the conversation carries on. Without this the oldest turns simply fall past what a turn can carry and the agent forgets the beginning with nobody told. The turns are marked rather than deleted, so the transcript still shows every step. |
+| **Steps a compacted turn keeps** | 6 steps | 2-100 | When a turn outgrows its model it is summarised and carried on rather than thrown away. This is how many of its most recent steps are kept word for word - the recent end is what the next round is about, and summarising the question being asked is how an agent starts answering something adjacent to it. |
+| **Length of that summary** | 5,000 tokens | 100-8,000 | How long the summary standing in for everything else may be. Long enough to carry what the turn had found out, short enough that compacting is worth doing. |
+| **Compactions before a turn gives up** | 2 times | 1-10 | How many times one turn may be summarised before it fails instead. A turn still too large after two summaries is not long, it is looping - and compacting a loop for ever is a way of never telling anybody something is wrong. |
+| **Longest value kept in a transcript** | 1,000 characters | 100-100,000 | How much of any one value is stored. This bounds the record and not the answer: a tool hands the agent whatever it hands it, and this decides how much survives into a later turn. It was set for payloads - a base64 image on its way somewhere - and a skill is the opposite case, instructions the agent is meant to still be holding. Raise it where transcripts matter more than table size. |
+| **Conversations can be removed** | On |  | A conversation is the record of what an agent was asked and what it answered, and on some installations it is the only account of a decision anybody has. Removing one takes the whole transcript with it and there is no way back, so an installation that has to be able to say what happened should turn this off. On until somebody does, which is how it has always worked. |
+
+#### Scratchpads
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How much a session’s scratchpads may hold** | 10,240 KB | 1-65,536 | A scratchpad is a working file an agent keeps within a session - a document it drafts, code it writes, notes it organises - and this bounds how much one conversation’s scratchpads may occupy in all, so an agent told to write something long cannot grow them without limit. Counted across every scratchpad the session holds. |
+| **Files kept per session** | 10 MB | 1-512 | A scratchpad can hold a picture or a document as well as text, and those are megabytes each that live as long as the session does. Past this, the oldest files in that session are removed until it is under again — the newest being the one in use — and the agent is told which went. Text scratchpads are never touched. |
+| **Scratchpads are kept for** | 30 days | 0-1,825 | How long a scratchpad nobody has touched is kept before a sweeper removes it. Counted from the last change, so a document still being worked on survives. The session and its transcript are left alone: these are the workings beside it. Zero keeps them for ever, which suits an installation that treats them as part of the record. |
+
+#### Drawing
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Drawn picture size** | 2 times | 1-4 | How many times its own size a diagram or chart is drawn as a picture. At its natural size a flowchart is a few hundred pixels wide with one-pixel lines, which barely show on a phone. Twice is twice as thick a line for four times the bytes. |
+| **Longest image prompt** | 2,000 characters | 100-32,000 | The longest description a picture is drawn from - in Design, a chat, a task and a workflow. Image models cap the prompt themselves; past this it is refused in words rather than by the provider. |
+| **Images drawn at once** | 1 pictures | 1-16 | How many of Design's queued pictures are drawn at the same time. One suits a local image server, which draws one at a time anyway. |
+| **Harmonize strength** | 0.3 |  | Where Harmonize's strength starts in the image editor - how much a Stable Diffusion WebUI redraws the whole picture to blend the seams a Magic edit left. Low keeps the picture; high draws another. Between 0.05 and 0.9. |
+| **Harmonize working size** | 1,024 pixels | 256-4,096 | The longest side a picture is redrawn at by Harmonize. A larger picture is scaled down for the Stable Diffusion WebUI and its answer scaled back up to its own size, because a checkpoint draws slowly far past the size it was trained at. |
+
+#### Commands
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Command marker** | ! |  | What marks a command in a message that starts a run - with ! as the marker, "@orknux !review" carries the command review, which an agent node’s Skill IDs can load a skill from. Orknux’s own syntax, because Slack intercepts a message starting with / and refuses one it does not know. One to three characters, none a letter or a digit, so ordinary words are never commands. A workspace may set its own in its settings. |
+
+#### Metrics
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Scraping without signing in** | Off |  | On publishes /actuator/prometheus to anybody who can reach this server’s port: how many workspaces exist, how often workflows run and how often they fail. Turn it on only where the scrape crosses a network the scraper alone is on. A Prometheus that can send an Authorization header should carry an API token instead and leave this off. |
+
+#### Reports
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Reviews Per Conversation** | 2 reviews | 1-100 | How many reviews an agent may send from one conversation; past that it is told the review was not sent. |
+
+#### Component history
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long versions are kept** | 14 days | 1-3,650 | Every save of a function, tool, skill or agent keeps what it was before, and every publication of a workflow is kept as a version of it. A version is a whole copy — the code, the parameters, the prompt — so this is what decides how much disk the history takes. Counted from when a version stopped being current, not from when it was written. A workflow’s live publication is never swept, however old it is. |
+
+#### Workflow runs
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Steps running at once** | 4 at once | 1-32 | A node with lines to several others sends the run down all of them at the same time, and where the lines meet again the node waits for every one of them. This bounds how many steps of one run are working at once; a step past it waits for another to finish. One walks the lines one after the other. |
+| **Workflow Autosave** | 300 ms | 200-10,000 | How long the workflow editor waits after the last change before it saves, so the others looking at the workflow see it. |
+| **Called workflow check** | 60 seconds | 5-3,600 | A Workflow node waits for the run it called. That run ending wakes it at once; this is how long it waits before looking again when no wake arrives. |
+| **Step heartbeat** | 30 seconds | 0-600 | Temporal only. A step says it is still being worked on while it works, and one that falls silent for this long is handed to a server that is alive - which is how a step whose server was killed carries on. A run already going takes a change up from its next step. 0 turns the heartbeat off, and a dead server is then noticed only when the whole step timeout runs out. |
+| **Agent step goes after a restart** | 3 goes | 1-10 | Inline engine only. A step a restart cut short is failed, because nothing can say how far it got - except an agent answering a message, which is asked again so the message is answered. This is how many goes it gets in all, the ones that died included, since the step itself may be what kills the server. |
+| **Cluster lease** | 30 seconds | 5-600 | Where several servers share this database, one of them holds a lease and runs the sweeps, the checks and the Slack sockets. When it dies another takes over within this long. Keep it well above the longest pause a server takes. |
+
+#### Run history
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long finished runs are kept** | 90 days | 1-3,650 | Every run a workflow makes is kept with its steps and its log lines, and nothing deleted one until this existed — so a busy installation grew this table without bound. Counted from when a run finished. A run still going is never swept, however long it has been going, and deleting a workspace takes its runs with it. |
+
+#### Queued tasks
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long before a stuck task is picked up** | 5 minutes | 1-1,440 | A task is written down and then handed to a worker, and that hand-over can be lost — a restart at the wrong moment, or a pool with nothing free to take it. Something looks on this interval and hands over anything that has been waiting longer, so a task cannot sit unstarted for ever. A task a worker already has is never handed over twice, whatever this says. Five minutes unless ORKNUX_TASK_SWEEP_MINUTES says otherwise; the next pass reads it, so no restart is needed. |
+
+#### Objects
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Object Depth** | 30 levels | 1-100 | How deep an object may nest - an object defined inside an object inside an object - and how deep a value is checked against one. The same number bounds what a pasted JSON Schema is read to. |
+
+#### Plugins
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long a plugin may take to load** | 30 seconds | 1-300 | The bundle is evaluated once when it is loaded, and this is how long that may take before the load is stopped. What one of its functions or tools may then take is set per workspace, under Timeouts. 30 seconds unless somebody says otherwise; every load reads it fresh, so no restart is needed. |
+| **How large a plugin source file may be** | 5,120 KB | 64-20,480 | One cap for the plugin's own file, each library it ships, and each file a load-from-URL fetches. A source is stored whole and read whole on every call, so this number is about the heap as much as the disk. 5120 KB unless somebody says otherwise; every load reads it fresh, so no restart is needed. |
+
+#### Workspace copies
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **How long a copy may wait for a lock** | 60 seconds | 1-3,600 | Each step of a workspace copy runs in a transaction of its own, and a step that needs a row another transaction is holding waits for it. Past this many seconds the copy stops, logs the step it stopped at, and says so on the page; the workspace it was making keeps what was copied before. 60 seconds unless somebody says otherwise; every copy reads it fresh, so no restart is needed. |
+
+## Security defaults
+
+What the server refuses, and how it keeps a session, without anybody having to
+set anything. Each is a default an installation is safer for; where one can be
+moved, the variable is named.
+
+### The session cookie
+
+The cookie a signed-in browser carries is kept out of reach of a page's scripts
+and sent only where it should be:
+
+| Variable | Default | What it decides |
+|---|---|---|
+| `ORKNUX_SESSION_COOKIE_SECURE` | `auto` | Whether the cookie is marked **Secure** - sent only over https. `auto` follows the request; set `true` behind a proxy that ends TLS and passes plain http on, where the request alone would say "not https". |
+| `ORKNUX_SESSION_COOKIE_SAME_SITE` | `lax` | `lax` lets a link from elsewhere - a Slack message, a mail - arrive signed in; `strict` where nothing links in. |
+| `ORKNUX_SESSION_COOKIE_HTTP_ONLY` | `true` | Keeps the cookie out of reach of any script on the page. |
+
+The last two used to be read and ignored; **they now take effect**, so an
+installation that set one gets what it set.
+
+### The interface's Content-Security-Policy
+
+The interface is served with a policy that lets a page load only what the
+product itself needs. `ORKNUX_CONTENT_SECURITY_POLICY` **replaces** it where it
+is too strict for an installation - an icon font from a company CDN, say. It
+replaces rather than adds to, so start from the policy the server sends and widen
+only what is needed.
+
+### Writes from another site are refused
+
+A write a browser says came from **another site** is refused with **403** - read
+off its `Origin`, its `Sec-Fetch-Site` or its `Referer`. A page somewhere else
+cannot make a signed-in person's browser change something here by submitting a
+form at it. The command line, the MCP endpoint and anything sending a bearer
+token are unaffected: they carry no browser's cookie to be tricked into using.
+
+If the interface is served from another origin than the server - a separate
+domain, a development server - list it in `ORKNUX_ALLOWED_ORIGINS`, comma
+separated, or its own writes are refused as well.
+
+### Requests never reach a cloud's metadata address
+
+A workspace function's `orknux.http`, an agent's HTTP tools and a plugin's
+requests **refuse cloud metadata addresses** - `169.254.169.254` and its
+relatives, where a cloud machine hands out its own credentials to whoever asks
+from inside - **including after a redirect**, so an address that bounces there
+is refused at the bounce. They also **read an answer only up to their limit**
+rather than whole, so an endpoint that answers a gigabyte cannot fill the
+server's memory before the limit is checked. This is on top of the proxy rules
+under Networking, which decide where this server may go at all.
+
+### A workflow keeps to its own workspace
+
+A workflow's own actions can no longer name **another workspace's** connection,
+function, condition, speech model or workflow, and a run will not send through
+another workspace's connection whatever was saved: a part named by another
+workspace's id is refused rather than used, so a run cannot send through
+somebody else's Slack.
+
+### Libraries are checked before they are installed
+
+A JavaScript package is installed from a registry only when the registry gives
+its **SHA-256, -384 or -512 integrity**, and its file is fetched **only over
+https**. A registry that leaves `dist.integrity` out and offers only the old
+SHA-1 `dist.shasum` is refused, saying so, where it used to be trusted; and a
+registry reached over https that names an `http://` file for a package is
+refused. An installation whose `ORKNUX_LIBRARY_REGISTRY_URL` is itself `http://`
+still fetches over http, because that was its administrator's choice.
+
+**On upgrade:** a private mirror that serves only shasums has to be configured to
+publish `integrity`, or its packages uploaded as files instead. Libraries already
+installed are not affected.
 
 ## Monitoring
 
