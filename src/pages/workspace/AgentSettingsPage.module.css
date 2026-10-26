@@ -248,9 +248,14 @@
   pointer-events: none;
 }
 
+/* A choice drawn as the text fields beside it are: their type, their inset, their box. */
 .select {
   width: 100%;
-  padding-right: var(--space-20);
+  min-height: 38px;
+  padding: var(--space-10) var(--space-20) var(--space-10) var(--space-12);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-6);
+  font-size: var(--text-base);
 }
 
 /* The way back sits beside the breadcrumb, not above it. */

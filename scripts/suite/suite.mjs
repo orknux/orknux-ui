@@ -2595,6 +2595,12 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'settings-select-type-check',
+    what: "a settings page's choices are drawn in its text fields' type and box",
+    needs: ['workspace'],
+  },
+
+  {
     name: 'diagram-delete-tool-check',
     what: 'orknux_delete_diagram starts hidden on a new agent and on one given Orknux access afresh in the form, and its owner turns it on',
     needs: ['workspace'],
