@@ -1,0 +1,316 @@
+# headline (as in CHANGELOG.md, bold part)	verdict	evidence: file::a phrase in it, or a note for n/a
+A Magic accent	section	01-getting-started.md::is blue running into violet
+A diagram shape's colour from three rows of swatches and a picker	section	14-diagrams.md::**Colour** is a row of pale swatches
+The diagram toolbar offers the common drawn shapes up front	section	14-diagrams.md::the drawn shapes reached for most
+A document lists the documents it mentions	section	12-documents.md::### Mentions and Mentioned by
+Delete in the document editor	section	12-documents.md::**Deleting** a document that others mention
+An artifact on its own at `/workspace/…/artifacts/…/content`	section	04-models-and-agents.md::**An artifact on its own**
+Every field of New research has a (?)	section	15-research.md::Every field has a **(?)**
+A diagram's line has a style and a mark at each end	section	14-diagrams.md::**At the start** and **At the end**
+A workflow node can have a timeout	section	02-workflows.md::## How long a node may take
+`!progress-none`, `!progress-low`, `!progress-medium` and `!progress-high` in a message set how much the agent says while it works	section	06-chat.md::`!progress-none`, `!progress-low`
+Diagrams, documents and wireframes can be worked on together, as workflows can	section	14-diagrams.md::## Working on one together
+A run's agent step says whether Output streaming was on	section	02-workflows.md::whether **Output streaming** was on, so a message
+A chat draws your avatar beside what you said	section	01-getting-started.md::**Avatar in Chat** draws your initials
+Voice mode reads at the speed you pick	section	06-chat.md::**How fast it reads.**
+A document can link to another	section	12-documents.md::## Links between documents
+The documents list imports several files at once	section	12-documents.md::### Bringing documents in
+Diagrams have flowchart and UML shapes	section	14-diagrams.md::### Shapes
+The diagram editor's panel can be dragged wider, and the line above its chat up or down	section	14-diagrams.md::The panel is as wide as you drag its left edge
+A tool call in a chat that started a run, filed an issue or named another item links to its page	section	06-chat.md::**Links to what a tool call named.**
+An agent node in a workflow chooses how hard its model thinks	section	02-workflows.md::**Reasoning effort** is how hard that model thinks on this node
+An action or an agent node can run more than once in a run	section	02-workflows.md::## Doing a node's work more than once
+A research's Plan, Write and Review keep sessions you can open	section	15-research.md::**Sessions**, a line under the steps
+A Refresh button beside Auto	section	15-research.md::and **Refresh** beside it reads it now
+The diagram, document and wireframe editors have no Save button	section	12-documents.md::**There is no Save button.**
+The diagram toolbar's Delete deletes the whole diagram	section	14-diagrams.md::**Delete** in the bar deletes the **whole diagram**
+A settings page's choices are drawn as its text fields are	n/a	visual: a settings page's choices drawn as its fields are; nothing to do differently
+Your avatar in a chat sits at the top left of your message	section	01-getting-started.md::**Avatar in Chat** draws your initials
+A chat shows what each answer cost, for everybody	section	06-chat.md::**What each answer cost** is shown under it
+A chat message's time carries its date, today's included	section	06-chat.md::**Each message carries when it was sent**
+A research runs with agents, not a model	section	15-research.md::### Which agents do the work
+Replacing a saved artifact's file	section	04-models-and-agents.md::**Replace**, in the viewer's bar
+A model's speed over time	section	04-models-and-agents.md::### How fast a model is
+A diagram's PNG at 1×, 2× or 3×	section	14-diagrams.md::- **PNG**, at **1×**, **2×** or **3×**
+A dark page in the document editor	section	12-documents.md::**Dark page**, the moon in the bar
+Import in the document editor	section	12-documents.md::### Importing into a document
+Tables in an imported PDF come in as tables	section	12-documents.md::- **Tables** from a PDF
+Lists and merged cells in an imported PDF	section	12-documents.md::merged cells stay merged
+Import in the wireframe editor	section	13-wireframes.md::### Pictures
+Documents in Design	section	12-documents.md::## The documents list
+The document editor writes in pages	section	12-documents.md::## Writing
+While typing, the document editor suggests how the sentence goes on	section	12-documents.md::## Suggestions while you type
+A document's view, and Find	section	12-documents.md::## View and Find
+Quick actions finds documents	section	01-getting-started.md::- **Documents** are found by their name and by any word in them
+Agents write documents	section	12-documents.md::## Writing with an agent
+Grammar and spelling in documents, in English and Polish	section	12-documents.md::## Grammar and spelling
+A document's page is its own	section	12-documents.md::## A document's page
+Code blocks in documents	section	12-documents.md::- **Code block** - for commands
+Colour, highlights with notes and an outline in documents	section	12-documents.md::### Selecting words
+A document exports as PDF, Markdown, ODT or ODS	section	12-documents.md::## Export
+Agents ask about a large file instead of reading it whole	section	04-models-and-agents.md::- **`xml_query`** answers an **XPath** question
+A finished research suggests what to research next	section	15-research.md::## Follow-up questions
+A research can be reviewed before it is saved	section	15-research.md::## Reviewing a report before it is saved
+Agents compose music	section	04-models-and-agents.md::### Music
+Sound plays in a chat, MIDI included, and an agent can play it to you	section	06-chat.md::- **Sound.** An mp3, flac, wav, ogg or m4a
+Reasoning effort in the chat composer	section	06-chat.md::takes a reasoning effort, a small button beside the microphone
+Plan and Auto modes in a chat	section	06-chat.md::## Default, Plan and Auto
+A wireframe exports as HTML, SVG or PNG	section	13-wireframes.md::## Export
+Files in the document, wireframe and diagram chats	section	12-documents.md::the paperclip. It waits in a chip above the box
+Copy on every code block	section	06-chat.md::- **Code** in a fenced block has a bar with its language and **Copy**
+Videos in Design	section	11-videos.md::## The Videos page
+A video being made says how long it has taken and about how long is left	section	11-videos.md::"1:12 elapsed · about 2 min left"
+A picture being drawn in the image editor says how long it has taken and how long is left, where anything knows	section	10-images.md::"0:42 elapsed · about 20 s left"
+Upscale a finished video	section	11-videos.md::### Upscaling a video
+Export a video as GIF, MP4 or MKV	section	11-videos.md::## A finished video
+Run on a chat answer's shell blocks	section	06-chat.md::- **Run on shell blocks.**
+Explore > Research	section	15-research.md::## Starting one
+A research always has its model, and may leave the web alone	section	15-research.md::A research with web search off still needs something to read
+A research can include images	section	15-research.md::| **Include images** |
+A research has a page of its own	section	15-research.md::## Watching it run
+A research's steps say in the run's log what they did	section	15-research.md::**Open the run** opens the workflow run underneath
+An agent node can name its model	section	02-workflows.md::**Model** is a parameter: the id of a chat model
+An agent can ask for a box	section	04-models-and-agents.md::connections**, and **box labels**
+`svg_read`	section	04-models-and-agents.md::### Reading what is too big to read whole
+`sheet_read` reads an attached CSV, .xlsx or .xls	section	04-models-and-agents.md::- **`sheet_read`** reads a spreadsheet
+Admin Settings has a Limits heading	section	08-administration.md::### Limits
+A plugin's skill catalogue can be searched	section	04-models-and-agents.md::**One search box sits above the catalogs**
+Sentence completion in the chat	section	06-chat.md::A workspace that chooses a **Completion Model**
+Suggested replies under a chat's answer	section	06-chat.md::Suggested replies
+Plugins and functions can read Slack's Web API and download Slack files through a connection	section	02-workflows.md::### Talking to Slack through a connection
+Connections and MCP servers as templates	section	04-models-and-agents.md::## Templates
+`ORKNUX_SESSION_COOKIE_SECURE` marks the session cookie Secure (`auto`, the default, follows the request); `ORKNUX_CONTENT_SECURITY_POLICY` replaces the inter	section	08-administration.md::### The session cookie
+Videos in the chat	section	11-videos.md::## Videos in a chat
+Sound in the chat	section	06-chat.md::model itself only where the model's page has **Takes audio**
+MIDI files are read	section	04-models-and-agents.md::`midi_read` reads a
+Tabs in the desktop app	section	17-desktop.md::## Windows and tabs
+New windows and your own tab keys in the desktop app	section	17-desktop.md::Open link in new
+Wireframes in Design	section	13-wireframes.md::## The wireframe editor
+Model speed	section	04-models-and-agents.md::### How fast a model is
+Negative prompts for pictures	section	10-images.md::2. **Negative prompt**
+Rotate and mirror in the image editor	section	10-images.md::## Turning, mirroring and cropping
+Import a picture from Orknux in the image editor	section	10-images.md::## Bringing a picture in, and taking it out
+Crop in the image editor	section	10-images.md::## Turning, mirroring and cropping
+A brush in the image editor	section	10-images.md::## Painting with the brush
+Brush tips in the image editor	section	10-images.md::## Painting with the brush
+Shortcuts for the image editor's tools	section	10-images.md::## Shortcuts
+Selective blur in the image editor	section	10-images.md::## Blurring part of a picture
+Gradual blur in the image editor	section	10-images.md::## Blurring part of a picture
+Layers in the image editor	section	10-images.md::## Layers
+Clean up in the image editor	section	10-images.md::## Upscale, Clean up and Harmonize
+Feather for the Magic edit	section	10-images.md::## Changing part of a picture: Magic edit
+Export a model provider	section	04-models-and-agents.md::**A provider's own row** has **Export**
+A wireframe an agent draws in a chat is shown in the chat	section	13-wireframes.md::## Drawing with an agent
+`sheet_read` reads an OpenDocument spreadsheet (.ods)	section	04-models-and-agents.md::OpenDocument `.ods`
+A research restarts from where it stopped	section	15-research.md::## When it fails, and restarting
+A running research shows its work as it goes, and about how long is left	section	15-research.md::## Watching it run
+Explore > Diagrams	section	14-diagrams.md::## The diagrams list
+A diagram's nodes carry notes, 5000 characters each by default	section	14-diagrams.md::A shape's notes hold up to 5000 characters
+Agents read, search, draw and export diagrams	section	14-diagrams.md::## Drawing with an agent
+Each diagram says what agents may do with it: Read only, or Read and change	section	14-diagrams.md::## A diagram's details
+Agents are sent to the diagrams	section	04-models-and-agents.md::### Keeping the diagrams true
+Quick actions finds a diagram by its name and a node by its label	section	14-diagrams.md::**Quick actions** (Ctrl+Q) finds a diagram
+A diagram has a description	section	14-diagrams.md::## A diagram's details
+A diagram's labels are typed over where they are drawn	section	14-diagrams.md::### Labels and notes
+A diagram's details have a page of their own	section	14-diagrams.md::## A diagram's details
+A document's View shows its highlights' notes	section	12-documents.md::Highlights show there with
+A document has a history	section	12-documents.md::## History
+An agent looks at a picture at an address	section	04-models-and-agents.md::**Looking at a picture at an address.**
+A file out of a box as itself	section	04-models-and-agents.md::orkbox_export
+The upload limit is set in Admin Settings	section	08-administration.md::### How large an upload may be
+The chat list's + New wears the main accent	n/a	visual: the + New button's colour and the top bar's spacing
+An agent can draw a picture for its own eyes only	section	04-models-and-agents.md::**Drawing for its own eyes.**
+The desktop app accepts uploads of up to 500 MB	section	17-desktop.md::## Files and uploads
+The basic built-ins travel again, and the skill tools cannot be left behind the tool search	section	04-models-and-agents.md::### The tools an agent starts with
+A tool handed an address where it reads a key says how an address becomes a key	section	04-models-and-agents.md::A tool that reads a key and is handed an address instead
+Two provider settings decide how an agent reaches the tools it does not carry from the start, and every existing provider is turned to its type's default	section	04-models-and-agents.md::**All tools up front**
+Blue is the default accent	section	01-getting-started.md::**Blue** is what somebody who
+Every agent with Orknux access is given the diagram tools at Always, and `orknux_delete_diagram` is hidden on every agent	section	14-diagrams.md::## Drawing with an agent
+A research looks for images unless told not to	section	15-research.md::| **Include images** |
+The research modes' workflows gain two nodes	section	15-research.md::## Modes are workflows
+A condition's written value may name a field	section	02-workflows.md::**A condition node's written value may name a field**
+An agent holding more tools than its provider takes carries as many as fit from its first message	section	04-models-and-agents.md::**An agent holding more tools than its provider takes carries as many as fit**
+A conversation sends the same tool array and system turn from its first request to its last	section	04-models-and-agents.md::**The tool list and the instructions are frozen for a conversation.**
+A page `pdf_preview` draws, and a picture `picture_view` shows, go to the agent alone	section	04-models-and-agents.md::**Looking is the agent's alone.**
+`pdf_toPng` puts its picture in the chat only when called with `show: true`	section	04-models-and-agents.md::`pdf_toPng` puts its picture in the chat only when called with
+A reasoning effort for OpenAI, OpenAI-compatible, llama.cpp and Ollama models, not only Azure	section	04-models-and-agents.md::**Reasoning effort**, on a chat model's page
+The chat's mode switch is the application's own list	n/a	visual: the chat's mode switch drawn as the application's own list
+Analysis is called Explore	section	15-research.md::An `/analysis/...` address from before
+The search on Skills and Memory is one box above the catalogs and searches every catalog, a plugin's included	section	04-models-and-agents.md::**One search box sits above the catalogs**
+An agent's note to itself may be 2,000 characters by default	section	08-administration.md::| **Note Length** | 2,000 characters
+The desktop app starts in about half the time	section	17-desktop.md::the first page is there in about eight seconds
+A chat's title no longer waits on a busy companion model	section	06-chat.md::Settings' **Chat Title Time Limit**
+Cross-site writes are refused	section	08-administration.md::### Writes from another site are refused
+A workspace function's `orknux.http`, an agent's HTTP tools and a plugin's requests refuse cloud metadata addresses, including after a redirect, and read an a	section	08-administration.md::### Requests never reach a cloud's metadata address
+A workflow's own action can no longer name another workspace's connection, function, condition, speech model or workflow, and a run will not send through anot	section	08-administration.md::### A workflow keeps to its own workspace
+An access token can no longer make another token; make tokens from a signed-in session	section	08-administration.md::## Access tokens
+Setting somebody's password, or changing your own, ends their other sessions	section	08-administration.md::**Setting somebody's password ends their other sessions**
+A webhook whose authentication function refuses a caller answers 404, like an unknown path, rather than 401	section	03-triggers.md::`true` fires the trigger; anything else is answered `404`
+`ORKNUX_SESSION_COOKIE_SAME_SITE` and `ORKNUX_SESSION_COOKIE_HTTP_ONLY` now take effect; they were ignored	section	08-administration.md::`ORKNUX_SESSION_COOKIE_SAME_SITE`
+An agent's orknux_ tools can be set to Offer	section	04-models-and-agents.md::The `orknux_` tools cycle **Hide**, **Offer** and **Always**
+A new agent starts most of the server's specialised tools at Offer rather than Always	section	04-models-and-agents.md::### The tools an agent starts with
+The box tools take Offer and Always	section	04-models-and-agents.md::The box tools cycle **Offer** and **Always** only
+The server's own tools can be set to Offer or Always in a workspace that keeps its built-ins fixed	section	04-models-and-agents.md::keeps its built-ins fixed, the server's own tools can still be set to Offer
+A chat's thinking is drawn where it happened, and as the session draws it	section	06-chat.md::- **Thinking**, where the model thinks, is a folded red card
+An address typed without a scheme is taken as http	section	08-administration.md::**An address typed without a scheme is taken as http.**
+A package is installed from a registry only with a SHA-256, -384 or -512 integrity, and its file only over https	section	08-administration.md::### Libraries are checked before they are installed
+What a function or a plugin action says with `orknux.log` is in the run's log	section	02-workflows.md::What a function or a plugin action wrote with `orknux.log`
+The research modes' steps are called Plan research, Gather sources, Deepen findings, Write report and Save report	section	15-research.md::## Modes are workflows
+A research mode's steps are tried again when they fail in a way that could come out differently	section	15-research.md::- **A step that could come out differently is tried again.**
+A research step cut short by a server restart is run again	section	15-research.md::## When it fails, and restarting
+Re-running a research's run carries the research with it	section	15-research.md::Re-running a research's run from the Runs page
+The web search key is a secret field like every other	section	05-variables.md::## The web search key
+A part's dependency graph	section	02-workflows.md::## What depends on what
+A workflow's Used by	section	02-workflows.md::A **workflow** has a Used by panel too
+Agents ask with options	section	04-models-and-agents.md::### Questions with options
+Drawing in SVG	section	04-models-and-agents.md::`svg_draw`, `svg_toPng`, `pdf_toPng`,
+Working on a workflow together	section	02-workflows.md::## Working on a workflow together
+A model's own answer time limit	section	04-models-and-agents.md::A model can have **a time limit of its own**
+The Errors report's columns sort	section	16-reports.md::**both tables sort**
+Admin → Reports keeps the report in the address	section	16-reports.md::`/admin/reports?report=errors`
+A field that reads a variable links to it	section	05-variables.md::**open** button beside the reference
+An agent can take back a review it sent	section	04-models-and-agents.md::takes one back with `remove_session_rating`
+Diagrams look better by default	section	04-models-and-agents.md::A PlantUML diagram is drawn in a house style
+The workflow editor saves as it goes	section	02-workflows.md::**The editor saves as it goes.**
+Anthropic models follow the Model Answer Time Limit	section	04-models-and-agents.md::it takes the installation's **Model Answer Time Limit**
+A review taken back stays in the chat	section	06-chat.md::A review taken back
+Diagram decisions are ovals	section	04-models-and-agents.md::decisions as ovals in a colour of
+Workflow on and off is a green switch	n/a	visual: the workflow's on and off drawn as a green switch
+Session ratings	section	04-models-and-agents.md::### Reviews of a conversation
+An Errors report	section	16-reports.md::## Errors
+Workspace sharing	section	08-administration.md::### Sharing between workspaces
+A Workflow node	section	02-workflows.md::## The Workflow node
+Cut, Copy and Paste in the workflow editor	section	02-workflows.md::### Cut, copy and paste
+Node shapes	section	02-workflows.md::### A node's shape
+Workspace variables inside placeholders	section	02-workflows.md::- **Workspace variables** go in the same way
+Models as templates	section	04-models-and-agents.md::## Templates
+Bulk import	section	08-administration.md::### Bulk import
+Copying a workspace asks what to take	section	08-administration.md::### Copying a workspace
+A variable, secret, skill or memory moves to another catalog	section	05-variables.md::### Moving a variable to another catalog
+A reference to a variable can be cleared	section	05-variables.md::## Using one
+Cache writes are counted and priced	section	04-models-and-agents.md::### Prices, and what a conversation costs
+The Users list shows when each person last signed in	section	08-administration.md::**Last Signed In**
+An MCP server can be tested in the Add dialog	section	04-models-and-agents.md::**An MCP server can be tested before it is saved.**
+Plugins and functions can put a file on Slack through a connection	section	02-workflows.md::### Talking to Slack through a connection
+`orknux_update_model` and `orknux_start_task`	section	04-models-and-agents.md::`orknux_update_model` changes a model
+The usage chart counts sessions and model calls per day	section	02-workflows.md::The lines the run travelled are drawn in green
+Reading a secret back now takes a role	section	05-variables.md::### Who may read a secret back
+Ratings and chat reviews are on by default	section	04-models-and-agents.md::Both are on by default, and both are switched under
+Boxes carry a required label again, and an agent is granted boxes by label	section	04-models-and-agents.md::## Letting an agent work in a box
+Providers send up to 200 tools at once by default	section	04-models-and-agents.md::**Most tools per request**
+An agent may ask 25 other agents in a conversation by default	section	04-models-and-agents.md::Conversation**, the cap on how many agents one conversation may ask
+Talking while the model thinks no longer stops it	section	06-chat.md::**Talking while it thinks waits, unless the workspace says otherwise.**
+Basic auth sends a secret that is already base64-encoded as it is	section	04-models-and-agents.md::For *Basic* do not encode anything yourself
+Every choice in the interface opens the application's own list	n/a	visual: every choice opens the application's own list
+Test on a model provider checks the form without saving it	section	04-models-and-agents.md::Duplicating a provider copies the provider alone
+Removing a provider, a model, a trusted certificate, a saved file or a picture asks first	n/a	visual: removing asks first, naming what goes with it (each removal's own page says so)
+Use a template offers only templates made from that page's kind	section	04-models-and-agents.md::## Templates
+Models are no longer offered as issue assignees	section	07-issues.md::## Handing it to an agent
+The import dialog opens wider and can be resized from any edge	section	04-models-and-agents.md::the dialog and the plan are resized
+The manual says what this release added	n/a	meta: the manual itself was brought up to date for that release
+Progress messages None is held to by the server	section	02-workflows.md::| None | Only the answer.
+Harmonize in the image editor	section	10-images.md::## Upscale, Clean up and Harmonize
+A picture waiting or being drawn in Design can be stopped	section	10-images.md::**Stop** beside it stops it
+Progress messages, None to High	section	02-workflows.md::**Progress messages** is how much the agent writes
+Output streaming on an agent node	section	02-workflows.md::**Output streaming**, on unless you turn it off
+A workspace's own Tool Rounds	section	08-administration.md::**Tool Rounds** (100)
+A price for cached input	section	04-models-and-agents.md::### Prices, and what a conversation costs
+Charts on the usage report	section	16-reports.md::## Tokens by person
+An agent can read the Orknux manual	section	04-models-and-agents.md::**Reading the manual.**
+An agent may ask to use one of the workspace's connections	section	04-models-and-agents.md::### Asking for what it lacks
+A Box Code Reading skill	section	04-models-and-agents.md::The built-in **Box Code Reading** skill
+History says what each save changed	section	02-workflows.md::Each row also says **what that save changed**
+Use a template can leave an agent's model out	section	04-models-and-agents.md::leave the agent's model out
+The image editor numbers its pictures	section	10-images.md::each numbered in the order it was asked for
+Asking an agent again in the same conversation continues the conversation it had	section	04-models-and-agents.md::**Asking the same agent again continues the conversation it had**
+`agent_wait` no longer holds back messages in a workflow step's conversation	section	02-workflows.md::to wait for an agent it asked: it goes
+An asked agent's calls are booked in the usage report to whoever prompted the conversation that asked it	section	16-reports.md::An agent asked
+A plugin tool's connection argument offers only connections of its plugin's kind	section	04-models-and-agents.md::in the connection argument it passes to a
+An agent is listed as used by the agents that may ask it	section	02-workflows.md::used by the workflows that run it and also by the agents that may ask it
+A chat model's prices are edited on its own page	section	04-models-and-agents.md::shown to the cent
+Publishing a template closes its dialog	section	04-models-and-agents.md::## Templates
+Agent settings	n/a	visual: Tool Rounds and Tools carried at once drawn on one line; Add a model as a plus
+Session side panels explain themselves behind (?)	n/a	visual: session side panels' (?) and the Thinking filter's colour
+Schedules: a reminder an agent sets that comes back on its own	section	04-models-and-agents.md::### Schedules
+An agent can read, make and configure agents	section	04-models-and-agents.md::### Managing agents
+`app_link` and an installation address in Admin -> Settings	section	08-administration.md::### The installation's address
+Placeholders in any written node value	section	02-workflows.md::### Placeholders
+A run's step shows its parameters	section	02-workflows.md::### Reading a step
+A run of an older version says so	section	02-workflows.md::### A run of an older version
+Upscaling through a Stable Diffusion WebUI	section	10-images.md::## Upscale, Clean up and Harmonize
+Pictures imported, dropped or pasted into the image editor, and exported	section	10-images.md::## Bringing a picture in, and taking it out
+Models exported and imported between workspaces	section	04-models-and-agents.md::### Moving models to another workspace
+A connection may be granted to every new agent	section	04-models-and-agents.md::**Grant to new agents**
+A Building workflows skill	section	04-models-and-agents.md::The built-in **Building workflows** skill
+Each tool call in a chat shows the time it was made	section	06-chat.md::it was made, to the second
+Every quick-edit panel in the workflow editor links to the component's own page	section	02-workflows.md::- **The way out**, the mark beside the picker
+Cached input on the model page and in Tokens by person	section	04-models-and-agents.md::### Prices, and what a conversation costs
+A run begins only at a trigger	section	03-triggers.md::### A run begins at its trigger
+A reminder an agent sets no longer holds its workflow step	section	02-workflows.md::to wait for an agent it asked: it goes
+Message times are shown in every chat by default	section	06-chat.md::**Each message carries when it was sent**
+A chat is named once at its start and again every N exchanges	section	06-chat.md::again every few exchanges as the conversation moves on
+An agent's model has to be one that chats	section	04-models-and-agents.md::saving an agent with a newly chosen embedding
+Node text fields are dragged taller	section	02-workflows.md::are **dragged taller**
+The workflow list is ordered by a press of its column headings	section	02-workflows.md::**Press a column's heading to order the list by it**
+A trigger's line in a run's log reads "<trigger> fired with: ..."	section	03-triggers.md::### What it was started with
+Design, a new section with an Images page	section	10-images.md::## The Images page
+An image editor	section	10-images.md::## The image editor
+Magic edit: select part of a picture and say what to change	section	10-images.md::## Changing part of a picture: Magic edit
+Changes are a draft until saved	section	10-images.md::## Changes are a draft until saved
+Open in Design	section	10-images.md::**Open in Design** is also on any picture
+A stable-diffusion.cpp provider type	section	10-images.md::## Image models and providers
+Longest image prompt	section	08-administration.md::| **Longest image prompt** |
+The top bar is in the alphabet's order	section	01-getting-started.md::## The top bar
+OpenAI-compatible, Ollama and llama.cpp providers work without an API key	section	04-models-and-agents.md::**An API key is needed only where the server asks for one.**
+An OpenAI provider whose server is stable-diffusion.cpp's is saved as that type	section	10-images.md::saved as that type
+How long a picture's description may be is one setting	section	08-administration.md::| **Longest image prompt** |
+A chat's header has one link to its session	section	06-chat.md::**Every chat is answered in a session**, and the mark in its header
+Orknux on the desktop, for Windows and Linux	section	17-desktop.md::## Installing it
+Network access for the desktop app, in Admin › Settings	section	17-desktop.md::## Letting others in
+A fresh installation starts with a workspace	section	01-getting-started.md::**A fresh installation starts with one**
+An agent can ask for the tools it lacks	section	04-models-and-agents.md::### Asking for what it lacks
+Unread answers beside each chat	section	06-chat.md::how many answers arrived since you last had it open
+Attached files reach the agent	section	06-chat.md::## Attachments
+Drop files on a chat to attach them	section	06-chat.md::The **+** to the left of the composer attaches files
+A chat being named says so	section	06-chat.md::While it is being named it says *Naming this chat…*
+The chat list can be dragged wider	section	06-chat.md::list can be dragged wider by its edge
+Chat opens a new chat by itself	section	06-chat.md::**Chat opens a new chat by itself**
+Chat answers render LaTeX maths	section	06-chat.md::- **Maths.**
+A model's page says what uses it	section	02-workflows.md::A **model** has the panel too, on its page
+Test a connection before adding it	section	04-models-and-agents.md::**The Add Connection dialog has Test Connection**
+A plugin's connection kind can bring a setup guide, a check and a default address	section	04-models-and-agents.md::A plugin's
+Picking a model a llama.cpp server offers fills its context window	section	04-models-and-agents.md::Picking a model a **llama.cpp** server offers fills its Context Window
+"+ New function" opens a panel	section	02-workflows.md::- **+ New function**, at the top of an action's
+Save and Discard along the foot of every page that saves	section	01-getting-started.md::**A page that saves has Save and Discard in a bar along its foot**
+A menu down the side of an agent's settings	section	04-models-and-agents.md::### An agent's settings page
+An "Add a model" link under an agent's Model	section	04-models-and-agents.md::**Model.** The model the agent answers on. Under the picker, **Add a model**
+Used by is paged	section	02-workflows.md::A long list comes a page at a time.
+The Updates page says why a chosen release was not started	section	17-desktop.md::chosen release was not started
+The top bar shows your display name	section	01-getting-started.md::Your account is shown by your display name
+Every agent may ask for more tools, existing ones included	section	04-models-and-agents.md::### Asking for what it lacks
+New agents start with Orknux access on	section	04-models-and-agents.md::**A new agent starts with it on**
+A box has a name only	section	04-models-and-agents.md::## Letting an agent work in a box
+An agent's Boxes grant is a list of ticks	section	04-models-and-agents.md::## Letting an agent work in a box
+Test Connection sits beside the status line under the form	n/a	visual: Test Connection placed beside the status line
+Voice mode is always on the chat bar	section	06-chat.md::Voice is always on the chat bar
+The release launcher skips a release built for a newer Java	section	17-desktop.md::## When it will not start
+Admin > Reports: tokens by the person who prompted them	section	16-reports.md::## Tokens by person
+Workspace members	section	08-administration.md::### Workspace members
+An object inside a property	section	02-workflows.md::### An object inside an object
+Rectangle select on the workflow canvas	section	02-workflows.md::### Selecting several nodes
+The Add menu opens at the pointer and takes the arrow keys	section	02-workflows.md::### Adding a node
+An Object node's fields are drawn as a tree	section	02-workflows.md::an Object node's fields are drawn as a **tree**
+Type filters	section	04-models-and-agents.md::**Type** filter, **All types** until you pick one
+Reports can be searched by person, sorted by any column and exported as CSV	section	16-reports.md::- **Export CSV**
+A menu down the side of both settings pages	section	08-administration.md::listed in a menu down its side
+A row of the Users list opens the user	section	08-administration.md::**Last Signed In**
+Object Depth	section	02-workflows.md::**Object Depth**, in Admin Settings
+Talking over the answer waits a second by default	section	06-chat.md::A second by default - half a second
+A workspace's settings are its admins' to change	section	08-administration.md::**A workspace's settings are its admins' to change.**
+An access token can be read-only	section	08-administration.md::**A token can be read-only.**
+Access tokens are a table	section	08-administration.md::## Access tokens
+A node's Action and Condition pickers offer what the plugins bring	section	02-workflows.md::An Action node's and a Condition node's pickers list more
+Shift+click selects several nodes	section	02-workflows.md::### Selecting several nodes
+Quick filters in a node's Action and Condition pickers	section	02-workflows.md::**quick filters** above the list
+The **field picker marks the row that hands on a whole object**, with its fields indented under it, so it is not missed among them	section	02-workflows.md::the **whole object** as one row
+Creating a workflow opens its editor	section	02-workflows.md::**+ Create Workflow** asks for a name and opens

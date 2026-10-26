@@ -140,6 +140,10 @@ group's lane so you never meet another run:
   stand-in every agent's chat model. That is the only model a run may use.
 - The seed always runs whole (every group's seed file); `-Only` narrows the capture.
 - `-KeepData` leaves the installation's SQLite file and logs, to work out why a picture is wrong.
+- Each run starts Temporal on an empty database: the script removes the lane's
+  `orknux-screens-<n>_postgres-data` volume before it starts the containers. A kept one held the
+  last run's task numbers as workflow ids, and the seed's first task was refused with
+  `WorkflowExecutionAlreadyStarted` on every second run in a lane.
 - **Do not pipe it through `2>&1`.** Windows PowerShell turns docker's progress lines on stderr into
   error records, and the script stops on the first one. Run it at a prompt, or with
   `Start-Process powershell -ArgumentList '-File','scripts\screenshots.ps1',... -RedirectStandardOutput a.log -RedirectStandardError b.log`.
