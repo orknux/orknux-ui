@@ -166,6 +166,22 @@
   text-decoration: underline;
 }
 
+/*
+ * The page the call named - a run it started, an issue it filed - under its
+ * line, folded or not, cut with an ellipsis rather than wrapped. Issue #660.
+ */
+.item {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: var(--space-4);
+  overflow: hidden;
+  color: var(--color-accent-brand);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Where a box session the call opened is watched: a link of its own under the call's line, folded or not. */
 .watch {
   align-self: flex-start;

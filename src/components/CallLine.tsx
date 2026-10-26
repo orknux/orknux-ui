@@ -1,8 +1,10 @@
 import { FoldToggle } from './FoldToggle';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import styles from './CallLine.module.css';
 import { t } from '../i18n';
+import type { ItemLink } from '../api/chat';
 
 export interface CallLineProps {
   /** The tool's name, as the session recorded it. */
@@ -46,6 +48,13 @@ export interface CallLineProps {
    * no opinion about which page it is on.
    */
   folded?: boolean;
+  /**
+   * The page of the item the call named - a run it started, a research, an
+   * issue it filed - read off what it returned by the server. Drawn under the
+   * name whether or not the call is open, because it is what somebody reading
+   * the conversation wants from the call without opening it. Issue #660.
+   */
+  link?: ItemLink | null;
 }
 
 /**
@@ -80,7 +89,7 @@ const FOLD_OVER_CHARS = 600;
  * hides. The two are folded separately: a long argument and a long result are
  * two different things to want to open.
  */
-export function CallLine({ actor, content, result, failed = false, when, folded = false }: CallLineProps) {
+export function CallLine({ actor, content, result, failed = false, when, folded = false, link = null }: CallLineProps) {
   const asked = useIndented(content);
   const got = useIndented(result ?? '');
 
@@ -142,6 +151,13 @@ export function CallLine({ actor, content, result, failed = false, when, folded 
         );
       })()}
 
+      {/* A box session's address is the one the watch link below already draws. */}
+      {link != null && watch === null && (
+        <Link className={styles.item} to={link.url} data-testid="call-item">
+          {itemLabel(link)}
+        </Link>
+      )}
+
       {watch !== null && (
         <a className={styles.watch} href={watch} target="_blank" rel="noreferrer" data-testid="call-watch">
           {t('Watch the box session')}
@@ -183,6 +199,40 @@ function watchOf(actor: string | null, result: string | null | undefined): strin
   } catch {
     return null;
   }
+}
+
+/**
+ * What kind of page each address is, by the part of the path before its number.
+ * A page not listed is still linked, by the name the answer gave it.
+ */
+function kindOf(segment: string): string | undefined {
+  switch (segment) {
+    case 'executions': return t('Workflow run');
+    case 'research': return t('Research');
+    case 'tasks': return t('Task');
+    case 'issues': return t('Issue');
+    case 'sessions': return t('Session');
+    case 'agents': return t('Agent');
+    case 'workflows': return t('Workflow');
+    case 'functions': return t('Function');
+    case 'tools': return t('Tool');
+    case 'models': return t('Model');
+    case 'documents': return t('Document');
+    case 'diagrams': return t('Diagram');
+    case 'wireframes': return t('Wireframe');
+    default: return undefined;
+  }
+}
+
+/** "Run #12: Nightly export" - its kind and number from the address, its name from the answer. */
+function itemLabel(link: ItemLink): string {
+  const parts = link.url.split(/[?#]/)[0].split('/').filter((part) => part !== '');
+  const at = parts.findIndex((part, index) => index > 1 && /^\d+$/.test(part));
+  const kind = at > 0 ? kindOf(parts[at - 1]) : undefined;
+  const named = link.name?.trim() ?? '';
+  if (kind === undefined) return named !== '' ? named : link.url;
+  const which = `${kind} #${parts[at]}`;
+  return named !== '' ? `${which}: ${named}` : which;
 }
 
 /** One block of code, folded while it is longer than a line should be. */

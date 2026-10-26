@@ -2280,7 +2280,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setWorking((held) => ({
           ...held,
           calls: held.calls.map((call) =>
-            call.at === answer.at ? { ...call, result: answer.result, failed: answer.failed } : call,
+            call.at === answer.at ? { ...call, result: answer.result, failed: answer.failed, link: answer.link } : call,
           ),
         })),
     };
@@ -3914,7 +3914,7 @@ ${named}`;
                     that folded while it happened and sprawled after a reload
                     would be two different pages.
                   */}
-                  <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} folded />
+                  <CallLine actor={message.actor} content={message.content} when={calledAt(message.at)} link={message.link} folded />
                 </div>
                 </>
               ) : message.role === THOUGHT_ROLE && (message.thinking ?? '').trim() === '' ? null : message.role === THOUGHT_ROLE ? (
@@ -4180,6 +4180,7 @@ ${named}`;
                               content={call.arguments}
                               result={call.result}
                               failed={call.failed}
+                              link={call.link}
                               when={calledAt(call.seenAt)}
                               /*
                                 One line until asked, which is the chat's

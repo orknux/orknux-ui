@@ -3414,6 +3414,7 @@ export const PL: Record<string, string> = {
   "estimated {seconds} s left": "szacunkowo zostało {seconds} s",
   // Wireframes in Design, issue #655.
   "Wireframes": "Makiety",
+  "Wireframe": "Makieta",
   "Wireframe editor": "Edytor makiet",
   "Search wireframes": "Szukaj makiet",
   "Search wireframes...": "Szukaj makiet...",

@@ -90,6 +90,8 @@ export interface ChatMessage {
    * message; left out on a line the page made up itself.
    */
   attachments?: Attachment[];
+  /** For a call, the page of the item it named - a run it started, an issue it filed; see `ItemLink`. */
+  link?: ItemLink | null;
   /**
    * Who said it, for a line carried into this chat from the session it
    * continues - the agent, the tool or the person, as the session recorded it.
@@ -148,6 +150,15 @@ export interface ChatMessage {
 
 /** The role a call reads under, which is not a turn anybody took. */
 export const CALL_ROLE = 'tool';
+
+/**
+ * A page of this installation a tool call named, read off what it returned:
+ * its path, and what the answer called the item. Issue #660.
+ */
+export interface ItemLink {
+  url: string;
+  name: string | null;
+}
 
 /**
  * The role one round's thinking reads under on a reloaded chat: a line of its
@@ -269,7 +280,7 @@ export async function fetchChatReplySuggestions(chatId: string, signal?: AbortSi
 
 export async function fetchChatMessages(id: string): Promise<ChatMessage[]> {
   const data = await graphql<{ chatMessages: ChatMessage[] }>(
-    'query ChatMessages($id: ID!) { chatMessages(id: $id) { role content actor takes thinking thinkingMillis at attachments { id filename contentType sizeBytes } } }',
+    'query ChatMessages($id: ID!) { chatMessages(id: $id) { role content actor takes thinking thinkingMillis at attachments { id filename contentType sizeBytes } link { url name } } }',
     { id },
   );
   return data.chatMessages;
@@ -425,6 +436,8 @@ export interface ChatCall {
   arguments: string;
   /** What came back. Null while the tool has not answered yet. */
   result: string | null;
+  /** The page of the item the call named, once it has answered. */
+  link?: ItemLink | null;
   /** Whether the tool could not be run at all. Meaningless while running. */
   failed: boolean;
   /**
@@ -513,7 +526,7 @@ export interface ChatStreamHandlers {
   onWriting?: (writing: Writing) => void;
   onCall: (call: { at: number; tool: string; arguments: string }) => void;
   /** And what that lookup gave back. */
-  onCalled: (answer: { at: number; result: string; failed: boolean }) => void;
+  onCalled: (answer: { at: number; result: string; failed: boolean; link: ItemLink | null }) => void;
   /**
    * The chat is being summarised before this turn is sent.
    *
@@ -868,6 +881,8 @@ async function read(
       arguments?: string;
       result?: string;
       failed?: boolean;
+      /** A `called` frame: the page the call named, or null. */
+      link?: ItemLink | null;
       millis?: number;
       thinkingMillis?: number;
       inputTokens?: number;
@@ -949,6 +964,7 @@ async function read(
         at: payload.at,
         result: payload.result ?? '',
         failed: payload.failed === true,
+        link: payload.link ?? null,
       });
     } else if (frame.event === 'done') {
       handlers.onDone({

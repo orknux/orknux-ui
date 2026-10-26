@@ -837,6 +837,12 @@ export const TESTS = [
     /* The turn is answered by the page's own network, so no model or box is needed. */
   },
   {
+    name: 'chat-item-link-check',
+    what: "a tool call that named a run, an issue or another item links to its page from its own folded line, live and after a reload, and one that named nothing grows no link",
+    needs: ['workspace'],
+    /* The turn and the history are answered by the page's own network; the server's half is ItemLinksTest. */
+  },
+  {
     name: 'chat-thinking-live-check',
     what: "while a turn runs only the thinking still going on is live: the first round's stops once a call follows it",
     needs: ['workspace'],
