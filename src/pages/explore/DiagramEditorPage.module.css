@@ -395,9 +395,15 @@
   font-size: var(--text-sm);
 }
 
+/*
+ * Sized by its own height, which is what dragging the corner writes. The shared
+ * input is `flex: 1 0 0`, and in this column a zero basis overrides that height,
+ * so the corner was drawn and did nothing. The cap is the panel's, not a few lines.
+ */
 .description {
+  flex: none;
   min-height: 56px;
-  max-height: 160px;
+  max-height: 60vh;
   padding: var(--space-6) var(--space-8);
   resize: vertical;
   font: inherit;
