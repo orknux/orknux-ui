@@ -56,9 +56,9 @@ try {
   const newButton = page.getByTestId('document-new');
   record(await copyButton.count() === 1 && await newButton.count() === 1, 'the bar has New and Save as copy');
   if (await copyButton.count() === 1 && await newButton.count() === 1) {
-    const bar = await page.getByTestId('document-save').boundingBox();
+    const bar = await newButton.boundingBox();
     const copyBox = await copyButton.boundingBox();
-    record(bar !== null && copyBox !== null && copyBox.x < bar.x && Math.abs(copyBox.y - bar.y) < 4, `beside Save, on its line (${JSON.stringify({ copyBox, bar })})`);
+    record(bar !== null && copyBox !== null && Math.abs(copyBox.y - bar.y) < 4, `beside New, on its line (${JSON.stringify({ copyBox, bar })})`);
 
     // Nothing unsaved: New is not asked about - there is nothing to lose - and opens an empty document at once.
     await newButton.click();

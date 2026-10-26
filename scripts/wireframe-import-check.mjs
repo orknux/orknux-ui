@@ -76,7 +76,7 @@ if (hasImport) {
     return answer.ok && (answer.headers.get('content-type') ?? '').startsWith('image/');
   }, href);
   record(loaded, `drawn from the workspace's pictures (${href})`);
-  record(await page.getByTestId('wireframe-save').isEnabled(), 'an unsaved change: Save is offered');
+  record((await page.getByTestId('wireframe-unsaved').count()) === 1, 'an unsaved change is marked until it saves itself');
   await page.screenshot({ path: shot('wireframe-import-file.png') });
 
   await page.getByTestId('wireframe-undo').click();

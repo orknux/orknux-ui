@@ -304,7 +304,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const [past, setPast] = useState<DiagramDrawing[]>([]);
   const [future, setFuture] = useState<DiagramDrawing[]>([]);
   const [naming, setNaming] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menu, setMenu] = useState<'layout' | 'align' | 'export' | 'shapes' | null>(null);
   /*
@@ -1194,9 +1194,6 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               </div>
             )}
           </div>
-          <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy} title={`${t('Save')} (${saveKey})`} data-testid="diagram-save">
-            {t('Save')}
-          </button>
         </div>
       </div>
 

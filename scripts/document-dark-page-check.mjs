@@ -59,7 +59,7 @@ const drawn = () => page.evaluate(() => {
 const switchOf = page.getByTestId('document-dark-page');
 record((await switchOf.count()) === 1, 'the toolbar has a Dark page switch');
 record((await switchOf.getAttribute('aria-pressed')) === 'false', 'off unless it was turned on');
-const savable = await page.getByTestId('document-save').isEnabled();
+const savable = (await page.getByTestId('document-unsaved').count()) === 1;
 const white = await drawn();
 record(white.paper > 0.9 && white.ink < 0.2, `the sheet is white with dark ink to begin with (${JSON.stringify(white)})`);
 
@@ -74,7 +74,7 @@ record(dark.code < 0.15 && dark.code !== white.code, `a code block stands on dar
 record(dark.linkLight > 0.4 && dark.link !== white.link, `a link is a colour that reads on it (${dark.link}, was ${white.link})`);
 record(dark.quote !== white.quote, `a quote's rule changes with it (${dark.quote}, was ${white.quote})`);
 record(dark.find !== white.find && dark.findActive !== white.findActive, `Find's marks have their own colours (${dark.find}, ${dark.findActive})`);
-record((await page.getByTestId('document-save').isEnabled()) === savable, `it makes nothing unsaved: Save is as it was (${savable ? 'offered' : 'not offered'})`);
+record(((await page.getByTestId('document-unsaved').count()) === 1) === savable, `it makes nothing unsaved (${savable ? 'unsaved before' : 'saved before'})`);
 await page.screenshot({ path: shot('document-dark-page.png'), clip: { x: 240, y: 60, width: 920, height: 520 } });
 
 await page.reload({ waitUntil: 'domcontentloaded' });

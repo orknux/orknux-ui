@@ -60,8 +60,8 @@ record(turn.startsWith('Summarise') && turn.includes('“Revenue grew by a tenth
 // The whole document, from the top bar, with a change on screen not yet saved.
 const bar = page.getByTestId('document-summarise');
 const barBox = await bar.boundingBox();
-const save = await page.getByTestId('document-save').boundingBox();
-record(barBox !== null && Math.abs(barBox.y - save.y) < 8, `Summarise is in the editor's top bar, beside Save (${JSON.stringify({ barBox, save })})`);
+const save = await page.getByTestId('document-save-copy').boundingBox();
+record(barBox !== null && save !== null && Math.abs(barBox.y - save.y) < 8, `Summarise is in the editor's top bar, beside Save as copy (${JSON.stringify({ barBox, save })})`);
 await page.getByTestId('document-prose').locator('p').nth(1).click();
 await page.keyboard.press('End');
 await page.keyboard.type(' Typed before asking.');

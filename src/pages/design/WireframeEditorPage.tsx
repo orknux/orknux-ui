@@ -225,7 +225,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   /** The element whose words are being typed over, and what is typed. */
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [naming, setNaming] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
 
@@ -1010,9 +1010,6 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
             }}
           />
           <WireframeExport id={wireframe?.id ?? null} name={wireframe?.name ?? ''} elements={elements} workspaceId={workspaceId} />
-          <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy} title={`${t('Save')} (${saveKey})`} data-testid="wireframe-save">
-            {t('Save')}
-          </button>
         </div>
       </div>
 
