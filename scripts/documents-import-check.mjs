@@ -37,7 +37,7 @@ try {
   record(gap >= 16, `the page-size picker stands at least 16px from the button beside it (${gap}px)`);
   const make = await page.getByTestId('new-document').boundingBox();
   const between = right === null || make === null ? -1 : Math.round(make.x - (right.x + right.width));
-  record(there && between >= 6 && between <= 12, `Import sits close beside New document (${between}px)`);
+  record(there && between >= 10 && between <= 16, `Import sits beside New document with room between (${between}px)`);
   // And the two read as a pair: the same height, the same type, the same inset.
   const pair = await page.evaluate(() => {
     const read = (id) => {
