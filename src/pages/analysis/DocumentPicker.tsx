@@ -4,6 +4,7 @@ import { fetchResearchDocuments, uploadResearchDocuments } from '../../api/resea
 import type { ResearchDocument } from '../../api/research';
 import dialog from '../../components/Dialog.module.css';
 import { Select } from '../../components/Select';
+import { FieldHint } from '../../components/FieldHint';
 import { t, tf } from '../../i18n';
 import styles from './ResearchPage.module.css';
 
@@ -89,7 +90,10 @@ export function DocumentPicker({ workspaceId, picked, onChange }: DocumentPicker
 
   return (
     <fieldset className={styles.group} data-documents>
-      <legend className={dialog.label}>{t('Documents')}</legend>
+      <legend className={dialog.labelWithHint}>
+        <span className={dialog.label}>{t('Documents')}</span>
+        <FieldHint label={t('Documents')}>{t("The workspace's documents, or files uploaded here, read as sources alongside what the search finds.")}</FieldHint>
+      </legend>
 
       <div className={styles.withButton}>
         <div className={`${dialog.inputWrapper} ${styles.finder}`}>

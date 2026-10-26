@@ -249,7 +249,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
         <div className={dialog.fields}>
           <div className={dialog.field}>
-            <label className={dialog.label} htmlFor="research-question">{t('Question')}</label>
+            <span className={dialog.labelWithHint}>
+              <label className={dialog.label} htmlFor="research-question">{t('Question')}</label>
+              <FieldHint label={t('Question')}>{t("What the research sets out to answer, asked as you would ask a person.")}</FieldHint>
+            </span>
             <div className={`${dialog.inputWrapper} ${dialog.inputWrapperTall}`}>
               <textarea
                 id="research-question"
@@ -265,7 +268,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
           <div className={styles.pair}>
             <div className={dialog.field}>
-              <label className={dialog.label} htmlFor="research-mode">{t('Mode')}</label>
+              <span className={dialog.labelWithHint}>
+                <label className={dialog.label} htmlFor="research-mode">{t('Mode')}</label>
+                <FieldHint label={t('Mode')}>{t("How far it goes: each mode is a workflow with its own number of searches and steps. Add mode makes one of your own.")}</FieldHint>
+              </span>
               <div className={styles.withButton}>
                 <div className={dialog.inputWrapper}>
                   <Select id="research-mode" className={dialog.input} value={modeId} onChange={setModeId}>
@@ -283,7 +289,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
             </div>
 
             <div className={dialog.field} data-planner>
-              <label className={dialog.label} htmlFor="research-planner">{t('Planner')}</label>
+              <span className={dialog.labelWithHint}>
+                <label className={dialog.label} htmlFor="research-planner">{t('Planner')}</label>
+                <FieldHint label={t('Planner')}>{t("The agent that turns the question into searches and a plan for the report.")}</FieldHint>
+              </span>
               <div className={dialog.inputWrapper}>
                 <AgentPicker
                   id="research-planner"
@@ -300,7 +309,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
           <div className={styles.pair}>
             <div className={dialog.field} data-writer>
-              <label className={dialog.label} htmlFor="research-writer">{t('Writer')}</label>
+              <span className={dialog.labelWithHint}>
+                <label className={dialog.label} htmlFor="research-writer">{t('Writer')}</label>
+                <FieldHint label={t('Writer')}>{t("The agent that reads what was found and writes the report.")}</FieldHint>
+              </span>
               <div className={dialog.inputWrapper}>
                 <AgentPicker
                   id="research-writer"
@@ -316,7 +328,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
             {reviewing && (
               <div className={dialog.field} data-reviewer>
-                <label className={dialog.label} htmlFor="research-reviewer">{t('Reviewer')}</label>
+                <span className={dialog.labelWithHint}>
+                  <label className={dialog.label} htmlFor="research-reviewer">{t('Reviewer')}</label>
+                  <FieldHint label={t('Reviewer')}>{t("The agent that reads the draft and sends it back to the Writer, for as many rounds as Workspace Settings allow.")}</FieldHint>
+                </span>
                 <div className={dialog.inputWrapper}>
                   <AgentPicker
                     id="research-reviewer"
@@ -383,6 +398,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Use web search')}
             </label>
+            <FieldHint label={t('Use web search')}>{t("Searches the web for sources. Off, it reads only the documents and the websites to keep to.")}</FieldHint>
 
             <label className={dialog.checkboxField}>
               <input
@@ -397,6 +413,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Include images')}
             </label>
+            <FieldHint label={t('Include images')}>{t("Looks for pictures, places them in the report and keeps each as an artifact.")}</FieldHint>
 
             <label className={dialog.checkboxField}>
               <input
@@ -412,7 +429,9 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               />
               {t('Review')}
             </label>
-            {!reviewable && (
+            {reviewable ? (
+              <FieldHint label={t('Review')}>{t("The Reviewer reads the draft and the Writer revises it before the report is finished.")}</FieldHint>
+            ) : (
               <span data-review-hint>
                 <FieldHint label={t('Review')}>{t("This mode's workflow has no Review step, so it cannot be reviewed")}</FieldHint>
               </span>
@@ -425,7 +444,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           )}
 
           <div className={dialog.field}>
-            <label className={dialog.label} htmlFor="research-follow-ups">{t('Follow-up questions')}</label>
+            <span className={dialog.labelWithHint}>
+              <label className={dialog.label} htmlFor="research-follow-ups">{t('Follow-up questions')}</label>
+              <FieldHint label={t('Follow-up questions')}>{t("How many questions it suggests once finished, each one a research of its own to start with a click.")}</FieldHint>
+            </span>
             <div className={dialog.inputWrapper}>
               <input
                 id="research-follow-ups"
@@ -444,7 +466,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           </div>
 
           <fieldset className={styles.group}>
-            <legend className={dialog.label}>{t('Websites')}</legend>
+            <legend className={dialog.labelWithHint}>
+              <span className={dialog.label}>{t('Websites')}</span>
+              <FieldHint label={t('Websites')}>{t("Include keeps the search to these sites; Exclude never uses them. Either takes a domain or an address.")}</FieldHint>
+            </legend>
             <div className={styles.pair}>
               <SiteList id="research-websites-include" label={t('Include')} sites={include} onChange={setInclude} />
               <SiteList id="research-websites-exclude" label={t('Exclude')} sites={exclude} onChange={setExclude} />
@@ -455,7 +480,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
           <div className={styles.pair}>
             <div className={dialog.field}>
-              <label className={dialog.label} htmlFor="research-language">{t('Language')}</label>
+              <span className={dialog.labelWithHint}>
+                <label className={dialog.label} htmlFor="research-language">{t('Language')}</label>
+                <FieldHint label={t('Language')}>{t("The register the report is written in.")}</FieldHint>
+              </span>
               <div className={dialog.inputWrapper}>
                 <Select id="research-language" className={dialog.input} value={language} onChange={(value) => setLanguage(value as ResearchLanguage)}>
                   {LANGUAGES.map((one) => (
@@ -465,7 +493,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               </div>
             </div>
             <div className={dialog.field}>
-              <label className={dialog.label} htmlFor="research-format">{t('Output')}</label>
+              <span className={dialog.labelWithHint}>
+                <label className={dialog.label} htmlFor="research-format">{t('Output')}</label>
+                <FieldHint label={t('Output')}>{t("The kind of file the finished report is saved as.")}</FieldHint>
+              </span>
               <div className={dialog.inputWrapper}>
                 <Select id="research-format" className={dialog.input} value={format} onChange={(value) => setFormat(value as ResearchOutputFormat)}>
                   <option value="PDF">{t('PDF')}</option>

@@ -2673,6 +2673,12 @@ export const TESTS = [
     /* Answers the list and the research itself, and counts how often they were asked. */
   },
   {
+    name: 'research-form-hints-check',
+    what: 'every field of New research has a (?) saying what it does',
+    needs: ['workspace'],
+  },
+
+  {
     name: 'research-sessions-check',
     what: 'a research page lists the sessions its steps kept - Plan, Write - on one line under the steps, each named for its step and opening that session, the step names given the same room as without; with none there is no line (#668)',
     needs: ['workspace'],
