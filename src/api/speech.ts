@@ -1,5 +1,4 @@
 import { t } from '../i18n';
-import { speechSpeed } from '../session/speechSpeed';
 /**
  * Text to speech, for reading an answer aloud.
  *
@@ -7,14 +6,16 @@ import { speechSpeed } from '../session/speechSpeed';
  * mean base64 for bytes the browser is about to hand straight to an `Audio`.
  *
  * Which model reads is the workspace's setting, so nothing here chooses one —
- * this only says which workspace is asking, what to read, and how fast where
- * the person has chosen a speed in voice mode.
+ * this only says which workspace is asking and what to read. How fast is the
+ * player's: a reader asked for any speed but its own can answer silence - one
+ * on the LAN returned 0.3 seconds of nothing for 0.75 and for 1.5 alike - so
+ * the clip is read at its own pace and played faster or slower here.
  */
 export async function speak(workspaceId: string, text: string): Promise<Blob> {
   const answer = await fetch(`/api/workspaces/${workspaceId}/speech`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text, speed: speechSpeed() }),
+    body: JSON.stringify({ text }),
     credentials: 'include',
   });
 

@@ -1,13 +1,14 @@
 /**
  * How fast voice mode reads its answers, chosen in the panel. Issue #673.
  *
- * The speed is the speech model's to apply, so what is asserted is what the
- * page asks it for: a speed picked in the panel's header goes out with the
- * next answer read aloud, and is still picked after a reload. A fake
+ * The speed is the player's: a reader asked for any speed but its own can
+ * answer silence, so a speed picked in the panel's header is the rate the
+ * next answer read aloud is played at, the reader is asked for none, and the
+ * choice is still picked after a reload. A fake
  * microphone says something, the transcriber and the chat are stubbed, and
  * the speech request is caught on its way out rather than played.
  *
- * Without the change there is no speed to pick, and the request carries none.
+ * Before, the speed went to the reader and the clip played at 1.
  * The models, the chat, the turn-taking and the stored speed are put back.
  */
 import { writeFileSync } from 'node:fs';
@@ -104,6 +105,14 @@ await context.addInitScript(() => {
     const level = Number(orb.style.getPropertyValue('--level'));
     if (level > 0) levels.push({ at: Date.now(), level });
   }, 25);
+
+  // The rate each clip is played at: the speed is the player's now, not the reader's.
+  window.__mute.rates = [];
+  const play = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () {
+    window.__mute.rates.push(this.playbackRate);
+    return play.call(this);
+  };
 
   const real = window.fetch.bind(window);
   window.fetch = async (input, init) => {
@@ -256,7 +265,10 @@ while (Date.now() < stop) {
   await page.waitForTimeout(100);
 }
 record(spoken.length > 0, `the answer was read aloud (${spoken.length} requests)`);
-record(spoken.length > 0 && spoken.every((one) => one.speed === Number(CHOSEN)), `at the speed picked (${JSON.stringify(spoken.map((one) => one.speed))})`);
+// Played at the speed picked, and the reader asked for no speed: a reader asked for one may answer silence.
+const rates = await page.evaluate(() => window.__mute.rates).catch(() => []);
+record(rates.length > 0 && rates.every((one) => one === Number(CHOSEN)), `played at the speed picked (${JSON.stringify(rates)})`);
+record(spoken.length > 0 && spoken.every((one) => one.speed === undefined), `and the reader is asked for none (${JSON.stringify(spoken.map((one) => one.speed))})`);
 
 /* ---- and it is still picked after a reload ---- */
 
