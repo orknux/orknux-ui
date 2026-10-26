@@ -3521,7 +3521,6 @@ export const PL: Record<string, string> = {
   "Include images": "Dołączaj obrazy",
   "This mode's workflow has no Review step, so it cannot be reviewed": "Przepływ tego trybu nie ma kroku recenzji, więc nie można go zrecenzować",
   "Web search": "Wyszukiwanie w sieci",
-  "No chat model": "Brak modelu czatu",
   "Planning the research": "Planowanie badania",
   "Gathering sources": "Zbieranie źródeł",
   "Deepening findings": "Pogłębianie ustaleń",
@@ -3905,6 +3904,9 @@ export const PL: Record<string, string> = {
   "It can look things up in this workspace; it cannot change anything.": "Może wyszukiwać informacje w tej przestrzeni roboczej; niczego nie zmienia.",
   // --- Explore > Research: review ---
   "Reviewer": "Recenzent",
+  "Planner": "Planista",
+  "Writer": "Autor",
+  "No model": "Bez modelu",
   "Review report": "Zrecenzuj raport",
   "Reviewing the report": "Recenzowanie raportu",
   "Unsupported claim": "Twierdzenie bez źródła",

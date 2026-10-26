@@ -7,8 +7,9 @@
  * research button. The dialog offers every choice the owner asked for: the
  * question; the mode - Shallow, Medium, Deep and whatever was added, each
  * named in a word with how long it usually takes said beside the row rather
- * than in it - and Add mode; the model; the language - Academic, Colloquial,
- * Formal; and the output, PDF unless somebody says Document.
+ * than in it - and Add mode; the planner and the writer, agents rather than a
+ * model since #678 (research-agents-check holds those); the language -
+ * Academic, Colloquial, Formal; and the output, PDF unless somebody says Document.
  *
  * Websites to keep to and to avoid are lists: a site typed and added with
  * Enter or Add becomes a row of its own with a remove, an address is cut to
@@ -20,11 +21,11 @@
  * and opens the research on a page of its own; its Back link leads to the
  * list, which shows it.
  *
- * A research always has its model, so the picker has no empty row and
- * arrives with the workspace's first chat model chosen; the check makes one
- * where the workspace has none, at an address that never answers - what is
- * measured is that the research is started and listed, not what a model makes
- * of it, so it may well be listed as failed. Use web search is a box in the
+ * A research thinks with its agents' models, so the check gives the Research
+ * planner and writer one where they have none - made here at an address that
+ * never answers where the workspace has none, and taken back afterwards: what
+ * is measured is that the research is started and listed, not what a model
+ * makes of it, so it may well be listed as failed. Use web search is a box in the
  * sources, on until it is unticked, and the research says when it was off;
  * Include images is the box beside it, off until it is ticked, sent with the
  * start as it was left, and said on the research when it was on.
@@ -72,6 +73,19 @@ await page.waitForURL(/\/explore\/research$/, { timeout: 15_000 }).catch(() => u
 record(/\/workspace\/[^/]+\/explore\/research$/.test(page.url()), `an /analysis/ address goes to /explore/ (${page.url()})`);
 await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/research`, { waitUntil: 'domcontentloaded' });
 await page.getByRole('heading', { name: 'Research', level: 1 }).waitFor({ timeout: 20_000 }).catch(() => undefined);
+
+// The Research planner and writer think with a chat model: one they have, or the first there is, given back afterwards.
+await graphql(`query($w: ID!) { researchModes(workspaceId: $w) { id } }`, { w: WORKSPACE });
+const firstChat = (await graphql(`query($w: ID!) { models(workspaceId: $w) { id name kind } }`, { w: WORKSPACE })).models.find((one) => one.kind === 'CHAT');
+const researchAgents = (await graphql(`query($w: ID!) { workspaceAgents(workspaceId: $w, size: 500) { content { id name description systemPrompt modelId modelName } } }`, { w: WORKSPACE }))
+  .workspaceAgents.content.filter((one) => one.name === 'Research planner' || one.name === 'Research writer');
+const giveBack = [];
+for (const agent of researchAgents.filter((one) => one.modelId === null)) {
+  const input = { name: agent.name, description: agent.description, systemPrompt: agent.systemPrompt };
+  await graphql(`mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }`, { id: agent.id, input: { ...input, modelId: firstChat.id } });
+  giveBack.push({ id: agent.id, input: { ...input, modelId: null } });
+}
+const writerModel = researchAgents.find((one) => one.name === 'Research writer')?.modelName ?? firstChat.name;
 
 // --- the section ------------------------------------------------------------
 const lit = await page.evaluate(() => {
@@ -165,38 +179,14 @@ const runs = (await optionsOffered(page, '#research-mode-runs').catch(() => []))
 record(runs.includes('Medium'), `and for what it runs: a copy of a mode, or a workflow (${runs.slice(0, 5).join(', ')}…)`);
 await dialog.locator('[data-adding-mode]').getByRole('button', { name: 'Cancel' }).click();
 
-record(await dialog.locator('#research-model').isVisible(), 'the model is chosen with the model picker');
-
-// Chosen already, and there is no "none" row to leave it on: a research always has its model.
-await page.waitForFunction(() => document.querySelector('#research-model')?.getAttribute('data-value') !== '', null, { timeout: 10_000 }).catch(() => undefined);
-const preselected = (await dialog.locator('#research-model').getAttribute('data-value')) ?? '';
-let chosenName = ((await dialog.locator('#research-model').textContent()) ?? '').trim();
-record(preselected !== '', `a chat model is chosen before anybody picks one (${chosenName})`);
-await dialog.locator('#research-model').click();
-const pickerRows = page.locator('[data-model-menu="research-model"] [role="option"]');
-await pickerRows.first().waitFor({ timeout: 5_000 }).catch(() => undefined);
-const emptyRows = await page.locator('[data-model-menu="research-model"] [role="option"][data-value=""]').count();
-const firstRow = (await pickerRows.first().getAttribute('data-value').catch(() => '')) ?? '';
-record(emptyRows === 0 && (await pickerRows.count()) > 0, `the picker offers models and no empty row (${emptyRows} empty)`);
-record(firstRow === preselected, 'the one chosen is the first the picker offers');
-const rowValues = await pickerRows.evaluateAll((all) => all.map((one) => one.getAttribute('data-value') ?? ''));
-await page.keyboard.press('Escape');
-record(!/set in the mode/i.test(((await dialog.textContent()) ?? '')), 'nothing says the model is set in the mode');
-
-// The model chosen is remembered for the next research: picked, the dialog closed and opened again, it is still chosen.
-const other = rowValues.find((one) => one !== '' && one !== preselected) ?? null;
-if (other !== null) {
-  await dialog.locator('#research-model').click();
-  await page.locator(`[data-model-menu="research-model"] [role="option"][data-value="${other}"]`).click({ timeout: 5_000 }).catch(() => undefined);
-  await dialog.getByRole('button', { name: 'Cancel' }).last().click({ timeout: 5_000 }).catch(() => undefined);
-  // Through a reload, so it is remembered rather than merely still held by the page.
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /New research/ }).click({ timeout: 15_000 });
-  await page.waitForFunction(() => document.querySelector('#research-model')?.getAttribute('data-value') !== '', null, { timeout: 10_000 }).catch(() => undefined);
-  const remembered = (await dialog.locator('#research-model').getAttribute('data-value')) ?? '';
-  record(remembered === other, `the model last chosen is chosen again next time (${remembered} for ${other})`);
-  chosenName = ((await dialog.locator('#research-model').textContent()) ?? '').trim();
-}
+// The agents it runs with, each picked: research-agents-check holds what they offer and remember.
+record(await dialog.locator('#research-planner').isVisible(), 'the planner is picked from the agents');
+record(await dialog.locator('#research-writer').isVisible(), 'and so is the writer');
+// Back on the seeded writer, whose model the research is listed with below.
+await page.evaluate((w) => window.localStorage.removeItem(`orknux.research.writer.${w}.sieve`), WORKSPACE);
+const seededWriter = researchAgents.find((one) => one.name === 'Research writer')?.id ?? '';
+await chooseOption(page, '#research-writer', { value: seededWriter }).catch(() => undefined);
+const chosenName = writerModel;
 
 const languages = (await optionsOffered(page, '#research-language')).map((one) => one.label);
 record(JSON.stringify(languages) === JSON.stringify(['Academic', 'Colloquial', 'Formal']), `the languages are Academic, Colloquial, Formal (${languages.join(', ')})`);
@@ -407,6 +397,9 @@ for (const one of listed.researches.content.filter((held) => held.question.start
 const uploaded = await graphql(`query($w: ID!) { researchDocuments(workspaceId: $w, search: "zz-research-", limit: 100) { id } }`, { w: WORKSPACE });
 for (const one of uploaded.researchDocuments) {
   await graphql(`mutation($id: String!) { deleteArtifact(id: $id) }`, { id: `SAVED-${one.id}` }).catch(() => undefined);
+}
+for (const one of giveBack) {
+  await graphql(`mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }`, one).catch(() => undefined);
 }
 if (madeProvider !== null) {
   await graphql(`mutation($id: ID!) { removeModelProvider(id: $id) }`, { id: madeProvider }).catch(() => undefined);

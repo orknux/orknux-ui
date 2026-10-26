@@ -54,6 +54,8 @@ const SOURCES = [
 const RUNNING = {
   id: '424242', question: 'zz progress check: why are there tides?', modeId: null, modeName: 'Deep', workflowId: '1',
   workflowName: 'Research: Deep', modelId: null, modelName: 'Stub', language: 'FORMAL', outputFormat: 'DOCUMENT',
+  // Started before research picked its agents: the reviewer below is named by its model.
+  plannerAgentId: null, plannerAgentName: null, writerAgentId: null, writerAgentName: null, reviewerAgentId: null, reviewerAgentName: null,
   websitesInclude: [], websitesExclude: [], documentsInclude: ['Harbour log'], documentsExclude: [], useWebSearch: true,
   includeImages: false, images: [], status: 'RUNNING',
   executionId: null, result: null, fileName: null, fileUrl: null, artifactId: null, artifactKey: null, previewUrl: null, error: null, startedBy: 'alice',

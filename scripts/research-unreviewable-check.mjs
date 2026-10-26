@@ -42,6 +42,7 @@ const ROW = {
   documentsExclude: [], useWebSearch: true, includeImages: false, images: [], status: 'RUNNING', executionId: null, fileName: null, fileUrl: null,
   artifactId: null, artifactKey: null, previewUrl: null, error: null, startedBy: 'alice', startedAt: new Date().toISOString(), finishedAt: null,
   earlierExecutionIds: [], review: false, reviewerModelId: null, reviewerModelName: null,
+  plannerAgentId: null, plannerAgentName: null, writerAgentId: null, writerAgentName: null, reviewerAgentId: null, reviewerAgentName: null,
   progress: { step: 'Planning', subQuestions: [], searched: [], level: 1, sourcesRead: 0, stage: 'PLAN', reading: null }, sources: [],
 };
 let started = null;
@@ -111,7 +112,7 @@ const start = dialog.getByRole('button', { name: /^Start$/ });
 record(await start.isEnabled(), 'Start does not wait for a reviewer the mode cannot have');
 await start.click().catch(() => undefined);
 await page.waitForTimeout(500);
-record(started !== null && started.review === false && started.reviewerModelId === null,
-  `and sends no review (${JSON.stringify({ review: started?.review, reviewerModelId: started?.reviewerModelId })})`);
+record(started !== null && started.review === false && started.reviewerAgentId === null,
+  `and sends no review (${JSON.stringify({ review: started?.review, reviewerAgentId: started?.reviewerAgentId })})`);
 
 await finish(browser);

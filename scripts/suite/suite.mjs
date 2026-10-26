@@ -2544,7 +2544,13 @@ export const TESTS = [
     name: 'research-review-check',
     what: 'New research offers Review, the reviewer picker shows only when it is ticked, and a number of follow-up questions, five until somebody says; Start sends them, the next research remembers them, and the list says a research was reviewed',
     needs: ['workspace'],
-    /* The models are the server's own - made where there are too few - and the start is answered here, so nothing runs. */
+    /* The agents are the server's own and the start is answered here, so nothing runs. */
+  },
+  {
+    name: 'research-agents-check',
+    what: 'New research picks a Planner, a Writer and, ticked for review, a Reviewer from the agents, each starting on the seeded Research one with its model said beside the row; there is no model picker, Start sends the agents and no model, the writer is remembered, and the research names its agents as links',
+    needs: ['workspace'],
+    /* The start and the research are answered here, so nothing runs. Issue #678. */
   },
   {
     name: 'research-unreviewable-check',

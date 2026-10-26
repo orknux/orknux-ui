@@ -44,8 +44,16 @@ export interface Research {
   modeName: string;
   workflowId: string;
   workflowName: string;
+  /** The model its Writer thought with when it started. */
   modelId: string | null;
   modelName: string | null;
+  /** The agents it was started with, and what each was called then; null on one started before research picked agents. */
+  plannerAgentId: string | null;
+  plannerAgentName: string | null;
+  writerAgentId: string | null;
+  writerAgentName: string | null;
+  reviewerAgentId: string | null;
+  reviewerAgentName: string | null;
   language: ResearchLanguage;
   outputFormat: ResearchOutputFormat;
   websitesInclude: string[];
@@ -175,7 +183,9 @@ export interface StartResearchInput {
   workspaceId: string;
   question: string;
   modeId: string;
-  modelId: string;
+  /** The agents that plan and write; absent, the Research planner and writer. */
+  plannerAgentId: string | null;
+  writerAgentId: string | null;
   language: ResearchLanguage;
   outputFormat: ResearchOutputFormat;
   websitesInclude: string[];
@@ -185,8 +195,8 @@ export interface StartResearchInput {
   useWebSearch: boolean;
   includeImages: boolean;
   review: boolean;
-  /** Required where review is on. */
-  reviewerModelId: string | null;
+  /** The agent that reviews where it is; absent, the Research reviewer. */
+  reviewerAgentId: string | null;
   /** How many follow-up questions to suggest once finished; absent is the workspace's number. */
   followUps?: number | null;
 }
@@ -194,7 +204,8 @@ export interface StartResearchInput {
 const MODE_FIELDS = 'id kind name workflowId workflowName reviewable';
 
 const RESEARCH_FIELDS =
-  'id question modeId modeName workflowId workflowName modelId modelName language outputFormat ' +
+  'id question modeId modeName workflowId workflowName modelId modelName plannerAgentId plannerAgentName writerAgentId writerAgentName ' +
+  'reviewerAgentId reviewerAgentName language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
   'fileName fileUrl artifactId artifactKey previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName parentId ' +
   'progress { step subQuestions searched level sourcesRead stage reading { title url kind } } sources { number title url kind } ' +

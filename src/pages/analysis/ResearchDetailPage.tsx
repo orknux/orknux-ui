@@ -288,10 +288,32 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
           )}
         </dd>
       </div>
+      {research.plannerAgentName !== null && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Planner')}</dt>
+          <dd data-research-planner>
+            <AgentName id={research.plannerAgentId} name={research.plannerAgentName} workspaceId={workspaceId} />
+          </dd>
+        </div>
+      )}
+      {research.writerAgentName !== null && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Writer')}</dt>
+          <dd data-research-writer>
+            <AgentName id={research.writerAgentId} name={research.writerAgentName} workspaceId={workspaceId} />
+          </dd>
+        </div>
+      )}
       {research.review && (
         <div className={styles.summaryItem}>
           <dt>{t('Reviewer')}</dt>
-          <dd data-research-reviewer>{research.reviewerModelName ?? '—'}</dd>
+          <dd data-research-reviewer>
+            {research.reviewerAgentName !== null ? (
+              <AgentName id={research.reviewerAgentId} name={research.reviewerAgentName} workspaceId={workspaceId} />
+            ) : (
+              research.reviewerModelName ?? '—'
+            )}
+          </dd>
         </div>
       )}
       <div className={styles.summaryItem}>
@@ -744,5 +766,15 @@ function Images({ research }: { research: Research }) {
         urlOf={(id) => previews.get(id) ?? ''}
       />
     </section>
+  );
+}
+
+/** An agent a research was started with, as a way to its page; plain where it has since been removed. */
+function AgentName({ id, name, workspaceId }: { id: string | null; name: string; workspaceId: string }) {
+  if (id === null) return <>{name}</>;
+  return (
+    <Link className={styles.link} to={`/workspace/${workspaceId}/agents/${id}/settings`} data-agent-link>
+      {name}
+    </Link>
   );
 }
