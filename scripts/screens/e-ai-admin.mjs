@@ -68,6 +68,10 @@ export async function shots(ctx) {
   const desk = agent('Account desk');
   const litware = chat('Renewal reminder for Litware');
   const fabrikam = chat('Reply to Fabrikam about the export');
+  const { workspaceArtifacts } = await gql(
+    `{ workspaceArtifacts(workspaceId: "${ws}", page: 0, size: 20, search: "weekly-support-report") { content { id filename } } }`,
+  ).catch(() => ({ workspaceArtifacts: { content: [] } }));
+  const report = workspaceArtifacts.content.find((one) => one.filename === 'weekly-support-report.html') ?? null;
 
   return [
     qwen && {
@@ -168,5 +172,17 @@ export async function shots(ctx) {
     },
     { name: 'reports-ratings', path: '/admin/reports?report=ratings', prepare: async (page) => page.waitForTimeout(1500) },
     { name: 'reports-errors', path: '/admin/reports?report=errors', prepare: async (page) => page.waitForTimeout(1500) },
-  ];
+    /*
+     * The uploaded report open in the Artifacts viewer: its bar with Open in a
+     * tab, Replace and Download over the page itself (04, Artifacts).
+     */
+    report && {
+      name: 'artifact-saved',
+      path: `/workspace/${ws}/artifacts/${report.id}`,
+      prepare: async (page) => {
+        await page.waitForSelector('dialog[open] [data-reading-replace]', { timeout: 15_000 });
+        await page.waitForTimeout(1500);
+      },
+    },
+  ].filter(Boolean);
 }

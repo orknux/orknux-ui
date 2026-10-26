@@ -300,4 +300,27 @@ export async function seed(ctx) {
     );
     log(`shared: ${gpuBox.name} with ${borrower.name}`);
   }
+
+  /*
+   * A report uploaded to the Artifacts page, for the viewer's Replace and the
+   * artifact's /content address (04, Artifacts). A page rather than a PDF: the
+   * viewer draws a page itself, and the capture browser's PDF reader never got
+   * past Loading for group C. Uploaded as the person, with the session the seed
+   * signs in with, as the page's own Upload would.
+   */
+  await tryTo('a report on the Artifacts page', async () => {
+    const page = `<!doctype html><html><head><meta charset="utf-8"><title>Weekly support report</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;margin:40px;color:#1f2328}h1{font-size:24px}table{border-collapse:collapse}td,th{border:1px solid #d0d7de;padding:6px 12px;text-align:left}</style></head>
+<body><h1>Weekly support report</h1><p>Northwind Support, week 43.</p>
+<table><tr><th>Customer</th><th>Opened</th><th>Waiting on us</th></tr>
+<tr><td>Contoso</td><td>14</td><td>3</td></tr><tr><td>Fabrikam</td><td>9</td><td>1</td></tr><tr><td>Litware</td><td>6</td><td>0</td></tr></table>
+<p>The nightly billing export failed three nights running; the fix shipped on Thursday and every night since has gone through.</p></body></html>`;
+    const form = new FormData();
+    form.append('file', new Blob([page], { type: 'text/html' }), 'weekly-support-report.html');
+    form.append('description', 'The week in tickets, for the Monday call.');
+    const cookie = await signIn('alice', 'password');
+    const answer = await fetch(`${ctx.BASE}/api/workspaces/${ws}/artifacts`, { method: 'POST', headers: { cookie }, body: form });
+    if (!answer.ok) throw new Error(`${answer.status} ${await answer.text()}`);
+    log('uploaded: weekly-support-report.html');
+  });
 }
