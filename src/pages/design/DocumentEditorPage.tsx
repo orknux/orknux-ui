@@ -142,6 +142,22 @@ function dataUrl(file: File): Promise<string> {
 }
 
 /**
+ * A document as it is compared for unsaved changes: without the empty
+ * paragraphs at its end. The editor adds one after a closing code block or
+ * table so the caret has somewhere to go, and counted, that alone made a
+ * document opened and left untouched save itself - a new revision each visit.
+ */
+function settled<T extends { content?: unknown[] }>(doc: T): T {
+  const blocks = [...(doc.content ?? [])] as { type?: string; content?: unknown[] }[];
+  while (blocks.length > 1) {
+    const last = blocks[blocks.length - 1];
+    if (last.type !== 'paragraph' || (last.content?.length ?? 0) > 0) break;
+    blocks.pop();
+  }
+  return { ...doc, content: blocks };
+}
+
+/**
  * Where a document is written: its pages on a desk, a bar of what can be done
  * to the words above them, and down the right a conversation with a chat model
  * that writes in it - the wireframe editor's shell and its chat, so the two
@@ -278,7 +294,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   }
 
   const fingerprint = (editorNow: Editor | null, now: DocumentSettings) =>
-    editorNow === null ? '' : JSON.stringify({ content: editorNow.getJSON(), settings: now });
+    editorNow === null ? '' : JSON.stringify({ content: settled(editorNow.getJSON()), settings: now });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const unsaved = useMemo(() => held !== null && editor !== null && fingerprint(editor, settings) !== saved, [held, editor, settings, saved, tick]);
 
@@ -409,7 +425,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
     const mine = editor.getJSON() as Doc;
     const merged: Doc = { type: 'doc', content: mergeLines(blocksOf(baseOf()), blocksOf(mine), blocksOf(theirs)) };
     setHeld(found);
-    setSaved(JSON.stringify({ content: theirs, settings: now.current.settings }));
+    setSaved(JSON.stringify({ content: settled(theirs), settings: now.current.settings }));
     show(merged);
   }
 
@@ -437,7 +453,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           const written = await saveDocument(over.id, mine, over.revision, sentSettings, imported.current ? 'IMPORT' : undefined, live.viewer);
           imported.current = false;
           setHeld(written);
-          setSaved(JSON.stringify({ content: mine, settings: sentSettings }));
+          setSaved(JSON.stringify({ content: settled(mine), settings: sentSettings }));
           if (mine !== first) {
             // Merged with somebody else's: the page shows the merge, with anything typed meanwhile kept on top.
             const current = editor.getJSON() as Doc;
@@ -986,9 +1002,6 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             data-testid="document-save-copy"
           >
             {t('Save as copy')}
-          </button>
-          <button type="button" className={form.filled} onClick={() => void save()} disabled={!unsaved || busy || answering} title={`${t('Save')} (${saveKey})`} data-testid="document-save">
-            {t('Save')}
           </button>
         </div>
       </div>
