@@ -67,17 +67,17 @@ for (const { stage, url } of SESSIONS) {
 
 // Under the strip, and the strip's names whole.
 const strip = await page.locator('[data-stages]').boundingBox();
-const under = await line.boundingBox();
+const under = await line.boundingBox({ timeout: 5_000 }).catch(() => null);
 record(strip !== null && under !== null && under.y >= strip.y + strip.height - 0.5, `the line is under the steps (${JSON.stringify({ strip, under })})`);
 /** How much room each step's name has in the strip. */
 const roomInStrip = () => page.locator('[data-stage-step]').evaluateAll((steps) =>
   steps.map((step) => [...step.querySelectorAll('span')].map((one) => Math.round(one.clientWidth)).join('/')),
 );
 const withSessions = await roomInStrip();
-const drawn = await line.evaluate((one) => ({ height: one.getBoundingClientRect().height, font: parseFloat(getComputedStyle(one).fontSize) }));
-record(drawn.height < drawn.font * 2.5, `on one line (${JSON.stringify(drawn)})`);
+const drawn = await line.evaluate((one) => ({ height: one.getBoundingClientRect().height, font: parseFloat(getComputedStyle(one).fontSize) })).catch(() => ({ height: null, font: null }));
+record(drawn.height !== null && drawn.height < drawn.font * 2.5, `on one line (${JSON.stringify(drawn)})`);
 
-await line.locator('[data-stage-session="PLAN"]').click();
+await line.locator('[data-stage-session="PLAN"]').click({ timeout: 5_000 }).catch(() => undefined);
 await page.waitForURL(`**${SESSIONS[0].url}`, { timeout: 10_000 }).catch(() => undefined);
 record(page.url().endsWith(SESSIONS[0].url), `opening one goes to the session (${page.url()})`);
 
