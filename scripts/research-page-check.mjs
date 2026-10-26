@@ -7,8 +7,8 @@
  * research button. The dialog offers every choice the owner asked for: the
  * question; the mode - Shallow, Medium, Deep and whatever was added, each
  * named in a word with how long it usually takes said beside the row rather
- * than in it - and Add mode; the planner and the writer, agents rather than a
- * model since #678 (research-agents-check holds those); the language -
+ * than in it - and Add mode; the agents, a single agent unless somebody says
+ * one per step (research-agent-mode-check holds both ways); the language -
  * Academic, Colloquial, Formal; and the output, PDF unless somebody says Document.
  *
  * Websites to keep to and to avoid are lists: a site typed and added with
@@ -21,8 +21,8 @@
  * and opens the research on a page of its own; its Back link leads to the
  * list, which shows it.
  *
- * A research thinks with its agents' models, so the check gives the Research
- * planner and writer one where they have none - made here at an address that
+ * A research thinks with its agent's model, so the check picks an agent that
+ * has one, or lends the first agent one - made here at an address that
  * never answers where the workspace has none, and taken back afterwards: what
  * is measured is that the research is started and listed, not what a model
  * makes of it, so it may well be listed as failed. Use web search is a box in the
@@ -74,18 +74,22 @@ record(/\/workspace\/[^/]+\/explore\/research$/.test(page.url()), `an /analysis/
 await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/research`, { waitUntil: 'domcontentloaded' });
 await page.getByRole('heading', { name: 'Research', level: 1 }).waitFor({ timeout: 20_000 }).catch(() => undefined);
 
-// The Research planner and writer think with a chat model: one they have, or the first there is, given back afterwards.
-await graphql(`query($w: ID!) { researchModes(workspaceId: $w) { id } }`, { w: WORKSPACE });
+// The research runs with one of the workspace's agents, which thinks with its chat model: an agent that has
+// one, or the first agent lent the first chat model there is, given back afterwards. No agent is made for research.
 const firstChat = (await graphql(`query($w: ID!) { models(workspaceId: $w) { id name kind } }`, { w: WORKSPACE })).models.find((one) => one.kind === 'CHAT');
-const researchAgents = (await graphql(`query($w: ID!) { workspaceAgents(workspaceId: $w, size: 500) { content { id name description systemPrompt modelId modelName } } }`, { w: WORKSPACE }))
-  .workspaceAgents.content.filter((one) => one.name === 'Research planner' || one.name === 'Research writer');
+const workspaceAgents = (await graphql(`query($w: ID!) { workspaceAgents(workspaceId: $w, size: 500) { content { id name description systemPrompt modelId modelName enabled } } }`, { w: WORKSPACE }))
+  .workspaceAgents.content.filter((one) => one.enabled);
 const giveBack = [];
-for (const agent of researchAgents.filter((one) => one.modelId === null)) {
+let researcher = workspaceAgents.find((one) => one.modelId !== null);
+if (researcher === undefined && workspaceAgents[0] !== undefined) {
+  const agent = workspaceAgents[0];
   const input = { name: agent.name, description: agent.description, systemPrompt: agent.systemPrompt };
   await graphql(`mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }`, { id: agent.id, input: { ...input, modelId: firstChat.id } });
   giveBack.push({ id: agent.id, input: { ...input, modelId: null } });
+  researcher = { ...agent, modelName: firstChat.name };
 }
-const writerModel = researchAgents.find((one) => one.name === 'Research writer')?.modelName ?? firstChat.name;
+record(researcher !== undefined, `an agent to research with (${researcher?.name})`);
+const researcherModel = researcher?.modelName ?? firstChat.name;
 
 // --- the section ------------------------------------------------------------
 const lit = await page.evaluate(() => {
@@ -179,14 +183,15 @@ const runs = (await optionsOffered(page, '#research-mode-runs').catch(() => []))
 record(runs.includes('Medium'), `and for what it runs: a copy of a mode, or a workflow (${runs.slice(0, 5).join(', ')}…)`);
 await dialog.locator('[data-adding-mode]').getByRole('button', { name: 'Cancel' }).click();
 
-// The agents it runs with, each picked: research-agents-check holds what they offer and remember.
-record(await dialog.locator('#research-planner').isVisible(), 'the planner is picked from the agents');
-record(await dialog.locator('#research-writer').isVisible(), 'and so is the writer');
-// Back on the seeded writer, whose model the research is listed with below.
-await page.evaluate((w) => window.localStorage.removeItem(`orknux.research.writer.${w}.sieve`), WORKSPACE);
-const seededWriter = researchAgents.find((one) => one.name === 'Research writer')?.id ?? '';
-await chooseOption(page, '#research-writer', { value: seededWriter }).catch(() => undefined);
-const chosenName = writerModel;
+// The agents it runs with: a single agent unless somebody says one per step (research-agent-mode-check holds both ways).
+await page.evaluate((w) => {
+  for (const part of ['agents', 'agent']) window.localStorage.removeItem(`orknux.research.${part}.${w}.sieve`);
+}, WORKSPACE);
+record((await chosenOption(page, '#research-agent-mode').catch(() => '')) === 'SINGLE', 'the agents are a single agent until somebody says one per step');
+record(await dialog.locator('#research-agent').isVisible(), 'and that agent is picked from the workspace\'s agents');
+record(!(await dialog.locator('#research-planner').isVisible().catch(() => false)), 'with no planner or writer beside it');
+await chooseOption(page, '#research-agent', { value: researcher?.id ?? '' }).catch(() => undefined);
+const chosenName = researcherModel;
 
 const languages = (await optionsOffered(page, '#research-language')).map((one) => one.label);
 record(JSON.stringify(languages) === JSON.stringify(['Academic', 'Colloquial', 'Formal']), `the languages are Academic, Colloquial, Formal (${languages.join(', ')})`);
@@ -323,6 +328,8 @@ const drawn = await row.first().evaluate((held) => {
   const rowBox = held.getBoundingClientRect();
   const cells = {};
   for (const cell of held.querySelectorAll('[data-cell]')) {
+    // A column a narrower window does without (Search rounds, under 1600px) is not drawn, so not measured.
+    if (cell.getBoundingClientRect().width === 0) continue;
     const words = cell.getAttribute('data-cell') === 'status' ? cell.firstElementChild : (cell.querySelector('a') ?? cell);
     const style = getComputedStyle(words);
     const box = words.getBoundingClientRect();
@@ -338,7 +345,7 @@ const drawn = await row.first().evaluate((held) => {
   }
   return cells;
 });
-const textCells = ['mode', 'model', 'rounds', 'started', 'took', 'result'];
+const textCells = ['mode', 'model', 'rounds', 'started', 'took', 'result'].filter((name) => name !== 'rounds' || drawn.rounds !== undefined);
 const actionsHeading = await page.evaluate(() => {
   const header = document.querySelector('[data-research]')?.parentElement?.firstElementChild;
   const last = header?.lastElementChild;
