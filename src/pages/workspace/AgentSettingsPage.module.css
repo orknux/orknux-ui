@@ -248,9 +248,16 @@
   pointer-events: none;
 }
 
-/* A choice drawn as the text fields beside it are: their type, their inset, their box. */
+/*
+ * A choice drawn as the text fields beside it are: their type, their inset,
+ * their box - but as wide as its longest option, not the page: a short word
+ * at the left of a bar across the screen reads as an empty field.
+ */
 .select {
-  width: 100%;
+  align-self: flex-start;
+  width: auto;
+  min-width: 240px;
+  max-width: 100%;
   min-height: 38px;
   padding: var(--space-10) var(--space-20) var(--space-10) var(--space-12);
   background-color: var(--color-bg);

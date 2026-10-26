@@ -27,6 +27,11 @@ if (diagram !== undefined) {
   });
   record(read.value === read.text, `the choice's words are in the text field's type (${read.value} / ${read.text})`);
   record(read.select !== null && read.field !== null && Math.abs(read.select.height - read.field.height) <= 2, `and its box stands as tall as the field's (${JSON.stringify(read)})`);
+  const widths = await page.evaluate(() => ({
+    select: Math.round(document.querySelector('[data-testid="diagram-settings-catalog"]').getBoundingClientRect().width),
+    field: Math.round(document.querySelector('[data-testid="diagram-settings-name"]').closest('[class*="_inputWrapper_"]').getBoundingClientRect().width),
+  }));
+  record(widths.select >= 240 && widths.select < widths.field / 2, `and as wide as its words, not the page (${JSON.stringify(widths)})`);
 }
 
 await finish(browser);
