@@ -438,6 +438,7 @@ export const PAGES = [
    * one and a link to it works from cold.
    */
   { path: '/workspace/:workspaceId/artifacts/:artifactId', access: 'signed-in', goTo: false },
+  { path: '/workspace/:workspaceId/artifacts/:artifactId/content', access: 'signed-in', goTo: false },
   {
     path: '/workspace/:workspaceId/variables',
     access: 'signed-in',

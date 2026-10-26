@@ -2273,6 +2273,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Read off the newest real run with an agent step. */
   },
+  {
+    name: 'artifact-content-check',
+    what: "an artifact's /content address opens the artifact alone, without Orknux around it",
+    needs: ['workspace'],
+    /* Read off the workspace's newest artifact with a page to show. */
+  },
+
 
   {
     name: 'editor-catalogue-pages-check',

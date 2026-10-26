@@ -2327,6 +2327,7 @@ export const PL: Record<string, string> = {
   "Importing…": "Importowanie…",
   "Moving…": "Przenoszenie…",
   "Opening…": "Otwieranie…",
+  "There is no such artifact in this workspace.": "W tym obszarze roboczym nie ma takiego artefaktu.",
   "Publishing…": "Publikowanie…",
   "Queueing…": "Kolejkowanie…",
   "Refreshing…": "Odświeżanie…",

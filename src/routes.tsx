@@ -32,6 +32,7 @@ import { ConditionSettingsPage } from './pages/workspace/ConditionSettingsPage';
 import { ConnectionSettingsPage } from './pages/workspace/ConnectionSettingsPage';
 import { DocsPage } from './pages/docs/DocsPage';
 import { ExecutionDetailPage } from './pages/workspace/ExecutionDetailPage';
+import { ArtifactContentPage } from './pages/workspace/ArtifactContentPage';
 import { WorkspaceArtifactsPage } from './pages/workspace/WorkspaceArtifactsPage';
 import { DesignImagesPage } from './pages/design/DesignImagesPage';
 import { ResearchPage } from './pages/analysis/ResearchPage';
@@ -143,6 +144,8 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
    * list gives, which says which table it came from.
    */
   '/workspace/:workspaceId/artifacts/:artifactId': (session, onSignOut) => <WorkspaceArtifactsPage session={session} onSignOut={onSignOut} />,
+  // The artifact alone, at an address that outlives each replacement of it.
+  '/workspace/:workspaceId/artifacts/:artifactId/content': () => <ArtifactContentPage />,
   '/workspace/:workspaceId/variables': (session, onSignOut) => <WorkspaceVariablesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/plugins': (session, onSignOut) => <WorkspacePluginsPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/memory': (session, onSignOut) => <WorkspaceMemoryPage session={session} onSignOut={onSignOut} />,
