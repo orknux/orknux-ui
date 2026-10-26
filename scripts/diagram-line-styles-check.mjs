@@ -27,6 +27,9 @@ const { createDiagram: made } = await graphql(
   { w: WORKSPACE, n: `zzLines ${Date.now()}`, d: JSON.stringify({ nodes, edges }) },
 );
 
+/** A dash pattern as numbers, however the browser spells it: "6, 4", "6px 4px" and "6 4" are one. */
+const dashed = (said) => said.replace(/px/g, '').split(/[\s,]+/).filter(Boolean).join(' ');
+
 /** What the line of an edge is drawn with: its dashes and the markers at its two ends. */
 const drawn = (id) =>
   page.evaluate((edge) => {
@@ -41,15 +44,16 @@ const drawn = (id) =>
 
 try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/explore/diagrams/${made.id}`, { waitUntil: 'domcontentloaded' });
-  await page.locator('.react-flow__edge[data-id="dashed"]').waitFor({ timeout: 20_000 });
+  await page.locator('.react-flow__node[data-id="a"]').waitFor({ timeout: 20_000 });
+  await page.locator('.react-flow__edge[data-id="dashed"] path.react-flow__edge-path').waitFor({ state: 'attached', timeout: 10_000 });
   await page.getByRole('button', { name: /fit view/i }).click().catch(() => {});
   await page.waitForTimeout(600);
 
   // The old kinds, drawn as they were: React Flow's closed arrow, dashed six and four.
-  const dashed = await drawn('dashed');
+  const old = await drawn('dashed');
   record(
-    dashed !== null && dashed.dashes.replace(/px/g, '').replace(/,/g, ' ').trim() === '6 4' && /arrowclosed/i.test(dashed.end) && dashed.start === '',
-    `a line saved as a dashed arrow is drawn as one (${JSON.stringify(dashed)})`,
+    old !== null && dashed(old.dashes) === '6 4' && /arrowclosed/i.test(old.end) && old.start === '',
+    `a line saved as a dashed arrow is drawn as one (${JSON.stringify(old)})`,
   );
   const both = await drawn('both');
   record(
@@ -58,7 +62,9 @@ try {
   );
 
   // The panel: three pickers, each row drawn as well as named.
-  await page.locator('.react-flow__edge[data-id="dashed"] .react-flow__edge-interaction').click({ force: true });
+  // Clicked where the line runs, half way along, as a person would.
+  const along = await page.locator('.react-flow__edge[data-id="dashed"] path.react-flow__edge-path').boundingBox();
+  if (along !== null) await page.mouse.click(along.x + along.width / 2, along.y + along.height / 2);
   const line = page.getByTestId('diagram-edge-line');
   const offered = await line.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
   const ends = (await page.getByTestId('diagram-edge-start').count()) === 1 && (await page.getByTestId('diagram-edge-end').count()) === 1;
@@ -85,7 +91,7 @@ try {
 
   const restyled = await drawn('dashed');
   record(
-    restyled !== null && restyled.dashes.replace(/px/g, '').replace(/,/g, ' ').trim() === '1.5 3.5'
+    restyled !== null && dashed(restyled.dashes) === '1.5 3.5'
       && restyled.start.includes('diagram-start-filled-diamond') && restyled.end.includes('diagram-end-open'),
     `the line is drawn dotted, a filled diamond at its start and an open arrow at its end (${JSON.stringify(restyled)})`,
   );
