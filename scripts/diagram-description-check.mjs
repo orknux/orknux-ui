@@ -41,6 +41,12 @@ await page.mouse.up();
 const grown = Math.round((await field.boundingBox()).height - corner.height);
 record(grown >= 100, `dragging its corner makes the description taller (${grown}px)`);
 
+// The agents setting says what it decides, and what the chosen one means on hover - not only in the open list.
+const named = ((await page.locator('#diagram-editor-agents').textContent().catch(() => '')) ?? '').trim();
+record(named === 'What agents may do with it', `the agents setting is named for what it decides (${named})`);
+const meant = (await page.getByTestId('diagram-editor-access').getAttribute('title').catch(() => null)) ?? '';
+record(meant.startsWith('Agents may also change it'), `and the chosen one says what it means on hover (${meant})`);
+
 // With a node selected, the Diagram section is still there; folded, it remembers; opened again, it still saves.
 await page.locator('.react-flow__node[data-id="n"]').click({ timeout: 10_000 });
 await page.getByTestId('diagram-inspector').waitFor({ timeout: 5_000 }).catch(() => undefined);

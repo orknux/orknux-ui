@@ -1085,10 +1085,11 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                     />
                   </label>
                   <div className={styles.field}>
-                    <span id="diagram-editor-agents">{t('Agents')}</span>
+                    <span id="diagram-editor-agents">{t('What agents may do with it')}</span>
                     <Select
                       className={`${form.input} ${form.select}`}
                       value={diagram.agentAccess}
+                      title={access.find((one) => one.value === diagram.agentAccess)?.hint}
                       onChange={(picked) => void setAccess(picked as DiagramAgentAccess)}
                       aria-labelledby="diagram-editor-agents"
                       data-testid="diagram-editor-access"

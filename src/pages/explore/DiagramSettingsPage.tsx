@@ -238,11 +238,12 @@ function DiagramSettingsView({ session, onSignOut, onDiscard }: DiagramSettingsP
 
           <div className={styles.field}>
             <span className={styles.label} id="diagram-agents">
-              {t('Agents')}
+              {t('What agents may do with it')}
             </span>
             <Select
               className={styles.select}
               value={draft.agentAccess}
+              title={agentAccessOptions().find((one) => one.value === draft.agentAccess)?.hint}
               onChange={(picked) => set({ agentAccess: picked as DiagramAgentAccess })}
               aria-labelledby="diagram-agents"
               data-testid="diagram-settings-access"
