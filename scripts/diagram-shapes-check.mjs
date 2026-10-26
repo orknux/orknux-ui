@@ -99,4 +99,12 @@ record((await page.locator('.react-flow__node').count()) === before + 1 && kinds
   && (await page.locator('[role="menu"]').count()) === 0, 'picking one adds a node of that shape and closes the menu');
 
 await graphql('mutation ($id: ID!) { deleteDiagram(id: $id) }', { id: made.id });
+// The common ones are on the toolbar as well, one click away, where it is wide enough.
+const upFront = await page.locator('[data-testid^="diagram-tool-"]').evaluateAll((all) => all.filter((one) => one.getBoundingClientRect().width > 0).map((one) => one.getAttribute('data-testid').replace('diagram-tool-', '')));
+record(upFront.length >= 8 && upFront.includes('database') && upFront.includes('actor'), `the toolbar offers the common drawn shapes up front (${JSON.stringify(upFront)})`);
+const ahead = await page.locator('.react-flow__node').count();
+await page.getByTestId('diagram-tool-actor').click().catch(() => {});
+await page.waitForTimeout(300);
+record((await page.locator('.react-flow__node').count()) === ahead + 1, 'one click on the toolbar adds that shape');
+
 await finish(browser);

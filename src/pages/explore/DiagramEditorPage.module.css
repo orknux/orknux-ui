@@ -10,6 +10,13 @@
   gap: 2px;
 }
 
+/* On a narrow window the toolbar has no room for them, and they stay in More shapes. */
+@media (max-width: 1200px) {
+  .upFront {
+    display: none;
+  }
+}
+
 /* The paper the diagram is drawn on: light whichever way up the interface is, as the exports are. */
 .canvas {
   position: relative;

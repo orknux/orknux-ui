@@ -122,6 +122,13 @@ const SHAPES: { kind: DiagramNodeKind; icon: string; label: () => string }[] = [
   { kind: 'group', icon: frameIcon, label: () => t('Group') },
 ];
 
+/**
+ * The drawn shapes put on the toolbar as well as in More shapes, where there is
+ * room for them: the ones a flowchart or an architecture sketch reaches for
+ * first. The rest are a click further in.
+ */
+const UP_FRONT: DiagramNodeKind[] = ['database', 'document', 'parallelogram', 'hexagon', 'cloud', 'actor', 'class', 'component'];
+
 /** What the shapes in the More shapes menu are called; they are drawn by their own outlines there. */
 const MORE_SHAPES: Partial<Record<DiagramNodeKind, () => string>> = {
   database: () => t('Database'),
@@ -1030,6 +1037,19 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 data-testid={`diagram-add-${one.kind}`}
               >
                 <img src={one.icon} alt="" width={16} height={16} />
+              </button>
+            ))}
+            {UP_FRONT.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className={`${shell.tool} ${styles.upFront}`}
+                onClick={() => add(kind)}
+                title={tf('Add {shape}', { shape: kindLabel(kind) })}
+                aria-label={tf('Add {shape}', { shape: kindLabel(kind) })}
+                data-testid={`diagram-tool-${kind}`}
+              >
+                <ShapeIcon kind={kind} />
               </button>
             ))}
             <div className={styles.menuHolder}>
