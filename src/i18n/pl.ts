@@ -2906,6 +2906,8 @@ export const PL: Record<string, string> = {
   "Mutes and unmutes your microphone while voice mode is open. Muted, nothing you say is heard or sent, and the answer being read aloud goes on.": "Wycisza i włącza mikrofon, gdy tryb głosowy jest otwarty. Po wyciszeniu nic, co mówisz, nie jest słyszane ani wysyłane, a czytana odpowiedź trwa dalej.",
   "Mute": "Wycisz",
   "Unmute": "Włącz mikrofon",
+  "Reading speed": "Szybkość czytania",
+  "Default speed": "Domyślna szybkość",
   "Muted": "Wyciszony",
   "{action} ({shortcut})": "{action} ({shortcut})",
   "Muted — press {shortcut} to speak again.": "Wyciszony — naciśnij {shortcut}, by znów mówić.",

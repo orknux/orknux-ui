@@ -78,6 +78,18 @@
   gap: var(--space-8);
 }
 
+/* How fast it reads: drawn like the buttons beside it, so the header reads as one row of controls. */
+.speed {
+  padding: var(--space-4) var(--space-6);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
 /* Muted is a state somebody must not forget they are in, so it is not quiet grey. */
 .muted {
   border-color: var(--color-danger, #f85149);

@@ -7,6 +7,7 @@ import { transcribe } from '../api/transcription';
 import styles from './VoiceMode.module.css';
 import { t, tf } from '../i18n';
 import { matches, useVoiceMuteShortcut } from '../session/shortcut';
+import { SPEECH_SPEEDS, setSpeechSpeed, useSpeechSpeed } from '../session/speechSpeed';
 
 /**
  * Hands-free conversation: it listens, sends what it heard, and reads the
@@ -418,6 +419,7 @@ export function VoiceMode({
   const [muted, setMuted] = useState(false);
   const mutedNow = useRef(false);
   const muteShortcut = useVoiceMuteShortcut();
+  const speed = useSpeechSpeed();
   const toggleMute = useCallback(() => {
     const next = !mutedNow.current;
     mutedNow.current = next;
@@ -1030,6 +1032,22 @@ export function VoiceMode({
       <header className={styles.head}>
         <h2 className={styles.title}>{t('Voice')}</h2>
         <span className={styles.actions}>
+          {/* Taken up by the next piece read, so a change is heard within a sentence or two. */}
+          <select
+            className={styles.speed}
+            value={speed === null ? '' : String(speed)}
+            onChange={(event) => setSpeechSpeed(event.target.value === '' ? null : Number(event.target.value))}
+            aria-label={t('Reading speed')}
+            title={t('Reading speed')}
+            data-voice-speed=""
+          >
+            <option value="">{t('Default speed')}</option>
+            {SPEECH_SPEEDS.map((each) => (
+              <option key={each} value={String(each)}>
+                {`${each}×`}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             className={muted ? `${styles.close} ${styles.muted}` : styles.close}

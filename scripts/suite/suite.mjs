@@ -3722,6 +3722,12 @@ export const TESTS = [
     /* Makes two models and two chats and removes them; puts the turn-taking back. */
   },
   {
+    name: 'voice-speed-check',
+    what: 'Voice mode reads its answers at the speed picked in its panel, and the speed is kept in the browser',
+    needs: ['workspace'],
+    /* Makes two models and a chat and removes them; puts the turn-taking and the stored speed back. Issue #673. */
+  },
+  {
     name: 'voice-mute-check',
     what: 'Voice mode mutes by a button and by the shortcut chosen in Preferences; muted, a voice moves nothing, is not transcribed and is not sent',
     needs: ['workspace'],
