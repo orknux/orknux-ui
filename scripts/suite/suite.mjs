@@ -2419,6 +2419,12 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'diagram-colours-check',
+    what: "a shape's colour comes from three rows of swatches or the browser's picker, and is kept",
+    needs: ['workspace'],
+  },
+
+  {
     name: 'diagram-line-styles-check',
     what: "a diagram's line is picked a style and a mark at each end, each drawn in its picker, and a line saved as an old kind draws as it did",
     needs: ['workspace'],

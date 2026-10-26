@@ -1386,6 +1386,28 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                       data-testid="diagram-node-colour"
                     />
                   ))}
+                  {/* Any other colour: the browser's own picker, taken once it is closed rather than at every step of a drag through it. */}
+                  <label
+                    className={`${styles.swatch} ${styles.swatchCustom} ${oneNode.color !== undefined && !SWATCHES.includes(oneNode.color) ? styles.swatchOn : ''}`}
+                    style={oneNode.color !== undefined && !SWATCHES.includes(oneNode.color) ? { background: oneNode.color } : undefined}
+                    title={t('Another colour')}
+                  >
+                    <input
+                      type="color"
+                      className={styles.swatchPicker}
+                      value={oneNode.color ?? '#ffffff'}
+                      aria-label={t('Another colour')}
+                      ref={(input) => {
+                        if (input === null) return;
+                        input.onchange = () => {
+                          const picked = input.value.toLowerCase();
+                          change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, color: picked } : node)) });
+                        };
+                      }}
+                      onChange={() => {}}
+                      data-testid="diagram-node-colour-custom"
+                    />
+                  </label>
                 </div>
               </div>
               <label className={styles.field}>

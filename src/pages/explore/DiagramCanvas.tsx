@@ -31,7 +31,16 @@ export type LinkEdge = Edge<LinkData, 'link'>;
  * colour to. Data rather than style - a person picks one and it is saved - so
  * they live here rather than in the tokens.
  */
-export const SWATCHES = ['#e4e4e7', '#bfdbfe', '#bbf7d0', '#fef08a', '#fed7aa', '#fecaca', '#e9d5ff', '#3f3f46'];
+/**
+ * The colours offered for a shape, a row of pale ones, a row of stronger ones
+ * and a row of deep ones - text on any of them is drawn light or dark to suit,
+ * here and in the exports. Any other colour comes from the picker after them.
+ */
+export const SWATCHES = [
+  '#e4e4e7', '#bfdbfe', '#bbf7d0', '#fef08a', '#fed7aa', '#fecaca', '#e9d5ff', '#fbcfe8', '#a5f3fc',
+  '#a1a1aa', '#60a5fa', '#4ade80', '#facc15', '#fb923c', '#f87171', '#a78bfa', '#f472b6', '#22d3ee',
+  '#3f3f46', '#1e3a8a', '#14532d', '#713f12', '#7c2d12', '#7f1d1d', '#4c1d95', '#831843', '#164e63',
+];
 
 /** Which label is being typed over in place, and what becomes of what is typed. */
 export interface LabelEditing {
