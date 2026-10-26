@@ -51,6 +51,7 @@ async function readAvatar() {
       bubble: true,
       avatar: avatar.textContent.trim(),
       left: a.right <= b.left,
+      gap: Math.round(b.left - a.right),
       level: Math.abs(middle(a) - middle(b)) <= 2,
       size: Math.round(a.width),
     };
@@ -68,7 +69,7 @@ async function setAvatar(choice) {
 
 const on = await readAvatar();
 record(
-  on.avatar !== null && /^[A-Z0-9]{1,2}$/.test(on.avatar) && on.left && on.level && on.size === 32,
+  on.avatar !== null && /^[A-Z0-9]{1,2}$/.test(on.avatar) && on.left && on.level && on.size === 32 && on.gap === 16,
   `on by default, the line has the person's initials on the bubble's left, level with it (${JSON.stringify(on)})`,
 );
 

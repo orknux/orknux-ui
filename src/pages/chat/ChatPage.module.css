@@ -764,12 +764,12 @@
   border-radius: var(--radius-full);
 }
 
-/* The avatar and the bubble, side by side and level: the avatar on the left, centred on the bubble. */
+/* The avatar and the bubble, side by side and level: the avatar on the left, centred on the bubble, as far from it as the agent's is from its answer. */
 .userLine {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-8);
+  gap: var(--space-16);
   max-width: 100%;
   min-width: 0;
 }
