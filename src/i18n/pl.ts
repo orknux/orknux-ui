@@ -3838,6 +3838,8 @@ export const PL: Record<string, string> = {
   "The catalog is deleted; one holding diagrams is refused until they are moved or deleted:": "Katalog zostanie usunięty; katalogu z diagramami nie da się usunąć, dopóki nie zostaną przeniesione albo usunięte:",
   "This diagram": "Ten diagram",
   "What agents may do with it": "Co agenci mogą z nim zrobić",
+  "Width of the panel": "Szerokość panelu",
+  "Height of the settings above the chat": "Wysokość ustawień nad czatem",
   "Read only": "Tylko odczyt",
   "Read and change": "Odczyt i zmiany",
   "Agents may search and read it, and not change it.": "Agenci mogą go przeszukiwać i czytać, ale nie zmieniać.",

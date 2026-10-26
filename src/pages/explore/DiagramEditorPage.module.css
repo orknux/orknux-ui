@@ -445,3 +445,29 @@
   color: var(--color-accent-brand);
   text-decoration: underline;
 }
+
+/*
+ * The settings above the chat: as tall as they are, up to a little over half
+ * the panel, and scrolled inside past that - until the line under them is
+ * dragged, which sets the height outright.
+ */
+.panelSettings {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-height: 0;
+  max-height: 55%;
+  overflow-y: auto;
+}
+
+/*
+ * The panel's edge, taken hold of. Narrower than the shared handle's 24px and
+ * laid over the panel's border, so it adds a line to take hold of and no gutter.
+ */
+.panelHandle.panelHandle {
+  position: relative;
+  z-index: 5;
+  width: 8px;
+  margin-inline: -4px;
+}

@@ -765,6 +765,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'diagram-panel-resize-check',
+    what: "the diagram editor's panel: the chat keeps room under long settings, the line above it and the panel's edge drag, and both are kept",
+    needs: ['workspace'],
+  },
+  {
     name: 'topbar-long-role-check',
     what: 'a long role under the account name is cut short, and the quick actions results still open wide enough to read',
     needs: [],

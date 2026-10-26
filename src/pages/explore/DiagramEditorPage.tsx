@@ -55,6 +55,7 @@ import diamondIcon from '../../assets/diamond.svg';
 import undoIcon from '../../assets/undo.svg';
 import usersIcon from '../../assets/users.svg';
 import { AppShell } from '../../components/AppShell';
+import { ResizeHandle, useDragSize, useRoom } from '../../components/DragSize';
 import { Loader } from '../../components/Loader';
 import { Select } from '../../components/Select';
 import { useSieve } from '../../components/sieve';
@@ -94,6 +95,13 @@ export interface DiagramEditorPageProps {
 
 /** The grid things snap to, in the drawing's pixels. */
 const GRID = 8;
+
+/** How narrow the side panel may be dragged, and how much of the canvas it must leave. */
+const PANEL_NARROWEST = 300;
+const CANVAS_NARROWEST = 320;
+/** How short the settings above the chat may be dragged, and how much height the chat keeps. */
+const SETTINGS_SHORTEST = 60;
+const CHAT_SHORTEST = 200;
 /** How many steps undo keeps. */
 const UNDO_DEPTH = 100;
 /** How far a paste lands from what was copied. */
@@ -819,6 +827,26 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const oneEdge = selectedEdges.length === 1 && selectedNodes.length === 0 ? (drawing.edges.find((edge) => edge.id === selectedEdges[0]) ?? null) : null;
   const access = agentAccessOptions();
 
+  /*
+   * The panel is dragged wider, and the line between its settings and the chat
+   * up or down. Fixed, the settings of a diagram with a long description and a
+   * node with notes took the height and left the chat a strip at the bottom.
+   */
+  const [editorRoom, editorWidth] = useRoom('width');
+  const [panelRoom, panelHeight] = useRoom('height');
+  const [settingsRoom, settingsDrawn] = useRoom('height', 'border');
+  const panelWidest = editorWidth > 0 ? Math.max(PANEL_NARROWEST, editorWidth - CANVAS_NARROWEST) : null;
+  const panelWidth = useDragSize({ storageKey: 'orknux.diagram.panel-width', initial: 340, min: PANEL_NARROWEST, max: panelWidest, edge: 'left' });
+  const settingsTallest = panelHeight > 0 ? Math.max(SETTINGS_SHORTEST, panelHeight - CHAT_SHORTEST) : null;
+  const settingsHeight = useDragSize({
+    storageKey: 'orknux.diagram.panel-settings-height',
+    initial: null,
+    measured: settingsDrawn,
+    min: SETTINGS_SHORTEST,
+    max: settingsTallest,
+    edge: 'bottom',
+  });
+
   if (missing) {
     return (
       <AppShell title={t('Diagram editor')} user={shellUser(session)} workspacePath={`/workspace/${workspaceId}`} showAdmin={session.admin} onSignOut={onSignOut} sidebar={null} hideSidebar>
@@ -1006,7 +1034,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
         </div>
       </div>
 
-      <div className={shell.editor}>
+      <div className={shell.editor} ref={editorRoom}>
         <div className={styles.canvas} data-testid="diagram-canvas">
           {diagram === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
@@ -1057,7 +1085,32 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           )}
         </div>
 
-        <div className={`${shell.panel} ${chat.panel}`} data-testid="diagram-panel">
+        <ResizeHandle
+          className={styles.panelHandle}
+          orientation="vertical"
+          label={t('Width of the panel')}
+          controls="diagram-panel"
+          valueNow={panelWidth.size}
+          valueMin={PANEL_NARROWEST}
+          valueMax={panelWidest ?? panelWidth.size}
+          title={t('Drag to change the width; double-click to put it back')}
+          dragging={panelWidth.dragging}
+          handlers={panelWidth.handlers}
+        />
+        <div
+          className={`${shell.panel} ${chat.panel}`}
+          id="diagram-panel"
+          ref={panelRoom}
+          style={{ flexBasis: panelWidth.size }}
+          data-testid="diagram-panel"
+        >
+          <div
+            className={styles.panelSettings}
+            id="diagram-panel-settings"
+            ref={settingsRoom}
+            style={settingsHeight.size === null ? undefined : { height: settingsHeight.size, maxHeight: 'none' }}
+            data-testid="diagram-panel-settings"
+          >
           {diagram !== null && (
             <section className={styles.section} data-testid="diagram-section">
               <button
@@ -1224,6 +1277,18 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               {tf('{count} selected', { count: selectedNodes.length + selectedEdges.length })}
             </p>
           )}
+          </div>
+          <ResizeHandle
+            orientation="horizontal"
+            label={t('Height of the settings above the chat')}
+            controls="diagram-panel-settings"
+            valueNow={settingsHeight.size ?? Math.round(settingsDrawn)}
+            valueMin={SETTINGS_SHORTEST}
+            valueMax={settingsTallest ?? Math.round(settingsDrawn)}
+            title={t('Drag to change the height; double-click to put it back')}
+            dragging={settingsHeight.dragging}
+            handlers={settingsHeight.handlers}
+          />
 
           <DesignChat
             prefix="diagram"
