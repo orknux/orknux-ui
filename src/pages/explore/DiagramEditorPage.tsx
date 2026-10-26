@@ -14,6 +14,8 @@ import type { Connection, EdgeChange, NodeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+
 import {
   askDiagram,
   describeDiagram,
@@ -21,6 +23,7 @@ import {
   DIAGRAM_LINE_STYLES,
   DIAGRAM_NODE_KINDS,
   DIAGRAM_PNG_SCALES,
+  deleteDiagram,
   diagramExportUrl,
   drawingOf,
   fetchDiagram,
@@ -282,6 +285,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const { workspaceId = '', diagramId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  // The whole diagram, from its own toolbar, asked first; the Delete beside Duplicate deletes what is selected.
+  const [deletingDiagram, setDeletingDiagram] = useState(false);
   const flow = useReactFlow();
   const viewport = useViewport();
 
@@ -1195,8 +1200,23 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               </div>
             )}
           </div>
+          <button type="button" className={form.ghost} onClick={() => setDeletingDiagram(true)} disabled={diagram === null} data-testid="diagram-delete-diagram">
+            {t('Delete diagram')}
+          </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        subject={deletingDiagram ? (diagram?.name ?? null) : null}
+        kind="removeDiagram"
+        onClose={() => setDeletingDiagram(false)}
+        onConfirm={async () => {
+          if (diagram === null) return;
+          await deleteDiagram(diagram.id);
+          setDeletingDiagram(false);
+          navigate(`/workspace/${workspaceId}/explore/diagrams`);
+        }}
+      />
 
       <div className={shell.editor} ref={editorRoom}>
         <div

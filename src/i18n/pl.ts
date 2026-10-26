@@ -4035,4 +4035,5 @@ export const PL: Record<string, string> = {
   "The workspace's documents, or files uploaded here, read as sources alongside what the search finds.": "Dokumenty obszaru roboczego lub pliki przesłane tutaj, czytane jako źródła obok tego, co znajdzie wyszukiwanie.",
   "More colours": "Więcej kolorów",
   "Fewer colours": "Mniej kolorów",
+  "Delete diagram": "Usuń diagram",
 };
