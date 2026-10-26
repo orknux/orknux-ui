@@ -24,6 +24,14 @@
   font: inherit;
 }
 
+/* The picker reads as a setting of its own, not as part of the buttons beside it. */
+.importDocuments {
+  width: auto;
+  margin-left: var(--space-20);
+  padding: 0 var(--space-10);
+  font-size: var(--text-sm);
+}
+
 .newDocument {
   margin-left: var(--space-8);
 }

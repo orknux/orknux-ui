@@ -2362,6 +2362,12 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'documents-import-check',
+    what: 'the documents list keeps its page-size picker apart from the buttons beside it, and Import takes several files at once, each a document named after its file, naming any that could not be read',
+    needs: ['workspace'],
+    /* Imports its own files and removes the documents they made. */
+  },
+  {
     name: 'document-links-check',
     what: "a link to another document shows that document's name after a rename, opens it on Ctrl+click in the editor and on a click in View, its editor lists who mentions it, the Documents button puts one in, and deleting a mentioned document names who mentions it",
     needs: ['workspace'],

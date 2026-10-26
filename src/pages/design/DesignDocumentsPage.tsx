@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -13,13 +13,16 @@ import {
   setDocumentPageSizeDefault,
   fetchDocuments,
   fetchDocumentMentions,
+  importDocumentFile,
   moveDocument,
   renameDocument,
   renameDocumentCatalog,
+  saveDocument,
 } from '../../api/documents';
 import type { DesignDocument, DocumentCatalog, DocumentReference, PageSize } from '../../api/documents';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
+import { refuseOversized } from '../../api/uploads';
 import eyeIcon from '../../assets/eye.svg';
 import fileTextIcon from '../../assets/file-text.svg';
 import folderOpenIcon from '../../assets/folder-open.svg';
@@ -39,6 +42,9 @@ import { shellUser } from '../../session/user';
 import rail from '../workspace/WorkspaceMemoryPage.module.css';
 import table from '../workspace/CatalogueTable.module.css';
 import styles from './DesignDocumentsPage.module.css';
+import form from '../../components/Dialog.module.css';
+import { ACCEPTED, dataUrl } from './DocumentImportMenu';
+import { settingsOf } from './documentSettings';
 import { ColumnHeader } from '../../components/ColumnHeader';
 
 export interface DesignDocumentsPageProps {
@@ -107,6 +113,9 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
   const [catalogDialog, setCatalogDialog] = useState<{ renaming: DocumentCatalog | null } | null>(null);
   /** Bumped after a change, so the list is asked again. */
   const [revision, setRevision] = useState(0);
+  /** How far an import of several files has got; null while none is running. */
+  const [importing, setImporting] = useState<{ done: number; of: number } | null>(null);
+  const importPicker = useRef<HTMLInputElement | null>(null);
   /** The page a new document starts on: a workspace setting. */
   const [pageDefault, setPageDefault] = useState<PageSize | null>(null);
 
@@ -171,6 +180,34 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
       navigate(documentPath(workspaceId, made.id));
     });
     setBusy(false);
+  }
+
+  /**
+   * Each file a document of its own, named after the file, in the catalog in
+   * view: made, read on the server into the document's vocabulary, and saved as
+   * an import. A file that cannot be read leaves no empty document behind, and
+   * is named in the error once the rest are in.
+   */
+  async function importMany(files: File[]) {
+    if (files.length === 0 || importing !== null) return;
+    setError(null);
+    const failed: string[] = [];
+    for (const [at, file] of files.entries()) {
+      setImporting({ done: at, of: files.length });
+      let made: DesignDocument | null = null;
+      try {
+        await refuseOversized([file]);
+        made = await createDocument(workspaceId, file.name.replace(/\.[^.]+$/, '').trim() || t('Untitled document'), selected === ALL ? null : selected);
+        const read = await importDocumentFile(made.id, file.name, await dataUrl(file));
+        await saveDocument(made.id, JSON.parse(read.content) as unknown, made.revision, settingsOf(made), 'IMPORT');
+      } catch {
+        failed.push(file.name);
+        if (made !== null) await deleteDocument(made.id).catch(() => undefined);
+      }
+    }
+    setImporting(null);
+    if (failed.length > 0) setError(tf('Could not import {names}', { names: failed.join(', ') }));
+    await changed();
   }
 
   async function rename() {
@@ -314,6 +351,29 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
                 ))}
               </select>
             </label>
+            <button
+              type="button"
+              className={`${form.ghost} ${styles.importDocuments}`}
+              onClick={() => importPicker.current?.click()}
+              disabled={importing !== null}
+              title={t('Import files as documents')}
+              data-testid="documents-import"
+            >
+              {importing === null ? t('Import') : tf('Importing {done} of {of}…', { done: importing.done + 1, of: importing.of })}
+            </button>
+            <input
+              ref={importPicker}
+              type="file"
+              accept={ACCEPTED}
+              multiple
+              hidden
+              onChange={(event) => {
+                const files = [...(event.target.files ?? [])];
+                event.target.value = '';
+                void importMany(files);
+              }}
+              data-testid="documents-import-file"
+            />
             <button
               type="button"
               className={`${table.createButton} ${styles.newDocument}`}

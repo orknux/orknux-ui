@@ -4002,4 +4002,7 @@ export const PL: Record<string, string> = {
   "Mentioned by": "Wspomniany w",
   "No document links here": "Żaden dokument tu nie prowadzi",
   "Mentioned by {names}": "Wspomniany w: {names}",
+  "Import files as documents": "Importuj pliki jako dokumenty",
+  "Importing {done} of {of}…": "Importowanie {done} z {of}…",
+  "Could not import {names}": "Nie udało się zaimportować: {names}",
 };

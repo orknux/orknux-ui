@@ -12,10 +12,10 @@ import styles from './WireframeExport.module.css';
 type Into = 'replace' | 'insert';
 
 /** What the file picker offers: what the server reads, and Export's zip of Markdown with its pictures. */
-const ACCEPTED = '.pdf,.md,.markdown,.zip,.odt,.docx,.html,.htm,.txt,text/plain,text/markdown,text/html,application/pdf';
+export const ACCEPTED = '.pdf,.md,.markdown,.zip,.odt,.docx,.html,.htm,.txt,text/plain,text/markdown,text/html,application/pdf';
 
 /** A picked file as a data URL, which the server's import takes. */
-function dataUrl(file: File): Promise<string> {
+export function dataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
