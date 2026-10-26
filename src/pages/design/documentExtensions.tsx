@@ -12,9 +12,13 @@ import type { ReactNodeViewProps } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
 import { search } from 'prosemirror-search';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
+import { fetchDocument } from '../../api/documents';
+import type { DesignDocument } from '../../api/documents';
+import fileTextIcon from '../../assets/file-text.svg';
 import { t, tf } from '../../i18n';
 import { DocumentPages } from './documentPages';
 import type { PageGeometry } from './documentPages';
@@ -237,9 +241,29 @@ function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
   const name = (node.attrs.name as string | null) || tf('Document {id}', { id });
   const links = (extension.options as { links?: DocumentLinkOptions }).links;
   const editing = editor.isEditable;
+  const anchor = useRef<HTMLAnchorElement>(null);
+  const [card, setCard] = useState<{ document: DesignDocument; at: DOMRect } | null>(null);
+  const waiting = useRef<number | null>(null);
+  const hide = () => {
+    if (waiting.current !== null) window.clearTimeout(waiting.current);
+    waiting.current = null;
+    setCard(null);
+  };
+  useEffect(() => hide, []);
   return (
     <NodeViewWrapper as="span" className={styles.documentLinkHolder}>
       <a
+        ref={anchor}
+        onMouseEnter={() => {
+          if (missing || id === '') return;
+          waiting.current = window.setTimeout(() => {
+            void cardOf(id).then((document) => {
+              const at = anchor.current?.getBoundingClientRect();
+              if (document !== null && at !== undefined && waiting.current !== null) setCard({ document, at });
+            });
+          }, CARD_DELAY);
+        }}
+        onMouseLeave={hide}
         href={missing || links === undefined ? undefined : links.href(id, editing)}
         className={`${styles.documentLink} ${missing ? styles.documentLinkGone : ''}`}
         title={missing ? t('This document was deleted') : editing ? t('Ctrl+click to open') : undefined}
@@ -255,8 +279,41 @@ function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
       >
         {name}
       </a>
+      {card !== null &&
+        createPortal(
+          <span
+            className={styles.documentLinkCard}
+            style={{ left: card.at.left, top: card.at.bottom + 6 }}
+            role="tooltip"
+            data-testid="document-link-card"
+          >
+            <img src={fileTextIcon} alt="" width={16} height={16} className={styles.documentLinkCardIcon} />
+            <span className={styles.documentLinkCardText}>
+              <span className={styles.documentLinkCardHead}>
+                <span className={styles.documentLinkCardName}>{card.document.name}</span>
+                <span className={styles.documentLinkCardWhere}>{tf('Document in {catalog}', { catalog: card.document.catalogName })}</span>
+              </span>
+              {card.document.excerpt !== '' && <span className={styles.documentLinkCardExcerpt}>{card.document.excerpt}</span>}
+            </span>
+          </span>,
+          document.body,
+        )}
     </NodeViewWrapper>
   );
+}
+
+/** How long the pointer rests on a link before its card is shown, in milliseconds: a pass across one shows nothing. */
+const CARD_DELAY = 300;
+
+/** Each linked document read once per page, however many links name it. */
+const cards = new Map<string, Promise<DesignDocument | null>>();
+function cardOf(id: string): Promise<DesignDocument | null> {
+  let held = cards.get(id);
+  if (held === undefined) {
+    held = fetchDocument(id).catch(() => null);
+    cards.set(id, held);
+  }
+  return held;
 }
 
 /** A link to another document, by its id; the server puts the document's current name on it. */

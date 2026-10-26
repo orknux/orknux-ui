@@ -40,6 +40,14 @@ try {
   const mentioned = await page.getByTestId('document-mentions-item').allTextContents().catch(() => []);
   record(mentioned.length === 1 && mentioned[0].trim() === RENAMED, `its editor lists the documents it mentions (${JSON.stringify(mentioned)})`);
 
+  // Resting on a link shows what it points at, as the quick-actions palette shows a document.
+  if (drawn) await link.first().hover();
+  const card = page.getByTestId('document-link-card');
+  const carded = await card.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
+  const said = carded ? ((await card.textContent()) ?? '') : '';
+  record(carded && said.includes(RENAMED) && said.includes('Document in'), `hovering a link shows its document's name and where it is (${JSON.stringify(said.slice(0, 120))})`);
+  await page.mouse.move(0, 0);
+
   // A plain click puts the caret there, as on any link being edited; Ctrl+click follows it.
   if (drawn) await link.first().click();
   await page.waitForTimeout(500);

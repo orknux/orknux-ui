@@ -4003,6 +4003,7 @@ export const PL: Record<string, string> = {
   "Ctrl+click to open": "Ctrl+kliknięcie otwiera",
   "Mentioned by": "Wspomniany w",
   "Mentions": "Wspomina",
+  "Document in {catalog}": "Dokument w {catalog}",
   "This document links to no other": "Ten dokument nie prowadzi do żadnego innego",
   "No document links here": "Żaden dokument tu nie prowadzi",
   "Mentioned by {names}": "Wspomniany w: {names}",
