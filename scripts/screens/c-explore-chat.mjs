@@ -139,8 +139,9 @@ export async function shots(ctx) {
         await page.getByRole('button', { name: 'New research' }).first().click();
         await page.locator('#research-question').waitFor({ timeout: 10_000 });
         await page.locator('#research-question').fill('Which onboarding questions reach the support desk in a customer\'s first week?');
-        await page.waitForTimeout(500);
-        await page.locator('form:has(#research-question) button[data-hint="Use web search"]').first().click();
+        // A filled-in form, an agent chosen and no hint open over it: Start can be pressed.
+        await page.locator('#research-agent').click();
+        await page.getByRole('option').filter({ hasNotText: 'Choose an agent' }).first().click();
         await page.waitForTimeout(500);
       },
     },
