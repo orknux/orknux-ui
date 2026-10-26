@@ -33,6 +33,8 @@ export interface AppUser {
   timeZone: string | null;
   /** Whether their chats print what an answer cost as well as how long it took. */
   chatCostShown: boolean;
+  /** Whether their chats draw their avatar beside what they said. */
+  chatAvatarShown: boolean;
   type: UserType;
   roles: RoleRef[];
   /** False for anybody the identity provider defines. */
@@ -46,7 +48,7 @@ export interface AppUser {
 }
 
 const USER_FIELDS =
-  'id username displayName email emailChosen emailNotifications chatCostShown language timeZone type roles { id name } ' +
+  'id username displayName email emailChosen emailNotifications chatCostShown chatAvatarShown language timeZone type roles { id name } ' +
   'editable hasPassword lastSignedInAt lastModifiedAt lastModifiedBy';
 
 /** A token, as it is listed: never its secret, which is shown once. */
@@ -152,6 +154,15 @@ export async function setChatCostShown(shown: boolean): Promise<AppUser> {
     { shown },
   );
   return data.setChatCostShown;
+}
+
+/** Turns your avatar beside what you said in your own chats on or off; yours only, as the cost line is. */
+export async function setChatAvatarShown(shown: boolean): Promise<AppUser> {
+  const data = await graphql<{ setChatAvatarShown: AppUser }>(
+    `mutation ($shown: Boolean!) { setChatAvatarShown(shown: $shown) { ${USER_FIELDS} } }`,
+    { shown },
+  );
+  return data.setChatAvatarShown;
 }
 
 /**

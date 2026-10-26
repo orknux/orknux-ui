@@ -2021,6 +2021,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-user-avatar-check',
+    what: "the person's avatar is drawn beside what they said, and Preferences turns it off",
+    needs: ['workspace'],
+    /* Puts a line of the person's on the real history's end, and sets the preference back on. */
+  },
+
+  {
     name: 'provider-edit-mask-check',
     what: "a provider page says how its server reads a picture edit's mask, and saves the choice",
     needs: ['workspace'],

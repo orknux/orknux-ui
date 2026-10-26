@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { SessionUser } from '../../api/session';
-import { setChatCostShown, setMyLanguage, setMyTimeZone, setUserEmail, setUserEmailNotifications } from '../../api/users';
+import { setChatAvatarShown, setChatCostShown, setMyLanguage, setMyTimeZone, setUserEmail, setUserEmailNotifications } from '../../api/users';
 import moonIcon from '../../assets/moon.svg';
 import sunIcon from '../../assets/sun.svg';
 import { AccessTokens } from '../../components/AccessTokens';
@@ -504,6 +504,10 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
   const [costShown, setCostShown] = useState(session.chatCostShown !== false);
   const [savedCost, setSavedCost] = useState(session.chatCostShown !== false);
   const [costError, setCostError] = useState<string | null>(null);
+  /* Their avatar beside what they said in a chat; theirs, on the server, for the cost line's reasons. */
+  const [avatarShown, setAvatarShown] = useState(session.chatAvatarShown !== false);
+  const [savedAvatar, setSavedAvatar] = useState(session.chatAvatarShown !== false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const [savedTheme, setSavedTheme] = useState<Theme>(currentTheme);
   const [accent, setAccent] = useState<Accent>(currentAccent);
@@ -519,6 +523,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
     email.trim() !== savedEmail,
     notify !== savedNotify,
     costShown !== savedCost,
+    avatarShown !== savedAvatar,
     zone !== savedZone,
     theme !== savedTheme,
     accent !== savedAccent,
@@ -556,6 +561,17 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
         setSavedCost(held.chatCostShown);
       } catch (cause) {
         setCostError(cause instanceof Error ? cause.message : t('Could not save that.'));
+        failed = true;
+      }
+    }
+    if (avatarShown !== savedAvatar) {
+      setAvatarError(null);
+      try {
+        const held = await setChatAvatarShown(avatarShown);
+        setAvatarShown(held.chatAvatarShown);
+        setSavedAvatar(held.chatAvatarShown);
+      } catch (cause) {
+        setAvatarError(cause instanceof Error ? cause.message : t('Could not save that.'));
         failed = true;
       }
     }
@@ -759,6 +775,38 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
               {costError !== null && (
                 <p className={styles.error} role="alert">
                   {costError}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.setting}>
+              <span className={styles.labelWithHint}>
+                <span className={styles.settingLabel} id="chat-avatar">{t('Avatar in Chat')}</span>
+                <FieldHint label={t('Avatar in Chat')}>
+                  <p>{t("Draws your avatar beside what you said, as the agent's is drawn beside its answers.")}</p>
+                </FieldHint>
+              </span>
+              <div className={styles.options} role="radiogroup" aria-labelledby="chat-avatar">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={avatarShown}
+                  disabled={saving}
+                  className={avatarShown ? styles.optionCurrent : styles.option}
+                  onClick={() => setAvatarShown(true)}
+                >{t('On')}</button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!avatarShown}
+                  disabled={saving}
+                  className={avatarShown ? styles.option : styles.optionCurrent}
+                  onClick={() => setAvatarShown(false)}
+                >{t('Off')}</button>
+              </div>
+              {avatarError !== null && (
+                <p className={styles.error} role="alert">
+                  {avatarError}
                 </p>
               )}
             </div>

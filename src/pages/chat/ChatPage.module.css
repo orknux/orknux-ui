@@ -763,6 +763,20 @@
   border-radius: var(--radius-full);
 }
 
+.userAvatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
 .assistantBody {
   display: flex;
   flex: 1 0 0;

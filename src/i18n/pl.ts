@@ -2447,6 +2447,8 @@ export const PL: Record<string, string> = {
 
   // --- what an answer cost ---------------------------------------------------------
   "Answer Cost": "Koszt odpowiedzi",
+  "Avatar in Chat": "Awatar w czacie",
+  "Draws your avatar beside what you said, as the agent's is drawn beside its answers.": "Rysuje twój awatar obok tego, co napisałeś, tak jak awatar agenta obok jego odpowiedzi.",
   "Puts what an answer cost beside how long it took, on the answer just given.": "Pokazuje koszt odpowiedzi obok czasu, jaki zajęła, przy właśnie udzielonej odpowiedzi.",
   "Money needs prices, which are recorded on the model. A model carrying none shows the tokens and nothing else, because no price is not a price of nothing.": "Pieniądze wymagają cen, a te zapisane są przy modelu. Model, który ich nie ma, pokazuje same tokeny, bo brak ceny to nie to samo co cena zerowa.",
   "Nothing is shown where the provider reported no counts, or for any answer read back out of the history - what was said is kept, what it cost is not.": "Nic nie jest pokazywane tam, gdzie dostawca nie podał liczb, ani przy odpowiedzi odczytanej z historii — to, co powiedziano, jest przechowywane, a to, ile kosztowało, nie.",

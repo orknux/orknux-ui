@@ -25,10 +25,12 @@ export interface SessionUser {
   /** The time zone they read times in, as an IANA name. Absent or null where the browser's own is used. */
   timeZone?: string | null;
   /**
-   * Whether a chat prints what an answer cost beside how long it took. False
-   * until somebody turns it on, on the Preferences page.
+   * Whether a chat prints what an answer cost beside how long it took. True
+   * until somebody turns it off, on the Preferences page.
    */
   chatCostShown?: boolean;
+  /** Whether a chat draws their avatar beside what they said; true until turned off on Preferences. */
+  chatAvatarShown?: boolean;
   /** Whether Preferences offers them access tokens of their own - internal users only. Issue #2. */
   tokensAllowed?: boolean;
 }
