@@ -391,11 +391,27 @@
   background: var(--color-danger-soft);
 }
 
+/*
+ * Capped, and cut short with an ellipsis rather than wrapped. A role comes from
+ * the directory and can be one long word - "Eec_defender365_policies_vip" - and
+ * at its full width it widened the corner until the search box in the middle
+ * was a magnifier and the workspace button sat on top of the sections.
+ */
 .userText {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-2);
+  min-width: 0;
+  max-width: 180px;
+}
+
+.userName,
+.userRole {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userName {

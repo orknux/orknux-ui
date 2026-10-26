@@ -603,7 +603,7 @@ function UserMenu({
 
   const userBlock = (
     <>
-      <span className={styles.userText}>
+      <span className={styles.userText} title={`${user.name}\n${user.role}`}>
         <span className={styles.userName}>{user.name}</span>
         <span className={styles.userRole}>{user.role}</span>
       </span>

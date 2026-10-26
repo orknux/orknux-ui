@@ -765,6 +765,11 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'topbar-long-role-check',
+    what: 'a long role under the account name is cut short, and the quick actions results still open wide enough to read',
+    needs: [],
+  },
+  {
     name: 'docs-search-typing-check',
     what: 'searching the manual on a CPU four times slower: every letter at once, no task over 200 ms while typing, pausing or choosing, and a chosen hit lands on a marked word',
     needs: [],
