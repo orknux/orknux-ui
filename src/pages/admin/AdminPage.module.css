@@ -56,7 +56,7 @@
   /* The page's primary action, filled like every other Create button. It was
      the one left on the neutral surface style. Transparent border rather than
      none, so the metrics stay as they were. */
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 1px solid transparent;
   border-radius: var(--radius-6);
   font-weight: 600;
@@ -313,12 +313,12 @@
 }
 
 .copyBar::-webkit-progress-value {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   transition: width 0.3s ease;
 }
 
 .copyBar::-moz-progress-bar {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
 }
 
 /* Puts the copy's answer away. Top right, out of the lines it closes. */

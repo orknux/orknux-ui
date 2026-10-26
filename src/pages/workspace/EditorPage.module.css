@@ -105,7 +105,7 @@
 
 .primaryButton {
   padding: var(--space-8) var(--space-16);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
 }
 
@@ -501,7 +501,7 @@
 }
 
 .holdsOptionActive {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   font-weight: 600;
   color: var(--color-text-primary);
 }

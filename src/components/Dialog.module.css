@@ -260,7 +260,7 @@
 }
 
 .filled {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   /* A border it does not show, so it stands as tall as the bordered Cancel beside it. */
   border: 1px solid transparent;
 }

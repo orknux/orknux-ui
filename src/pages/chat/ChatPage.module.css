@@ -29,7 +29,7 @@
 .newButton {
   padding: var(--space-4) var(--space-8);
   /* The main accent, as every page's own "+ New" button is (CatalogueTable's createButton). */
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 1px solid transparent;
   border-radius: var(--radius-4);
   font-family: inherit;
@@ -257,7 +257,7 @@
   flex-shrink: 0;
   width: 6px;
   height: 6px;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-radius: var(--radius-full);
 }
 
@@ -736,7 +736,7 @@
 .userBubble {
   max-width: 70%;
   padding: var(--space-12) var(--space-16);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-radius: var(--radius-12) var(--radius-12) var(--space-2) var(--radius-12);
   font-size: var(--text-base);
   line-height: 20px;
@@ -924,7 +924,7 @@
 .readFill {
   display: block;
   height: 100%;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
 }
 
 /* The browser refused both routes to the clipboard; said, rather than a "Copied" that is not true. */
@@ -1498,7 +1498,7 @@ button.attachmentName {
   width: 32px;
   height: 32px;
   padding: 0;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: 50%;
   cursor: pointer;
@@ -1629,7 +1629,7 @@ button.attachmentName {
 .sendButton {
   flex-shrink: 0;
   padding: var(--space-6) var(--space-12);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: var(--radius-4);
   font-family: inherit;
@@ -2025,7 +2025,7 @@ button.attachmentName {
   max-width: 70%;
   /* A step under the person's own messages, as the working around it is: it is said inside a turn, not as one. */
   padding: var(--event-pad-y, var(--space-8)) var(--event-pad-x, var(--space-12));
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-radius: var(--radius-12) var(--radius-12) var(--space-2) var(--radius-12);
   font-size: var(--text-md);
   line-height: 18px;

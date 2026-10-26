@@ -2387,6 +2387,13 @@ export const TESTS = [
     /* A browser context of its own, so nothing chosen is in its storage. */
   },
   {
+    name: 'accent-magic-check',
+    what: 'the Magic accent paints filled surfaces blue into violet, and is kept over a reload',
+    needs: [],
+    /* A browser context of its own. */
+  },
+
+  {
     name: 'diagram-export-scale-check',
     what: "a diagram's PNG from Export is 1×, 2× or 3× its drawn width, 2× by default, and its SVG is vector",
     needs: ['workspace'],

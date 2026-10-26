@@ -22,7 +22,7 @@
 }
 
 .scoreOn {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-color: var(--color-accent-brand);
   color: var(--color-bg);
 }

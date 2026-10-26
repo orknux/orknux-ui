@@ -468,6 +468,22 @@
   --color-accent-brand: #5f4aa0;
   --color-accent-brand-soft: color-mix(in srgb, #5f4aa0 12%, transparent);
 }
+/*
+ * Magic: blue running into violet, more blue than violet. A gradient cannot be
+ * a colour, so the colour - text, borders, what is mixed from it - is the blue
+ * end leaning violet, and the gradient is --accent-brand-fill, which every
+ * filled surface paints with when it is set and the colour when it is not.
+ */
+:root[data-accent='magic'] {
+  --color-accent-brand: #5a74cc;
+  --color-accent-brand-soft: color-mix(in srgb, #5a74cc 15%, transparent);
+  --accent-brand-fill: linear-gradient(135deg, #4f7fc4 0%, #5b76d0 55%, #8069c4 100%);
+}
+:root[data-theme='light'][data-accent='magic'] {
+  --color-accent-brand: #3d58a3;
+  --color-accent-brand-soft: color-mix(in srgb, #3d58a3 12%, transparent);
+  --accent-brand-fill: linear-gradient(135deg, #2f5f9e 0%, #4253a8 55%, #5f4aa0 100%);
+}
 :root[data-accent='rose'] {
   --color-accent-brand: #b85c74;
   --color-accent-brand-soft: color-mix(in srgb, #b85c74 15%, transparent);

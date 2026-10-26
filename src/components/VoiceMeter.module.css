@@ -17,7 +17,7 @@
 .bar {
   width: 3px;
   min-height: 3px;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-radius: 999px;
   /*
    * Short, and only on the way down: a rise is the sound arriving and should be

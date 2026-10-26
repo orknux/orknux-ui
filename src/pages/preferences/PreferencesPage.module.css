@@ -268,13 +268,13 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
 }
 
 /* The size of the other pages' primary buttons - Add Server, Add Connection. */
 .pageSave {
   padding: var(--space-8) var(--space-14);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;
@@ -330,6 +330,8 @@
 :root[data-theme='light'] .swatchColour[data-swatch='teal'] { background: #2a6b67; }
 .swatchColour[data-swatch='violet'] { background: #8069c4; }
 :root[data-theme='light'] .swatchColour[data-swatch='violet'] { background: #5f4aa0; }
+.swatchColour[data-swatch='magic'] { background: linear-gradient(135deg, #4f7fc4 0%, #5b76d0 55%, #8069c4 100%); }
+:root[data-theme='light'] .swatchColour[data-swatch='magic'] { background: linear-gradient(135deg, #2f5f9e 0%, #4253a8 55%, #5f4aa0 100%); }
 .swatchColour[data-swatch='rose'] { background: #b85c74; }
 :root[data-theme='light'] .swatchColour[data-swatch='rose'] { background: #93425a; }
 .swatchColour[data-swatch='amber'] { background: #b07f34; }

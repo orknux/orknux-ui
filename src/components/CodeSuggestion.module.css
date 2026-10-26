@@ -108,7 +108,7 @@
 }
 
 .accept {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 1px solid var(--color-accent-brand);
   /* The same pairing every filled button in the dialogs uses. */
   color: var(--color-text-primary);

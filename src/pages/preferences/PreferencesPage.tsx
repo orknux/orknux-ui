@@ -1870,6 +1870,8 @@ function accentName(accent: Accent): string {
       return t('Teal');
     case 'violet':
       return t('Violet');
+    case 'magic':
+      return t('Magic');
     case 'rose':
       return t('Rose');
     case 'amber':

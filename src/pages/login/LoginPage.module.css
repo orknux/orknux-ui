@@ -344,7 +344,7 @@
   justify-content: center;
   width: 100%;
   padding: var(--space-12) var(--space-16);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-radius: var(--radius-6);
   font-weight: 600;
   font-size: var(--text-base);

@@ -63,7 +63,7 @@
 .handle:hover::before,
 .handle:focus-visible::before,
 .dragging::before {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
 }
 
 .vertical:hover::before,

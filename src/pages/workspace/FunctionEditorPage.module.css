@@ -88,7 +88,7 @@
 }
 
 .saveButton {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   color: var(--color-text-primary);
 }

@@ -10,7 +10,7 @@ const KEY = 'orknux.accent';
  * on every load. The colours themselves are in `tokens.css`, one per theme, so
  * each is chosen to carry on its own background rather than computed.
  */
-export const ACCENTS = ['moss', 'blue', 'teal', 'violet', 'rose', 'amber', 'slate'] as const;
+export const ACCENTS = ['moss', 'blue', 'teal', 'violet', 'magic', 'rose', 'amber', 'slate'] as const;
 
 export type Accent = (typeof ACCENTS)[number];
 

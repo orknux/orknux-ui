@@ -437,7 +437,7 @@
   text-decoration: none;
   white-space: nowrap;
   padding: var(--space-8) var(--space-14);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;
@@ -636,7 +636,7 @@
 }
 
 .pageCurrent {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 1px solid var(--color-accent-brand);
   font-weight: 600;
   color: var(--color-text-primary);

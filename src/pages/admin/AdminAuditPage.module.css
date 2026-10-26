@@ -187,7 +187,7 @@
 .dot {
   width: 8px;
   height: 8px;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border-radius: var(--radius-full);
 }
 

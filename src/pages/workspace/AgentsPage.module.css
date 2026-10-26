@@ -29,7 +29,7 @@
 .createAgent {
   flex-shrink: 0;
   padding: var(--space-8) var(--space-14);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;

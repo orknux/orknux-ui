@@ -219,7 +219,7 @@
 }
 
 .primary {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   color: var(--color-text-primary);
 }
@@ -296,7 +296,7 @@
 .fill {
   height: 100%;
   border-radius: var(--radius-full);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   transition: width 0.4s ease;
 }
 

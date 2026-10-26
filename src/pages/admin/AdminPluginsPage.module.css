@@ -72,7 +72,7 @@
 }
 
 .load {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   color: var(--color-text-primary);
 }
@@ -407,7 +407,7 @@
  */
 .accept {
   padding: var(--space-6) var(--space-10);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;
@@ -435,7 +435,7 @@
 .primaryAction {
   flex-shrink: 0;
   padding: var(--space-10) var(--space-14);
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   border: 0;
   border-radius: var(--radius-6);
   font-family: inherit;
@@ -1063,7 +1063,7 @@
  * somebody checks.
  */
 .updateMark {
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
   color: var(--color-text-primary);
 }
 

@@ -61,7 +61,7 @@
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: var(--color-accent-brand);
+  background: var(--accent-brand-fill, var(--color-accent-brand));
 }
 
 .heardShare {
