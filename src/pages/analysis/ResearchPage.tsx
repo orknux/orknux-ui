@@ -122,7 +122,15 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
             <Link className={`${styles.colQuestion} ${styles.question}`} to={`/workspace/${workspaceId}/explore/research/${one.id}`} title={one.question} data-cell="question">
               {one.question}
             </Link>
-            <span className={`${styles.colMode} ${styles.cell}`} data-cell="mode">
+            <span
+              className={`${styles.colMode} ${styles.cell}`}
+              data-cell="mode"
+              // The whole of it on hover, and only where it was cut short.
+              onMouseEnter={(event) => {
+                const cell = event.currentTarget;
+                cell.title = cell.scrollWidth > cell.clientWidth ? (cell.textContent ?? '').replace(/(\S)(Reviewed)$/, '$1 · $2') : '';
+              }}
+            >
               {seededLabel(one.modeName)}
               {one.review && <span className={styles.reviewed} data-reviewed>{t('Reviewed')}</span>}
             </span>

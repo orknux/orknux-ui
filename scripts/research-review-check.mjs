@@ -61,6 +61,12 @@ await page.locator('[data-research="434343"]').waitFor({ timeout: 20_000 }).catc
 // --- the list ----------------------------------------------------------------------
 const marked = ((await page.locator('[data-research="434343"] [data-reviewed]').textContent().catch(() => '')) ?? '').trim();
 record(marked === 'Reviewed', `a reviewed research says so on the list (${marked})`);
+// Whole, not cut to "Review…" by a narrow Mode column: the badge ends inside its cell.
+const fits = await page.locator('[data-research="434343"] [data-cell="mode"]').evaluate((cell) => {
+  const badge = cell.querySelector('[data-reviewed]');
+  return badge !== null && badge.getBoundingClientRect().right <= cell.getBoundingClientRect().right + 0.5 && cell.scrollWidth <= cell.clientWidth;
+}).catch(() => false);
+record(fits, 'and the badge is shown whole beside the mode');
 
 // --- the form ----------------------------------------------------------------------
 await page.getByRole('button', { name: 'New research' }).click();

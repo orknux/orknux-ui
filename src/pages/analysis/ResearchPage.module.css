@@ -39,7 +39,8 @@
 
 .colMode {
   flex-shrink: 0;
-  width: 110px;
+  /* Room for a mode's name and the Reviewed badge beside it; 110px cut the badge to "Review…". */
+  width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
