@@ -93,15 +93,155 @@ the agent keeps, and what the chat has cost. See *Sessions* under AI. A chat's
 agent has the same session tools as a workflow step or a task - notes to self,
 the to-do list, the clock, scratchpads, reminders and watchers.
 
-With **Answer Cost** on in your Preferences, the chat also keeps a running
-total of what it has read and written, and says how much of it the provider
-reused from its cache where the provider reports that. Every round sends the
-whole conversation again, so without the second number a long chat on a local
-server reads as millions of tokens it mostly never read twice.
+**Progress messages for one message.** How much an agent says while it works
+is its own setting, **Progress messages**, on its page. A message can ask for
+another level for its own turn only: `!progress-none`, `!progress-low`,
+`!progress-medium` or `!progress-high` anywhere in it - with the workspace's own
+command marker, `!` unless the workspace chose another. The chat's command menu,
+opened by typing the marker, offers the four first, and Tab completes one. The
+next message goes back to the agent's own level. **None** is held to by the
+server, not only asked for: what the agent writes beside its calls is kept in the
+session and not drawn in the chat. The same words work in a Slack message to a
+workflow's agent node. They are never looked up as skills.
 
-A chat whose model gives no usable title is named from its first words, and says
-for a moment that the model could not name it. Chat rows in the sidebar carry no
-icon, and a chat nothing was said in sorts by when it was made.
+## Default, Plan and Auto
+
+![A chat in plan mode: the agent has looked and put its plan to you, with
+Approve, Keep planning and Reject under it](/screens/chat-plan.png)
+
+The switch beside the reasoning-effort button, before the microphone, sets how
+this chat's agent works. It is per chat, and each row says what it means when
+you point at it:
+
+| Mode | What the agent may do |
+| --- | --- |
+| **Default** | Asks you where a tool needs your leave - exposing a port of a box, for one - and otherwise works as it always has. |
+| **Plan** | Only looks, then asks you to approve a plan. It is offered only the tools that change nothing - as each tool's own declaration says, an MCP server's read-only hint included - and anything else it calls is refused with a sentence saying nothing ran. When it knows what it would do, it puts the plan in the chat: what it found, then the steps, each saying what it will change. |
+| **Auto** | Goes ahead without waiting for you to allow a step: a call that would ask for your leave runs. It is given nothing it was not granted - Auto lifts the asking, not the limits. |
+
+A plan arrives with three answers under it, and **Or answer in your own words**
+beneath them. **Approve** returns the chat to Default and hands the plan back to
+the agent to carry out, step by step. **Keep planning** leaves it in plan mode
+and tells it to look further and present the plan again. **Reject** leaves it in
+plan mode too, and tells it not to carry out any of it but to ask what you want
+instead. What you type in the box goes with your answer.
+
+## Times, dates, cost and you
+
+**Each message carries when it was sent**, the date included even for today's,
+so a chat read the next morning says which day each line belongs to. That is
+the workspace's **Show when each message was sent**, under Chat in its settings,
+on unless a workspace turned it off. Each tool call in a turn carries the time
+it was made, to the second, whatever the setting.
+
+**What each answer cost** is shown under it - the turn's tokens and, where the
+model's page has its prices, their price - and the chat keeps a running total
+in the corner of the composer. It is the whole turn, not the last call in it: an
+agent that looked something up before answering paid for two rounds. It says
+how much of what was read the provider served from its cache where the provider
+reports that, because every round sends the whole conversation again, and
+without that number a long chat on a local server reads as millions of tokens it
+mostly never read twice. Nothing is shown where the provider reported no counts.
+It is on for everybody until they turn it off under **Preferences → Answer
+Cost**.
+
+**Your avatar** - your initials - is drawn at the top of each of your messages,
+on its left, as the agent's is beside its answers. **Preferences → Avatar in
+Chat** turns it off.
+
+## While you type
+
+![The composer suggesting how the sentence goes on, in grey after what was
+typed](/screens/chat-completion.png)
+
+A workspace that chooses a **Completion Model** in its settings gets two things
+in the chat. With none chosen, the composer is as it always was.
+
+**How the sentence goes on.** A short pause after you stop typing, the composer
+suggests the rest of the sentence in grey after the caret. **Tab** takes it;
+typing on, or **Escape**, puts it away. The model is shown the chat's latest
+messages as well as what you are typing, so a suggestion reads as a reply to
+what is on screen. How many messages it is shown, how long a suggestion may
+be, its time limit and the pause before asking are under Admin → Settings.
+
+**Suggested replies.** Under the latest answer, once it is finished and nothing
+is typed, a few short replies you might send next are offered as chips - three
+by default. A click sends one as your message, and they go as soon as anything
+is sent. They are written once per answer and kept, so reopening the chat does
+not ask again. How many (0 for none), how long and how long they may take are
+under Admin → Settings → **Suggested Replies**.
+
+![Replies offered under the latest answer](/screens/chat-suggested-replies.png)
+
+## What an answer can hold
+
+An answer is Markdown, drawn as such, and a good deal more than text:
+
+![An answer with a formula, a shell block with Copy and Run, and a
+table](/screens/chat-rich.png)
+
+- **Maths.** `$x$`, `$$x$$`, `\(x\)` and `\[x\]` are set as formulas, in a chat
+  and wherever else the product draws Markdown - task outcomes, issues. A price
+  like "$5 and $10", and anything inside code, stays as written.
+- **Code** in a fenced block has a bar with its language and **Copy**, which
+  takes exactly the block's text.
+- **Run on shell blocks.** Beside Copy, an administrator can run a block tagged
+  as a shell on the machine the server is on, read what it printed and its exit
+  code under the block, and **Stop** it. Only the shells that machine has are
+  offered: `powershell` and `cmd` on Windows, `sh` and `bash` on Linux. An
+  untagged block never has Run - as often as not it is what a command printed. **Run as
+  administrator** asks the operating system - UAC on Windows, pkexec on Linux -
+  never Orknux. Admin → Settings → **Run commands from the chat** switches it:
+  off for a server, on in the desktop app, until somebody changes it. Every run
+  is audited; its time limit and how much output is kept are under Limits.
+- **Sound.** An mp3, flac, wav, ogg or m4a under a message plays in the
+  browser's own player, with a download beside it. A MIDI file has **Play**,
+  which renders it on the server the first time and plays it after. An agent
+  that made a sound attaches it to its answer; in a voice conversation, and only
+  there, it can play it to you before the answer is read.
+- **Video.** A video under a message plays there.
+- **Pictures, drawings, wireframes and diagrams** an agent draws for you appear
+  above its answer as they are drawn, with a link to open a wireframe or a
+  diagram in its editor. A picture an agent draws only to look at itself is not
+  put in the chat.
+- **Links to what a tool call named.** A tool call that started a run, filed an
+  issue, or named a research, a task, a document or any other item with a page
+  links to it from its own line, folded or not - *Issue #12: Nightly billing
+  export failed three nights running*. The link is there while the turn is
+  going and after a reload.
+- **Thinking**, where the model thinks, is a folded red card where it happened:
+  before the answer, or between two tool calls.
+
+![An agent that filed an issue: the call's line links to the issue it
+filed](/screens/chat-item-link.png)
+
+## When the agent asks you
+
+Some things an agent cannot do without you, and it asks in the chat rather than
+guessing. The question sits at the bottom of the chat until you answer it, then
+moves to where it was asked.
+
+- **A question with options** - one row per answer with a line on what each
+  means, several to tick where the agent allows it, and a box for your own
+  words. Agents use it for any question whose answers they can list.
+- **Tools it lacks.** Rather than saying it cannot do something, an agent can
+  list the tools it could be given - built-ins switched off for it, the
+  workspace's and plugins' tools, MCP servers, Orknux access - and ask for the
+  ones it needs, each named with what it does, with **Accept** and **Refuse**.
+  Accepted tools are the agent's for good, recorded as a change to the agent.
+- **A box, or a connection** of the workspace's to use, accepted or declined
+  the same way.
+- **Leave for a step**, such as exposing a box port - unless the chat is in
+  **Auto**.
+
+## Reviews
+
+A conversation can be reviewed: a score from 1 to 5 and a few words. **Send a
+review** in the chat's **+** menu writes one; telling the agent what you thought
+works too - it sends the review itself. A review is drawn in the chat where it
+was sent, and Admin → Reports → Ratings lists every one. A review taken back
+stays in the chat marked *taken back*, with a line where it was taken back, and
+no longer counts in the reports.
 
 ## Timers above the message box
 
@@ -121,8 +261,9 @@ one over.
 
 ## Attachments
 
-The **+** to the left of the composer attaches files — several at once — and a
-picture pasted into the composer is attached the same way. A message may carry
+The **+** to the left of the composer attaches files — several at once — a
+picture pasted into the composer is attached the same way, and files dropped
+anywhere on the chat are attached as the button attaches them. A message may carry
 only an attachment, with nothing typed. Files are stored on the server, in a
 directory of their own per workspace, and are shown **under the message they
 came with**: yours, or the answer of the turn that drew or filed them. A chat's files are as private as
@@ -133,6 +274,17 @@ files are different, and deliberately so - those belong to the people working
 the issue, which is the whole workspace. Images are previewed in the chat
 and are sent to the model as images, so a model that can see will describe what
 is in the picture.
+
+**Every file reaches the agent.** A PDF, a log, a spreadsheet or any other file
+attached to a message is kept where the agent's tools can read it - at any size
+the upload limit takes - and the agent is told how. An SVG is shown to the model
+drawn, since no provider reads one as a picture. A sound or a video is sent to
+the model itself only where the model's page has **Takes audio** or **Takes
+video** on, and only with the turn it came with; a model without it, or a file
+over Admin → Settings' limit for sound or video (20 MB each), is refused in a
+sentence before the model is asked. A MIDI file is read rather than heard - its
+tracks, tempo and every note - since no model hears MIDI. How large any file may
+be is Admin → Settings → **Largest file**.
 
 Attachments can be switched off for the whole installation. When they are off,
 the button is not offered.
@@ -234,6 +386,18 @@ Voice is offered only where the workspace has both a transcription model and a
 speech model. A turn that fails — nothing transcribed, a provider that will not
 answer — says so and goes back to listening rather than ending the conversation.
 
+**How fast it reads.** **Reading speed**, beside **Mute** on the panel, sets how
+fast the answer is read, from 0.75× to 2×; **Default speed** is the
+installation's own pace. The choice is kept in your browser, and it applies to
+the speaker under an answer as well. A local speech server that ignores the
+speed reads at its own pace.
+
+Voice is always on the chat bar. Where the workspace has no speech or
+transcription model it is drawn off rather than hidden, and pointing at it says
+which model is missing and links to where it is chosen. A workspace that does
+not want it at all ticks **Hide the voice mode button** in its settings' Voice
+card.
+
 ## Listening instead of reading
 
 The speaker under an answer reads it aloud, using the workspace's text-to-speech
@@ -309,6 +473,30 @@ the panel is closed.
 
 Which model answers is also set per workspace, and the button appears only once
 one has been chosen.
+
+## The conversation list
+
+![The chats held, newest first, with how many answers are waiting in
+each](/screens/chat-list.png)
+
+The column on the left holds the workspace's chats. **Beside a chat's name is
+how many answers arrived since you last had it open** - a pill and a bold name,
+so news stands out in a long list - and opening the chat clears it. An answer
+that finishes in a chat you left counts at once; one that lands in the chat you
+have open while the window is in the background waits for you to come back.
+
+A new chat is named once at its start, by the workspace's naming model, and
+again every few exchanges as the conversation moves on - how many is an Admin
+setting. While it is being named it says *Naming this chat…* in its title, with
+a spinner beside it in the list. A model that does not answer within Admin
+Settings' **Chat Title Time Limit** (30 seconds), or answers with nothing
+usable, is passed over for the chat's own model, and a chat no model could name
+is named from its first words. A chat nothing was said in sorts by when it was
+made.
+
+**Chat opens a new chat by itself** where the workspace has none yet, and the
+list can be dragged wider by its edge - the width is remembered, and a
+double-click puts it back.
 
 ## Finding a conversation
 
