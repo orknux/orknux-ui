@@ -354,7 +354,7 @@ What this installation allows, for every workspace in it.
   away and refuses new messages; conversations already had are kept. A
   workspace's own Chat settings go with it — the companion model, the
   speech-to-text and the text-to-speech models are a chat's and nothing else's.
-  The Quick Chat model stays: the AI button is a separate thing under the same
+  The Quick Chat model stays: the Ask AI button is a separate thing under the same
   word, and what turns that off is choosing None for its model.
 - **Files in chats** — whether messages may carry attachments. Off takes the
   button away; what has already been uploaded stays where it is. It governs the

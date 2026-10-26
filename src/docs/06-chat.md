@@ -440,12 +440,12 @@ attachments, so there is nothing a viewer could show.
 ![The snowy pine forest from that chat, opened over the
 conversation](/screens/picture-viewer.png)
 
-## The AI button
+## The Ask AI button
 
 ![The quick chat, open over a page and answering about what is on it](/screens/quick-chat.png)
 
-The **quick chat** — the button says AI, workspace settings calls it the Quick
-Chat Model, and it is the same thing. It is not the chat this chapter is
+The **quick chat** — the button says **Ask AI**, workspace settings calls it the
+Quick Chat Model, and it is the same thing. It is not the chat this chapter is
 otherwise about: an installation with chat switched off still has it, and what
 takes it away is choosing None for its model.
 

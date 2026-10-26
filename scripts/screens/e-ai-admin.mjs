@@ -180,7 +180,8 @@ export async function shots(ctx) {
       name: 'artifact-saved',
       path: `/workspace/${ws}/artifacts/${report.id}`,
       prepare: async (page) => {
-        await page.waitForSelector('dialog[open] [data-reading-replace]', { timeout: 15_000 });
+        // The reader over the page, not a dialog: a picture opens in a dialog, a document in this.
+        await page.waitForSelector('[data-reading-replace]', { timeout: 15_000 });
         await page.waitForTimeout(1500);
       },
     },

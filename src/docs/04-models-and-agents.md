@@ -1305,7 +1305,7 @@ uses: a page there runs no script and keeps no cookie.
 
 An agent's settings carry one switch that is not an MCP server: **Orknux**. It
 lets the agent ask this installation about itself — its workspace's workflows,
-runs and agents — and, unlike the AI button, to start a workflow, which really
+runs and agents — and, unlike the Ask AI button as it is set by default, to start a workflow, which really
 runs it.
 
 It is deliberately not listed among the workspace's MCP servers. Those are
