@@ -36,6 +36,9 @@ export type LinkEdge = Edge<LinkData, 'link'>;
  * and a row of deep ones - text on any of them is drawn light or dark to suit,
  * here and in the exports. Any other colour comes from the picker after them.
  */
+/** How many colours make a row of [SWATCHES]: the first row is all that is shown until more are asked for. */
+export const SWATCH_ROW = 9;
+
 export const SWATCHES = [
   '#e4e4e7', '#bfdbfe', '#bbf7d0', '#fef08a', '#fed7aa', '#fecaca', '#e9d5ff', '#fbcfe8', '#a5f3fc',
   '#a1a1aa', '#60a5fa', '#4ade80', '#facc15', '#fb923c', '#f87171', '#a78bfa', '#f472b6', '#22d3ee',

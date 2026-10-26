@@ -87,7 +87,7 @@ import { DesignChat, useChatFiles, useChatModels } from '../design/DesignChat';
 import type { ChatIdea } from '../design/DesignChat';
 import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
-import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCHES } from './DiagramCanvas';
+import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCH_ROW, SWATCHES } from './DiagramCanvas';
 import type { LinkEdge, ShapeNode } from './DiagramCanvas';
 import { EndIcon, LineIcon, MarkerDefs, endStyleLabel, lineStyleLabel, markerId, nearestKind, styleOf } from './DiagramLineStyles';
 import { ShapeIcon } from './DiagramShapes';
@@ -305,6 +305,9 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const [pngScale, setPngScale] = useState<DiagramPngScale>(2);
   /** Whether the Diagram section is folded away, remembered for the person: open unless they folded it. */
   const [diagramFold, setDiagramFold] = useSieve('diagram.editor.diagram-section');
+  // The pale row only, until somebody asks for the stronger and deeper ones; remembered.
+  const [coloursFold, setColoursFold] = useSieve('diagram.editor.colours');
+  const coloursOpen = coloursFold === 'open';
   const diagramOpen = diagramFold !== 'closed';
   /** The label being typed over in place, on the canvas. */
   const [labelling, setLabelling] = useState<{ kind: 'node' | 'edge'; id: string } | null>(null);
@@ -1374,12 +1377,13 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                     title={t('No colour')}
                     data-testid="diagram-node-colour-none"
                   />
-                  {SWATCHES.map((colour) => (
+                  {(coloursOpen || (oneNode.color !== undefined && SWATCHES.slice(SWATCH_ROW).includes(oneNode.color)) ? SWATCHES : SWATCHES.slice(0, SWATCH_ROW)).map((colour, at) => (
                     <button
                       key={colour}
                       type="button"
                       className={`${styles.swatch} ${oneNode.color === colour ? styles.swatchOn : ''}`}
-                      style={{ background: colour }}
+                      // Rows after the first stand under it, past the No colour mark; the picker and the toggle end the first.
+                      style={{ background: colour, ...(at >= SWATCH_ROW && at % SWATCH_ROW === 0 ? { gridColumnStart: 2 } : {}), ...(at >= SWATCH_ROW ? { gridRow: Math.floor(at / SWATCH_ROW) + 1 } : {}) }}
                       onClick={() => change({ ...drawing, nodes: drawing.nodes.map((node) => (node.id === oneNode.id ? { ...node, color: colour } : node)) })}
                       aria-label={colour}
                       title={colour}
@@ -1408,6 +1412,17 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                       data-testid="diagram-node-colour-custom"
                     />
                   </label>
+                  <button
+                    type="button"
+                    className={`${styles.swatchMore} ${coloursOpen ? styles.swatchMoreOpen : ''}`}
+                    onClick={() => setColoursFold(coloursOpen ? '' : 'open')}
+                    aria-expanded={coloursOpen}
+                    aria-label={coloursOpen ? t('Fewer colours') : t('More colours')}
+                    title={coloursOpen ? t('Fewer colours') : t('More colours')}
+                    data-testid="diagram-node-colour-more"
+                  >
+                    <img src={chevronIcon} alt="" width={12} height={12} />
+                  </button>
                 </div>
               </div>
               <label className={styles.field}>

@@ -4033,4 +4033,6 @@ export const PL: Record<string, string> = {
   "The Reviewer reads the draft and the Writer revises it before the report is finished.": "Recenzent czyta szkic, a Autor poprawia go, zanim raport zostanie ukończony.",
   "Include keeps the search to these sites; Exclude never uses them. Either takes a domain or an address.": "Uwzględnij ogranicza wyszukiwanie do tych stron; Pomiń nigdy ich nie używa. Oba przyjmują domenę lub adres.",
   "The workspace's documents, or files uploaded here, read as sources alongside what the search finds.": "Dokumenty obszaru roboczego lub pliki przesłane tutaj, czytane jako źródła obok tego, co znajdzie wyszukiwanie.",
+  "More colours": "Więcej kolorów",
+  "Fewer colours": "Mniej kolorów",
 };

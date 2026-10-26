@@ -519,8 +519,8 @@
 }
 
 .swatches {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(12, 20px);
   gap: var(--space-6);
 }
 
@@ -537,10 +537,6 @@
   background: linear-gradient(135deg, transparent 45%, var(--color-danger) 45%, var(--color-danger) 55%, transparent 55%), var(--diagram-paper);
 }
 
-.swatches {
-  max-width: calc(9 * 20px + 8 * var(--space-6));
-}
-
 /* The picker's mark until a colour of its own is chosen: every colour, round. */
 .swatchCustom {
   position: relative;
@@ -555,6 +551,27 @@
   height: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+.swatchMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.swatchMore:hover {
+  opacity: 1;
+}
+
+.swatchMoreOpen img {
+  transform: rotate(180deg);
 }
 
 .swatchOn {

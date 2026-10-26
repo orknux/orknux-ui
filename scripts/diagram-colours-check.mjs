@@ -15,8 +15,24 @@ await node.waitFor({ timeout: 20_000 });
 await node.click();
 await page.getByTestId('diagram-node-colour').first().waitFor({ timeout: 10_000 });
 
+// One row to begin with, on one line with No colour, the picker and the toggle; the rest on asking.
+await page.evaluate(() => localStorage.removeItem('orknux.sieve.diagram.editor.colours'));
+const row = await page.evaluate(() => {
+  const tops = [...document.querySelectorAll('[data-testid="diagram-node-colour"], [data-testid="diagram-node-colour-none"], [data-testid="diagram-node-colour-more"]')]
+    .map((one) => Math.round(one.getBoundingClientRect().top));
+  return { count: document.querySelectorAll('[data-testid="diagram-node-colour"]').length, lines: new Set(tops).size };
+});
+const first = row.count;
+if (first !== 9) {
+  // A remembered open state from an earlier run: close it, then look again.
+  await page.getByTestId('diagram-node-colour-more').click();
+}
+const shut = await page.getByTestId('diagram-node-colour').count();
+record(shut === 9, `one row of colours is shown at first (${shut}, lines ${row.lines})`);
+await page.getByTestId('diagram-node-colour-more').click();
+await page.waitForTimeout(200);
 const offered = await page.getByTestId('diagram-node-colour').count();
-record(offered >= 27, `three rows of colours are offered (${offered})`);
+record(offered >= 27, `asking shows all three rows (${offered})`);
 const picker = page.getByTestId('diagram-node-colour-custom');
 record((await picker.count()) === 1, 'and a picker for any other');
 
