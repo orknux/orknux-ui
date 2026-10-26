@@ -103,11 +103,14 @@ Down the right are the things somebody wants at a glance.
 - **Status** is one button that cycles Open, In progress, Closed. There is also
   a **Close issue** button beside the comment box, where the decision usually
   gets made.
-- **Assignee** is one box over three kinds of thing: a **person**, one of the
-  workspace's **agents**, or one of its **models**. Work handed to an agent is
-  still work somebody can see the state of, which is the whole reason the same
-  box takes all three. Type to search it, and **No one** is both where it starts
-  and a valid answer.
+- **Assignee** is one box over two kinds of thing: a **person**, or one of the
+  workspace's **agents**. Work handed to an agent is still work somebody can see
+  the state of, which is the whole reason the same box takes both. Type to
+  search it, and **No one** is both where it starts and a valid answer. Models
+  were offered here too, and are no longer: a model has no instructions and no
+  tools of its own to do the work with, so an issue handed to one went nowhere.
+  An issue assigned to a model before that keeps its assignee until somebody
+  changes it.
 - **Type** is what the issue *is*: a bug, a feature, or whatever else this
   workspace files. One of them or none - **Untyped** is a real answer and where
   a new issue starts, because an issue nobody has classified should not be
@@ -213,9 +216,8 @@ on. That is deliberately not the rule that governs comments and files, where
 only the person who put a thing there may remove it: those are a record of what
 somebody said, and this is a subscription to news.
 
-A person or an agent can observe; a **model cannot**. The assignee box takes all
-three because work can be handed to any of them, but observing is a statement
-about who reads, and a model has nowhere to read its news.
+A person or an agent can observe; a **model cannot**, since observing is a
+statement about who reads and a model has nowhere to read its news.
 
 ## Moving it elsewhere
 
@@ -421,7 +423,9 @@ the empty room above: a report nobody was told about is a report nobody read.
 
 ## Handing it to an agent
 
-An issue assigned to an **agent** offers **Start by AI**. It hands that agent the
+An issue assigned to an **agent** offers **Start by AI**, and only such an
+issue: the button follows the assignee box, so assigning an agent is what
+brings it and choosing a person takes it away. It hands that agent the
 whole issue — the title, the kind, the labels, the description and the thread —
 moves the issue to In progress, and says so in the thread under the agent's own
 name, with a link to the task so you can watch it work. See *Tasks* under Models

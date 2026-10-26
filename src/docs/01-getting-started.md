@@ -107,20 +107,29 @@ It is a strange answer the first time you meet it, and it is the right one - the
 alternative tells anybody with an account roughly how much this installation
 holds and what of, one number at a time.
 
+## The top bar
+
 The top bar carries the whole of it. On the left, beside the mark, are the
-parts of the product you work inside. Each one opens a menu of its own down the
+six parts of the product you work inside, in the alphabet's order so a part
+added later has one obvious place. Each one opens a menu of its own down the
 left-hand side:
 
-- **AI** — what a model is given to work with: agents, models, tools, skills,
-  memory and the sessions its agents have kept.
-- **Explore** — questions researched by the workspace's own workflows: Research
-  lists what has been researched and starts more.
-- **Workflow** — the work itself and what it is made of: executions, workflows,
-  actions, functions, triggers, conditions and objects.
-- **Workspace** — what the whole of it is set up with: variables, plugins,
-  issues, the audit log, integrations and settings.
+- **AI** — what a model is given to work with: agents, models, tools, skills
+  and memory; the tasks they are set and the sessions they keep; their watchers
+  and schedules. See Models and agents.
 - **Chat** — talking to a model, with your workspace's agents and tools within
-  reach. Can be switched off for an installation.
+  reach. Can be switched off for an installation. See Chat.
+- **Design** — what you make with a model's help rather than run: **Images**
+  and the image editor, **Videos**, **Documents** and **Wireframes**. Each has
+  a chapter of its own.
+- **Explore** — working out what something is: **Diagrams**, drawn by you or
+  by an agent, and **Research**, a question answered from the web and the
+  workspace's documents. Each has a chapter of its own.
+- **Flow** — the work itself and what it is made of: workflows and their runs
+  (**Executions**), actions, functions, triggers, conditions and objects. It
+  was called Workflow; the pages kept their addresses.
+- **Workspace** — what the whole of it is set up with: variables, plugins,
+  issues, artifacts, the audit log, integrations and settings.
 
 A page belongs to exactly one of them, so opening a link somebody sent you
 lights the part it lives in and puts that menu beside it. Nothing changed
@@ -130,6 +139,10 @@ same page.
 On the right, in front of your account: the **workspace picker**, then **Docs**,
 then **Admin** - the organisation, its workspaces, its connections and what this
 installation allows, offered only to administrators - and the notification bell.
+Your account is shown by your display name where the installation has one - the
+name your directory or single sign-on gives you - and by your username where it
+has none, with the role you hold underneath it. Both are cut short with an
+ellipsis when they are long, and hovering shows them whole.
 
 The picker is there on every screen, including the docs and the admin section,
 which are exactly the places somebody wants to get back to a workspace from.
@@ -149,8 +162,8 @@ turns up, whichever workspace it happened in.
 
 ## Finding things
 
-![Quick actions, open on a word: a page, something to start, a tool and four
-issues, in one list](/screens/command-palette.png)
+![Quick actions, open on "refund": a workflow, a document with the words
+around the match, and a diagram's node, in one list](/screens/command-palette.png)
 
 The box in the middle of the top bar is **Quick actions**. Open it with your
 Quick Actions shortcut — `Ctrl`+`Q` unless you have changed it in Preferences —
@@ -161,6 +174,20 @@ what the workspace *holds*: a trigger, a function, an agent, a variable and the
 catalog it is in are all reachable by name, and so is an open issue, by its
 title or by its number. Each row says what kind of thing it is, so two things
 with similar names can be told apart before you press Enter.
+
+It reads inside two kinds of thing as well as their names:
+
+- **Documents** are found by their name and by any word in them. The row says
+  *Document in* and the catalog it is filed in, and underneath it the words
+  around the match, so a sentence half-remembered is enough to get back to the
+  page it is on.
+- **Diagrams** are found by their name, and so is any **node** in one, by its
+  label. Choosing a node opens the diagram's editor on that node, selected,
+  rather than on the whole drawing.
+
+Those two are asked for a moment after the rest of the list - they are read
+from what the documents and diagrams say, not from a list of names - so a row
+for one can arrive just after you stop typing.
 
 And it holds a few things to *start* — **Create issue**, **Create function**,
 **Create condition** — each marked with a plus, and each offered before you type
@@ -176,7 +203,7 @@ something deleted is not listed at all.
 
 ## Your first workflow
 
-1. Open **Workflows** in a workspace and create one.
+1. Open **Flow** → **Workflows** in a workspace and create one.
 2. Give it a **trigger** — what starts it. A schedule, a message on a
    connection, or a webhook.
 3. Add nodes to the canvas and join them: **actions** do things, **conditions**
@@ -185,17 +212,53 @@ something deleted is not listed at all.
 4. Watch the **Things to fix** panel. It refreshes as you edit and lists what is
    still missing — an unset parameter, a node with nothing feeding it.
 5. **Publish** it. Publishing takes a copy of the graph, and that copy is what a
-   trigger runs; a workflow nobody has published has nothing to run.
+   trigger runs; a workflow nobody has published has nothing to run. There is no
+   Save to press first: the editor saves the graph as you draw it.
 6. Enable the workflow. Every run then shows up under **Executions**, with the
    graph, the steps, and what each one passed on.
 
 ## Your own preferences
 
-![Preferences: what belongs to you rather than to any workspace](/screens/preferences.png)
+![Preferences, at its Chat and Appearance sections: Answer Cost and Avatar in Chat, the theme, the accent colours and the drag effect](/screens/preferences.png)
 
-Preferences belong to the person signed in rather than to any workspace —
-the theme and the **language** among them — so they follow you into every
-workspace you can see. The interface is in English and in Polish; what the
+**Preferences**, from your name in the corner, belong to the person signed in
+rather than to any workspace — the theme and the **language** among them — so
+they follow you into every workspace you can see. The page is in sections:
+**Profile**, **Access Tokens**, **Notifications**, **Chat** and **Appearance**,
+then the keystrokes.
+
+**Chat** holds two switches about what your own chats draw:
+
+- **Answer Cost** puts what an answer cost beside how long it took - the whole
+  turn, every round an agent went through, not only its last call. It is **on**
+  unless you turn it off; it used to start off, and an upgrade switched it on
+  for everybody, so somebody who prefers it off sets it here once.
+- **Avatar in Chat** draws your initials beside each message of yours, at the
+  top of the bubble, as the agent's mark is drawn beside its answers. On unless
+  you turn it off.
+
+Both are kept with your account rather than in the browser, so they follow you
+to another machine.
+
+**Appearance** is how the interface is drawn and read:
+
+- **Language** and **Time Zone**, below.
+- **Interface Theme** — **Dark Mode** or **Light Mode**.
+- **Accent Colour** — the colour of primary buttons, your own messages and what
+  is selected: **Moss** (the brand's), **Blue**, **Teal**, **Violet**,
+  **Magic**, **Rose**, **Amber** and **Slate**. **Blue** is what somebody who
+  has never chosen sees. **Magic** is blue running into violet, more blue than
+  violet: filled surfaces are painted with the gradient, while text and borders
+  in the accent take a single blue-violet, because a gradient cannot be the
+  colour of a word. The accent is kept in your browser rather than with your
+  account, because it is applied before the page first paints and a colour
+  fetched afterwards would flash the old one on every load.
+- **Node Drag Effect** — how a node moves when you drag it on a canvas:
+  **Jelly**, **Jelly and slide**, or **Off** for none.
+
+The interface is in English and in Polish; what the
+server refuses is said in the same language, because a form that asks in one
+and refuses in another is worse than one that asks in English throughout. The interface is in English and in Polish; what the
 server refuses is said in the same language, because a form that asks in one
 and refuses in another is worse than one that asks in English throughout.
 
@@ -204,8 +267,8 @@ in: the runs, the session lines, the hover on a watcher's next check. It is kept
 with your account, so it follows you to another machine; left unset, your
 browser's own zone is used.
 
-**A change here is held until you press Save**, beside the title, which counts
-what is waiting. Each one used to take effect the moment it was made - a
+**A change here is held until you press Save**, in the bar along the foot of the
+page, which counts what is waiting; **Discard** beside it puts everything back. Each one used to take effect the moment it was made - a
 shortcut recorded, a theme pressed, a language chosen - with nothing to press
 and nothing to say whether it had taken, which is not how any other settings
 page here reads.
@@ -220,9 +283,27 @@ Every keystroke this application listens for is set here too: **Quick
 Actions**, **Recently Opened**, **Save**, **Format**, **Turn Node**, **Add
 Node**, **Undo**, **Redo**, **Duplicate Node**, **Publish** and **Voice Mute**,
 which mutes your microphone in voice mode and is `Alt`+`M` unless you choose
-another. Each is changed by
+another; the workflow canvas's **Cut Nodes**, **Copy Nodes**, **Paste Nodes**,
+**Rectangle Select** and **Joint Tool**; the image editor's tools; and **Find**,
+**Zoom In**, **Zoom Out**, **Arrange**, **Next Tab** and **Previous Tab**. Each
+is changed by
 pressing the keys you want rather than by picking from a list, because which
 keys are free depends on your browser and your machine and not on this
 application. All of them but Turn Node and Add Node have to carry a modifier: a
 bare letter would fire while somebody was typing, and those two are only ever
 heard on the canvas, which is not a text field.
+
+## What is where
+
+The rest of these pages, by the part of the top bar they are about:
+
+| Part | Chapters |
+| --- | --- |
+| Flow | Workflows, Triggers |
+| AI | Models and agents |
+| Chat | Chat |
+| Design | Images, Videos, Documents, Wireframes |
+| Explore | Diagrams, Research |
+| Workspace | Variables, Issues |
+| Admin | Administration, Reports |
+| Elsewhere | Orknux on the desktop, the command line |

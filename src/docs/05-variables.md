@@ -16,6 +16,19 @@ Every variable is one or the other, and they are listed separately.
   hidden field cannot be edited until it is revealed, so nobody overwrites what
   they cannot read.
 
+### Who may read a secret back
+
+Revealing a secret is reading it, and **reading a secret back takes a role**.
+Installation administrators and the workspace's administrators may; anybody
+else needs a role with the **Reads secrets** scope, assigned to that workspace,
+which an administrator gives under Admin → Roles. Without it the secret can
+still be *used* - chosen as a credential, handed to a function - but not
+shown. Every reveal is recorded in the workspace's
+audit log, saying who asked and which secret.
+
+When this rule arrived it narrowed who could reveal: somebody who did so before
+without being an administrator needs that scope given to them.
+
 Secrets are encrypted where they are stored. What is written down is
 `orkx1:iv:ct` — a version, a nonce, and AES-256-GCM ciphertext — so a database
 dump carries no keys.
@@ -33,6 +46,24 @@ a shape belongs in an object, where it can be validated.
 Variables are grouped into **catalogs**, the way skills are. A name must be
 unique within its catalog, not across the workspace, so two catalogs may each
 have a `base-url` and mean different things by it.
+
+### Moving a variable to another catalog
+
+![A variable's Move to, open on its row: the workspace's other catalogs to put it
+in](/screens/variables-move.png)
+
+The **move** button on a variable's row opens **Move to**, a list of the
+workspace's other catalogs; choose one and the variable is in it. The arrow keys,
+**Home** and **End** work the list, and **Enter** takes the one under focus. The
+button is not drawn where there is only one catalog, since there is nowhere to
+move to.
+
+Moving changes nothing that uses the variable. A function's external parameter,
+a node's reference and a credential field all hold the variable by identity
+rather than by its catalog and name, so they read it in its new catalog as they
+did in its old one. A name already taken in the catalog it is moving to is
+refused, and the list says so. Secrets, skills and memories move between their
+catalogs the same way, from their own rows.
 
 The catalogs column can be folded away when it is not what you are working on.
 
@@ -74,6 +105,10 @@ The choice belongs to each field separately. A Slack connection's bot token can
 be a reference while its app-level token stays its own, which is a thing a
 single switch above the card could not say.
 
+A reference can be **cleared** from the same place, which turns the field back
+into a value of its own to type; and a field that reads a variable has an
+**open** button beside the reference, landing on the variable in its catalog.
+
 Only a secret can be one: a value is read with the listing, and a credential on
 a listing is a credential on a screen. The reference is held by identity, so
 renaming the variable or moving it to another catalog changes nothing; deleting
@@ -81,3 +116,15 @@ it is refused while anything reads it, and the refusal names what does.
 
 Editing is inline: click the field, change it, and save with the check. Renaming
 is the same edit. Deleting a catalog requires it to be empty first.
+
+## The web search key
+
+The workspace's web search key - the key the research and the agents' web search
+use, on both the workspace's settings pages - is a secret field like every
+other. Once stored it is masked, with a **Show** that reveals it to whoever may
+read the workspace's secrets and records that in the audit log. It can read a
+workspace secret instead of keeping its own copy, and a secret the key reads
+cannot be deleted while it does. The engine (**Tavily** or **Brave**), the key
+and the switch for composed answers are saved together by the page's **Save
+Changes** and put back together by **Discard**, rather than each taking effect
+on its own.

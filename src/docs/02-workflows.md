@@ -7,7 +7,7 @@ always the graph you are looking at; see Draft and published, below.
 
 ## The list
 
-**Workflows**, under **Workflow** in the menu down the left, is every workflow
+**Workflows**, under **Flow** in the menu down the left, is every workflow
 the workspace has, with when each of them last ran and when it is next due.
 
 **Sort** names the field it sorts on — **Name**, **Last run** or **Switched
@@ -78,13 +78,14 @@ again starts it straight.
   `Ctrl`+`Z` and `Ctrl`+`Shift`+`Z`, with `Ctrl`+`Y` heard for redo as well.
   They are ignored while a caret is in a text box, where the browser's own undo
   is the right one.
-- **Save** is `Ctrl`+`S`, and the button says which key it is listening for.
+- **There is no Save button.** The editor saves what you draw as you draw it;
+  see *Working on a workflow together*, below. `Ctrl`+`S` still saves at once,
+  for somebody whose hands already went there.
 - **Refresh** reads the graph and the lists its nodes pick from again, so a
   trigger or an agent made in another tab - or a workflow an agent changed
-  meanwhile - appears without leaving the editor. With unsaved changes it asks
-  first, in Discard's words, because what it reads replaces them.
-- **Run** stands between Save and Publish and starts the workflow as it is on
-  screen, saving first if there is anything unsaved, and then opening the new
+  meanwhile - appears without leaving the editor.
+- **Run** stands before Publish and starts the workflow as it is on screen,
+  saving first if anything is still on its way, and then opening the new
   run's page. That page is where the steps, their inputs and the log are, which
   is what pressing Run was for; going back to the list to hunt for the newest
   row is a detour past it. A start that is refused - a graph with no nodes has
@@ -134,6 +135,143 @@ made for, on screen together](/screens/node-builder.png)
 
 Every one of those keystrokes is yours to change, in Preferences.
 
+### Selecting several nodes
+
+![Rectangle select on, and a rectangle drawn over the lookup and the agent: two
+nodes selected, and the panel says so above the first one's
+settings](/screens/workflow-select.png)
+
+Most of what is done to one node can be done to several: moving them, cutting or
+copying them, deleting them. There are three ways to select more than one.
+
+- **Shift and click** adds a node to the selection, or takes one out of it.
+- **Shift and drag** over empty canvas draws a rectangle, and every node it
+  touches is selected.
+- **Rectangle select**, the first button on the right of the toolbar or `S` on
+  the canvas, turns the second into the ordinary drag. While it is lit a drag on
+  empty canvas selects instead of moving the view, and the middle button is how
+  you move the view instead. It is a mode rather than an act, so it stays on
+  until you press it again.
+
+Selected nodes move together when one of them is dragged. The panel on the right
+says how many are selected - *"2 nodes selected - drag one to move them
+together, Delete removes them all"* - above the settings of the first of them,
+which are still that one node's. **Delete** or **Backspace** removes them
+all, and **Escape** lets the selection go.
+
+### Cut, copy and paste
+
+**Cut**, **Copy** and **Paste** are in the toolbar and on `Ctrl`+`X`, `Ctrl`+`C`
+and `Ctrl`+`V`. They take the selected nodes and the joints on the lines between
+them, and paste them into the same workflow or another one - open the other
+workflow's editor and paste there. What is pasted points at the same actions,
+agents, conditions and triggers the originals did, and the lines between pasted
+nodes come with them; a line to a node that was not copied does not.
+
+Nodes copied in one workspace cannot be pasted into another: the copy names its
+actions and agents by their ids in the workspace it came from, and those mean
+nothing anywhere else. The editor says so rather than pasting nodes pointed at
+nothing.
+
+### Adding a node
+
+![The Add menu, opened where the pointer was by pressing A, with the Workflow
+entry under the pointer and what it does beside it](/screens/workflow-add-menu.png)
+
+The **+** button in the toolbar opens the Add menu, and so does `A` with the
+pointer over the canvas. Opened by the key, the menu is drawn **where the pointer
+is**, and the node is put there too, so a node is added where it is wanted rather
+than in the middle of the screen to be dragged across.
+
+The menu is worked from the keyboard as well: **Down** steps onto the first
+entry, the arrows move through them and wrap at the ends, and **Enter** adds the
+one under focus. Each entry says what it does beside the list as it is pointed
+at or focused. **Text to speech**, at the end, is not a kind of node but an
+Action node already pointed at the Speak action, spelled out because nobody
+hunting for speech would look for it under Action.
+
+An Action node's and a Condition node's pickers list more than the workspace's
+own definitions: **every loaded plugin's actions and functions** are there too,
+each marked with the plugin it comes from - and in a condition, the plugin
+functions that answer yes or no. Picking one makes the node's own definition
+around it, which used to take **Custom**, a subtype and the plugin's entry. The
+**quick filters** above the list - **All**, **Workspace**, and one per plugin,
+several at once - narrow it to where things come from.
+
+### Joints
+
+A **joint** is one of the points a line is pulled through (see above). Besides
+double-clicking a line, there is a tool for it: turn on **Joint** in the toolbar,
+or press `J`, and a single click on a line puts a joint there, with a preview
+following the pointer along the line of where it will go. It is a mode, lit
+while it is on, for the afternoon spent tidying a large graph. Click a joint and
+press **Delete** to take it off. Joints are kept as the points are, in your
+browser; copying nodes copies the joints on the lines between them too.
+
+### A node's shape
+
+![One graph in several shapes: the trigger as a pill, the lookup rounded, the
+check a hexagon, the agent notched, the call to another workflow a star](/screens/workflow-node-shapes.png)
+
+**Shape**, in a node's panel, is the outline its card is drawn with:
+**Rectangle**, **Rounded**, **Pill**, **Notched**, **Hexagon**, **Circle**,
+**Triangle** or **Star**. It changes nothing about what runs. What it is for is a
+graph read at a glance: give every node that talks to a customer the same shape,
+or every check, and a graph of thirty nodes says what it does before anybody
+reads a label.
+
+### Switching a node off
+
+**Enabled**, near the bottom of every node's panel but a trigger's, takes a node
+out of the run without taking it off the graph. A disabled node keeps its lines
+and its settings and is drawn faded; a run skips it and hands what reached it
+straight on to whatever comes next. A disabled condition takes its upper way
+out. It is the way to try a workflow without the step that sends the email, and
+to put the step back afterwards without redrawing it. A trigger has no such
+switch: a run has to start somewhere, and a trigger is silenced by its own
+**Enabled**.
+
+## Working on a workflow together
+
+![The editor as somebody else has it open too: their initials beside the
+workflow's name, and their pointer, labelled with their login, over the
+agent](/screens/workflow-together.png)
+
+Several people can have one workflow's editor open at once, and each of them
+sees the others at work.
+
+- **Who is there.** Beside the workflow's name, a round mark with the initials of
+  everybody else who has the editor open, each in a colour of their own. Hover one
+  for the whole login.
+- **Where they are.** Each of them has a pointer on your canvas, in their colour
+  and labelled with their login, that moves as they do. It is drawn where they
+  point *on the graph*, so it stays on the node they are looking at whichever way
+  you have scrolled or zoomed.
+- **What they change.** A node moved, added, renamed or rewired by somebody else
+  appears on your canvas as they do it, without a refresh.
+
+**The editor saves as it goes.** There is no Save and no Discard: a change is
+saved, and seen by everybody else in the editor, a moment after it is made -
+also while a node is still being dragged or a name still typed. How long that
+moment is, is **Workflow Autosave** under Admin Settings → Workflow runs (300 ms
+unless an administrator changed it). `Ctrl`+`S` saves at once. Nothing is said
+while saving goes well; **Not saved** appears beside the toolbar only when a save
+has failed, and goes once one succeeds.
+
+**Two changes made at once are merged**, not one written over the other. Every
+save is made against the version of the graph it was drawn on; when somebody
+else saved in between, the save is refused, the newer graph is read, your change
+is put on top of it and sent again. So two people dragging different nodes both
+keep their move, and the one rule worth knowing is that two people changing *the
+same* field of the same node end with whichever of them saved last.
+
+A pointer is sent only while somebody else is there, and taken away when it
+leaves the canvas, so an editor nobody shares sends nothing at all.
+
+Publishing is still one person's act: **Publish** publishes the graph as it
+stands, for everybody.
+
+
 ## Kinds of node
 
 | Node | What it does |
@@ -146,6 +284,7 @@ Every one of those keystrokes is yours to change, in Preferences.
 | Session | Names the conversation the agent it leads to keeps, so what is said outlives the run. |
 | Image | Draws a picture from a description, with the workspace's text-to-image model. |
 | Decision | Asks a decision model or a chat model typed questions about what reached it, and can branch on the answer. |
+| Workflow | Runs another workflow of the workspace, waits for it, and hands on what it produced. |
 
 Each kind can be **inline** — defined in this workflow only — or made from a
 **definition** in the workspace catalogue, which several workflows can share.
@@ -161,13 +300,13 @@ computes the same key carries on where the last one left off. An agent with no
 session node beside it answers and forgets. What is kept is on the workspace's
 Sessions page, described under AI.
 
-**An agent node hands on everything its agent wrote**, not only its last
-message: what it said beside its tool calls, round by round, then its answer,
-each separated by a blank line - across every pass of a step that slept and was
-woken, and in what a watcher's follow-up hands on. Its thinking, its tool calls
-and its notes are left out. So a workflow that posts an agent's output to Slack
-posts its progress remarks too; an agent that should send only its conclusion
-has to be told, in its instructions, to write nothing beside its calls.
+**An agent node hands on what its agent writes**, not only its last message:
+what it says beside its tool calls, and then its answer. Its thinking, its tool
+calls and its notes are left out. *When* each of those goes on, and how much of
+it the agent writes, are the node's own settings - **Output streaming** and
+**Progress messages**, under *An agent node's own settings* below. A workflow
+that posts an agent's output to Slack posts its progress remarks too, unless the
+node's Progress messages are **None**.
 
 An agent step that sets a **watcher** does not wait for it. The step completes
 with the agent's answer and the run goes on; when the watcher fires, the agent
@@ -216,10 +355,91 @@ when the answer clears the threshold, Unsure when it does not. Draw a line for
 every way out; one left without a line is warned about when you save, because a
 run that takes it stops there.
 
+## The Workflow node
+
+![A Workflow node selected: the workflow it runs, the way to open it, and what it
+passes](/screens/workflow-node.png)
+
+A **Workflow** node runs another workflow of the same workspace as one step of
+this one. It is how a piece of work several workflows share - answering in a
+Slack thread, filing a ticket the house way - is drawn once and called from
+each, rather than copied into all of them and kept in step by hand.
+
+1. Add a **Workflow** node from the Add menu and choose the workflow it runs in
+   its panel. Only the workspace's other workflows are offered; one cannot run
+   itself.
+2. Give it **parameters**, if the workflow it runs needs particular fields. Each
+   is written or referenced like any other node's, and they are what the called
+   workflow's trigger is handed. With no parameters, the called workflow is
+   handed whatever reached this node.
+3. Wire it like any other node. The run waits at it until the called workflow has
+   finished, and what that workflow produced is handed on to the nodes after it.
+
+The way out beside the picker opens the called workflow's editor. A failure in
+the called workflow fails this node's step, and the run stops there as it does
+at any failed step; retries and a failure line belong to the nodes inside the
+called workflow, where the work that failed is.
+
+On the run's page, the Workflow node's step has a **Called run** line linking to
+the run it started, and that run's summary has a **Called by** row linking back -
+so following a run that went through three workflows is three clicks, not a
+search through Executions.
+
+## An agent node's own settings
+
+![An agent node selected, its panel scrolled to the settings that are the
+node's own: Output streaming, Progress messages, Times it runs and Timeout](/screens/agent-node.png)
+
+An agent node runs one of the workspace's agents, and most of what it does is the
+agent's - its instructions, its model, its tools. A few things can be set for
+this node alone, without changing the agent everywhere else it is used.
+
+**Model** is a parameter: the id of a chat model the workspace may use, written
+in or read off the run, and the agent thinks with that model on this node instead
+of its own. Empty is the agent's own model. A model the workspace cannot use
+fails the step, rather than quietly falling back to another. It is how one agent
+can be asked cheaply on one node and carefully on another.
+
+**Reasoning effort** is how hard that model thinks on this node, in place of the
+model's own setting. It is offered only where the node's model takes one, and
+offers the words that model takes; **Default** uses the model's own. When the
+model is read off the run, the node cannot know in advance which words it will
+take: a word the model the run reaches does not take is said in the run's log,
+and the model's own setting is used instead of failing the step.
+
+**Progress messages** is how much the agent writes while it works, before its
+answer:
+
+| Setting | What the agent writes |
+| --- | --- |
+| Default | What the agent's own setting says. |
+| None | Only the answer. Anything it writes beside its tool calls anyway goes into the run's log and nowhere else. |
+| Low | One line on what it is about to do. |
+| Medium | That, and every few calls what it has found. Every agent that predates the setting is on Medium. |
+| High | A line at every step. |
+
+**Output streaming**, on unless you turn it off, decides *when* those messages
+go on. On, each message the agent writes beside its tool calls is handed to the
+nodes after this one as it is written - a run of its own, carried on from this
+one, so a Slack reply that says *"Looking into it"* goes out while the agent is
+still working - and the step's own output is its last answer. That includes the
+message an agent writes as it ends a turn to wait for an agent it asked: it goes
+out then, not with the answer minutes later. Off, the node finishes first and
+hands everything it said on together, each part separated by a blank line.
+
+A message that cannot go on as it is written - nothing follows the node, or the
+node answers in a fixed shape - stays with the step's answer, and the agent's
+session says why. A run's page says, under the agent step's **Parameters**,
+whether **Output streaming** was on, so a message that reached Slack late can be
+told from one the step held on purpose.
+
+**Times it runs** and **Timeout (seconds)** are on an agent node as on an
+action; see below.
+
 ## The catalogue
 
 A definition made once and used by several workflows lives in the workspace's
-catalogue, listed under **Workflow** in the menu down the left.
+catalogue, listed under **Flow** in the menu down the left.
 
 ![The action catalogue: what each action calls, and what it hands
 back](/screens/actions.png)
@@ -404,10 +624,9 @@ an administrator. A new function's stub names it.
 
 ## Values and references
 
-Every parameter is either **written** or **referenced**. There are no
-placeholders and no template syntax: what you type is used exactly as typed,
-and a value that should come from somewhere else is chosen from the dropdown
-of what is actually in scope.
+Every parameter is either **written** or **referenced**. A referenced value
+is chosen from the dropdown of what is actually in scope; a written one is used
+as typed, except for the placeholders in it (below).
 
 References are paths — `trigger.threadTs`, `classify.output.label` — and the
 picker only offers paths that exist at that point in the graph. This is why the
@@ -422,12 +641,67 @@ message, into a prompt - and a secret referenced into one would be published.
 A secret belongs in a function's external parameters or a credential field,
 where it is used rather than shown; see Variables.
 
+A field that reads a variable - a plugin's parameter, an action's header, a
+secret field - has an **open** button beside the reference, which lands on the
+variable in its catalog. And a reference to a variable can be **cleared**, from
+the same place, which switches the field back to a written value; switching a
+field to **Value** is saved like any other change.
+
+### Placeholders
+
+A written value can name a field of the run inside double braces:
+`Refund requested on {{trigger.ticket}}: {{trigger.text}}`. When the step runs,
+each placeholder is replaced by what that field holds, and the rest is used as
+written. It is how a message is put together from several fields without a
+function to do the joining.
+
+- **Typing `{{`** in a written value suggests the fields in scope at that point
+  of the graph, the same list the reference picker offers. Placeholders are
+  highlighted in the value, and each draws the same green dependency line to the
+  node it reads from that a reference does.
+- **A placeholder is checked on save.** One that names a field nothing in the
+  graph produces is refused, saying which, rather than saved and left to come out
+  empty in production.
+- **Workspace variables** go in the same way: `{{variables.<id>}}`, offered by
+  name after `{{`. They are read when the step runs, so changing the variable
+  changes the next run. **A secret is never offered and never filled**, for the
+  reason above.
+- **A condition node's written value may name a field** too: `{{trigger.review}}`
+  on a condition is that field's value, as on any other node.
+- A field the run does not carry comes out **empty**, not as the braces written
+  out, because a message to a customer reading `{{trigger.name}}` is worse than
+  one missing a name.
+
 ## Objects
 
 An object node declares a shape and fills it in. Pick a shape from the
 workspace's objects, or define the fields inline, and write or reference each
 field. What comes out is one value under the node's output name, which the next
 node can read field by field.
+
+### An object inside an object
+
+A property can be an object of its own. In the object editor, **object** is one
+of the types a field can have; choose it and the field gets fields of its own,
+drawn as rows inside its row, as deep as the installation allows. An Object node
+that defines its own fields can do the same.
+
+An object can also be made from a pasted **JSON Schema**, from the Objects page
+and from the workflow editor's **Create Object** panel. The schema is read as it
+is typed - **Valid** or **Invalid** beside it, the details on hover - and each
+of its properties becomes a field. A key a reference could not follow, such as
+`issue-related-events` or `2fa`, is written with underscores instead, and the
+key it came from is kept in the field's description.
+
+In the editor, an Object node's fields are drawn as a **tree**, an object's own
+fields folded under it until you unfold them, and a later node can point at one
+inside by its dotted name - `order.customer.email`. The field picker also offers
+the **whole object** as one row, for a node that wants all of it.
+
+**Object Depth**, in Admin Settings, is how deep an object may nest and how deep
+a value is checked against one. A fresh installation starts at 30
+(`ORKNUX_OBJECT_MAX_DEPTH`); an object deeper than that is refused when it is
+saved rather than accepted and then not checked.
 
 ## When a node fails
 
@@ -493,6 +767,41 @@ either way; what changes is whether anything happens next. Switching it back off
 takes the failure line with it, since a line leaving by a door that is no longer
 there could not be saved.
 
+## Doing a node's work more than once
+
+**Times it runs**, on an action or an agent node beside its retries, is how many
+times the node does its work in one run. Each time is handed what the time
+before produced, and the node after it gets the last. It is for work that is
+better done in passes - a draft and then a better draft, a page of results and
+then the next - without drawing the node three times in a row.
+
+One is once, and is what every node does unless told otherwise. A failure in any
+pass is the node's failure; its **Retries** count afresh for each pass, so a
+retry policy of three attempts means three attempts at the second pass even if
+the first used two. Admin Settings caps how many times any node may run
+(`node.repeats.most`, 100), and a number above it is saved as the cap.
+
+## How long a node may take
+
+**Timeout (seconds)**, on every node but a trigger and an object - an action,
+an agent, a condition, a decision, an image node and a Workflow node among them -
+is how long one attempt of it may take. Empty is no limit, as before.
+
+The clock starts when an attempt does and counts everything in it, waits
+included. An attempt past its timeout is stopped - a model call is hung up on, a
+script is cancelled, a called workflow is asked to stop - and the step fails
+with the reason: *"Fetch the order took longer than its timeout of 30s"*. From
+there it is a failure like any other: **Retries** try again, each attempt with a
+full timeout of its own, and **When it fails** sends the run down the failure
+line. With **Times it runs**, each pass has its own timeout too. A step that was
+waiting past its timeout is woken at the deadline and fails then, rather than
+when it would have woken.
+
+Admin Settings caps how long a timeout may be (`node.timeout.most.seconds`, a
+day). Work that ignores being told to stop - a call that neither hangs up nor
+notices it was interrupted - cannot be killed from outside; the step is still
+recorded as failed when it returns.
+
 ## What a component was
 
 Every save of a function keeps the version it replaced, and so does every save
@@ -548,7 +857,7 @@ so a run that behaved differently from the real one is never mistaken for it.
 ## Leaving with something unsaved
 
 The function, tool, object and skill editors hold work the server has not been
-told about, and all four used to lose it without a word: a link followed, a Back
+told about - the workflow editor no longer does, since it saves as it goes - and all four used to lose it without a word: a link followed, a Back
 press, and twenty minutes were gone.
 
 They ask now. The question is only asked where something has actually changed —
@@ -620,13 +929,35 @@ object is not an annotation but the contract every arriving request is checked
 against, and a request that matches nothing is answered `404` — so an object a
 webhook names is refused, and so is one another object's field points at.
 
+## What depends on what
+
+![The Dependency graph of the support responder: the workflows that use it on
+the left, the models and tools it uses on the right](/screens/dependency-graph.png)
+
+**Dependency graph**, a button on the **Used by** panel of any component's page,
+draws the whole chain at once: what uses it branching out to the left, and what
+it uses to the right, each followed to the end. An agent's graph shows the
+workflows that run it on one side and its model, its provider and its tools on
+the other, so the question *what breaks if I change this* has a picture as its
+answer.
+
+Choose a box and it opens that part's own page - or makes it the middle of a
+graph of its own, to follow the chain from there. A part that turns up twice is
+drawn once and marked **shown elsewhere** the second time, so a graph with a
+shared model in it does not repeat the model's whole tree. The window can be
+dragged bigger.
+
+A **workflow** has a Used by panel too, on its settings page, listing the
+workflows that run it with a Workflow node.
+
 ## Draft and published
 
 Saving and publishing are two different acts, and the difference decides what an
 event actually runs.
 
-- **Save** writes the draft. The draft is the graph on your screen, and editing
-  a published workflow puts it back into draft.
+- **Saving** writes the draft, and the editor does it as you draw. The draft is
+  the graph on your screen, and editing a published workflow puts it back into
+  draft.
 - **Publish** takes a copy of the draft and stores it. That copy is what runs
   from then on, and it does not change again until it is published again.
 
@@ -665,8 +996,9 @@ and schedules run — and the badge reads **Draft** while the two differ, rather
 than pretending the canvas is what is running.
 
 So a workflow's versions are its publications and not its saves: a draft is a
-draft. The way back from a save you regret is still the editor's own
-**Discard**, which puts the graph back as it was last saved.
+draft. The way back from a change you regret is **Undo**, while the editor is
+open; there is no Discard any more, since the editor saves as it goes and there
+is nothing unsaved to throw away.
 
 How long publications are kept is the same administrator's setting that governs
 the rest of the component history, and the live one is never swept whatever its
@@ -742,6 +1074,35 @@ being told it cannot be started.
 
 A run made by either kind of re-run says where it came from: a **Started from →
 Run #N** row under the Run ID, linking back to the run it was started from.
+
+### Reading a step
+
+![A run of the Slack workflow, its agent step selected: Parameters with the
+prompt it was handed, and Output streaming](/screens/execution-parameters.png)
+
+Select a node on a run's page and its panel says what that step did. Above its
+**Input**, which is only what the run was carrying, **Parameters** lists what
+the node was told to pass and what each came to - an agent's prompt, an action's
+arguments - worked out from what the step received. A reference shows the field
+it read beside its value. Workspace variables are left as written, so a
+parameter that reads one does not put its value on the run's page.
+
+An agent step's Parameters end with **Output streaming**, On or Off as the node
+had it when the run started (see *An agent node's own settings*).
+
+What a function or a plugin action wrote with `orknux.log` is under its step in
+the run's log, whether the step returned or threw: an error as an error, and a
+warning marked **Warning**. How many lines are kept is an installation setting
+(`ORKNUX_TUNING_SCRIPT_LOG_LINES`, 500).
+
+### A run of an older version
+
+A run that started while the workflow's draft had changes its publication did
+not is marked **Older version** above its graph, with the date of the publication
+it ran - and the graph drawn is the one it ran, not the workflow as edited since.
+A node is not then debugged against wording it never had. Whether a run is older
+is decided when it starts: a run of what was newest at the time is not made old
+by edits made afterwards.
 
 Runs are carried out by Temporal, so a run that fails part-way is retried
 according to the workflow's settings rather than silently lost. Administrators

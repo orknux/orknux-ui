@@ -19,6 +19,11 @@ workflow.
 - **Webhook** — an HTTP request to a path on this installation.
 - **Manual** — somebody presses Run.
 
+The list can be narrowed to where triggers listen: **Source**, beside the
+search box, offers **All sources** and every source the workspace's triggers
+use - schedules, webhooks, and each connection by name - so the triggers
+listening on one Slack connection can be read on their own.
+
 ## What a Slack connection trigger needs
 
 A **Mention** arrives on any working bot token, because every Slack app that
@@ -101,14 +106,14 @@ Webhook authentication is chosen per trigger.
 
 - **None** — the endpoint is open. Anybody who knows the path can fire it.
 - **Function** — a workspace function is called with the request, and must
-  return a boolean. `true` fires the trigger; anything else is answered `401`,
-  and the refusal is written to the trigger's history.
+  return a boolean. `true` fires the trigger; anything else is answered `404`,
+  like a path nobody has claimed, and the refusal is written to the trigger's
+  history.
 
-The `401` is deliberately not folded into the `404` above. By the time it is
-answered the caller has already sent something shaped like the contract, which
-is not a thing found by guessing - and an integration whose credential has
-expired is owed the difference between "you are not who you say" and "there is
-nothing here".
+A refused caller used to be answered `401`, which told a stranger that the path
+was real and only the credential was wrong. Now every no on a webhook reads the
+same from outside, for the reason above; the owner still sees, in the trigger's
+history, that it was the authentication function that said no.
 
 ### GitHub and Microsoft Teams
 
@@ -135,6 +140,27 @@ Each plugin's README has the setup.
 
 A trigger starts the workflow's **published** copy. Editing and saving a graph
 does not change what fires tonight; publishing does. See Workflows.
+
+### A run begins at its trigger
+
+In a workflow with a trigger, **a run starts at the trigger and follows its
+lines**. A node the trigger does not lead to - a branch somebody drew and has not
+yet joined up, an old step left on the canvas - is skipped, not run beside the
+graph as it once was. So a half-built graph does only what is wired, which is
+what anybody drawing one expects.
+
+The case that catches people out is the other way round: a workflow drawn
+without the line *from* its trigger does nothing at all, since there is nowhere
+for a run to go. Its run's log opens by naming the trigger and saying to draw
+the line from it. A workflow with no trigger at all - one only ever run by hand
+or from another workflow - runs every node as before.
+
+### What it was started with
+
+The first line of every run's log is the trigger's: `<trigger> fired with: ...`, then the payload it started the run with - the Slack message, the
+webhook's body, the schedule's time. Every kind of trigger writes it, so the
+question *what did this run actually receive* is answered at the top of its log
+rather than reconstructed from the steps.
 
 A workflow that has never been published cannot be started by a trigger at all.
 The firing still happens and is still recorded, saying it started none of the
