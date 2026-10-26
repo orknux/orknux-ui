@@ -1927,6 +1927,18 @@ export const TESTS = [
   },
 
   {
+    name: 'voice-midturn-check',
+    what: "in voice mode the agent's words before its call are spoken as they arrive, Speaking over them, without the turn waiting for a slow speech model, once though the answer repeats them, and the thinking never",
+    needs: ['workspace'],
+    /*
+     * Issue #671. The ears, the mouth and the turn's stream are stubbed as in
+     * voice-play-check; the stream sends a `said` frame, a call and an answer
+     * that repeats the line, and every speech request is held for seconds.
+     * Makes its own transcription and speech models and removes them.
+     */
+  },
+
+  {
     name: 'chat-video-check',
     what: "a video attached in a chat plays as a <video> under its message, read back and sent, and a model's page offers Takes video where its provider carries one - a llama.cpp or vLLM host, not Ollama - and Save stores it",
     needs: ['workspace'],

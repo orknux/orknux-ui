@@ -101,8 +101,13 @@ export interface Reading {
    * the only state this needs. `done` means there is no more coming, and takes
    * the remainder punctuated or not - the last thing somebody says often is
    * not.
+   *
+   * `settled` says what has arrived so far is a whole utterance though more is
+   * still to come - a line an agent wrote beside its calls, with the tools
+   * still to run. It is read at once, however short and wherever it ends,
+   * rather than held for a sentence that is not coming.
    */
-  push: (whole: string, done: boolean) => void;
+  push: (whole: string, done: boolean, settled?: boolean) => void;
   /**
    * Plays a sound at [url] in its place in the queue: after whatever has been
    * handed over already, before whatever comes next. What `audio_play` puts in a
@@ -120,6 +125,12 @@ export interface Listener {
   onStart?: () => void;
   /** Called when the last of the answer has been played, and not when it is stopped. */
   onEnd?: () => void;
+  /**
+   * Called when a settled utterance has been played and nothing more is
+   * queued, while the answer is not over: the agent spoke and went back to
+   * work. `onStart` is called again when sound next begins.
+   */
+  onPause?: () => void;
   /** Called at most once, with why nothing could be read. */
   onFailure?: (reason: string) => void;
   /**
@@ -232,6 +243,8 @@ export function readAloud(
   let stopped = false;
   let started = false;
   let complained = false;
+  /** Whether the last text queued was a whole utterance, so running out after it is a pause. */
+  let settledLast = false;
 
   function fail(cause: unknown) {
     if (complained) return;
@@ -335,16 +348,21 @@ export function readAloud(
     if (stopped) return;
     // Nothing left and nothing more coming: this answer has been read.
     if (finished && pending.length === 0 && ahead === null) listener.onEnd?.();
+    else if (!finished && settledLast && started && pending.length === 0 && ahead === null) {
+      // Said, and back to work: the next sound starts the speaking again.
+      started = false;
+      listener.onPause?.();
+    }
   }
 
   return {
-    push(whole, done) {
+    push(whole, done, settled = false) {
       if (stopped) return;
       if (done) finished = true;
 
       const spoken = spokenText(whole);
       const rest = spoken.slice(read);
-      const { parts, upTo } = pieces(rest, done, chunking);
+      const { parts, upTo } = pieces(rest, done || settled, chunking);
 
       /*
        * The short-fragment gate is a sentence's affair.
@@ -356,7 +374,7 @@ export function readAloud(
        * when it does not - and under `NONE` there is one piece and nothing to
        * hold it for.
        */
-      const tooShort = chunking === 'SENTENCE' && !done && upTo < SHORTEST_TO_SPEAK;
+      const tooShort = chunking === 'SENTENCE' && !done && !settled && upTo < SHORTEST_TO_SPEAK;
 
       if (parts.length === 0 || tooShort) {
         // Still worth draining when the answer is over: an answer that was
@@ -368,6 +386,7 @@ export function readAloud(
       }
 
       read += upTo;
+      settledLast = settled;
       pending.push(...parts);
       total += parts.reduce((sum, part) => sum + part.length, 0);
       void drain();
