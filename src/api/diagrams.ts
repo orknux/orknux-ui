@@ -223,12 +223,13 @@ export async function setDiagramAgentAccess(id: string, access: DiagramAgentAcce
 }
 
 /** Writes the whole drawing; refused when the diagram was saved since `revision`. */
-export async function saveDiagram(id: string, drawing: DiagramDrawing, revision: number): Promise<Diagram> {
+/** [viewer] is the open editor saving it, as it named itself in the live room; its saves are announced as its own. */
+export async function saveDiagram(id: string, drawing: DiagramDrawing, revision: number, viewer?: string): Promise<Diagram> {
   const data = await graphql<{ saveDiagram: Diagram }>(
-    `mutation ($id: ID!, $document: String!, $revision: Int) {
-       saveDiagram(id: $id, document: $document, revision: $revision) { ${FIELDS} }
+    `mutation ($id: ID!, $document: String!, $revision: Int, $viewer: String) {
+       saveDiagram(id: $id, document: $document, revision: $revision, viewer: $viewer) { ${FIELDS} }
      }`,
-    { id, document: documentOf(drawing), revision },
+    { id, document: documentOf(drawing), revision, viewer: viewer ?? null },
   );
   return data.saveDiagram;
 }

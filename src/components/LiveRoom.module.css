@@ -1,0 +1,49 @@
+/* Who else is in an editor, and where they point. Issue #683, as the workflow editor's of #645. */
+
+.presence {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-8);
+}
+
+.presenceDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+.pointers {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pointer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  transition: transform 80ms linear;
+}
+
+.pointerName {
+  margin-top: var(--space-10);
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-4);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-presence-text);
+}

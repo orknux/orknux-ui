@@ -2,7 +2,9 @@ import { payloadOf, readEventStream } from './sse';
 
 /**
  * The workflow editor's live channel: who else has the workflow open, where
- * their pointers are, and that somebody saved the graph. Issue #645.
+ * their pointers are, and that somebody saved the graph. Issue #645. Since
+ * #683 every editor that saves as it goes sits in a room the same way, so the
+ * room itself is [joinRoom] and [pointerTo]; see `live.ts` for the others.
  */
 
 /** One open editor - one tab - as the others are shown it. */
@@ -17,7 +19,7 @@ export interface Pointer extends Viewer {
   y: number | null;
 }
 
-/** The draft was saved: its new revision, and which editor saved it (null for a tool). */
+/** It was saved: its new revision, and which editor saved it (null for a tool). */
 export interface GraphMoved {
   revision: number;
   viewer: string | null;
@@ -30,6 +32,14 @@ export interface LiveHandlers {
   onViewers: (viewers: Viewer[]) => void;
   onPointer: (pointer: Pointer) => void;
   onGraph: (moved: GraphMoved) => void;
+}
+
+/** What a room tells an open editor; [onSaved] is a save by anybody, this editor's own included. */
+export interface RoomHandlers {
+  onHello: (revision: number) => void;
+  onViewers: (viewers: Viewer[]) => void;
+  onPointer: (pointer: Pointer) => void;
+  onSaved: (moved: GraphMoved) => void;
 }
 
 /**
@@ -49,7 +59,7 @@ export function newViewer(): string {
  * Sits this editor in the workflow's room until the returned function is
  * called. A dropped stream is opened again: the room is told this viewer is
  * there once more, and what was missed is only pointers and a revision the
- * hello carries.
+ * hello carries. A workflow's save comes under `graph`.
  */
 export function joinWorkflow(
   workspaceId: string,
@@ -57,14 +67,29 @@ export function joinWorkflow(
   viewer: string,
   handlers: LiveHandlers,
 ): () => void {
+  return joinRoom(`/api/workspaces/${workspaceId}/workflows/${workflowId}/live?viewer=${encodeURIComponent(viewer)}`, 'graph', {
+    onHello: handlers.onHello,
+    onViewers: handlers.onViewers,
+    onPointer: handlers.onPointer,
+    onSaved: handlers.onGraph,
+  });
+}
+
+/**
+ * Sits an editor in the room the stream at [address] is, until the returned
+ * function is called, opening it again whenever it drops. [savedEvent] is the
+ * name a save comes under: `graph` for a workflow, `saved` for the rest.
+ */
+export function joinRoom(address: string, savedEvent: string, handlers: RoomHandlers): () => void {
   const stopper = new AbortController();
   let stopped = false;
 
   async function stint(): Promise<void> {
-    const response = await fetch(
-      `/api/workspaces/${workspaceId}/workflows/${workflowId}/live?viewer=${encodeURIComponent(viewer)}`,
-      { credentials: 'same-origin', headers: { Accept: 'text/event-stream' }, signal: stopper.signal },
-    );
+    const response = await fetch(address, {
+      credentials: 'same-origin',
+      headers: { Accept: 'text/event-stream' },
+      signal: stopper.signal,
+    });
     await readEventStream(response, (frame) => {
       if (frame.event === 'hello') {
         const hello = payloadOf<{ revision: number }>(frame);
@@ -75,9 +100,9 @@ export function joinWorkflow(
       } else if (frame.event === 'pointer') {
         const at = payloadOf<Pointer>(frame);
         if (at !== null) handlers.onPointer(at);
-      } else if (frame.event === 'graph') {
+      } else if (frame.event === savedEvent) {
         const moved = payloadOf<GraphMoved>(frame);
-        if (moved !== null) handlers.onGraph(moved);
+        if (moved !== null) handlers.onSaved(moved);
       }
     });
   }
@@ -109,13 +134,18 @@ export function joinWorkflow(
  * once it lands, rather than queued behind every place in between.
  */
 export function pointerSender(workspaceId: string, workflowId: string, viewer: string): (x: number | null, y: number | null) => void {
+  return pointerTo(`/api/workspaces/${workspaceId}/workflows/${workflowId}/live/pointer`, viewer);
+}
+
+/** The same, for any room: the pointer is posted to [address]. */
+export function pointerTo(address: string, viewer: string): (x: number | null, y: number | null) => void {
   let sending = false;
   let next: { x: number | null; y: number | null } | null = null;
 
   async function send(at: { x: number | null; y: number | null }) {
     sending = true;
     try {
-      await fetch(`/api/workspaces/${workspaceId}/workflows/${workflowId}/live/pointer`, {
+      await fetch(address, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',

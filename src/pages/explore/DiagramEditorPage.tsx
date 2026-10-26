@@ -56,7 +56,9 @@ import stickyIcon from '../../assets/sticky-note.svg';
 import diamondIcon from '../../assets/diamond.svg';
 import undoIcon from '../../assets/undo.svg';
 import usersIcon from '../../assets/users.svg';
+import { ApiError } from '../../api/client';
 import { AppShell } from '../../components/AppShell';
+import { LivePointers, mergeById, Presence, useAutosave, useLiveRoom } from '../../components/LiveRoom';
 import { ResizeHandle, useDragSize, useRoom } from '../../components/DragSize';
 import { Loader } from '../../components/Loader';
 import { Select } from '../../components/Select';
@@ -332,6 +334,35 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const arrangeKey = useArrangeShortcut();
 
   const unsaved = diagram !== null && JSON.stringify(drawing) !== saved;
+
+  /*
+   * Working on it together, as the workflow editor does: who else is here,
+   * where they point, and their saves taken in as they land - merged node by
+   * node into what is unsaved here. Issue #683. Read through refs, because a
+   * save or a fetch that lands reads the editor as it is then, not as it was.
+   */
+  const now = useRef({ diagram, drawing, saved, unsaved });
+  now.current = { diagram, drawing, saved, unsaved };
+  const saving = useRef(false);
+  const live = useLiveRoom('diagram', diagram?.id ?? null, () => void catchUp());
+
+  /** Somebody else saved: their diagram taken in, and anything unsaved here merged into it. */
+  async function catchUp() {
+    const held = now.current.diagram;
+    if (held === null || saving.current) return;
+    const found = await fetchDiagram(held.id).catch(() => null);
+    if (found === null || found.revision === now.current.diagram?.revision) return;
+    if (!now.current.unsaved && gestureStart.current === null) {
+      take(found);
+      return;
+    }
+    const theirs = drawingOf(found);
+    const base = JSON.parse(now.current.saved) as DiagramDrawing;
+    const mine = now.current.drawing;
+    setDiagram(found);
+    setSaved(JSON.stringify(theirs));
+    setDrawing({ nodes: mergeById(base.nodes, mine.nodes, theirs.nodes), edges: mergeById(base.edges, mine.edges, theirs.edges) });
+  }
   const noteMost = diagram?.noteCharactersMost ?? 5000;
   const byId = useMemo(() => new Map(drawing.nodes.map((node) => [node.id, node])), [drawing]);
 
@@ -700,21 +731,54 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   // -- Saving -------------------------------------------------------------
 
+  /**
+   * Saves what is drawn over the revision it was drawn from. Refused because
+   * somebody saved first, theirs is read, this drawing is merged into it node
+   * by node, and it is sent again. What was drawn while the save was on its
+   * way stays drawn, to go with the next one.
+   */
   async function save(): Promise<boolean> {
     if (diagram === null) return false;
     if (!unsaved) return true;
+    if (saving.current) return false;
+    saving.current = true;
     setBusy(true);
     setError(null);
+    let over = diagram;
+    let base = JSON.parse(saved) as DiagramDrawing;
+    let mine = drawing;
+    const sent = JSON.stringify(drawing);
     try {
-      take(await saveDiagram(diagram.id, drawing, diagram.revision));
-      return true;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const stored = await saveDiagram(over.id, mine, over.revision, live.viewer);
+          const drawn = drawingOf(stored);
+          setDiagram(stored);
+          setSaved(JSON.stringify(drawn));
+          if (JSON.stringify(now.current.drawing) === sent) setDrawing(drawn);
+          return true;
+        } catch (cause) {
+          if (!(cause instanceof ApiError && cause.code === 'DiagramChanged')) throw cause;
+          const found = await fetchDiagram(over.id);
+          if (found === null) throw cause;
+          const theirs = drawingOf(found);
+          mine = { nodes: mergeById(base.nodes, mine.nodes, theirs.nodes), edges: mergeById(base.edges, mine.edges, theirs.edges) };
+          base = theirs;
+          over = found;
+        }
+      }
+      return false;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the diagram.'));
       return false;
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
+
+  // Saved as it is drawn, once it has been still for Admin Settings' pause.
+  useAutosave(unsaved, JSON.stringify(drawing), answering || gestureStart.current !== null, save);
 
   async function rename() {
     if (naming === null || diagram === null) return;
@@ -952,6 +1016,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             {t('Unsaved')}
           </span>
         )}
+        <Presence others={live.others} />
         <div className={shell.toolbarRight}>
           <div className={styles.tools} role="toolbar" aria-label={t('Shapes')}>
             {SHAPES.map((one) => (
@@ -1116,7 +1181,15 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
       </div>
 
       <div className={shell.editor} ref={editorRoom}>
-        <div className={styles.canvas} data-testid="diagram-canvas">
+        <div
+          className={styles.canvas}
+          data-testid="diagram-canvas"
+          onMouseMove={(event) => {
+            const at = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+            live.point(at.x, at.y);
+          }}
+          onMouseLeave={() => live.point(null, null)}
+        >
           {diagram === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
@@ -1153,6 +1226,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               proOptions={{ hideAttribution: true }}
             >
               <Background variant={BackgroundVariant.Dots} gap={GRID * 3} size={1.5} />
+              <LivePointers pointers={live.pointers} place={(x, y) => ({ left: x * viewport.zoom + viewport.x, top: y * viewport.zoom + viewport.y })} />
             </ReactFlow>
             </LabelEditingContext.Provider>
           )}

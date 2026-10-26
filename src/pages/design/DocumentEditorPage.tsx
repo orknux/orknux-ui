@@ -47,7 +47,9 @@ import undoIcon from '../../assets/undo.svg';
 import listChecksIcon from '../../assets/list-checks.svg';
 import notebookIcon from '../../assets/notebook-pen.svg';
 import polishIcon from '../../assets/wand-sparkles.svg';
+import { ApiError } from '../../api/client';
 import { AppShell } from '../../components/AppShell';
+import { LivePointers, mergeLines, Presence, useAutosave, useLiveRoom } from '../../components/LiveRoom';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import form from '../../components/Dialog.module.css';
 import { useInlineCompletion } from '../../components/inlineCompletion';
@@ -355,24 +357,115 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
 
   // -- Saving -------------------------------------------------------------
 
+  /*
+   * Working on it together, as the workflow editor does: who else is here,
+   * where they point on the paper, and their saves taken in as they land.
+   * Issue #683. A document is merged block by block - a paragraph changed on
+   * one side only is taken from that side, and one changed on both keeps
+   * theirs and then this one's - never inside a paragraph. Read through refs,
+   * because what lands reads the page as it is then.
+   */
+  const now = useRef({ held, unsaved, saved, settings });
+  now.current = { held, unsaved, saved, settings };
+  const saving = useRef(false);
+  const live = useLiveRoom('document', held?.id ?? null, () => void catchUp());
+
+  type Doc = { type: string; content?: unknown[] };
+  /** A document as the page itself would write it, so two of them compare block by block. */
+  const normal = (doc: unknown): Doc => (editor === null ? (doc as Doc) : (editor.schema.nodeFromJSON(doc).toJSON() as Doc));
+  const blocksOf = (doc: Doc): unknown[] => doc.content ?? [];
+  const baseOf = (): Doc => {
+    try {
+      return (JSON.parse(now.current.saved) as { content: Doc }).content;
+    } catch {
+      return { type: 'doc', content: [] };
+    }
+  };
+
+  /** Puts [doc] on the page without moving the caret further than the page now reaches. */
+  function show(doc: Doc) {
+    if (editor === null) return;
+    const { from, to } = editor.state.selection;
+    editor.commands.setContent(doc as Record<string, unknown>, { emitUpdate: false });
+    const most = editor.state.doc.content.size;
+    editor.commands.setTextSelection({ from: Math.min(from, most), to: Math.min(to, most) });
+    setTick((at) => at + 1);
+  }
+
+  /** Somebody else saved: theirs taken in, and anything unsaved here merged into it. */
+  async function catchUp() {
+    const was = now.current.held;
+    if (was === null || editor === null || saving.current || answering) return;
+    const found = await fetchDocument(was.id).catch(() => null);
+    if (found === null || found.revision === now.current.held?.revision) return;
+    if (!now.current.unsaved) {
+      const { from, to } = editor.state.selection;
+      take(found);
+      const most = editor.state.doc.content.size;
+      editor.commands.setTextSelection({ from: Math.min(from, most), to: Math.min(to, most) });
+      return;
+    }
+    const theirs = normal(contentOf(found));
+    const mine = editor.getJSON() as Doc;
+    const merged: Doc = { type: 'doc', content: mergeLines(blocksOf(baseOf()), blocksOf(mine), blocksOf(theirs)) };
+    setHeld(found);
+    setSaved(JSON.stringify({ content: theirs, settings: now.current.settings }));
+    show(merged);
+  }
+
+  /**
+   * Saves the page over the revision it was written from. Refused because
+   * somebody saved first, theirs is read, this page is merged into it block by
+   * block, and it is sent again; what was typed while the save was on its way
+   * stays on the page, for the next one.
+   */
   async function save(): Promise<boolean> {
     if (held === null || editor === null) return false;
     if (!unsaved) return true;
+    if (saving.current) return false;
+    saving.current = true;
     setBusy(true);
     setError(null);
+    const sentSettings = settings;
+    const first = editor.getJSON() as Doc;
+    let over = held;
+    let base = baseOf();
+    let mine = first;
     try {
-      const written = await saveDocument(held.id, editor.getJSON(), held.revision, settings, imported.current ? 'IMPORT' : undefined);
-      imported.current = false;
-      setHeld(written);
-      setSaved(fingerprint(editor, settings));
-      return true;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const written = await saveDocument(over.id, mine, over.revision, sentSettings, imported.current ? 'IMPORT' : undefined, live.viewer);
+          imported.current = false;
+          setHeld(written);
+          setSaved(JSON.stringify({ content: mine, settings: sentSettings }));
+          if (mine !== first) {
+            // Merged with somebody else's: the page shows the merge, with anything typed meanwhile kept on top.
+            const current = editor.getJSON() as Doc;
+            show(JSON.stringify(current) === JSON.stringify(first) ? mine : { type: 'doc', content: mergeLines(blocksOf(first), blocksOf(current), blocksOf(mine)) });
+          }
+          return true;
+        } catch (cause) {
+          if (!(cause instanceof ApiError && cause.code === 'DocumentChanged')) throw cause;
+          const found = await fetchDocument(over.id);
+          if (found === null) throw cause;
+          const theirs = normal(contentOf(found));
+          mine = { type: 'doc', content: mergeLines(blocksOf(base), blocksOf(mine), blocksOf(theirs)) };
+          base = theirs;
+          over = found;
+        }
+      }
+      return false;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the document.'));
       return false;
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
+
+  // Saved as it is written, once it has been still for Admin Settings' pause; not while a model writes in it.
+  useAutosave(unsaved, `${tick}|${JSON.stringify(settings)}`, answering, save);
 
   async function rename() {
     if (naming === null || held === null) return;
@@ -753,6 +846,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             {t('Unsaved')}
           </span>
         )}
+        <Presence others={live.others} />
         <div className={shell.toolbarRight}>
           <div className={styles.modes} role="group" aria-label={t('Mode')}>
             <span className={`${styles.mode} ${styles.modeOn}`} aria-current="true">
@@ -1010,13 +1104,23 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
             <div className={styles.desk} data-document-page={darkPage ? 'dark' : undefined} data-testid="document-desk">
-              <DocumentPaper
-                editor={editor}
-                geometry={geometry}
-                pages={pages}
-                writing={answering ? <Loader label={t('Writing…')} delay={0} size={20} /> : null}
-                changed={changed}
-              />
+              <div
+                style={{ position: 'relative' }}
+                onMouseMove={(event) => {
+                  const box = event.currentTarget.getBoundingClientRect();
+                  live.point(event.clientX - box.left, event.clientY - box.top);
+                }}
+                onMouseLeave={() => live.point(null, null)}
+              >
+                <DocumentPaper
+                  editor={editor}
+                  geometry={geometry}
+                  pages={pages}
+                  writing={answering ? <Loader label={t('Writing…')} delay={0} size={20} /> : null}
+                  changed={changed}
+                />
+                <LivePointers pointers={live.pointers} place={(x, y) => ({ left: x, top: y })} />
+              </div>
             </div>
           )}
           {editor !== null && held !== null && (

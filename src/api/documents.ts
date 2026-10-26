@@ -206,12 +206,14 @@ export async function saveDocument(
   revision: number,
   settings: DocumentSettings,
   via?: 'IMPORT',
+  /** The open editor saving it, as it named itself in the live room; its saves are announced as its own. */
+  viewer?: string,
 ): Promise<DesignDocument> {
   const data = await graphql<{ saveDocument: DesignDocument }>(
-    `mutation ($id: ID!, $content: String!, $revision: Int, $pageSize: String, $orientation: String, $margins: String, $language: String, $via: String) {
-       saveDocument(id: $id, content: $content, revision: $revision, pageSize: $pageSize, orientation: $orientation, margins: $margins, language: $language, via: $via) { ${FIELDS} }
+    `mutation ($id: ID!, $content: String!, $revision: Int, $pageSize: String, $orientation: String, $margins: String, $language: String, $via: String, $viewer: String) {
+       saveDocument(id: $id, content: $content, revision: $revision, pageSize: $pageSize, orientation: $orientation, margins: $margins, language: $language, via: $via, viewer: $viewer) { ${FIELDS} }
      }`,
-    { id, content: JSON.stringify(content), revision, ...settings, via: via ?? null },
+    { id, content: JSON.stringify(content), revision, ...settings, via: via ?? null, viewer: viewer ?? null },
   );
   return data.saveDocument;
 }

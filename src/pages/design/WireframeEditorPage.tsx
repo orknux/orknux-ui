@@ -29,7 +29,9 @@ import redoIcon from '../../assets/redo.svg';
 import rectIcon from '../../assets/square.svg';
 import textIcon from '../../assets/type.svg';
 import undoIcon from '../../assets/undo.svg';
+import { ApiError } from '../../api/client';
 import { AppShell } from '../../components/AppShell';
+import { LivePointers, mergeById, Presence, useAutosave, useLiveRoom } from '../../components/LiveRoom';
 import { Loader } from '../../components/Loader';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
 import { askBeforeLeaving, useLeaveGuard } from '../../components/leaveGuard';
@@ -249,6 +251,33 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   const zoomOutKey = useZoomOutShortcut();
 
   const unsaved = wireframe !== null && JSON.stringify(elements) !== saved;
+
+  /*
+   * Working on it together, as the workflow editor does: who else is here,
+   * where they point, and their saves taken in as they land - merged element
+   * by element into what is unsaved here. Issue #683. Read through refs,
+   * because what lands reads the editor as it is then.
+   */
+  const now = useRef({ wireframe, elements, saved, unsaved, gesture });
+  now.current = { wireframe, elements, saved, unsaved, gesture };
+  const saving = useRef(false);
+  const live = useLiveRoom('wireframe', wireframe?.id ?? null, () => void catchUp());
+
+  /** Somebody else saved: theirs taken in, and anything unsaved here merged into it. */
+  async function catchUp() {
+    const held = now.current.wireframe;
+    if (held === null || saving.current) return;
+    const found = await fetchWireframe(held.id).catch(() => null);
+    if (found === null || found.revision === now.current.wireframe?.revision) return;
+    const theirs = elementsOf(found);
+    const merged = now.current.unsaved || now.current.gesture !== null
+      ? mergeById(JSON.parse(now.current.saved) as WireframeElement[], now.current.elements, theirs)
+      : theirs;
+    setWireframe(found);
+    setSaved(JSON.stringify(theirs));
+    setElements(merged);
+    setSelected((was) => was.filter((id) => merged.some((one) => one.id === id)));
+  }
 
   // -- Loading ------------------------------------------------------------
 
@@ -650,21 +679,47 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   async function save(): Promise<boolean> {
     if (wireframe === null) return false;
     if (!unsaved) return true;
+    if (saving.current) return false;
+    saving.current = true;
     setBusy(true);
     setError(null);
+    let over = wireframe;
+    let base = JSON.parse(saved) as WireframeElement[];
+    let mine = elements;
+    const sent = JSON.stringify(elements);
     try {
-      const written = await saveWireframe(wireframe.id, elements, wireframe.revision);
-      setWireframe(written);
-      setSaved(JSON.stringify(elementsOf(written)));
-      setElements(elementsOf(written));
-      return true;
+      // Refused because somebody saved first: theirs is read, this merged into it, and sent again.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const written = await saveWireframe(over.id, mine, over.revision, live.viewer);
+          const drawn = elementsOf(written);
+          setWireframe(written);
+          setSaved(JSON.stringify(drawn));
+          // What was drawn while the save was on its way stays, for the next one.
+          if (JSON.stringify(now.current.elements) === sent) setElements(drawn);
+          return true;
+        } catch (cause) {
+          if (!(cause instanceof ApiError && cause.code === 'WireframeChanged')) throw cause;
+          const found = await fetchWireframe(over.id);
+          if (found === null) throw cause;
+          const theirs = elementsOf(found);
+          mine = mergeById(base, mine, theirs);
+          base = theirs;
+          over = found;
+        }
+      }
+      return false;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not save the wireframe.'));
       return false;
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
+
+  // Saved as it is drawn, once it has been still for Admin Settings' pause; not in the middle of a drag.
+  useAutosave(unsaved, JSON.stringify(elements), answering || gesture !== null, save);
 
   async function rename() {
     if (naming === null || wireframe === null) return;
@@ -891,6 +946,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
             {t('Unsaved')}
           </span>
         )}
+        <Presence others={live.others} />
         <div className={shell.toolbarRight}>
           <div className={styles.tools} role="toolbar" aria-label={t('Tools')}>
             {TOOLS.map((one) => (
@@ -961,7 +1017,17 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
       </div>
 
       <div className={shell.editor}>
-        <div className={styles.canvas} ref={canvasRef} data-testid="wireframe-canvas">
+        <div
+          className={styles.canvas}
+          ref={canvasRef}
+          data-testid="wireframe-canvas"
+          onMouseMove={(event) => {
+            const box = event.currentTarget.getBoundingClientRect();
+            live.point((event.clientX - box.left - view.x) / view.zoom, (event.clientY - box.top - view.y) / view.zoom);
+          }}
+          onMouseLeave={() => live.point(null, null)}
+        >
+          <LivePointers pointers={live.pointers} place={(x, y) => ({ left: x * view.zoom + view.x, top: y * view.zoom + view.y })} />
           {wireframe === null ? (
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (

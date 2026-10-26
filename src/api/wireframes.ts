@@ -122,12 +122,13 @@ export async function renameWireframe(id: string, name: string): Promise<Wirefra
 }
 
 /** Writes the whole drawing; refused when the wireframe was saved since `revision`. */
-export async function saveWireframe(id: string, elements: WireframeElement[], revision: number): Promise<Wireframe> {
+/** [viewer] is the open editor saving it, as it named itself in the live room; its saves are announced as its own. */
+export async function saveWireframe(id: string, elements: WireframeElement[], revision: number, viewer?: string): Promise<Wireframe> {
   const data = await graphql<{ saveWireframe: Wireframe }>(
-    `mutation ($id: ID!, $document: String!, $revision: Int) {
-       saveWireframe(id: $id, document: $document, revision: $revision) { ${FIELDS} }
+    `mutation ($id: ID!, $document: String!, $revision: Int, $viewer: String) {
+       saveWireframe(id: $id, document: $document, revision: $revision, viewer: $viewer) { ${FIELDS} }
      }`,
-    { id, document: documentOf(elements), revision },
+    { id, document: documentOf(elements), revision, viewer: viewer ?? null },
   );
   return data.saveWireframe;
 }
