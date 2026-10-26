@@ -46,6 +46,9 @@ try {
   const carded = await card.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false);
   const said = carded ? ((await card.textContent()) ?? '') : '';
   record(carded && said.includes(RENAMED) && said.includes('Document in'), `hovering a link shows its document's name and where it is (${JSON.stringify(said.slice(0, 120))})`);
+  record(said.includes('Ctrl+click to open'), `and, while editing, how to follow it (${JSON.stringify(said.slice(-40))})`);
+  const native = drawn ? await link.first().getAttribute('title') : 'none drawn';
+  record(native === null, `in place of the browser's own tooltip (${native})`);
   await page.mouse.move(0, 0);
 
   // A plain click puts the caret there, as on any link being edited; Ctrl+click follows it.

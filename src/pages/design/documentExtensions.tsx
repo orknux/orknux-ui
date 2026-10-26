@@ -242,7 +242,7 @@ function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
   const links = (extension.options as { links?: DocumentLinkOptions }).links;
   const editing = editor.isEditable;
   const anchor = useRef<HTMLAnchorElement>(null);
-  const [card, setCard] = useState<{ document: DesignDocument; at: DOMRect } | null>(null);
+  const [card, setCard] = useState<{ document: DesignDocument; at: DOMRect; editing: boolean } | null>(null);
   const waiting = useRef<number | null>(null);
   const hide = () => {
     if (waiting.current !== null) window.clearTimeout(waiting.current);
@@ -259,14 +259,15 @@ function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
           waiting.current = window.setTimeout(() => {
             void cardOf(id).then((document) => {
               const at = anchor.current?.getBoundingClientRect();
-              if (document !== null && at !== undefined && waiting.current !== null) setCard({ document, at });
+              if (document !== null && at !== undefined && waiting.current !== null) setCard({ document, at, editing });
             });
           }, CARD_DELAY);
         }}
         onMouseLeave={hide}
         href={missing || links === undefined ? undefined : links.href(id, editing)}
         className={`${styles.documentLink} ${missing ? styles.documentLinkGone : ''}`}
-        title={missing ? t('This document was deleted') : editing ? t('Ctrl+click to open') : undefined}
+        // The card below says what a live link would; only a link to a deleted document has nothing else to say it.
+        title={missing ? t('This document was deleted') : undefined}
         onClick={(event) => {
           event.preventDefault();
           if (missing || links === undefined) return;
@@ -294,6 +295,7 @@ function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
                 <span className={styles.documentLinkCardWhere}>{tf('Document in {catalog}', { catalog: card.document.catalogName })}</span>
               </span>
               {card.document.excerpt !== '' && <span className={styles.documentLinkCardExcerpt}>{card.document.excerpt}</span>}
+              {card.editing && <span className={styles.documentLinkCardHow}>{t('Ctrl+click to open')}</span>}
             </span>
           </span>,
           document.body,

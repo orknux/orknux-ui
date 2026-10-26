@@ -518,3 +518,10 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* How to follow it, while the document is being edited: the line the browser's own tooltip used to give. */
+.documentLinkCardHow {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
