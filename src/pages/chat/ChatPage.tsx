@@ -3941,7 +3941,15 @@ ${named}`;
                     {sentAt(message.at) !== null && (
                       <span className={styles.sentAt}>{sentAt(message.at)}</span>
                     )}
-                    <div className={styles.userBubble}>{message.content}</div>
+                    {/* Theirs beside what they said, on its left and level with it; a carried turn is signed by whoever put it. */}
+                    <div className={styles.userLine}>
+                      {session.chatAvatarShown !== false && (
+                        <span className={styles.userAvatar} aria-hidden="true" data-user-avatar="">
+                          {(message.actor ?? shellUser(session).name).slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <div className={styles.userBubble}>{message.content}</div>
+                    </div>
                     {filesOf(filesUnder(message), 'user')}
                     {/*
                       Under the bubble, inside the body, so it lines up with the
@@ -3977,12 +3985,6 @@ ${named}`;
                       )}
                     </div>
                   </div>
-                  {/* Theirs beside what they said, as the agent's is beside its answers; a carried turn is signed by whoever put it. */}
-                  {session.chatAvatarShown !== false && (
-                    <span className={styles.userAvatar} aria-hidden="true" data-user-avatar="">
-                      {(message.actor ?? shellUser(session).name).slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
                 </div>
               ) : carried.has(index) ? null : (
                 <div

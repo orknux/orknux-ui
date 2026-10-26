@@ -3,7 +3,7 @@
  *
  * The agent's answers had an avatar and the person's lines had none. The
  * history is passed through with a line of the person's on its end: on by
- * default, its avatar is drawn to the right of the bubble, carrying their
+ * default, its avatar is drawn on the bubble's left and level with it, carrying their
  * initials; turned off on Preferences, it is gone. Put back on at the end,
  * because alice is a fixture.
  */
@@ -46,7 +46,14 @@ async function readAvatar() {
     if (!bubble || !avatar) return { bubble: Boolean(bubble), avatar: null };
     const a = avatar.getBoundingClientRect();
     const b = bubble.getBoundingClientRect();
-    return { bubble: true, avatar: avatar.textContent.trim(), right: a.left >= b.right, size: Math.round(a.width) };
+    const middle = (box) => box.top + box.height / 2;
+    return {
+      bubble: true,
+      avatar: avatar.textContent.trim(),
+      left: a.right <= b.left,
+      level: Math.abs(middle(a) - middle(b)) <= 2,
+      size: Math.round(a.width),
+    };
   }, SAID);
 }
 
@@ -61,8 +68,8 @@ async function setAvatar(choice) {
 
 const on = await readAvatar();
 record(
-  on.avatar !== null && /^[A-Z0-9]{1,2}$/.test(on.avatar) && on.right && on.size === 32,
-  `on by default, the line has the person's initials beside it, right of the bubble (${JSON.stringify(on)})`,
+  on.avatar !== null && /^[A-Z0-9]{1,2}$/.test(on.avatar) && on.left && on.level && on.size === 32,
+  `on by default, the line has the person's initials on the bubble's left, level with it (${JSON.stringify(on)})`,
 );
 
 await setAvatar('Off');
