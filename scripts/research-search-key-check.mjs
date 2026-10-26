@@ -11,9 +11,12 @@
  * Whether there is a key is answered in the browser, first no and then yes, so
  * the check does not depend on what the fixture's search is set to.
  */
-import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
+import { BASE, WORKSPACE, open, record, finish, chooseOption } from './suite/harness.mjs';
 
-const { browser, page } = await open({ viewport: { width: 1440, height: 1000 } });
+const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
+// Start also waits for an agent: one is chosen, so only the search key is left to decide it.
+const listed = await graphql(`query($w: ID!) { workspaceAgents(workspaceId: $w, size: 500) { content { id enabled } } }`, { w: WORKSPACE });
+const agent = listed.workspaceAgents.content.find((one) => one.enabled);
 
 let ready = false;
 await page.route('**/graphql', async (route) => {
@@ -27,6 +30,8 @@ await page.getByRole('button', { name: 'New research' }).click({ timeout: 20_000
 const dialog = page.locator('dialog[open]');
 await dialog.locator('#research-web-search').waitFor({ timeout: 10_000 });
 await dialog.locator('textarea, input[type="text"]').first().fill('zz search key check: why are there tides?');
+await chooseOption(page, '#research-agent-mode', { value: 'SINGLE' }).catch(() => undefined);
+if (agent !== undefined) await chooseOption(page, '#research-agent', { value: agent.id }).catch(() => undefined);
 const start = dialog.getByRole('button', { name: 'Start', exact: true });
 const line = dialog.locator('[data-search-key-missing]');
 
