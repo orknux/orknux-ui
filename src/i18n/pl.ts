@@ -3957,7 +3957,6 @@ export const PL: Record<string, string> = {
   "Replacing…": "Zamienianie…",
   "The link stays the same and opens the new file; the old file is gone for good:": "Link pozostaje ten sam i otwiera nowy plik; stary plik znika na zawsze:",
   "New file:": "Nowy plik:",
-  "Put another file at this address": "Umieść inny plik pod tym adresem",
   "Back to wireframes": "Wróć do makiet",
   "Back to documents": "Wróć do dokumentów",
   "Back to diagrams": "Wróć do diagramów",
