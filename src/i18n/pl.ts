@@ -4005,5 +4005,7 @@ export const PL: Record<string, string> = {
   "Import files as documents": "Importuj pliki jako dokumenty",
   "Importing {done} of {of}…": "Importowanie {done} z {of}…",
   "Could not import {names}": "Nie udało się zaimportować: {names}",
+  "Times it runs": "Ile razy się wykonuje",
+  "How many times the node does its work in one run, each time on what the last one produced. The node after it gets the last.": "Ile razy węzeł wykonuje swoją pracę w jednym uruchomieniu, za każdym razem na tym, co dało poprzednie. Następny węzeł dostaje ostatni wynik.",
   "How hard the model thinks on this node, in place of its own setting. Default uses the model’s.": "Jak intensywnie model myśli w tym węźle, zamiast własnego ustawienia. Domyślna oznacza ustawienie modelu.",
 };

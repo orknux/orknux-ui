@@ -210,6 +210,8 @@ interface NodeData extends Record<string, unknown> {
   retryJitter?: number | null;
   /** The longest this node may go on being attempted for; null is no limit. */
   retryBudgetSeconds?: number | null;
+  /** How many times a run does this node's work in one pass; null is once. Issue #661. */
+  repeatTimes?: number | null;
   /**
    * Whether a run does this node's work.
    *
@@ -650,6 +652,7 @@ function nodeDataOf(node: GraphNode): NodeData {
     retryMaxWaitSeconds: node.retryMaxWaitSeconds ?? null,
     retryJitter: node.retryJitter ?? null,
     retryBudgetSeconds: node.retryBudgetSeconds ?? null,
+    repeatTimes: node.repeatTimes ?? null,
     enabled: node.enabled ?? true,
     agentId: node.agentId,
     triggerId: node.triggerId,
@@ -747,6 +750,8 @@ function drawnNodeOf(key: string, position: { x: number; y: number }, data: Node
         : null,
     retryJitter: (data.retryAttempts ?? 1) > 1 ? (data.retryJitter ?? null) : null,
     retryBudgetSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBudgetSeconds ?? null) : null,
+    // Once is sent as nothing, and only a node that does work has any to repeat.
+    repeatTimes: handlesFailure(data.kind) && (data.repeatTimes ?? 1) > 1 ? (data.repeatTimes ?? null) : null,
     // Always on for a trigger, whatever the data says: the server refuses
     // a disabled one, and the panel offers no switch to make one.
     enabled: data.kind === 'TRIGGER' ? true : (data.enabled ?? true),
@@ -4301,6 +4306,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           retryMaxWaitSeconds: null,
           retryJitter: null,
           retryBudgetSeconds: null,
+          repeatTimes: null,
           // On: a node is added to be run, and switching one off is a decision
           // about a node that already exists.
           enabled: true,
@@ -4766,6 +4772,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.retryMaxWaitSeconds === draft.retryMaxWaitSeconds &&
           data.retryJitter === draft.retryJitter &&
           data.retryBudgetSeconds === draft.retryBudgetSeconds &&
+          (data.repeatTimes ?? null) === (draft.repeatTimes ?? null) &&
           data.enabled === draft.enabled &&
           sameMappings(data.mappings, shown.mappings);
         if (same) return node;
@@ -8568,6 +8575,37 @@ Change the keystroke in Preferences.`}
                     </div>
                   );
                 })()}
+
+                {/*
+                  How many times a run does this node's work in one pass, each
+                  time on what the last one produced. One is once, and is saved
+                  as nothing. Issue #661.
+                */}
+                {handlesFailure(draft.kind) && (
+                  <div className={styles.field}>
+                    <span className={styles.labelWithHint}>
+                      <label className={styles.label} htmlFor="node-repeat">{t('Times it runs')}</label>
+                      <FieldHint label={t('Times it runs')}>
+                        {t('How many times the node does its work in one run, each time on what the last one produced. The node after it gets the last.')}
+                      </FieldHint>
+                    </span>
+                    <div className={styles.inputWrapper}>
+                      <input
+                        id="node-repeat"
+                        className={styles.input}
+                        data-node-repeat=""
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={draft.repeatTimes ?? 1}
+                        onChange={(event) => {
+                          const times = Math.floor(Number(event.target.value));
+                          setDraft({ ...draft, repeatTimes: Number.isFinite(times) && times > 1 ? times : null });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {handlesFailure(draft.kind) && (
                   <RetryPolicyFields draft={draft} onChange={(patch) => setDraft({ ...draft, ...patch })} />

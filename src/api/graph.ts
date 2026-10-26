@@ -156,6 +156,11 @@ export interface GraphNode {
    */
   retryBudgetSeconds?: number | null;
   /**
+   * How many times a run does this node's work in one pass, each time handed
+   * what the one before produced; null is once. Kept on an action or an agent.
+   */
+  repeatTimes?: number | null;
+  /**
    * Whether a run does this node's work.
    *
    * Off, the node stays on the graph with its lines and a run walks straight
@@ -296,7 +301,7 @@ const GRAPH_FIELDS = `
     decisionModelId decisionBranchQuestion decisionThreshold calledWorkflowId
     decisionQuestions { key kind instructions options { name description } }
     yesLabel noLabel fallbackEnabled streamOutput retryAttempts retryBackoffSeconds
-    retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds enabled x y
+    retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds repeatTimes enabled x y
     mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId fieldProperties { ${FIELD_TREE} } }
     inputs { name type display }
     outputs { name type display }

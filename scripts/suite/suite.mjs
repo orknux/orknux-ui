@@ -1072,6 +1072,12 @@ export const TESTS = [
     // Makes its own provider, model, agent and workflow, and removes them.
   },
   {
+    name: 'workflow-node-repeat-check',
+    what: 'an action or an agent node says how many times it runs in one run, and once is saved as nothing',
+    needs: ['workspace'],
+    // Makes its own workflow, and removes it.
+  },
+  {
     name: 'template-publish-closes-check',
     what: 'publishing a template closes the dialog rather than opening a message to close',
     needs: ['workspace'],
