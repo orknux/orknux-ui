@@ -17,7 +17,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   askDiagram,
   describeDiagram,
-  DIAGRAM_EDGE_KINDS,
+  DIAGRAM_END_STYLES,
+  DIAGRAM_LINE_STYLES,
   DIAGRAM_NODE_KINDS,
   DIAGRAM_PNG_SCALES,
   diagramExportUrl,
@@ -35,7 +36,8 @@ import type {
   DiagramAgentAccess,
   DiagramDrawing,
   DiagramEdgeData,
-  DiagramEdgeKind,
+  DiagramEndStyle,
+  DiagramLineStyle,
   DiagramNodeData,
   DiagramNodeKind,
   DiagramTurn,
@@ -87,6 +89,7 @@ import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
 import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCHES } from './DiagramCanvas';
 import type { LinkEdge, ShapeNode } from './DiagramCanvas';
+import { EndIcon, LineIcon, MarkerDefs, endStyleLabel, lineStyleLabel, markerId, nearestKind, styleOf } from './DiagramLineStyles';
 import { ShapeIcon } from './DiagramShapes';
 import { agentAccessOptions } from './DiagramsPage';
 import styles from './DiagramEditorPage.module.css';
@@ -177,19 +180,6 @@ const MADE: Record<DiagramNodeKind, { w: number; h: number }> = {
 
 function kindLabel(kind: DiagramNodeKind): string {
   return SHAPES.find((one) => one.kind === kind)?.label() ?? MORE_SHAPES[kind]?.() ?? kind;
-}
-
-function edgeKindLabel(kind: DiagramEdgeKind): string {
-  switch (kind) {
-    case 'arrow':
-      return t('Arrow');
-    case 'line':
-      return t('Line');
-    case 'dashed':
-      return t('Dashed arrow');
-    case 'both':
-      return t('Arrow both ways');
-  }
 }
 
 const freshId = (prefix: string) => `${prefix}${Math.random().toString(36).slice(2, 10)}`;
@@ -505,16 +495,24 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   const edges = useMemo<LinkEdge[]>(
     () =>
-      drawing.edges.map((edge) => ({
-        id: edge.id,
-        source: edge.from,
-        target: edge.to,
-        type: 'link',
-        data: { kind: edge.kind, label: edge.label },
-        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-        markerStart: { type: MarkerType.ArrowClosed, width: 18, height: 18, orient: 'auto-start-reverse' },
-        selected: selectedEdges.includes(edge.id),
-      })),
+      drawing.edges.map((edge) => {
+        const { line, start, end } = styleOf(edge);
+        // The arrow is React Flow's own closed arrow, as it always was; the other marks are this page's markers.
+        const mark = (style: DiagramEndStyle, atEnd: boolean) =>
+          style === 'arrow'
+            ? { type: MarkerType.ArrowClosed, width: 18, height: 18, ...(atEnd ? {} : { orient: 'auto-start-reverse' }) }
+            : (markerId(style, atEnd) ?? undefined);
+        return {
+          id: edge.id,
+          source: edge.from,
+          target: edge.to,
+          type: 'link' as const,
+          data: { line, label: edge.label },
+          markerEnd: mark(end, true),
+          markerStart: mark(start, false),
+          selected: selectedEdges.includes(edge.id),
+        };
+      }),
     [drawing, selectedEdges],
   );
 
@@ -562,7 +560,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
 
   function onConnect(connection: Connection) {
     if (connection.source === connection.target) return;
-    const made: DiagramEdgeData = { id: freshId('e'), from: connection.source, to: connection.target, kind: 'arrow' };
+    const made: DiagramEdgeData = { id: freshId('e'), from: connection.source, to: connection.target, kind: 'arrow', line: 'solid', start: 'none', end: 'arrow' };
     change({ ...drawing, edges: [...drawing.edges, made] });
     setSelectedNodes([]);
     setSelectedEdges([made.id]);
@@ -1211,6 +1209,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
             <div className={styles.loading}>{error === null ? <Loader /> : <p role="alert">{error}</p>}</div>
           ) : (
             <LabelEditingContext.Provider value={labelEditing}>
+            {/* Inside the canvas, so the marks take its ink and paper. */}
+            <MarkerDefs />
             <ReactFlow<ShapeNode, LinkEdge>
               nodes={nodes}
               edges={edges}
@@ -1426,22 +1426,66 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                   data-testid="diagram-edge-label-input"
                 />
               </label>
-              <label className={styles.field}>
-                <span>{t('Line')}</span>
-                <Select
-                  className={`${form.input} ${form.select}`}
-                  value={oneEdge.kind}
-                  onChange={(picked) => change({ ...drawing, edges: drawing.edges.map((edge) => (edge.id === oneEdge.id ? { ...edge, kind: picked as DiagramEdgeKind } : edge)) })}
-                  aria-label={t('Line')}
-                  data-testid="diagram-edge-kind"
-                >
-                  {DIAGRAM_EDGE_KINDS.map((kind) => (
-                    <option key={kind} value={kind}>
-                      {edgeKindLabel(kind)}
-                    </option>
-                  ))}
-                </Select>
-              </label>
+              {(() => {
+                const style = styleOf(oneEdge);
+                // Each picker changes its own part; the old kind beside them follows, for a reader that knows only it.
+                const restyle = (patch: Partial<typeof style>) => {
+                  const next = { ...style, ...patch };
+                  change({
+                    ...drawing,
+                    edges: drawing.edges.map((edge) =>
+                      edge.id === oneEdge.id ? { ...edge, ...next, kind: nearestKind(next.line, next.start, next.end) } : edge,
+                    ),
+                  });
+                };
+                return (
+                  <>
+                    <label className={styles.field}>
+                      <span>{t('Line style')}</span>
+                      <Select
+                        className={`${form.input} ${form.select}`}
+                        value={style.line}
+                        onChange={(picked) => restyle({ line: picked as DiagramLineStyle })}
+                        aria-label={t('Line style')}
+                        data-testid="diagram-edge-line"
+                      >
+                        {DIAGRAM_LINE_STYLES.map((line) => (
+                          <option key={line} value={line}>
+                            <span className={styles.styleOption}>
+                              <LineIcon style={line} />
+                              {lineStyleLabel(line)}
+                            </span>
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                    {([
+                      ['start', t('At the start'), false],
+                      ['end', t('At the end'), true],
+                    ] as const).map(([side, label, atEnd]) => (
+                      <label key={side} className={styles.field}>
+                        <span>{label}</span>
+                        <Select
+                          className={`${form.input} ${form.select}`}
+                          value={style[side]}
+                          onChange={(picked) => restyle({ [side]: picked as DiagramEndStyle })}
+                          aria-label={label}
+                          data-testid={`diagram-edge-${side}`}
+                        >
+                          {DIAGRAM_END_STYLES.map((end) => (
+                            <option key={end} value={end}>
+                              <span className={styles.styleOption}>
+                                <EndIcon style={end} atEnd={atEnd} />
+                                {endStyleLabel(end)}
+                              </span>
+                            </option>
+                          ))}
+                        </Select>
+                      </label>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
           {selectedNodes.length + selectedEdges.length > 1 && (

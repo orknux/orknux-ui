@@ -3,8 +3,9 @@ import type { CSSProperties } from 'react';
 import { BaseEdge, EdgeLabelRenderer, Handle, NodeResizer, Position, useInternalNode } from '@xyflow/react';
 import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/react';
 
-import type { DiagramEdgeKind, DiagramNodeKind } from '../../api/diagrams';
+import type { DiagramLineStyle, DiagramNodeKind } from '../../api/diagrams';
 import { t } from '../../i18n';
+import { dashesOf } from './DiagramLineStyles';
 import { ICON_LABEL, OUTLINES, OutlinePieces, compartments, rimBorder } from './DiagramShapes';
 import type { Outline } from './DiagramShapes';
 import styles from './DiagramEditorPage.module.css';
@@ -20,7 +21,8 @@ export type ShapeData = {
 
 export type ShapeNode = Node<ShapeData, 'shape'>;
 
-export type LinkData = { kind: DiagramEdgeKind; label?: string };
+/** A connection's line style and words; its two ends arrive as the edge's own markers, none where it carries none. */
+export type LinkData = { line: DiagramLineStyle; label?: string };
 
 export type LinkEdge = Edge<LinkData, 'link'>;
 
@@ -239,16 +241,16 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
   const start = rimBorder(fromKind, a, b.cx, b.cy) ?? border(a, b.cx, b.cy);
   const end = rimBorder(toKind, b, a.cx, a.cy) ?? border(b, a.cx, a.cy);
   const path = `M ${start.x},${start.y} L ${end.x},${end.y}`;
-  const kind = data?.kind ?? 'arrow';
+  const dashes = dashesOf(data?.line ?? 'solid');
   return (
     <>
       <BaseEdge
         id={id}
         path={path}
-        markerEnd={kind === 'line' ? undefined : markerEnd}
-        markerStart={kind === 'both' ? markerStart : undefined}
+        markerEnd={markerEnd}
+        markerStart={markerStart}
         className={`${styles.link} ${selected ? styles.linkSelected : ''}`}
-        style={kind === 'dashed' ? { strokeDasharray: '6 4' } : undefined}
+        style={dashes === null ? undefined : { strokeDasharray: dashes, strokeLinecap: data?.line === 'dotted' ? 'round' : undefined }}
         interactionWidth={16}
       />
       {typing && (

@@ -2413,6 +2413,12 @@ export const TESTS = [
     /* Makes its own diagram and removes it. */
   },
   {
+    name: 'diagram-line-styles-check',
+    what: "a diagram's line is picked a style and a mark at each end, each drawn in its picker, and a line saved as an old kind draws as it did",
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
     name: 'documents-import-check',
     what: 'the documents list keeps its page-size picker apart from the buttons beside it, and Import takes several files at once, each a document named after its file, naming any that could not be read',
     needs: ['workspace'],

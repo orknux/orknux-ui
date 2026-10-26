@@ -474,6 +474,13 @@
   font-size: var(--text-xs);
 }
 
+/* A line style or an end in its picker: drawn, then named. */
+.styleOption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
 .notesHead {
   display: flex;
   justify-content: space-between;

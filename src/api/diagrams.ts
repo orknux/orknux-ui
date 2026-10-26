@@ -16,10 +16,21 @@ export const UML_KINDS = ['actor', 'class', 'component', 'package', 'interface',
 
 export const DIAGRAM_NODE_KINDS = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group', ...FLOWCHART_KINDS, ...UML_KINDS] as const;
 
-/** What a connection is drawn as (`DiagramEdgeKind`). */
+/**
+ * What a connection was drawn as before it had a style and two ends (`DiagramEdgeKind`):
+ * still sent beside them as the nearest of the four, and still read where they are missing.
+ */
 export type DiagramEdgeKind = 'arrow' | 'line' | 'dashed' | 'both';
 
-export const DIAGRAM_EDGE_KINDS: DiagramEdgeKind[] = ['arrow', 'line', 'dashed', 'both'];
+/** How a connection is drawn along its length (`DiagramLineStyle`). */
+export type DiagramLineStyle = 'solid' | 'dashed' | 'dotted';
+
+export const DIAGRAM_LINE_STYLES: DiagramLineStyle[] = ['solid', 'dashed', 'dotted'];
+
+/** What one end of a connection carries (`DiagramEndStyle`). */
+export type DiagramEndStyle = 'none' | 'arrow' | 'open' | 'triangle' | 'diamond' | 'filled-diamond' | 'circle';
+
+export const DIAGRAM_END_STYLES: DiagramEndStyle[] = ['none', 'arrow', 'open', 'triangle', 'diamond', 'filled-diamond', 'circle'];
 
 /** What an agent may do with a diagram through the orknux_* tools. */
 export type DiagramAgentAccess = 'READ' | 'CHANGE';
@@ -45,6 +56,11 @@ export interface DiagramEdgeData {
   to: string;
   label?: string;
   kind: DiagramEdgeKind;
+  line?: DiagramLineStyle;
+  /** At `from`. */
+  start?: DiagramEndStyle;
+  /** At `to`. */
+  end?: DiagramEndStyle;
 }
 
 export interface DiagramDrawing {
