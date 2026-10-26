@@ -200,6 +200,9 @@
   display: flex;
   flex: 0 0 240px;
   flex-direction: column;
+  /* Its width is the one it was given: a long highlight note is cut short inside it rather than widening it. */
+  min-width: 0;
+  overflow: hidden;
   min-height: 0;
   padding: var(--space-8) 0;
   background: var(--color-surface);
@@ -317,6 +320,8 @@
   display: flex;
   flex: none;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
   gap: 2px;
   padding: var(--space-6) var(--space-8);
   background: none;
@@ -347,4 +352,12 @@
   font-size: var(--text-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The outline column's right edge, taken hold of to make it wider or narrower. */
+.sideHandle.sideHandle {
+  position: relative;
+  z-index: 5;
+  width: 8px;
+  margin-inline: -4px;
 }

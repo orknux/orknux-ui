@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 
 import type { DocumentReference } from '../../api/documents';
+import { ResizeHandle, useDragSize } from '../../components/DragSize';
 import { useSieve } from '../../components/sieve';
 import { t } from '../../i18n';
 import { headingsOf, highlightsOf, linksOf } from './documentExtensions';
@@ -30,7 +31,13 @@ const READING_LINE = 48;
  * The column, and each of its two sections, folds away - remembered for
  * whoever uses the editor, as the image editor's layers panel is.
  */
+/** How narrow and how wide the outline column may be dragged, in pixels. */
+const SIDE_NARROWEST = 180;
+const SIDE_WIDEST = 520;
+
 export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: DocumentSideProps) {
+  // As wide as it was left, and never as wide as its longest note: a note is cut short, not the page pushed aside.
+  const width = useDragSize({ storageKey: 'orknux.document.side-width', initial: 240, min: SIDE_NARROWEST, max: SIDE_WIDEST, edge: 'right' });
   const [side, rememberSide] = useSieve('document-editor.side');
   const [outlineFold, rememberOutline] = useSieve('document-editor.outline');
   const [notesFold, rememberNotes] = useSieve('document-editor.highlights');
@@ -101,7 +108,8 @@ export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: Docum
   }
 
   return (
-    <aside className={styles.side} aria-label={t('Outline')} data-testid="document-side">
+    <>
+    <aside className={styles.side} style={{ flexBasis: width.size, width: width.size }} aria-label={t('Outline')} data-testid="document-side">
       <div className={styles.sideHead}>
         <button
           type="button"
@@ -268,5 +276,18 @@ export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: Docum
         </>
       )}
     </aside>
+    <ResizeHandle
+      className={styles.sideHandle}
+      orientation="vertical"
+      label={t('Width of the outline')}
+      controls="document-side"
+      valueNow={width.size}
+      valueMin={SIDE_NARROWEST}
+      valueMax={SIDE_WIDEST}
+      title={t('Drag to change the width; double-click to put it back')}
+      dragging={width.dragging}
+      handlers={width.handlers}
+    />
+    </>
   );
 }

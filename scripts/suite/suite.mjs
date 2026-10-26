@@ -2443,6 +2443,12 @@ export const TESTS = [
     /* Makes its own two documents and removes them. */
   },
   {
+    name: 'document-outline-width-check',
+    what: "the document editor's outline column keeps its width under a long note, and is dragged wider",
+    needs: ['workspace'],
+  },
+
+  {
     name: 'document-dark-page-check',
     what: "the document editor's Dark page switch draws the sheets dark with light ink and code, quote, link and Find colours of their own, is remembered, and leaves the document and its export as they were",
     needs: ['workspace'],
