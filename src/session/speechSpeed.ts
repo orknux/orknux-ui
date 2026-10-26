@@ -40,7 +40,8 @@ export function setSpeechSpeed(next: number | null): void {
   listeners.forEach((listener) => listener());
 }
 
-function subscribe(listener: () => void): () => void {
+/** Told whenever the speed changes - what a clip already playing follows. */
+export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }

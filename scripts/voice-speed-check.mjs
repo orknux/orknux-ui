@@ -111,8 +111,21 @@ await context.addInitScript(() => {
   const play = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () {
     window.__mute.rates.push(this.playbackRate);
+    window.__mute.playing = this;
     return play.call(this);
   };
+  // Two seconds of real silence, so a clip is still playing when the speed is changed under it.
+  const silence = (() => {
+    const rate = 8000;
+    const samples = rate * 2;
+    const bytes = new DataView(new ArrayBuffer(44 + samples * 2));
+    const text = (at, words) => [...words].forEach((one, index) => bytes.setUint8(at + index, one.charCodeAt(0)));
+    text(0, 'RIFF'); bytes.setUint32(4, 36 + samples * 2, true); text(8, 'WAVE'); text(12, 'fmt ');
+    bytes.setUint32(16, 16, true); bytes.setUint16(20, 1, true); bytes.setUint16(22, 1, true);
+    bytes.setUint32(24, rate, true); bytes.setUint32(28, rate * 2, true); bytes.setUint16(32, 2, true); bytes.setUint16(34, 16, true);
+    text(36, 'data'); bytes.setUint32(40, samples * 2, true);
+    return bytes.buffer;
+  })();
 
   const real = window.fetch.bind(window);
   window.fetch = async (input, init) => {
@@ -126,7 +139,7 @@ await context.addInitScript(() => {
     }
     if (/\/api\/workspaces\/[^/]+\/speech/.test(address)) {
       window.__mute.spoken.push(JSON.parse(String(init?.body ?? '{}')));
-      return new Response(new Uint8Array([0x49, 0x44, 0x33]), { status: 200, headers: { 'content-type': 'audio/mpeg' } });
+      return new Response(silence, { status: 200, headers: { 'content-type': 'audio/wav' } });
     }
     if (/\/api\/chats\/[^/]+\/stream/.test(address)) {
       window.__mute.sent.push(JSON.parse(String(init?.body ?? '{}')).text ?? '');
@@ -269,6 +282,17 @@ record(spoken.length > 0, `the answer was read aloud (${spoken.length} requests)
 const rates = await page.evaluate(() => window.__mute.rates).catch(() => []);
 record(rates.length > 0 && rates.every((one) => one === Number(CHOSEN)), `played at the speed picked (${JSON.stringify(rates)})`);
 record(spoken.length > 0 && spoken.every((one) => one.speed === undefined), `and the reader is asked for none (${JSON.stringify(spoken.map((one) => one.speed))})`);
+
+/* ---- a speed picked while a clip plays is heard at once, not from the next clip ---- */
+
+await picker.selectOption('2').catch(() => undefined);
+await page.waitForTimeout(200);
+const live = await page.evaluate(() => {
+  const clip = window.__mute.playing;
+  return clip ? { rate: clip.playbackRate, ended: clip.ended } : null;
+});
+record(live !== null && live.rate === 2, `the clip playing follows a new speed at once (${JSON.stringify(live)})`);
+await picker.selectOption(CHOSEN).catch(() => undefined);
 
 /* ---- and it is still picked after a reload ---- */
 

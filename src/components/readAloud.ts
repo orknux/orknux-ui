@@ -1,6 +1,6 @@
 import { fetchSound } from '../api/attachments';
 import { speak } from '../api/speech';
-import { speechSpeed } from '../session/speechSpeed';
+import { speechSpeed, subscribe as onSpeechSpeed } from '../session/speechSpeed';
 import { spokenText } from './spokenText';
 import { t } from '../i18n';
 
@@ -292,11 +292,18 @@ export function readAloud(
       const url = URL.createObjectURL(clip);
       const element = new Audio(url);
       // The person's reading speed, played here rather than asked of the reader (see `speak`); the pitch is kept.
-      const speed = speechSpeed();
-      if (speed !== null && speed !== 1) {
-        element.preservesPitch = true;
-        element.playbackRate = speed;
-      }
+      // Followed while the clip plays too, so a speed picked mid-sentence is heard at once.
+      element.preservesPitch = true;
+      const pace = () => {
+        element.playbackRate = speechSpeed() ?? 1;
+      };
+      pace();
+      const unfollow = onSpeechSpeed(pace);
+      const finished = done;
+      done = () => {
+        unfollow();
+        finished();
+      };
       playing = { element, url, done };
       /*
        * The panel says it is speaking when it is speaking.
