@@ -3922,6 +3922,13 @@ export const TESTS = [
      */
   },
   {
+    name: 'chat-progress-command-check',
+    what: "a chat with an agent offers the progress commands in its command menu, read from the server's list",
+    needs: ['workspace'],
+    /* Makes a chat of its own with the workspace's first agent, and deletes it. */
+  },
+
+  {
     name: 'default-memory-catalog-check',
     what: 'every workspace has one memory catalog, and it stays',
     needs: ['workspace'],

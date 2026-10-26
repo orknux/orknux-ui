@@ -663,6 +663,7 @@ export const PL: Record<string, string> = {
   "Empty inherits the provider's default, 0 turns a dimension off.": "Puste dziedziczy domyślne ustawienie dostawcy, 0 wyłącza dany wymiar.",
   "No one": "Nikt",
   "None": "Brak",
+  "Progress messages for this message: {level}": "Komunikaty o postępie dla tej wiadomości: {level}",
   "Optional": "Opcjonalne",
   "Nobody but the reporter and the assignee.": "Nikt poza zgłaszającym i przypisanym.",
   "No step detail was recorded for this run.": "Dla tego uruchomienia nie zapisano szczegółów kroków.",

@@ -305,3 +305,16 @@ export function reachableSkills(
     return true;
   });
 }
+
+/** A command that sets how much the agent says while it works, for the turn its message starts. */
+export interface ProgressCommand {
+  /** The word after the marker, e.g. progress-none. */
+  key: string;
+  level: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+/** The progress commands, from the server's one list of them. */
+export async function fetchProgressCommands(): Promise<ProgressCommand[]> {
+  const data = await graphql<{ progressCommands: ProgressCommand[] }>('query { progressCommands { key level } }');
+  return data.progressCommands;
+}

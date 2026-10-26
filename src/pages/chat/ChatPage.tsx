@@ -43,7 +43,8 @@ import type {
 } from '../../api/chat';
 import { givenUp } from '../../api/sse';
 import { fetchInstallationSettings } from '../../api/installation';
-import { fetchSkillOffers, reachableSkills } from '../../api/skills';
+import { fetchProgressCommands, fetchSkillOffers, reachableSkills } from '../../api/skills';
+import type { ProgressCommand } from '../../api/skills';
 import type { SkillOffer } from '../../api/skills';
 import {
   attachmentUrl,
@@ -179,6 +180,20 @@ const SEARCH_PAUSE_MS = 300;
 
 /** A line that is nothing but one picture: what a tool's drawing is kept in the thread as. */
 const PICTURE_ONLY = /^\s*!\[[^\]]*\]\([^)\s]+\)\s*$/;
+
+/** What a progress level is called where it is offered, as the agent's form calls it. */
+function progressLevelName(level: ProgressCommand['level']): string {
+  switch (level) {
+    case 'NONE':
+      return t('None');
+    case 'LOW':
+      return t('Low');
+    case 'MEDIUM':
+      return t('Medium');
+    case 'HIGH':
+      return t('High');
+  }
+}
 
 export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
@@ -318,6 +333,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * the agent can change under an open composer.
    */
   const [skillOffers, setSkillOffers] = useState<SkillOffer[]>([]);
+  /** The commands that set the agent's progress messages for one turn; offered beside the skills. */
+  const [progressCommands, setProgressCommands] = useState<ProgressCommand[]>([]);
   /** The workspace's marker - its own, or the installation's it follows - once read. */
   const [workspaceMarker, setWorkspaceMarker] = useState<string | null>(null);
   /** The installation's marker, for a page whose workspace answered nothing. */
@@ -796,6 +813,18 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       abandoned = true;
     };
   }, [workspaceId]);
+
+  useEffect(() => {
+    let abandoned = false;
+    fetchProgressCommands()
+      .then((held) => {
+        if (!abandoned) setProgressCommands(held);
+      })
+      .catch(() => undefined);
+    return () => {
+      abandoned = true;
+    };
+  }, []);
 
   useEffect(() => {
     setSkillOffers([]);
@@ -2830,10 +2859,26 @@ ${named}`;
     return { start, end: at + rest, prefix: prefix.toLowerCase() };
   })();
   const chatAgent = current?.agentId == null ? null : (agents.find((one) => one.id === current.agentId) ?? null);
+  /*
+   * The progress commands are offered with an agent's skills, as what they
+   * are - how much it says while it works, for this message - and only where
+   * the chat has an agent: a bare model has no progress messages to set.
+   */
+  const progressOffered: SkillOffer[] =
+    chatAgent === null
+      ? []
+      : progressCommands.map((one) => ({
+          key: one.key,
+          name: tf('Progress messages for this message: {level}', { level: progressLevelName(one.level) }),
+          catalog: '',
+          plugin: null,
+          description: null,
+          skillId: null,
+        }));
   const skillsOffered =
     skillWord === null
       ? []
-      : reachableSkills(skillOffers, chatAgent).filter((one) => one.key.toLowerCase().startsWith(skillWord.prefix));
+      : [...progressOffered, ...reachableSkills(skillOffers, chatAgent)].filter((one) => one.key.toLowerCase().startsWith(skillWord.prefix));
   const skillChosen =
     skillsOffered.length === 0 ? null : skillsOffered[Math.max(0, Math.min(skillAt, skillsOffered.length - 1))];
 
