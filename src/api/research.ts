@@ -37,6 +37,9 @@ export interface ResearchDocument {
   savedAt: string;
 }
 
+/** One agent for every step, or one chosen for each. A workspace has no research agents of its own. */
+export type ResearchAgentMode = 'SINGLE' | 'PER_STEP';
+
 export interface Research {
   id: string;
   question: string;
@@ -54,6 +57,8 @@ export interface Research {
   writerAgentName: string | null;
   reviewerAgentId: string | null;
   reviewerAgentName: string | null;
+  /** One agent for every step or one for each; null on one started before there was the choice. */
+  agentMode: ResearchAgentMode | null;
   language: ResearchLanguage;
   outputFormat: ResearchOutputFormat;
   websitesInclude: string[];
@@ -193,7 +198,11 @@ export interface StartResearchInput {
   workspaceId: string;
   question: string;
   modeId: string;
-  /** The agents that plan and write; absent, the Research planner and writer. */
+  /** One agent for every step, or one chosen for each; nothing stands in for one not chosen. */
+  agentMode: ResearchAgentMode;
+  /** The agent that does all of it, in SINGLE. */
+  agentId: string | null;
+  /** The agents that plan and write, in PER_STEP. */
   plannerAgentId: string | null;
   writerAgentId: string | null;
   language: ResearchLanguage;
@@ -205,7 +214,7 @@ export interface StartResearchInput {
   useWebSearch: boolean;
   includeImages: boolean;
   review: boolean;
-  /** The agent that reviews where it is; absent, the Research reviewer. */
+  /** The agent that reviews where it is, in PER_STEP. */
   reviewerAgentId: string | null;
   /** How many follow-up questions to suggest once finished; absent is the workspace's number. */
   followUps?: number | null;
@@ -215,7 +224,7 @@ const MODE_FIELDS = 'id kind name workflowId workflowName reviewable';
 
 const RESEARCH_FIELDS =
   'id question modeId modeName workflowId workflowName modelId modelName plannerAgentId plannerAgentName writerAgentId writerAgentName ' +
-  'reviewerAgentId reviewerAgentName language outputFormat ' +
+  'reviewerAgentId reviewerAgentName agentMode language outputFormat ' +
   'websitesInclude websitesExclude documentsInclude documentsExclude useWebSearch includeImages status executionId ' +
   'fileName fileUrl artifactId artifactKey previewUrl error startedBy startedAt finishedAt earlierExecutionIds review reviewerModelId reviewerModelName parentId ' +
   'progress { step subQuestions searched level sourcesRead stage reading { title url kind } } sources { number title url kind } ' +

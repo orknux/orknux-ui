@@ -295,7 +295,16 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
           )}
         </dd>
       </div>
-      {research.plannerAgentName !== null && (
+      {/* One agent did all of it: said once, rather than the same name under three headings. */}
+      {research.agentMode === 'SINGLE' && research.plannerAgentName !== null && (
+        <div className={styles.summaryItem}>
+          <dt>{t('Agent')}</dt>
+          <dd data-research-agent data-agent-mode="SINGLE">
+            <AgentName id={research.plannerAgentId} name={research.plannerAgentName} workspaceId={workspaceId} />
+          </dd>
+        </div>
+      )}
+      {research.agentMode !== 'SINGLE' && research.plannerAgentName !== null && (
         <div className={styles.summaryItem}>
           <dt>{t('Planner')}</dt>
           <dd data-research-planner>
@@ -303,7 +312,7 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
           </dd>
         </div>
       )}
-      {research.writerAgentName !== null && (
+      {research.agentMode !== 'SINGLE' && research.writerAgentName !== null && (
         <div className={styles.summaryItem}>
           <dt>{t('Writer')}</dt>
           <dd data-research-writer>
@@ -311,7 +320,7 @@ function Summary({ research, workspaceId }: { research: Research; workspaceId: s
           </dd>
         </div>
       )}
-      {research.review && (
+      {research.review && research.agentMode !== 'SINGLE' && (
         <div className={styles.summaryItem}>
           <dt>{t('Reviewer')}</dt>
           <dd data-research-reviewer>

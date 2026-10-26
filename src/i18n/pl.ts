@@ -4036,4 +4036,9 @@ export const PL: Record<string, string> = {
   "More colours": "Więcej kolorów",
   "Fewer colours": "Mniej kolorów",
   "Delete this diagram": "Usuń ten diagram",
+  "Single agent": "Jeden agent",
+  "An agent per step": "Agent na każdy krok",
+  "Choose an agent": "Wybierz agenta",
+  "One agent plans, writes and reviews; or choose an agent for each step. None is chosen for you.": "Jeden agent planuje, pisze i recenzuje; albo wybierz agenta dla każdego kroku. Nic nie jest wybierane za ciebie.",
+  "The agent that plans the research, writes the report and reviews it, thinking with its own model.": "Agent, który planuje badanie, pisze raport i go recenzuje, myśląc własnym modelem.",
 };

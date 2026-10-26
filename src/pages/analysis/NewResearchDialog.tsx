@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
 import { createResearchMode, fetchResearchModes, fetchResearchSearchReady, startResearch } from '../../api/research';
-import type { Research, ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
+import type { Research, ResearchAgentMode, ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
 import dialog from '../../components/Dialog.module.css';
@@ -42,27 +42,26 @@ function modeHint(mode: ResearchMode): string {
 
 const LANGUAGES: ResearchLanguage[] = ['ACADEMIC', 'COLLOQUIAL', 'FORMAL'];
 
-/** The agents a workspace is seeded with for each part, by name: the choice until somebody makes another. */
-const SEEDED = { planner: 'Research planner', writer: 'Research writer', reviewer: 'Research reviewer' } as const;
-type Part = keyof typeof SEEDED;
-
 /** How many agents the pickers offer; a workspace's agents, not a page of them. */
 const AGENTS_OFFERED = 500;
 
 /**
- * The agent to start with for a part: the one chosen here last, or the seeded
- * one, or the first there is. Issue #678.
+ * The agent to start with: the one already chosen, or the one this person
+ * chose here last - and none otherwise. Nothing is chosen for anybody: a
+ * workspace has no research agents of its own, and the first agent on a list
+ * is not a choice somebody made.
  */
-function startingAgent(agents: Agent[], part: Part, last: string, chosen: string): string {
+function startingAgent(agents: Agent[], last: string, chosen: string): string {
   if (agents.some((agent) => agent.id === chosen)) return chosen;
   if (agents.some((agent) => agent.id === last)) return last;
-  return agents.find((agent) => agent.name === SEEDED[part])?.id ?? agents[0]?.id ?? '';
+  return '';
 }
 
-/** A research's agent picker: each agent by name, with the model it thinks with beside it. */
+/** A research's agent picker: each agent by name, with the model it thinks with beside it, and none until one is chosen. */
 function AgentPicker({ id, value, agents, onChange }: { id: string; value: string; agents: Agent[]; onChange: (picked: string) => void }) {
   return (
     <Select id={id} className={dialog.input} value={value} onChange={onChange}>
+      <option value="">{t('Choose an agent')}</option>
       {agents.map((agent) => (
         <option key={agent.id} value={agent.id} data-hint={agent.modelName ?? t('No model')}>
           {agent.name}
@@ -95,7 +94,12 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
   const [question, setQuestion] = useState('');
   const [modeId, setModeId] = useState('');
-  // The agents that plan and write, each remembered for whoever starts the next research in this workspace.
+  // One agent for all of it, or one for each step: which this person last used here, one agent where they have not said.
+  const [lastAgentMode, rememberAgentMode] = useSieve(`research.agents.${workspaceId}`);
+  const [agentMode, setAgentMode] = useState<ResearchAgentMode>(lastAgentMode === 'PER_STEP' ? 'PER_STEP' : 'SINGLE');
+  const [agentId, setAgentId] = useState('');
+  const [lastAgent, rememberAgent] = useSieve(`research.agent.${workspaceId}`);
+  // The agents that plan and write, each remembered only once this person has chosen it here.
   const [plannerId, setPlannerId] = useState('');
   const [writerId, setWriterId] = useState('');
   const [lastPlanner, rememberPlanner] = useSieve(`research.planner.${workspaceId}`);
@@ -152,7 +156,6 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       fetchResearchSearchReady(workspaceId)
         .then(setSearchReady)
         .catch(() => setSearchReady(null));
-      // Seeded first: the modes are what make the Research agents, which the pickers start on.
       fetchResearchModes(workspaceId)
         .then(async (foundModes) => [foundModes, (await fetchWorkspaceAgents(workspaceId, 0, AGENTS_OFFERED)).content] as const)
         .then(([foundModes, foundAgents]) => {
@@ -161,9 +164,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           // Switched-off agents are not offered: the start would refuse them.
           const usable = foundAgents.filter((agent) => agent.enabled);
           setAgents(usable);
-          setPlannerId((chosen) => startingAgent(usable, 'planner', lastPlanner, chosen));
-          setWriterId((chosen) => startingAgent(usable, 'writer', lastWriter, chosen));
-          setReviewerId((chosen) => startingAgent(usable, 'reviewer', lastReviewer, chosen));
+          setAgentId((chosen) => startingAgent(usable, lastAgent, chosen));
+          setPlannerId((chosen) => startingAgent(usable, lastPlanner, chosen));
+          setWriterId((chosen) => startingAgent(usable, lastWriter, chosen));
+          setReviewerId((chosen) => startingAgent(usable, lastReviewer, chosen));
         })
         .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : t('Could not load what a research needs.')));
     } else if (!open && held.open) {
@@ -202,10 +206,12 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
   // A mode whose workflow has no Review step cannot be reviewed: the box says so rather than Start.
   const reviewable = modes.find((mode) => mode.id === modeId)?.reviewable ?? true;
   const reviewing = review && reviewable;
+  // Every agent the chosen way of working needs, chosen.
+  const agentsChosen = agentMode === 'SINGLE' ? agentId !== '' : plannerId !== '' && writerId !== '' && (!reviewing || reviewerId !== '');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (question.trim() === '' || modeId === '' || plannerId === '' || writerId === '' || (reviewing && reviewerId === '') || submitting) return;
+    if (question.trim() === '' || modeId === '' || !agentsChosen || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -213,8 +219,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         workspaceId,
         question: question.trim(),
         modeId,
-        plannerAgentId: plannerId,
-        writerAgentId: writerId,
+        agentMode,
+        agentId: agentMode === 'SINGLE' ? agentId : null,
+        plannerAgentId: agentMode === 'PER_STEP' ? plannerId : null,
+        writerAgentId: agentMode === 'PER_STEP' ? writerId : null,
         language,
         outputFormat: format,
         websitesInclude: include,
@@ -224,7 +232,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         useWebSearch: webSearch,
         includeImages: images,
         review: reviewing,
-        reviewerAgentId: reviewing ? reviewerId : null,
+        reviewerAgentId: agentMode === 'PER_STEP' && reviewing ? reviewerId : null,
         followUps: followUps.trim() === '' ? null : Math.max(0, Math.min(10, Math.round(Number(followUps)))),
       });
       onStarted(started);
@@ -288,64 +296,106 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               </div>
             </div>
 
-            <div className={dialog.field} data-planner>
+            <div className={dialog.field} data-agent-mode>
               <span className={dialog.labelWithHint}>
-                <label className={dialog.label} htmlFor="research-planner">{t('Planner')}</label>
-                <FieldHint label={t('Planner')}>{t("The agent that turns the question into searches and a plan for the report.")}</FieldHint>
+                <label className={dialog.label} htmlFor="research-agent-mode">{t('Agents')}</label>
+                <FieldHint label={t('Agents')}>{t("One agent plans, writes and reviews; or choose an agent for each step. None is chosen for you.")}</FieldHint>
               </span>
               <div className={dialog.inputWrapper}>
-                <AgentPicker
-                  id="research-planner"
-                  value={plannerId}
-                  agents={agents}
+                <Select
+                  id="research-agent-mode"
+                  className={dialog.input}
+                  value={agentMode}
                   onChange={(picked) => {
-                    setPlannerId(picked);
-                    rememberPlanner(picked);
+                    const mode: ResearchAgentMode = picked === 'PER_STEP' ? 'PER_STEP' : 'SINGLE';
+                    setAgentMode(mode);
+                    rememberAgentMode(mode);
                   }}
-                />
+                >
+                  <option value="SINGLE">{t('Single agent')}</option>
+                  <option value="PER_STEP">{t('An agent per step')}</option>
+                </Select>
               </div>
             </div>
           </div>
 
-          <div className={styles.pair}>
-            <div className={dialog.field} data-writer>
+          {agentMode === 'SINGLE' ? (
+            <div className={dialog.field} data-agent>
               <span className={dialog.labelWithHint}>
-                <label className={dialog.label} htmlFor="research-writer">{t('Writer')}</label>
-                <FieldHint label={t('Writer')}>{t("The agent that reads what was found and writes the report.")}</FieldHint>
+                <label className={dialog.label} htmlFor="research-agent">{t('Agent')}</label>
+                <FieldHint label={t('Agent')}>{t("The agent that plans the research, writes the report and reviews it, thinking with its own model.")}</FieldHint>
               </span>
               <div className={dialog.inputWrapper}>
                 <AgentPicker
-                  id="research-writer"
-                  value={writerId}
+                  id="research-agent"
+                  value={agentId}
                   agents={agents}
                   onChange={(picked) => {
-                    setWriterId(picked);
-                    rememberWriter(picked);
+                    setAgentId(picked);
+                    rememberAgent(picked);
                   }}
                 />
               </div>
             </div>
-
-            {reviewing && (
-              <div className={dialog.field} data-reviewer>
+          ) : (
+            <div className={styles.pair}>
+              <div className={dialog.field} data-planner>
                 <span className={dialog.labelWithHint}>
-                  <label className={dialog.label} htmlFor="research-reviewer">{t('Reviewer')}</label>
-                  <FieldHint label={t('Reviewer')}>{t("The agent that reads the draft and sends it back to the Writer, for as many rounds as Workspace Settings allow.")}</FieldHint>
+                  <label className={dialog.label} htmlFor="research-planner">{t('Planner')}</label>
+                  <FieldHint label={t('Planner')}>{t("The agent that turns the question into searches and a plan for the report.")}</FieldHint>
                 </span>
                 <div className={dialog.inputWrapper}>
                   <AgentPicker
-                    id="research-reviewer"
-                    value={reviewerId}
+                    id="research-planner"
+                    value={plannerId}
                     agents={agents}
                     onChange={(picked) => {
-                      setReviewerId(picked);
-                      rememberReviewer(picked);
+                      setPlannerId(picked);
+                      rememberPlanner(picked);
                     }}
                   />
                 </div>
               </div>
-            )}
-          </div>
+
+              <div className={dialog.field} data-writer>
+                <span className={dialog.labelWithHint}>
+                  <label className={dialog.label} htmlFor="research-writer">{t('Writer')}</label>
+                  <FieldHint label={t('Writer')}>{t("The agent that reads what was found and writes the report.")}</FieldHint>
+                </span>
+                <div className={dialog.inputWrapper}>
+                  <AgentPicker
+                    id="research-writer"
+                    value={writerId}
+                    agents={agents}
+                    onChange={(picked) => {
+                      setWriterId(picked);
+                      rememberWriter(picked);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {reviewing && (
+                <div className={dialog.field} data-reviewer>
+                  <span className={dialog.labelWithHint}>
+                    <label className={dialog.label} htmlFor="research-reviewer">{t('Reviewer')}</label>
+                    <FieldHint label={t('Reviewer')}>{t("The agent that reads the draft and sends it back to the Writer, for as many rounds as Workspace Settings allow.")}</FieldHint>
+                  </span>
+                  <div className={dialog.inputWrapper}>
+                    <AgentPicker
+                      id="research-reviewer"
+                      value={reviewerId}
+                      agents={agents}
+                      onChange={(picked) => {
+                        setReviewerId(picked);
+                        rememberReviewer(picked);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {adding && (
             <div className={styles.addMode} data-adding-mode>
@@ -526,7 +576,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           <button
             type="submit"
             className={dialog.filled}
-            disabled={question.trim() === '' || modeId === '' || plannerId === '' || writerId === '' || (reviewing && reviewerId === '') || keyless || submitting}
+            disabled={question.trim() === '' || modeId === '' || !agentsChosen || keyless || submitting}
           >
             {submitting ? t('Starting…') : t('Start')}
           </button>

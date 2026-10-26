@@ -2673,6 +2673,13 @@ export const TESTS = [
     /* The start and the research are answered here, so nothing runs. Issue #678. */
   },
   {
+    name: 'research-agent-mode-check',
+    what: 'New research runs with a single agent or one per step, choosing none for anybody',
+    needs: ['workspace'],
+    /* Answers the start and the research in the browser, so nothing runs. */
+  },
+
+  {
     name: 'research-unreviewable-check',
     what: 'on a research mode whose workflow has no Review step, New research draws Review switched off and unticked, with no reviewer to choose and a (?) on its line saying why in one sentence; a mode with one gives the box back as it was left, and Start sends no review',
     needs: ['workspace'],
