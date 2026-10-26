@@ -18,6 +18,14 @@ const reviewerShown = (await page.locator('#research-reviewer').count()) > 0;
 const missing = FIELDS.filter((field) => field !== 'Reviewer' || reviewerShown).filter((field) => !hinted.includes(field));
 record(missing.length === 0, `every field has a (?) (missing: ${JSON.stringify(missing)}; found ${JSON.stringify(hinted)})`);
 
+// A box's (?) sits by its words, not a whole gap away.
+const near = await page.evaluate(() => ['Use web search', 'Include images', 'Review'].map((name) => {
+  const hint = document.querySelector(`form:has(#research-question) button[data-hint="${name}"]`);
+  const label = hint?.closest('[class*="_check_"]')?.querySelector('label');
+  return label && hint ? Math.round(hint.getBoundingClientRect().left - label.getBoundingClientRect().right) : null;
+}));
+record(near.every((gap) => gap !== null && gap <= 8), `each box's (?) sits by its words (${JSON.stringify(near)}px)`);
+
 // One of them, opened: it says something, and the form printed none of it.
 await page.locator('form:has(#research-question) button[data-hint="Planner"]').first().click().catch(() => {});
 await page.waitForTimeout(300);

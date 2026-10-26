@@ -388,54 +388,60 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           )}
 
           <div className={styles.checks}>
-            <label className={dialog.checkboxField}>
-              <input
-                type="checkbox"
-                id="research-web-search"
-                checked={webSearch}
-                onChange={(event) => setWebSearch(event.target.checked)}
-                data-web-search
-              />
-              {t('Use web search')}
-            </label>
-            <FieldHint label={t('Use web search')}>{t("Searches the web for sources. Off, it reads only the documents and the websites to keep to.")}</FieldHint>
+            <span className={styles.check}>
+              <label className={dialog.checkboxField}>
+                <input
+                  type="checkbox"
+                  id="research-web-search"
+                  checked={webSearch}
+                  onChange={(event) => setWebSearch(event.target.checked)}
+                  data-web-search
+                />
+                {t('Use web search')}
+              </label>
+              <FieldHint label={t('Use web search')}>{t("Searches the web for sources. Off, it reads only the documents and the websites to keep to.")}</FieldHint>
+            </span>
 
-            <label className={dialog.checkboxField}>
-              <input
-                type="checkbox"
-                id="research-include-images"
-                checked={images}
-                onChange={(event) => {
-                  setImages(event.target.checked);
-                  rememberImages(event.target.checked ? 'on' : 'off');
-                }}
-                data-include-images
-              />
-              {t('Include images')}
-            </label>
-            <FieldHint label={t('Include images')}>{t("Looks for pictures, places them in the report and keeps each as an artifact.")}</FieldHint>
+            <span className={styles.check}>
+              <label className={dialog.checkboxField}>
+                <input
+                  type="checkbox"
+                  id="research-include-images"
+                  checked={images}
+                  onChange={(event) => {
+                    setImages(event.target.checked);
+                    rememberImages(event.target.checked ? 'on' : 'off');
+                  }}
+                  data-include-images
+                />
+                {t('Include images')}
+              </label>
+              <FieldHint label={t('Include images')}>{t("Looks for pictures, places them in the report and keeps each as an artifact.")}</FieldHint>
+            </span>
 
-            <label className={dialog.checkboxField}>
-              <input
-                type="checkbox"
-                id="research-review"
-                checked={reviewing}
-                disabled={!reviewable}
-                onChange={(event) => {
-                  setReview(event.target.checked);
-                  rememberReview(event.target.checked ? 'on' : 'off');
-                }}
-                data-review
-              />
-              {t('Review')}
-            </label>
-            {reviewable ? (
-              <FieldHint label={t('Review')}>{t("The Reviewer reads the draft and the Writer revises it before the report is finished.")}</FieldHint>
-            ) : (
-              <span data-review-hint>
-                <FieldHint label={t('Review')}>{t("This mode's workflow has no Review step, so it cannot be reviewed")}</FieldHint>
-              </span>
-            )}
+            <span className={styles.check}>
+              <label className={dialog.checkboxField}>
+                <input
+                  type="checkbox"
+                  id="research-review"
+                  checked={reviewing}
+                  disabled={!reviewable}
+                  onChange={(event) => {
+                    setReview(event.target.checked);
+                    rememberReview(event.target.checked ? 'on' : 'off');
+                  }}
+                  data-review
+                />
+                {t('Review')}
+              </label>
+              {reviewable ? (
+                <FieldHint label={t('Review')}>{t("The Reviewer reads the draft and the Writer revises it before the report is finished.")}</FieldHint>
+              ) : (
+                <span data-review-hint>
+                  <FieldHint label={t('Review')}>{t("This mode's workflow has no Review step, so it cannot be reviewed")}</FieldHint>
+                </span>
+              )}
+            </span>
           </div>
           {keyless && (
             <p className={dialog.error} role="alert" data-search-key-missing>

@@ -203,6 +203,13 @@
   gap: var(--space-8) var(--space-24);
 }
 
+/* A box, its words and its (?) as one, the (?) close to the words rather than a whole gap away. */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
