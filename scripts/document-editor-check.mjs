@@ -12,6 +12,7 @@
  *
  * Makes its own document and wireframe and removes them.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
@@ -79,7 +80,7 @@ await page.waitForTimeout(500);
 drawn = await sheets();
 record(drawn.length > 0 && Math.abs(drawn[0].width / wide - 210 / 297) < 0.01 && Math.abs(ratio(drawn[0]) - 148 / 210) < 0.01,
   `A5 landscape is 210 by 148 (${drawn[0]?.width} x ${drawn[0]?.height})`);
-await page.getByTestId('document-save').click();
+await saveEditor(page, 'document-save');
 await page.waitForTimeout(800);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('document-page').first().waitFor({ timeout: 20_000 });
@@ -112,7 +113,7 @@ drawn = await sheets();
 record(shown !== null && shown.natural === 120 && shown.width > 50 && drawn.some((sheet) => shown.top >= sheet.top && shown.left >= sheet.left && shown.left < sheet.left + sheet.width),
   `an uploaded picture is drawn, from its stored bytes, on a sheet (${JSON.stringify(shown)})`);
 await page.getByTestId('document-image-caption').fill('A red field');
-await page.getByTestId('document-save').click();
+await saveEditor(page, 'document-save');
 await page.waitForTimeout(800);
 const stored = JSON.parse((await graphql('query ($id: ID!) { document(id: $id) { content images } }', { id })).document.content);
 const image = stored.content.find((block) => block.type === 'image');

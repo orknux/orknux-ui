@@ -9,6 +9,7 @@
  *
  * Makes its own diagram and removes it.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
@@ -66,7 +67,7 @@ await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
 record((await editor.count()) === 0 && (await words('d').textContent()) === 'Payment ok?', `Enter puts the new label down (${await words('d').textContent()})`);
 record((await page.getByTestId('diagram-unsaved').count()) === 1 && (await page.getByTestId('diagram-undo').isEnabled()), 'as a change to save, and a step to undo');
-await page.getByTestId('diagram-save').click();
+await saveEditor(page, 'diagram-save');
 await page.waitForTimeout(900);
 await openEditor();
 record((await words('d').textContent()) === 'Payment ok?' && (await stored()).nodes.find((one) => one.id === 'd')?.label === 'Payment ok?',

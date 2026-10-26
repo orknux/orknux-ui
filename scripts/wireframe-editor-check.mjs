@@ -8,6 +8,7 @@
  * answered here, since CI has no model: what is under test is that the canvas
  * takes the drawing up, not what a model would draw.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page } = await open({ viewport: { width: 1440, height: 900 } });
@@ -97,7 +98,7 @@ const words = await page.locator('[data-element-type="text"]').textContent().cat
 record(words.includes('Welcome back'), `the text tool types its words in place (${words})`);
 
 // Saved, and there after a reload.
-await page.getByTestId('wireframe-save').click();
+await saveEditor(page, 'wireframe-save');
 await page.waitForTimeout(800);
 record((await page.getByTestId('wireframe-unsaved').count()) === 0, 'Save writes it');
 await page.reload({ waitUntil: 'domcontentloaded' });
@@ -293,7 +294,7 @@ await page.waitForTimeout(400);
 const desk = await svg.boundingBox();
 await page.getByTestId('wireframe-tool-image').click();
 await page.mouse.click(desk.x + desk.width - 260, desk.y + 120);
-await page.getByTestId('wireframe-save').click();
+await saveEditor(page, 'wireframe-save');
 await page.waitForTimeout(800);
 const keptBefore = await page.evaluate((wireframe) => {
   try {

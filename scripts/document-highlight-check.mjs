@@ -7,6 +7,7 @@
  *
  * Makes its own document and removes it.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1500, height: 900 } });
@@ -48,7 +49,7 @@ record(await page.getByTestId('document-note-card').count() === 0, 'Done closes 
 record(await marks().first().getAttribute('data-note') === 'Ask finance for the final number', 'and writes the note on the highlight');
 await page.screenshot({ path: shot('document-highlight.png') });
 
-await page.getByTestId('document-save').click();
+await saveEditor(page, 'document-save');
 await page.getByTestId('document-unsaved').waitFor({ state: 'detached', timeout: 8_000 }).catch(() => undefined);
 const stored = JSON.parse((await graphql('query ($id: ID!) { document(id: $id) { content } }', { id })).document.content);
 const run = stored.content[0].content.find((one) => one.text === 'quarterly figure');

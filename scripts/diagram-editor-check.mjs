@@ -9,6 +9,7 @@
  * Makes its own diagram and removes it. The model's answer is answered here,
  * since CI has no model: what is under test is that the canvas takes it up.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
@@ -96,7 +97,7 @@ await notes.fill('Routes every request.');
 await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
 
 // Saved, and there after a reload.
-await page.getByTestId('diagram-save').click();
+await saveEditor(page, 'diagram-save');
 await page.waitForTimeout(900);
 record((await page.getByTestId('diagram-unsaved').count()) === 0, 'Save writes it');
 await page.reload({ waitUntil: 'domcontentloaded' });

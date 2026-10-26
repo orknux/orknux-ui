@@ -9,6 +9,7 @@
  *
  * Makes its own document and removes it.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
@@ -50,7 +51,7 @@ record(drawn.language === 'kotlin' && drawn.keyword === 'fun' && drawn.coloured 
 record(/mono/i.test(drawn.mono ?? '') && drawn.scrolls, `in monospace, scrolled sideways rather than wrapped (${JSON.stringify({ mono: drawn.mono, scrolls: drawn.scrolls })})`);
 await page.screenshot({ path: shot('document-code.png') });
 
-await page.getByTestId('document-save').click();
+await saveEditor(page, 'document-save');
 await page.waitForTimeout(800);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.getByTestId('document-code-block').waitFor({ timeout: 20_000 });

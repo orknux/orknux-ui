@@ -372,6 +372,24 @@ export const TESTS = [
     // Makes a workflow of its own and removes it again.
   },
   {
+    name: 'diagram-collaboration-check',
+    what: 'two tabs in one diagram editor: each sees the other and its pointer, a move saves itself and redraws in the other, two moves at once both stay, and a save over an older revision is refused',
+    needs: ['workspace'],
+    // Makes a diagram of its own and removes it again.
+  },
+  {
+    name: 'document-collaboration-check',
+    what: 'two tabs in one document editor: each sees the other and its pointer, typed words save themselves and appear in the other, two paragraphs written at once both stay, and a save over an older revision is refused',
+    needs: ['workspace'],
+    // Makes a document of its own and removes it again.
+  },
+  {
+    name: 'wireframe-collaboration-check',
+    what: 'two tabs in one wireframe editor: each sees the other and its pointer, a move saves itself and redraws in the other, two moves at once both stay, and a save over an older revision is refused',
+    needs: ['workspace'],
+    // Makes a wireframe of its own and removes it again.
+  },
+  {
     name: 'ask-person-check',
     what: "an agent's ask_person question: options with what each means, several to tick, the person's own words, and what is sent is what was chosen",
     needs: ['workspace'],

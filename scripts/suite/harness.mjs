@@ -375,6 +375,21 @@ export async function selectNode(page, node, name = 'the node') {
  * purpose: a suite whose tests can silently assert nothing is the suite we
  * already had.
  */
+/**
+ * Saves an editor that also saves by itself (#683): presses [saveTestId] if
+ * there is still something to save, then waits for its Unsaved mark to go.
+ * Pressing it unconditionally waited thirty seconds on a button the autosave
+ * had already disabled, because there was nothing left to save.
+ */
+export async function saveEditor(page, saveTestId) {
+  const button = page.getByTestId(saveTestId);
+  if (await button.isEnabled().catch(() => false)) await button.click({ timeout: 2_000 }).catch(() => undefined);
+  const unsaved = saveTestId.replace(/-save$/, '-unsaved');
+  await page
+    .waitForFunction((mark) => document.querySelector(`[data-testid="${mark}"]`) === null, unsaved, { timeout: 15_000 })
+    .catch(() => undefined);
+}
+
 export async function finish(browser, ...extras) {
   await browser?.close().catch(() => {});
 

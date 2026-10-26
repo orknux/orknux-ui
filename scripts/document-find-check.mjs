@@ -9,6 +9,7 @@
  *
  * Makes its own document and removes it.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1600, height: 1000 } });
@@ -80,7 +81,7 @@ await page.getByTestId('document-find-input').press('Escape');
 record((await page.getByTestId('document-find').count()) === 0 && (await marks()) === 0, 'Escape closes Find and takes the marks away');
 
 // The view: from the editor's View, at its own address, with nothing that changes the document.
-await page.getByTestId('document-save').click();
+await saveEditor(page, 'document-save');
 await page.waitForTimeout(800);
 await page.getByTestId('document-to-view').click();
 await page.waitForURL(/\/design\/documents\/\d+\/view$/, { timeout: 10_000 }).catch(() => undefined);

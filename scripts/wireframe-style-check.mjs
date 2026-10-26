@@ -10,6 +10,7 @@
  *
  * Makes its own wireframe and removes it at the end.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { readFileSync } from 'node:fs';
 
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
@@ -127,7 +128,7 @@ record(both[1].stops === null, 'and nothing else is put on the second');
 await page.screenshot({ path: shot('wireframe-style.png') });
 
 // Saved and reloaded, it is drawn the same.
-await page.getByTestId('wireframe-save').click({ timeout: 5_000 }).catch(() => undefined);
+await saveEditor(page, 'wireframe-save');
 await page.waitForTimeout(800);
 const stored = JSON.parse((await graphql(`query ($id: ID!) { wireframe(id: $id) { document } }`, { id })).wireframe.document).elements;
 const props = stored.find((one) => one.id === 'card')?.props ?? {};

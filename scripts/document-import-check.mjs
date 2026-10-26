@@ -72,9 +72,14 @@ if (hasImport) {
   record(bold.join('|') === 'bold words', `its bold is bold (${JSON.stringify(bold)})`);
   record((await prose.locator('li').count()) === 2, `its list is a list (${await prose.locator('li').count()} items)`);
   record(!(await words()).includes('Original words'), 'and what the document held is gone');
-  record(await page.getByTestId('document-save').isEnabled(), 'the import is an unsaved change: Save is offered');
-  const stored = (await graphql('query ($id: ID!) { document(id: $id) { revision content } }', { id })).document;
-  record(stored.revision === 1 && stored.content.includes('Original words'), `nothing was written to the stored document (revision ${stored.revision})`);
+  // Since #683 the editor saves as it goes, an import like any change: written once the page is still, and taken back by Undo like any change.
+  let stored = null;
+  for (let tries = 0; tries < 30; tries++) {
+    stored = (await graphql('query ($id: ID!) { document(id: $id) { revision content } }', { id })).document;
+    if (stored.content.includes('Imported heading')) break;
+    await page.waitForTimeout(300);
+  }
+  record(stored.revision > 1 && stored.content.includes('Imported heading'), `the import is saved as the editor goes, with no Save pressed (revision ${stored.revision})`);
   await page.screenshot({ path: shot('document-import-replaced.png') });
 
   await page.getByTestId('document-undo').click();

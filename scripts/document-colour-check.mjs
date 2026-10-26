@@ -9,6 +9,7 @@
  *
  * Makes its own document and removes it.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { inflateRawSync } from 'node:zlib';
 
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
@@ -80,7 +81,7 @@ record(await colourOf('warning') === 'rgb(192, 0, 0)', `the selected word is dra
 record(await colourOf('Paint') === null, 'and the words around it are not');
 await page.screenshot({ path: shot('document-colour.png') });
 
-await page.getByTestId('document-save').click();
+await saveEditor(page, 'document-save');
 await page.getByTestId('document-unsaved').waitFor({ state: 'detached', timeout: 8_000 }).catch(() => undefined);
 const stored = JSON.parse((await graphql('query ($id: ID!) { document(id: $id) { content } }', { id })).document.content);
 const run = stored.content[0].content.find((one) => one.text === 'warning');

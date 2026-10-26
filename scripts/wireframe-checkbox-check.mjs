@@ -10,6 +10,7 @@
  *
  * Makes its own wireframe and removes it at the end.
  */
+import { saveEditor } from './suite/harness.mjs';
 import { BASE, WORKSPACE, open, record, finish, shot } from './suite/harness.mjs';
 
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 900 } });
@@ -94,7 +95,7 @@ record(radio === 1 && track !== null && Math.abs(track.width - 32 * zoom) <= 1.5
 await page.screenshot({ path: shot('wireframe-checkbox.png'), clip: frame });
 
 // Saved: the stored drawing holds it ticked, and the HTML is a real checkbox, checked.
-await page.getByTestId('wireframe-save').click({ timeout: 5_000 }).catch(() => undefined);
+await saveEditor(page, 'wireframe-save');
 await page.waitForTimeout(800);
 const stored = await graphql(`query ($id: ID!) { wireframe(id: $id) { document } }`, { id });
 const elements = JSON.parse(stored.wireframe.document).elements;

@@ -27,6 +27,26 @@ const documentOf = async (id) => (await graphql('query ($id: ID!) { document(id:
 const idInAddress = () => new URL(page.url()).pathname.match(/\/design\/documents\/([^/]+)$/)?.[1] ?? null;
 const asking = page.locator('dialog[open]');
 
+/*
+ * The documents whose saves are refused, so words typed into them stay unsaved.
+ * Since #683 the editor saves as it goes, and the dialogs this checks are the
+ * ones that guard words not yet saved: a save that fails leaves them so, as a
+ * dropped connection would. Only the editor's saves of these ids are refused -
+ * the copy Save as copy writes is another document, and goes through.
+ */
+const frozen = new Set();
+await page.route('**/graphql', async (route) => {
+  const asked = (() => {
+    try {
+      return JSON.parse(route.request().postData() ?? '{}');
+    } catch {
+      return {};
+    }
+  })();
+  if (String(asked.query ?? '').includes('saveDocument(') && frozen.has(String(asked.variables?.id))) return route.abort();
+  return route.continue();
+});
+
 try {
   await page.goto(`${BASE}/workspace/${WORKSPACE}/design/documents/${made.id}`, { waitUntil: 'domcontentloaded' });
   await page.getByTestId('document-prose').waitFor({ timeout: 20_000 });
@@ -51,6 +71,7 @@ try {
     await page.waitForTimeout(600);
 
     // Unsaved words, then Save as copy: asked first, and Cancel does nothing.
+    frozen.add(String(made.id));
     await page.getByTestId('document-prose').click();
     await page.keyboard.press('Control+End');
     await page.keyboard.type(' Unsaved words.');
@@ -89,6 +110,7 @@ try {
 
     // New, from the copy with words not saved: asked first, says they are lost, then an empty document opened.
     const before = idInAddress();
+    frozen.add(String(before));
     await page.getByTestId('document-prose').click();
     await page.keyboard.press('Control+End');
     await page.keyboard.type(' Not kept.');
