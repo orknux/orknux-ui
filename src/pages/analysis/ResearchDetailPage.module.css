@@ -424,18 +424,17 @@
 
 /* ---- what it was given ---- */
 
+/* One grid for every row: the labels' column is as wide as the longest label, not a fixed 160px that left "Images" far from its value. */
 .given {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-10);
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-10) var(--space-16);
+  align-items: baseline;
   margin: 0;
 }
 
 .givenRow {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: var(--space-16);
-  align-items: baseline;
+  display: contents;
 }
 
 .givenRow dt {

@@ -2729,6 +2729,12 @@ export const TESTS = [
     /* Answers the research with its sessions; that the steps keep them is the server suite's. */
   },
   {
+    name: 'research-given-check',
+    what: "a research's What it was given puts each value close beside its label",
+    needs: ['workspace'],
+  },
+
+  {
     name: 'workflows-hidden-check',
     what: 'the research workflows are off the Workflows list until Show built-in is ticked, and open in the editor once shown',
     needs: ['workspace'],
