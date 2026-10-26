@@ -2468,4 +2468,28 @@ const { startTask: task } = await gql(
 );
 log(`task: ${task.title} (${task.status})`);
 
+
+/* ------------------------------------------------------- the chapters' own */
+
+/*
+ * What a chapter of the manual needs that the set above does not hold: a
+ * document, a diagram, a research, a report's worth of runs. One file per group
+ * of chapters under `seed/`, each exporting `seed(ctx)`, run in file-name order
+ * once everything above exists, so a chapter can point at the agents, models
+ * and workflows this script made by the names it gave them (#684). A file that
+ * fails stops the seed, as a step above does: a picture of a page the seed did
+ * not finish filling is a picture of the wrong thing.
+ */
+const SEEDS = new URL('./seed/', import.meta.url);
+const { readdir } = await import('node:fs/promises');
+const SEED_CONTEXT = {
+  BASE, USER, WORKSPACE_NAME, ws, workspace, gql, log, signIn,
+  provider, chatModel, imageModel, writerModel, responder, summariser, newsletter, slack, flagship, task,
+};
+for (const file of (await readdir(SEEDS).catch(() => [])).filter((name) => name.endsWith('.mjs')).sort()) {
+  log(`\n${file}`);
+  const group = await import(new URL(file, SEEDS).href);
+  await group.seed(SEED_CONTEXT);
+}
+
 log(`\n${WORKSPACE_NAME} is workspace ${ws}. Point the capture at it.`);

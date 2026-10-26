@@ -50,7 +50,7 @@
  * purpose, and they are of no use anywhere else.
  */
 import { chromium } from 'playwright';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readdir } from 'node:fs/promises';
 
 /*
  * localhost, because this runs inside the container that serves the interface.
@@ -1282,11 +1282,35 @@ function hideOtherWorkspaces({ keep, invented }) {
 }
 
 /*
+ * The manual's chapters, a file each.
+ *
+ * `SHOTS` above is the set every release has photographed. The pictures a
+ * chapter added since live in `screens/<group>.mjs`, one file per group of
+ * chapters, so several people - or several agents - can each add theirs without
+ * all editing this one list (#684). Each exports `shots(ctx)` and answers shots
+ * in the shape above, plus an optional `viewport`. They are read in file-name
+ * order, after `SHOTS`; a shot named as one already in the list takes its place,
+ * which is how a chapter retakes a picture it has rewritten the page around.
+ */
+const SCREENS = new URL('./screens/', import.meta.url);
+const GROUP_CONTEXT = {
+  BASE, USER, ws, workspace, found, gql, find, byName, waitForPicture, page, context, browser,
+  flagship, responder, fn, tool, skill, condition, run, task, provider, internal,
+};
+let ALL = SHOTS;
+for (const file of (await readdir(SCREENS).catch(() => [])).filter((name) => name.endsWith('.mjs')).sort()) {
+  const group = await import(new URL(file, SCREENS).href);
+  const added = (await group.shots(GROUP_CONTEXT)).filter(Boolean);
+  const replaced = new Set(added.map((shot) => shot.name));
+  ALL = [...ALL.filter((shot) => !replaced.has(shot.name)), ...added];
+}
+
+/*
  * `ORKNUX_ONLY=doctor,chat` takes just those, for when one page has changed and
  * rewriting thirty other files would be noise in the diff.
  */
 const only = (process.env.ORKNUX_ONLY ?? '').split(',').map((name) => name.trim()).filter(Boolean);
-const CHOSEN = only.length === 0 ? SHOTS : SHOTS.filter((shot) => only.includes(shot.name));
+const CHOSEN = only.length === 0 ? ALL : ALL.filter((shot) => only.includes(shot.name));
 /*
  * Two shots are not in the list: `sign-in`, which is taken before anybody is
  * signed in, and `notifications`, which is taken as somebody else. Both are
@@ -1321,8 +1345,11 @@ if (only.length === 0 || only.includes('sign-in')) {
  * and the selector is what says the content arrived.
  */
 let failures = 0;
+const FRAME = { width: 1440, height: 900 };
 for (const shot of CHOSEN) {
   try {
+    // A chapter's shot may ask for a frame of its own - a narrow window, a tall page.
+    await page.setViewportSize(shot.viewport ?? FRAME);
     await page.goto(`${BASE}${shot.path}`, { waitUntil: 'domcontentloaded' });
     if (shot.waitFor) {
       await page.waitForSelector(shot.waitFor, { timeout: 15_000 });
