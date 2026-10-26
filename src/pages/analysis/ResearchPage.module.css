@@ -32,15 +32,19 @@
   min-height: 52px;
 }
 
+/* The question is what a row is: it keeps room to be read however the fixed columns beside it are set. */
 .colQuestion {
   flex: 1 0 0;
-  min-width: 0;
+  min-width: 200px;
 }
 
 .colMode {
   flex-shrink: 0;
-  /* Room for a mode's name and the Reviewed badge beside it; 110px cut the badge to "Review…". */
-  width: 200px;
+  /*
+   * Room for a mode's name and the Reviewed badge beside it; 110px cut the
+   * badge to "Review…". Not 200px: at 1440px that left the question no room.
+   */
+  width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -48,7 +52,7 @@
 
 .colModel {
   flex-shrink: 0;
-  width: 160px;
+  width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -56,12 +60,12 @@
 
 .colStatus {
   flex-shrink: 0;
-  width: 130px;
+  width: 110px;
 }
 
 .colStarted {
   flex-shrink: 0;
-  width: 110px;
+  width: 100px;
 }
 
 .colResult {
@@ -76,14 +80,14 @@
 
 .colTook {
   flex-shrink: 0;
-  width: 80px;
+  width: 64px;
 }
 
 .colActions {
   display: flex;
   flex-shrink: 0;
   justify-content: flex-end;
-  width: 80px;
+  width: 64px;
 }
 
 .question {
@@ -391,4 +395,14 @@
   border-radius: var(--radius-4);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+}
+
+/*
+ * Search rounds is the column a narrower window does without: with every
+ * fixed column shown at 1440px the question had under 100px to be read in.
+ */
+@media (max-width: 1599px) {
+  .colRounds {
+    display: none;
+  }
 }

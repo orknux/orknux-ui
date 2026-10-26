@@ -67,6 +67,9 @@ const fits = await page.locator('[data-research="434343"] [data-cell="mode"]').e
   return badge !== null && badge.getBoundingClientRect().right <= cell.getBoundingClientRect().right + 0.5 && cell.scrollWidth <= cell.clientWidth;
 }).catch(() => false);
 record(fits, 'and the badge is shown whole beside the mode');
+// And the question keeps its room beside the wider Mode column: at 200px it was squeezed to nothing.
+const questionWidth = await page.locator('[data-research="434343"] [data-cell="question"]').evaluate((cell) => Math.round(cell.getBoundingClientRect().width)).catch(() => 0);
+record(questionWidth >= 200, `and the question keeps its room (${questionWidth}px)`);
 
 // --- the form ----------------------------------------------------------------------
 await page.getByRole('button', { name: 'New research' }).click();
