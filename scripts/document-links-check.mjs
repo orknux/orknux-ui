@@ -47,6 +47,12 @@ try {
   const said = carded ? ((await card.textContent()) ?? '') : '';
   record(carded && said.includes(RENAMED) && said.includes('Document in'), `hovering a link shows its document's name and where it is (${JSON.stringify(said.slice(0, 120))})`);
   record(said.includes('Ctrl+click to open'), `and, while editing, how to follow it (${JSON.stringify(said.slice(-40))})`);
+  // Compact, in the interface's type rather than the document's.
+  const size = carded ? await card.evaluate((one) => ({
+    width: Math.round(one.getBoundingClientRect().width),
+    name: getComputedStyle(one.querySelector('[class*="_documentLinkCardName_"]')).fontSize,
+  })) : null;
+  record(size !== null && size.width <= 380 && size.name === '13px', `the card is compact (${JSON.stringify(size)})`);
   const native = drawn ? await link.first().getAttribute('title') : 'none drawn';
   record(native === null, `in place of the browser's own tooltip (${native})`);
   await page.mouse.move(0, 0);

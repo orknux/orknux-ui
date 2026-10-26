@@ -288,7 +288,7 @@ function DocumentLinkView({ node, editor, extension }: ReactNodeViewProps) {
             role="tooltip"
             data-testid="document-link-card"
           >
-            <img src={fileTextIcon} alt="" width={16} height={16} className={styles.documentLinkCardIcon} />
+            <img src={fileTextIcon} alt="" width={14} height={14} className={styles.documentLinkCardIcon} />
             <span className={styles.documentLinkCardText}>
               <span className={styles.documentLinkCardHead}>
                 <span className={styles.documentLinkCardName}>{card.document.name}</span>
