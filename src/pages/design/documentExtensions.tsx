@@ -670,6 +670,8 @@ export interface Textblock {
   text: string;
   /** The document position of each character of [text]. */
   positions: number[];
+  /** Which characters of [text] are an inline item's stand-in - a document link's name - rather than words that can be changed in place. */
+  standIns: boolean[];
 }
 
 /** Every block of words a grammar check reads: paragraphs and headings, wherever they are, but no code. */
@@ -680,18 +682,32 @@ export function textblocks(doc: PmNode): Textblock[] {
     if (!node.isTextblock) return true;
     let text = '';
     const positions: number[] = [];
+    const standIns: boolean[] = [];
     node.forEach((child, offset) => {
       if (child.isText) {
         const words = child.text ?? '';
-        for (let at = 0; at < words.length; at += 1) positions.push(pos + 1 + offset + at);
+        for (let at = 0; at < words.length; at += 1) {
+          positions.push(pos + 1 + offset + at);
+          standIns.push(false);
+        }
         text += words;
+      } else if (child.type.name === 'documentLink') {
+        // A link to another document reads as the name the reader sees: as a space it left
+        // "see  here" with two, and every link was underlined for repeated whitespace.
+        const name = String(child.attrs.name ?? '').trim() || 'document';
+        for (let at = 0; at < name.length; at += 1) {
+          positions.push(pos + 1 + offset);
+          standIns.push(true);
+        }
+        text += name;
       } else {
         // A line break or anything else inline reads as a space, at its own place.
         positions.push(pos + 1 + offset);
+        standIns.push(true);
         text += ' ';
       }
     });
-    if (text.trim() !== '') found.push({ text, positions });
+    if (text.trim() !== '') found.push({ text, positions, standIns });
     return false;
   });
   return found;

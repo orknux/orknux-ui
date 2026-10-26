@@ -2443,6 +2443,13 @@ export const TESTS = [
     /* Makes its own two documents and removes them. */
   },
   {
+    name: 'document-grammar-link-check',
+    what: 'the grammar check reads a document link as its name, so no link is underlined for repeated whitespace',
+    needs: ['workspace'],
+    /* Answers the grammar call itself, as LanguageTool does for a run of spaces. */
+  },
+
+  {
     name: 'document-outline-width-check',
     what: "the document editor's outline column keeps its width under a long note, and is dragged wider",
     needs: ['workspace'],

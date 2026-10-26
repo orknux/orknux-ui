@@ -720,6 +720,8 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
         const from = block.positions[match.offset];
         const last = block.positions[match.offset + match.length - 1];
         if (from === undefined || last === undefined) continue;
+        // A finding wholly inside a link's name is about another document's name, which nobody can correct here.
+        if (block.standIns.slice(match.offset, match.offset + match.length).every((one) => one)) continue;
         const word = block.text.slice(match.offset, match.offset + match.length);
         if (ignored.current.has(`${match.rule}\u0000${word}`)) continue;
         marks.push({ from, to: last + 1, message: match.message, replacements: match.replacements, rule: match.rule, spelling: match.spelling });
