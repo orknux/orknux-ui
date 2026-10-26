@@ -335,7 +335,7 @@ boxes voice mode is governed by](/screens/workspace-settings.png)
 | Pause Before It Answers | How long you can go quiet before it answers. Raise it if it cuts in while you are still talking; lower it if it sits there after you have finished |
 | Voice Above The Room | How far above the room's own noise a sound has to stand to count as a voice. Turn it down if it stops while you are still talking, or if you speak quietly; up where a fan or a conversation behind you is heard as you and the turn never ends |
 | Unattended Microphone | How long an open microphone stays open where no pause ever comes |
-| Talking Over The Answer | How long you keep talking over an answer before it stops and listens. A length rather than a loudness, because what has to be kept out is a short noise - a cough, a door, the application's own voice getting past echo cancellation. 0 where the answer stops on nothing |
+| Talking Over The Answer | How long you keep talking over an answer before it stops and listens. A length rather than a loudness, because what has to be kept out is a short noise - a cough, a door, the application's own voice getting past echo cancellation. A second by default - half a second still let a word said to somebody else in the room stop the answer. 0 where the answer stops on nothing |
 
 Each box is empty until somebody sets it, and empty is voice mode's own value —
 what the empty box says. Emptying one again puts it back rather than leaving it
@@ -360,11 +360,13 @@ in with the circle throws the waiting message away: it means "listen to me now",
 and answering what you had already moved on from is not that. **Cancel** beside
 a waiting message throws it away without cutting in.
 
-**Talking while it thinks stops it too.** Talking for as long as *Talking Over
-The Answer* asks, while the model is still working out its answer, stops it and
+**Talking while it thinks waits, unless the workspace says otherwise.** By
+default a model still working out its answer is left to finish, and what you
+said while it thought waits for the turn after - a follow-up said into the gap
+is added to the conversation rather than replacing the question. A workspace
+that turns on **Talking while it thinks stops it too** gets the other way:
+talking for as long as *Talking Over The Answer* asks stops the model and
 listens, as talking over the answer does, and what you said is the next turn.
-That is the workspace's **Talking while it thinks stops it too**, on by default;
-off, the model is left to finish and what you said waits for the turn after.
 
 **Mute** on the panel - or your **Voice Mute Shortcut**, `Alt`+`M` unless you
 chose another in Preferences - stops it hearing you. Muted, nothing you say is

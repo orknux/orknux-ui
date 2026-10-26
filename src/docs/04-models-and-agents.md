@@ -21,7 +21,9 @@ Transcription models never appear in the chat model dropdown. They are for
 hearing, not for answering.
 
 The model list shows each model's type, its provider, and whether it is switched
-on. Usage over time is charted on the model's own page.
+on. Usage over time is charted on the model's own page. The providers table says
+each row's type, and both lists - and the connections on Integrations - have a
+**Type** filter, **All types** until you pick one, beside their search.
 
 ![A provider on its own page: where it is, how it authenticates, and what it
 said when it was last asked](/screens/model-provider.png)
@@ -62,6 +64,12 @@ short reads a warm cache makes do not flash a card at you; **Reading Progress
 Shown After** in Admin Settings moves that, and 0 shows every read. A llama.cpp
 server registered as an OpenAI provider before the type existed goes on working
 as it did; move it to the new type to see the reading.
+
+**An API key is needed only where the server asks for one.** An OpenAI-compatible
+endpoint, Ollama and llama.cpp may be added with the key left empty - a server on
+your own machine usually checks none - and one that does check answers *401*,
+which the provider's card says in words. Anthropic and Azure OpenAI always need
+one.
 
 The key a provider calls with is one of two things, and they are exclusive. It
 is either the provider's own value, which is what nearly every provider has and
@@ -113,6 +121,11 @@ provider's page turns that off for that provider alone. It stops the timer and
 nothing else: **Test Connection** still runs, and so does every chat and task
 that uses the provider.
 
+**Test Connection** asks with what is in the form, saved or not, and stores
+nothing - so an endpoint or a key can be tried before it replaces the one that
+works. Duplicating a provider copies the provider alone; its models stay where
+they are, rather than appearing twice under two providers.
+
 A model's own page carries the two numbers that decide how much can be put in
 front of it: its **Context Window**, which is how much it reads at once, and its
 **Max Output**, which is the most it will write in one answer. Both are in
@@ -123,6 +136,18 @@ differ by an order of magnitude, so a single number kept beside the key would be
 wrong for all but one of them. The window is what a session's memory is a share
 of, so a model with none recorded leaves every agent on it with the built-in
 allowance, and setting a share against it is refused until the number is there.
+Picking a model a **llama.cpp** server offers fills its Context Window in for
+you - the window the server actually runs it with - and puts 0 in both its
+prices, since a model on your own machine costs nothing per token.
+
+**Reasoning effort**, on a chat model's page, is how long a reasoning model
+thinks before it answers: **None**, **Minimal**, **Low**, **Medium**, **High**,
+**Extra high** or **Max**, offered for OpenAI, OpenAI-compatible, llama.cpp,
+Ollama and Azure models. Left at the default nothing is sent and the model does
+what it always did. A llama.cpp server hands the word to the model's own chat
+template, where **None** turns thinking off; Ollama maps it onto its own thinking
+levels. Anthropic models take none. A chat can choose another for its own turns
+(see Chat), and so can an agent node (see Workflows).
 
 ### What a provider is sent
 
@@ -175,6 +200,24 @@ with them. A chat's running total says how much of what it sent the provider
 reused from its cache, where the provider reports it: every round sends the
 whole conversation, so without that number a long chat on a local server read as
 millions of tokens it had mostly never read again.
+
+**The tool list and the instructions are frozen for a conversation.** What a
+conversation's first request carried - the tools and the system turn - is sent
+unchanged to its last, so nothing that changes along the way makes a local
+server read the whole prompt again. A tool granted in the chat, a new tool an
+MCP server or a plugin brings, plan mode switched on: each is said in a message
+added to the conversation instead, and a tool the list still names but the agent
+may not use now is refused in words when it is called. The list is made afresh
+when the agent, its model or the session changes, or when the conversation is
+compacted.
+
+**An agent holding more tools than its provider takes carries as many as fit**
+from its first message, rather than its Always tools alone with everything else
+loaded one at a time; only the overflow is loaded, and its briefing marks only
+those as *load it first*. A tool the list does not carry is called through
+`tool_run`, or by its own name, and runs as itself - checked, approved and
+logged under that name - and `tool_load` answers with the tool's description and
+parameters rather than adding it to a frozen list.
 
 ### When a model is slow, or says nothing
 
@@ -521,6 +564,14 @@ simply have stopped knowing what the catalog held. A single skill carries no
 grant and deletes as it always did. See *Deleting something in use* under
 Workflows.
 
+**One search box sits above the catalogs**, on the Skills page (**Search
+skills...**) and on Memory, and
+it searches every catalog at once - a plugin's included - and what a skill says
+as well as its name and description. The matches are grouped under each
+catalog's name, the column of catalogs counts them, and choosing a catalog
+narrows the search to it. A plugin's catalog is searched the same way as the
+workspace's own.
+
 ![The workspace's tools](/screens/tools.png)
 
 A **tool** is JavaScript an agent may call while it answers. Unlike a function,
@@ -575,6 +626,12 @@ its base64, `YWxpY2U6czNjcmV0`, on every request. A secret that was encoded by
 hand anyway - base64 that decodes to something with a colon in it - is
 recognised and sent as it is rather than encoded a second time, so either works;
 the plain form is the one to type, because it is the one you can read back.
+
+**An MCP server can be tested before it is saved.** The Add dialog has **Test**,
+which connects with what is typed - address, Auth, secret - and says what came
+back, storing nothing. A saved server's page has **Check** on the status line
+under the form. A connection's Add dialog has **Test Connection**, which does the
+same.
 
 ## Keeping what they were
 
@@ -789,6 +846,15 @@ An agent that ends its turn before the answer comes is not left without it.
 The answer is delivered to its session: read between two steps if it is still
 working, and otherwise it wakes the agent - a workflow step waits rather than
 finishing, a chat answers again on its own, a finished task carries on.
+
+**Asking the same agent again continues the conversation it had**, with what it
+answered before in front of it, so a follow-up is a follow-up rather than a
+stranger's first question. `ask_agent` with `fresh: true` starts a new one for
+an unrelated question. A follow-up does not count against **Subagents Per
+Conversation**, the cap on how many agents one conversation may ask - **25** by
+default, set in Admin Settings or a workspace's own settings. What an asked
+agent spends is booked in the usage report to whoever prompted the conversation
+that asked it (see Reports).
 
 ### Reminders
 
@@ -1032,7 +1098,10 @@ sends, uploads or packs a file takes.
   subgraphs, sequence, class, state, gantt, mindmap) or PlantUML;
   `charts_render` draws bar, column, line, area, pie, donut and scatter charts
   from a label and a number each. Either answers a PNG, for a chat, or an SVG,
-  for a page.
+  for a page. A PlantUML diagram is drawn in a house style unless it sets its
+  own: rounded boxes without shadows, quieter lines, a colour per kind of thing
+  - services, stores, queues, groups - and decisions as ovals in a colour of
+  their own. One that sets its own `skinparam`, `!theme` or `<style>` keeps it.
 - **Documents.** `pdf_fromHtml` lays HTML out as a PDF, drawing
   `<pre class="mermaid">` and `<pre class="chart">` blocks as vectors, and reads
   a stylesheet the page links from the scratchpad of that name.
@@ -1099,6 +1168,12 @@ rather than its name - a page or anything that is not a picture is refused - and
 is at most 5 MB (**The largest picture an agent may fetch from an address to look
 at**).
 
+A tool that reads a key and is handed an address instead says how an address
+becomes a key - fetch it with `picture_view` or `http_download` first - rather
+than that nothing is kept under it, which an agent once took to mean it could
+not see pictures at all. What `http_download` keeps is typed by what the bytes
+are where they say so, not by the header the server sent.
+
 **Drawing for its own eyes.** `svg_toPng`, `svg_draw`, `diagram_render`,
 `charts_render` and the wireframe and diagram drawing tools take `show`. Left out
 it is true, and the picture goes into the chat as it always did. False keeps it
@@ -1106,6 +1181,14 @@ from the person: the agent still sees it, with its key, and is told the person
 has not - for an agent checking its own work, such as a render of a PCB layer it
 is about to change, which used to land in the person's chat as though it were
 the answer.
+
+**Looking is the agent's alone.** A page `pdf_preview` draws and a picture
+`picture_view` shows are how an agent looks at something, and they go to the
+agent only - a person asking about their own sheet music is not shown a
+full-size render of the PDF they sent - and the agent is told the person has not
+seen it. `pdf_toPng` puts its picture in the chat only when called with
+`show: true`, which its description tells an agent to do when the person asked
+to see it.
 
 **Reading the manual.** `orknux_manual`, `orknux_manual_section` and
 `orknux_manual_search` read this manual and search it, so an agent asked how
@@ -1193,6 +1276,31 @@ page](/screens/artifact-picture.png)
 What is open is in the address bar, so an artifact can be linked to: send
 somebody the address and they see the thing, not the list.
 
+**Upload** puts a file of your own on the page, held to the installation's
+**Largest file**, and **Search artifacts** narrows the page by name. Each card
+can be opened in a tab of its own, downloaded, deleted after a question - the
+file goes from the disk as well as from the list - and, for a picture, opened in
+Design's image editor.
+
+![An uploaded report open in the viewer: its name, and in the bar Open in a tab,
+Replace and Download beside Close](/screens/artifact-saved.png)
+
+**Replace**, in the viewer's bar over a saved file - one uploaded here or saved
+by an agent - puts a new file
+behind the artifact at the same key and the same address, after a question that
+names the new file. A link somebody was already sent opens the new file; the old
+one is removed, the name follows the new file and the description stays. It is
+held to the same upload limit and recorded in the audit log. A picture a run
+drew has no Replace: it is changed in the image editor instead.
+
+**An artifact on its own**, with nothing of Orknux around it, is at its own
+address with `/content` on the end -
+`/workspace/<number>/artifacts/SAVED-12/content`. It opens the file itself, as
+**Open in a tab** does, but the address stays the same as the artifact is
+replaced, which makes it the one to put in a bookmark or send to somebody who
+reads the same report each week. It is the file under the same lock the viewer
+uses: a page there runs no script and keeps no cookie.
+
 ## Letting an agent drive orknux
 
 An agent's settings carry one switch that is not an MCP server: **Orknux**. It
@@ -1223,6 +1331,17 @@ recorded in the audit log under its name, and kept as a version on the agent's
 **History** - an agent that sets a colleague's brief wrong can be put back the
 way any edit is. Hide the two writing tools on an agent's page to let it read
 agents but not change them.
+
+`orknux_models` also shows each model's provider and its prices, and, where the
+conversation may change things, `orknux_update_model` changes a model - its
+name, the name its provider knows it by, its context window and largest answer,
+and its prices - giving only what changes; the rest is kept.
+`orknux_start_task` sets one of the workspace's agents a task (see Tasks) - a
+brief in full, since the agent sees nothing else of the conversation, a title,
+and the number of an issue it is about if any - and answers the task's id and
+link. The task really works: whatever its tools do, they do.
+The MCP endpoint offers all three to a client outside, under the scope its token
+carries.
 
 ### Keeping the diagrams true
 
@@ -1526,8 +1645,18 @@ reach](/screens/integrations.png)
 endpoints. A connection made in the admin section can be marked as the default
 for new workspaces; that setting lives on the connection's own page.
 
-A connection has a kind — **Slack**, **Email (SMTP)** or **HTTP endpoint** — and
-the kind decides what it asks for.
+A connection has a kind — **Slack**, **Email (SMTP)** or **HTTP endpoint**, or
+one a loaded plugin brings — and the kind decides what it asks for.
+
+**The Add Connection dialog has Test Connection**, which checks what is typed
+and stores nothing, so a token or an address is known to work before anything is
+saved; a saved connection has it on the status line under its form. A plugin's
+kind can bring three things of its own: a **setup guide**, shown beside the
+form, for where on the service the token or the address is found; a **check**,
+so Test asks the plugin whether the address really is its service rather than
+only whether something answers there; and a **default address**, so a service
+that always listens in one place can be added with the URL left empty. The Anki
+plugin's AnkiConnect uses all three.
 
 **GitHub** and **Jira** used to be kinds of their own. Neither was ever
 implemented: nothing called a GitHub or a Jira API through a connection, so both

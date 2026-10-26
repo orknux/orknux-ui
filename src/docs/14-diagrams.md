@@ -101,8 +101,10 @@ agent or a newcomer needs - limits, owners, why it is built this way - and they
 are searched with everything else. A shape's notes hold up to 5000 characters,
 counted as you type; the cap is a limit under **Admin → Settings → Limits**.
 
-**Colour** is three rows of swatches - pale, stronger and deep - **No colour**
-to take it off, and **Another colour** at the end for any colour from a picker.
+**Colour** is a row of pale swatches beside **No colour**, which takes it off,
+and **Another colour** for any colour from the browser's picker; the ring at the
+end of the row, **More colours**, adds a stronger row and a deep one under it,
+and the editor remembers which way you left it.
 The words on a shape are drawn light or dark to suit its colour, in the editor
 and in every export.
 
@@ -112,8 +114,11 @@ and in every export.
   bottom** - Ctrl+Shift+L for left to right, which Preferences can change.
 - **Align** lines up the shapes selected: **Left edges**, **Centres**, **Right
   edges**, **Top edges**, **Middles** or **Bottom edges**.
-- **Duplicate**, **Delete**, copy, cut and paste (Ctrl+C, Ctrl+X, Ctrl+V), and
-  **Undo** and **Redo** work on the selection, as they do anywhere.
+- **Duplicate**, the **Delete** key, copy, cut and paste (Ctrl+C, Ctrl+X,
+  Ctrl+V), and **Undo** and **Redo** work on the selection, as they do anywhere.
+- **Delete** in the bar deletes the **whole diagram**: it asks first, naming it,
+  and goes back to the list. Selected shapes and lines are taken off with the
+  Delete key, never with the button.
 - **Zoom in**, **Zoom out**, and the percentage between them, which **fits the
   drawing to the canvas** when clicked.
 

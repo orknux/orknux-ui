@@ -1330,6 +1330,13 @@ Importing a function should not be a thing that installs software.
 
 ## Networking
 
+**An address typed without a scheme is taken as http.** `192.168.0.10:8081` in a
+box's, an MCP server's, a model provider's, a connection's, an HTTP action's or
+the installation's address, or a release's URL, is stored as
+`http://192.168.0.10:8081`, and the field shows the `http://` once you leave it,
+so what is kept is what you see. An address typed with `https://` is kept as
+typed, and a mail server's host stays a bare host.
+
 ![Proxy rules, in the order they are read, and the box that asks which one answers a given address](/screens/networking.png)
 
 Sometimes one address will not go direct. The case this was built for is the

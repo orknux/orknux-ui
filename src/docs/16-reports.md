@@ -25,7 +25,9 @@ against the agent that made the call, and not against the workspace. A person
 asking an agent a question in a chat is that person; somebody mentioning the bot
 in a Slack thread is that Slack member; a run started by a schedule, a webhook or
 the API has nobody behind it and is counted as **Unattributed**. Two people in
-one conversation are two people, each with their own share of it.
+one conversation are two people, each with their own share of it. An agent asked
+by another is booked to whoever prompted the conversation that asked it, so a
+question that fanned out across five agents is still one person's question.
 
 **Usage tracking is off on a fresh installation** and records nothing at all
 while it is off - not even anonymously. An administrator turns it on under

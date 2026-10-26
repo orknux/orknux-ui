@@ -100,6 +100,18 @@ nothing leaks between them.
 Which workspaces you see is decided by the roles you hold. Administrators see
 all of them and are the only ones who can create one.
 
+**A fresh installation starts with one**, called **Default**, set up the way
+Admin → Workspaces sets one up - so once a model is added under **Models**, a
+chat works straight away. That is the first start on an empty database only:
+removing it later does not bring it back, and a database that already had
+workspaces is never given one.
+
+**A page that saves has Save and Discard in a bar along its foot**, always in
+the same place, and both stay off until something on the page has changed -
+Preferences, a model's page, an agent's, every settings page. Leaving with a
+change not yet saved asks first. The editors that save as you go - workflows,
+diagrams, documents and wireframes - have neither.
+
 A workspace you cannot see is one you cannot address either. Anything named by
 an id your roles do not reach answers exactly as an id nobody ever used does:
 there is no such thing. That holds whether you were reading it or changing it.

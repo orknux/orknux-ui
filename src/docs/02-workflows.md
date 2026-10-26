@@ -10,15 +10,23 @@ always the graph you are looking at; see Draft and published, below.
 **Workflows**, under **Flow** in the menu down the left, is every workflow
 the workspace has, with when each of them last ran and when it is next due.
 
-**Sort** names the field it sorts on — **Name**, **Last run** or **Switched
-on** — with a single arrow beside it for the direction. It starts at A to Z
-rather than at the newest, because a column of names is read that way round. The
-ordering is the server's, over the whole list rather than over the rows on
-screen: sorting ten of a hundred looks like it worked until the row somebody
-wanted turns out to be on page three. Next Run is a column and deliberately not
-something to sort on — it is the soonest of however many cron expressions the
-workflow's triggers carry, worked out one workflow at a time, and nothing has
-ever written it down to order by.
+**Press a column's heading to order the list by it** - **Workflow**,
+**Description** or **Last Run** - and press it again to turn the order round;
+an arrow beside the heading says which way it runs. A name starts at A to Z,
+because a column of names is read that way round, and **Last Run** starts at the
+newest. The ordering is the server's, over the whole list rather than over the
+rows on screen: sorting ten of a hundred looks like it worked until the row
+somebody wanted turns out to be on page three. **Next Run** is a column and
+deliberately not something to sort on — it is the soonest of however many cron
+expressions the workflow's triggers carry, worked out one workflow at a time,
+and nothing has ever written it down to order by.
+
+**Search workflows...** narrows the list as you type. **Show built-in** adds the
+workflows the product made for itself - the research modes (see Research) - which
+the list leaves out until asked; they open and run as any other.
+
+**+ Create Workflow** asks for a name and opens the new workflow's editor
+straight away, as duplicating one does.
 
 The line at the bottom says how many there are and how many are shown, and how
 many at a time sits in it: 10, 25, 50 or 100. The order is in the address, so
@@ -118,6 +126,14 @@ again starts it straight.
   making it for stay on screen together. A trigger, an action, a condition, an
   object and an agent can each be made this way, and what you make is chosen
   into the node as soon as it exists.
+- **+ New function**, at the top of an action's or a condition's function
+  picker, asks for a name and a description in a panel beside the form - beside
+  the node panel here, and as a dialog on the action, condition and trigger
+  pages - and makes the function with a stub that names it, chosen into the
+  picker; the picker keeps what it had until the new one exists.
+- A node's long text fields - a description, a prompt - are **dragged taller**
+  by their corner rather than opened in a bigger box, and a run step's input and
+  output are too.
 - **The way out**, the mark beside the picker on a node that already points at
   something, opens it in that same panel — a trigger, an action, a condition
   and an agent alike. Reading a node is a question about the graph, and
@@ -622,6 +638,29 @@ and a call made outside any workspace is refused. A workspace's own functions
 and tools may call it as they are; a plugin needs `CONNECTIONS_QUERY` granted by
 an administrator. A new function's stub names it.
 
+### Talking to Slack through a connection
+
+A Slack connection's tokens never cross into the script either, yet a function
+or a plugin can still use them - by naming the connection and letting the
+server make the call:
+
+- `orknux.slack.api(connection, method, args, { as })` makes one of Slack's
+  reading calls - `auth.test`, `conversations.list`, `users.conversations`,
+  `conversations.history`, `conversations.replies`, `users.list`,
+  `users.lookupByEmail` or `files.info` - with the connection's bot token, or its
+  user token with `as: 'user'`, and answers Slack's own JSON.
+- `orknux.slack.download(connection, fileId)` fetches a Slack file with the bot
+  token, as text or as base64, up to 5 MB.
+- `orknux.slack.upload` puts a file on Slack, and `orknux.slack.remoteFile`
+  adds one kept at an address outside Slack as a Slack remote file - both with
+  the connection's bot token.
+
+The first two are the `SLACK_WEB_API_READ` capability and the last two
+`SLACK_UPLOAD_FILE`. A plugin that uses them asks an administrator for the grant
+(see Plugins in Administration); it no longer needs a copy of the bot token in a
+parameter of its own, which is a second place a secret was kept and a second
+place it could leak from.
+
 ## Values and references
 
 Every parameter is either **written** or **referenced**. A referenced value
@@ -811,6 +850,14 @@ opened — the code or the prose it held. It sits in the panel beside what you a
 editing for a function, a tool and a skill, and on the agent's own settings page.
 **Restore this version** makes an older one current again.
 
+Each row also says **what that save changed**, before it is opened - *Model:
+Fast → Careful*, *Prompt edited*, *No change* - and an opened row draws the
+version as JSON against the one before it, with what was taken out and what was
+put in marked, so
+finding the save that broke something is reading down a list rather than opening
+every row. An agent's history keeps which agents it may ask, with the rest of
+its grants.
+
 The list is fetched when the panel is opened rather than with the component. A
 tool edited fifty times in an afternoon is fifty copies of its source, and none
 of that is wanted by somebody who came to change a description.
@@ -907,7 +954,14 @@ function, a tool, an agent, a condition, a trigger and an object each carry a
 row opens that thing, so being told an action is in the way is also being taken
 to it. A published copy is marked as one, because redrawing the canvas will not
 move it. Nothing pointing at it says so in words rather than leaving an empty
-box: *Nothing uses this yet*.
+box: *Nothing uses this yet*. A long list comes a page at a time. An agent is
+used by the workflows that run it and also by the agents that may ask it, so
+taking it away from a team of agents is not a surprise to any of them. A
+**model** has the panel too, on its page: the agents that think with it, the
+workspace settings that name it, the actions that speak with it and the
+workflows whose image or decision nodes use it; a provider's page lists its
+models. Removing a model still in use is refused with that list, and so is
+removing a provider while any of its models is.
 
 It is deliberately the same list the refusal is worded from. A panel saying a
 function is used by nothing, followed by a delete refused for two reasons, would
@@ -1038,7 +1092,10 @@ passing them off as live ones.
 went](/screens/execution-detail.png)
 
 Opening a run shows the graph as it ran, each node carrying its own outcome and
-timing, with the log underneath.
+timing, with the log underneath. The lines the run travelled are drawn in green,
+and the line into a step still running moves; a step it did not reach because nothing led
+there - the other side of a condition, a node no trigger leads to - is grey, so
+the path it took reads off the canvas at a glance.
 
 **Re-run** puts the same event through the workflow again. The input is carried
 over, because a re-run starting from nothing is a run with nobody left to
