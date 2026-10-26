@@ -501,8 +501,8 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
    * because it is not a fact about this machine: somebody watching what they
    * spend wants it watched wherever they sign in.
    */
-  const [costShown, setCostShown] = useState(session.chatCostShown === true);
-  const [savedCost, setSavedCost] = useState(session.chatCostShown === true);
+  const [costShown, setCostShown] = useState(session.chatCostShown !== false);
+  const [savedCost, setSavedCost] = useState(session.chatCostShown !== false);
   const [costError, setCostError] = useState<string | null>(null);
 
   const [savedTheme, setSavedTheme] = useState<Theme>(currentTheme);

@@ -2014,6 +2014,13 @@ export const TESTS = [
   },
 
   {
+    name: 'chat-sent-date-check',
+    what: "a message sent today shows its date beside its time",
+    needs: ['workspace'],
+    /* Puts a line sent now on the real history's end. */
+  },
+
+  {
     name: 'provider-edit-mask-check',
     what: "a provider page says how its server reads a picture edit's mask, and saves the choice",
     needs: ['workspace'],

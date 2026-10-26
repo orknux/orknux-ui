@@ -10,10 +10,10 @@
  *
  * So this drives the control, and asserts three things about it.
  *
- * **It is off to begin with.** The issue asked for a setting to turn the cost
- * on, which is a claim about the default and not only about the control's
- * existing. A control that shipped on would be the feature nobody asked for
- * arriving switched on for everybody.
+ * **It is on to begin with.** It shipped off, as #227 asked; since 1.2.3 the
+ * cost is shown unless somebody turns it off, because the person running the
+ * installation asked for it to be seen by default. A control that is on for
+ * somebody who never touched it is a claim about the default, so it is asserted.
  *
  * **What it remembers survives a different browser.** This is the whole of why
  * it is a column on `app_user` and not a key in local storage, and the two are
@@ -30,7 +30,7 @@
  * simpler failure of the label itself growing into a sentence, by measuring
  * that it is drawn on one line.
  *
- * It puts the switch back off at the end, because alice is a fixture and the
+ * It puts the switch back on at the end, because alice is a fixture and the
  * next check to read her preferences should find them as it left them.
  *
  * **What it deliberately does not assert, and where that boundary now runs.**
@@ -119,19 +119,19 @@ async function preferences(browser) {
 const browser = await chromium.launch();
 
 // ---------------------------------------------------------------------------
-// Off to begin with, and its explanation is behind the (?).
+// On to begin with, and its explanation is behind the (?).
 
 const first = await preferences(browser);
 const before = await readControl(first.page);
 
 record(before !== null, before !== null ? 'the Answer Cost control is on Preferences' : 'no Answer Cost control');
 
-const startsOff = before !== null && before.options.some((option) => option.text === 'Off' && option.on);
+const startsOn = before !== null && before.options.some((option) => option.text === 'On' && option.on);
 record(
-  startsOff,
-  startsOff
-    ? 'it is off until somebody turns it on'
-    : `it did not start off (${JSON.stringify(before?.options)})`,
+  startsOn,
+  startsOn
+    ? 'it is on until somebody turns it off'
+    : `it did not start on (${JSON.stringify(before?.options)})`,
 );
 
 const oneLine = before !== null && before.lines === 1 && before.beside === '';
@@ -160,11 +160,11 @@ record(
 await first.page.keyboard.press('Escape');
 
 // ---------------------------------------------------------------------------
-// Turned on here, and still on in a browser that has never seen this one.
+// Turned off here, and still off in a browser that has never seen this one.
 
 await first.page
   .locator('[class*="_setting_"]', { has: first.page.locator(HINT) })
-  .getByRole('radio', { name: 'On' })
+  .getByRole('radio', { name: 'Off' })
   .click();
 // Preferences keeps a change as a draft until its Save.
 await first.page.locator('[class*="_pageSave_"]').click();
@@ -174,25 +174,25 @@ await first.context.close();
 
 const second = await preferences(browser);
 const carried = await readControl(second.page);
-const stillOn = carried !== null && carried.options.some((option) => option.text === 'On' && option.on);
+const stillOff = carried !== null && carried.options.some((option) => option.text === 'Off' && option.on);
 record(
-  stillOn,
-  stillOn
-    ? 'it is still on in a browser that has never seen the one it was set in'
+  stillOff,
+  stillOff
+    ? 'it is still off in a browser that has never seen the one it was set in'
     : `a second browser found it ${JSON.stringify(carried?.options)}`,
 );
 
 // Put back, so the next check finds alice as it left her.
 await second.page
   .locator('[class*="_setting_"]', { has: second.page.locator(HINT) })
-  .getByRole('radio', { name: 'Off' })
+  .getByRole('radio', { name: 'On' })
   .click();
 await second.page.locator('[class*="_pageSave_"]').click();
 await second.page.waitForTimeout(600);
 const restored = await readControl(second.page);
 record(
-  restored !== null && restored.options.some((option) => option.text === 'Off' && option.on),
-  'put back off',
+  restored !== null && restored.options.some((option) => option.text === 'On' && option.on),
+  'put back on',
 );
 await second.context.close();
 

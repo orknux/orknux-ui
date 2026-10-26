@@ -552,21 +552,14 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * Null for a line carried in from the session this chat continues - it was
    * said before the chat existed - and for a live turn until the reload that
    * reads its stored time back. Both read as no time rather than a guessed one.
-   * The date is shown as well as the clock only when it is not today, because a
-   * chat opened this afternoon does not need every line stamped with the date.
+   * The date is on every line, today's included, so a chat read on another
+   * day says the same of each line as it did on the day it was written.
    */
   const sentAt = (at: string | null): string | null => {
     if (!showTimestamps || at === null) return null;
     const when = new Date(at);
     if (Number.isNaN(when.getTime())) return null;
-    const today = new Date();
-    const sameDay =
-      when.getFullYear() === today.getFullYear() &&
-      when.getMonth() === today.getMonth() &&
-      when.getDate() === today.getDate();
-    return sameDay
-      ? when.toLocaleTimeString([], zoned({ hour: '2-digit', minute: '2-digit' }))
-      : when.toLocaleString([], zoned({ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    return when.toLocaleString([], zoned({ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
   };
 
   /**
@@ -3408,7 +3401,7 @@ ${named}`;
    * different reasons to know nothing, and one honest way of showing it.
    */
   const spend =
-    session.chatCostShown === true && lastSpend !== null && spendKnown(lastSpend)
+    session.chatCostShown !== false && lastSpend !== null && spendKnown(lastSpend)
       ? lastSpend.cost === null
         ? `${tokenCount(lastSpend.inputTokens + lastSpend.outputTokens)} tokens`
         : costAmount(lastSpend.cost)
@@ -3464,7 +3457,7 @@ ${named}`;
         ? t('1 picture')
         : tf('{count} pictures', { count: tokenCount(spentPictures) });
   const spent =
-    session.chatCostShown !== true
+    session.chatCostShown === false
       ? null
       : spentPart !== null && drawnPart !== null
         ? tf('{tokens} and {pictures}', { tokens: spentPart, pictures: drawnPart })
