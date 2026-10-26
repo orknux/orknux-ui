@@ -1131,25 +1131,6 @@ if (imageModel) {
       icon: 'file-text',
     },
   });
-  /*
-   * The drawing tools carried from its first message: since 1.2.0 a new agent
-   * starts them at Offer, and the scripted writer calls only what its tool list
-   * holds - so it drew nothing and every picture task failed.
-   */
-  const { agent: held } = await gql('query($id: ID!) { agent(id: $id) { requiredTools } }', { id: newsletter.id });
-  const always = [...new Set([...(held?.requiredTools ?? []), 'draw_picture', 'picture_link'])];
-  await gql('mutation($id: ID!, $input: UpdateAgentInput!) { updateAgent(id: $id, input: $input) { id } }', {
-    id: newsletter.id,
-    input: {
-      name: 'Newsletter writer',
-      description: 'Writes the monthly customer newsletter, and draws its pictures.',
-      systemPrompt: NEWSLETTER_PROMPT,
-      type: 'LLM',
-      modelId: writerModel.id,
-      icon: 'file-text',
-      requiredTools: always,
-    },
-  });
 }
 log(`${newsletter ? 3 : 2} agents`);
 
