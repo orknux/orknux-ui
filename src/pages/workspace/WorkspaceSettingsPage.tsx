@@ -2097,7 +2097,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               <span>{t('Show when each message was sent')}</span>
             </label>
             <FieldHint label={t('Show when each message was sent')}>
-              {t('A small time beside each message in this workspace’s chats. The time was always recorded; this decides whether it is drawn. Off by default.')}
+              {t('The date and time beside each message in this workspace’s chats. The time was always recorded; this decides whether it is drawn. On by default.')}
             </FieldHint>
           </div>
 

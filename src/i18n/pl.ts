@@ -4042,4 +4042,5 @@ export const PL: Record<string, string> = {
   "One agent plans, writes and reviews; or choose an agent for each step. None is chosen for you.": "Jeden agent planuje, pisze i recenzuje; albo wybierz agenta dla każdego kroku. Nic nie jest wybierane za ciebie.",
   "The agent that plans the research, writes the report and reviews it, thinking with its own model.": "Agent, który planuje badanie, pisze raport i go recenzuje, myśląc własnym modelem.",
   "Width of the outline": "Szerokość konspektu",
+  "The date and time beside each message in this workspace’s chats. The time was always recorded; this decides whether it is drawn. On by default.": "Data i godzina obok każdej wiadomości w czatach tego obszaru roboczego. Czas był zawsze zapisywany; to ustawienie decyduje, czy jest pokazywany. Domyślnie włączone.",
 };
