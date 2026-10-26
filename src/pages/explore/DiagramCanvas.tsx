@@ -5,6 +5,8 @@ import type { Edge, EdgeProps, InternalNode, Node, NodeProps } from '@xyflow/rea
 
 import type { DiagramEdgeKind, DiagramNodeKind } from '../../api/diagrams';
 import { t } from '../../i18n';
+import { ICON_LABEL, OUTLINES, OutlinePieces, compartments, rimBorder } from './DiagramShapes';
+import type { Outline } from './DiagramShapes';
 import styles from './DiagramEditorPage.module.css';
 
 /** What a node on the canvas carries: what it is, and how it is drawn. */
@@ -109,7 +111,9 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNode>) {
   return (
     <>
       <NodeResizer isVisible={selected} minWidth={24} minHeight={24} lineClassName={styles.resizeLine} handleClassName={styles.resizeHandle} />
-      {data.kind === 'diamond' ? (
+      {OUTLINES[data.kind] !== undefined ? (
+        <OutlinedShape kind={data.kind} outline={OUTLINES[data.kind] as Outline} label={data.label} typing={typing} fill={data.color} ink={filled ? style?.color : undefined} />
+      ) : data.kind === 'diamond' ? (
         <div className={styles.shapeDiamondBox} data-testid="diagram-node-shape" data-kind={data.kind}>
           <svg className={styles.diamond} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <polygon points="50,1 99,50 50,99 1,50" style={filled ? { fill: data.color } : undefined} />
@@ -147,6 +151,60 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNode>) {
   );
 }
 
+/**
+ * A flowchart or UML shape: its outline stretched to the node - or, for an
+ * icon, kept square above its label - and its words where the outline keeps
+ * them. A class's words are its compartments.
+ */
+function OutlinedShape({ kind, outline, label, typing, fill, ink }: { kind: DiagramNodeKind; outline: Outline; label: string; typing: boolean; fill?: string; ink?: string }) {
+  const words = (className: string) =>
+    typing ? (
+      <InPlaceLabel initial={label} className={`${className} ${styles.labelEditor}`} multiline style={ink ? { color: ink } : undefined} />
+    ) : (
+      <span className={className} style={ink ? { color: ink } : undefined} data-testid="diagram-node-label-text">
+        {label}
+      </span>
+    );
+  if (outline.icon) {
+    return (
+      <div className={styles.shapeIconBox} data-testid="diagram-node-shape" data-kind={kind}>
+        <svg className={styles.shapeIconArt} style={{ height: `calc(100% - ${ICON_LABEL}px)` }} viewBox="-2 -2 104 104" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-testid="diagram-node-outline">
+          <OutlinePieces outline={outline} fill={fill} className={styles.outlinePiece} />
+        </svg>
+        {/* Beneath the icon, on the paper, so it is ink whatever the fill. */}
+        {typing ? <InPlaceLabel initial={label} className={`${styles.shapeIconLabel} ${styles.labelEditor}`} multiline={false} /> : (
+          <span className={styles.shapeIconLabel} data-testid="diagram-node-label-text">
+            {label}
+          </span>
+        )}
+      </div>
+    );
+  }
+  const { left, top, right, bottom } = outline.inside;
+  return (
+    <div className={styles.shapeOutlineBox} data-testid="diagram-node-shape" data-kind={kind}>
+      <svg className={styles.diamond} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" data-testid="diagram-node-outline">
+        <OutlinePieces outline={outline} fill={fill} className={styles.outlinePiece} />
+      </svg>
+      {kind === 'class' && !typing ? (
+        <div className={styles.classBox} style={ink ? { color: ink } : undefined} data-testid="diagram-node-label-text">
+          {compartments(label).map((lines, at) => (
+            <div key={at} className={at === 0 ? styles.className : styles.classPart}>
+              {lines.map((line, row) => (
+                <div key={row}>{line === '' ? ' ' : line}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.outlineInside} style={{ left: `${left}%`, top: `${top}%`, right: `${100 - right}%`, bottom: `${100 - bottom}%` }}>
+          {words(styles.shapeLabel)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** The centre of a node, and its half sizes, in the canvas's own coordinates. */
 function boxOf(node: InternalNode): { cx: number; cy: number; hw: number; hh: number } {
   const w = node.measured.width ?? node.width ?? 0;
@@ -176,8 +234,10 @@ export function FloatingLink({ id, source, target, data, selected, markerEnd, ma
   if (from === undefined || to === undefined) return null;
   const a = boxOf(from);
   const b = boxOf(to);
-  const start = border(a, b.cx, b.cy);
-  const end = border(b, a.cx, a.cy);
+  const fromKind = (from.data as ShapeData | undefined)?.kind;
+  const toKind = (to.data as ShapeData | undefined)?.kind;
+  const start = rimBorder(fromKind, a, b.cx, b.cy) ?? border(a, b.cx, b.cy);
+  const end = rimBorder(toKind, b, a.cx, a.cy) ?? border(b, a.cx, a.cy);
   const path = `M ${start.x},${start.y} L ${end.x},${end.y}`;
   const kind = data?.kind ?? 'arrow';
   return (

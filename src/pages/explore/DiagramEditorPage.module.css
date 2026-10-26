@@ -240,6 +240,98 @@
   position: relative;
 }
 
+/* ---- A flowchart or UML shape: an outline, its words where the outline keeps them ---- */
+
+.shapeOutlineBox {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: var(--diagram-ink);
+}
+
+.outlinePiece {
+  fill: var(--diagram-paper);
+  stroke: var(--diagram-ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.outlineInside {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.classBox {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: var(--text-md);
+  line-height: 1.3;
+  white-space: pre;
+}
+
+.className {
+  padding: var(--space-4) var(--space-8);
+  font-weight: 600;
+  text-align: center;
+}
+
+.classPart {
+  padding: var(--space-2) var(--space-8);
+  border-top: 1.5px solid var(--diagram-ink);
+}
+
+.shapeIconBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--diagram-ink);
+}
+
+.shapeIconArt {
+  flex: none;
+  width: 100%;
+  overflow: visible;
+}
+
+.shapeIconLabel {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-md);
+  line-height: 22px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.moreShapes {
+  right: 0;
+  left: auto;
+  min-width: 200px;
+}
+
+.menuHeading {
+  padding: var(--space-6) var(--space-8) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.menuItemIcon {
+  display: inline-flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
 /* A node with notes: a small fold in its corner. */
 .notedMark {
   position: absolute;
@@ -277,7 +369,9 @@
 }
 
 :global(.react-flow__node-shape.selected) .shape,
-:global(.react-flow__node-shape.selected) .diamond polygon {
+:global(.react-flow__node-shape.selected) .diamond polygon,
+:global(.react-flow__node-shape.selected) .shapeOutlineBox,
+:global(.react-flow__node-shape.selected) .shapeIconBox {
   outline: 2px solid var(--diagram-select);
   outline-offset: 2px;
 }

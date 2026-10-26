@@ -6,9 +6,15 @@ import type { EditorTurn } from './attachments';
  * What a node can be drawn as. The server checks a drawing against the same
  * list (`DiagramNodeKind`), and a model drawing in it is told it from there.
  */
-export type DiagramNodeKind = 'box' | 'rounded' | 'ellipse' | 'diamond' | 'note' | 'group';
+export type DiagramNodeKind = (typeof DIAGRAM_NODE_KINDS)[number];
 
-export const DIAGRAM_NODE_KINDS: DiagramNodeKind[] = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group'];
+/** The flowchart shapes past the first six, in the order the menu offers them. */
+export const FLOWCHART_KINDS = ['database', 'document', 'hexagon', 'parallelogram', 'trapezoid', 'triangle', 'cloud'] as const;
+
+/** The UML shapes, in the order the menu offers them. */
+export const UML_KINDS = ['actor', 'class', 'component', 'package', 'interface', 'device', 'boundary', 'control', 'entity'] as const;
+
+export const DIAGRAM_NODE_KINDS = ['box', 'rounded', 'ellipse', 'diamond', 'note', 'group', ...FLOWCHART_KINDS, ...UML_KINDS] as const;
 
 /** What a connection is drawn as (`DiagramEdgeKind`). */
 export type DiagramEdgeKind = 'arrow' | 'line' | 'dashed' | 'both';

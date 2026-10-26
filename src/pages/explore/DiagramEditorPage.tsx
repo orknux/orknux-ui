@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   Background,
@@ -23,6 +23,8 @@ import {
   diagramExportUrl,
   drawingOf,
   fetchDiagram,
+  FLOWCHART_KINDS,
+  UML_KINDS,
   renameDiagram,
   saveDiagram,
   setDiagramAgentAccess,
@@ -83,6 +85,7 @@ import shell from '../design/DesignImageEditorPage.module.css';
 import chat from '../design/WireframeEditorPage.module.css';
 import { EDGE_TYPES, LabelEditingContext, NODE_TYPES, SWATCHES } from './DiagramCanvas';
 import type { LinkEdge, ShapeNode } from './DiagramCanvas';
+import { ShapeIcon } from './DiagramShapes';
 import { agentAccessOptions } from './DiagramsPage';
 import styles from './DiagramEditorPage.module.css';
 import { laidOut } from './diagramLayout';
@@ -117,6 +120,26 @@ const SHAPES: { kind: DiagramNodeKind; icon: string; label: () => string }[] = [
   { kind: 'group', icon: frameIcon, label: () => t('Group') },
 ];
 
+/** What the shapes in the More shapes menu are called; they are drawn by their own outlines there. */
+const MORE_SHAPES: Partial<Record<DiagramNodeKind, () => string>> = {
+  database: () => t('Database'),
+  document: () => t('Document'),
+  hexagon: () => t('Hexagon'),
+  parallelogram: () => t('Parallelogram'),
+  trapezoid: () => t('Trapezoid'),
+  triangle: () => t('Triangle'),
+  cloud: () => t('Cloud'),
+  actor: () => t('Actor'),
+  class: () => t('Class'),
+  component: () => t('Component'),
+  package: () => t('Package'),
+  interface: () => t('Interface'),
+  device: () => t('Device'),
+  boundary: () => t('Boundary'),
+  control: () => t('Control'),
+  entity: () => t('Entity'),
+};
+
 /** The size a new node starts at - the server's own defaults (`DiagramNodeKind`). */
 const MADE: Record<DiagramNodeKind, { w: number; h: number }> = {
   box: { w: 160, h: 60 },
@@ -125,10 +148,26 @@ const MADE: Record<DiagramNodeKind, { w: number; h: number }> = {
   diamond: { w: 140, h: 90 },
   note: { w: 180, h: 100 },
   group: { w: 360, h: 240 },
+  database: { w: 120, h: 80 },
+  document: { w: 160, h: 80 },
+  hexagon: { w: 160, h: 70 },
+  parallelogram: { w: 170, h: 60 },
+  trapezoid: { w: 170, h: 60 },
+  triangle: { w: 120, h: 100 },
+  cloud: { w: 180, h: 110 },
+  actor: { w: 80, h: 110 },
+  class: { w: 200, h: 120 },
+  component: { w: 170, h: 70 },
+  package: { w: 170, h: 90 },
+  interface: { w: 80, h: 80 },
+  device: { w: 170, h: 90 },
+  boundary: { w: 90, h: 90 },
+  control: { w: 90, h: 90 },
+  entity: { w: 90, h: 90 },
 };
 
 function kindLabel(kind: DiagramNodeKind): string {
-  return SHAPES.find((one) => one.kind === kind)?.label() ?? kind;
+  return SHAPES.find((one) => one.kind === kind)?.label() ?? MORE_SHAPES[kind]?.() ?? kind;
 }
 
 function edgeKindLabel(kind: DiagramEdgeKind): string {
@@ -258,7 +297,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const [naming, setNaming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [menu, setMenu] = useState<'layout' | 'align' | 'export' | null>(null);
+  const [menu, setMenu] = useState<'layout' | 'align' | 'export' | 'shapes' | null>(null);
   /*
    * How many pixels a PNG has for each one the diagram is drawn at. Twice by
    * default, so it is sharp on a high-density screen and in a slide; the server
@@ -524,7 +563,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
     const made: DiagramNodeData = {
       id: freshId('n'),
       kind,
-      label: kind === 'group' ? t('Group') : kind === 'note' ? t('Note') : t('New node'),
+      // A class starts with its compartments, so how to write one is on the canvas rather than in a hint.
+      label: kind === 'group' ? t('Group') : kind === 'note' ? t('Note') : kind === 'class' ? `${t('New node')}\n--\n\n--\n` : t('New node'),
       x: snap(middle.x - size.w / 2 + offset),
       y: snap(middle.y - size.h / 2 + offset),
       w: size.w,
@@ -927,6 +967,47 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                 <img src={one.icon} alt="" width={16} height={16} />
               </button>
             ))}
+            <div className={styles.menuHolder}>
+              <button
+                type="button"
+                className={shell.tool}
+                onClick={() => setMenu(menu === 'shapes' ? null : 'shapes')}
+                title={t('More shapes')}
+                aria-label={t('More shapes')}
+                aria-expanded={menu === 'shapes'}
+                data-testid="diagram-more-shapes"
+              >
+                <img src={chevronIcon} alt="" width={14} height={14} />
+              </button>
+              {menu === 'shapes' && (
+                <div className={`${styles.menu} ${styles.moreShapes}`} role="menu">
+                  {([
+                    [t('Flowchart'), FLOWCHART_KINDS],
+                    ['UML', UML_KINDS],
+                  ] as const).map(([heading, kinds]) => (
+                    <Fragment key={heading}>
+                      <span className={styles.menuHeading}>{heading}</span>
+                      {kinds.map((kind) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          role="menuitem"
+                          className={`${styles.menuItem} ${styles.menuItemIcon}`}
+                          onClick={() => {
+                            add(kind);
+                            setMenu(null);
+                          }}
+                          data-testid={`diagram-add-${kind}`}
+                        >
+                          <ShapeIcon kind={kind} />
+                          {kindLabel(kind)}
+                        </button>
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <span className={shell.toolbarGap} aria-hidden="true" />
           <div className={styles.menuHolder}>

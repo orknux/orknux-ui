@@ -2329,6 +2329,12 @@ export const TESTS = [
     /* Makes its own diagram, wider than the old 1600-pixel ceiling allowed at 2×, and removes it. */
   },
   {
+    name: 'diagram-shapes-check',
+    what: 'the flowchart and UML shapes are offered under More shapes, each drawn as its own outline - an icon kept round above its label, a class in compartments - and a line ends on the outline',
+    needs: ['workspace'],
+    /* Makes its own diagram and removes it. */
+  },
+  {
     name: 'document-dark-page-check',
     what: "the document editor's Dark page switch draws the sheets dark with light ink and code, quote, link and Find colours of their own, is remembered, and leaves the document and its export as they were",
     needs: ['workspace'],
