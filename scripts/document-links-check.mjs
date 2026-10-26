@@ -87,6 +87,17 @@ try {
   const warned = await warning.waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
   const says = warned ? ((await warning.textContent()) ?? '') : '';
   record(warned && says.includes(`zzLinker ${stamp}`), `deleting it warns first, naming the document that mentions it (${says})`);
+  // Each name a link to that document, to look at before its link breaks.
+  const mentionHref = await page.getByTestId('document-delete-mention').first().getAttribute('href').catch(() => null);
+  record(mentionHref !== null && mentionHref.endsWith(`/design/documents/${linker}`), `the name is a link to it (${mentionHref})`);
+  await page.keyboard.press('Escape');
+
+  // The editor deletes too, asking the same way.
+  await page.goto(editorOf(target), { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('document-prose').waitFor({ timeout: 20_000 }).catch(() => undefined);
+  await page.getByTestId('document-delete').click({ timeout: 10_000 }).catch(() => undefined);
+  const fromEditor = await page.getByTestId('document-delete-mention').first().waitFor({ timeout: 10_000 }).then(() => true).catch(() => false);
+  record(fromEditor, 'the editor offers Delete, and warns the same way');
   await page.keyboard.press('Escape');
 
   // The editor's Documents button puts a link in, named as the document is.

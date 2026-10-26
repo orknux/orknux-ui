@@ -50,6 +50,7 @@ import polishIcon from '../../assets/wand-sparkles.svg';
 import { ApiError } from '../../api/client';
 import { AppShell } from '../../components/AppShell';
 import { LivePointers, mergeLines, Presence, useAutosave, useLiveRoom } from '../../components/LiveRoom';
+import { DocumentDeleteDialog } from './DocumentDeleteDialog';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import form from '../../components/Dialog.module.css';
 import { useInlineCompletion } from '../../components/inlineCompletion';
@@ -180,6 +181,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   const firstName = (session.displayName?.trim() || session.username).split(/\s+/)[0];
   const { workspaceId = '', documentId = '' } = useParams();
   const navigate = useNavigate();
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
   const [held, setHeld] = useState<DesignDocument | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1003,6 +1005,9 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           >
             {t('Save as copy')}
           </button>
+          <button type="button" className={form.ghost} onClick={() => held !== null && setDeleting({ id: held.id, name: held.name })} disabled={held === null || answering} data-testid="document-delete">
+            {t('Delete')}
+          </button>
         </div>
       </div>
 
@@ -1254,6 +1259,12 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
           setPicking(false);
           insertPicture(picture.id, picture.name ?? picture.prompt, null);
         }}
+      />
+      <DocumentDeleteDialog
+        workspaceId={workspaceId}
+        document={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={() => navigate(`/workspace/${workspaceId}/design/documents`)}
       />
       <ConfirmDialog
         subject={restoring === null ? null : new Date(restoring.entry.savedAt).toLocaleString()}

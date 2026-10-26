@@ -12,14 +12,13 @@ import {
   fetchDocumentPageSizeDefault,
   setDocumentPageSizeDefault,
   fetchDocuments,
-  fetchDocumentMentions,
   importDocumentFile,
   moveDocument,
   renameDocument,
   renameDocumentCatalog,
   saveDocument,
 } from '../../api/documents';
-import type { DesignDocument, DocumentCatalog, DocumentReference, PageSize } from '../../api/documents';
+import type { DesignDocument, DocumentCatalog, PageSize } from '../../api/documents';
 import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import { refuseOversized } from '../../api/uploads';
@@ -33,6 +32,7 @@ import searchIcon from '../../assets/search.svg';
 import trashIcon from '../../assets/trash-grey.svg';
 import { AppShell } from '../../components/AppShell';
 import { CatalogNameDialog } from '../../components/CatalogNameDialog';
+import { DocumentDeleteDialog } from './DocumentDeleteDialog';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Loader } from '../../components/Loader';
 import { MoveToCatalog } from '../../components/MoveToCatalog';
@@ -97,15 +97,10 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
   const [naming, setNaming] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<DesignDocument | null>(null);
   /** The documents that link to the one about to be deleted, named in the warning; null until asked. */
-  const [removingMentions, setRemovingMentions] = useState<DocumentReference[] | null>(null);
 
   /** Asks to delete [document], having first found out who links to it, so the warning can say. */
   function askToRemove(document: DesignDocument) {
-    setRemovingMentions(null);
     setRemoving(document);
-    fetchDocumentMentions(document.id)
-      .then(setRemovingMentions)
-      .catch(() => setRemovingMentions([]));
   }
   const [removingCatalog, setRemovingCatalog] = useState<DocumentCatalog | null>(null);
   /** The catalog dialog: a new one, or the one being renamed. */
@@ -509,24 +504,7 @@ export function DesignDocumentsPage({ session, onSignOut }: DesignDocumentsPageP
         }}
       />
 
-      <ConfirmDialog
-        subject={removing?.name ?? null}
-        kind="removeDocument"
-        detail={
-          removingMentions !== null && removingMentions.length > 0 ? (
-            <span data-testid="document-delete-mentioned">
-              {tf('Mentioned by {names}', { names: removingMentions.map((one) => one.name).join(', ') })}
-            </span>
-          ) : undefined
-        }
-        onClose={() => setRemoving(null)}
-        onConfirm={async () => {
-          if (removing === null) return;
-          await deleteDocument(removing.id);
-          setRemoving(null);
-          await changed();
-        }}
-      />
+      <DocumentDeleteDialog workspaceId={workspaceId} document={removing} onClose={() => setRemoving(null)} onDeleted={changed} />
 
       <ConfirmDialog
         subject={removingCatalog?.name ?? null}
