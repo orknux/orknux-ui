@@ -6,7 +6,7 @@ import type { RefObject } from 'react';
 import type { DocumentReference } from '../../api/documents';
 import { useSieve } from '../../components/sieve';
 import { t } from '../../i18n';
-import { headingsOf, highlightsOf } from './documentExtensions';
+import { headingsOf, highlightsOf, linksOf } from './documentExtensions';
 import styles from './DocumentTools.module.css';
 
 export interface DocumentSideProps {
@@ -36,6 +36,8 @@ export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: Docum
   const [notesFold, rememberNotes] = useSieve('document-editor.highlights');
   const [mentionsFold, rememberMentions] = useSieve('document-editor.mentioned-by');
   const mentionsOpen = mentionsFold !== 'closed';
+  const [mentioningFold, rememberMentioning] = useSieve('document-editor.mentions');
+  const mentioningOpen = mentioningFold !== 'closed';
   const open = side !== 'closed';
   const outlineOpen = outlineFold !== 'closed';
   const notesOpen = notesFold !== 'closed';
@@ -44,6 +46,8 @@ export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: Docum
   const headings = useMemo(() => headingsOf(editor.state.doc), [editor, tick]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const highlights = useMemo(() => highlightsOf(editor.state.doc), [editor, tick]);
+  // The documents this one links to, read off its own content: the other half of Mentioned by.
+  const mentions = useMemo(() => linksOf(editor.state.doc), [editor, tick]);
   const least = headings.reduce((most, one) => Math.min(most, one.level), 6);
 
   // The section in view: the last heading above the reading line, read again as the desk scrolls.
@@ -183,6 +187,44 @@ export function DocumentSide({ editor, scope, tick, mentionedBy, onOpen }: Docum
             ))
           )}
         </div>
+      )}
+
+      <div className={styles.sideHead}>
+        <button
+          type="button"
+          className={styles.sectionToggle}
+          onClick={() => rememberMentioning(mentioningOpen ? 'closed' : '')}
+          aria-expanded={mentioningOpen}
+          data-testid="document-mentions-toggle"
+        >
+          <span className={styles.chevron} aria-hidden="true">
+            {mentioningOpen ? '▾' : '▸'}
+          </span>
+          {t('Mentions')}
+          {mentions.length > 0 && <span className={styles.sideCount}>{mentions.length}</span>}
+        </button>
+      </div>
+      {mentioningOpen && (
+        <nav className={styles.sideList} aria-label={t('Mentions')} data-testid="document-mentions">
+          {mentions.length === 0 ? (
+            <p className={styles.sideEmpty}>{t('This document links to no other')}</p>
+          ) : (
+            mentions.map((one) => (
+              <button
+                key={one.id}
+                type="button"
+                className={styles.outlineItem}
+                onClick={() => onOpen?.(one.id)}
+                disabled={one.missing}
+                title={one.missing ? t('This document was deleted') : one.name}
+                data-testid="document-mentions-item"
+                data-id={one.id}
+              >
+                {one.name}
+              </button>
+            ))
+          )}
+        </nav>
       )}
 
       {mentionedBy !== undefined && (

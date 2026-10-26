@@ -36,6 +36,10 @@ try {
   const shown = drawn ? ((await link.first().textContent()) ?? '').trim() : '';
   record(shown === RENAMED, `it shows the linked document's current name after a rename (${shown})`);
 
+  // And the linking document lists what it mentions, the other half of Mentioned by.
+  const mentioned = await page.getByTestId('document-mentions-item').allTextContents().catch(() => []);
+  record(mentioned.length === 1 && mentioned[0].trim() === RENAMED, `its editor lists the documents it mentions (${JSON.stringify(mentioned)})`);
+
   // A plain click puts the caret there, as on any link being edited; Ctrl+click follows it.
   if (drawn) await link.first().click();
   await page.waitForTimeout(500);

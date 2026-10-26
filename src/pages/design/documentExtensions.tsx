@@ -197,6 +197,29 @@ const DocumentImage = Node.create({
   },
 });
 
+/** A document this one links to, once each, in the order first linked. */
+export interface LinkedDocument {
+  id: string;
+  name: string;
+  missing: boolean;
+}
+
+/** The documents a document links to, read off its own links, each named as the server last named it. */
+export function linksOf(doc: PmNode): LinkedDocument[] {
+  const seen = new Map<string, LinkedDocument>();
+  doc.descendants((node) => {
+    if (node.type.name !== 'documentLink') return;
+    const id = String(node.attrs.document ?? '');
+    if (id === '' || seen.has(id)) return;
+    seen.set(id, {
+      id,
+      name: (node.attrs.name as string | null) || tf('Document {id}', { id }),
+      missing: node.attrs.missing === true,
+    });
+  });
+  return [...seen.values()];
+}
+
 /** What a link to another document is followed with: the page it opens, from the editor or from the view. */
 export interface DocumentLinkOptions {
   href: (id: string, editing: boolean) => string;

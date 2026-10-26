@@ -4002,6 +4002,8 @@ export const PL: Record<string, string> = {
   "This document was deleted": "Ten dokument został usunięty",
   "Ctrl+click to open": "Ctrl+kliknięcie otwiera",
   "Mentioned by": "Wspomniany w",
+  "Mentions": "Wspomina",
+  "This document links to no other": "Ten dokument nie prowadzi do żadnego innego",
   "No document links here": "Żaden dokument tu nie prowadzi",
   "Mentioned by {names}": "Wspomniany w: {names}",
   "Import files as documents": "Importuj pliki jako dokumenty",
