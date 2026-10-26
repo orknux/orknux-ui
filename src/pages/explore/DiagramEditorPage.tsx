@@ -285,7 +285,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
   const { workspaceId = '', diagramId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  // The whole diagram, from its own toolbar, asked first; the Delete beside Duplicate deletes what is selected.
+  // The whole diagram, from the toolbar's Delete, asked first.
   const [deletingDiagram, setDeletingDiagram] = useState(false);
   const flow = useReactFlow();
   const viewport = useViewport();
@@ -1160,7 +1160,8 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
           <button type="button" className={form.ghost} onClick={duplicate} disabled={selectedNodes.length === 0} title={`${t('Duplicate')} (${duplicateKey})`} data-testid="diagram-duplicate">
             {t('Duplicate')}
           </button>
-          <button type="button" className={form.ghost} onClick={remove} disabled={selectedNodes.length === 0 && selectedEdges.length === 0} title={t('Delete')} data-testid="diagram-delete">
+          {/* The diagram itself, asked first: what is selected goes with the Delete key. */}
+          <button type="button" className={form.ghost} onClick={() => setDeletingDiagram(true)} disabled={diagram === null} title={t('Delete this diagram')} data-testid="diagram-delete">
             {t('Delete')}
           </button>
           <div className={styles.menuHolder}>
@@ -1200,9 +1201,6 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
               </div>
             )}
           </div>
-          <button type="button" className={form.ghost} onClick={() => setDeletingDiagram(true)} disabled={diagram === null} data-testid="diagram-delete-diagram">
-            {t('Delete diagram')}
-          </button>
         </div>
       </div>
 
@@ -1441,7 +1439,7 @@ export function DiagramEditorPage({ session, onSignOut }: DiagramEditorPageProps
                     title={coloursOpen ? t('Fewer colours') : t('More colours')}
                     data-testid="diagram-node-colour-more"
                   >
-                    <img src={chevronIcon} alt="" width={12} height={12} />
+                    <img src={chevronIcon} alt="" width={14} height={14} />
                   </button>
                 </div>
               </div>

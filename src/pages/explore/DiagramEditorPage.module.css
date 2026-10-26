@@ -553,6 +553,7 @@
   cursor: pointer;
 }
 
+/* A swatch's size and ring, so it reads as one of them: the way to the rest. */
 .swatchMore {
   display: flex;
   align-items: center;
@@ -560,14 +561,17 @@
   width: 20px;
   height: 20px;
   padding: 0;
-  background: none;
-  border: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-text-muted);
+  border-radius: 50%;
   cursor: pointer;
-  opacity: 0.7;
+  /* Clear of the ring a chosen colour wears, which stands 4px outside its swatch. */
+  margin-left: var(--space-6);
 }
 
 .swatchMore:hover {
-  opacity: 1;
+  border-color: var(--color-text-primary);
+  background: var(--color-surface-hover);
 }
 
 .swatchMoreOpen img {
