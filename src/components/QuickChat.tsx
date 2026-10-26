@@ -18,6 +18,10 @@ import { PAGES } from '../navigation';
 import styles from './QuickChat.module.css';
 import { t, tf } from '../i18n';
 
+
+/** The gap between the end of the attribution strip and the launcher, in pixels. A format, not a behaviour. */
+const REACH_GAP = 16;
+
 export interface QuickChatProps {
   /** The workspace it asks about, or undefined while none is known. */
   workspacePath?: string;
@@ -307,6 +311,31 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
    */
   const panel = useRef<HTMLElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
+
+  /*
+   * How far the launcher reaches in from the right, for the attribution strip
+   * to end short of: measured, because its label's width depends on the
+   * language and the font, and a fixed number let the strip run under it.
+   */
+  useLayoutEffect(() => {
+    const button = launcher.current;
+    if (button === null) return undefined;
+    const root = document.documentElement;
+    const measure = () => {
+      const reach = window.innerWidth - button.getBoundingClientRect().left + REACH_GAP;
+      root.style.setProperty('--quick-chat-reach', `${Math.ceil(reach)}px`);
+    };
+    measure();
+    const watching = new ResizeObserver(measure);
+    watching.observe(button);
+    window.addEventListener('resize', measure);
+    return () => {
+      watching.disconnect();
+      window.removeEventListener('resize', measure);
+      // No launcher, nothing to keep clear of.
+      root.style.setProperty('--quick-chat-reach', '0px');
+    };
+  }, []);
   const [tail, setTail] = useState<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {
     if (!open) {

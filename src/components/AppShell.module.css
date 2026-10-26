@@ -803,7 +803,7 @@
   align-items: center;
   justify-content: flex-end;
   /* Short of the right, where the quick chat's launcher sits. */
-  padding: var(--space-4) var(--quick-chat-clearance) var(--space-4) var(--space-16);
+  padding: var(--space-4) var(--quick-chat-reach) var(--space-4) var(--space-16);
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
 }

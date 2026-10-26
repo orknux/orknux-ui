@@ -204,6 +204,13 @@
    * fixed to the window and covers whatever the page put under it.
    */
   --quick-chat-clearance: 112px;
+  /*
+   * How far from the right the attribution strip ends: the launcher's own
+   * reach, measured by QuickChat once it is drawn - its label made it wider
+   * than the clearance above, and the strip's last words ran under it. This
+   * is only what is used before the first measure.
+   */
+  --quick-chat-reach: 176px;
 
   /*
    * A wireframe is drawn in pencil on paper, whichever way up the interface

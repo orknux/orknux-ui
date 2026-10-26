@@ -2055,6 +2055,13 @@ export const TESTS = [
     needs: ['workspace'],
     /* Puts a line sent now on the real history's end. */
   },
+  {
+    name: 'attribution-launcher-check',
+    what: 'the attribution strip ends short of the Ask AI launcher at narrow and wide widths',
+    needs: [],
+    /* Measures the strip's line boxes against the launcher. */
+  },
+
 
   {
     name: 'chat-user-avatar-check',
