@@ -1604,7 +1604,8 @@ function NodeDetailsPanel({
               {step.kind === 'AGENT' && (
                 <div className={styles.parameter} data-step-streaming={step.streamOutput ? 'on' : 'off'}>
                   <dt className={styles.parameterName}>{t('Output streaming')}</dt>
-                  <dd className={styles.parameterValue}>{step.streamOutput ? t('On') : t('Off')}</dd>
+                  {/* Drawn as the values above it are, so it reads in their type rather than the page's. */}
+                  <dd className={styles.parameterValue}><Payload text={step.streamOutput ? t('On') : t('Off')} /></dd>
                 </div>
               )}
             </dl>

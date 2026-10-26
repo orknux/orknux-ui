@@ -38,6 +38,14 @@ if (run !== null) {
   const text = await row.innerText().catch(() => '');
   const expected = run.step.streamOutput ? 'on' : 'off';
   record(drawn === expected, `the step's panel says Output streaming was ${expected} (${JSON.stringify(text)})`);
+  // In the type the other values are drawn in, not the page's larger one.
+  const sizes = await page.evaluate(() => {
+    const leaf = (el) => { let at = el; while (at.firstElementChild) at = at.firstElementChild; return getComputedStyle(at).fontSize; };
+    const values = [...document.querySelectorAll('[data-step-parameters] dd')];
+    const mine = document.querySelector('[data-step-streaming] dd');
+    return { mine: mine && leaf(mine), others: values.filter((one) => one !== mine && one.closest('[data-step-streaming]') === null).map(leaf) };
+  });
+  record(sizes.mine !== null && (sizes.others.length === 0 || sizes.others.includes(sizes.mine)), `its value is in the others' type (${JSON.stringify(sizes)})`);
 }
 
 await finish(browser);
