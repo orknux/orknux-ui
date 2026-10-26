@@ -98,11 +98,23 @@ export function useAutosave(unsaved: boolean, change: string, paused: boolean, s
     };
   }, []);
 
+  /*
+   * Counted after every attempt, so one that did not take - a save already in
+   * flight when the pause ran out, or a refusal - is tried again after the
+   * next pause rather than never. Keyed on the drawing alone, a change made
+   * while a save was in flight armed one timer, that timer found the save
+   * still running and gave up, and the drawing sat unsaved with nothing left
+   * to wake it until somebody touched it again.
+   */
+  const [attempts, setAttempts] = useState(0);
+
   useEffect(() => {
     if (!unsaved || paused || millis === null) return;
-    const timer = window.setTimeout(() => void latest.current(), millis);
+    const timer = window.setTimeout(() => {
+      void Promise.resolve(latest.current()).finally(() => setAttempts((held) => held + 1));
+    }, millis);
     return () => window.clearTimeout(timer);
-  }, [unsaved, change, paused, millis]);
+  }, [unsaved, change, paused, millis, attempts]);
 }
 
 /** Who else has it open, by login, in the colour their pointer is drawn in. */
