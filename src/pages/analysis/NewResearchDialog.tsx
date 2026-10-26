@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 
 import { fetchWorkspaceAgents } from '../../api/agents';
 import type { Agent } from '../../api/agents';
-import { createResearchMode, fetchResearchModes, startResearch } from '../../api/research';
+import { createResearchMode, fetchResearchModes, fetchResearchSearchReady, startResearch } from '../../api/research';
 import type { Research, ResearchLanguage, ResearchMode, ResearchOutputFormat } from '../../api/research';
 import { fetchWorkspaceWorkflows } from '../../api/workflows';
 import type { WorkspaceWorkflow } from '../../api/workflows';
@@ -126,6 +126,12 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Whether the workspace's search has a key it can read; null until asked,
+   * or where asking failed - then the start says so itself. Issue #666.
+   */
+  const [searchReady, setSearchReady] = useState<boolean | null>(null);
+  const keyless = webSearch && searchReady === false;
 
   useEffect(() => {
     const held = dialogRef.current;
@@ -142,6 +148,10 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
       setError(null);
       setSubmitting(false);
       held.showModal();
+      setSearchReady(null);
+      fetchResearchSearchReady(workspaceId)
+        .then(setSearchReady)
+        .catch(() => setSearchReady(null));
       // Seeded first: the modes are what make the Research agents, which the pickers start on.
       fetchResearchModes(workspaceId)
         .then(async (foundModes) => [foundModes, (await fetchWorkspaceAgents(workspaceId, 0, AGENTS_OFFERED)).content] as const)
@@ -408,6 +418,11 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
               </span>
             )}
           </div>
+          {keyless && (
+            <p className={dialog.error} role="alert" data-search-key-missing>
+              {t('This workspace has no search key; set one in Search settings or turn off web search.')}
+            </p>
+          )}
 
           <div className={dialog.field}>
             <label className={dialog.label} htmlFor="research-follow-ups">{t('Follow-up questions')}</label>
@@ -474,7 +489,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
           <button
             type="submit"
             className={dialog.filled}
-            disabled={question.trim() === '' || modeId === '' || plannerId === '' || writerId === '' || (reviewing && reviewerId === '') || submitting}
+            disabled={question.trim() === '' || modeId === '' || plannerId === '' || writerId === '' || (reviewing && reviewerId === '') || keyless || submitting}
           >
             {submitting ? t('Starting…') : t('Start')}
           </button>

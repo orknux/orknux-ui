@@ -105,6 +105,16 @@ export interface Research {
   parentQuestion?: string | null;
   /** The research started from it as follow-ups. Only the one opened asks for them. */
   children?: ResearchChild[];
+  /** The sessions its Plan, Write and Review steps talked in, those that have one yet. Only the one opened asks. Issue #668. */
+  sessions?: ResearchSession[];
+}
+
+/** A session one of a research's steps talked in. */
+export interface ResearchSession {
+  stage: ResearchStage;
+  sessionId: string;
+  /** The session's page. */
+  url: string;
 }
 
 /** A research started from another as a follow-up, as the parent lists it. */
@@ -235,10 +245,19 @@ export async function fetchResearches(workspaceId: string, page: number, size: n
 /** One research, with its report. */
 export async function fetchResearch(id: string): Promise<Research | null> {
   const data = await graphql<{ research: Research | null }>(
-    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } followUps followUpCount parentQuestion children { id question status } } }`,
+    `query Research($id: ID!) { research(id: $id) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } followUps followUpCount parentQuestion children { id question status } sessions { stage sessionId url } } }`,
     { id },
   );
   return data.research;
+}
+
+/** Whether the workspace's web search could be used now: what a research that searches the web is refused without. Issue #666. */
+export async function fetchResearchSearchReady(workspaceId: string): Promise<boolean> {
+  const data = await graphql<{ researchSearchReady: boolean }>(
+    `query ResearchSearchReady($workspaceId: ID!) { researchSearchReady(workspaceId: $workspaceId) }`,
+    { workspaceId },
+  );
+  return data.researchSearchReady;
 }
 
 /** The workspace's documents a word appears in, newest first, a few at a time: a picker's list, not the whole of them. */
@@ -290,7 +309,7 @@ export async function startResearch(input: StartResearchInput): Promise<Research
 export async function restartResearch(id: string, fromStage: ResearchStage | null = null): Promise<Research> {
   const data = await graphql<{ restartResearch: Research }>(
     `mutation RestartResearch($id: ID!, $fromStage: ResearchStage) {
-       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } followUps followUpCount parentQuestion children { id question status } }
+       restartResearch(id: $id, fromStage: $fromStage) { ${RESEARCH_FIELDS} result draft estimatedSecondsLeft sources { number notes } reviewRounds { round verdict summary revised charactersBefore charactersAfter issues { kind issue fix } } followUps followUpCount parentQuestion children { id question status } sessions { stage sessionId url } }
      }`,
     { id, fromStage },
   );

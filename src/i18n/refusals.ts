@@ -472,6 +472,8 @@ const PL: Record<string, string> = {
   ResearchAgentDisabled: '{agent} jest wyłączony; włącz go albo wybierz innego agenta',
   ResearchAgentModelMissing: '{agent} nie ma modelu czatu, którego może używać ta przestrzeń robocza; wybierz go na jego stronie',
   ResearchNothingToRead: 'Bez wyszukiwania w sieci wybierz dokumenty lub strony do przeczytania',
+  ResearchSearchKeyMissing:
+    'Wyszukiwanie w sieci potrzebuje klucza wyszukiwania tej przestrzeni roboczej, którego nie ustawiono albo nie da się odczytać; ustaw go w ustawieniach wyszukiwania albo wyłącz wyszukiwanie w sieci',
   ResearchDocumentNotFound: 'W tej przestrzeni roboczej nie ma czytelnego dokumentu o identyfikatorze {id}',
   ResearchTooManyWebsites: 'Badanie przyjmuje najwyżej {most} stron na każdej liście',
   ResearchWebsiteTooLong: 'Adres strony może mieć najwyżej {most} znaków',

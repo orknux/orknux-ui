@@ -2622,6 +2622,24 @@ export const TESTS = [
     /* Answers the research itself, running and then finished; the pipeline is the server suite's. */
   },
   {
+    name: 'research-search-key-check',
+    what: 'New research with web search on and no search key says so in one line and keeps Start off; unticking web search, or a workspace with a key, lets it start (#666)',
+    needs: ['workspace'],
+    /* Answers whether there is a key, no and then yes; the start's own refusal is the server suite's. */
+  },
+  {
+    name: 'research-refresh-check',
+    what: 'the research list and a research page have Refresh right beside Auto, on its line, and pressing it asks the server again with Auto off (#667)',
+    needs: ['workspace'],
+    /* Answers the list and the research itself, and counts how often they were asked. */
+  },
+  {
+    name: 'research-sessions-check',
+    what: 'a research page lists the sessions its steps kept - Plan, Write - on one line under the steps, each named for its step and opening that session, the step names given the same room as without; with none there is no line (#668)',
+    needs: ['workspace'],
+    /* Answers the research with its sessions; that the steps keep them is the server suite's. */
+  },
+  {
     name: 'workflows-hidden-check',
     what: 'the research workflows are off the Workflows list until Show built-in is ticked, and open in the editor once shown',
     needs: ['workspace'],

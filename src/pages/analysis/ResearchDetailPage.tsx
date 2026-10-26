@@ -7,6 +7,8 @@ import type { SessionUser } from '../../api/session';
 import { formatDuration, stopExecution } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
 import checkIcon from '../../assets/check.svg';
+import sessionIcon from '../../assets/messages-square.svg';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import rotateIcon from '../../assets/rotate-cw.svg';
 import { AppShell } from '../../components/AppShell';
 import { AttachmentViewer } from '../../components/AttachmentViewer';
@@ -150,6 +152,11 @@ export function ResearchDetailPage({ session, onSignOut }: ResearchDetailPagePro
             </h1>
             <div className={styles.actions}>
               <AutoRefresh onRefresh={load} defaultSeconds={5} settled={research !== null && !running} />
+              {/* Now, whatever Auto is set to - including a research it stopped following once it finished. Issue #667. */}
+              <button type="button" className={styles.button} onClick={load} data-refresh>
+                <img src={refreshIcon} alt="" width={14} height={14} />
+                {t('Refresh')}
+              </button>
               {/* From the step it failed or stopped at, keeping every step before it. */}
               {restartable && research !== null && (
                 <button
@@ -367,6 +374,7 @@ function Progress({ research, onRestartFrom }: { research: Research; onRestartFr
   const states = stagesOf(research);
   const progress = research.progress;
   const running = research.status === 'RUNNING';
+  const sessions = research.sessions ?? [];
   return (
     <section className={styles.card} aria-label={t('Progress')} data-progress>
       <h2 className={styles.cardTitle}>{t('Progress')}</h2>
@@ -392,6 +400,23 @@ function Progress({ research, onRestartFrom }: { research: Research; onRestartFr
           </li>
         ))}
       </ol>
+
+      {/*
+        What each step's agent was asked, the tools it called and what it
+        answered, a line of its own under the steps: in the strip, beside six
+        names, it cut them short. Issue #668.
+      */}
+      {sessions.length > 0 && (
+        <p className={styles.sessions} data-sessions>
+          <span className={styles.sessionsLabel}>{t('Sessions')}</span>
+          {sessions.map((session) => (
+            <Link key={session.stage} className={styles.sessionLink} to={session.url} data-stage-session={session.stage}>
+              <img src={sessionIcon} alt="" width={12} height={12} />
+              {stepLabel(session.stage)}
+            </Link>
+          ))}
+        </p>
+      )}
 
       {running && progress !== null && (
         <p className={styles.now}>

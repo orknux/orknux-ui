@@ -7,6 +7,7 @@ import type { Research, ResearchStatus } from '../../api/research';
 import type { SessionUser } from '../../api/session';
 import { formatDuration } from '../../api/executions';
 import { timeAgo } from '../../api/tools';
+import refreshIcon from '../../assets/refresh-cw.svg';
 import { AppShell } from '../../components/AppShell';
 import { AutoRefresh } from '../../components/AutoRefresh';
 import { CompactPagination } from '../../components/CompactPagination';
@@ -86,6 +87,11 @@ export function ResearchPage({ session, onSignOut }: ResearchPageProps) {
             defaultSeconds={5}
             settled={!running}
           />
+          {/* Now, whatever Auto is set to - including Off, or a list it stopped following once nothing ran. Issue #667. */}
+          <button type="button" className={styles.refresh} onClick={load} data-refresh>
+            <img src={refreshIcon} alt="" width={14} height={14} />
+            {t('Refresh')}
+          </button>
           <button type="button" className={table.createButton} onClick={() => setStarting(true)}>
             <span aria-hidden="true">+ </span>
             {t('New research')}
