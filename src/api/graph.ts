@@ -161,6 +161,12 @@ export interface GraphNode {
    */
   repeatTimes?: number | null;
   /**
+   * How long one attempt of this node's work may take, in seconds, a wait
+   * inside it included; null is as long as it takes. Not on a trigger or an
+   * object node, which do no work to time.
+   */
+  timeoutSeconds?: number | null;
+  /**
    * Whether a run does this node's work.
    *
    * Off, the node stays on the graph with its lines and a run walks straight
@@ -301,7 +307,7 @@ const GRAPH_FIELDS = `
     decisionModelId decisionBranchQuestion decisionThreshold calledWorkflowId
     decisionQuestions { key kind instructions options { name description } }
     yesLabel noLabel fallbackEnabled streamOutput retryAttempts retryBackoffSeconds
-    retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds repeatTimes enabled x y
+    retryMultiplier retryMaxWaitSeconds retryJitter retryBudgetSeconds repeatTimes timeoutSeconds enabled x y
     mappings { name expression mode sourceNodeKey fieldKind fieldElementKind fieldRefObjectId fieldProperties { ${FIELD_TREE} } }
     inputs { name type display }
     outputs { name type display }

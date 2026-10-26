@@ -1096,6 +1096,12 @@ export const TESTS = [
     // Makes its own workflow, and removes it.
   },
   {
+    name: 'workflow-node-timeout-check',
+    what: 'a node that does work offers a timeout in seconds, saved with it, and emptied it is saved as nothing',
+    needs: ['workspace'],
+    // Makes its own workflow, and removes it.
+  },
+  {
     name: 'template-publish-closes-check',
     what: 'publishing a template closes the dialog rather than opening a message to close',
     needs: ['workspace'],

@@ -4015,6 +4015,8 @@ export const PL: Record<string, string> = {
   "Importing {done} of {of}…": "Importowanie {done} z {of}…",
   "Could not import {names}": "Nie udało się zaimportować: {names}",
   "Times it runs": "Ile razy się wykonuje",
+  "Timeout (seconds)": "Limit czasu (sekundy)",
+  "How long one attempt of the node may take before it is stopped and fails. Empty is no limit.": "Jak długo może trwać jedna próba węzła, zanim zostanie zatrzymana i zakończy się błędem. Puste oznacza brak limitu.",
   "How many times the node does its work in one run, each time on what the last one produced. The node after it gets the last.": "Ile razy węzeł wykonuje swoją pracę w jednym uruchomieniu, za każdym razem na tym, co dało poprzednie. Następny węzeł dostaje ostatni wynik.",
   "How hard the model thinks on this node, in place of its own setting. Default uses the model’s.": "Jak intensywnie model myśli w tym węźle, zamiast własnego ustawienia. Domyślna oznacza ustawienie modelu.",
   "What the research sets out to answer, asked as you would ask a person.": "Na co badanie ma odpowiedzieć, zapytane tak, jak zapytałbyś człowieka.",

@@ -212,6 +212,7 @@ interface NodeData extends Record<string, unknown> {
   retryBudgetSeconds?: number | null;
   /** How many times a run does this node's work in one pass; null is once. Issue #661. */
   repeatTimes?: number | null;
+  timeoutSeconds?: number | null;
   /**
    * Whether a run does this node's work.
    *
@@ -653,6 +654,7 @@ function nodeDataOf(node: GraphNode): NodeData {
     retryJitter: node.retryJitter ?? null,
     retryBudgetSeconds: node.retryBudgetSeconds ?? null,
     repeatTimes: node.repeatTimes ?? null,
+    timeoutSeconds: node.timeoutSeconds ?? null,
     enabled: node.enabled ?? true,
     agentId: node.agentId,
     triggerId: node.triggerId,
@@ -752,6 +754,7 @@ function drawnNodeOf(key: string, position: { x: number; y: number }, data: Node
     retryBudgetSeconds: (data.retryAttempts ?? 1) > 1 ? (data.retryBudgetSeconds ?? null) : null,
     // Once is sent as nothing, and only a node that does work has any to repeat.
     repeatTimes: handlesFailure(data.kind) && (data.repeatTimes ?? 1) > 1 ? (data.repeatTimes ?? null) : null,
+    timeoutSeconds: timesOut(data.kind) && (data.timeoutSeconds ?? 0) > 0 ? (data.timeoutSeconds ?? null) : null,
     // Always on for a trigger, whatever the data says: the server refuses
     // a disabled one, and the panel offers no switch to make one.
     enabled: data.kind === 'TRIGGER' ? true : (data.enabled ?? true),
@@ -1961,6 +1964,11 @@ const BRANCH_DEFAULTS: Record<'CONDITION' | 'FAILURE', { yes: string; no: string
   CONDITION: { yes: 'Yes', no: 'No' },
   FAILURE: { yes: t('If works'), no: t('If fails') },
 };
+
+/** Whether a node's work can run long enough to want a timeout: not a trigger, and not an object, which assembles what it was handed. */
+function timesOut(kind: NodeKind): boolean {
+  return kind !== 'TRIGGER' && kind !== 'OBJECT';
+}
 
 /**
  * Whether failing is this node's own business rather than the run's.
@@ -4307,6 +4315,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           retryJitter: null,
           retryBudgetSeconds: null,
           repeatTimes: null,
+          timeoutSeconds: null,
           // On: a node is added to be run, and switching one off is a decision
           // about a node that already exists.
           enabled: true,
@@ -4773,6 +4782,7 @@ function WorkflowEditor({ session, onSignOut }: WorkflowEditorPageProps) {
           data.retryJitter === draft.retryJitter &&
           data.retryBudgetSeconds === draft.retryBudgetSeconds &&
           (data.repeatTimes ?? null) === (draft.repeatTimes ?? null) &&
+          (data.timeoutSeconds ?? null) === (draft.timeoutSeconds ?? null) &&
           data.enabled === draft.enabled &&
           sameMappings(data.mappings, shown.mappings);
         if (same) return node;
@@ -8601,6 +8611,39 @@ Change the keystroke in Preferences.`}
                         onChange={(event) => {
                           const times = Math.floor(Number(event.target.value));
                           setDraft({ ...draft, repeatTimes: Number.isFinite(times) && times > 1 ? times : null });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/*
+                  How long one attempt of the node's work may take, waits
+                  included; empty is as long as it takes. A step past it is cut
+                  short and fails, and the retry policy and failure edge below
+                  treat that as any other failure.
+                */}
+                {timesOut(draft.kind) && (
+                  <div className={styles.field}>
+                    <span className={styles.labelWithHint}>
+                      <label className={styles.label} htmlFor="node-timeout">{t('Timeout (seconds)')}</label>
+                      <FieldHint label={t('Timeout (seconds)')}>
+                        {t('How long one attempt of the node may take before it is stopped and fails. Empty is no limit.')}
+                      </FieldHint>
+                    </span>
+                    <div className={styles.inputWrapper}>
+                      <input
+                        id="node-timeout"
+                        className={styles.input}
+                        data-node-timeout=""
+                        type="number"
+                        min={1}
+                        step={1}
+                        placeholder={t('No limit')}
+                        value={draft.timeoutSeconds ?? ''}
+                        onChange={(event) => {
+                          const seconds = Math.floor(Number(event.target.value));
+                          setDraft({ ...draft, timeoutSeconds: event.target.value !== '' && Number.isFinite(seconds) && seconds > 0 ? seconds : null });
                         }}
                       />
                     </div>
