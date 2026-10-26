@@ -127,6 +127,12 @@ await page.route('**/graphql', async (route) => {
 });
 const ideas = await page.getByTestId('diagram-idea').count();
 record(ideas === 4, `an empty chat offers four ideas (${ideas})`);
+// Compact: an idea was 58px tall with a 40px icon, four of them filling the panel before the chat began.
+const ideaSize = await page.getByTestId('diagram-idea').first().evaluate((one) => ({
+  height: Math.round(one.getBoundingClientRect().height),
+  icon: Math.round(one.querySelector('img')?.parentElement?.getBoundingClientRect().height ?? 0),
+})).catch(() => null);
+record(ideaSize !== null && ideaSize.height <= 46 && ideaSize.icon <= 30, `each idea is compact (${JSON.stringify(ideaSize)})`);
 await page.getByTestId('diagram-chat-input').fill('Add the ledger');
 if (await page.getByTestId('diagram-chat-send').isDisabled()) {
   const shown = (await page.getByTestId('diagram-chat-model').textContent().catch(() => '')) ?? '';

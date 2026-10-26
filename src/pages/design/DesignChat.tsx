@@ -148,7 +148,7 @@ export function DesignChat(props: DesignChatProps) {
                   data-testid={`${prefix}-idea`}
                 >
                   <span className={styles.ideaIcon}>
-                    <img src={idea.icon} alt="" width={18} height={18} />
+                    <img src={idea.icon} alt="" width={15} height={15} />
                   </span>
                   <span className={styles.ideaText}>
                     <span className={styles.ideaTitle}>{idea.title()}</span>

@@ -312,14 +312,14 @@
 .ideas {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 
 .idea {
   display: flex;
   align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-8);
+  gap: var(--space-10);
+  padding: var(--space-6) var(--space-10) var(--space-6) var(--space-6);
   text-align: left;
   color: var(--color-text-primary);
   font: inherit;
@@ -347,8 +347,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   background: linear-gradient(145deg, color-mix(in srgb, var(--color-violet) 24%, transparent), color-mix(in srgb, var(--color-violet) 6%, transparent));
   border: 1px solid color-mix(in srgb, var(--color-violet) 22%, transparent);
   border-radius: var(--radius-8);
@@ -362,7 +362,7 @@
 }
 
 .ideaTitle {
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
 }
 
 .ideaLine {
