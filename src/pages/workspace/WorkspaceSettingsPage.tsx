@@ -1998,7 +1998,6 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               className={styles.input}
               type="number"
               min={1}
-              max={10}
               placeholder={workspace === null ? '' : String(workspace.researchReviewRoundsDefault)}
               value={reviewRounds}
               onChange={(event) => { touch('reviewRounds'); setReviewRounds(event.target.value); }}
@@ -2021,7 +2020,6 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               className={styles.input}
               type="number"
               min={0}
-              max={10}
               placeholder={workspace === null ? '' : String(workspace.researchFollowUpsDefault)}
               value={followUpCount}
               onChange={(event) => { touch('followUpCount'); setFollowUpCount(event.target.value); }}

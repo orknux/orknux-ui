@@ -509,8 +509,8 @@ const PL: Record<string, string> = {
   ResearchNothingToRestart: 'Każdy krok tego badania się zakończył; wskaż, od którego kroku zacząć',
   ResearchRestartRefused: 'Nie można uruchomić badania ponownie od tego miejsca: {reason}',
   ResearchModeNotReviewed: 'Przepływ trybu badania {mode} nie ma kroku recenzji, więc nie można go zrecenzować',
-  ResearchReviewRoundsOutOfRange: '{rounds} to nie liczba rund recenzji; wybierz od {least} do {most}',
-  ResearchFollowUpsOutOfRange: '{count} to nie liczba pytań uzupełniających; wybierz od {least} do {most}',
+  ResearchReviewRoundsOutOfRange: '{rounds} to nie liczba rund recenzji; wybierz {least} lub więcej',
+  ResearchFollowUpsOutOfRange: '{count} to nie liczba pytań uzupełniających; wybierz {least} lub więcej',
 };
 
 const CATALOGUES: Record<string, Record<string, string>> = { pl: PL };

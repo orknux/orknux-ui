@@ -4,9 +4,11 @@
  *
  * What is pinned: there is a box per number the server lists, grouped under
  * the server's section headings; a box opens on what the server holds; a saved
- * number reads back; out of range is refused in words with nothing stored; and
- * "Default" hands the number back to the configuration file. What a number then
- * does is the server suite's business (TunablesTest).
+ * number reads back; a number with no ceiling takes the largest the box holds,
+ * and its hint says only the floor; out of range is refused in words with
+ * nothing stored, both ends said where there is a ceiling; and "Default" hands
+ * the number back to the configuration file. What a number then does is the
+ * server suite's business (TunablesTest).
  *
  * Leaves every number as it found it.
  */
@@ -15,8 +17,16 @@ import { BASE, open, drawn, record, finish } from './suite/harness.mjs';
 const { browser, page, graphql } = await open({ viewport: { width: 1440, height: 1000 } });
 
 const KEY = 'agent.wait.default.seconds';
+/** A share of a whole, which keeps its ceiling. */
+const SHARE = 'tool.result.window.percent';
+const LARGEST = 2147483647;
 const listed = async () => (await graphql(`query { tunables { key value configured set least most } }`, {})).tunables;
-const one = async () => (await listed()).find((held) => held.key === KEY);
+const one = async (key = KEY) => (await listed()).find((held) => held.key === key);
+const save = async () => {
+  await page.getByRole('button', { name: /^Save/ }).first().click();
+  await page.waitForTimeout(2000);
+};
+const refusal = async () => (await page.locator('[role="alert"]').first().textContent().catch(() => '')) ?? '';
 
 const all = await listed();
 const was = await one();
@@ -43,17 +53,48 @@ await page.getByRole('button', { name: /^Save/ }).first().click();
 await page.waitForTimeout(2500);
 record((await one()).value === WANT, `saving ${WANT} stores it (${(await one()).value})`);
 
-/* Out of range is refused in words, and nothing is stored. */
+/* No ceiling: the box has no max, the hint says only the floor, and the largest number is taken. */
+record(was.most === null, `${KEY} has no upper bound (most ${was.most})`);
 await page.goto(`${BASE}/admin/settings#limits`, { waitUntil: 'domcontentloaded' });
-await page.locator(`[id="tunable-${KEY}"]`).fill(String(was.most + 1));
-await page.getByRole('button', { name: /^Save/ }).first().click();
-await page.waitForTimeout(2000);
-const refusal = await page.locator('[role="alert"]').first().textContent().catch(() => '');
-record(
-  (refusal ?? '').includes(`${was.least}`) && (refusal ?? '').includes(`${was.most}`),
-  `${was.most + 1} is refused in words (${JSON.stringify(refusal)})`,
-);
-record((await one()).value === WANT, 'and the stored number is untouched');
+const unbounded = page.locator(`[id="tunable-${KEY}"]`);
+await unbounded.waitFor({ timeout: 20_000 });
+record((await unbounded.getAttribute('max')) === null, `its box sets no max (${await unbounded.getAttribute('max')})`);
+const about = page.locator(`[data-tunable="${KEY}"] button[aria-controls]`).first();
+await about.click();
+const note = page.locator(`[id="${await about.getAttribute('aria-controls')}"]`);
+const hint = (await note.textContent({ timeout: 5_000 }).catch(() => '')) ?? '';
+record(hint.includes(`At least ${was.least};`) && !hint.includes('Between'), `its hint says only the floor (${JSON.stringify(hint.slice(-90))})`);
+await about.click();
+await unbounded.fill(String(LARGEST));
+await save();
+record((await one()).value === LARGEST, `the largest number the box holds is stored (${(await one()).value})`);
+
+/* Below the floor is refused in words, and nothing is stored. */
+await page.goto(`${BASE}/admin/settings#limits`, { waitUntil: 'domcontentloaded' });
+await page.locator(`[id="tunable-${KEY}"]`).fill(String(was.least - 1));
+await save();
+const below = await refusal();
+record(below.includes(`${was.least} or more`), `${was.least - 1} is refused in words (${JSON.stringify(below)})`);
+record((await one()).value === LARGEST, 'and the stored number is untouched');
+
+/* A share of a whole keeps its ceiling, and past it is refused saying both ends. */
+const share = await one(SHARE);
+record(share.most !== null, `${SHARE} keeps a ceiling (${share.most})`);
+if (share.most !== null) {
+  // A reload, not a goto: the same address with its hash is not a new page, and the box refused above would be sent again.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const shareBox = page.locator(`[id="tunable-${SHARE}"]`);
+  await shareBox.waitFor({ timeout: 20_000 });
+  record((await shareBox.getAttribute('max')) === String(share.most), `its box's max is ${share.most}`);
+  await shareBox.fill(String(share.most + 1));
+  await save();
+  const above = await refusal();
+  record(
+    above.includes(`${share.least}`) && above.includes(`${share.most}`),
+    `${share.most + 1} is refused in words (${JSON.stringify(above)})`,
+  );
+  record((await one(SHARE)).value === share.value, 'and its stored number is untouched');
+}
 
 /* Default hands it back to the configuration file. */
 await page.goto(`${BASE}/admin/settings#limits`, { waitUntil: 'domcontentloaded' });
@@ -68,10 +109,12 @@ if (offered) {
 }
 
 /* Left as it was found. */
-await graphql(`mutation ($key: String!, $value: Int) { setTunable(key: $key, value: $value) { value } }`, {
-  key: KEY,
-  value: was.set ? was.value : null,
-});
-record((await one()).value === was.value, 'the number is left as it was found');
+for (const [key, held] of [[KEY, was], [SHARE, share]]) {
+  await graphql(`mutation ($key: String!, $value: Int) { setTunable(key: $key, value: $value) { value } }`, {
+    key,
+    value: held.set ? held.value : null,
+  });
+}
+record((await one()).value === was.value && (await one(SHARE)).value === share.value, 'the numbers are left as they were found');
 
 await finish(browser);

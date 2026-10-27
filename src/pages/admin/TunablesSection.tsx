@@ -22,6 +22,18 @@ export interface TunablesSectionProps {
  * the page's one Save, like every other number on it; going back to the
  * configured default is immediate, like a switch.
  */
+/**
+ * What the hint says of the range: both ends where the number has a ceiling,
+ * and only the floor where it has none - most have none, because how long an
+ * installation waits or how much it reads is its own to decide.
+ */
+function rangeOf(one: Tunable): string {
+  const said = { least: String(one.least), variable: one.variable, configured: String(one.configured) };
+  return one.most === null
+    ? tf('At least {least}; {variable} sets the default, {configured}.', said)
+    : tf('Between {least} and {most}; {variable} sets the default, {configured}.', { ...said, most: String(one.most) });
+}
+
 export function TunablesSection({ onPending }: TunablesSectionProps) {
   const [tunables, setTunables] = useState<Tunable[] | null>(null);
   const [typed, setTyped] = useState<Record<string, string>>({});
@@ -115,12 +127,7 @@ export function TunablesSection({ onPending }: TunablesSectionProps) {
                 <span className={page.labelWithHint}>
                   <p className={page.settingLabel}>{t(one.label)}</p>
                   <FieldHint label={t(one.label)}>
-                    {`${t(one.hint)} ${tf('Between {least} and {most}; {variable} sets the default, {configured}.', {
-                      least: String(one.least),
-                      most: String(one.most),
-                      variable: one.variable,
-                      configured: String(one.configured),
-                    })}`}
+                    {`${t(one.hint)} ${rangeOf(one)}`}
                   </FieldHint>
                 </span>
               </div>
@@ -143,7 +150,7 @@ export function TunablesSection({ onPending }: TunablesSectionProps) {
                   className={page.input}
                   type="number"
                   min={one.least}
-                  max={one.most}
+                  max={one.most ?? undefined}
                   value={typed[one.key] ?? ''}
                   onChange={(event) => {
                     const value = event.target.value;

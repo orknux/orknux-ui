@@ -4416,7 +4416,7 @@ export const TESTS = [
   },
   {
     name: 'limits-check',
-    what: 'Admin Settings draws a box for every number the server lists under Limits, saves one, refuses out of range and goes back to the default',
+    what: 'Admin Settings draws a box for every number the server lists under Limits, saves one, takes the largest number where there is no ceiling and says only the floor, refuses out of range and goes back to the default',
     needs: ['session'],
     /*
      * Issue #453. The list is the server's, so the box count is measured

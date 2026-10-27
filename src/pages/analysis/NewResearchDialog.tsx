@@ -233,7 +233,7 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
         includeImages: images,
         review: reviewing,
         reviewerAgentId: agentMode === 'PER_STEP' && reviewing ? reviewerId : null,
-        followUps: followUps.trim() === '' ? null : Math.max(0, Math.min(10, Math.round(Number(followUps)))),
+        followUps: followUps.trim() === '' ? null : Math.max(0, Math.round(Number(followUps))),
       });
       onStarted(started);
     } catch (cause) {
@@ -510,7 +510,6 @@ export function NewResearchDialog({ open, workspaceId, onClose, onStarted }: New
                 className={dialog.input}
                 type="number"
                 min={0}
-                max={10}
                 value={followUps}
                 onChange={(event) => {
                   setFollowUps(event.target.value);

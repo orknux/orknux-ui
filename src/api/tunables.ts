@@ -24,7 +24,8 @@ export interface Tunable {
   /** Whether an administrator has chosen, as against the file deciding. */
   set: boolean;
   least: number;
-  most: number;
+  /** The largest it may be, or null where it has no upper bound - every number but a share of a whole or a range a format takes. */
+  most: number | null;
   /** The environment variable that sets where a fresh installation starts. */
   variable: string;
 }
