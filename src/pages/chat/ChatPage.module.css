@@ -391,6 +391,24 @@
   white-space: nowrap;
 }
 
+.titleLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  min-width: 0;
+}
+
+.sharedTag {
+  flex: none;
+  padding: 2px var(--space-8);
+  border: 1px solid var(--color-amber);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-amber);
+  white-space: nowrap;
+}
+
 .titleActions {
   display: flex;
   flex-shrink: 0;

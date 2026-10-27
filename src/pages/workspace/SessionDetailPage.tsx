@@ -781,6 +781,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
   const [removable, setRemovable] = useState(true);
   /** True while a chat is being opened, so a second press does not open a second one. */
   const [continuing, setContinuing] = useState(false);
+  /** Continue in chat asked about: the chat it opens is shared with the workspace, so that is said first. */
+  const [askContinue, setAskContinue] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [held, setHeld] = useState<LlmSession | null>(null);
 
@@ -1512,18 +1514,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     type="button"
                     className={styles.continue}
                     disabled={continuing}
-                    onClick={() => {
-                      setContinuing(true);
-                      setRemoveError(null);
-                      void startChat(workspaceId, held.key, undefined, held.id)
-                        .then((chat) => navigate(`/chat/${chat.id}`))
-                        .catch((cause: unknown) => {
-                          setContinuing(false);
-                          setRemoveError(
-                            cause instanceof Error ? cause.message : t('That conversation could not be continued.'),
-                          );
-                        });
-                    }}
+                    data-testid="session-continue"
+                    onClick={() => setAskContinue(true)}
                   >
                     {continuing ? t('Opening…') : t('Continue in chat')}
                   </button>
@@ -2547,6 +2539,25 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
       </div>
       )}
       </div>
+      <ConfirmDialog
+        subject={askContinue ? (held?.key ?? '') : null}
+        kind="continueShared"
+        onClose={() => setAskContinue(false)}
+        onConfirm={async () => {
+          if (held === null) return;
+          setContinuing(true);
+          setRemoveError(null);
+          try {
+            const chat = await startChat(workspaceId, held.key, undefined, held.id);
+            setAskContinue(false);
+            navigate(`/chat/${chat.id}`);
+          } catch (cause) {
+            setContinuing(false);
+            setAskContinue(false);
+            setRemoveError(cause instanceof Error ? cause.message : t('That conversation could not be continued.'));
+          }
+        }}
+      />
       <ConfirmDialog
         subject={removingPad}
         kind="removeScratchpad"

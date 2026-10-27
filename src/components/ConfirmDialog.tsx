@@ -39,7 +39,8 @@ export type ConfirmKind =
   | 'restoreDocumentVersion'
   | 'newDocument'
   | 'copyDocument'
-  | 'removeMember';
+  | 'removeMember'
+  | 'continueShared';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -374,6 +375,16 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Start a research'),
       message: <>{t('Start a research on:')} {name}</>,
       button: submitting ? t('Starting…') : t('Start'),
+    },
+    /*
+     * A session page's Continue in chat: the chat writes into the session,
+     * which the whole workspace reads - not the private chat a person might
+     * expect from the word. Said before it is opened, not after.
+     */
+    continueShared: {
+      title: t('Continue in a shared chat'),
+      message: <>{t('What you say is written into this session, and everybody in the workspace can read it:')} {name}</>,
+      button: submitting ? t('Opening…') : t('Continue'),
     },
     /* Workspace settings > Members: the person keeps their roles, so nothing beyond this workspace changes. */
     removeMember: {

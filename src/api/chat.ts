@@ -28,6 +28,8 @@ export interface ChatSession {
   agentName: string | null;
   /** The LLM session this chat is continuing, or null for one continuing none. */
   llmSessionId: string | null;
+  /** Whether that session is one it was continued from, read by the whole workspace - not its own private one. */
+  sharedSession: boolean;
   /**
    * What this whole chat has read and written, kept on the server and added to
    * as each turn lands.
@@ -209,7 +211,7 @@ export interface ChatAnswer extends ChatSpend {
 }
 
 const SESSION_FIELDS =
-  'id workspaceId title pinned modelId modelName createdAt lastMessageAt unreadCount agentId agentName llmSessionId ' +
+  'id workspaceId title pinned modelId modelName createdAt lastMessageAt unreadCount agentId agentName llmSessionId sharedSession ' +
   'spentInputTokens spentOutputTokens spentCachedInputTokens spentPictures mode';
 
 export async function fetchChatSessions(workspaceId: string): Promise<ChatSession[]> {

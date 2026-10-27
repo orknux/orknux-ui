@@ -3603,6 +3603,7 @@ ${named}`;
           */}
           <header className={styles.titleBar}>
             {/* In place of "New chat" while the title is generated: the words that are about to be replaced, replaced. */}
+            <span className={styles.titleLeft}>
             <h1 className={styles.chatTitle}>
               {naming === current.id ? (
                 <span className={styles.naming} role="status" data-testid="chat-naming">
@@ -3613,6 +3614,21 @@ ${named}`;
                 current.title
               )}
             </h1>
+            {/*
+              Continued from a session: what is said here is written into that
+              session, which everybody in the workspace can read - unlike a chat
+              started here, which is its owner's alone. Said where the name is.
+            */}
+            {current.sharedSession && (
+              <span
+                className={styles.sharedTag}
+                data-testid="chat-workspace-shared"
+                title={t('Continues a session; everybody in the workspace can read what is said here.')}
+              >
+                {t('Workspace shared')}
+              </span>
+            )}
+            </span>
             <div className={styles.titleRight}>
             <div className={styles.modelBar} ref={pickerRef}>
               <button
