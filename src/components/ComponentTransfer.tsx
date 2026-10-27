@@ -1253,13 +1253,21 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /*
-   * The name a publish was refused for because a template already has it.
-   * Publishing again under it replaces that template, which is how one is
-   * brought up to date - so it is asked here, in the dialog, rather than
-   * refused: the warning says what will be lost and the button says Replace.
-   * Any edit to the name puts the question away again.
+   * The names templates already have, read when the dialog opens, so a name
+   * that would replace one is said before anybody presses anything: the
+   * warning shows as the name is typed and the button reads Replace template,
+   * and one press does it. Publishing again under a name is how a template is
+   * brought up to date. Compared as the server compares, ignoring case.
+   *
+   * [refusedFor] is the fallback for a list read before somebody else
+   * published that name: the server refuses, and the same warning shows.
    */
-  const [taken, setTaken] = useState<string | null>(null);
+  const [existing, setExisting] = useState<string[]>([]);
+  const [refusedFor, setRefusedFor] = useState<string | null>(null);
+  const wanted = templateName.trim();
+  const taken =
+    existing.find((one) => one.toLowerCase() === wanted.toLowerCase()) ??
+    (refusedFor !== null && refusedFor.toLowerCase() === wanted.toLowerCase() ? refusedFor : null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -1270,6 +1278,12 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
       setDepth('DEEP');
       setBusy(false);
       setError(null);
+      setRefusedFor(null);
+      setExisting([]);
+      // Every template's name: one installation-wide list, which is what the server holds names unique across.
+      fetchComponentTemplates()
+        .then((all) => setExisting(all.map((one) => one.name)))
+        .catch(() => setExisting([]));
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -1279,7 +1293,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
   async function publish() {
     setBusy(true);
     setError(null);
-    const replace = taken !== null && taken === templateName.trim();
+    const replace = taken !== null;
     try {
       const input = {
         name: templateName.trim(),
@@ -1294,7 +1308,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
       return;
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'TemplateNameTaken' && !replace) {
-        setTaken(templateName.trim());
+        setRefusedFor(templateName.trim());
       } else {
         setError(cause instanceof Error ? cause.message : t('Could not publish it.'));
       }
@@ -1322,10 +1336,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
                 id={`${own}-name`}
                 className={dialogStyles.input}
                 value={templateName}
-                onChange={(event) => {
-                  setTemplateName(event.target.value);
-                  setTaken(null);
-                }}
+                onChange={(event) => setTemplateName(event.target.value)}
                 maxLength={120}
               />
             </div>

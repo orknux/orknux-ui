@@ -1,17 +1,21 @@
 /**
- * Publishing under a template's name warns first, then replaces it.
+ * Publishing under a template's name warns before anything is pressed, and one
+ * press replaces it.
  *
  * Publishing again from the thing a template was made from is how somebody
  * brings it up to date. It was refused outright ("already has a template
- * called ..."), so the only way was to publish under a new name or upload a
- * file on the Templates page. Now the dialog says the name is taken and that
- * publishing replaces it, the button reads Replace template, and pressing it
- * keeps one template - the same row - with the new description.
+ * called ..."); then it warned only after a first press and wanted a second -
+ * which nobody expects of a dialog. Now the dialog reads the names templates
+ * already have as it opens: a name that would replace one shows the warning
+ * and Replace template at once, a new name shows neither, and one press of
+ * Replace template keeps one template - the same row - with the new
+ * description.
  *
- * Measured: the warning is drawn and the button relabelled, nothing was
- * published by the first press, the second press closes the dialog, and the
- * server holds one template of that name carrying the second description.
- * Publishes from the agents list and deletes what it made.
+ * Measured: a fresh name draws no warning and Publish template; the taken name
+ * draws the warning and Replace template before any press; nothing is replaced
+ * until it is pressed; one press closes the dialog; the server holds one
+ * template of that name carrying the second description. Publishes from the
+ * agents list and deletes what it made.
  */
 import { BASE, WORKSPACE, open, record, finish } from './suite/harness.mjs';
 
@@ -19,7 +23,8 @@ const { browser, page, graphql } = await open({ viewport: { width: 1400, height:
 const name = `zzReplace ${Date.now()}`;
 const named = async () => (await graphql(`{ componentTemplates { id name description } }`)).componentTemplates.filter((one) => one.name === name);
 
-async function publish(description) {
+/** Opens the first row's dialog and types the name and description, pressing nothing. */
+async function fill(description) {
   const button = page.locator('button[aria-label^="Save "][aria-label$=" as a template"]').first();
   await button.waitFor({ timeout: 20_000 });
   await button.click();
@@ -30,33 +35,35 @@ async function publish(description) {
    * typed before that lands, the name is overwritten and the publish goes out
    * under the component's name - replacing whatever template already has it.
    */
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(800);
   await field.fill(name);
   await dialog.locator('[data-template-description]').fill(description);
   if ((await field.inputValue()) !== name) throw new Error(`the name field holds "${await field.inputValue()}", not ${name}`);
-  await dialog.getByRole('button', { name: /^(Publish|Replace) template$/ }).click();
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(300);
   return dialog;
 }
+const press = (dialog) => dialog.getByRole('button', { name: /^(Publish|Replace) template$/ });
 
 await page.goto(`${BASE}/workspace/${WORKSPACE}/agents`, { waitUntil: 'domcontentloaded' });
 
-await publish('First');
+let dialog = await fill('First');
+record((await dialog.locator('[data-template-taken]').count()) === 0, 'a name no template has draws no warning');
+record((await press(dialog).innerText()).trim() === 'Publish template', 'and the button reads Publish template');
+await press(dialog).click();
+await page.waitForTimeout(1500);
 const first = await named();
-record(first.length === 1, `the first publish made one template (${first.length})`);
+record(first.length === 1, `one press published it (${first.length})`);
 
-const dialog = await publish('Second');
+dialog = await fill('Second');
 const warned = (await dialog.locator('[data-template-taken]').count()) === 1;
-record(warned, 'publishing under the same name warns, in the dialog');
-const label = (await dialog.getByRole('button', { name: /^(Publish|Replace) template$/ }).innerText()).trim();
+record(warned, 'the taken name is warned about before anything is pressed');
+const label = (await press(dialog).innerText()).trim();
 record(label === 'Replace template', `and the button says what it will do ("${label}")`);
-record((await named())[0]?.description === 'First', 'nothing was replaced by the press that warned');
+record((await named())[0]?.description === 'First', 'nothing is replaced by being warned');
 
-if (warned) {
-  await dialog.getByRole('button', { name: /^(Publish|Replace) template$/ }).click();
-  await page.waitForTimeout(1500);
-}
-record((await page.locator('dialog[open]').count()) === 0, 'pressing Replace template closes the dialog');
+await press(dialog).click();
+await page.waitForTimeout(1500);
+record((await page.locator('dialog[open]').count()) === 0, 'one press of Replace template closes the dialog');
 const after = await named();
 record(after.length === 1 && after[0].id === first[0]?.id, `one template still, the same one (${after.length})`);
 record(after[0]?.description === 'Second', `carrying the new description (${after[0]?.description})`);
