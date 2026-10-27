@@ -49,6 +49,9 @@ import {
   setCommandMarker,
   setAttachmentsEnabled,
   setSessionsRemovable,
+  setConcealedCallsHiddenInChats,
+  setSessionFlaggingEnabled,
+  setSessionFlagToolsAdjustable,
   setChatEnabled,
   setExecutionRetentionDays,
   setMetricsAnonymous,
@@ -1944,6 +1947,117 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
               >
                 <img
                   src={settings.sessionsRemovable ? toggleOnIcon : toggleOffIcon}
+                  alt=""
+                  width={36}
+                  height={20}
+                  data-keeps-colour
+                />
+              </button>
+            </div>
+
+            {/*
+              Whether a chat keeps the flag calls from an administrator too.
+              Nobody else is ever shown one; an administrator reads them on the
+              session page and the flags report whatever this says.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Hide concealed tool calls in chats')}</p>
+                  <FieldHint label={t('Hide concealed tool calls in chats')}>
+                    {t('Flagging a conversation is never shown to anybody else; off, administrators see it in their chats too.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <button
+                type="button"
+                id="concealed-calls-hidden"
+                className={styles.toggle}
+                onClick={() => void save(() => setConcealedCallsHiddenInChats(!settings.concealedCallsHiddenInChats))}
+                disabled={busy}
+                role="switch"
+                aria-checked={settings.concealedCallsHiddenInChats}
+                aria-label={
+                  settings.concealedCallsHiddenInChats
+                    ? t('Show concealed tool calls to administrators in chats')
+                    : t('Hide concealed tool calls in chats')
+                }
+              >
+                <img
+                  src={settings.concealedCallsHiddenInChats ? toggleOnIcon : toggleOffIcon}
+                  alt=""
+                  width={36}
+                  height={20}
+                  data-keeps-colour
+                />
+              </button>
+            </div>
+
+            {/*
+              Whether agents flag conversations at all. Off, a new conversation
+              is not offered the tools, one that already holds them is refused,
+              and the flags already raised stay on the report.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Session flagging')}</p>
+                  <FieldHint label={t('Session flagging')}>
+                    {t('Agents flag conversations for administrators; off, they are not offered the tools and flags already raised stay on the report.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <button
+                type="button"
+                id="session-flagging"
+                className={styles.toggle}
+                onClick={() => void save(() => setSessionFlaggingEnabled(!settings.sessionFlaggingEnabled))}
+                disabled={busy}
+                role="switch"
+                aria-checked={settings.sessionFlaggingEnabled}
+                aria-label={settings.sessionFlaggingEnabled ? t('Turn session flagging off') : t('Turn session flagging on')}
+              >
+                <img
+                  src={settings.sessionFlaggingEnabled ? toggleOnIcon : toggleOffIcon}
+                  alt=""
+                  width={36}
+                  height={20}
+                  data-keeps-colour
+                />
+              </button>
+            </div>
+
+            {/*
+              Whether an agent's Tools list shows the two flag tools and lets
+              their mark change. Off, every agent holds them at Always and the
+              server puts back a save that says otherwise; switching it off
+              puts every agent back.
+            */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <p className={styles.settingLabel}>{t('Flag tools on agents’ Tools lists')}</p>
+                  <FieldHint label={t('Flag tools on agents’ Tools lists')}>
+                    {t('Off, the flag tools are not listed and every agent holds them at Always; turning it off puts every agent back to Always.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <button
+                type="button"
+                id="session-flag-tools-adjustable"
+                className={styles.toggle}
+                onClick={() => void save(() => setSessionFlagToolsAdjustable(!settings.sessionFlagToolsAdjustable))}
+                disabled={busy}
+                role="switch"
+                aria-checked={settings.sessionFlagToolsAdjustable}
+                aria-label={
+                  settings.sessionFlagToolsAdjustable
+                    ? t('Hide the flag tools from agents’ Tools lists')
+                    : t('Show the flag tools on agents’ Tools lists')
+                }
+              >
+                <img
+                  src={settings.sessionFlagToolsAdjustable ? toggleOnIcon : toggleOffIcon}
                   alt=""
                   width={36}
                   height={20}

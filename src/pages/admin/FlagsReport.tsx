@@ -11,6 +11,7 @@ import type {
   SessionFlagState,
   SessionFlagType,
 } from '../../api/flags';
+import { fetchInstallationSettings } from '../../api/installation';
 import { fetchWorkspaces } from '../../api/workspaces';
 import type { Workspace } from '../../api/workspaces';
 import { ColumnHeader } from '../../components/ColumnHeader';
@@ -22,6 +23,7 @@ import { useSearch } from '../../components/useSearch';
 import { t } from '../../i18n';
 import styles from './AdminReportsPage.module.css';
 import { FlagsChart } from './FlagsChart';
+import { RecordingOff } from './RecordingOff';
 import own from './FlagsReport.module.css';
 import { dayOf, formatDate, Picker, Tile } from './reportParts';
 
@@ -63,8 +65,12 @@ export function FlagsReport() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [clearing, setClearing] = useState<string | null>(null);
+  const [flagging, setFlagging] = useState<boolean | null>(null);
 
   useEffect(() => {
+    fetchInstallationSettings()
+      .then((held) => setFlagging(held.sessionFlaggingEnabled))
+      .catch(() => setFlagging(null));
     fetchWorkspaces(0, 200)
       .then((held) => setWorkspaces(held.content))
       .catch(() => setWorkspaces([]));
@@ -127,137 +133,142 @@ export function FlagsReport() {
   }
 
   return (
-    <section className={styles.card}>
-      <div className={styles.reportHead}>
-        <div className={styles.lead}>
-          <h2 className={`${styles.sectionHeading} ${styles.headingWithHint}`}>
-            {t('Flags')}
-            <FieldHint label={t('Flags')}>{t("Sessions agents flagged on their own: someone probing for weaknesses, or a fault in the product's setup.")}</FieldHint>
-          </h2>
-          <SearchBox value={typed} onChange={setTyped} placeholder={t('Search notes...')} label={t('Search notes')} />
-        </div>
-        <div className={styles.filters}>
-          <Picker label={t('Period')} value={String(days)} onChange={(value) => setDays(Number(value))}>
-            <option value={7}>{t('Last 7 days')}</option>
-            <option value={30}>{t('Last 30 days')}</option>
-            <option value={90}>{t('Last 90 days')}</option>
-            <option value={365}>{t('Last 12 months')}</option>
-          </Picker>
-          <Picker label={t('Workspace')} value={workspaceId} onChange={setWorkspaceId}>
-            <option value="">{t('All workspaces')}</option>
-            {workspaces.map((one) => (
-              <option key={one.id} value={one.id}>{one.name}</option>
-            ))}
-          </Picker>
-          <Picker label={t('Type')} value={type} onChange={(value) => setType(value as SessionFlagType | '')}>
-            <option value="">{t('All types')}</option>
-            <option value="SECURITY">{t('Security')}</option>
-            <option value="TECHNICAL_ISSUE">{t('Technical issue')}</option>
-          </Picker>
-          <Picker label={t('Lowest severity')} value={lowest} onChange={setLowest}>
-            {SEVERITIES.filter((one) => one <= Number(highest)).map((one) => (
-              <option key={one} value={String(one)}>{String(one)}</option>
-            ))}
-          </Picker>
-          <Picker label={t('Highest severity')} value={highest} onChange={setHighest}>
-            {SEVERITIES.filter((one) => one >= Number(lowest)).map((one) => (
-              <option key={one} value={String(one)}>{String(one)}</option>
-            ))}
-          </Picker>
-          <Picker label={t('State')} value={state} onChange={(value) => setState(value as SessionFlagState | '')}>
-            <option value="">{t('Open and cleared')}</option>
-            <option value="OPEN">{t('Not cleared')}</option>
-            <option value="CLEARED">{t('Cleared')}</option>
-          </Picker>
-          <button
-            type="button"
-            className={styles.export}
-            onClick={() => void exportCsv()}
-            disabled={exporting || report === null || report.total === 0}
-            data-testid="flags-export"
-          >
-            {exporting ? t('Exporting…') : t('Export CSV')}
-          </button>
-        </div>
-      </div>
-
-      {report !== null && (
-        <div className={styles.tiles} data-testid="flags-tiles">
-          <Tile label={t('Flags')} value={String(report.total)}>
-            {t('in this period')}
-          </Tile>
-          <Tile label={t('Not cleared')} value={String(report.open)}>
-            {t('still to look at')}
-          </Tile>
-          <Tile label={t('Security')} value={String(report.security)}>
-            {t('people probing the product')}
-          </Tile>
-          <Tile label={t('Technical issue')} value={String(report.technical)}>
-            {t('faults in the harness or its setup')}
-          </Tile>
-        </div>
+    <>
+      {flagging === false && (
+        <RecordingOff report="flags" setting="session-flagging">{t('Session flagging is off.')}</RecordingOff>
       )}
-
-      {report !== null && report.days.length > 0 && <FlagsChart series={report.days} />}
-
-      {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
-      {report === null && error === null && <p className={styles.notice}><Loader /></p>}
-      {report !== null && report.total === 0 && <p className={styles.notice}>{t('No flags in this period.')}</p>}
-
-      {report !== null && report.total > 0 && (
-        <div className={styles.tableBox}>
-          <table className={styles.table} data-testid="flags-table">
-            <thead>
-              <tr>
-                {([
-                  ['FLAGGED_AT', t('Flagged at'), false],
-                  ['WORKSPACE', t('Workspace'), false],
-                  ['SESSION', t('Session'), false],
-                  ['AGENT', t('Agent'), false],
-                  ['TYPE', t('Type'), false],
-                  ['SEVERITY', t('Severity'), true],
-                  ['NOTE', t('Note'), false],
-                  ['STATE', t('State'), false],
-                  ['CLEARED_BY', t('Cleared by'), false],
-                  [null, '', false],
-                ] as const).map(([column, label, numeric]) => (
-                  <th key={column ?? 'actions'} className={numeric ? styles.number : undefined}>
-                    <ColumnHeader
-                      label={label}
-                      order={column ?? undefined}
-                      current={order}
-                      ascending={ascending}
-                      onSort={sortBy}
-                      className={numeric ? styles.headRight : styles.headLeft}
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {report.rows.map((one) => (
-                <FlagRow key={one.id} flag={one} clearing={clearing === one.id} onClear={() => void clear(one)} />
+      <section className={styles.card}>
+        <div className={styles.reportHead}>
+          <div className={styles.lead}>
+            <h2 className={`${styles.sectionHeading} ${styles.headingWithHint}`}>
+              {t('Flags')}
+              <FieldHint label={t('Flags')}>{t("Sessions agents flagged on their own: someone probing for weaknesses, or a fault in the product's setup.")}</FieldHint>
+            </h2>
+            <SearchBox value={typed} onChange={setTyped} placeholder={t('Search notes...')} label={t('Search notes')} />
+          </div>
+          <div className={styles.filters}>
+            <Picker label={t('Period')} value={String(days)} onChange={(value) => setDays(Number(value))}>
+              <option value={7}>{t('Last 7 days')}</option>
+              <option value={30}>{t('Last 30 days')}</option>
+              <option value={90}>{t('Last 90 days')}</option>
+              <option value={365}>{t('Last 12 months')}</option>
+            </Picker>
+            <Picker label={t('Workspace')} value={workspaceId} onChange={setWorkspaceId}>
+              <option value="">{t('All workspaces')}</option>
+              {workspaces.map((one) => (
+                <option key={one.id} value={one.id}>{one.name}</option>
               ))}
-            </tbody>
-          </table>
+            </Picker>
+            <Picker label={t('Type')} value={type} onChange={(value) => setType(value as SessionFlagType | '')}>
+              <option value="">{t('All types')}</option>
+              <option value="SECURITY">{t('Security')}</option>
+              <option value="TECHNICAL_ISSUE">{t('Technical issue')}</option>
+            </Picker>
+            <Picker label={t('Lowest severity')} value={lowest} onChange={setLowest}>
+              {SEVERITIES.filter((one) => one <= Number(highest)).map((one) => (
+                <option key={one} value={String(one)}>{String(one)}</option>
+              ))}
+            </Picker>
+            <Picker label={t('Highest severity')} value={highest} onChange={setHighest}>
+              {SEVERITIES.filter((one) => one >= Number(lowest)).map((one) => (
+                <option key={one} value={String(one)}>{String(one)}</option>
+              ))}
+            </Picker>
+            <Picker label={t('State')} value={state} onChange={(value) => setState(value as SessionFlagState | '')}>
+              <option value="">{t('Open and cleared')}</option>
+              <option value="OPEN">{t('Not cleared')}</option>
+              <option value="CLEARED">{t('Cleared')}</option>
+            </Picker>
+            <button
+              type="button"
+              className={styles.export}
+              onClick={() => void exportCsv()}
+              disabled={exporting || report === null || report.total === 0}
+              data-testid="flags-export"
+            >
+              {exporting ? t('Exporting…') : t('Export CSV')}
+            </button>
+          </div>
         </div>
-      )}
 
-      {report !== null && report.total > PAGE_SIZES[0] && (
-        <CompactPagination
-          page={page}
-          pageSize={size}
-          totalItems={report.total}
-          onPageChange={setPage}
-          unit={t('flags')}
-          pageSizes={PAGE_SIZES}
-          onPageSizeChange={(next) => {
-            setSize(next);
-            setPage(1);
-          }}
-        />
-      )}
-    </section>
+        {report !== null && (
+          <div className={styles.tiles} data-testid="flags-tiles">
+            <Tile label={t('Flags')} value={String(report.total)}>
+              {t('in this period')}
+            </Tile>
+            <Tile label={t('Not cleared')} value={String(report.open)}>
+              {t('still to look at')}
+            </Tile>
+            <Tile label={t('Security')} value={String(report.security)}>
+              {t('people probing the product')}
+            </Tile>
+            <Tile label={t('Technical issue')} value={String(report.technical)}>
+              {t('faults in the harness or its setup')}
+            </Tile>
+          </div>
+        )}
+
+        {report !== null && report.days.length > 0 && <FlagsChart series={report.days} />}
+
+        {error !== null && <p className={`${styles.notice} ${styles.noticeError}`}>{error}</p>}
+        {report === null && error === null && <p className={styles.notice}><Loader /></p>}
+        {report !== null && report.total === 0 && <p className={styles.notice}>{t('No flags in this period.')}</p>}
+
+        {report !== null && report.total > 0 && (
+          <div className={styles.tableBox}>
+            <table className={styles.table} data-testid="flags-table">
+              <thead>
+                <tr>
+                  {([
+                    ['FLAGGED_AT', t('Flagged at'), false],
+                    ['WORKSPACE', t('Workspace'), false],
+                    ['SESSION', t('Session'), false],
+                    ['AGENT', t('Agent'), false],
+                    ['TYPE', t('Type'), false],
+                    ['SEVERITY', t('Severity'), true],
+                    ['NOTE', t('Note'), false],
+                    ['STATE', t('State'), false],
+                    ['CLEARED_BY', t('Cleared by'), false],
+                    [null, '', false],
+                  ] as const).map(([column, label, numeric]) => (
+                    <th key={column ?? 'actions'} className={numeric ? styles.number : undefined}>
+                      <ColumnHeader
+                        label={label}
+                        order={column ?? undefined}
+                        current={order}
+                        ascending={ascending}
+                        onSort={sortBy}
+                        className={numeric ? styles.headRight : styles.headLeft}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.rows.map((one) => (
+                  <FlagRow key={one.id} flag={one} clearing={clearing === one.id} onClear={() => void clear(one)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {report !== null && report.total > PAGE_SIZES[0] && (
+          <CompactPagination
+            page={page}
+            pageSize={size}
+            totalItems={report.total}
+            onPageChange={setPage}
+            unit={t('flags')}
+            pageSizes={PAGE_SIZES}
+            onPageSizeChange={(next) => {
+              setSize(next);
+              setPage(1);
+            }}
+          />
+        )}
+      </section>
+    </>
   );
 }
 

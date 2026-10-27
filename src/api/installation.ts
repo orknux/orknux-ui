@@ -257,6 +257,24 @@ export interface InstallationSettings {
    * worked.
    */
   sessionsRemovable: boolean;
+  /**
+   * Whether a chat keeps the concealed tools' calls - flagging the
+   * conversation - from an administrator too. True until somebody turns it
+   * off; nobody else is ever shown them, and the session page shows them to an
+   * administrator either way.
+   */
+  concealedCallsHiddenInChats: boolean;
+  /**
+   * Whether agents are offered flag_session and unflag_session. True until
+   * somebody turns it off; the flags already raised stay on the report.
+   */
+  sessionFlaggingEnabled: boolean;
+  /**
+   * Whether an agent's Tools list shows flag_session and unflag_session and
+   * their mark may be changed. False until somebody turns it on: every agent
+   * holds them at Always.
+   */
+  sessionFlagToolsAdjustable: boolean;
   /** How long a step of a workspace copy may wait for a lock, in seconds. Issue #581. */
   workspaceCopyLockWaitSeconds: number;
   workspaceCopyLockWaitSecondsConfigured: number;
@@ -391,7 +409,7 @@ const FIELDS =
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
   'scratchpadKeepDays scratchpadKeepDaysConfigured toolSummariesFullUpTo toolSummariesFullUpToConfigured ' +
-  'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable ' +
+  'toolSummaryTrimPercent toolSummaryTrimPercentConfigured sessionsRemovable concealedCallsHiddenInChats sessionFlaggingEnabled sessionFlagToolsAdjustable ' +
   'workspaceCopyLockWaitSeconds workspaceCopyLockWaitSecondsConfigured rateLimitBackoffSeconds rateLimitBackoffSecondsConfigured noteMaxCharacters noteMaxCharactersConfigured noteMaxCount noteMaxCountConfigured reviewsPerSession reviewsPerSessionConfigured emptyAnswerRetries emptyAnswerRetriesConfigured unusableReplyRetries unusableReplyRetriesConfigured modelAnswerLimitMinutes modelAnswerLimitMinutesConfigured writingProgressMillis writingProgressMillisConfigured writingForgottenSeconds writingForgottenSecondsConfigured readingShownAfterSeconds readingShownAfterSecondsConfigured workflowAutosaveMillis workflowAutosaveMillisConfigured widgetsPerChat widgetsPerChatConfigured widgetTimerMaxSeconds widgetTimerMaxSecondsConfigured sessionValueMaxMb sessionValueMaxMbConfigured sessionStoreMaxKeys sessionStoreMaxKeysConfigured ' +
   'localBoxEnabled localBoxLocation localBoxLocationConfigured localBoxRuntime ' +
   'localBoxMaxSessions localBoxMaxSessionsConfigured localBoxDefaultTtlSeconds localBoxDefaultTtlSecondsConfigured ' +
@@ -1159,6 +1177,39 @@ export async function setSessionsRemovable(removable: boolean): Promise<Installa
     { removable },
   );
   return data.setSessionsRemovable;
+}
+
+/** Whether a chat keeps the flag calls from an administrator as well as from everybody else. */
+export async function setConcealedCallsHiddenInChats(hidden: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setConcealedCallsHiddenInChats: InstallationSettings }>(
+    `mutation SetConcealedCallsHiddenInChats($hidden: Boolean!) {
+       setConcealedCallsHiddenInChats(hidden: $hidden) { ${FIELDS} }
+     }`,
+    { hidden },
+  );
+  return data.setConcealedCallsHiddenInChats;
+}
+
+/** Whether agents flag conversations for the administrators at all. */
+export async function setSessionFlaggingEnabled(enabled: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setSessionFlaggingEnabled: InstallationSettings }>(
+    `mutation SetSessionFlaggingEnabled($enabled: Boolean!) {
+       setSessionFlaggingEnabled(enabled: $enabled) { ${FIELDS} }
+     }`,
+    { enabled },
+  );
+  return data.setSessionFlaggingEnabled;
+}
+
+/** Whether agents' Tools lists show the flag tools; switched off, every agent is put back to Always on both. */
+export async function setSessionFlagToolsAdjustable(adjustable: boolean): Promise<InstallationSettings> {
+  const data = await graphql<{ setSessionFlagToolsAdjustable: InstallationSettings }>(
+    `mutation SetSessionFlagToolsAdjustable($adjustable: Boolean!) {
+       setSessionFlagToolsAdjustable(adjustable: $adjustable) { ${FIELDS} }
+     }`,
+    { adjustable },
+  );
+  return data.setSessionFlagToolsAdjustable;
 }
 
 export async function setPluginMaxSourceKb(kb: number): Promise<InstallationSettings> {

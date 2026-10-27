@@ -4042,6 +4042,20 @@ export const TESTS = [
      */
   },
   {
+    name: 'session-flag-settings-check',
+    what: "Admin Settings' three flagging switches - concealed calls hidden in chats, session flagging, the flag tools on agents' Tools lists - drawn, stored and still so after a reload; the flags report saying flagging is off; the rows absent from an agent's Tools list until the third is on",
+    needs: ['workspace'],
+    /*
+     * The rules are ConcealedCallsInChatsTest's, SessionFlaggingSwitchTest's and
+     * SessionFlagToolMarksTest's: a chat with a flag in it needs a model that
+     * flags, which CI has none of. Measured here is the screen. It makes one
+     * scratch agent and removes it. Not alone: no other check draws a flag call,
+     * reads the flags report's notice or looks for the flag tools' rows.
+     *
+     * Leaves the installation on the settings it found.
+     */
+  },
+  {
     name: 'chat-commands-check',
     what: 'what can be typed in a chat instead of said',
     needs: ['workspace'],

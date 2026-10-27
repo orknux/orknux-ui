@@ -4132,4 +4132,17 @@ export const PL: Record<string, string> = {
   "Clearing…": "Zdejmowanie…",
   "Could not clear the flag.": "Nie udało się zdjąć flagi.",
   "Open the report": "Otwórz raport",
+  // Admin Settings: whether a chat shows an administrator the flag calls.
+  "Hide concealed tool calls in chats": "Ukrywaj w czatach zatajone wywołania narzędzi",
+  "Show concealed tool calls to administrators in chats": "Pokazuj administratorom w czatach zatajone wywołania narzędzi",
+  "Flagging a conversation is never shown to anybody else; off, administrators see it in their chats too.": "Oflagowania rozmowy nikt inny nigdy nie widzi; po wyłączeniu administratorzy widzą je też w swoich czatach.",
+  "Session flagging": "Flagowanie rozmów",
+  "Turn session flagging off": "Wyłącz flagowanie rozmów",
+  "Turn session flagging on": "Włącz flagowanie rozmów",
+  "Agents flag conversations for administrators; off, they are not offered the tools and flags already raised stay on the report.": "Agenci flagują rozmowy dla administratorów; po wyłączeniu nie dostają tych narzędzi, a zgłoszone już flagi zostają w raporcie.",
+  "Session flagging is off.": "Flagowanie rozmów jest wyłączone.",
+  "Flag tools on agents’ Tools lists": "Narzędzia flagowania na listach narzędzi agentów",
+  "Hide the flag tools from agents’ Tools lists": "Ukryj narzędzia flagowania na listach narzędzi agentów",
+  "Show the flag tools on agents’ Tools lists": "Pokaż narzędzia flagowania na listach narzędzi agentów",
+  "Off, the flag tools are not listed and every agent holds them at Always; turning it off puts every agent back to Always.": "Wyłączone: narzędzia flagowania nie są wymienione, a każdy agent ma je w trybie Zawsze; wyłączenie przywraca ten tryb wszystkim agentom.",
 };
