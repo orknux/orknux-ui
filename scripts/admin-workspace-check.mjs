@@ -102,11 +102,37 @@ record(
 );
 record((await page.locator('[data-admin-workspace-reach-empty]').count()) === 1, 'an empty list says no workspace is chosen');
 const add = page.locator('[data-admin-workspace-reach-add]');
+/* Each heading stands clear of its options. */
+const gaps = await page.evaluate(() =>
+  [...document.querySelectorAll('[data-admin-workspace-settings] fieldset')].map((group) => {
+    // The heading's words, not its box: the space under them is what reads as the gap.
+    const legend = group.querySelector('legend');
+    const words = document.createRange();
+    if (legend) words.selectNodeContents(legend);
+    const text = legend ? words.getBoundingClientRect() : null;
+    const first = group.querySelector('input')?.closest('label')?.getBoundingClientRect();
+    return text && first ? Math.round(first.top - text.bottom) : null;
+  }),
+);
+record(gaps.length >= 3 && gaps.every((gap) => gap !== null && gap >= 6), `every section heading stands clear of its options (${gaps.join(', ')}px)`);
+/* The select reads at the size of the card's other choices, not larger. */
+const sizes = await page.evaluate(() => {
+  const pick = document.querySelector('[data-admin-workspace-reach-list] [data-select-label]');
+  const choice = document.querySelector('[data-admin-workspace-scope]')?.closest('label');
+  return pick && choice ? [getComputedStyle(pick).fontSize, getComputedStyle(choice).fontSize] : null;
+});
+record(sizes !== null && sizes[0] === sizes[1], `the select's words are the size of the card's other choices (${sizes?.join(' vs ')})`);
 record(await add.isDisabled(), 'Add waits for a workspace to be picked');
 await page.locator('[data-admin-workspace-reach-list] [data-select]').click();
 await page.getByRole('option', { name: target.name, exact: true }).click();
 await add.click();
 record((await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).count()) === 1, 'Add puts the picked workspace in the list');
+/* A chosen workspace's row is no taller than the select under it. */
+const [rowBox, pickBox] = [
+  await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).boundingBox(),
+  await page.locator('[data-admin-workspace-reach-list] [data-select]').boundingBox(),
+];
+record(rowBox !== null && pickBox !== null && rowBox.height <= pickBox.height + 2, `a chosen row is as tall as the select (${Math.round(rowBox?.height ?? 0)} vs ${Math.round(pickBox?.height ?? 0)})`);
 const removeBox = await page.locator(`[data-admin-workspace-reaches="${target.name}"] button`).boundingBox();
 record(removeBox !== null && removeBox.width >= 30 && removeBox.height >= 30, 'each row has a 32px remove button');
 await page.locator('[data-admin-workspace-scope="CHATS"]').uncheck();
