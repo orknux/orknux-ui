@@ -27,6 +27,8 @@ export interface ErrorSubject {
   subject: string;
   count: number;
   last: string;
+  /** The workspaces it failed in, by name. */
+  workspaces: string[];
 }
 
 /** One day of the chart: how many of each source failed. */
@@ -61,7 +63,7 @@ export async function fetchErrorReport(
        errorReport(filter: $filter, source: $source, page: $page, size: $size, order: $order, ascending: $ascending) {
          total
          counts { source count }
-         often { source subject count last }
+         often { source subject count last workspaces }
          days { day runs agents models }
          rows { id at workspaceId workspaceName source subject executionId sessionId message }
        }

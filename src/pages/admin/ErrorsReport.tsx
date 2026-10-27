@@ -29,7 +29,7 @@ function sourceName(source: ErrorSource): string {
 }
 
 /** What a heading of the most-often table orders by; the five are all there is, so they are ordered here. */
-type OftenOrder = 'SUBJECT' | 'SOURCE' | 'COUNT' | 'LAST';
+type OftenOrder = 'SUBJECT' | 'SOURCE' | 'COUNT' | 'LAST' | 'WORKSPACE';
 
 function oftenSorted(often: ErrorSubject[], order: OftenOrder, ascending: boolean): ErrorSubject[] {
   const text = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
@@ -37,6 +37,7 @@ function oftenSorted(often: ErrorSubject[], order: OftenOrder, ascending: boolea
     if (order === 'SUBJECT') return text(a.subject, b.subject);
     if (order === 'SOURCE') return text(sourceName(a.source), sourceName(b.source));
     if (order === 'COUNT') return a.count - b.count;
+    if (order === 'WORKSPACE') return text(a.workspaces.join(', '), b.workspaces.join(', '));
     return a.last.localeCompare(b.last);
   };
   return [...often].sort((a, b) => (ascending ? by(a, b) : by(b, a)));
@@ -149,6 +150,7 @@ export function ErrorsReport() {
                   ['SOURCE', t('Source'), false],
                   ['COUNT', t('Times'), true],
                   ['LAST', t('Last'), false],
+                  ['WORKSPACE', t('Workspace'), false],
                 ] as const).map(([column, label, numeric]) => (
                   <th key={column} className={numeric ? styles.number : undefined}>
                     <ColumnHeader
@@ -170,6 +172,7 @@ export function ErrorsReport() {
                   <td className={styles.muted}>{sourceName(one.source)}</td>
                   <td className={styles.number}>{one.count}</td>
                   <td className={styles.muted}>{formatDate(one.last)}</td>
+                  <td className={styles.muted} data-error-workspaces="">{one.workspaces.length === 0 ? '—' : one.workspaces.join(', ')}</td>
                 </tr>
               ))}
             </tbody>
