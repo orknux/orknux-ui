@@ -1151,6 +1151,12 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'chat-workspace-shared-check',
+    what: 'a chat writing into a shared session is labelled Workspace shared, and Continue in chat warns before opening one',
+    needs: ['session'],
+    // Makes one chat and deletes it.
+  },
+  {
     name: 'wireframe-note-fits-check',
     what: 'a sticky note in a wireframe is at least as tall as its words, on the server and in the editor',
     needs: ['workspace'],
