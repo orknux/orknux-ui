@@ -162,6 +162,17 @@
   width: 320px;
 }
 
+/* Admin or Standard: a word, not a sentence, so a narrow column holds it. */
+.colType {
+  flex-shrink: 0;
+  width: 120px;
+}
+
+.standardType {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
 .colUser,
 .colTimestamp {
   flex-shrink: 0;

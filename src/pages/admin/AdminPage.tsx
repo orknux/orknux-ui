@@ -212,6 +212,7 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
               onSort={sortBy}
               className={styles.colGrow}
             />
+            <span className={styles.colType}>{t('Type')}</span>
             <ColumnHeader
               label={t('Description')}
               order="DESCRIPTION"
@@ -320,11 +321,15 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                 <Link className={styles.workspaceLabel} to={`/workspace/${workspace.id}`}>
                   {workspace.name}
                 </Link>
-                {/* Its agents read other workspaces; set in its settings, seen by administrators alone. */}
-                {workspace.adminWorkspace && (
-                  <span className={styles.adminBadge} data-admin-workspace-badge={workspace.name}>{t('Admin workspace')}</span>
-                )}
               </div>
+              {/* Its agents read other workspaces; set in its settings, seen by administrators alone. */}
+              <span className={styles.colType} data-workspace-type={workspace.name}>
+                {workspace.adminWorkspace ? (
+                  <span className={styles.adminBadge} data-admin-workspace-badge={workspace.name}>{t('Admin', 'workspace type')}</span>
+                ) : (
+                  <span className={styles.standardType}>{t('Standard', 'workspace type')}</span>
+                )}
+              </span>
               <span className={`${styles.colDescription} ${styles.description}`}>{workspace.description ?? '—'}</span>
               <span className={styles.colActions}>
                 {/*

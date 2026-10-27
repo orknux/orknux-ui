@@ -726,6 +726,8 @@ export const PL: Record<string, string> = {
   "Edit in session": "Edytuj w sesji",
   "It has not written any.": "Nie zapisało jeszcze żadnego.",
   "Type": "Rodzaj",
+  "Admin\u001fworkspace type": "Administracyjna",
+  "Standard\u001fworkspace type": "Zwykła",
   "Subtype": "Podrodzaj",
   "Shape": "Kształt",
   "Value": "Wartość",

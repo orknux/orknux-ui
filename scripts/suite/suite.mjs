@@ -1108,6 +1108,11 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'admin-workspace-type-check',
+    what: 'the admin list of workspaces names each one's type, Admin or Standard, in a column of its own',
+    needs: ['workspace'],
+  },
+  {
     name: 'template-replace-check',
     what: 'publishing under a template's name warns in the dialog, then replaces that template',
     needs: ['workspace'],
