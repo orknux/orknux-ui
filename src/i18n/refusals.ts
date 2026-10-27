@@ -436,8 +436,8 @@ const PL: Record<string, string> = {
   WorkspaceMemberFixed: '{username} jest administratorem instalacji i administruje każdą przestrzenią roboczą.',
   // --- admin workspaces ----------------------------------------------------
   AdminWorkspaceOpenToOthers:
-    '{name} nie może być przestrzenią administracyjną, dopóki mogą ją otworzyć osoby, które nie są administratorami instalacji ' +
-    '(role: {roles}; osoby: {people}). Jej agenci czytają inne przestrzenie robocze, więc każdy, kto ją otworzy, mógłby je czytać.',
+    '{name} nie może być przestrzenią administracyjną, dopóki mogą ją otworzyć osoby, które nie są administratorami instalacji: ' +
+    '{blocking}. Jej agenci czytają inne przestrzenie robocze, więc każdy, kto ją otworzy, mógłby je czytać.',
   AdminWorkspaceMemberRefused:
     '{workspaces}: tylko administratorzy instalacji mogą otworzyć przestrzeń administracyjną, a {roles} nie czyni nikogo administratorem. ' +
     'Najpierw wyłącz ją w Admin > Przestrzenie robocze albo użyj roli z zakresem Admin.',
