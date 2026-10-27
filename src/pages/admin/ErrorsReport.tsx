@@ -1,3 +1,4 @@
+import { FieldHint } from '../../components/FieldHint';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -94,7 +95,10 @@ export function ErrorsReport() {
     <section className={styles.card} data-testid="errors-report">
       <div className={styles.reportHead}>
         <div className={styles.lead}>
-          <h2 className={styles.sectionHeading}>{t('Errors')}</h2>
+          <h2 className={`${styles.sectionHeading} ${styles.headingWithHint}`}>
+            {t('Errors')}
+            <FieldHint label={t('Errors')}>{t("What failed in workflow runs, agents and quick chats, grouped by message, most frequent first.")}</FieldHint>
+          </h2>
           <SearchBox value={typed} onChange={setTyped} placeholder={t('Search errors...')} label={t('Search errors')} />
         </div>
         <div className={styles.filters}>

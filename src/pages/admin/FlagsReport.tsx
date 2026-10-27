@@ -1,3 +1,4 @@
+import { FieldHint } from '../../components/FieldHint';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -129,7 +130,10 @@ export function FlagsReport() {
     <section className={styles.card}>
       <div className={styles.reportHead}>
         <div className={styles.lead}>
-          <h2 className={styles.sectionHeading}>{t('Flags')}</h2>
+          <h2 className={`${styles.sectionHeading} ${styles.headingWithHint}`}>
+            {t('Flags')}
+            <FieldHint label={t('Flags')}>{t("Sessions agents flagged on their own: someone probing for weaknesses, or a fault in the product's setup.")}</FieldHint>
+          </h2>
           <SearchBox value={typed} onChange={setTyped} placeholder={t('Search notes...')} label={t('Search notes')} />
         </div>
         <div className={styles.filters}>

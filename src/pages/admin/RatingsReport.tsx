@@ -1,3 +1,4 @@
+import { FieldHint } from '../../components/FieldHint';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -98,7 +99,10 @@ export function RatingsReport() {
       <section className={styles.card}>
         <div className={styles.reportHead}>
           <div className={styles.lead}>
-            <h2 className={styles.sectionHeading}>{t('Reviews')}</h2>
+            <h2 className={`${styles.sectionHeading} ${styles.headingWithHint}`}>
+            {t('Reviews')}
+            <FieldHint label={t('Reviews')}>{t("What people said of a conversation, through the chat's menu or an agent's rate_session.")}</FieldHint>
+          </h2>
             <SearchBox value={typed} onChange={setTyped} placeholder={t('Search reviews...')} label={t('Search reviews')} />
           </div>
           <div className={styles.filters}>

@@ -30,6 +30,13 @@
   color: var(--color-text-primary);
 }
 
+/* A report's name and the (?) saying what it shows, on one line. */
+.headingWithHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .lead {
   display: flex;
   flex-direction: column;

@@ -1,3 +1,4 @@
+import { FieldHint } from '../../components/FieldHint';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -228,7 +229,10 @@ function UsageReportView() {
         <div className={styles.reportHead}>
           {/* The heading over the search box, as each picker's label sits over its box: two columns of the same shape. */}
           <div className={styles.lead}>
-            <h2 className={styles.sectionHeading}>{t('Tokens by person')}</h2>
+            <h2 className={`${styles.sectionHeading} ${styles.headingWithHint}`}>
+            {t('Tokens by person')}
+            <FieldHint label={t('Tokens by person')}>{t("Tokens every person's chats, runs and agents used, and what they cost, over the period chosen.")}</FieldHint>
+          </h2>
             <SearchBox value={typed} onChange={setTyped} placeholder={t('Search people...')} label={t('Search people')} />
           </div>
           <div className={styles.filters}>

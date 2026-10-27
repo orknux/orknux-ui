@@ -1151,6 +1151,11 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'report-hints-check',
+    what: 'every report on Admin -> Reports says what it shows, with a hint beside its name',
+    needs: ['session'],
+  },
+  {
     name: 'chat-workspace-shared-check',
     what: 'a chat writing into a shared session is labelled Workspace shared, and Continue in chat warns before opening one',
     needs: ['session'],
