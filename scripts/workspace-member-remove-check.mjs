@@ -79,14 +79,14 @@ try {
   await removeButton.click({ timeout: 5_000 }).catch(() => undefined);
 
   // It asks first: a dialog is open and nothing has been written yet.
-  const dialog = page.locator('dialog[open]').filter({ hasText: 'Remove member' });
+  const dialog = page.locator('dialog[open]').filter({ hasText: 'Exclude member' });
   await dialog.waitFor({ timeout: 5_000 }).catch(() => undefined);
   record((await dialog.count()) === 1, 'Remove opens a dialog asking first');
   const sentence = (await dialog.textContent().catch(() => '')) ?? '';
   record(/keep their roles and their other workspaces/.test(sentence), `the dialog says they keep their roles and other workspaces ("${sentence.trim().slice(0, 140)}")`);
   record((await memberOf(guinea.username))?.excluded === false, 'asking writes nothing');
 
-  await dialog.getByRole('button', { name: 'Remove', exact: true }).click({ timeout: 5_000 }).catch(() => undefined);
+  await dialog.getByRole('button', { name: 'Exclude', exact: true }).click({ timeout: 5_000 }).catch(() => undefined);
   await page.locator('dialog[open]').waitFor({ state: 'detached', timeout: 5_000 }).catch(() => undefined);
   await row.locator('[data-member-action="allow"]').waitFor({ timeout: 5_000 }).catch(() => undefined);
 

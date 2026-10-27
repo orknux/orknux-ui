@@ -377,9 +377,9 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
     },
     /* Workspace settings > Members: the person keeps their roles, so nothing beyond this workspace changes. */
     removeMember: {
-      title: t('Remove member'),
+      title: t('Exclude member'),
       message: <>{t('They can no longer open this workspace, and keep their roles and their other workspaces:')} {name}</>,
-      button: submitting ? t('Removing…') : t('Remove'),
+      button: submitting ? t('Excluding…') : t('Exclude', 'member'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

@@ -134,6 +134,7 @@
 
 .actionHead {
   width: 1%;
+  text-align: right;
 }
 
 .actionCell {
@@ -141,16 +142,30 @@
   white-space: nowrap;
 }
 
-/* The shared row button, with a word in it rather than an icon. */
+/*
+ * A row button with a word in it. Not composed from the shared square: its
+ * fixed 32px width and zero padding came after these rules in the built
+ * stylesheet and won, so the word ran out of a 32px box.
+ */
 .rowAction {
-  composes: rowAction from '../styles/rowAction.module.css';
-  width: auto;
-  margin-left: auto;
-  padding: 0 var(--space-12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--space-14);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
   font: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rowAction:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
 }
 
 .rowActionDanger {

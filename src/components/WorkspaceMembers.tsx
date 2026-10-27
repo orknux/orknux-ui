@@ -96,7 +96,7 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
                 <th>{t('User')}</th>
                 <th>{t('Roles')}</th>
                 <th className={styles.roleHead}>{t('Workspace role')}</th>
-                <th className={styles.actionHead} aria-label={t('Actions')} />
+                <th className={styles.actionHead}>{t('Access')}</th>
               </tr>
             </thead>
             <tbody>
@@ -162,7 +162,7 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
                             setRemoving(member);
                           }}
                         >
-                          {t('Remove')}
+                          {t('Exclude', 'member')}
                         </button>
                       )}
                     </td>
