@@ -34,6 +34,10 @@ const PL: Record<string, string> = {
   DesignVideoExportFailed: 'Nie udało się wyeksportować filmu jako {format}: {reason}',
   InstallationAddressInvalid:
     '{url} nie jest adresem, pod którym można dotrzeć do tej instalacji. Podaj adres http lub https, na przykład https://orknux.example.com.',
+  InstallationMailIncomplete: 'Serwer poczty potrzebuje hosta i adresu nadawcy.',
+  InstallationMailHostInvalid: '„{host}” nie jest nazwą hosta serwera poczty.',
+  InstallationMailPortInvalid: '{port} nie jest portem; podaj liczbę od 1 do 65535 albo zostaw puste dla zwykłego portu.',
+  InstallationMailRecipientMissing: 'Podaj, dokąd wysłać wiadomość testową; twoje konto nie ma adresu, na który można ją wysłać.',
   // --- a name that is required, and one that is taken --------------------
   ActionNameInvalid: 'Nazwa akcji jest wymagana',
   AgentNameInvalid: 'Nazwa agenta jest wymagana',

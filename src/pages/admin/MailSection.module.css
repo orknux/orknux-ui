@@ -1,0 +1,75 @@
+/* Admin -> Settings -> Mail: what is in force, and the test line under the form. */
+
+.source {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
+/* What a test found, the address it goes to, and Test at the end of the line. */
+.statusLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+}
+
+.status {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  font-size: var(--text-base);
+}
+
+.recipient {
+  width: 18rem;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.dotUp {
+  background: var(--color-success);
+}
+
+.dotDown {
+  background: var(--color-danger-solid);
+}
+
+.statusOk {
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.statusFailed {
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.statusIdle {
+  color: var(--color-text-muted);
+}
+
+.secondaryButton {
+  padding: var(--space-10) var(--space-24);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -2317,6 +2317,17 @@ export const TESTS = [
     /* Answers the address itself, so the installation's own is left alone. */
   },
   {
+    name: 'installation-mail-check',
+    what: 'Admin Settings stores the installation mail server, reads it back after a reload with the password shown as set and never sent, and tests it on the line below',
+    needs: ['session'],
+    /*
+     * Against the real server, because the round trip is the point. The host is
+     * under .invalid, so the test mail is refused without leaving the machine;
+     * the stored server is cleared at the end, and an installation that already
+     * stores one is refused rather than written over.
+     */
+  },
+  {
     name: 'schedules-page-check',
     what: 'AI -> Schedules lists each schedule with how often and when next it runs, stops one, and Admin Settings holds its bounds',
     needs: ['workspace'],

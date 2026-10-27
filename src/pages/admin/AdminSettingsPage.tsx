@@ -117,6 +117,7 @@ import { BulkheadsSection } from './BulkheadsSection';
 import { WatchersSection } from './WatchersSection';
 import { SchedulesSection } from './SchedulesSection';
 import { AddressSection } from './AddressSection';
+import { MailSection } from './MailSection';
 import { DesktopNetworkSection } from './DesktopNetworkSection';
 import { LogLevelsSection } from './LogLevelsSection';
 import { TunablesSection } from './TunablesSection';
@@ -271,6 +272,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
   const takeSchedulePending = useCallback((writes: PendingWrite[]) => setSchedulePending(writes), []);
   const [addressPending, setAddressPending] = useState<PendingWrite[]>([]);
   const takeAddressPending = useCallback((writes: PendingWrite[]) => setAddressPending(writes), []);
+  const [mailPending, setMailPending] = useState<PendingWrite[]>([]);
+  const takeMailPending = useCallback((writes: PendingWrite[]) => setMailPending(writes), []);
   const [grammarPending, setGrammarPending] = useState<PendingWrite[]>([]);
   const takeGrammarPending = useCallback((writes: PendingWrite[]) => setGrammarPending(writes), []);
   // Admin -> Settings -> Bulkheads, its numbers sent with the page's Save. Issue #616.
@@ -597,6 +600,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
     watcherPending.length > 0 ||
     schedulePending.length > 0 ||
     addressPending.length > 0 ||
+    mailPending.length > 0 ||
     grammarPending.length > 0 ||
     bulkheadPending.length > 0 ||
     tuningPending.length > 0;
@@ -629,6 +633,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
       for (const write of watcherPending) await write();
       for (const write of schedulePending) await write();
       for (const write of addressPending) await write();
+      for (const write of mailPending) await write();
       for (const write of grammarPending) await write();
       for (const write of bulkheadPending) await write();
       for (const write of tuningPending) await write();
@@ -722,6 +727,8 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
         {settings !== null && (
           <>
             <AddressSection onPending={takeAddressPending} busy={busy} />
+
+            <MailSection onPending={takeMailPending} busy={busy} ownAddress={session.email ?? null} />
 
             <GrammarSection onPending={takeGrammarPending} busy={busy} />
 
