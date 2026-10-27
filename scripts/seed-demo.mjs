@@ -2479,6 +2479,11 @@ log(`task: ${task.title} (${task.status})`);
  * and workflows this script made by the names it gave them (#684). A file that
  * fails stops the seed, as a step above does: a picture of a page the seed did
  * not finish filling is a picture of the wrong thing.
+ *
+ * Only for the manual's pictures: `screenshots.ps1` says so with
+ * ORKNUX_DEMO_MANUAL=1. The browser suite seeds with this script too, without
+ * the stand-ins a chapter draws with, and one chapter refusing to run without
+ * its stand-in stopped the suite's seed and every check after it (v1.2.3).
  */
 const SEEDS = new URL('./seed/', import.meta.url);
 const { readdir } = await import('node:fs/promises');
@@ -2486,7 +2491,8 @@ const SEED_CONTEXT = {
   BASE, USER, WORKSPACE_NAME, ws, workspace, gql, log, signIn,
   provider, chatModel, imageModel, writerModel, responder, summariser, newsletter, slack, flagship, task,
 };
-for (const file of (await readdir(SEEDS).catch(() => [])).filter((name) => name.endsWith('.mjs')).sort()) {
+const MANUAL = process.env.ORKNUX_DEMO_MANUAL === '1';
+for (const file of MANUAL ? (await readdir(SEEDS).catch(() => [])).filter((name) => name.endsWith('.mjs')).sort() : []) {
   log(`\n${file}`);
   const group = await import(new URL(file, SEEDS).href);
   await group.seed(SEED_CONTEXT);
