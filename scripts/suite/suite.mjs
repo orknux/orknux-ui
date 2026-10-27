@@ -1113,6 +1113,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'template-dates-check',
+    what: 'the admin list of templates says when each was published and last changed, and sorts by either',
+    needs: ['workspace'],
+    // Reads the templates the suite's other checks leave; publishes none.
+  },
+  {
     name: 'template-replace-check',
     what: 'publishing under a template's name warns in the dialog, then replaces that template',
     needs: ['workspace'],

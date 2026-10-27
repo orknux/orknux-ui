@@ -113,6 +113,17 @@
   min-width: 0;
 }
 
+.colDate {
+  flex-shrink: 0;
+  width: 120px;
+}
+
+.date {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 .colActions {
   display: flex;
   flex-shrink: 0;

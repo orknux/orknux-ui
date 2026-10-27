@@ -13,6 +13,7 @@ import { ordered, useTableSort } from '../../components/tableSort';
 import { FieldHint } from '../../components/FieldHint';
 import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
+import { zoned } from '../../session/timeZone';
 import styles from './AdminTemplatesPage.module.css';
 import { t } from '../../i18n';
 
@@ -35,13 +36,28 @@ export interface AdminTemplatesPageProps {
  * from assumes the two follow each other; these do not, and being told once here
  * is cheaper than finding out when a fix does not travel.
  */
+/** A day, in the installation's time zone: "Oct 27, 2026". */
+function dated(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat('en-US', zoned({ month: 'short', day: 'numeric', year: 'numeric' })).format(date);
+}
+
+/** The day and the time, for the hover. */
+function exactly(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat('en-US', zoned({ month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })).format(date);
+}
+
 export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPageProps) {
   const [templates, setTemplates] = useState<ComponentTemplate[] | null>(null);
-  const [order, ascending, sortBy] = useTableSort<'NAME' | 'HOLDS' | 'FORMAT' | 'WHO'>(
+  const [order, ascending, sortBy] = useTableSort<'NAME' | 'HOLDS' | 'FORMAT' | 'WHO' | 'CREATED' | 'UPDATED'>(
     'admin-templates',
     'NAME',
     true,
-    ['HOLDS', 'FORMAT'],
+    // Newest first when a date is pressed, as on every other list with one.
+    ['HOLDS', 'FORMAT', 'CREATED', 'UPDATED'],
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +86,8 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
       if (order === 'HOLDS') return template.componentCount;
       if (order === 'FORMAT') return template.formatVersion ?? 0;
       if (order === 'WHO') return template.producedBy ?? '';
+      if (order === 'CREATED') return template.createdAt;
+      if (order === 'UPDATED') return template.lastModifiedAt;
       return template.name;
     },
     ascending,
@@ -148,6 +166,22 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
             onSort={sortBy}
             className={styles.colWho}
           />
+          <ColumnHeader
+            label={t('Created')}
+            order="CREATED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colDate}
+          />
+          <ColumnHeader
+            label={t('Updated')}
+            order="UPDATED"
+            current={order}
+            ascending={ascending}
+            onSort={sortBy}
+            className={styles.colDate}
+          />
           <div className={styles.colActions} />
         </div>
 
@@ -193,6 +227,21 @@ export function AdminTemplatesPage({ session, onSignOut }: AdminTemplatesPagePro
             </div>
             <div className={styles.colWho}>
               <span className={styles.who}>{template.createdBy}</span>
+            </div>
+            <div className={styles.colDate}>
+              <span className={styles.date} data-template-created="" title={exactly(template.createdAt)}>
+                {dated(template.createdAt)}
+              </span>
+            </div>
+            <div className={styles.colDate}>
+              {/* Who last replaced or reworded it is the other half of when; the hover says both. */}
+              <span
+                className={styles.date}
+                data-template-updated=""
+                title={`${exactly(template.lastModifiedAt)} · ${template.lastModifiedBy}`}
+              >
+                {dated(template.lastModifiedAt)}
+              </span>
             </div>
             <div className={styles.colActions}>
               <Link
