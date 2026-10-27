@@ -1,3 +1,4 @@
+import { noteHeightFor } from './wireframeNotes';
 import type { CSSProperties, ReactElement } from 'react';
 
 import type { WireframeElement } from '../../api/wireframes';
@@ -118,8 +119,10 @@ function painted(element: WireframeElement, look: Look, paintId: string): { styl
 }
 
 function WireframeShape({ element, markerId, paintId, workspaceId }: { element: WireframeElement; markerId: string; paintId: string; workspaceId?: string }) {
-  const { x, y, w, h, type } = element;
+  const { x, y, w, type } = element;
   const text = element.text ?? '';
+  // A note at least as tall as its words, as the server reads one: the note drawn while typing is the one saved.
+  const h = type === 'note' ? Math.max(element.h, noteHeightFor(text, Math.max(1, w))) : element.h;
   const props = element.props ?? {};
   const look = lookOf(element);
   const shadow = look.shadow === undefined ? undefined : `url(#${markerId}-shadow-${look.shadow})`;

@@ -1117,6 +1117,12 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'wireframe-note-fits-check',
+    what: 'a sticky note in a wireframe is at least as tall as its words, on the server and in the editor',
+    needs: ['workspace'],
+    // Makes a wireframe and deletes it.
+  },
+  {
     name: 'admin-workspace-blocked-check',
     what: 'switching on an admin workspace an ordinary role opens is said in its card before Save, and its refusal drawn there',
     needs: ['session'],
