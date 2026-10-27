@@ -2080,7 +2080,6 @@ export const PL: Record<string, string> = {
   "Exclude member": "Wyklucz członka",
   "Exclude\u001fmember": "Wyklucz",
   "Excluding…": "Wykluczanie…",
-  "Remove member": "Usuń członka",
   "They can no longer open this workspace, and keep their roles and their other workspaces:": "Nie otworzy już tej przestrzeni roboczej, a zachowa swoje role i pozostałe przestrzenie robocze:",
   "Workspace admin": "Administrator przestrzeni",
   "Only this workspace's admins can open its settings": "Ustawienia tej przestrzeni roboczej mogą otworzyć tylko jej administratorzy",
