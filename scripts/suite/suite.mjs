@@ -298,6 +298,15 @@ export const TESTS = [
      */
   },
   {
+    name: 'workspace-member-remove-check',
+    what: 'Remove on a member row asks first, then the row is drawn dimmed and labelled Excluded with Allow, and Allow restores it',
+    needs: ['workspace'],
+    /*
+     * Brings its own member through a role it makes and takes back. The row's
+     * computed opacity is measured, and the server is asked after each step.
+     */
+  },
+  {
     name: 'settings-menu-check',
     what: 'the two long settings pages have their sections down the side, read off their own headings',
     needs: ['workspace'],

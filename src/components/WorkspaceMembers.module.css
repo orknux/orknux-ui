@@ -131,3 +131,46 @@
   margin-top: -6px;
   pointer-events: none;
 }
+
+.actionHead {
+  width: 1%;
+}
+
+.actionCell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The shared row button, with a word in it rather than an icon. */
+.rowAction {
+  composes: rowAction from '../styles/rowAction.module.css';
+  width: auto;
+  margin-left: auto;
+  padding: 0 var(--space-12);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.rowActionDanger {
+  color: var(--color-danger);
+}
+
+/*
+ * Removed from this workspace: dimmed but still there, so whoever administers
+ * it can see who is kept out and let them back from the same row.
+ */
+.excluded td:not(.actionCell) {
+  opacity: 0.5;
+}
+
+.excludedTag {
+  display: inline-block;
+  padding: 2px var(--space-10);
+  border: 1px solid var(--color-danger);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  white-space: nowrap;
+}

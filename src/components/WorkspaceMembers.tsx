@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { fetchWorkspaceMembers } from '../api/workspaces';
+import { allowWorkspaceMember, excludeWorkspaceMember, fetchWorkspaceMembers } from '../api/workspaces';
 import type { WorkspaceMember, WorkspaceMemberRole } from '../api/workspaces';
 import chevronDown12Icon from '../assets/chevron-down-12.svg';
+import { ConfirmDialog } from './ConfirmDialog';
 import { FieldHint } from './FieldHint';
 import { Loader } from './Loader';
 import styles from './WorkspaceMembers.module.css';
@@ -29,10 +30,17 @@ export interface WorkspaceMembersProps {
  * A choice is a draft until the page's Save Changes, like every other field on
  * the page: a picker that wrote on change was the one control on the page that
  * ignored the button, and a change made by mistake was already made.
+ *
+ * Remove is the exception, and asks first instead: it keeps somebody out of
+ * this workspace only, leaving their roles and their other workspaces as they
+ * were, and it takes effect when confirmed. A removed row stays, dimmed and
+ * marked, with Allow on it - the undo is where the thing undone is.
  */
 export function WorkspaceMembers({ workspaceId, pending, onPending, version }: WorkspaceMembersProps) {
   const [members, setMembers] = useState<WorkspaceMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<WorkspaceMember | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWorkspaceMembers(workspaceId)
@@ -48,6 +56,25 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
     onPending(next);
   }
 
+  /** Puts the server's answer for one person in place of their row, and drops any role drafted for them. */
+  function replace(updated: WorkspaceMember) {
+    setMembers((current) => current?.map((one) => (one.username === updated.username ? updated : one)) ?? null);
+    if (pending[updated.username] !== undefined) {
+      const next = { ...pending };
+      delete next[updated.username];
+      onPending(next);
+    }
+  }
+
+  async function allow(member: WorkspaceMember) {
+    setRowError(null);
+    try {
+      replace(await allowWorkspaceMember(workspaceId, member.username));
+    } catch (cause) {
+      setRowError(cause instanceof Error ? cause.message : t('Could not apply the change.'));
+    }
+  }
+
   return (
     <section className={styles.card} data-testid="workspace-members">
       <div className={styles.heading}>
@@ -59,6 +86,7 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
 
       {members === null && error === null && <Loader />}
       {error !== null && <p className={styles.error} role="alert">{error}</p>}
+      {rowError !== null && <p className={styles.error} role="alert">{rowError}</p>}
 
       {members !== null && (
         <div className={styles.tableBox}>
@@ -68,13 +96,20 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
                 <th>{t('User')}</th>
                 <th>{t('Roles')}</th>
                 <th className={styles.roleHead}>{t('Workspace role')}</th>
+                <th className={styles.actionHead} aria-label={t('Actions')} />
               </tr>
             </thead>
             <tbody>
               {members.map((member) => {
                 const shown = pending[member.username] ?? member.role;
                 return (
-                  <tr key={member.username} data-testid="workspace-member" data-username={member.username}>
+                  <tr
+                    key={member.username}
+                    className={member.excluded ? styles.excluded : undefined}
+                    data-testid="workspace-member"
+                    data-username={member.username}
+                    data-member-excluded={member.excluded ? '' : undefined}
+                  >
                     <td>
                       <span className={styles.person}>
                         <span className={styles.name}>{member.displayName}</span>
@@ -87,6 +122,8 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
                     <td>
                       {member.fixed ? (
                         <span className={styles.fixed} data-member-role="fixed">{t('Installation admin')}</span>
+                      ) : member.excluded ? (
+                        <span className={styles.excludedTag} data-member-role="excluded">{t('Excluded')}</span>
                       ) : (
                         <span className={styles.pickerBox}>
                           <Select
@@ -105,6 +142,30 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
                         </span>
                       )}
                     </td>
+                    <td className={styles.actionCell}>
+                      {member.fixed ? null : member.excluded ? (
+                        <button
+                          type="button"
+                          className={styles.rowAction}
+                          data-member-action="allow"
+                          onClick={() => void allow(member)}
+                        >
+                          {t('Allow')}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`${styles.rowAction} ${styles.rowActionDanger}`}
+                          data-member-action="remove"
+                          onClick={() => {
+                            setRowError(null);
+                            setRemoving(member);
+                          }}
+                        >
+                          {t('Remove')}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -112,6 +173,17 @@ export function WorkspaceMembers({ workspaceId, pending, onPending, version }: W
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        subject={removing?.displayName ?? null}
+        kind="removeMember"
+        onClose={() => setRemoving(null)}
+        onConfirm={async () => {
+          if (removing === null) return;
+          replace(await excludeWorkspaceMember(workspaceId, removing.username));
+          setRemoving(null);
+        }}
+      />
     </section>
   );
 }

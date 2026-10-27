@@ -38,7 +38,8 @@ export type ConfirmKind =
   | 'startFollowUp'
   | 'restoreDocumentVersion'
   | 'newDocument'
-  | 'copyDocument';
+  | 'copyDocument'
+  | 'removeMember';
 
 /**
  * Which kinds take something away rather than change its state.
@@ -68,6 +69,7 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeDocumentCatalog',
   'removeDiagram',
   'removeDiagramCatalog',
+  'removeMember',
 ]);
 
 export interface ConfirmDialogProps {
@@ -372,6 +374,12 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
       title: t('Start a research'),
       message: <>{t('Start a research on:')} {name}</>,
       button: submitting ? t('Starting…') : t('Start'),
+    },
+    /* Workspace settings > Members: the person keeps their roles, so nothing beyond this workspace changes. */
+    removeMember: {
+      title: t('Remove member'),
+      message: <>{t('They can no longer open this workspace, and keep their roles and their other workspaces:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
     },
     removeScratchpad: {
       title: t('Delete scratchpad'),

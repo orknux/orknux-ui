@@ -438,6 +438,11 @@ const PL: Record<string, string> = {
   WorkspaceMemberUnknown:
     '{username} nie należy do tej przestrzeni roboczej. Członkostwo wynika z ról, w Admin > Role.',
   WorkspaceMemberFixed: '{username} jest administratorem instalacji i administruje każdą przestrzenią roboczą.',
+  WorkspaceMemberNotRemovable:
+    '{username} jest administratorem instalacji i widzi każdą przestrzeń roboczą, więc nie można go z żadnej usunąć.',
+  WorkspaceLastAdministrator:
+    '{username} jest ostatnim administratorem tej przestrzeni roboczej. Zanim usuniesz siebie, uczyń administratorem kogoś innego.',
+  WorkspaceMemberExcluded: '{username} jest usunięty z tej przestrzeni roboczej. Zanim zmienisz jego rolę, wpuść go z powrotem.',
   // --- admin workspaces ----------------------------------------------------
   AdminWorkspaceOpenToOthers:
     '{name} nie może być przestrzenią administracyjną, dopóki mogą ją otworzyć osoby, które nie są administratorami instalacji: ' +

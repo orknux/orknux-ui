@@ -987,9 +987,11 @@ export interface WorkspaceMember {
   role: WorkspaceMemberRole;
   /** An installation administrator: administers everywhere, and is not changed here. */
   fixed: boolean;
+  /** Removed from this workspace although a role of theirs opens it; their roles and other workspaces are untouched. */
+  excluded: boolean;
 }
 
-const MEMBER_FIELDS = 'username displayName userType through role fixed';
+const MEMBER_FIELDS = 'username displayName userType through role fixed excluded';
 
 export async function fetchWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
   const data = await graphql<{ workspaceMembers: WorkspaceMember[] }>(
@@ -1011,4 +1013,26 @@ export async function setWorkspaceMemberRole(
     { workspaceId, username, role },
   );
   return data.setWorkspaceMemberRole;
+}
+
+/** Removes a member from this workspace only: their roles, and every other workspace those open, stay. */
+export async function excludeWorkspaceMember(workspaceId: string, username: string): Promise<WorkspaceMember> {
+  const data = await graphql<{ excludeWorkspaceMember: WorkspaceMember }>(
+    `mutation ExcludeWorkspaceMember($workspaceId: ID!, $username: String!) {
+       excludeWorkspaceMember(workspaceId: $workspaceId, username: $username) { ${MEMBER_FIELDS} }
+     }`,
+    { workspaceId, username },
+  );
+  return data.excludeWorkspaceMember;
+}
+
+/** Lets a removed member back in, as an ordinary member. */
+export async function allowWorkspaceMember(workspaceId: string, username: string): Promise<WorkspaceMember> {
+  const data = await graphql<{ allowWorkspaceMember: WorkspaceMember }>(
+    `mutation AllowWorkspaceMember($workspaceId: ID!, $username: String!) {
+       allowWorkspaceMember(workspaceId: $workspaceId, username: $username) { ${MEMBER_FIELDS} }
+     }`,
+    { workspaceId, username },
+  );
+  return data.allowWorkspaceMember;
 }
