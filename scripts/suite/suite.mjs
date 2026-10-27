@@ -3885,6 +3885,12 @@ export const TESTS = [
     /* Makes two models and a chat and removes them; puts the turn-taking and the stored speed back. Issue #673. */
   },
   {
+    name: 'voice-leave-check',
+    what: 'In voice mode, switching chat while the model thinks asks for no interrupt, and pressing the circle does',
+    needs: ['workspace'],
+    /* Makes two models and two chats and removes them. Issue #615. */
+  },
+  {
     name: 'voice-mute-check',
     what: 'Voice mode mutes by a button and by the shortcut chosen in Preferences; muted, a voice moves nothing, is not transcribed and is not sent',
     needs: ['workspace'],

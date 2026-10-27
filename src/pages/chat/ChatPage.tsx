@@ -2052,8 +2052,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         },
         going,
         signal,
-        // A voice turn is spoken and gone: leaving it stops it, the way #299
-        // meant voice mode to work. The composer's text turns leave this false.
+        // A spoken turn: what the server lends a voice turn. Leaving it stops nothing (#615) -
+        // the panel's circle is what stops it, through interruptChat as Stop is.
         true,
       );
       if (failure !== null) throw new Error(failure);
@@ -5015,6 +5015,9 @@ ${named}`;
             onSay={handleVoiceTurn}
             onAgain={handleVoiceAgain}
             onPhase={setVoicePhase}
+            onStop={() => {
+              if (currentId !== null) interruptChat(currentId).catch(() => undefined);
+            }}
             onClose={() => setVoice(false)}
           />
         )}

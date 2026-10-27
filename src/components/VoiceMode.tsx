@@ -119,6 +119,13 @@ export interface VoiceModeProps {
    * control that says nothing.
    */
   onPhase?: (phase: VoicePhase) => void;
+  /**
+   * Stops the turn in flight on the server, on purpose: the circle pressed, or
+   * a voice talking over the answer. Issue #615. Closing the request is not a
+   * stop any more - the server keeps a turn whose reader went, spoken or typed
+   * - so cutting in says so, as the composer's Stop does.
+   */
+  onStop?: () => void;
   /** Cuts the answer short and goes back to listening, from outside this panel. */
   ref?: Ref<VoiceModeHandle>;
 }
@@ -314,6 +321,7 @@ export function VoiceMode({
   onAgain,
   onClose,
   onPhase,
+  onStop,
   ref,
 }: VoiceModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('listening');
@@ -871,8 +879,9 @@ export function VoiceMode({
       queued.current = null;
       reading.current?.stop();
       reading.current = null;
-      // Walking away from the page mid-sentence stops the model too. It is the
-      // same abandonment as pressing the circle, made by leaving instead.
+      // Leaving - another chat, another page - closes the request and stops
+      // nothing: the answer is finished and kept, and the chat shows it when
+      // somebody comes back. Issue #615; pressing the circle is what stops it.
       asking.current?.abort();
       asking.current = null;
       release();
@@ -960,6 +969,8 @@ export function VoiceMode({
     turn.current += 1;
     reading.current?.stop();
     reading.current = null;
+    // Cutting in is a stop, said to the server: closing the request alone no longer is (#615).
+    if (asking.current !== null) onStop?.();
     asking.current?.abort();
     asking.current = null;
     queued.current = null;
