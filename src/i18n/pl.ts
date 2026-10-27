@@ -2063,6 +2063,8 @@ export const PL: Record<string, string> = {
   "Installation admin": "Administrator instalacji",
   "Role of {name} here": "Rola {name} tutaj",
   "Excluded": "Wykluczony",
+  "Take {roles} off this workspace first: only installation administrators may open an admin workspace.": "Najpierw zdejmij z tej przestrzeni {roles}: przestrzeń administracyjną mogą otwierać tylko administratorzy instalacji.",
+  "The admin workspace settings could not be saved.": "Nie udało się zapisać ustawień przestrzeni administracyjnej.",
   "Exclude member": "Wyklucz członka",
   "Exclude\u001fmember": "Wyklucz",
   "Excluding…": "Wykluczanie…",

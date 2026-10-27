@@ -84,3 +84,10 @@
   font-size: var(--text-sm);
   color: var(--color-danger);
 }
+
+/* What saving would be refused for, said before it is pressed. */
+.caution {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-amber);
+}

@@ -19,7 +19,7 @@ import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
 import { SearchSettings, useSearchSettings } from './SearchSettings';
-import { AdminWorkspaceSettings, useAdminWorkspace } from './AdminWorkspaceSettings';
+import { AdminWorkspaceRefused, AdminWorkspaceSettings, useAdminWorkspace } from './AdminWorkspaceSettings';
 import styles from './WorkspaceSettingsPage.module.css';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -141,7 +141,10 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
       await search.save();
       setSaved(true);
     } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : t('Could not save the workspace.'));
+      // The admin workspace card says its own refusal, beside its switch.
+      if (!(cause instanceof AdminWorkspaceRefused)) {
+        setSaveError(cause instanceof Error ? cause.message : t('Could not save the workspace.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -365,7 +368,10 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
           */}
           <SearchSettings search={search} workspaceId={workspaceId} />
 
-          <AdminWorkspaceSettings admin={admin} />
+          <AdminWorkspaceSettings
+            admin={admin}
+            blocking={roles.filter((role) => roleIds.includes(role.id) && !role.scopes.includes('ADMIN')).map((role) => role.name)}
+          />
 
           <section className={`${styles.card} ${styles.dangerCard}`}>
             <h2 id="danger-zone" className={styles.dangerHeading}>{t('Danger Zone')}</h2>

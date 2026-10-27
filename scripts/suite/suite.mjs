@@ -1117,6 +1117,12 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'admin-workspace-blocked-check',
+    what: 'switching on an admin workspace an ordinary role opens is said in its card before Save, and its refusal drawn there',
+    needs: ['session'],
+    // Makes a workspace and a role, and deletes both.
+  },
+  {
     name: 'admin-workspace-type-check',
     what: 'the admin list of workspaces names each one's type, Admin or Standard, in a column of its own',
     needs: ['workspace'],

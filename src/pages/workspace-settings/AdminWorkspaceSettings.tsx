@@ -11,7 +11,7 @@ import {
 } from '../../api/adminWorkspaces';
 import { fetchWorkspaces, type Workspace } from '../../api/workspaces';
 import { FieldHint } from '../../components/FieldHint';
-import { t } from '../../i18n';
+import { t, tf } from '../../i18n';
 import styles from './AdminWorkspaceSettings.module.css';
 
 /** How many workspaces the reach list offers; the same page the settings page reads its own from. */
@@ -33,9 +33,16 @@ export interface AdminWorkspaceHandle {
   /** Whether this save switches it off, which goes first so a role it was holding off can be added in the same save. */
   turningOff: boolean;
   edit: (next: Partial<AdminWorkspaceInput>) => void;
-  /** Writes it; throws the server's refusal for the page to show at its button. */
+  /**
+   * Writes it. A refusal is shown in the card, beside the switch it is about,
+   * and thrown as [AdminWorkspaceRefused] so the page stops its save without
+   * saying it a second time at its button.
+   */
   save: () => Promise<void>;
 }
+
+/** The card's own refusal, already drawn in the card. */
+export class AdminWorkspaceRefused extends Error {}
 
 function inputOf(held: Held): AdminWorkspaceInput {
   return { enabled: held.enabled, reachAll: held.reachAll, reach: held.reach, scopes: held.scopes, tools: held.tools };
@@ -81,7 +88,14 @@ export function useAdminWorkspace(workspaceId: string, onChange?: () => void): A
     },
     async save() {
       if (!dirty || held === null) return;
-      const saved = await setAdminWorkspace(workspaceId, draft);
+      let saved: Held;
+      try {
+        saved = await setAdminWorkspace(workspaceId, draft);
+      } catch (cause) {
+        const said = cause instanceof Error ? cause.message : t('The admin workspace settings could not be saved.');
+        setFailure(said);
+        throw new AdminWorkspaceRefused(said);
+      }
       setHeld(saved);
       setDraft(inputOf(saved));
       setDirty(false);
@@ -126,8 +140,15 @@ function toggled<T>(list: T[], item: T, on: boolean): T[] {
  * administrator decides it, and this page is theirs. Nothing here saves; the
  * page's Save Changes writes it.
  */
-export function AdminWorkspaceSettings({ admin }: { admin: AdminWorkspaceHandle }) {
+/**
+ * @param blocking the roles opening this workspace that do not make their
+ *   holders installation administrators. While the switch is on and any are
+ *   here, saving would be refused - so it is said in the card before anybody
+ *   presses Save, naming them.
+ */
+export function AdminWorkspaceSettings({ admin, blocking = [] }: { admin: AdminWorkspaceHandle; blocking?: string[] }) {
   const { held, draft } = admin;
+  const blocked = draft.enabled && blocking.length > 0;
 
   if (held === null) {
     return (
@@ -241,7 +262,14 @@ export function AdminWorkspaceSettings({ admin }: { admin: AdminWorkspaceHandle 
         </>
       )}
 
-      {admin.failure !== null && <p className={styles.error} role="alert">{admin.failure}</p>}
+      {blocked && admin.failure === null && (
+        <p className={styles.caution} role="alert" data-admin-workspace-blocked="">
+          {tf('Take {roles} off this workspace first: only installation administrators may open an admin workspace.', {
+            roles: blocking.join(', '),
+          })}
+        </p>
+      )}
+      {admin.failure !== null && <p className={styles.error} role="alert" data-admin-workspace-failure="">{admin.failure}</p>}
     </section>
   );
 }
