@@ -303,6 +303,8 @@ function fixedBecause(governance: BuiltInToolGovernance | null): string | null {
       return t('Granted by the secret and variable catalogs — switch it there.');
     case 'MAY_ASK_FOR_TOOLS':
       return t('Granted by May ask for more tools — switch it there.');
+    case 'ADMIN_WORKSPACE':
+      return t('Granted by this admin workspace — switch it in Admin > Workspaces.');
     default:
       return null;
   }
@@ -1401,7 +1403,7 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
     'tools',
     async () => {
       const [builtIn, held, offered] = await Promise.all([
-        fetchBuiltInTools(),
+        fetchBuiltInTools(workspaceId),
         fetchWorkspaceTools(workspaceId, 0, TOOL_PAGE_SIZE),
         fetchPluginTools(),
       ]);
@@ -1497,6 +1499,9 @@ export function AgentForm({ workspaceId, agent, styles, heading, onSaved, onCanc
         return secretCatalogs.length > 0 || variableCatalogs.length > 0;
       case 'MAY_ASK_FOR_TOOLS':
         return mayAskForTools;
+      // Listed only while the workspace offers it, so a row drawn is a tool held.
+      case 'ADMIN_WORKSPACE':
+        return true;
       default:
         return false;
     }

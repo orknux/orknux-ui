@@ -177,7 +177,9 @@ export type BuiltInToolGovernance =
   | 'HTTP_TOOLS'
   | 'BOX_ACCESS'
   | 'VARIABLE_CATALOGS'
-  | 'MAY_ASK_FOR_TOOLS';
+  | 'MAY_ASK_FOR_TOOLS'
+  /** The agent's workspace is an admin workspace with this tool switched on, in Admin > Workspaces. */
+  | 'ADMIN_WORKSPACE';
 
 /** One of the tools the server brings itself, and what switches it. */
 export interface BuiltInTool {
@@ -208,8 +210,12 @@ export interface BuiltInTool {
  * row here that the server did not know, or a tool it hands out that is not a
  * row, is the fault #444 was filed about.
  */
-export async function fetchBuiltInTools(): Promise<BuiltInTool[]> {
-  const data = await graphql<{ builtInTools: BuiltInTool[] }>(`query BuiltInTools { builtInTools { name governance summary unavailable startsHidden startsOffered fixedAlways } }`);
+export async function fetchBuiltInTools(workspaceId?: string): Promise<BuiltInTool[]> {
+  // Given the workspace, an admin workspace's admin tools come back too, since every agent there is offered them.
+  const data = await graphql<{ builtInTools: BuiltInTool[] }>(
+    `query BuiltInTools($workspaceId: ID) { builtInTools(workspaceId: $workspaceId) { name governance summary unavailable startsHidden startsOffered fixedAlways } }`,
+    { workspaceId: workspaceId ?? null },
+  );
   return data.builtInTools;
 }
 

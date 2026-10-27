@@ -19,6 +19,7 @@ import { Loader } from '../../components/Loader';
 import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
 import { SearchSettings, useSearchSettings } from './SearchSettings';
+import { AdminWorkspaceSettings, useAdminWorkspace } from './AdminWorkspaceSettings';
 import styles from './WorkspaceSettingsPage.module.css';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -70,6 +71,8 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
   const [deleting, setDeleting] = useState(false);
   /** What the workspace searches the web with; saved by this page's Save Changes, put back by its Discard. */
   const search = useSearchSettings(workspaceId, () => setSaved(false));
+  /** Whether it is an admin workspace, and what it may read; saved and put back with the rest. */
+  const admin = useAdminWorkspace(workspaceId, () => setSaved(false));
 
   useEffect(() => {
     // The workspaces query is already filtered to what the caller may see.
@@ -115,6 +118,14 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
     setSaveError(null);
     setSaved(false);
     try {
+      /*
+       * Switching an admin workspace off goes before the roles, and on after
+       * them: the server refuses a role that is not the administrator's on an
+       * admin workspace, and refuses switching one on while such a role is on
+       * it - so one save can take a role off and switch it on, or switch it off
+       * and put a role on, whichever order the boxes were touched in.
+       */
+      if (admin.turningOff) await admin.save();
       if (generalChanged) {
         const updated = await updateWorkspace(workspaceId, {
           name: name.trim(),
@@ -126,6 +137,7 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
         forgetWorkspaces();
         setWorkspace(updated);
       }
+      await admin.save();
       await search.save();
       setSaved(true);
     } catch (cause) {
@@ -142,7 +154,7 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
    */
   const generalChanged = useDirty({ name, description, roleIds, adminRoleIds }, [workspace]);
   /** The search section is part of this form too: its draft is written by the same Save. */
-  const changed = generalChanged || search.dirty;
+  const changed = generalChanged || search.dirty || admin.dirty;
 
   return (
     <AppShell
@@ -352,6 +364,8 @@ function WorkspaceSettingsView({ session, onSignOut, onDiscard }: WorkspaceSetti
             Save Changes below writes it with the rest and Discard puts it back.
           */}
           <SearchSettings search={search} workspaceId={workspaceId} />
+
+          <AdminWorkspaceSettings admin={admin} />
 
           <section className={`${styles.card} ${styles.dangerCard}`}>
             <h2 id="danger-zone" className={styles.dangerHeading}>{t('Danger Zone')}</h2>

@@ -320,6 +320,10 @@ export function AdminPage({ session, onSignOut }: AdminPageProps) {
                 <Link className={styles.workspaceLabel} to={`/workspace/${workspace.id}`}>
                   {workspace.name}
                 </Link>
+                {/* Its agents read other workspaces; set in its settings, seen by administrators alone. */}
+                {workspace.adminWorkspace && (
+                  <span className={styles.adminBadge} data-admin-workspace-badge={workspace.name}>{t('Admin workspace')}</span>
+                )}
               </div>
               <span className={`${styles.colDescription} ${styles.description}`}>{workspace.description ?? '—'}</span>
               <span className={styles.colActions}>

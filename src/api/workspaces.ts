@@ -24,6 +24,8 @@ export interface Workspace {
   administered: boolean;
   /** Whether the caller may read this workspace's secrets back: administering it, or a role that reads secrets here. */
   readsSecrets: boolean;
+  /** Whether this is an admin workspace, whose agents may read other workspaces. Only administrators see one. */
+  adminWorkspace: boolean;
   /**
    * The model used for the workspace's own small jobs — naming a chat from what
    * was said. Null means those jobs do not happen.
@@ -228,7 +230,7 @@ export interface Workspace {
 }
 
 const WORKSPACE_FIELDS =
-  'id name description roles { id name } adminRoles { id name } administered readsSecrets ' +
+  'id name description roles { id name } adminRoles { id name } administered readsSecrets adminWorkspace ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
   'completionModelId completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +

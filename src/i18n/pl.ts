@@ -4046,4 +4046,15 @@ export const PL: Record<string, string> = {
   "The agent that plans the research, writes the report and reviews it, thinking with its own model.": "Agent, który planuje badanie, pisze raport i go recenzuje, myśląc własnym modelem.",
   "Width of the outline": "Szerokość konspektu",
   "The date and time beside each message in this workspace’s chats. The time was always recorded; this decides whether it is drawn. On by default.": "Data i godzina obok każdej wiadomości w czatach tego obszaru roboczego. Czas był zawsze zapisywany; to ustawienie decyduje, czy jest pokazywany. Domyślnie włączone.",
+  // Admin workspaces.
+  "Admin workspace": "Przestrzeń administracyjna",
+  "The admin workspace settings could not be read.": "Nie udało się odczytać ustawień przestrzeni administracyjnej.",
+  "Its agents may read the workspaces it reaches, and the admin pages switched on below. Read only, and seen by administrators alone.": "Jej agenci mogą czytać przestrzenie robocze, które obejmuje, oraz włączone niżej strony administracyjne. Tylko odczyt, widoczna wyłącznie dla administratorów.",
+  "Reach": "Zasięg",
+  "Every workspace": "Każda przestrzeń robocza",
+  "Chosen workspaces": "Wybrane przestrzenie robocze",
+  "May read": "Może czytać",
+  "Admin tools": "Narzędzia administracyjne",
+  "Each is a tool its agents may call to read that admin page. Nothing here changes a role, a user or a plugin.": "Każde to narzędzie, którym jej agenci mogą przeczytać tę stronę administracyjną. Nic tutaj nie zmienia roli, użytkownika ani wtyczki.",
+  "Granted by this admin workspace — switch it in Admin > Workspaces.": "Przyznane przez tę przestrzeń administracyjną — przełącz to w Admin > Przestrzenie robocze.",
 };

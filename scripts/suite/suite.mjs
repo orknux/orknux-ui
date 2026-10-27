@@ -1346,6 +1346,17 @@ export const TESTS = [
     needs: ['session'],
   },
   {
+    name: 'admin-workspace-check',
+    what: 'making a workspace an admin workspace: the switch, its reach, what it may read and its tools, saved and marked in the list',
+    needs: ['session'],
+    /*
+     * `alone`, for the reason page-reset-check is: it makes two workspaces and
+     * removes them, and workspace-selector-check counts the installation's
+     * workspaces before and after a reload.
+     */
+    alone: true,
+  },
+  {
     name: 'plugin-accept-check',
     what: 'a plugin asking for permissions and capabilities is one question, and one answer loads it',
     needs: ['session'],
