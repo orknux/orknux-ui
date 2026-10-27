@@ -125,7 +125,8 @@ legend.labelRow {
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  padding: 1px 1px 1px var(--space-12);
+  min-height: 36px;
+  padding: 1px 2px 1px var(--space-12);
   background: var(--color-surface-raised);
 }
 
@@ -176,16 +177,27 @@ legend.labelRow {
 .reachPick {
   flex: 1 1 auto;
   min-width: 0;
-  /* The size of the card's other words, not of a page heading. */
-  height: 36px;
-  font-size: var(--text-sm);
+  /*
+   * The workspace settings page's own picker - the speech models' - so a field
+   * to choose from reads as one: a dark well, not a raised row like the chosen
+   * workspaces above it.
+   */
+  height: 38px;
+  padding: 0 var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
 }
 
 .reachPick [data-select-label] {
-  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
   font-weight: 400;
 }
 
 .reachAddButton {
   flex: none;
+  height: 38px;
 }

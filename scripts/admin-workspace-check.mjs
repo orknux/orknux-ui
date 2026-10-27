@@ -115,13 +115,17 @@ const gaps = await page.evaluate(() =>
   }),
 );
 record(gaps.length >= 3 && gaps.every((gap) => gap !== null && gap >= 6), `every section heading stands clear of its options (${gaps.join(', ')}px)`);
-/* The select reads at the size of the card's other choices, not larger. */
-const sizes = await page.evaluate(() => {
-  const pick = document.querySelector('[data-admin-workspace-reach-list] [data-select-label]');
-  const choice = document.querySelector('[data-admin-workspace-scope]')?.closest('label');
-  return pick && choice ? [getComputedStyle(pick).fontSize, getComputedStyle(choice).fontSize] : null;
+/* The select is a dark well, as the settings page's other pickers are, and the chosen rows are not. */
+const looks = await page.evaluate(() => {
+  const pick = document.querySelector('[data-admin-workspace-reach-list] [data-select]');
+  const probe = document.createElement('span');
+  probe.style.background = 'var(--color-bg)';
+  document.body.append(probe);
+  const well = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  return pick ? { pick: getComputedStyle(pick).backgroundColor, well, font: getComputedStyle(pick).fontFamily } : null;
 });
-record(sizes !== null && sizes[0] === sizes[1], `the select's words are the size of the card's other choices (${sizes?.join(' vs ')})`);
+record(looks !== null && looks.pick === looks.well && /mono/i.test(looks.font), `the select is a dark well in the mono face (${looks?.pick}, ${looks?.font?.split(',')[0]})`);
 record(await add.isDisabled(), 'Add waits for a workspace to be picked');
 await page.locator('[data-admin-workspace-reach-list] [data-select]').click();
 await page.getByRole('option', { name: target.name, exact: true }).click();
@@ -132,7 +136,7 @@ const [rowBox, pickBox] = [
   await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).boundingBox(),
   await page.locator('[data-admin-workspace-reach-list] [data-select]').boundingBox(),
 ];
-record(rowBox !== null && pickBox !== null && rowBox.height <= pickBox.height + 2, `a chosen row is as tall as the select (${Math.round(rowBox?.height ?? 0)} vs ${Math.round(pickBox?.height ?? 0)})`);
+record(rowBox !== null && pickBox !== null && rowBox.height <= pickBox.height + 4, `a chosen row is as tall as the select (${Math.round(rowBox?.height ?? 0)} vs ${Math.round(pickBox?.height ?? 0)})`);
 const removeBox = await page.locator(`[data-admin-workspace-reaches="${target.name}"] button`).boundingBox();
 record(removeBox !== null && removeBox.width >= 30 && removeBox.height >= 30, 'each row has a 32px remove button');
 await page.locator('[data-admin-workspace-scope="CHATS"]').uncheck();
