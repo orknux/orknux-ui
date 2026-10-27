@@ -1108,6 +1108,12 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'template-replace-check',
+    what: 'publishing under a template's name warns in the dialog, then replaces that template',
+    needs: ['workspace'],
+    // Publishes one template twice under one name and deletes it.
+  },
+  {
     name: 'workspace-settings-load-race-check',
     what: 'Workspace Settings does not write a late load over what was typed',
     needs: ['workspace'],

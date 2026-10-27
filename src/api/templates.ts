@@ -60,6 +60,8 @@ export interface ComponentTemplateInput {
   description?: string | null;
   /** Required when publishing a file; left out on an edit keeps the stored one. */
   envelope?: string | null;
+  /** Publishing under a template's name replaces it when true; refused as TemplateNameTaken otherwise. */
+  replace?: boolean;
 }
 
 const TEMPLATE_FIELDS = `

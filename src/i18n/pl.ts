@@ -1683,6 +1683,8 @@ export const PL: Record<string, string> = {
   "Link an issue": "Powiąż zgłoszenie",
   "Publish Template": "Opublikuj szablon",
   "Publish template": "Opublikuj szablon",
+  "Replace template": "Zastąp szablon",
+  "A template called {name} already exists. Publishing replaces its contents and description.": "Szablon o nazwie {name} już istnieje. Publikacja zastąpi jego zawartość i opis.",
   "Use template": "Użyj szablonu",
   "Use templates": "Użyj szablonów",
   "Use {count} templates": "Użyj szablonów: {count}",

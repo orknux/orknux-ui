@@ -378,7 +378,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
                   name={server.name}
                   className={styles.rowAction}
                   canPublish={session.admin}
-                  save={(input) => saveMcpServerAsTemplate(workspaceId, server.id, input.name, input.description)}
+                  save={(input) => saveMcpServerAsTemplate(workspaceId, server.id, input.name, input.description, input.replace)}
                 />
               </span>
               <Link
@@ -538,7 +538,7 @@ export function WorkspaceIntegrationsPage({ session, onSignOut }: WorkspaceInteg
                   name={connection.name}
                   className={styles.rowAction}
                   canPublish={session.admin}
-                  save={(input) => saveConnectionAsTemplate(workspaceId, connection.id, input.name, input.description)}
+                  save={(input) => saveConnectionAsTemplate(workspaceId, connection.id, input.name, input.description, input.replace)}
                 />
               </span>
               <Link

@@ -808,12 +808,18 @@ export async function fetchModelTemplates(): Promise<ModelTemplate[]> {
 }
 
 /** Publishes the given models, under their providers and without any key, as a template. Administrators. */
-export async function publishModelTemplate(workspaceId: string, modelIds: string[], name: string, description: string | null): Promise<ModelTemplate> {
+export async function publishModelTemplate(
+  workspaceId: string,
+  modelIds: string[],
+  name: string,
+  description: string | null,
+  replace = false,
+): Promise<ModelTemplate> {
   const data = await graphql<{ publishModelTemplate: ModelTemplate }>(
-    `mutation PublishModelTemplate($workspaceId: ID!, $modelIds: [ID!]!, $name: String!, $description: String) {
-       publishModelTemplate(workspaceId: $workspaceId, modelIds: $modelIds, name: $name, description: $description) { id name description models }
+    `mutation PublishModelTemplate($workspaceId: ID!, $modelIds: [ID!]!, $name: String!, $description: String, $replace: Boolean) {
+       publishModelTemplate(workspaceId: $workspaceId, modelIds: $modelIds, name: $name, description: $description, replace: $replace) { id name description models }
      }`,
-    { workspaceId, modelIds, name, description },
+    { workspaceId, modelIds, name, description, replace },
   );
   return data.publishModelTemplate;
 }

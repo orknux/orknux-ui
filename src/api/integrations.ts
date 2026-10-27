@@ -857,23 +857,35 @@ export async function fetchIntegrationTemplates(): Promise<IntegrationTemplate[]
 }
 
 /** Publishes one connection, without its credentials, as a template. Administrators. */
-export async function saveConnectionAsTemplate(workspaceId: string, id: string, name: string, description: string | null): Promise<IntegrationTemplate> {
+export async function saveConnectionAsTemplate(
+  workspaceId: string,
+  id: string,
+  name: string,
+  description: string | null,
+  replace = false,
+): Promise<IntegrationTemplate> {
   const data = await graphql<{ saveConnectionAsTemplate: IntegrationTemplate }>(
-    `mutation SaveConnectionAsTemplate($workspaceId: ID!, $id: ID!, $name: String!, $description: String) {
-       saveConnectionAsTemplate(workspaceId: $workspaceId, id: $id, name: $name, description: $description) { ${INTEGRATION_TEMPLATE_FIELDS} }
+    `mutation SaveConnectionAsTemplate($workspaceId: ID!, $id: ID!, $name: String!, $description: String, $replace: Boolean) {
+       saveConnectionAsTemplate(workspaceId: $workspaceId, id: $id, name: $name, description: $description, replace: $replace) { ${INTEGRATION_TEMPLATE_FIELDS} }
      }`,
-    { workspaceId, id, name, description },
+    { workspaceId, id, name, description, replace },
   );
   return data.saveConnectionAsTemplate;
 }
 
 /** Publishes one MCP server, without its credential, as a template. Administrators. */
-export async function saveMcpServerAsTemplate(workspaceId: string, id: string, name: string, description: string | null): Promise<IntegrationTemplate> {
+export async function saveMcpServerAsTemplate(
+  workspaceId: string,
+  id: string,
+  name: string,
+  description: string | null,
+  replace = false,
+): Promise<IntegrationTemplate> {
   const data = await graphql<{ saveMcpServerAsTemplate: IntegrationTemplate }>(
-    `mutation SaveMcpServerAsTemplate($workspaceId: ID!, $id: ID!, $name: String!, $description: String) {
-       saveMcpServerAsTemplate(workspaceId: $workspaceId, id: $id, name: $name, description: $description) { ${INTEGRATION_TEMPLATE_FIELDS} }
+    `mutation SaveMcpServerAsTemplate($workspaceId: ID!, $id: ID!, $name: String!, $description: String, $replace: Boolean) {
+       saveMcpServerAsTemplate(workspaceId: $workspaceId, id: $id, name: $name, description: $description, replace: $replace) { ${INTEGRATION_TEMPLATE_FIELDS} }
      }`,
-    { workspaceId, id, name, description },
+    { workspaceId, id, name, description, replace },
   );
   return data.saveMcpServerAsTemplate;
 }

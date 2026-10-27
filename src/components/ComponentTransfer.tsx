@@ -39,6 +39,7 @@ import { FieldHint } from './FieldHint';
 import dialogStyles from './Dialog.module.css';
 import styles from './ComponentTransfer.module.css';
 import { t, tf } from '../i18n';
+import { ApiError } from '../api/client';
 import { Select } from './Select';
 import { DialogEdges, useDialogSize } from './DialogSize';
 
@@ -1178,7 +1179,7 @@ export interface SaveAsTemplateButtonProps extends Omit<ExportComponentButtonPro
    * carries its provider and is published by its own mutation. Given, the
    * dialog offers no depth: what travels is decided by the thing itself.
    */
-  save?: (input: { name: string; description: string | null }) => Promise<unknown>;
+  save?: (input: { name: string; description: string | null; replace: boolean }) => Promise<unknown>;
 }
 
 /**
@@ -1251,6 +1252,14 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
   const [depth, setDepth] = useState<ExportDepth>('DEEP');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /*
+   * The name a publish was refused for because a template already has it.
+   * Publishing again under it replaces that template, which is how one is
+   * brought up to date - so it is asked here, in the dialog, rather than
+   * refused: the warning says what will be lost and the button says Replace.
+   * Any edit to the name puts the question away again.
+   */
+  const [taken, setTaken] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -1270,10 +1279,12 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
   async function publish() {
     setBusy(true);
     setError(null);
+    const replace = taken !== null && taken === templateName.trim();
     try {
       const input = {
         name: templateName.trim(),
         description: description.trim() === '' ? null : description.trim(),
+        replace,
       };
       if (save !== undefined) await save(input);
       else if (kind !== undefined) await saveComponentAsTemplate(workspaceId, kind, id, depth, input);
@@ -1282,7 +1293,11 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
       onClose();
       return;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('Could not publish it.'));
+      if (cause instanceof ApiError && cause.code === 'TemplateNameTaken' && !replace) {
+        setTaken(templateName.trim());
+      } else {
+        setError(cause instanceof Error ? cause.message : t('Could not publish it.'));
+      }
     }
     setBusy(false);
   }
@@ -1307,7 +1322,10 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
                 id={`${own}-name`}
                 className={dialogStyles.input}
                 value={templateName}
-                onChange={(event) => setTemplateName(event.target.value)}
+                onChange={(event) => {
+                  setTemplateName(event.target.value);
+                  setTaken(null);
+                }}
                 maxLength={120}
               />
             </div>
@@ -1357,6 +1375,11 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
               </label>
             </div>}
 
+        {taken !== null && (
+          <p className={dialogStyles.error} role="alert" data-template-taken="">
+            {tf('A template called {name} already exists. Publishing replaces its contents and description.', { name: taken })}
+          </p>
+        )}
         {error !== null && (
           <p className={dialogStyles.error} role="alert">
             {error}
@@ -1372,8 +1395,9 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
             className={dialogStyles.filled}
             onClick={() => void publish()}
             disabled={busy || templateName.trim() === ''}
+            data-template-publish=""
           >
-            {busy ? t('Publishing…') : t('Publish template')}
+            {busy ? t('Publishing…') : taken !== null ? t('Replace template') : t('Publish template')}
           </button>
         </div>
       </div>

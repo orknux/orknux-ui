@@ -694,7 +694,7 @@ export function WorkspaceModelsPage({ session, onSignOut }: WorkspaceModelsPageP
                   name={model.name}
                   className={styles.rowAction}
                   canPublish={session.admin}
-                  save={(input) => publishModelTemplate(workspaceId, [model.id], input.name, input.description)}
+                  save={(input) => publishModelTemplate(workspaceId, [model.id], input.name, input.description, input.replace)}
                 />
               </span>
               <Link
