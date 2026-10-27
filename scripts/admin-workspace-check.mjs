@@ -94,7 +94,21 @@ const widest = await page.$$eval('[data-admin-workspace-settings] label', (label
 record(box !== null && widest <= box.x + box.width + 0.5, `every choice sits inside the card (right edge ${Math.round(widest)} of ${box === null ? '?' : Math.round(box.x + box.width)})`);
 
 await page.locator('[data-admin-workspace-reach="chosen"]').check();
-await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).check();
+/* Chosen workspaces are a list: none yet, then one picked in the select and added. */
+record(
+  (await page.locator('[data-admin-workspace-settings] [data-hint="Reach"]').count()) === 1 &&
+    (await page.locator('[data-admin-workspace-settings] [data-hint="May read"]').count()) === 1,
+  'Reach and May read each have a help hint',
+);
+record((await page.locator('[data-admin-workspace-reach-empty]').count()) === 1, 'an empty list says no workspace is chosen');
+const add = page.locator('[data-admin-workspace-reach-add]');
+record(await add.isDisabled(), 'Add waits for a workspace to be picked');
+await page.locator('[data-admin-workspace-reach-list] [data-select]').click();
+await page.getByRole('option', { name: target.name, exact: true }).click();
+await add.click();
+record((await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).count()) === 1, 'Add puts the picked workspace in the list');
+const removeBox = await page.locator(`[data-admin-workspace-reaches="${target.name}"] button`).boundingBox();
+record(removeBox !== null && removeBox.width >= 30 && removeBox.height >= 30, 'each row has a 32px remove button');
 await page.locator('[data-admin-workspace-scope="CHATS"]').uncheck();
 await page.locator('[data-admin-workspace-tool="USERS"]').check();
 
@@ -122,7 +136,7 @@ record(adminWorkspace.tools.includes('USERS'), 'the users tool is on');
 await page.goto(settingsPath, { waitUntil: 'domcontentloaded' });
 await page.locator('[data-admin-workspace-scope]').first().waitFor({ timeout: 15_000 });
 record(await page.locator('[data-admin-workspace-reach="chosen"]').isChecked(), 'after a reload, the reach is still the chosen list');
-record(await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).isChecked(), 'and the chosen workspace is still ticked');
+record((await page.locator(`[data-admin-workspace-reaches="${target.name}"]`).count()) === 1, 'and the chosen workspace is still in the list');
 record(!(await page.locator('[data-admin-workspace-scope="CHATS"]').isChecked()), 'and chats are still off');
 
 /* The workspace list says which it is, beside the name, on its own row. */

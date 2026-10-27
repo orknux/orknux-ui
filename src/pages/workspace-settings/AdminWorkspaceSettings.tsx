@@ -11,7 +11,9 @@ import {
 } from '../../api/adminWorkspaces';
 import { fetchWorkspaces, type Workspace } from '../../api/workspaces';
 import { FieldHint } from '../../components/FieldHint';
+import { Select } from '../../components/Select';
 import { t, tf } from '../../i18n';
+import dialogStyles from '../../components/Dialog.module.css';
 import styles from './AdminWorkspaceSettings.module.css';
 
 /** How many workspaces the reach list offers; the same page the settings page reads its own from. */
@@ -103,6 +105,71 @@ export function useAdminWorkspace(workspaceId: string, onChange?: () => void): A
   };
 }
 
+/**
+ * The chosen workspaces, as a list: one row each with a remove button, and a
+ * select of the ones not yet in it with Add beside it. A list of every
+ * workspace with a box each was a list of every workspace - fine at five,
+ * a scroll at sixty - and said nothing about which were chosen at a glance.
+ */
+function ReachList({ admin }: { admin: AdminWorkspaceHandle }) {
+  const { draft, others } = admin;
+  const [picked, setPicked] = useState('');
+  const chosen = draft.reach
+    .map((id) => others.find((one) => one.id === id) ?? { id, name: id })
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const offered = others.filter((one) => !draft.reach.includes(one.id));
+
+  return (
+    <div className={styles.reach} data-admin-workspace-reach-list="">
+      {chosen.length === 0 ? (
+        <p className={styles.note} data-admin-workspace-reach-empty="">{t('No workspaces chosen; this workspace reads none.')}</p>
+      ) : (
+        <ul className={styles.reachRows}>
+          {chosen.map((one) => (
+            <li key={one.id} className={styles.reachRow} data-admin-workspace-reaches={one.name}>
+              <span className={styles.reachName}>{one.name}</span>
+              <button
+                type="button"
+                className={styles.reachRemove}
+                aria-label={tf('Remove {name}', { name: one.name })}
+                title={tf('Remove {name}', { name: one.name })}
+                onClick={() => admin.edit({ reach: draft.reach.filter((id) => id !== one.id) })}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className={styles.reachAdd}>
+        <Select
+          value={picked}
+          onChange={setPicked}
+          className={styles.reachPick}
+          disabled={offered.length === 0}
+        >
+          <option value="">{offered.length === 0 ? t('Every workspace is chosen') : t('Choose a workspace…')}</option>
+          {offered.map((one) => (
+            <option key={one.id} value={one.id}>{one.name}</option>
+          ))}
+        </Select>
+        <button
+          type="button"
+          className={`${dialogStyles.filled} ${styles.reachAddButton}`}
+          disabled={picked === ''}
+          data-admin-workspace-reach-add=""
+          onClick={() => {
+            admin.edit({ reach: [...draft.reach, picked] });
+            setPicked('');
+          }}
+        >
+          {t('Add')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* Asked at drawing time, since `t` answers in the language the tree was mounted in. */
 function scopeLabel(scope: AdminWorkspaceScope): string {
   switch (scope) {
@@ -181,7 +248,10 @@ export function AdminWorkspaceSettings({ admin, blocking = [] }: { admin: AdminW
       {draft.enabled && (
         <>
           <fieldset className={styles.group}>
-            <legend className={styles.label}>{t('Reach')}</legend>
+            <legend className={styles.labelRow}>
+              <span className={styles.label}>{t('Reach')}</span>
+              <FieldHint label={t('Reach')}>{t('Which workspaces its agents may read.')}</FieldHint>
+            </legend>
             <div className={styles.options}>
               <label className={styles.check}>
                 <input
@@ -204,25 +274,14 @@ export function AdminWorkspaceSettings({ admin, blocking = [] }: { admin: AdminW
                 {t('Chosen workspaces')}
               </label>
             </div>
-            {!draft.reachAll && (
-              <div className={styles.choices}>
-                {admin.others.map((other) => (
-                  <label key={other.id} className={styles.check}>
-                    <input
-                      type="checkbox"
-                      checked={draft.reach.includes(other.id)}
-                      data-admin-workspace-reaches={other.name}
-                      onChange={(event) => admin.edit({ reach: toggled(draft.reach, other.id, event.target.checked) })}
-                    />
-                    {other.name}
-                  </label>
-                ))}
-              </div>
-            )}
+            {!draft.reachAll && <ReachList admin={admin} />}
           </fieldset>
 
           <fieldset className={styles.group}>
-            <legend className={styles.label}>{t('May read')}</legend>
+            <legend className={styles.labelRow}>
+              <span className={styles.label}>{t('May read')}</span>
+              <FieldHint label={t('May read')}>{t('What its agents may read in those workspaces.')}</FieldHint>
+            </legend>
             <div className={styles.choices}>
               {ADMIN_WORKSPACE_SCOPES.map((scope) => (
                 <label key={scope} className={styles.check}>
