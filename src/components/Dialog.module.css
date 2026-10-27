@@ -154,6 +154,13 @@
   color: var(--color-danger);
 }
 
+/* A consequence to know about before pressing, not something that went wrong. */
+.caution {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-amber);
+}
+
 .actions {
   display: flex;
   align-items: center;

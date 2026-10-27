@@ -1387,7 +1387,7 @@ function SaveAsTemplateDialog({ open, workspaceId, kind, id, name, save, onClose
             </div>}
 
         {taken !== null && (
-          <p className={dialogStyles.error} role="alert" data-template-taken="">
+          <p className={dialogStyles.caution} role="alert" data-template-taken="">
             {tf('A template called {name} already exists. Publishing replaces its contents and description.', { name: taken })}
           </p>
         )}

@@ -57,6 +57,17 @@ record(first.length === 1, `one press published it (${first.length})`);
 dialog = await fill('Second');
 const warned = (await dialog.locator('[data-template-taken]').count()) === 1;
 record(warned, 'the taken name is warned about before anything is pressed');
+/* In amber, as a caution: red is for what went wrong, and nothing has. */
+const colour = await dialog.locator('[data-template-taken]').evaluate((one) => getComputedStyle(one).color);
+const amber = await page.evaluate(() => {
+  const probe = document.createElement('span');
+  probe.style.color = 'var(--color-amber)';
+  document.body.append(probe);
+  const said = getComputedStyle(probe).color;
+  probe.remove();
+  return said;
+});
+record(colour === amber, `the warning is amber (${colour})`);
 const label = (await press(dialog).innerText()).trim();
 record(label === 'Replace template', `and the button says what it will do ("${label}")`);
 record((await named())[0]?.description === 'First', 'nothing is replaced by being warned');
