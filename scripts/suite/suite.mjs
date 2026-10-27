@@ -4867,6 +4867,12 @@ export const TESTS = [
   },
 
   {
+    name: 'session-export-csv-check',
+    what: 'a session page offers its whole transcript as a CSV download, narrowed by the search it is filtering with',
+    needs: ['session'],
+  },
+
+  {
     name: 'session-notes-check',
     what: 'a session draws what its agents wrote down for themselves, as lines of its log where they were written',
     needs: ['session'],

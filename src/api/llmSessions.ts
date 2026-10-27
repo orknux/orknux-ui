@@ -490,3 +490,15 @@ export async function fetchLlmSessionEvents(
   );
   return data.llmSessionEvents;
 }
+
+/**
+ * Where a session's transcript downloads as CSV: every line, oldest first,
+ * narrowed by the search and kinds the page is filtering with.
+ */
+export function sessionTranscriptCsvUrl(sessionId: string, search: string, kinds: readonly LlmSessionEventKind[]): string {
+  const query = new URLSearchParams();
+  if (search.trim() !== '') query.set('search', search.trim());
+  for (const kind of kinds) query.append('kinds', kind);
+  const tail = query.toString();
+  return `/api/sessions/${sessionId}/transcript.csv${tail === '' ? '' : `?${tail}`}`;
+}

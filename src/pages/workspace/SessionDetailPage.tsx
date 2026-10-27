@@ -13,6 +13,7 @@ import {
   fetchLlmSession,
   fetchSessionWriting,
   fetchLlmSessionEvents,
+  sessionTranscriptCsvUrl,
   removeLlmSession,
   fetchLlmSessionFamily,
   fetchSessionScratchpads,
@@ -62,6 +63,7 @@ import type { SessionUser } from '../../api/session';
 import { timeAgo } from '../../api/tools';
 import checkIcon from '../../assets/check.svg';
 import chevronDown12Icon from '../../assets/chevron-down-12.svg';
+import downloadIcon from '../../assets/download.svg';
 import refreshIcon from '../../assets/refresh-cw.svg';
 import searchIcon from '../../assets/search.svg';
 import { AppShell } from '../../components/AppShell';
@@ -1486,6 +1488,16 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
                     <img src={refreshIcon} alt="" width={14} height={14} />
                     {t('Refresh')}
                   </button>
+                  {/* The whole transcript, not the page on screen, as the search and kinds narrow it. */}
+                  <a
+                    className={styles.refresh}
+                    href={sessionTranscriptCsvUrl(held.id, search, kinds)}
+                    download
+                    data-testid="session-export-csv"
+                  >
+                    <img src={downloadIcon} alt="" width={14} height={14} />
+                    {t('Export CSV')}
+                  </a>
                   {/*
                     Picking the conversation up by hand.
 
