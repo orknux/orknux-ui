@@ -96,6 +96,8 @@ const PL: Record<string, string> = {
   IssueNotFound: 'Nie ma zgłoszenia o identyfikatorze {id}',
   IssueRelationNotFound: 'Nie ma powiązania o identyfikatorze {id}',
   LlmSessionNotFound: 'Nie ma sesji LLM o identyfikatorze {id}',
+  SessionFlagNotFound: 'Nie ma flagi o identyfikatorze {id}',
+  SessionFlagAlreadyCleared: 'Flaga {id} jest już zdjęta',
   MemoryCatalogNotFound: 'Nie ma katalogu pamięci o identyfikatorze {id}',
   MemoryNotFound: 'Nie ma wspomnienia o identyfikatorze {id}',
   ObjectNotFound: 'Nie ma obiektu o identyfikatorze {id}',

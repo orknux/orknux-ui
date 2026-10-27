@@ -78,6 +78,7 @@ import { usePageWithin } from '../../components/pageWithin';
 import { shellUser } from '../../session/user';
 import styles from './SessionDetailPage.module.css';
 import { BoxOutput } from './BoxOutput';
+import { SessionFlags } from './SessionFlags';
 import { t, tf } from '../../i18n';
 import { moment, zoned } from '../../session/timeZone';
 import { Select } from '../../components/Select';
@@ -1643,6 +1644,8 @@ export function SessionDetailPage({ session, onSignOut }: SessionDetailPageProps
             {held !== null && costShown && held.spent != null && <SpendMeter spent={held.spent} />}
             {held !== null && held.speed != null && <SpeedMeter speed={held.speed} />}
             {held !== null && <SessionRuns workspaceId={workspaceId} sessionId={sessionId} />}
+            {/* What agents flagged here: an installation administrator's alone, and the server says the same. */}
+            {held !== null && session.admin && <SessionFlags sessionId={sessionId} />}
           </>
         )}
       </header>

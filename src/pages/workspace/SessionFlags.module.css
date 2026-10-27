@@ -1,0 +1,105 @@
+/* The session's flags, under its runs and in the same voice: a label, then a row each. */
+.flags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.report {
+  font-weight: 400;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.report:hover {
+  text-decoration: underline;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-6);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.flag[data-flag-state='CLEARED'] {
+  color: var(--color-text-secondary);
+}
+
+.security,
+.technical {
+  flex: none;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-4);
+}
+
+.security {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.technical {
+  color: var(--color-amber);
+  background: var(--color-amber-soft);
+}
+
+.severity {
+  flex: none;
+  font-weight: 600;
+}
+
+.note {
+  flex: 1 1 240px;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  flex: none;
+  color: var(--color-text-secondary);
+}
+
+.clear {
+  flex: none;
+  padding: var(--space-2) var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.clear:hover {
+  border-color: var(--color-accent);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}

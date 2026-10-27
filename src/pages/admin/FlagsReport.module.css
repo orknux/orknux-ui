@@ -1,0 +1,55 @@
+/* A flag's type, as a small tag: a probe in the danger colour, a fault in amber. */
+.typeSecurity,
+.typeTechnical {
+  display: inline-block;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-4);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.typeSecurity {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.typeTechnical {
+  color: var(--color-amber);
+  background: var(--color-amber-soft);
+}
+
+/* Severity in the colour the chart gives its band. */
+.severityLow {
+  color: var(--color-success);
+}
+
+.severityMiddling {
+  color: var(--color-amber);
+}
+
+.severityHigh {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* Clearing a flag, at the end of its row, in the export button's quiet voice. */
+.clear {
+  padding: var(--space-2) var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.clear:hover:not(:disabled) {
+  border-color: var(--color-accent-brand);
+}
+
+.clear:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}

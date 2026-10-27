@@ -581,6 +581,12 @@ const IN_THE_OPEN = [
     why: 'the errors report empty, in place of an empty table, as the other reports say',
   },
   {
+    file: 'src/pages/admin/FlagsReport.tsx',
+    says: 'No flags in this period.',
+    because: 'status',
+    why: 'the flags report empty, in place of an empty table, as the other reports say',
+  },
+  {
     file: 'src/pages/workspace/ExecutionDetailPage.tsx',
     says: 'No step detail was recorded for this run.',
     because: 'status',

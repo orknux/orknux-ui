@@ -257,6 +257,40 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'flags-report-check',
+    what: 'Admin > Reports > Flags: a row per flag an agent raised, a chart above by type and by severity, a filter that narrows the rows, a column press that reorders them, and Clear flag',
+    needs: ['workspace'],
+    ci: false,
+    /*
+     * `ci: false` for the reason the task checks give: a flag is raised by an
+     * agent calling flag_session, so there has to be a model the server calls,
+     * and CI has none. `scripts/suite/flag-stub.py` flags as the message tells
+     * it to. Each run's notes carry a stamp and the report is searched for it,
+     * so what is counted is this run's: flags are kept, never deleted. Run it by
+     * hand:
+     *
+     *   python scripts/suite/flag-stub.py 8196
+     *   node scripts/suite/run.mjs --only flags-report-check
+     *
+     * Where the stub is, as the server reaches it, goes in ORKNUX_FLAG_STUB.
+     */
+  },
+  {
+    name: 'flag-hidden-check',
+    what: "a chat drawn for somebody who does not administer the installation has no flag call in it, live or after a reload, and their session page none; an administrator's has both",
+    needs: ['workspace'],
+    ci: false,
+    /*
+     * The same stub and the same reason as flags-report-check. It makes a user
+     * who sees the workspace through a role made for the run, and puts the
+     * workspace's and the user's roles back as they were. Users cannot be
+     * removed, so that one is kept and found again. Run it by hand:
+     *
+     *   python scripts/suite/flag-stub.py 8196
+     *   node scripts/suite/run.mjs --only flag-hidden-check
+     */
+  },
+  {
     name: 'usage-report-check',
     what: "Admin > Reports: usage tracking is switched in Admin Settings, the report says when it is off and links there, and draws people and their sessions",
     needs: [],
@@ -1141,7 +1175,7 @@ export const TESTS = [
   },
   {
     name: 'template-replace-check',
-    what: 'publishing under a template's name warns in the dialog, then replaces that template',
+    what: "publishing under a template's name warns in the dialog, then replaces that template",
     needs: ['workspace'],
     // Publishes one template twice under one name and deletes it.
   },

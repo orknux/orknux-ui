@@ -1,0 +1,26 @@
+/* A type's colour: a probe in the danger red, a fault in the chart's own second colour. */
+.security {
+  background: var(--color-danger-solid);
+  fill: var(--color-danger-solid);
+}
+
+.technical {
+  background: var(--color-chart-2);
+  fill: var(--color-chart-2);
+}
+
+/* A severity's colour says how bad: low in the success green, middling in amber, high in the danger red. */
+.low {
+  background: var(--color-success-solid);
+  fill: var(--color-success-solid);
+}
+
+.middling {
+  background: var(--color-amber);
+  fill: var(--color-amber);
+}
+
+.high {
+  background: var(--color-danger-solid);
+  fill: var(--color-danger-solid);
+}
