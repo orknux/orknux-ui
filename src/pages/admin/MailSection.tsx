@@ -198,7 +198,10 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
 
       <div className={page.setting}>
         <div className={page.settingText}>
-          <p className={page.settingLabel}>{t('In use')}</p>
+          <span className={page.labelWithHint}>
+            <p className={page.settingLabel}>{t('In use')}</p>
+            <FieldHint label={t('In use')}>{t("Which server this installation's own mail goes through now: the one set here, or the ORKNUX_MAIL_* variables.")}</FieldHint>
+          </span>
         </div>
         <div className={page.retention}>
           <span className={styles.source} data-mail-source={held?.source ?? ''}>
@@ -218,7 +221,7 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
         </div>
       </div>
 
-      <MailField label={t('Host')}>
+      <MailField label={t('Host')} hint={t("The mail server's address, such as smtp.example.com.")}>
         <input
           id="mail-host"
           name="mailHost"
@@ -233,7 +236,7 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
         />
       </MailField>
 
-      <MailField label={t('Port')}>
+      <MailField label={t('Port')} hint={t("Empty takes what Security usually listens on: 587, 465 or 25.")}>
         <input
           id="mail-port"
           name="mailPort"
@@ -249,7 +252,7 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
         />
       </MailField>
 
-      <MailField label={t('Security')}>
+      <MailField label={t('Security')} hint={t("STARTTLS upgrades a plain connection, TLS encrypts from the start, None sends in the clear.")}>
         <Select
           id="mail-security"
           name="mailSecurity"
@@ -267,7 +270,7 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
         </Select>
       </MailField>
 
-      <MailField label={t('Username')}>
+      <MailField label={t('Username')} hint={t("Empty sends without signing in, which an internal relay usually wants.")}>
         <input
           id="mail-username"
           name="mailUsername"
@@ -283,7 +286,7 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
         />
       </MailField>
 
-      <MailField label={t('Password')}>
+      <MailField label={t('Password')} hint={t("Stored encrypted and never shown again; left empty, the stored one is kept.")}>
         <input
           id="mail-password"
           name="mailPassword"
@@ -299,7 +302,7 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
         />
       </MailField>
 
-      <MailField label={t('From address')}>
+      <MailField label={t('From address')} hint={t("What password resets and issue mail are sent from.")}>
         <input
           id="mail-from"
           name="mailFrom"
@@ -359,11 +362,14 @@ export function MailSection({ onPending, busy = false, ownAddress = null }: Mail
 }
 
 /** One labelled row of the form, in the page's own setting panel. */
-function MailField({ label, children }: { label: string; children: ReactNode }) {
+function MailField({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
   return (
     <div className={page.setting}>
       <div className={page.settingText}>
-        <p className={page.settingLabel}>{label}</p>
+        <span className={page.labelWithHint}>
+          <p className={page.settingLabel}>{label}</p>
+          <FieldHint label={label}>{hint}</FieldHint>
+        </span>
       </div>
       <div className={page.retention}>{children}</div>
     </div>

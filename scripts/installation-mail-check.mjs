@@ -40,6 +40,13 @@ async function openSection() {
 await openSection();
 record((await page.locator('#mail-host').count()) === 1, 'Admin Settings has a Mail section with a host box');
 
+/* Each row says what it is for, as every other setting on the page does. */
+const hinted = [];
+for (const label of ['In use', 'Host', 'Port', 'Security', 'Username', 'Password', 'From address']) {
+  if ((await page.locator(`[data-hint="${label}"]`).count()) === 0) hinted.push(label);
+}
+record(hinted.length === 0, `every Mail row has a help hint${hinted.length ? ` (missing: ${hinted.join(', ')})` : ''}`);
+
 await page.locator('#mail-host').fill('smtp.mail-check.invalid');
 await page.locator('#mail-port').fill('2525');
 await page.locator('#mail-security').click();
