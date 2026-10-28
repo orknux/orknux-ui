@@ -275,3 +275,46 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Paste, Import and New image, side by side at the header's end. */
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.bringButton {
+  flex-shrink: 0;
+  padding: calc(var(--space-8) - 1px) calc(var(--space-14) - 1px);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-6);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.bringButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The whole page takes a dropped picture, and says so while one is held over it. */
+.dropArea {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  /* The page's own spacing, which this wrapper would otherwise have taken away. */
+  gap: var(--space-24);
+  border-radius: var(--radius-12);
+  outline: 2px dashed transparent;
+  outline-offset: var(--space-4);
+}
+
+.dropAreaOn {
+  outline-color: var(--color-accent);
+}
+

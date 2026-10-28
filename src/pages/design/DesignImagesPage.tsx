@@ -24,6 +24,7 @@ import gallery from '../workspace/WorkspaceArtifactsPage.module.css';
 import styles from './DesignImagesPage.module.css';
 import { t, tf } from '../../i18n';
 import { videoFromPicturePath } from './useVideoFromPicture';
+import { PICTURE_FILES, usePictureImport } from './pictureImport';
 
 export interface DesignImagesPageProps {
   session: SessionUser;
@@ -182,6 +183,11 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
     return () => document.removeEventListener('keydown', pressed);
   }, [open?.id]);
 
+  /* Pictures brought in from outside: picked, dropped on the page, or pasted. */
+  const bringing = usePictureImport(workspaceId, () => readFrom(0));
+  const picker = useRef<HTMLInputElement | null>(null);
+  const [dropping, setDropping] = useState(false);
+
   const drawnWith = open?.drawnWith ?? null;
   /** The picture a remove has been asked about, held until it is confirmed. */
   const [removing, setRemoving] = useState<Artifact | null>(null);
@@ -194,19 +200,77 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      {/*
+        A file dropped anywhere on the page is brought in, as the editor's canvas
+        takes one: without this the browser opened the picture in place of the page.
+      */}
+      <div
+        className={dropping ? `${styles.dropArea} ${styles.dropAreaOn}` : styles.dropArea}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+          setDropping(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropping(false);
+        }}
+        onDrop={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return;
+          event.preventDefault();
+          setDropping(false);
+          void bringing.bringIn([...event.dataTransfer.files]);
+        }}
+        data-testid="design-images-drop"
+      >
       <header className={table.header}>
         <div className={table.titleGroup}>
           <h1 className={table.title}>{t('Images')}</h1>
           <p className={table.subtitle}>{t('Every picture a model drew in this workspace.')}</p>
         </div>
-        <button
-          type="button"
-          className={table.createButton}
-          onClick={() => navigate(`/workspace/${workspaceId}/design/images/new`)}
-          data-testid="new-image"
-        >
-          {t('+ New image')}
-        </button>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.bringButton}
+            onClick={() => void bringing.pasteFromClipboard()}
+            disabled={bringing.busy}
+            title={t('Make an image from the picture on the clipboard (Ctrl+V does the same)')}
+            data-testid="design-images-paste"
+          >
+            {t('Paste')}
+          </button>
+          <button
+            type="button"
+            className={styles.bringButton}
+            onClick={() => picker.current?.click()}
+            disabled={bringing.busy}
+            title={t('Make images from picture files')}
+            data-testid="design-images-import"
+          >
+            {bringing.busy ? t('Importing…') : t('Import')}
+          </button>
+          <input
+            ref={picker}
+            type="file"
+            accept={PICTURE_FILES}
+            multiple
+            hidden
+            onChange={(event) => {
+              const files = [...(event.target.files ?? [])];
+              event.target.value = '';
+              if (files.length > 0) void bringing.bringIn(files);
+            }}
+            data-testid="design-images-import-file"
+          />
+          <button
+            type="button"
+            className={table.createButton}
+            onClick={() => navigate(`/workspace/${workspaceId}/design/images/new`)}
+            data-testid="new-image"
+          >
+            {t('+ New image')}
+          </button>
+        </div>
       </header>
 
       <SearchRow>
@@ -216,6 +280,11 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       {error !== null && (
         <p className={table.pageError} role="alert">
           {error}
+        </p>
+      )}
+      {bringing.error !== null && (
+        <p className={table.pageError} role="alert" data-testid="design-images-import-error">
+          {bringing.error}
         </p>
       )}
 
@@ -234,7 +303,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
         {images?.length === 0 && queue.length === 0 && (
           <p className={table.notice}>
             {asked === ''
-              ? t('Nothing yet. An image node or a task that draws fills this.')
+              ? t('Nothing yet. An image node or a task that draws fills this, or paste or drop a picture here.')
               : t('No image matches what you typed.')}
           </p>
         )}
@@ -440,6 +509,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
         </section>
       )}
 
+      </div>
       </div>
 
       <ConfirmDialog

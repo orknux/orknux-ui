@@ -2448,6 +2448,12 @@ export const TESTS = [
     /* Answers the artifact list with one picture of its own. */
   },
   {
+    name: 'images-import-check',
+    what: 'Design -> Images makes an image from a picked PNG and from a picture pasted on the page, each opened in the image editor as the picture it was, and refuses a file that is not a picture on the page',
+    needs: ['workspace'],
+    /* Makes its own pictures and removes them. */
+  },
+  {
     name: 'wireframe-editor-check',
     what: 'Design -> Wireframes opens the editor, which fills the screen as the image editor does; a tool draws what is there after a reload, undo survives the reload, and a model\'s drawing is marked where it draws and lands on the canvas',
     needs: ['workspace'],
