@@ -604,7 +604,8 @@ Accepting compiles the change in the browser and saves it, exactly as Save
 does - what runs is the JavaScript stored beside the TypeScript it came from.
 Nothing is written before that, and whichever you press is said back into the
 conversation, so a change that will not compile can be answered rather than
-silently dropped. The function editor's wand works the same way.
+silently dropped. The function editor has a chat of its own instead; see
+Workflows.
 
 ### What an MCP server brings
 

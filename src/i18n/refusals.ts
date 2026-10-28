@@ -89,6 +89,7 @@ const PL: Record<string, string> = {
   ComponentRevisionNotFound: 'Nie ma wersji o identyfikatorze {id}',
   ConditionNotFound: 'Nie ma warunku o identyfikatorze {id}',
   FunctionNotFound: 'Nie ma funkcji o identyfikatorze {id}',
+  FunctionAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
   ImportNotFound: 'Nie ma funkcji {id} do zaimportowania',
   IssueAttachmentNotFound: 'Nie ma załącznika o identyfikatorze {id}',
   IssueCommentNotFound: 'Nie ma komentarza o identyfikatorze {id}',

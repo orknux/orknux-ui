@@ -507,6 +507,21 @@ compiled from it, so what runs is always what was written. Its parameters are
 declared rather than guessed at, and the workspace variables it may read are
 granted one by one — naming a secret is not enough to reach it.
 
+The function editor takes the whole window: the details - name, parameters,
+the workspace variables it is handed, imports, libraries and what it returns -
+down the left, the code in the middle, and a chat down the right. Ask the chat
+about the function, or to change it: it reads the code as it stands in the
+editor, saved or not, and a change it offers is drawn against the code with
+**Accept** and **Reject** over it. Accepting saves it, as Save does; on a
+function not created yet it puts the change in the editor and leaves Create to
+you. The wand beside Validate asks the chat for help in one click.
+
+**Auto-completion**, the switch beside the wand, suggests how the code at the
+caret goes on, from the workspace's completion model - a line or a few, drawn
+grey after the caret for **Tab** to take. It is on until you switch it off, and
+stays the way you left it. It needs a completion model chosen in the
+workspace's settings; without one nothing is suggested.
+
 ![The objects a workspace has declared](/screens/objects.png)
 
 **Objects** are the shapes that travel between nodes: named fields with types,

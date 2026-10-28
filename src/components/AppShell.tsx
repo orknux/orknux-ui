@@ -109,6 +109,12 @@ export interface AppShellProps {
    */
   scrollContent?: boolean;
   /**
+   * Whether the floating quick chat is offered. Off on a page with a chat of
+   * its own down the side - the function editor's - where it would be a
+   * second box to ask the same question in, about the same thing.
+   */
+  quickChat?: boolean;
+  /**
    * What the content is keyed by instead of the path, for a page whose paths
    * are places in one document rather than pages of their own. The manual's
    * `/docs/<page>` is a place to scroll to; keyed by the path, choosing one
@@ -266,6 +272,7 @@ export function AppShell({
   hideSidebar = false,
   fills = false,
   scrollContent = false,
+  quickChat = true,
   contentKey,
   showAdmin,
   title,
@@ -546,7 +553,7 @@ export function AppShell({
         floating over the one already open — two boxes to type a question into,
         one of which keeps no history.
       */}
-      {where !== 'Chat' && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
+      {where !== 'Chat' && quickChat && <QuickChat workspacePath={workspaceHere} userName={user.name} />}
 
       {/*
         The attribution the licence asks to be kept visible. In the shell rather

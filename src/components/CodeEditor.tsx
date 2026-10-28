@@ -66,6 +66,16 @@ export interface CodeEditorProps {
   language?: 'javascript' | 'typescript' | 'json';
   readOnly?: boolean;
   ariaLabel?: string;
+  /**
+   * Inline completion: what would follow the caret, asked on a pause in the
+   * typing and drawn after the caret as Monaco's ghost text for Tab to take.
+   * Handed the code before and after the caret, and a signal that aborts when
+   * the person types on. Left out, or answering null, nothing is suggested.
+   * Read at every ask, so switching it off takes effect at the next keystroke.
+   */
+  complete?: (before: string, after: string, signal: AbortSignal) => Promise<string | null>;
+  /** How long a pause in the typing has to be before a completion is asked for, in milliseconds. */
+  completePauseMs?: number;
 }
 
 /**
@@ -89,6 +99,8 @@ export function CodeEditor({
   language = 'javascript',
   readOnly = false,
   ariaLabel = t('Code'),
+  complete,
+  completePauseMs = 600,
 }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -100,6 +112,10 @@ export function CodeEditor({
   const moved = useRef(onCaretChange);
   changed.current = onChange;
   moved.current = onCaretChange;
+  const completing = useRef(complete);
+  const pause = useRef(completePauseMs);
+  completing.current = complete;
+  pause.current = completePauseMs;
 
   /**
    * What this editor has said, and has not yet heard back.
@@ -184,7 +200,35 @@ export function CodeEditor({
       moved.current?.(event.position.lineNumber, event.position.column);
     });
 
+    /*
+     * Monaco's own inline completion rather than a widget of ours: the ghost
+     * text, Tab to take it, Escape to drop it and the cancellation when the
+     * caret moves on are all the editor's, and behave as they do in every
+     * other editor built on it. A provider is per language and so shared by
+     * every editor on the page; each answers only for its own model.
+     */
+    const inline = monaco.languages.registerInlineCompletionsProvider(language, {
+      provideInlineCompletions: async (model, position, _context, token) => {
+        const none = { items: [] };
+        if (model !== created.getModel() || completing.current === undefined) return none;
+        await new Promise((done) => window.setTimeout(done, pause.current));
+        const ask = completing.current;
+        if (token.isCancellationRequested || ask === undefined) return none;
+        const text = model.getValue();
+        const at = model.getOffsetAt(position);
+        const aborted = new AbortController();
+        token.onCancellationRequested(() => aborted.abort());
+        const said = await ask(text.slice(0, at), text.slice(at), aborted.signal).catch(() => null);
+        if (said === null || said === '' || token.isCancellationRequested) return none;
+        return {
+          items: [{ insertText: said, range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column) }],
+        };
+      },
+      disposeInlineCompletions: () => undefined,
+    });
+
     return () => {
+      inline.dispose();
       onDidChange.dispose();
       onDidMove.dispose();
       created.getModel()?.dispose();

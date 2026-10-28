@@ -1,4 +1,6 @@
 import { ApiError, graphql } from './client';
+import { editorTurnsInput } from './attachments';
+import type { EditorTurn } from './attachments';
 import type { PageOf } from './client';
 import type { ValueType } from './actions';
 import { SCRIPT_LIBRARY_IMPORT_FIELDS, asLibraryInput } from './libraries';
@@ -1124,4 +1126,52 @@ export function timeAgo(iso: string): string {
   }
   if (unit === 'second' && value < 45) return 'just now';
   return `${value} ${unit}${value === 1 ? '' : 's'} ago`;
+}
+
+/** A rewrite the function editor's chat offered: shown beside the code for Accept and Reject, saved nowhere. */
+export interface FunctionCodeSuggestion {
+  code: string;
+  note: string | null;
+}
+
+export interface FunctionAnswer {
+  answer: string;
+  suggestion: FunctionCodeSuggestion | null;
+}
+
+/**
+ * Asks the function editor's chat about the code as it stands in the editor,
+ * saved or not; `functionId` is null for a function not saved yet.
+ */
+export async function askFunction(
+  workspaceId: string,
+  asked: { functionId: string | null; name: string; code: string },
+  modelId: string,
+  messages: EditorTurn[],
+): Promise<FunctionAnswer> {
+  const data = await graphql<{ askFunction: FunctionAnswer }>(
+    `mutation ($workspaceId: ID!, $functionId: ID, $name: String, $code: String!, $modelId: ID!, $messages: [FunctionChatTurnInput!]!) {
+       askFunction(workspaceId: $workspaceId, functionId: $functionId, name: $name, code: $code, modelId: $modelId, messages: $messages) {
+         answer suggestion { code note }
+       }
+     }`,
+    { workspaceId, ...asked, modelId, messages: editorTurnsInput(messages) },
+  );
+  return data.askFunction;
+}
+
+/** How the code at the caret might go on, from the workspace's completion model; null where there is nothing to suggest. */
+export async function functionCompletion(
+  workspaceId: string,
+  around: { functionId: string | null; name: string; before: string; after: string },
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const data = await graphql<{ functionCompletion: string | null }>(
+    `query FunctionCompletion($workspaceId: ID!, $functionId: ID, $name: String, $before: String!, $after: String) {
+       functionCompletion(workspaceId: $workspaceId, functionId: $functionId, name: $name, before: $before, after: $after)
+     }`,
+    { workspaceId, ...around },
+    signal,
+  );
+  return data.functionCompletion;
 }

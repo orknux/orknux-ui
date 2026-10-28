@@ -109,8 +109,15 @@ async function type(what) {
   await page.waitForTimeout(700);
 }
 
-/** The way out this check uses: the breadcrumb back to the list. */
-const outLink = page.locator(`a[href="${LIST}"]`).last();
+/**
+ * The way out this check uses: the editor's own link back to the list. It was
+ * the last link to the list on the page, which was the workspace menu's - the
+ * editor fills the window now and has no menu, and after a create its own link
+ * carries ?made= so the list can mark what was just made.
+ */
+const outLink = page.getByTestId('function-back');
+/** Whether the page is on the list, whatever the address carries after it. */
+const onList = () => new URL(page.url()).pathname === LIST;
 
 /* ------------------------------------------------------ clean, and left alone */
 
@@ -119,7 +126,7 @@ record((await wouldAsk()) === false, 'untouched: the browser would not ask on th
 record((await asking()) === false, 'untouched: nothing is being asked');
 await outLink.click();
 await page.waitForTimeout(900);
-record(page.url().endsWith(LIST), `clean then leave: the link was followed (${page.url()})`);
+record(onList(), `clean then leave: the link was followed (${page.url()})`);
 record((await asking()) === false, 'clean then leave: without a question');
 
 /* ----------------------------------------------------------- dirty, and asked */
@@ -158,7 +165,7 @@ record((await code()) === opened, 'undone: the code is what was loaded again');
 record((await wouldAsk()) === false, 'undone: so the browser would not ask');
 await outLink.click();
 await page.waitForTimeout(900);
-record(page.url().endsWith(LIST), `undone then leave: the link was followed (${page.url()})`);
+record(onList(), `undone then leave: the link was followed (${page.url()})`);
 record((await asking()) === false, 'undone then leave: without a question');
 
 /* ------------------------------------------------------- leave without saving */
@@ -170,7 +177,7 @@ await page.waitForTimeout(700);
 record(await asking(), 'leave without saving: asked');
 await press('Leave');
 await page.waitForTimeout(1200);
-record(page.url().endsWith(LIST), `leave without saving: the link was followed (${page.url()})`);
+record(onList(), `leave without saving: the link was followed (${page.url()})`);
 record(!(await stored()).includes('//thrown-away'), 'leave without saving: the server never heard about it');
 
 /* --------------------------------------------------------------- save & leave */
@@ -182,7 +189,7 @@ await page.waitForTimeout(700);
 record(await asking(), 'save & leave: asked');
 await press('Save & Leave');
 await page.waitForTimeout(5000);
-record(page.url().endsWith(LIST), `save & leave: the link was followed (${page.url()})`);
+record(onList(), `save & leave: the link was followed (${page.url()})`);
 record((await stored()).includes('//kept'), 'save & leave: and the change was stored');
 
 /* --------------------------------------- saved by hand, then leave: no question */
@@ -196,7 +203,7 @@ record((await wouldAsk()) === false, 'saved then leave: the browser would not as
 await outLink.click();
 await page.waitForTimeout(900);
 record((await asking()) === false, 'saved then leave: the editor does not ask either');
-record(page.url().endsWith(LIST), `saved then leave: the link was followed (${page.url()})`);
+record(onList(), `saved then leave: the link was followed (${page.url()})`);
 
 /* ----------------------------------- a function being written, which has no baseline */
 
@@ -224,7 +231,7 @@ await page.waitForTimeout(700);
 record(await asking(), 'new function, named then leave: the editor asks');
 await press('Leave');
 await page.waitForTimeout(1200);
-record(page.url().endsWith(LIST), `new function, left: the link was followed (${page.url()})`);
+record(onList(), `new function, left: the link was followed (${page.url()})`);
 const never = await graphql(
   `query($id: ID!) { workspaceFunctions(workspaceId: $id, page: 0, size: 100) { content { name } } }`,
   { id: WORKSPACE },
@@ -256,7 +263,7 @@ record((await wouldAsk()) === false, 'created then leave: the browser would not 
 await outLink.click();
 await page.waitForTimeout(900);
 record((await asking()) === false, 'created then leave: the editor does not ask either');
-record(page.url().endsWith(LIST), `created then leave: the link was followed (${page.url()})`);
+record(onList(), `created then leave: the link was followed (${page.url()})`);
 
 /* ------------------------------------------ Back, once, on an editor left clean */
 

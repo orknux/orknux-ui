@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import type { ValueType } from '../../api/actions';
@@ -28,6 +28,12 @@ import {
   withParameters,
 } from '../../api/functions';
 import type { FunctionParam, ScriptImport, WorkspaceFunction } from '../../api/functions';
+import { askFunction, functionCompletion } from '../../api/functions';
+import type { EditorTurn } from '../../api/attachments';
+import { fetchWorkspace } from '../../api/workspaces';
+import bugIcon from '../../assets/bug.svg';
+import fileCodeIcon from '../../assets/file-code.svg';
+import listChecksIcon from '../../assets/list-checks.svg';
 import { fetchWorkspaceLibraries, localName } from '../../api/libraries';
 import type { ScriptLibrary, ScriptLibraryImport, ScriptLibraryImportInput } from '../../api/libraries';
 import type { SessionUser } from '../../api/session';
@@ -54,7 +60,6 @@ import { importTypes } from '../../components/importTypes';
 import { objectTypes } from '../../components/objectTypes';
 import { fetchWorkspaceObjects } from '../../api/objects';
 import type { WorkflowObject } from '../../api/objects';
-import { WorkspaceSidebar } from '../../components/WorkspaceSidebar';
 import { TestRunDialog } from '../../components/TestRunDialog';
 import { TrashIcon } from '../../components/TrashIcon';
 import { UnsavedWorkDialog } from '../../components/UnsavedWorkDialog';
@@ -64,6 +69,10 @@ import { useLeaveGuard } from '../../components/leaveGuard';
 import { matches, useFormatShortcut, useSaveShortcut } from '../../session/shortcut';
 import { shellUser } from '../../session/user';
 import { useWorkspaceVariables } from './workspaceVariables';
+import { useSieve } from '../../components/sieve';
+import { DesignChat, useChatFiles, useChatModels } from '../design/DesignChat';
+import type { ChatIdea } from '../design/DesignChat';
+import shell from '../design/DesignImageEditorPage.module.css';
 import styles from './FunctionEditorPage.module.css';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
@@ -116,6 +125,32 @@ const DEFAULT_PANEL = 380;
  */
 const MIN_EDITOR = 420;
 const MIN_PANEL = 300;
+
+/** What an empty chat offers: a pressed card is sent as it is, so each prompt is whole on its own. */
+const IDEAS: ChatIdea[] = [
+  {
+    icon: fileCodeIcon,
+    title: () => t('Explain this function'),
+    line: () => t('What it takes, does and answers'),
+    prompt: () => t('Explain what this function does: what it takes, what it does with it, and what it answers.'),
+  },
+  {
+    icon: bugIcon,
+    title: () => t('Find problems'),
+    line: () => t('Bugs, edge cases and missing checks'),
+    prompt: () => t('Look for bugs in this function: edge cases it gets wrong, inputs it does not check, and errors it does not handle. Offer a fix if you find any.'),
+  },
+  {
+    icon: listChecksIcon,
+    title: () => t('Handle errors'),
+    line: () => t('Fail clearly instead of quietly'),
+    prompt: () => t('Make this function fail clearly: check its inputs and throw an Error that says what was wrong instead of returning something meaningless.'),
+  },
+];
+
+/** The conversation is kept for the length of the browser tab, so a reload does not lose it. */
+const talkKey = (workspaceId: string, functionId: string) => `orknux.function.talk.${workspaceId}.${functionId === '' ? 'new' : functionId}`;
+const modelKey = (workspaceId: string) => `orknux.function.model.${workspaceId}`;
 
 /**
  * The handle's own track: the room between the columns, which neither gets.
@@ -400,6 +435,52 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
   const [offered, setOffered] = useState<{ note: string | null; code: string } | null>(null);
   /** Why the last accept did not land, shown in the bar it was pressed in. */
   const [offerFailed, setOfferFailed] = useState<string | null>(null);
+
+  /*
+   * The chat down the right, as the Design editors have it. It reads the code
+   * as it stands in the editor, saved or not, and offers a rewrite into the
+   * same Accept and Reject the column above has always drawn.
+   */
+  const firstName = (session.displayName?.trim() || session.username).split(/\s+/)[0];
+  const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
+  const [talk, setTalk] = useState<EditorTurn[]>([]);
+  const [asking, setAsking] = useState('');
+  const files = useChatFiles(workspaceId);
+  const [answering, setAnswering] = useState(false);
+  const [talkError, setTalkError] = useState<string | null>(null);
+  /** Whether the offer on screen came from this page's chat, which is then told what became of it. */
+  const offerFromChat = useRef(false);
+
+  /*
+   * Auto-completion, on unless somebody switched it off: the switch is
+   * remembered per person, as the document editor's is. Asked only where the
+   * workspace has a completion model, after its pause.
+   */
+  const [autocomplete, setAutocomplete] = useSieve('function-editor.autocomplete');
+  const completing = autocomplete !== 'off';
+  const [completionPause, setCompletionPause] = useState<number | null>(null);
+  useEffect(() => {
+    if (workspaceId === '') return;
+    fetchWorkspace(workspaceId)
+      .then((found) => setCompletionPause(found?.completionModelId == null ? null : found.completionPauseMillis))
+      .catch(() => setCompletionPause(null));
+  }, [workspaceId]);
+
+  useEffect(() => {
+    try {
+      const kept = sessionStorage.getItem(talkKey(workspaceId, functionId));
+      setTalk(kept === null ? [] : (JSON.parse(kept) as EditorTurn[]));
+    } catch {
+      setTalk([]);
+    }
+  }, [workspaceId, functionId]);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(talkKey(workspaceId, functionId), JSON.stringify(talk));
+    } catch {
+      // A conversation that cannot be kept is still a conversation.
+    }
+  }, [talk, workspaceId, functionId]);
   /*
    * Whether the function open here was made a moment ago.
    *
@@ -435,7 +516,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
    * The drag itself, which is the same drag the run detail's three panels use -
    * `src/components/DragSize.tsx` holds the pointer, the keyboard and the one
    * line of storage. What is left here is what only this page knows: the panel
-   * is anchored right, so it is the left edge that moves, and the ceiling is
+   * is anchored left, so it is the right edge that moves, and the ceiling is
    * whatever the row can spare once the editor has a column worth reading.
    *
    * A null ceiling until the row has been measured: a ceiling worked out from a
@@ -447,7 +528,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
     initial: DEFAULT_PANEL,
     min: MIN_PANEL,
     max: room === 0 ? null : widest,
-    edge: 'left',
+    edge: 'right',
     nudge: NUDGE,
   });
   const panelWidth = drag.size;
@@ -587,6 +668,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
       if (held?.functionId !== functionId) return;
       // Claimed: the chat shows a pointer here instead of its own card.
       event.preventDefault();
+      offerFromChat.current = false;
       setOffered({ note: held.note, code: held.code });
       setOfferFailed(null);
     }
@@ -598,7 +680,51 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
   function settleOffer(said: string) {
     setOffered(null);
     setOfferFailed(null);
+    tell(said);
+  }
+
+  /**
+   * What became of an offer, said to whichever chat made it. This page's own
+   * puts it in the conversation, where the model reads it with the next
+   * question; nothing is asked of the model on its own account.
+   */
+  function tell(said: string) {
+    if (offerFromChat.current) {
+      setTalk((held) => [...held, { role: 'user', content: said }]);
+      return;
+    }
     window.dispatchEvent(new CustomEvent('orknux:function-suggestion-settled', { detail: { said } }));
+  }
+
+  /** Asks the chat about the function as it stands in the editor, saved or not. */
+  async function ask(event?: FormEvent<HTMLFormElement>, idea?: string) {
+    event?.preventDefault();
+    const said = (idea ?? asking).trim();
+    if ((said === '' && files.attached.length === 0) || modelId === '' || answering || files.attaching) return;
+    setTalkError(null);
+    const attachments = files.take();
+    const sent: EditorTurn[] = [...talk, { role: 'user', content: said, ...(attachments.length > 0 ? { attachments } : {}) }];
+    setTalk(sent);
+    setAsking('');
+    setAnswering(true);
+    try {
+      const answered = await askFunction(
+        workspaceId,
+        { functionId: creating ? null : functionId, name: creating ? name.trim() : (fn?.name ?? ''), code: source },
+        modelId,
+        sent,
+      );
+      setTalk([...sent, { role: 'assistant', content: answered.answer }]);
+      if (answered.suggestion !== null) {
+        offerFromChat.current = true;
+        setOffered({ note: answered.suggestion.note, code: answered.suggestion.code });
+        setOfferFailed(null);
+      }
+    } catch (cause) {
+      setTalkError(cause instanceof Error ? cause.message : t('The model could not answer.'));
+    } finally {
+      setAnswering(false);
+    }
   }
 
   /**
@@ -612,7 +738,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
    */
   function failOffer(shown: string, said: string) {
     setOfferFailed(shown);
-    window.dispatchEvent(new CustomEvent('orknux:function-suggestion-settled', { detail: { said } }));
+    tell(said);
   }
 
   /**
@@ -654,6 +780,19 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
           `I could not accept it: ${read.problem}. Nothing was saved. Offer it again with a ` +
             'declaration I can read.',
         );
+        return;
+      }
+
+      /*
+       * A function nobody has created yet has nowhere to save to: the change
+       * goes into the editor, parameters and all, and Create is still the
+       * person's to press.
+       */
+      if (creating) {
+        setSource(offered.code);
+        if (!sameParameters(read.params, params)) setParams(read.params);
+        setSaved(false);
+        settleOffer(t('I took the change into the editor. The function is not created yet.'));
         return;
       }
 
@@ -1399,22 +1538,30 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
   }
 
   return (
+    /*
+      The whole window, as the Design editors have it: the details down the
+      left, the code in the middle, and the chat down the right. The floating
+      quick chat is left out - it would be a second box to ask the same
+      question in, about the same function.
+    */
     <AppShell
-      scrollContent
       user={shellUser(session)}
       workspacePath={`/workspace/${workspaceId}`}
       showAdmin={session.admin}
       onSignOut={onSignOut}
-      sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
+      sidebar={null}
+      hideSidebar
+      fills
+      quickChat={false}
     >
       {loadError !== null ? (
-        <section className={styles.card}>
+        <section className={`${styles.card} ${styles.plain}`}>
           <p className={styles.loadError} role="alert">
             {loadError}
           </p>
         </section>
       ) : !creating && fn === null ? (
-        <section className={styles.card}>
+        <section className={`${styles.card} ${styles.plain}`}>
           <Loader />
         </section>
       ) : fn !== null && fn.scope === 'EMBEDDED' ? (
@@ -1423,7 +1570,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
           takes and answers, and the server refuses an edit. So it is read, not
           an editor holding a sentence where the code would be.
         */
-        <>
+        <div className={styles.plain}>
           <header className={styles.pageHeader}>
             <p className={styles.breadcrumb}>
               <BackLink to={backTo} label={t('Functions')} />
@@ -1463,24 +1610,17 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
               <p className={styles.metadataValue}>{fn.returnObjectName ?? valueTypeLabel(fn.returnType)}</p>
             </div>
           </section>
-        </>
+        </div>
       ) : (
         <>
-          <header className={styles.pageHeader}>
-            <p className={styles.breadcrumb}>
-              <BackLink to={backTo} label={t('Functions')} />
-              {/* The same place as the arrow beside it, including which row. */}
-              <Link className={styles.crumbLink} to={backTo}>{t('Functions')}</Link>
-              <span className={styles.crumbSeparator}>/</span>
-              <span className={styles.crumbCurrent}>{called}</span>
-            </p>
-            <div className={styles.headerRow}>
-              <div className={styles.titleGroup}>
-                <h1 className={styles.title}>{called}</h1>
-                {/* Nothing is active until it has been saved once. */}
-                {!creating && <span className={styles.activeBadge}>{t('Active')}</span>}
-              </div>
-              <div className={styles.headerActions}>
+          <div className={shell.toolbar}>
+            <Link className={shell.back} to={backTo} data-testid="function-back">
+              ← {t('Functions')}
+            </Link>
+            <h1 className={`${shell.toolbarTitle} ${styles.toolbarHeading}`}>{called}</h1>
+            {/* Nothing is active until it has been saved once. */}
+            {!creating && <span className={styles.activeBadge}>{t('Active')}</span>}
+              <div className={`${shell.toolbarRight} ${styles.headerActions}`}>
                 {!creating && (
                   <button type="button" className={styles.deleteButton} onClick={handleDelete}>
                     <TrashIcon />
@@ -1495,8 +1635,8 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   what it was opened for.
                 */}
                 {/*
-                  Help, offered where the work is. The wand opens the quick
-                  chat; on a conversation that has not started it also asks the
+                  Help, offered where the work is. The wand asks the chat down
+                  the right; on a conversation that has not started it asks the
                   first question, so one click goes from stuck to being helped -
                   a conversation already under way is joined, not talked over.
                 */}
@@ -1530,15 +1670,37 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                 <button
                   type="button"
                   className={styles.wandButton}
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent('orknux:quick-chat', { detail: { opener: t('Can you help me with that?') } }),
-                    )
-                  }
+                  onClick={() => {
+                    // A conversation not started yet is started; one under way is joined, not talked over.
+                    if (talk.length === 0) {
+                      void ask(undefined, t('Can you help me with this function?'));
+                      return;
+                    }
+                    document.querySelector<HTMLTextAreaElement>('[data-testid="function-chat-area"] textarea')?.focus();
+                  }}
                   aria-label={t('Ask the assistant for help with this function')}
                   title={t('Ask the assistant for help')}
+                  data-testid="function-wand"
                 >
                   <img src={wandIcon} alt="" width={16} height={16} />
+                </button>
+                {/*
+                  Beside the wand, as the document editor has it: on unless
+                  somebody switched it off, and remembered for them.
+                */}
+                <button
+                  type="button"
+                  className={`${styles.switch} ${completing ? styles.switchOn : ''}`}
+                  onClick={() => setAutocomplete(completing ? 'off' : '')}
+                  aria-pressed={completing}
+                  title={
+                    completionPause === null
+                      ? t('Auto-completion needs a completion model, chosen in the workspace settings')
+                      : t('Auto-completion')
+                  }
+                  data-testid="function-autocomplete"
+                >
+                  {t('Auto-completion')}
                 </button>
                 {!creating && returnType === 'BOOLEAN' && (
                   <button
@@ -1569,8 +1731,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   {t('Validate')}
                 </button>
               </div>
-            </div>
-          </header>
+          </div>
 
           {/*
             The row, and how the two columns divide it.
@@ -1579,142 +1740,12 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
             further down can go on overriding it when the columns stack, which a
             style attribute would have won against.
           */}
+          <div className={`${shell.editor} ${styles.workbench}`}>
           <div
             className={dragging ? `${styles.split} ${styles.splitDragging}` : styles.split}
             ref={setSplit}
             style={{ '--panel-width': `${panelWidth}px` } as CSSProperties}
           >
-            <section className={styles.editorCard} id="function-code-column">
-              <header className={styles.editorHeader}>
-                <span className={styles.editorTitle}>
-                  <img src={codeIcon} alt="" width={16} height={16} />
-                  {t('Editor')}
-                </span>
-                {/*
-                  What this function takes, as it stands. Follows the panel rather
-                  than the last save, so adding a parameter or an external shows up
-                  here immediately — which is the point of having it.
-                */}
-                <span className={styles.signature} title={t('What this function is handed, in order')}>
-                  {creating ? identifier(name) : (fn?.name ?? 'function')}
-                  {signature}
-                </span>
-                {/*
-                  Monaco's own formatter, which is the language service. It belongs on
-                  the editor rather than up with Save and Validate: those act on the
-                  function — its name, its parameters, what is stored — and this acts
-                  on the text in the box under it.
-
-                  A button rather than something the save does: laying out somebody's
-                  code unasked is a change they did not make, and it would turn up in
-                  the diff of every save as though they had.
-                */}
-                <button
-                  type="button"
-                  className={styles.editorAction}
-                  onClick={() => editor.current?.format()}
-                  title={`Lay the code out again (${format})`}
-                >{t('Format')}</button>
-                <span className={styles.languageBadge}>TypeScript</span>
-              </header>
-
-              {/*
-                One editor, and it is TypeScript.
-
-                The JavaScript that actually runs is compiled from this when it is
-                saved, and is not shown: it is the compiler's output, and a second
-                column of it would be a second thing to read that nobody wrote and
-                nobody can edit. What matters about it — that it is always the
-                compile of exactly what was saved — is a property of the save, not
-                something a reader has to check by eye.
-              */}
-              {/*
-                The change on offer, above the diff it describes. Accept and
-                Reject live up here rather than in the chat: the person reading
-                the diff is looking at this column, and the answer belongs where
-                the question is.
-              */}
-              {offered !== null && (
-                <div className={offerFailed === null ? styles.suggestionBar : styles.suggestionBarFailed}>
-                  <span className={styles.suggestionNote}>
-                    {offerFailed ??
-                      (offered.note !== null && offered.note !== ''
-                        ? offered.note
-                        : t('The assistant suggests this change.'))}
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.saveButton}
-                    onClick={() => void acceptOffer()}
-                    disabled={saving}
-                  >
-                    {saving ? t('Saving…') : 'Accept'}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.ghostButton}
-                    onClick={() => settleOffer(t('I rejected the change. The function is unchanged.'))}
-                    disabled={saving}
-                  >{t('Reject')}</button>
-                </div>
-              )}
-              <div className={styles.codeArea}>
-                {offered === null ? (
-                  <CodeEditor
-                    ref={editor}
-                    value={source}
-                    language="typescript"
-                    ariaLabel={t('Function source')}
-                    onChange={(next) => {
-                      setSource(next);
-                      setSaved(false);
-                      // What was checked was the code as it was; this is not
-                      // that code any more.
-                      setStatus(null);
-                    }}
-                    onCaretChange={(line, column) => setCaret({ line, column })}
-                  />
-                ) : (
-                  <CodeDiff original={source} modified={offered.code} ariaLabel={t('Suggested change')} />
-                )}
-              </div>
-
-              {/*
-                Where the caret is, and nothing else. The Validate status used
-                to share this row and has gone up beside the button that sets
-                it; what is left is the one thing that really is about the
-                column above it.
-              */}
-              <footer className={styles.editorFooter}>
-                <span className={styles.caret}>
-                  Ln {caret.line}, Col {caret.column}
-                </span>
-              </footer>
-            </section>
-
-            {/*
-              The divider, standing in the gap that used to be between them.
-
-              Why it is a separator rather than a button, and why it takes focus
-              and answers arrows, is written where the thing itself is - see
-              `src/components/DragSize.tsx`, which is this handle moved out when
-              the run detail wanted three more of them.
-            */}
-            <ResizeHandle
-              orientation="vertical"
-              className={styles.splitHandle}
-              label={t('Width of the code editor')}
-              controls="function-code-column"
-              valueNow={editorShare(panelWidth)}
-              // The extremes are the minimums, seen from the editor's side: the
-              // panel at its widest is the editor at its narrowest.
-              valueMin={editorShare(widest)}
-              valueMax={editorShare(MIN_PANEL)}
-              title={t('Drag to change the split; double-click to put it back')}
-              dragging={dragging}
-              handlers={drag.handlers}
-            />
-
             <aside className={styles.panel}>
               <section className={styles.panelSection}>
                 <h2 className={styles.panelHeading}>Function Details</h2>
@@ -2510,6 +2541,173 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                 </>
               )}
             </aside>
+
+            {/*
+              The divider, standing in the gap that used to be between them.
+
+              Why it is a separator rather than a button, and why it takes focus
+              and answers arrows, is written where the thing itself is - see
+              `src/components/DragSize.tsx`, which is this handle moved out when
+              the run detail wanted three more of them.
+            */}
+            <ResizeHandle
+              orientation="vertical"
+              className={styles.splitHandle}
+              label={t('Width of the code editor')}
+              controls="function-code-column"
+              valueNow={editorShare(panelWidth)}
+              // The extremes are the minimums, seen from the editor's side: the
+              // panel at its widest is the editor at its narrowest.
+              valueMin={editorShare(widest)}
+              valueMax={editorShare(MIN_PANEL)}
+              title={t('Drag to change the split; double-click to put it back')}
+              dragging={dragging}
+              handlers={drag.handlers}
+            />
+
+            <section className={styles.editorCard} id="function-code-column">
+              <header className={styles.editorHeader}>
+                <span className={styles.editorTitle}>
+                  <img src={codeIcon} alt="" width={16} height={16} />
+                  {t('Editor')}
+                </span>
+                {/*
+                  What this function takes, as it stands. Follows the panel rather
+                  than the last save, so adding a parameter or an external shows up
+                  here immediately — which is the point of having it.
+                */}
+                <span className={styles.signature} title={t('What this function is handed, in order')}>
+                  {creating ? identifier(name) : (fn?.name ?? 'function')}
+                  {signature}
+                </span>
+                {/*
+                  Monaco's own formatter, which is the language service. It belongs on
+                  the editor rather than up with Save and Validate: those act on the
+                  function — its name, its parameters, what is stored — and this acts
+                  on the text in the box under it.
+
+                  A button rather than something the save does: laying out somebody's
+                  code unasked is a change they did not make, and it would turn up in
+                  the diff of every save as though they had.
+                */}
+                <button
+                  type="button"
+                  className={styles.editorAction}
+                  onClick={() => editor.current?.format()}
+                  title={`Lay the code out again (${format})`}
+                >{t('Format')}</button>
+                <span className={styles.languageBadge}>TypeScript</span>
+              </header>
+
+              {/*
+                One editor, and it is TypeScript.
+
+                The JavaScript that actually runs is compiled from this when it is
+                saved, and is not shown: it is the compiler's output, and a second
+                column of it would be a second thing to read that nobody wrote and
+                nobody can edit. What matters about it — that it is always the
+                compile of exactly what was saved — is a property of the save, not
+                something a reader has to check by eye.
+              */}
+              {/*
+                The change on offer, above the diff it describes. Accept and
+                Reject live up here rather than in the chat: the person reading
+                the diff is looking at this column, and the answer belongs where
+                the question is.
+              */}
+              {offered !== null && (
+                <div className={offerFailed === null ? styles.suggestionBar : styles.suggestionBarFailed}>
+                  <span className={styles.suggestionNote}>
+                    {offerFailed ??
+                      (offered.note !== null && offered.note !== ''
+                        ? offered.note
+                        : t('The assistant suggests this change.'))}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.saveButton}
+                    onClick={() => void acceptOffer()}
+                    disabled={saving}
+                  >
+                    {saving ? t('Saving…') : 'Accept'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.ghostButton}
+                    onClick={() => settleOffer(t('I rejected the change. The function is unchanged.'))}
+                    disabled={saving}
+                  >{t('Reject')}</button>
+                </div>
+              )}
+              <div className={styles.codeArea}>
+                {offered === null ? (
+                  <CodeEditor
+                    ref={editor}
+                    value={source}
+                    language="typescript"
+                    ariaLabel={t('Function source')}
+                    complete={
+                      completing && completionPause !== null
+                        ? (before, after, signal) =>
+                            functionCompletion(
+                              workspaceId,
+                              { functionId: creating ? null : functionId, name: creating ? name.trim() : (fn?.name ?? ''), before, after },
+                              signal,
+                            )
+                        : undefined
+                    }
+                    completePauseMs={completionPause ?? undefined}
+                    onChange={(next) => {
+                      setSource(next);
+                      setSaved(false);
+                      // What was checked was the code as it was; this is not
+                      // that code any more.
+                      setStatus(null);
+                    }}
+                    onCaretChange={(line, column) => setCaret({ line, column })}
+                  />
+                ) : (
+                  <CodeDiff original={source} modified={offered.code} ariaLabel={t('Suggested change')} />
+                )}
+              </div>
+
+              {/*
+                Where the caret is, and nothing else. The Validate status used
+                to share this row and has gone up beside the button that sets
+                it; what is left is the one thing that really is about the
+                column above it.
+              */}
+              <footer className={styles.editorFooter}>
+                <span className={styles.caret}>
+                  Ln {caret.line}, Col {caret.column}
+                </span>
+              </footer>
+            </section>
+
+          </div>
+
+          <div className={`${shell.panel} ${styles.chatPanel}`} data-testid="function-panel">
+            <DesignChat
+              prefix="function"
+              firstName={firstName}
+              question={t('What shall we write?')}
+              ideas={IDEAS}
+              ready={creating || fn !== null}
+              talk={talk}
+              answering={answering}
+              talkError={talkError}
+              working={t('Thinking…')}
+              asking={asking}
+              onAsking={setAsking}
+              onAsk={(event, idea) => void ask(event, idea)}
+              models={models}
+              modelId={modelId}
+              onModel={choose}
+              placeholder={t('Ask about this function, or say what to change')}
+              inputLabel={t('What to ask about the function')}
+              files={files}
+            />
+          </div>
           </div>
           <SaveBar>
             <DiscardButton onDiscard={discard} disabled={saving || !unsaved} />

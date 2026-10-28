@@ -2454,6 +2454,16 @@ export const TESTS = [
     /* Makes its own wireframe and removes it; the model's answer is answered here, since CI has none. */
   },
   {
+    name: 'function-editor-check',
+    what: "the function editor fills the window - details, code, chat, left to right, no menu and no floating Ask AI; auto-completion on by default beside the wand, remembered, drawn as ghost text Tab takes; the chat's rewrite offered with Accept and taken into a function not created yet",
+    needs: ['workspace'],
+    /*
+     * Answers askFunction and functionCompletion in the page, so no model is
+     * asked; points the quick chat and completion models at a chat model of the
+     * workspace for the length of it and puts both back.
+     */
+  },
+  {
     name: 'sheets-check',
     what: 'Design -> Sheets after Documents opens a new sheet in the editor; 2, 3 and =A1+A2 typed into A1:A3 draw 5 in A3 as the server worked it out, still after a reload, and dragging column B\'s edge draws the column and its cells 80px wider',
     needs: ['workspace'],

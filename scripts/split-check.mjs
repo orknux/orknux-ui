@@ -67,7 +67,8 @@ async function widths(note) {
 }
 
 /**
- * Drags the divider by `by` pixels: negative widens the panel, positive the code.
+ * Drags the divider by `by` pixels: positive widens the panel, which is down the
+ * left of the code since the editor took the whole window; negative widens the code.
  *
  * Reads both widths while the button is still down and without waiting, which is
  * the measurement that distinguishes being told to lay out from being left to
@@ -97,12 +98,12 @@ async function drag(by) {
 const opened = await widths('opened      ');
 
 // Panel wide, code narrow.
-const heldWide = await drag(-260);
+const heldWide = await drag(260);
 const wide = await widths('panel wide  ');
 await page.screenshot({ path: `${SHOTS}/split-panel-wide.png` });
 
 // And back the other way, past where it started.
-const heldNarrow = await drag(420);
+const heldNarrow = await drag(-420);
 const narrow = await widths('panel narrow');
 await page.screenshot({ path: `${SHOTS}/split-code-wide.png` });
 
@@ -204,9 +205,9 @@ console.log(kept ? 'PASS: the split survives a reload' : 'FAIL: the split was fo
 await handle.focus();
 const focused = await page.evaluate(() => document.activeElement?.getAttribute('role'));
 const before = await widths('before keys ');
-for (let press = 0; press < 4; press += 1) await page.keyboard.press('ArrowLeft');
+for (let press = 0; press < 4; press += 1) await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(400);
-const nudged = await widths('after Left  ');
+const nudged = await widths('after Right ');
 const said = await handle.getAttribute('aria-valuenow');
 const keyed =
   focused === 'separator' && nudged.panel > before.panel + 60 && Math.abs(nudged.monaco - nudged.code) < 6;
@@ -218,7 +219,8 @@ console.log(keyed ? 'PASS: arrows move the split, and Monaco follows' : 'FAIL: t
  * there is nothing to divide, so the handle goes - out of sight and out of the
  * tab order - and the panel takes the whole measure whatever it was dragged to.
  */
-await page.setViewportSize({ width: 1100, height: 1000 });
+// Under 1100px since the chat took its own column down the right.
+await page.setViewportSize({ width: 1000, height: 1000 });
 await page.waitForTimeout(600);
 const stackedHandle = await handle.isVisible();
 const stacked = await widths('stacked     ');

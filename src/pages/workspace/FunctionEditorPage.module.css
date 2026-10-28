@@ -794,17 +794,19 @@
 /*
  * Below this width the two columns stop being two columns.
  *
- * The panel is a fixed 380px and the sidebar takes its own share, so on a 1150px
- * window the code was left with about 425px — less than the panel beside it, for
- * the thing the page exists to edit. Under this width the panel goes below the
- * editor and the code gets the full measure.
+ * The details take at least 300px and the chat 340px, so under this width the
+ * code would be left narrower than a line of ordinary TypeScript - less than the
+ * panels beside it, for the thing the page exists to edit. Under it the details
+ * go above the code, the row scrolls, and the code gets the full measure.
  *
  * Last in the file on purpose: a media query adds no specificity, so this has to
  * come after the `.panel` rule it overrides or the fixed width simply wins.
  */
-@media (width < 1300px) {
+@media (width < 1100px) {
   .split {
     flex-direction: column;
+    /* Stacked in a window that does not scroll, the row scrolls instead. */
+    overflow-y: auto;
     /* Stacked, the columns need the gap back: there is no handle between them. */
     gap: var(--space-24);
   }
@@ -1091,4 +1093,62 @@
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-danger);
+}
+
+/* ---- The whole window ----
+ *
+ * The details down the left, the code in the middle and the chat down the
+ * right, under the Design editors' toolbar. What is not the editor - the
+ * loading note, a refusal, a built-in function read rather than edited - keeps
+ * the page's own padding and scrolls.
+ */
+.plain {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-height: 0;
+  padding: var(--space-24);
+  overflow-y: auto;
+}
+
+.toolbarHeading {
+  margin: 0;
+  font-weight: inherit;
+}
+
+.workbench {
+  min-width: 0;
+}
+
+.workbench .split {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--space-16);
+  box-sizing: border-box;
+}
+
+.chatPanel {
+  gap: var(--space-12);
+  overflow: hidden;
+}
+
+/* Auto-completion's switch, as the document editor draws it. */
+.switch {
+  height: 28px;
+  padding: 0 var(--space-8);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.switchOn {
+  background: color-mix(in srgb, var(--color-violet) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-violet) 55%, var(--color-border));
+  color: var(--color-text-primary);
 }
