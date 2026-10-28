@@ -526,7 +526,7 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
         picture={zoomed}
         onClose={close}
         editHref={open !== null && zoomed !== null ? `/workspace/${workspaceId}/design/images/${open.id}/edit` : undefined}
-        onReplace={open !== null && zoomed !== null && open.kind === 'SAVED' ? () => replacer.current?.click() : undefined}
+        onReplace={open !== null && zoomed !== null && open.kind === 'SAVED' && (open.hostOf ?? null) === null ? () => replacer.current?.click() : undefined}
       />
       {/* One picker for both viewers: a saved picture and a saved document are replaced the same way. */}
       <input
@@ -584,8 +584,8 @@ export function WorkspaceArtifactsPage({ session, onSignOut }: WorkspaceArtifact
               >
                 <span className={styles.readingIcon} style={{ maskImage: `url("${openIcon}")`, WebkitMaskImage: `url("${openIcon}")` }} />
               </a>
-              {/* Only a file somebody saved has one to swap; a drawn picture changes in the image editor. */}
-              {read.kind === 'SAVED' && (
+              {/* Only a file somebody saved has one to swap; a drawn picture - hosted ones too - changes in the image editor. */}
+              {read.kind === 'SAVED' && (read.hostOf ?? null) === null && (
                 <>
                   <button
                     type="button"

@@ -25,6 +25,7 @@ import styles from './DesignImagesPage.module.css';
 import { t, tf } from '../../i18n';
 import { videoFromPicturePath } from './useVideoFromPicture';
 import { PICTURE_FILES, usePictureImport } from './pictureImport';
+import { HostAsArtifact } from './HostAsArtifact';
 import imageIcon from '../../assets/image.svg';
 import { moveDesignImage } from '../../api/designCatalogs';
 import { ALL_CATALOGS, DesignCatalogActions, DesignCatalogRail, useDesignCatalogs } from '../../components/DesignCatalogRail';
@@ -519,6 +520,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             </button>
           </div>
           </div>
+          <HostAsArtifact workspaceId={workspaceId} picture={open} onChanged={() => readFrom(0)} />
           <img src={open.draftUrl ?? open.url} alt={open.prompt} className={styles.focusImage} data-testid="design-image-focus" />
           <div className={styles.focusFacts}>
             <dl className={styles.drawnWith}>

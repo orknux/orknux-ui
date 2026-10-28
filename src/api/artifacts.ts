@@ -67,11 +67,15 @@ export interface Artifact {
   /** The image catalog of a picture on Design's Images page, in a list asked for with drawn; null otherwise. */
   catalogId?: string | null;
   catalogName?: string | null;
+  /** For a picture drawn in Design hosted as an artifact: that artifact, SAVED-n. */
+  hostedAs?: string | null;
+  /** For an artifact hosting a picture drawn in Design: the picture, DESIGN-n. */
+  hostOf?: string | null;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
-  drawnWith { modelId model size quality style drawnBy } name versionOf draft draftUrl catalogId catalogName
+  drawnWith { modelId model size quality style drawnBy } name versionOf draft draftUrl catalogId catalogName hostedAs hostOf
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
@@ -570,4 +574,26 @@ export async function replaceArtifact(workspaceId: string, id: string, file: Fil
   );
   if (said.id === undefined) throw new Error(t('That file could not be replaced.'));
   return said.id;
+}
+
+/**
+ * A picture drawn in Design given a place on the Artifacts page, at an address
+ * that always serves it as it is saved in Design. Hosting one already hosted
+ * answers the artifact it has.
+ */
+export async function hostDesignImage(workspaceId: string, id: string): Promise<Artifact> {
+  const data = await graphql<{ hostDesignImage: Artifact }>(
+    `mutation ($workspaceId: ID!, $id: ID!) { hostDesignImage(workspaceId: $workspaceId, id: $id) { ${ARTIFACT_FIELDS} } }`,
+    { workspaceId, id },
+  );
+  return data.hostDesignImage;
+}
+
+/** A picture's artifact taken off the Artifacts page; the picture stays. */
+export async function unhostDesignImage(workspaceId: string, id: string): Promise<boolean> {
+  const data = await graphql<{ unhostDesignImage: boolean }>(
+    `mutation ($workspaceId: ID!, $id: ID!) { unhostDesignImage(workspaceId: $workspaceId, id: $id) }`,
+    { workspaceId, id },
+  );
+  return data.unhostDesignImage;
 }

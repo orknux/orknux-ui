@@ -2454,6 +2454,12 @@ export const TESTS = [
     /* Makes its own catalogs, a picture and a wireframe, and removes them. Videos are checked for the column alone: CI has no video model to make one with. */
   },
   {
+    name: 'images-host-check',
+    what: "a picture's preview on Design's Images page hosts it as an artifact and shows the address; the address serves the picture's bytes, and after the picture is rotated and saved in the editor serves the rotated one; hosting again is the same artifact; Stop hosting removes the artifact and leaves the picture",
+    needs: ['workspace'],
+    /* Makes its own picture and removes it. */
+  },
+  {
     name: 'images-import-check',
     what: 'Design -> Images makes an image from a picked PNG and from a picture pasted on the page, each opened in the image editor as the picture it was, and refuses a file that is not a picture on the page',
     needs: ['workspace'],

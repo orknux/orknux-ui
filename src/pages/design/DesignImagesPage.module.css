@@ -332,3 +332,33 @@
   color: var(--color-text-primary);
 }
 
+/* Under the picture's bar: whether it is hosted as an artifact, at what address, and the way to change that. */
+.hosting {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.hostingNote {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.hostingLink {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+}
+
+.hostingError {
+  flex-basis: 100%;
+  color: var(--color-danger);
+}
