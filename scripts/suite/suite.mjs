@@ -1175,7 +1175,7 @@ export const TESTS = [
   },
   {
     name: 'admin-workspace-type-check',
-    what: 'the admin list of workspaces names each one's type, Admin or Standard, in a column of its own',
+    what: 'the admin list of workspaces names the type of each, Admin or Standard, in a column of its own',
     needs: ['workspace'],
   },
   {
