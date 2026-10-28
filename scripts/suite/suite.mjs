@@ -1151,6 +1151,11 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'editor-wheel-check',
+    what: 'the wheel over a function or a tool code scrolls the page, so the code ends above the floating Save bar',
+    needs: ['workspace'],
+  },
+  {
     name: 'report-hints-check',
     what: 'every report on Admin -> Reports says what it shows, with a hint beside its name',
     needs: ['session'],

@@ -145,6 +145,14 @@ export function CodeEditor({
       padding: { top: 12, bottom: 12 },
       smoothScrolling: true,
       /*
+       * The wheel goes on to the page once the editor has nothing left to scroll.
+       * Monaco keeps every wheel by default, and the editors that grow to their
+       * code never scroll themselves - so on the function and tool editors the
+       * page could not be moved from over the code, and the end of it stayed
+       * under the floating Save bar.
+       */
+      scrollbar: { alwaysConsumeMouseWheel: false },
+      /*
        * The pair matters. Fixed positioning keeps the suggestion list from being
        * clipped by the `overflow: hidden` this editor sits inside; the host node
        * keeps that fixed positioning honest, by living outside the transformed
