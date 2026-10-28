@@ -26,6 +26,9 @@
   flex-direction: column;
   gap: 2px;
   width: 176px;
+  /* Its height is set to what is left above the Save bar; past that the menu scrolls itself, and the page is left alone at either end. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .entry {

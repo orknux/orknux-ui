@@ -22,6 +22,9 @@ interface Entry {
   label: string;
 }
 
+/** The room left between the menu's last entry and the Save bar under it. */
+const MENU_FOOT_GAP_PX = 16;
+
 /** How far under the top of its scrolling frame a heading lands when its entry is pressed. */
 const HEADING_GAP_PX = 24;
 
@@ -232,11 +235,44 @@ export function SectionMenu({ within, entries: selector }: SectionMenuProps) {
     };
   }, [within, looking, entries, which, selector]);
 
+  /*
+   * The menu ends above the floating Save bar, or the foot of its frame where
+   * a page has none, and scrolls inside itself past that. Sticky and taller
+   * than the window, its last entries could only be reached by scrolling the
+   * whole page to its end - and the Save bar sat over them even then.
+   */
+  const menu = useRef<HTMLElement>(null);
+  const shownCount = entries.length;
+  useEffect(() => {
+    const held = menu.current;
+    if (held === null) return undefined;
+    const fit = () => {
+      if (getComputedStyle(held).position !== 'sticky') {
+        held.style.maxHeight = '';
+        return;
+      }
+      const scroller = scrollerOf(held);
+      const frame = scroller?.getBoundingClientRect();
+      const bar = [...document.querySelectorAll<HTMLElement>('[data-save-bar]')]
+        .map((one) => one.getBoundingClientRect().top)
+        .filter((top) => top > 0);
+      const floor = Math.min(frame?.bottom ?? window.innerHeight, ...bar);
+      held.style.maxHeight = `${Math.max(120, floor - held.getBoundingClientRect().top - MENU_FOOT_GAP_PX)}px`;
+    };
+    fit();
+    window.addEventListener('scroll', fit, { passive: true, capture: true });
+    window.addEventListener('resize', fit);
+    return () => {
+      window.removeEventListener('scroll', fit, { capture: true });
+      window.removeEventListener('resize', fit);
+    };
+  }, [shownCount]);
+
   if (entries.length < 2) return null;
   const shown = matching === null ? entries : entries.filter((entry) => matching.has(entry.id));
 
   return (
-    <nav className={styles.menu} aria-label={t('Sections')} data-testid="section-menu">
+    <nav ref={menu} className={styles.menu} aria-label={t('Sections')} data-testid="section-menu">
       <label className={styles.search}>
         <img src={searchIcon} alt="" width={14} height={14} />
         <input

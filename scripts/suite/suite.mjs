@@ -1151,6 +1151,16 @@ export const TESTS = [
     // Publishes one template and deletes it.
   },
   {
+    name: 'run-cost-check',
+    what: 'a run summary has a Cost row, partial where a model had no price, and its two columns stack on a narrow window',
+    needs: ['workspace'],
+  },
+  {
+    name: 'settings-menu-scroll-check',
+    what: 'the Admin Settings section menu ends above the Save bar and the wheel scrolls it without moving the page',
+    needs: [],
+  },
+  {
     name: 'editor-wheel-check',
     what: 'the wheel over a function or a tool code scrolls the page, so the code ends above the floating Save bar',
     needs: ['workspace'],
