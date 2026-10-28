@@ -22,6 +22,7 @@ import {
   rerunExecutionStep,
   stopExecution,
 } from '../../api/executions';
+import { costAmount } from '../../api/chat';
 import { ImageZoom } from '../../components/ImageZoom';
 import type { Picture } from '../../components/ImageZoom';
 import type {
@@ -1053,7 +1054,9 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   </FoldToggle>
                 </h2>
                 <FoldBody id="run-summary" open={summaryOpen}>
-                <dl className={styles.summary}>
+                {/* Two columns: what the run was on the left, its time and its cost on the right. */}
+                <div className={styles.summaryColumns}>
+                <dl className={styles.summary} data-summary-column="">
                   <SummaryRow label={t('Run ID')}>#{executionId}</SummaryRow>
                   {/* Where this run came from, for a run that came of re-running
                       another. Only the id is kept, and only the id is needed:
@@ -1100,6 +1103,8 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                   <SummaryRow label={t('Triggered by')}>
                     {run === null ? '—' : triggerLabel(run)}
                   </SummaryRow>
+                </dl>
+                <dl className={styles.summary} data-summary-column="">
                   <SummaryRow label={t('Started')} mono>
                     {formatStamp(run?.startedAt)}
                   </SummaryRow>
@@ -1107,6 +1112,25 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                     {formatStamp(run?.finishedAt ?? null)}
                   </SummaryRow>
                   <SummaryRow label={t('Duration')}>{formatDuration(run?.durationSeconds ?? null)}</SummaryRow>
+                  <SummaryRow label={t('Cost')}>
+                    <span
+                      data-run-cost=""
+                      title={
+                        run?.cost.partlyUnpriced
+                          ? t('Some calls were on a model with no price; they are not in this.')
+                          : undefined
+                      }
+                    >
+                      {run?.cost.amount == null ? '—' : costAmount(Number(run.cost.amount))}
+                      {run?.cost.amount != null && run.cost.partlyUnpriced && (
+                        <span className={styles.costPartial}>{t('partial')}</span>
+                      )}
+                    </span>
+                  </SummaryRow>
+                </dl>
+                </div>
+                {(run?.error != null || run?.stoppedAtNodeKey != null) && (
+                <dl className={`${styles.summary} ${styles.summaryAfter}`}>
                   {run?.error != null && (
                     <SummaryRow label={t('Error')}>
                       <span className={styles.summaryError}>{run.error}</span>
@@ -1133,6 +1157,7 @@ export function ExecutionDetailPage({ session, onSignOut }: ExecutionDetailPageP
                       );
                     })()}
                 </dl>
+                )}
                 </FoldBody>
               </section>
 

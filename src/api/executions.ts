@@ -126,8 +126,18 @@ export interface ExecutionLogLine {
   message: string;
 }
 
+/** What a run's model calls cost, in dollars: its steps' sessions, the agents they asked, and the runs it called. */
+export interface RunCost {
+  /** A decimal; null when nothing priced was spent. */
+  amount: string | null;
+  /** Some call's model had no price, so amount is part of the whole. */
+  partlyUnpriced: boolean;
+  sessions: number;
+}
+
 export interface ExecutionDetail extends Execution {
   workspaceId: string;
+  cost: RunCost;
   /** Why the run stopped, when it stopped badly. */
   error: string | null;
   /** The node that ended the run early; null for a run that went all the way through. */
@@ -348,6 +358,7 @@ export function formatRelative(iso: string): string {
 const EXECUTION_DETAIL_FIELDS = `
   id workspaceId workflowId workflowName status trigger source { connectionType action } startedAt finishedAt durationSeconds error workflowAssigned
   stoppedAtNodeKey stoppedReason startedFrom parentExecutionId
+  cost { amount partlyUnpriced sessions }
   version { draft publicationId publishedAt publishedBy current editedSince newestPublishedAt }
   parameters { nodeKey name value reference expression }
   steps { key kind name description status startedAt finishedAt durationSeconds input output error actionId conditionId agentId sessionId streamOutput branch branchOption childExecutionId attempts carriedOver enabled x y }
