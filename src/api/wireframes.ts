@@ -61,6 +61,9 @@ export interface Wireframe {
   createdAt: string;
   updatedBy: string;
   updatedAt: string;
+  /** The catalog it is filed in: the default where it was never filed. */
+  catalogId: string;
+  catalogName: string;
 }
 
 /** One turn of the editor's chat, with the files sent on it. */
@@ -73,7 +76,7 @@ export interface WireframeAnswer {
   wireframe: Wireframe;
 }
 
-const FIELDS = 'id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt';
+const FIELDS = 'id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt catalogId catalogName';
 
 /** The elements of a stored document; a document that cannot be read is an empty drawing. */
 export function elementsOf(wireframe: Pick<Wireframe, 'document'>): WireframeElement[] {
@@ -89,11 +92,11 @@ export function documentOf(elements: WireframeElement[]): string {
   return JSON.stringify({ elements });
 }
 
-/** A workspace's wireframes, the one worked on last first. */
-export async function fetchWireframes(workspaceId: string): Promise<Wireframe[]> {
+/** A workspace's wireframes, the one worked on last first; with a catalog, that catalog's. */
+export async function fetchWireframes(workspaceId: string, catalogId: string | null = null): Promise<Wireframe[]> {
   const data = await graphql<{ wireframes: Wireframe[] }>(
-    `query ($workspaceId: ID!) { wireframes(workspaceId: $workspaceId) { ${FIELDS} } }`,
-    { workspaceId },
+    `query ($workspaceId: ID!, $catalogId: ID) { wireframes(workspaceId: $workspaceId, catalogId: $catalogId) { ${FIELDS} } }`,
+    { workspaceId, catalogId },
   );
   return data.wireframes;
 }
@@ -103,12 +106,13 @@ export async function fetchWireframe(id: string): Promise<Wireframe | null> {
   return data.wireframe;
 }
 
-export async function createWireframe(workspaceId: string, name: string, document?: string): Promise<Wireframe> {
+/** Filed in [catalogId], or in the workspace's default wireframe catalog where it is left out. */
+export async function createWireframe(workspaceId: string, name: string, document?: string, catalogId?: string | null): Promise<Wireframe> {
   const data = await graphql<{ createWireframe: Wireframe }>(
-    `mutation ($workspaceId: ID!, $name: String!, $document: String) {
-       createWireframe(workspaceId: $workspaceId, name: $name, document: $document) { ${FIELDS} }
+    `mutation ($workspaceId: ID!, $name: String!, $document: String, $catalogId: ID) {
+       createWireframe(workspaceId: $workspaceId, name: $name, document: $document, catalogId: $catalogId) { ${FIELDS} }
      }`,
-    { workspaceId, name, document: document ?? null },
+    { workspaceId, name, document: document ?? null, catalogId: catalogId ?? null },
   );
   return data.createWireframe;
 }

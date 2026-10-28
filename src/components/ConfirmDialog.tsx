@@ -34,6 +34,7 @@ export type ConfirmKind =
   | 'removeSheetTab'
   | 'removeDocument'
   | 'removeDocumentCatalog'
+  | 'removeDesignCatalog'
   | 'restartResearch'
   | 'removeDiagram'
   | 'removeDiagramCatalog'
@@ -72,6 +73,7 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeSheetTab',
   'removeDocument',
   'removeDocumentCatalog',
+  'removeDesignCatalog',
   'removeDiagram',
   'removeDiagramCatalog',
   'removeMember',
@@ -348,6 +350,11 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
     removeDocumentCatalog: {
       title: t('Delete catalog'),
       message: <>{t('The catalog is deleted; one that still holds documents is refused:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Delete'),
+    },
+    removeDesignCatalog: {
+      title: t('Delete catalog'),
+      message: <>{t('The catalog is deleted; one that still holds anything is refused:')} {name}</>,
       button: submitting ? t('Removing…') : t('Delete'),
     },
     /* Not destructive: the research is kept, and what the steps before this one found with it. */

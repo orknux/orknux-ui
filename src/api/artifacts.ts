@@ -64,16 +64,19 @@ export interface Artifact {
   draft: string | null;
   /** Where that draft's picture is: what a picture with a draft is shown as. */
   draftUrl?: string | null;
+  /** The image catalog of a picture on Design's Images page, in a list asked for with drawn; null otherwise. */
+  catalogId?: string | null;
+  catalogName?: string | null;
 }
 
 const ARTIFACT_FIELDS = `
   id kind source sourcePath prompt filename contentType sizeBytes url previewUrl drawnAt
-  drawnWith { modelId model size quality style drawnBy } name versionOf draft draftUrl
+  drawnWith { modelId model size quality style drawnBy } name versionOf draft draftUrl catalogId catalogName
 `;
 
 const WORKSPACE_ARTIFACTS_QUERY = `
-  query WorkspaceArtifacts($workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $drawn: Boolean) {
-    workspaceArtifacts(workspaceId: $workspaceId, page: $page, size: $size, search: $search, drawn: $drawn) {
+  query WorkspaceArtifacts($workspaceId: ID!, $page: Int!, $size: Int!, $search: String, $drawn: Boolean, $catalogId: ID) {
+    workspaceArtifacts(workspaceId: $workspaceId, page: $page, size: $size, search: $search, drawn: $drawn, catalogId: $catalogId) {
       content { ${ARTIFACT_FIELDS} }
       page
       size
@@ -119,6 +122,8 @@ export async function fetchWorkspaceArtifacts(
   search = '',
   /** Only what an image model drew - Design's Images page. */
   drawn = false,
+  /** Only the pictures filed in this image catalog; with drawn alone. */
+  catalogId: string | null = null,
 ): Promise<PageOf<Artifact>> {
   const data = await graphql<{ workspaceArtifacts: PageOf<Artifact> }>(WORKSPACE_ARTIFACTS_QUERY, {
     workspaceId,
@@ -126,6 +131,7 @@ export async function fetchWorkspaceArtifacts(
     size,
     search: search.trim() === '' ? null : search.trim(),
     drawn,
+    catalogId,
   });
   return data.workspaceArtifacts;
 }
@@ -204,6 +210,8 @@ export interface DrawDesignImageInput {
   name?: string | null;
   /** What the picture must not contain; null takes the model's own. Only for a model that takes one. */
   negativePrompt?: string | null;
+  /** The image catalog the drawn picture is filed in; the default where it is left out. */
+  catalogId?: string | null;
 }
 
 export type DesignImageJobStatus = 'QUEUED' | 'DRAWING' | 'DRAWN' | 'FAILED' | 'STOPPED';
@@ -520,6 +528,8 @@ export async function importDesignImage(input: {
   archive?: string;
   name?: string | null;
   prompt?: string | null;
+  /** The image catalog to file it in; the default where it is left out. */
+  catalogId?: string | null;
 }): Promise<Artifact> {
   const data = await graphql<{ importDesignImage: Artifact }>(
     `mutation ImportDesignImage($input: ImportDesignImageInput!) { importDesignImage(input: $input) { ${ARTIFACT_FIELDS} } }`,

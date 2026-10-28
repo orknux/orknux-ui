@@ -467,6 +467,13 @@ const PL: Record<string, string> = {
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
   WireframePictureRefused: 'Nie można umieścić obrazu na makiecie: {why}',
 
+  // --- catalogs of Design's images, wireframes and videos -------------------
+  DesignCatalogNotFound: 'Nie ma tu katalogu o identyfikatorze {id}',
+  DesignCatalogNameInvalid: 'Katalog potrzebuje nazwy, najwyżej 120 znaków',
+  DesignCatalogNameTaken: 'Ta przestrzeń robocza ma już katalog o nazwie {name}',
+  DesignCatalogNotEmpty: '{name} zawiera elementy ({count}); przenieś je lub usuń przed usunięciem katalogu',
+  DesignCatalogDefault: 'Do katalogu {name} trafia wszystko, czego nie umieszczono gdzie indziej, więc nie można go usunąć',
+
   // --- sheets ---------------------------------------------------------------
   SheetNotFound: 'Nie ma arkusza o identyfikatorze {id}',
   SheetNameInvalid: 'Arkusz potrzebuje nazwy, najwyżej 200 znaków',

@@ -18,6 +18,11 @@ import table from '../workspace/CatalogueTable.module.css';
 import gallery from '../workspace/WorkspaceArtifactsPage.module.css';
 import styles from './DesignWireframesPage.module.css';
 import { WireframePreview } from './WireframeDrawing';
+import wireframeIcon from '../../assets/frame.svg';
+import { moveWireframe } from '../../api/designCatalogs';
+import { ALL_CATALOGS, DesignCatalogActions, DesignCatalogRail, useDesignCatalogs } from '../../components/DesignCatalogRail';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
+import rail from '../workspace/WorkspaceMemoryPage.module.css';
 
 export interface DesignWireframesPageProps {
   session: SessionUser;
@@ -37,6 +42,10 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
   const [wireframes, setWireframes] = useState<Wireframe[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The wireframe catalogs down the left, and the one being looked at. */
+  const catalog = useDesignCatalogs(workspaceId, 'WIREFRAME');
+  /** Read again after something changes which catalog a wireframe is in. */
+  const [reads, setReads] = useState(0);
   /** The card being renamed, and what is typed. */
   const [naming, setNaming] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<Wireframe | null>(null);
@@ -55,7 +64,7 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
   useEffect(() => {
     if (workspaceId === '') return;
     let left = false;
-    fetchWireframes(workspaceId)
+    fetchWireframes(workspaceId, catalog.filter)
       .then((found) => {
         if (!left) setWireframes(found);
       })
@@ -65,7 +74,7 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
     return () => {
       left = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, catalog.filter, reads]);
 
   const open = (id: string) => navigate(`/workspace/${workspaceId}/design/wireframes/${id}`);
 
@@ -74,7 +83,7 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
     setBusy(true);
     setError(null);
     try {
-      const made = await createWireframe(workspaceId, t('Untitled wireframe'));
+      const made = await createWireframe(workspaceId, t('Untitled wireframe'), undefined, catalog.fileIn);
       open(made.id);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not make the wireframe.'));
@@ -105,10 +114,35 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      <div className={rail.split}>
+      <DesignCatalogRail
+        workspaceId={workspaceId}
+        kind="WIREFRAME"
+        catalogs={catalog.catalogs}
+        selected={catalog.selected}
+        onSelect={catalog.select}
+        onChanged={catalog.reload}
+        title={t('WIREFRAME CATALOGS')}
+        allLabel={t('All wireframes')}
+        allIcon={wireframeIcon}
+      />
+      <section className={rail.panel}>
       <header className={table.header}>
         <div className={table.titleGroup}>
           <h1 className={table.title}>{t('Wireframes')}</h1>
           <p className={table.subtitle}>{t('Screens sketched by hand or drawn by a model, in this workspace.')}</p>
+          <div className={styles.catalogLine}>
+            <span className={styles.catalogHeading} data-testid="design-catalog-heading">
+              {catalog.current?.name ?? t('All wireframes')}
+            </span>
+            <DesignCatalogActions
+              workspaceId={workspaceId}
+              kind="WIREFRAME"
+              current={catalog.current}
+              onChanged={catalog.reload}
+              onDeleted={() => catalog.select(ALL_CATALOGS)}
+            />
+          </div>
         </div>
         <button type="button" className={table.createButton} onClick={() => void make()} disabled={busy} data-testid="new-wireframe">
           {t('+ New wireframe')}
@@ -182,6 +216,19 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
                     >
                       <img src={pencilIcon} alt="" width={14} height={14} />
                     </button>
+                    {catalog.catalogs !== null && (
+                      <MoveToCatalog
+                        name={wireframe.name}
+                        catalogs={catalog.catalogs}
+                        currentCatalogId={wireframe.catalogId}
+                        className={styles.action}
+                        move={(target) => moveWireframe(wireframe.id, target)}
+                        onMoved={async () => {
+                          setReads((n) => n + 1);
+                          await catalog.reload();
+                        }}
+                      />
+                    )}
                     <button
                       type="button"
                       className={styles.action}
@@ -204,6 +251,8 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
           </div>
         )}
       </section>
+      </section>
+      </div>
 
       <ConfirmDialog
         subject={removing?.name ?? null}
@@ -214,6 +263,7 @@ export function DesignWireframesPage({ session, onSignOut }: DesignWireframesPag
           await deleteWireframe(removing.id);
           setWireframes((all) => all?.filter((one) => one.id !== removing.id) ?? all);
           setRemoving(null);
+          void catalog.reload();
         }}
       />
     </AppShell>

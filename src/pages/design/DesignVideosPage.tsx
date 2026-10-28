@@ -13,6 +13,11 @@ import table from '../workspace/CatalogueTable.module.css';
 import gallery from '../workspace/WorkspaceArtifactsPage.module.css';
 import styles from './DesignVideos.module.css';
 import { t, tf } from '../../i18n';
+import filmIcon from '../../assets/film.svg';
+import { moveDesignVideo } from '../../api/designCatalogs';
+import { ALL_CATALOGS, DesignCatalogActions, DesignCatalogRail, useDesignCatalogs } from '../../components/DesignCatalogRail';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
+import rail from '../workspace/WorkspaceMemoryPage.module.css';
 
 export interface DesignVideosPageProps {
   session: SessionUser;
@@ -62,6 +67,8 @@ export function DesignVideosPage({ session, onSignOut }: DesignVideosPageProps) 
   const [asked, setAsked] = useState('');
   /** Which read is the newest, so a late answer to an old search is dropped. */
   const reading = useRef(0);
+  /** The video catalogs down the left, and the one being looked at. */
+  const catalog = useDesignCatalogs(workspaceId, 'VIDEO');
 
   useEffect(() => {
     const waiting = setTimeout(() => setAsked(hunting), 300);
@@ -71,7 +78,7 @@ export function DesignVideosPage({ session, onSignOut }: DesignVideosPageProps) 
   const read = useCallback(() => {
     if (workspaceId === '') return;
     const which = ++reading.current;
-    fetchDesignVideos(workspaceId, asked)
+    fetchDesignVideos(workspaceId, asked, catalog.filter)
       .then((found) => {
         if (which !== reading.current) return;
         setVideos(found);
@@ -81,7 +88,7 @@ export function DesignVideosPage({ session, onSignOut }: DesignVideosPageProps) 
         if (which !== reading.current) return;
         setError(cause instanceof Error ? cause.message : t('Could not load the videos.'));
       });
-  }, [workspaceId, asked]);
+  }, [workspaceId, asked, catalog.filter]);
   useEffect(read, [read]);
 
   const waiting = videos?.some(onTheWay) ?? false;
@@ -101,15 +108,43 @@ export function DesignVideosPage({ session, onSignOut }: DesignVideosPageProps) 
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      <div className={rail.split}>
+      <DesignCatalogRail
+        workspaceId={workspaceId}
+        kind="VIDEO"
+        catalogs={catalog.catalogs}
+        selected={catalog.selected}
+        onSelect={catalog.select}
+        onChanged={catalog.reload}
+        title={t('VIDEO CATALOGS')}
+        allLabel={t('All videos')}
+        allIcon={filmIcon}
+      />
+      <section className={rail.panel}>
       <header className={table.header}>
         <div className={table.titleGroup}>
           <h1 className={table.title}>{t('Videos')}</h1>
           <p className={table.subtitle}>{t('Every video a model made in this workspace.')}</p>
+          <div className={styles.catalogLine}>
+            <span className={styles.catalogHeading} data-testid="design-catalog-heading">
+              {catalog.current?.name ?? t('All videos')}
+            </span>
+            <DesignCatalogActions
+              workspaceId={workspaceId}
+              kind="VIDEO"
+              current={catalog.current}
+              onChanged={catalog.reload}
+              onDeleted={() => catalog.select(ALL_CATALOGS)}
+            />
+          </div>
         </div>
         <button
           type="button"
           className={table.createButton}
-          onClick={() => navigate(`/workspace/${workspaceId}/design/videos/new`)}
+          onClick={() =>
+            // Only a catalog chosen goes along: with every catalog shown, the server files it in the default by itself.
+            navigate(`/workspace/${workspaceId}/design/videos/new${catalog.current === null ? '' : `?catalog=${catalog.current.id}`}`)
+          }
           data-testid="new-video"
         >
           {t('+ New video')}
@@ -182,12 +217,29 @@ export function DesignVideosPage({ session, onSignOut }: DesignVideosPageProps) 
                     <span className={gallery.dot}>·</span>
                     <span data-testid="video-status">{statusLabel(video)}</span>
                   </span>
+                  {catalog.catalogs !== null && (
+                    <span className={styles.cardActions}>
+                      <MoveToCatalog
+                        name={video.name}
+                        catalogs={catalog.catalogs}
+                        currentCatalogId={video.catalogId}
+                        className={styles.cardAction}
+                        move={(target) => moveDesignVideo(workspaceId, video.id, target)}
+                        onMoved={async () => {
+                          read();
+                          await catalog.reload();
+                        }}
+                      />
+                    </span>
+                  )}
                 </figcaption>
               </figure>
             ))}
           </div>
         )}
       </section>
+      </section>
+      </div>
     </AppShell>
   );
 }

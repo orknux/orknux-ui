@@ -99,6 +99,8 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
   const navigate = useNavigate();
   const [searching] = useSearchParams();
   const from = searching.get('from');
+  /** The video catalog the gallery was looking at, `?catalog=`: a video made here is filed there. */
+  const catalogAsked = searching.get('catalog');
 
   const [video, setVideo] = useState<DesignVideo | null>(null);
   const [models, setModels] = useState<Model[] | null>(null);
@@ -281,6 +283,7 @@ export function DesignVideoEditorPage({ session, onSignOut }: DesignVideoEditorP
         height: taken.has('height') ? numberOf('height') : null,
         seed: taken.has('seed') ? asked.seed?.trim() || null : null,
         startImageId: taken.has('startImage') ? (start?.id ?? null) : null,
+        catalogId: catalogAsked,
       });
       // At its own address from now on, so a reload finds it.
       navigate(`/workspace/${workspaceId}/design/videos/${queued.id}`, { replace: videoId === undefined });

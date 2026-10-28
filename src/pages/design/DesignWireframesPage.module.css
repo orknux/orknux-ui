@@ -66,3 +66,17 @@
 .action:hover {
   background: var(--color-surface-hover);
 }
+
+/* The catalog being looked at, under the page's title, with what can be done to it. */
+.catalogLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 28px;
+}
+
+.catalogHeading {
+  font-weight: 500;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+}

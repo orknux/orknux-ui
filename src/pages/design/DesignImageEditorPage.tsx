@@ -253,6 +253,8 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
   /** A request opened from the gallery while it waits or draws: `?job=` on the New address. */
   const [searching] = useSearchParams();
   const jobAsked = searching.get('job');
+  /** The image catalog the gallery was looking at, `?catalog=`: what is drawn or brought in here is filed there. */
+  const catalogAsked = searching.get('catalog');
   const [shown, setShown] = useState<Shown>(null);
   const [models, setModels] = useState<Model[] | null>(null);
   /** The workspace's upscale models: what the Upscale window offers, and nothing else. */
@@ -1335,9 +1337,9 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
       const read = await readPictureFile(file);
       const kept =
         'archive' in read
-          ? await importDesignImage({ workspaceId, archive: read.archive })
+          ? await importDesignImage({ workspaceId, archive: read.archive, catalogId: catalogAsked })
           : // A pasted picture's file is always "image.png", which names nothing.
-            await importDesignImage({ workspaceId, image: read.image, name: pasted ? t('Pasted picture') : read.name });
+            await importDesignImage({ workspaceId, image: read.image, name: pasted ? t('Pasted picture') : read.name, catalogId: catalogAsked });
       navigate(`/workspace/${workspaceId}/design/images/${kept.id}/edit`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not open that file.'));
@@ -1487,6 +1489,7 @@ export function DesignImageEditorPage({ session, onSignOut }: DesignImageEditorP
         name: newName || null,
         // Never to a model that takes none: the server refuses one there rather than drawing without it.
         negativePrompt: takesNegative && negativePrompt.trim() !== '' ? negativePrompt.trim() : null,
+        catalogId: catalogAsked,
       });
       remember();
       setNewName('');

@@ -25,6 +25,11 @@ import styles from './DesignImagesPage.module.css';
 import { t, tf } from '../../i18n';
 import { videoFromPicturePath } from './useVideoFromPicture';
 import { PICTURE_FILES, usePictureImport } from './pictureImport';
+import imageIcon from '../../assets/image.svg';
+import { moveDesignImage } from '../../api/designCatalogs';
+import { ALL_CATALOGS, DesignCatalogActions, DesignCatalogRail, useDesignCatalogs } from '../../components/DesignCatalogRail';
+import { MoveToCatalog } from '../../components/MoveToCatalog';
+import rail from '../workspace/WorkspaceMemoryPage.module.css';
 
 export interface DesignImagesPageProps {
   session: SessionUser;
@@ -63,6 +68,9 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
   /** The one the address names, when the pictures read so far do not hold it. */
   const [addressed, setAddressed] = useState<Artifact | null>(null);
   const end = useRef<HTMLDivElement | null>(null);
+  /** The image catalogs down the left, and the one being looked at - in the address, so a link keeps it. */
+  const catalog = useDesignCatalogs(workspaceId, 'IMAGE');
+  const inCatalog = catalog.filter === null ? '' : `?catalog=${catalog.filter}`;
   /** Which list a read belongs to, so a late answer to an old search is dropped. */
   const reading = useRef(0);
 
@@ -77,7 +85,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       const which = ++reading.current;
       setLoading(true);
       setError(null);
-      fetchWorkspaceArtifacts(workspaceId, Math.floor(from / BATCH), BATCH, asked, true)
+      fetchWorkspaceArtifacts(workspaceId, Math.floor(from / BATCH), BATCH, asked, true, catalog.filter)
         .then((page) => {
           if (which !== reading.current) return;
           setImages((held) => (from === 0 || held === null ? page.content : [...held, ...page.content]));
@@ -91,7 +99,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           if (which === reading.current) setLoading(false);
         });
     },
-    [workspaceId, asked],
+    [workspaceId, asked, catalog.filter],
   );
 
   // A new search, or another workspace, is a new list from its start.
@@ -173,7 +181,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       ? null
       : (images?.find((one) => one.id === artifactId) ?? (addressed?.id === artifactId ? addressed : null));
 
-  const back = () => navigate(`/workspace/${workspaceId}/design/images`);
+  const back = () => navigate(`/workspace/${workspaceId}/design/images${inCatalog}`);
   useEffect(() => {
     if (open === null) return;
     const pressed = (event: KeyboardEvent) => {
@@ -184,7 +192,10 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
   }, [open?.id]);
 
   /* Pictures brought in from outside: picked, dropped on the page, or pasted. */
-  const bringing = usePictureImport(workspaceId, () => readFrom(0));
+  const bringing = usePictureImport(workspaceId, catalog.fileIn, () => {
+    readFrom(0);
+    void catalog.reload();
+  });
   const picker = useRef<HTMLInputElement | null>(null);
   const [dropping, setDropping] = useState(false);
 
@@ -200,6 +211,23 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
       onSignOut={onSignOut}
       sidebar={<WorkspaceSidebar workspaceId={workspaceId} />}
     >
+      <div className={rail.split}>
+      <DesignCatalogRail
+        workspaceId={workspaceId}
+        kind="IMAGE"
+        catalogs={catalog.catalogs}
+        selected={catalog.selected}
+        onSelect={(id) => {
+          catalog.select(id);
+          if (artifactId !== undefined) navigate(`/workspace/${workspaceId}/design/images${id === ALL_CATALOGS ? '' : `?catalog=${id}`}`);
+        }}
+        onChanged={catalog.reload}
+        title={t('IMAGE CATALOGS')}
+        allLabel={t('All images')}
+        allIcon={imageIcon}
+      />
+      {/* Its own scroll, beside the catalogs: the end of the gallery comes into view by it, so it asks for more. */}
+      <section className={rail.panel} onScroll={() => nearEnd.current()} data-testid="design-images-panel">
       {/*
         A file dropped anywhere on the page is brought in, as the editor's canvas
         takes one: without this the browser opened the picture in place of the page.
@@ -227,6 +255,18 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
         <div className={table.titleGroup}>
           <h1 className={table.title}>{t('Images')}</h1>
           <p className={table.subtitle}>{t('Every picture a model drew in this workspace.')}</p>
+          <div className={styles.catalogLine}>
+            <span className={styles.catalogHeading} data-testid="design-catalog-heading">
+              {catalog.current?.name ?? t('All images')}
+            </span>
+            <DesignCatalogActions
+              workspaceId={workspaceId}
+              kind="IMAGE"
+              current={catalog.current}
+              onChanged={catalog.reload}
+              onDeleted={() => catalog.select(ALL_CATALOGS)}
+            />
+          </div>
         </div>
         <div className={styles.headerActions}>
           <button
@@ -265,7 +305,10 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           <button
             type="button"
             className={table.createButton}
-            onClick={() => navigate(`/workspace/${workspaceId}/design/images/new`)}
+            onClick={() =>
+            // Only a catalog chosen goes along: with every catalog shown, the server files it in the default by itself.
+            navigate(`/workspace/${workspaceId}/design/images/new${catalog.current === null ? '' : `?catalog=${catalog.current.id}`}`)
+          }
             data-testid="new-image"
           >
             {t('+ New image')}
@@ -383,7 +426,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
                 <button
                   type="button"
                   className={`${gallery.thumb} ${styles.thumbHolder}`}
-                  onClick={() => navigate(`/workspace/${workspaceId}/design/images/${image.id}`)}
+                  onClick={() => navigate(`/workspace/${workspaceId}/design/images/${image.id}${inCatalog}`)}
                   aria-label={image.prompt}
                   aria-pressed={image.id === artifactId}
                 >
@@ -423,6 +466,19 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
             <span className={styles.focusName}>{open.name ?? open.prompt}</span>
           </div>
           <div className={styles.focusActions}>
+            {catalog.catalogs !== null && open.catalogId !== null && open.catalogId !== undefined && (
+              <MoveToCatalog
+                name={open.name ?? open.filename}
+                catalogs={catalog.catalogs}
+                currentCatalogId={open.catalogId}
+                className={styles.focusRemove}
+                move={(target) => moveDesignImage(workspaceId, open.id, target)}
+                onMoved={async () => {
+                  readFrom(0);
+                  await catalog.reload();
+                }}
+              />
+            )}
             <button
               type="button"
               className={styles.focusRemove}
@@ -511,6 +567,8 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
 
       </div>
       </div>
+      </section>
+      </div>
 
       <ConfirmDialog
         subject={removing?.filename ?? null}
@@ -521,6 +579,7 @@ export function DesignImagesPage({ session, onSignOut }: DesignImagesPageProps) 
           if (removing === null) return;
           await deleteArtifact(removing.id);
           setRemoving(null);
+          void catalog.reload();
           setImages((held) => held?.filter((one) => one.id !== removing.id) ?? held);
           setTotal((count) => Math.max(0, count - 1));
           back();

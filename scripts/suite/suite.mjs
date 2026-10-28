@@ -2448,6 +2448,12 @@ export const TESTS = [
     /* Answers the artifact list with one picture of its own. */
   },
   {
+    name: 'design-catalogs-check',
+    what: "Images, Wireframes and Videos each have a catalog column with a default nobody made and nobody can delete; a catalog made there is selected, what is imported or made while it is files there and is counted, a catalog holding something refuses deletion saying why, a card's menu moves it to the default, and an emptied catalog is deleted",
+    needs: ['workspace'],
+    /* Makes its own catalogs, a picture and a wireframe, and removes them. Videos are checked for the column alone: CI has no video model to make one with. */
+  },
+  {
     name: 'images-import-check',
     what: 'Design -> Images makes an image from a picked PNG and from a picture pasted on the page, each opened in the image editor as the picture it was, and refuses a file that is not a picture on the page',
     needs: ['workspace'],

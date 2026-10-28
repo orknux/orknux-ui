@@ -21,14 +21,15 @@ export function picturesIn(files: Iterable<File>): File[] {
  * in the same words wherever it arrives.
  *
  * One picture opens in the image editor, as one drawn does; several are kept
- * and the page is told, so it can read its gallery again.
+ * and the page is told, so it can read its gallery again. Each is filed in
+ * [catalogId], the catalog being looked at - null is the workspace's default.
  */
-export function usePictureImport(workspaceId: string, onKept: () => void) {
+export function usePictureImport(workspaceId: string, catalogId: string | null, onKept: () => void) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const held = useRef({ busy, onKept });
-  held.current = { busy, onKept };
+  const held = useRef({ busy, onKept, catalogId });
+  held.current = { busy, onKept, catalogId };
 
   async function bringIn(files: File[], pasted = false) {
     const pictures = picturesIn(files);
@@ -44,11 +45,12 @@ export function usePictureImport(workspaceId: string, onKept: () => void) {
       let last: string | null = null;
       for (const file of pictures) {
         const read = await readPictureFile(file);
+        const catalogId = held.current.catalogId;
         const kept =
           'archive' in read
-            ? await importDesignImage({ workspaceId, archive: read.archive })
+            ? await importDesignImage({ workspaceId, archive: read.archive, catalogId })
             : // A pasted picture's file is always "image.png", which names nothing.
-              await importDesignImage({ workspaceId, image: read.image, name: pasted ? t('Pasted picture') : read.name });
+              await importDesignImage({ workspaceId, image: read.image, name: pasted ? t('Pasted picture') : read.name, catalogId });
         last = kept.id;
       }
       if (pictures.length === 1 && last !== null) navigate(`/workspace/${workspaceId}/design/images/${last}/edit`);

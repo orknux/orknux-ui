@@ -74,12 +74,15 @@ export interface DesignVideo {
   /** How many of an upscale's frames are done, of framesTotal; null until they are counted. */
   framesDone: number | null;
   framesTotal: number | null;
+  /** The catalog it is filed in: the default where it was never filed. A version is in its original's. */
+  catalogId: string;
+  catalogName: string;
 }
 
 const VIDEO_FIELDS = `
   id status name prompt modelId model seconds size frames fps width height seed startImageId startImageUrl
   requestedBy requestedAt startedAt finishedAt reason progress progressSamplingOnly asOf ahead url posterUrl contentType sizeBytes durationSeconds
-  versionOf upscaledFrom upscaler scale framesDone framesTotal
+  versionOf upscaledFrom upscaler scale framesDone framesTotal catalogId catalogName
 `;
 
 /** What one video model takes, asked of its server now. */
@@ -96,12 +99,12 @@ export async function fetchVideoSettings(workspaceId: string, modelId: string): 
 }
 
 /** The workspace's videos, newest first. */
-export async function fetchDesignVideos(workspaceId: string, search = ''): Promise<DesignVideo[]> {
+export async function fetchDesignVideos(workspaceId: string, search = '', catalogId: string | null = null): Promise<DesignVideo[]> {
   const data = await graphql<{ designVideos: DesignVideo[] }>(
-    `query DesignVideos($workspaceId: ID!, $search: String) {
-       designVideos(workspaceId: $workspaceId, search: $search) { ${VIDEO_FIELDS} }
+    `query DesignVideos($workspaceId: ID!, $search: String, $catalogId: ID) {
+       designVideos(workspaceId: $workspaceId, search: $search, catalogId: $catalogId) { ${VIDEO_FIELDS} }
      }`,
-    { workspaceId, search: search.trim() === '' ? null : search.trim() },
+    { workspaceId, search: search.trim() === '' ? null : search.trim(), catalogId },
   );
   return data.designVideos;
 }
@@ -128,6 +131,8 @@ export interface QueueDesignVideo {
   height?: number | null;
   seed?: string | null;
   startImageId?: string | null;
+  /** The video catalog to file it in; the default where it is left out. */
+  catalogId?: string | null;
 }
 
 export async function queueDesignVideo(input: QueueDesignVideo): Promise<DesignVideo> {
