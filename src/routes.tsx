@@ -48,6 +48,8 @@ import { DesignDocumentsPage } from './pages/design/DesignDocumentsPage';
 import { DocumentEditorRoute } from './pages/design/DocumentEditorPage';
 import { DocumentViewRoute } from './pages/design/DocumentViewPage';
 import { WireframeEditorRoute } from './pages/design/WireframeEditorPage';
+import { DesignSheetsPage } from './pages/design/DesignSheetsPage';
+import { SheetEditorRoute } from './pages/design/SheetEditorPage';
 import { ExecutionsPage } from './pages/workspace/ExecutionsPage';
 import { FunctionEditorPage } from './pages/workspace/FunctionEditorPage';
 import { McpServerSettingsPage } from './pages/workspace/McpServerSettingsPage';
@@ -130,6 +132,9 @@ export const PAGE_ELEMENTS: Record<PagePath, PageElement> = {
   '/workspace/:workspaceId/design/videos/:videoId': (session, onSignOut) => <DesignVideoEditorRoute session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/wireframes': (session, onSignOut) => <DesignWireframesPage session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/documents': (session, onSignOut) => <DesignDocumentsPage session={session} onSignOut={onSignOut} />,
+  '/workspace/:workspaceId/design/sheets': (session, onSignOut) => <DesignSheetsPage session={session} onSignOut={onSignOut} />,
+  // Keyed on the sheet, so moving to another starts its editor afresh.
+  '/workspace/:workspaceId/design/sheets/:sheetId': (session, onSignOut) => <SheetEditorRoute session={session} onSignOut={onSignOut} />,
   // Keyed on the document, so moving to another starts its editor afresh rather than carrying this one's pages.
   '/workspace/:workspaceId/design/documents/:documentId': (session, onSignOut) => <DocumentEditorRoute session={session} onSignOut={onSignOut} />,
   '/workspace/:workspaceId/design/documents/:documentId/view': (session, onSignOut) => <DocumentViewRoute session={session} onSignOut={onSignOut} />,

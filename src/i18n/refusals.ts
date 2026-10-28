@@ -465,6 +465,16 @@ const PL: Record<string, string> = {
   DocumentSelectionTooLong: 'Zaznaczenie wysyłane do modelu może mieć najwyżej {most} znaków, a to ma {characters}',
   WireframeAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
   WireframePictureRefused: 'Nie można umieścić obrazu na makiecie: {why}',
+
+  // --- sheets ---------------------------------------------------------------
+  SheetNotFound: 'Nie ma arkusza o identyfikatorze {id}',
+  SheetNameInvalid: 'Arkusz potrzebuje nazwy, najwyżej 200 znaków',
+  SheetWorkbookInvalid: 'Nie można zapisać arkusza: {why}',
+  SheetTooLarge: 'Arkusz może mieć najwyżej {most} wypełnionych komórek, a ten miałby {count}',
+  SheetChanged: 'Arkusz {name} został zmieniony od czasu jego otwarcia; otwórz go ponownie przed zapisaniem',
+  SheetAnswerFailed: 'Model nie mógł odpowiedzieć: {reason}',
+  SheetImportRefused: 'Z tego pliku nie można zrobić arkusza: {reason}',
+  SheetFormatUnknown: 'Arkusz eksportuje się jako xlsx albo csv, a nie {asked}',
   DocumentImportFormatUnknown: 'Dokument importuje się z pliku PDF, Markdown, ODT, DOCX, HTML albo tekstowego, a {filename} nie jest żadnym z nich',
   DocumentImportTooLarge: '{filename} ma {megabytes} MB, a dokument importuje najwyżej {most} MB',
   DocumentImportUnreadable: 'Nie udało się odczytać pliku {filename}: {reason}',

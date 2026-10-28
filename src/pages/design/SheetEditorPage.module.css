@@ -1,0 +1,311 @@
+/* The formula bar, the grid and the tabs, top to bottom, left of the chat. */
+.work {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-bg);
+}
+
+.formulaBar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.address {
+  flex-shrink: 0;
+  min-width: 72px;
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.formula {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.formula:focus {
+  outline: none;
+  border-color: var(--color-accent-brand);
+}
+
+/* The grid: headers drawn beside the scrolling cells and moved with them, so they stay put as the cells scroll. */
+.grid {
+  position: relative;
+  flex: 1 0 0;
+  min-height: 0;
+  overflow: hidden;
+  outline: none;
+  user-select: none;
+}
+
+.corner,
+.columnHeads,
+.rowHeads {
+  position: absolute;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+}
+
+.corner {
+  top: 0;
+  left: 0;
+  z-index: 3;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.columnHeads {
+  top: 0;
+  right: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rowHeads {
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  border-right: 1px solid var(--color-border);
+}
+
+.columnHead,
+.rowHead {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: default;
+}
+
+.columnHead {
+  top: 0;
+  height: 100%;
+  border-right: 1px solid var(--color-border);
+}
+
+.rowHead {
+  left: 0;
+  width: 100%;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.headOn {
+  background: var(--color-accent-brand-soft);
+  color: var(--color-text-primary);
+}
+
+/* The edge a column is dragged wider by. */
+.resize {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 1;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.resize:hover {
+  background: var(--color-accent-brand);
+  opacity: 0.5;
+}
+
+.cells {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+}
+
+.paper {
+  position: relative;
+}
+
+/* The grid's lines, one cell apart down; across, each cell draws its own right edge. */
+.lines {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
+  background-size: 100% 24px;
+  background-position: 0 23px;
+  pointer-events: none;
+}
+
+.cell {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 0 var(--space-6);
+  overflow: hidden;
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  line-height: 23px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cellNumber {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cellBoolean {
+  text-align: center;
+}
+
+.cellError {
+  color: var(--color-danger);
+  text-align: center;
+}
+
+.selection {
+  position: absolute;
+  box-sizing: border-box;
+  background: var(--color-accent-brand-soft);
+  border: 1px solid var(--color-accent-brand);
+  pointer-events: none;
+}
+
+.focus {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--color-accent-brand);
+  pointer-events: none;
+}
+
+.inPlace {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 0 var(--space-6);
+  background: var(--color-bg);
+  border: 2px solid var(--color-accent-brand);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+}
+
+.working {
+  position: absolute;
+  top: var(--space-12);
+  right: var(--space-24);
+  z-index: 4;
+}
+
+/* The tabs along the bottom, as a spreadsheet keeps them. */
+.tabs {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-8);
+  overflow-x: auto;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tab {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-4);
+}
+
+.tabOn {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.tabName,
+.tabRemove,
+.tabAdd {
+  padding: var(--space-4) var(--space-10);
+  background: none;
+  border: 0;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.tabOn .tabName {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.tabRemove {
+  padding: var(--space-4) var(--space-6) var(--space-4) 0;
+  color: var(--color-text-muted);
+}
+
+.tabRemove:hover,
+.tabAdd:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.tabInput {
+  width: 120px;
+  height: 24px;
+  padding: 0 var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-4);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.panel {
+  gap: var(--space-12);
+  overflow: hidden;
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+.missing {
+  padding: var(--space-24);
+  color: var(--color-text-muted);
+}
+
+.missing a {
+  color: var(--color-accent-brand);
+  text-decoration: underline;
+}

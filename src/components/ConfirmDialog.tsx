@@ -30,6 +30,8 @@ export type ConfirmKind =
   | 'replaceArtifact'
   | 'removeImage'
   | 'removeWireframe'
+  | 'removeSheet'
+  | 'removeSheetTab'
   | 'removeDocument'
   | 'removeDocumentCatalog'
   | 'restartResearch'
@@ -66,6 +68,8 @@ const DESTRUCTIVE = new Set<ConfirmKind>([
   'removeArtifact',
   'removeImage',
   'removeWireframe',
+  'removeSheet',
+  'removeSheetTab',
   'removeDocument',
   'removeDocumentCatalog',
   'removeDiagram',
@@ -324,6 +328,16 @@ export function ConfirmDialog({ subject, kind, detail, onClose, onConfirm }: Con
     removeWireframe: {
       title: t('Remove wireframe'),
       message: <>{t('The wireframe is deleted from this workspace, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeSheet: {
+      title: t('Remove sheet'),
+      message: <>{t('The sheet is deleted from this workspace, and there is no way back from this one:')} {name}</>,
+      button: submitting ? t('Removing…') : t('Remove'),
+    },
+    removeSheetTab: {
+      title: t('Remove tab'),
+      message: <>{t('The tab and every cell in it are removed from the sheet:')} {name}</>,
       button: submitting ? t('Removing…') : t('Remove'),
     },
     removeDocument: {

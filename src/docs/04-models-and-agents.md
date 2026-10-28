@@ -1424,6 +1424,14 @@ they draw is saved and audited as a save from the editor is.
 screen, buttons, fields and pictures as real HTML elements - and answers the
 page with a link to download it, the same page **Export** in the editor saves.
 
+It can **work in sheets** too. `orknux_sheets` lists them and `orknux_sheet`
+reads one - each cell as it was typed and what it comes to, a whole tab or one
+range; `orknux_create_sheet` makes one, `orknux_write_sheet_cells` writes values
+and formulas into a tab and answers what they came to, and
+`orknux_change_sheet_tabs` adds, renames and removes tabs. The values are worked
+out by the same engine the editor and the .xlsx export use, so what an agent
+reads is what a person sees.
+
 ## Letting an agent work in a box
 
 A **box** is a sandbox an agent can open a session in: a working directory of

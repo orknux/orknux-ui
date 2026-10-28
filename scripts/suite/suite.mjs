@@ -2454,6 +2454,12 @@ export const TESTS = [
     /* Makes its own wireframe and removes it; the model's answer is answered here, since CI has none. */
   },
   {
+    name: 'sheets-check',
+    what: 'Design -> Sheets after Documents opens a new sheet in the editor; 2, 3 and =A1+A2 typed into A1:A3 draw 5 in A3 as the server worked it out, still after a reload, and dragging column B\'s edge draws the column and its cells 80px wider',
+    needs: ['workspace'],
+    /* Makes its own sheet and removes it. */
+  },
+  {
     name: 'wireframe-export-check',
     what: "the wireframe editor's Export saves HTML, SVG and PNG named after the wireframe, each holding what is on the screen and drawn as the canvas draws it",
     needs: ['workspace'],

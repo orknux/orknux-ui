@@ -37,6 +37,7 @@ import slidersIcon from './assets/sliders-horizontal.svg';
 import toolIcon from './assets/tool.svg';
 import wireframeIcon from './assets/frame.svg';
 import documentIcon from './assets/file-text.svg';
+import sheetIcon from './assets/file-spreadsheet.svg';
 import { t } from './i18n';
 
 /**
@@ -396,6 +397,14 @@ export const PAGES = [
   /* A document's editor, and the same document to be read, at an address of its own to send. */
   { path: '/workspace/:workspaceId/design/documents/:documentId', access: 'signed-in', goTo: false },
   { path: '/workspace/:workspaceId/design/documents/:documentId/view', access: 'signed-in', goTo: false },
+  /* Spreadsheets: tabs of cells and formulas, worked out on the server, filled in by hand or by a model. */
+  {
+    path: '/workspace/:workspaceId/design/sheets',
+    access: 'signed-in',
+    goTo: { label: t('Sheets'), where: 'Design', icon: sheetIcon, also: 'spreadsheet table cells formulas excel calc' },
+  },
+  /* A sheet's editor, reached from the list. */
+  { path: '/workspace/:workspaceId/design/sheets/:sheetId', access: 'signed-in', goTo: false },
   {
     path: '/workspace/:workspaceId/design/images',
     access: 'signed-in',

@@ -11,7 +11,7 @@ import styles from './LiveRoom.module.css';
  */
 
 /** Which kind of thing a room is for, as `/api/live/{kind}/{id}` names it. */
-export type LiveKind = 'diagram' | 'document' | 'wireframe';
+export type LiveKind = 'diagram' | 'document' | 'wireframe' | 'sheet';
 
 /** How long an editor waits before saving when the server cannot be asked. */
 const AUTOSAVE_FALLBACK_MS = 800;
