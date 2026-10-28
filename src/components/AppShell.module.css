@@ -706,6 +706,17 @@
 }
 
 /*
+ * A page with a Save bar keeps the bar's height as room instead (its spacer),
+ * and the launcher sits in the footer under the bar. Both at once left 136px
+ * of nothing between the last of the page and Save. Only where the spacer is
+ * the page's own last row: a settings page holds it in a row beside its menu,
+ * where it takes no height and the clearance is all the room there is.
+ */
+.content:has(> [data-save-bar-spacer]) {
+  padding-bottom: 0;
+}
+
+/*
  * A page that reaches the bottom of the frame itself.
  *
  * The clearance above exists so a page's last control is not under the floating

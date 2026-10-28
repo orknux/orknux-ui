@@ -38,6 +38,11 @@ for (const one of PAGES) {
     };
   });
   const before = await state();
+  // A page that fits the window runs its code down to the bar, one page gap above it - not the launcher's clearance too.
+  if (before.barTop !== null && before.codeBottom <= before.barTop) {
+    const gap = Math.round(before.barTop - before.codeBottom);
+    record(gap <= 40, `${one.what}'s code runs down to the Save bar (${gap}px short of it)`);
+  }
   if (before.room <= 0) {
     record(true, `${one.what}'s page fits the window; nothing to scroll`);
     continue;
