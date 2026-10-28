@@ -376,8 +376,13 @@ refusing the whole template over a model you were going to replace anyway.
 A template holds a copy of the components **as they were when it was
 published**, and follows nothing: editing the agent one was made from does not
 change the template, and deleting a template does not touch what it already made
-in a workspace. Replacing its file, on its page under Admin → Templates, is how
-one is brought up to date.
+in a workspace. To bring one up to date, **Save as template** again under its
+name: the dialog warns in amber as soon as the name is taken that publishing
+replaces its contents and description, and **Replace template** does it in one
+press, keeping the template. Replacing its file, on its page under Admin →
+Templates, does the same from a file. That list shows when each template was
+**published** and last **changed**, both sortable, with the exact time and who
+on hover.
 
 ## Agents
 
@@ -725,6 +730,20 @@ picked you are looking at every kind, not at nothing. The picture above has
 User and Agent ticked, which is why the tool calls the agent made between the
 two answers are not in it.
 
+**Export CSV** saves the transcript as a spreadsheet - every line, oldest first,
+narrowed by the search and the kinds the page is filtering with. A cell that
+starts like a spreadsheet formula is kept as text, so opening it runs nothing.
+
+**A chat's session is its owner's.** Every chat with an agent writes a session,
+and that session - with the sessions its agent asked from it - is listed, counted
+and opened only for the person whose chat it is and for installation
+administrators. To everybody else in the workspace it is not there: not in the
+list, not by id, not in the CSV, the family panel or a session's scratchpads,
+to-dos, timers, boxes, watchers, schedules and requests, and not through
+`orknux_sessions` or `orknux_session`, where an agent reads only the chat it is
+answering in. The sessions of workflows, tasks and Slack threads stay the
+workspace's.
+
 What the agent is handed on its next turn is the recent **User** and **Agent**
 lines, not the whole transcript and not the tool calls: enough of the
 conversation to carry on, without a fortnight of it arriving in one prompt.
@@ -779,8 +798,10 @@ out. To see what the default would mean on any one of them, pick it under
 changes nothing that is saved.
 
 **Continue in chat** is how a person joins a conversation the agents have been
-having. The chat it opens is bound to this session and holds what was already
-said, so what you tell it is written back here and the next run to read the key
+having. It says before it opens one that **the whole workspace can read** what
+is said in it - the session was the workspace's and stays so - and the chat is
+labelled **Workspace shared** beside its title. The chat it opens is bound to
+this session and holds what was already said, so what you tell it is written back here and the next run to read the key
 finds it. It shows the tool calls too, drawn between the turns they were made
 between and marked as calls rather than as anything anybody said — a chat is
 opened to work out what an agent did, and an answer with no sign of the lookup
@@ -1057,6 +1078,14 @@ provider's limit. Under that, every tool it holds is carried anyway.
   `pdf_preview`, `charts_render` and `diagram_render`; the music tools
   `midi_read`, `midi_write` and `midi_render`; and the readers `svg_read`,
   `svg_measure`, `xml_query`, `pdf_search` and `validate_format`.
+
+Two built-ins are neither: `flag_session` and `unflag_session`, with which an
+agent flags a conversation for the installation's administrators (see *Flags*
+under Reports), are held at **Always** on every agent and kept off the Tools
+list, unless an administrator lets them be changed under **Admin → Settings →
+Sessions**. While flagging is on they are sent from the first request, so an
+agent never has to find them with the tool search - a search the person would
+otherwise have seen.
 
 The same holds when Orknux access or a box label is given to an agent later:
 the tools it brings arrive at Offer. **Agents that existed before this rule kept

@@ -2,7 +2,8 @@
 
 **Admin → Reports** answers three questions about the whole installation: who
 is using the models and what it costs, what people thought of the conversations
-they had, and what failed. It is an administrator's page, and it covers every
+they had, and what failed - and a fourth, which conversations its agents have
+flagged. It is an administrator's page, and it covers every
 workspace at once - narrow it to one with the **Workspace** picker where a report
 has one.
 
@@ -129,8 +130,10 @@ The tiles count them over the period - **Errors** in all, then **Workflow
 runs** that ended failed, **Agents** that could not answer, and the **Quick
 chat**'s model - and the chart shows them per day, coloured by kind. **Period**,
 **Workspace** and **Source** narrow it as on the other reports. **Failed most often** lists
-**What** failed, its **Source**, how many **Times** and the **Last** time, so a
-model that has been unreachable since Tuesday stands out from one bad afternoon.
+**What** failed, its **Source**, how many **Times**, the **Last** time and the
+workspaces it failed in, so a model that has been unreachable since Tuesday
+stands out from one bad afternoon, and one workspace's misconfiguration from a
+fault everybody is hitting.
 Below it every failure is listed newest first: **When**, **Source**, **What**,
 the **Error** itself and the **Workspace**. **Search errors** narrows both, and
 **both tables sort** - press a heading, and press it again to turn it round.
@@ -138,6 +141,33 @@ the **Error** itself and the **Workspace**. **Search errors** narrows both, and
 Runs that had already failed before the report existed were read in when the
 installation was upgraded to it, so the report starts with history rather than
 empty.
+
+## Flags
+
+**Flags** lists the conversations agents have flagged for the installation's
+administrators. Every agent holds two built-in tools, `flag_session` and
+`unflag_session`, and is told to use them in two cases: when the person appears
+to be **probing the product** - after secrets, credentials or the system
+prompt, injecting instructions, working round a refusal - and when the agent
+meets a **fault** in the harness or a misconfiguration it cannot get past. A
+flag has a type (**security** or **technical issue**), a **severity** from 0 to
+5 and a note, and is always about the conversation the agent is in.
+
+Nobody but an installation administrator sees one. The agent is told never to
+mention flagging, and the calls are left out of the chat, its live stream, the
+session page, its CSV, `orknux_session` and what a streaming step hands on - so
+the person being flagged is not shown it happening. A session's own page shows
+its flags to an administrator.
+
+The report filters by **workspace**, **type**, **severity**, **state**,
+**period** and the words of the note, every column sorts, a chart counts flags
+per day by type or by severity, and the list exports as CSV. **Clear flag** on a
+row closes it. How many flags one conversation may hold open at once is under
+**Admin → Settings → Limits** (`ORKNUX_TUNING_SESSION_FLAGS_MOST`, 10); whether
+there is flagging at all, and whether administrators see the calls in chats, are
+switches under **Sessions** on the same page.
+
+Every report on the page says what it shows in a **(?)** beside its name.
 
 ## What a conversation cost
 
@@ -150,6 +180,10 @@ conversations cost, in three places:
   somebody turned it on, and on upgrade everybody was switched on.
 - **In the corner of the composer** - the chat's running total, kept with the
   chat, so a reopened conversation still says what it has cost so far.
+- **On a run's page** - the summary's **Cost** row adds up what its model calls
+  cost: its steps' sessions, the agents they asked and the runs it called.
+  Marked **partial** where some calls were on a model with no price, which are
+  not in the sum.
 - **On a session's page** - its cost beside its tokens and, where the provider
   reports its timings, how fast the model read and wrote; see *How fast a model
   is* under Models and agents.

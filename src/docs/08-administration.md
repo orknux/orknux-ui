@@ -8,7 +8,8 @@ It is offered only to holders of the admin role.
 ![Every workspace on the installation](/screens/admin-workspaces.png)
 
 Create a workspace, rename it, give it a description, and assign the roles whose
-holders may see it.
+holders may see it. The list says each workspace's **Type** in a column of its
+own - **Standard**, or **Admin** for one switched on as below.
 
 Deleting one is meant to take its contents with it, and today it refuses when
 any of the workspace's agents is used by a node in a workflow — the workflow
@@ -59,6 +60,39 @@ administrator made them a workspace admin.
 
 Somebody let in by a directory group alone is listed once they have signed in -
 until then the installation does not know they exist.
+
+**Exclude** takes one member out of **this workspace only**, and asks first.
+Their roles and their other workspaces stay as they were, which is why it works
+for a directory user too - nothing in the directory has to change to keep
+somebody out of one team's workspace. The workspace goes from their list, from
+what their queries answer, from their access tokens and from its MCP endpoint at
+once. Their row stays, dimmed and marked **Excluded**, and **Allow** lets them
+back in as an ordinary member. A workspace admin who is excluded stops being
+one. An installation administrator cannot be excluded, and the last workspace
+admin cannot exclude themselves.
+
+### Admin workspaces
+
+An **admin workspace** is one whose agents may read the rest of the
+installation. It is switched on in **Admin → Workspaces**, on that workspace's
+settings, with **Admin workspace**, and what it may read is a switch per kind:
+
+- **Other workspaces' sessions, chats, agents, actions, workflows, runs and
+  reports** - each a switch of its own, over every workspace or over a chosen
+  list. The chosen workspaces are a list with a remove button on each, and a
+  select with **Add** for the rest.
+- **The installation's own pages** - Reports, Doctor, Roles, Monitoring,
+  Templates, Plugins, the audit log and Users - each a tool of its own. The last
+  three start off.
+
+It is **read only**: nothing an admin workspace's agent does changes another
+workspace, and no credential is handed across - a connection, a provider key or
+a secret stays where it is. Only installation administrators see an admin
+workspace, and the switch refuses while somebody who is not one could open it:
+the card names the roles in the way as soon as Admin workspace is ticked, and
+the refusal is shown in the card rather than at the foot of the page. The same
+holds afterwards - a role without the Admin scope cannot be given it. Its tools
+are not offered over MCP.
 
 ### Sharing between workspaces
 
@@ -211,6 +245,12 @@ orknux:
   web:
     base-url: https://orknux.example.com
 ```
+
+The same server can be set from the browser instead, under **Admin → Settings →
+Mail**, with a **Test** that sends a mail to an address you type. What is set
+there wins over the file and the `ORKNUX_MAIL_*` variables, which stay the
+fallback. The password is stored encrypted and never shown again, and **Use
+environment settings** goes back to what the configuration says.
 
 `base-url` is the address this interface is reached at, and the link in the mail
 is written from it. It is configuration rather than something read off the
@@ -373,7 +413,8 @@ handed to an upload tool.
 
 The rest of the page is in sections, listed in a menu down its side and each
 reachable from Quick actions: **Address** (where the installation is reached),
-**Grammar**, **Chat**, **Agents** (how long one may sleep, how many others it
+**Mail** (the installation's own mail server, under *Resetting a forgotten
+password* above), **Grammar**, **Chat**, **Agents** (how long one may sleep, how many others it
 may ask and at once, and how long to wait out a rate limit that names no time),
 **Tool calls** (how many per reply, and when a repeated call counts as a loop),
 **Tool list**, **HTTP tools** (whether agents may make requests at all, and
@@ -643,6 +684,7 @@ The tables are the whole list, grouped as the page groups them.
 | **How long agent_wait waits when not told** | 30 seconds | 1 or more | An agent that has asked other agents may wait for them with agent_wait; this is how long, when it does not say. It returns as soon as one of them finishes. `ORKNUX_TUNING_AGENT_WAIT_DEFAULT_SECONDS` |
 | **The longest agent_wait may wait** | 300 seconds | 1 or more | A model that may sleep for an hour will. An agent asking for longer is given this. `ORKNUX_TUNING_AGENT_WAIT_LONGEST_SECONDS` |
 | **How many findable tools one search loads** | 20 | 1 or more | An agent with more tools than its briefing names finds the rest with tool_find. This is how many of the matches one search hands it at once; the rest are counted and a narrower search finds them. `ORKNUX_TUNING_TOOLS_LOADED_AT_ONCE` |
+| **Flags one conversation may hold open** | 10 | 1 or more | How many unresolved flags an agent may raise on the conversation it is in; see *Flags* under Reports. `ORKNUX_TUNING_SESSION_FLAGS_MOST` |
 | **How many names or searches one tool_find call may carry** | 8 | 1 or more | What an agent asks for beyond this in one call is ignored. `ORKNUX_TUNING_TOOLS_SEARCHES_AT_ONCE` |
 | **How much of the model's window one tool result may take** | 10% | 1-90 | A longer answer is cut to this share of the model's context window, counted at the characters a token below, and the model is told how long it was and how to read the rest. Applies to models whose window is known. `ORKNUX_TUNING_TOOL_RESULT_WINDOW_PERCENT` |
 | **How many characters a token is counted as against the window** | 1 characters | 1 or more | What turns a share of the model's window into a length to cut at. One never lets a result past its share; markup and numbers come to barely more than one a token, prose to about four. `ORKNUX_TUNING_TURN_WINDOW_CHARS_PER_TOKEN` |
@@ -940,6 +982,9 @@ of its own here - boxes, watchers, bulkheads, HTTP tools - that chapter says mor
 | **Compactions before a turn gives up** | 2 times | 1-10 | How many times one turn may be summarised before it fails instead. A turn still too large after two summaries is not long, it is looping - and compacting a loop for ever is a way of never telling anybody something is wrong. |
 | **Longest value kept in a transcript** | 1,000 characters | 100-100,000 | How much of any one value is stored. This bounds the record and not the answer: a tool hands the agent whatever it hands it, and this decides how much survives into a later turn. It was set for payloads - a base64 image on its way somewhere - and a skill is the opposite case, instructions the agent is meant to still be holding. Raise it where transcripts matter more than table size. |
 | **Conversations can be removed** | On |  | A conversation is the record of what an agent was asked and what it answered, and on some installations it is the only account of a decision anybody has. Removing one takes the whole transcript with it and there is no way back, so an installation that has to be able to say what happened should turn this off. On until somebody does, which is how it has always worked. |
+| **Session flagging** | On |  | Whether agents may flag a conversation for the installation's administrators; see *Flags* under Reports. Off, new conversations are not offered `flag_session` and `unflag_session` and agents are not told about flagging, a conversation that already holds them is refused if it calls one, and nothing is recorded. Flags already raised stay where they are. |
+| **Hide concealed tool calls in chats** | On |  | On, the flag calls - and what an agent writes beside a round that only flags - are shown in no chat to anybody, administrators included. Off, an administrator sees them in chats again; nobody else ever does. The session page, its CSV and the Flags report show them to an administrator either way. |
+| **Flag tools on agents' Tools lists** | Off |  | Off, `flag_session` and `unflag_session` are not listed on any agent's Tools list and every agent holds them at Always; a save that marks them otherwise is put back. On, they are listed like any other built-in and can be changed agent by agent. Switching it off again puts every agent back to Always. |
 
 #### Scratchpads
 

@@ -218,7 +218,10 @@ filed](/screens/chat-item-link.png)
 ## When the agent asks you
 
 Some things an agent cannot do without you, and it asks in the chat rather than
-guessing. The question sits at the bottom of the chat until you answer it, then
+guessing. What a request means is not one of them until it has looked: handed
+something unclear - *check this*, a bare mention in a Slack thread - an agent is
+told to read the earlier messages in its session and the thread it came from
+first, and to ask only when that does not settle it. The question sits at the bottom of the chat until you answer it, then
 moves to where it was asked.
 
 - **A question with options** - one row per answer with a line on what each
