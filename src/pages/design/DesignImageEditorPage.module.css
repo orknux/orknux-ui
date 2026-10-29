@@ -1,11 +1,20 @@
 /* The bar along the top, as the workflow editor's. */
+/*
+ * One row while everything fits, and never off the edge where it does not:
+ * the editors' bars hold a dozen tools and as many buttons, and on a narrow
+ * window Export ran off the end, out of reach. The name is laid out at a few
+ * letters and grows into what is left (see .toolbarTitle), so the buttons
+ * keep the first row whenever they fit beside that; where they do not, their
+ * group takes a second row, right-aligned, and wraps within it.
+ */
 .toolbar {
   display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-12);
-  height: 40px;
-  padding: 0 var(--space-24);
+  gap: var(--space-4) var(--space-12);
+  min-height: 40px;
+  padding: var(--space-4) var(--space-24);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
@@ -49,9 +58,15 @@
   text-underline-offset: 3px;
 }
 
-/* The name, or the prompt cut short: one line, never wider than half the bar. */
+/*
+ * The name, or the prompt cut short: one line, never wider than half the bar.
+ * Laid out at a few letters and grown into the room the bar has left, so a
+ * long name is cut short rather than pushing the buttons onto a second row -
+ * and is never squeezed past those few letters, where it used to vanish.
+ */
 .toolbarTitle {
-  min-width: 0;
+  flex: 1 1 6em;
+  min-width: 6em;
   max-width: 50%;
   overflow: hidden;
   color: var(--color-text-primary);
@@ -83,9 +98,11 @@ button.toolbarTitle:hover {
 
 .toolbarRight {
   display: flex;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-4);
+  min-width: 0;
   margin-left: auto;
 }
 

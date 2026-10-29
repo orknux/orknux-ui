@@ -15,3 +15,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* The Host menu, hosted: what it is and where, above what can be done with it. */
+.hostNote {
+  max-width: 300px;
+  padding: var(--space-6) var(--space-12) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.hostAddress {
+  display: block;
+  max-width: 300px;
+  padding: 0 var(--space-12) var(--space-6);
+  overflow: hidden;
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

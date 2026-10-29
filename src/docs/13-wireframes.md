@@ -122,6 +122,23 @@ wireframe. Each format says on hover what it holds:
 An agent gets the HTML page with `orknux_wireframe_html`, with a link to
 download it.
 
+## Hosting it as a page
+
+**Host page** beside Export gives the wireframe an address of its own: the HTML
+page above, kept on the **Artifacts** page as a `SAVED-n`. Unlike an export,
+it is not a copy taken once. **Every save writes the page again** - from the
+editor, from the wireframe's chat, or from an agent drawing through the
+`orknux_*` tools - so the address always shows the wireframe as it is saved,
+and a rename renames the page too.
+
+Once hosted the button reads **Hosted**, and its menu shows the address with
+**Copy link**, **Open page** and **Stop hosting**. The address opens for anybody
+who can see the workspace, the same as any artifact, and nothing on the page
+runs. Stopping takes the page off the Artifacts page and leaves the wireframe;
+deleting the wireframe takes its page with it. The page cannot be replaced with
+another file from the Artifacts page, since the next save would write over it -
+change the wireframe instead.
+
 ## Working on one together
 
 Several people can have one wireframe open at once, as with documents and

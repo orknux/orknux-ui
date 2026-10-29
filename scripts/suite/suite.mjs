@@ -2454,6 +2454,18 @@ export const TESTS = [
     /* Makes its own catalogs, a picture and a wireframe, and removes them. Videos are checked for the column alone: CI has no video model to make one with. */
   },
   {
+    name: 'wireframe-host-check',
+    what: "the wireframe editor's Host menu hosts the wireframe as an HTML page and shows its address; the address serves the drawing, and after the button is made primary and autosaved in the editor serves it filled; Stop hosting removes the page and leaves the wireframe",
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it. */
+  },
+  {
+    name: 'wireframe-toolbar-fits-check',
+    what: "the wireframe editor's toolbar at 1440, 1200 and 900px wide: every control inside the window, the canvas below the bar, and no sideways scroll",
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it. */
+  },
+  {
     name: 'images-host-check',
     what: "a picture's preview on Design's Images page hosts it as an artifact and shows the address; the address serves the picture's bytes, and after the picture is rotated and saved in the editor serves the rotated one; hosting again is the same artifact; Stop hosting removes the artifact and leaves the picture",
     needs: ['workspace'],

@@ -53,6 +53,7 @@ import { boundsOf, WireframeShapes } from './WireframeDrawing';
 import { WireframeExport } from './WireframeExport';
 import { DesignChat, useChatFiles } from './DesignChat';
 import { placedPicture, WireframeImportMenu } from './WireframeImportMenu';
+import { WireframeHost } from './WireframeHost';
 import type { ChatIdea } from './DesignChat';
 import { forgetUndo, keepUndo, restoreUndo } from './wireframeUndo';
 import { WireframeStylePanel } from './WireframeStylePanel';
@@ -1010,6 +1011,7 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
             }}
           />
           <WireframeExport id={wireframe?.id ?? null} name={wireframe?.name ?? ''} elements={elements} workspaceId={workspaceId} />
+          <WireframeHost wireframe={wireframe} onChanged={setWireframe} />
         </div>
       </div>
 

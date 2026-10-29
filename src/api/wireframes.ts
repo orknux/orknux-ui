@@ -64,6 +64,8 @@ export interface Wireframe {
   /** The catalog it is filed in: the default where it was never filed. */
   catalogId: string;
   catalogName: string;
+  /** Where it is hosted as an HTML page: that page's artifact, SAVED-n. */
+  hostedAs?: string | null;
 }
 
 /** One turn of the editor's chat, with the files sent on it. */
@@ -76,7 +78,7 @@ export interface WireframeAnswer {
   wireframe: Wireframe;
 }
 
-const FIELDS = 'id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt catalogId catalogName';
+const FIELDS = 'id workspaceId name document elementCount revision createdBy createdAt updatedBy updatedAt catalogId catalogName hostedAs';
 
 /** The elements of a stored document; a document that cannot be read is an empty drawing. */
 export function elementsOf(wireframe: Pick<Wireframe, 'document'>): WireframeElement[] {
@@ -123,6 +125,27 @@ export async function renameWireframe(id: string, name: string): Promise<Wirefra
     { id, name },
   );
   return data.renameWireframe;
+}
+
+/**
+ * The wireframe hosted as an HTML page: a SAVED-n on the Artifacts page whose
+ * address always serves the drawing as it is saved, since every save writes it
+ * again. Hosting one already hosted keeps the page it has.
+ */
+export async function hostWireframe(id: string): Promise<Wireframe> {
+  const data = await graphql<{ hostWireframe: Wireframe }>(`mutation ($id: ID!) { hostWireframe(id: $id) { ${FIELDS} } }`, { id });
+  return data.hostWireframe;
+}
+
+/** The wireframe's page taken off the Artifacts page; the wireframe stays. */
+export async function unhostWireframe(id: string): Promise<Wireframe> {
+  const data = await graphql<{ unhostWireframe: Wireframe }>(`mutation ($id: ID!) { unhostWireframe(id: $id) { ${FIELDS} } }`, { id });
+  return data.unhostWireframe;
+}
+
+/** The address a hosted wireframe's page is read at: its artifact's, opened rather than downloaded, and whole. */
+export function hostedPageAddress(artifactId: string): string {
+  return `${window.location.origin}/api/artifacts/${artifactId.replace(/^SAVED-/, '')}/preview`;
 }
 
 /** Writes the whole drawing; refused when the wireframe was saved since `revision`. */

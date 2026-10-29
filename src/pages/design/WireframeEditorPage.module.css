@@ -7,6 +7,7 @@
 /* The tools in a group of their own, as the image editor's Magic group is. */
 .tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
 }
