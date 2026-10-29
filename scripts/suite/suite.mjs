@@ -2454,6 +2454,12 @@ export const TESTS = [
     /* Makes its own catalogs, a picture and a wireframe, and removes them. Videos are checked for the column alone: CI has no video model to make one with. */
   },
   {
+    name: 'wireframe-text-edit-check',
+    what: "double-clicking a button and a box on a frame in the wireframe editor opens each one's words for typing; what is typed is drawn and saved on the element double-clicked, the topmost under the point, and not on the frame",
+    needs: ['workspace'],
+    /* Makes its own wireframe and removes it. */
+  },
+  {
     name: 'wireframe-host-check',
     what: "the wireframe editor's Host menu hosts the wireframe as an HTML page and shows its address; the address serves the drawing, and after the button is made primary and autosaved in the editor serves it filled; Stop hosting removes the page and leaves the wireframe",
     needs: ['workspace'],

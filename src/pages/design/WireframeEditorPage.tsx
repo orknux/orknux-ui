@@ -617,7 +617,15 @@ export function WireframeEditorPage({ session, onSignOut }: WireframeEditorPageP
   }
 
   function doubleClick(event: ReactMouseEvent<SVGSVGElement>) {
-    const id = (event.target as Element).closest('[data-element-id]')?.getAttribute('data-element-id');
+    /*
+     * Read off the point, not the event's target. The press before it captured
+     * the pointer on the canvas, and a browser sends the click and the
+     * double-click that follow a capture to the element holding it - so the
+     * target was the canvas, never the box, and a double-click opened nothing.
+     * The topmost element under the point is the one that was double-clicked.
+     */
+    const under = document.elementsFromPoint(event.clientX, event.clientY).find((one) => one.closest('[data-element-id]') !== null);
+    const id = (under ?? (event.target as Element)).closest('[data-element-id]')?.getAttribute('data-element-id');
     const element = elements.find((one) => one.id === id);
     if (element === undefined || !isBox(element.type)) return;
     setSelected([element.id]);
