@@ -101,9 +101,14 @@ export function CompletionSwitch({
       </button>
       {!setting && models.length > 0 && (
         <span className={styles.offer}>
+          <span className={styles.offerCard}>
+          <span className={styles.offerText} data-testid={`${testId}-why`}>
+            {t('No completion model is set for this workspace, so nothing can be suggested.')}
+          </span>
           <button type="button" className={styles.set} onClick={() => setSetting(true)} data-testid={`${testId}-set`}>
             {t('Set workspace completion model')}
           </button>
+          </span>
         </span>
       )}
       {setting && (
@@ -113,6 +118,7 @@ export function CompletionSwitch({
           </p>
           <ModelPicker
             id={`${testId}-model`}
+            className={styles.picker}
             value={chosen}
             models={models}
             required

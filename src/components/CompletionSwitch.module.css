@@ -30,6 +30,29 @@
   pointer-events: auto;
 }
 
+/* A card of its own rather than a tooltip: a sentence on what is wrong, and a button that looks like one. */
+.offerCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  width: 280px;
+  max-width: calc(100vw - 32px);
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+.offerText {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+}
+
 .set,
 .cancel,
 .confirm {
@@ -44,11 +67,16 @@
   cursor: pointer;
 }
 
-.set:hover,
 .cancel:hover {
   background: var(--color-surface-hover);
 }
 
+.set:hover,
+.confirm:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.set,
 .confirm {
   background: var(--color-accent-brand);
   border-color: var(--color-accent-brand);
@@ -76,6 +104,18 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-8);
   box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+/* Sized to this panel: left alone, the field takes the page's text size and a grey of the browser's. */
+.picker {
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 400;
 }
 
 .explain,

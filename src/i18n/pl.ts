@@ -387,6 +387,7 @@ export const PL: Record<string, string> = {
   "Set workspace completion model": "Ustaw model uzupełniania przestrzeni",
   "This sets the Completion Model of the whole workspace: everybody in it gets suggestions from this model, in every editor and in chats.": "To ustawia model uzupełniania całej przestrzeni: wszyscy w niej dostają podpowiedzi z tego modelu, we wszystkich edytorach i na czatach.",
   "Set for the workspace": "Ustaw dla przestrzeni",
+  "No completion model is set for this workspace, so nothing can be suggested.": "Ta przestrzeń nie ma ustawionego modelu uzupełniania, więc nic nie może być podpowiadane.",
   "Drag to continue or copy; hold Ctrl for the other": "Przeciągnij, aby kontynuować lub skopiować; przytrzymaj Ctrl, aby zrobić odwrotnie",
   "Function source": "Źródło funkcji",
   "Tool": "Narzędzie",

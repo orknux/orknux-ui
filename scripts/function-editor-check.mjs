@@ -34,17 +34,33 @@ const grey = page.locator('[data-testid="function-autocomplete"]:disabled');
 await grey.waitFor({ timeout: 20_000 });
 const offerButton = page.getByTestId('function-autocomplete-set');
 await offerButton.waitFor({ state: 'attached', timeout: 10_000 });
-const shownAt = () => offerButton.evaluate((one) => getComputedStyle(one.parentElement).opacity);
+const offerOf = () => offerButton.evaluate((one) => getComputedStyle(one.parentElement.parentElement).opacity);
 const greyLook = await grey.evaluate((one) => Number(getComputedStyle(one).opacity));
 record(greyLook < 1, `with no completion model the switch is greyed out (opacity ${greyLook})`);
 await page.mouse.move(0, 0);
-record((await shownAt()) === '0', 'and offers nothing until hovered');
+record((await offerOf()) === '0', 'and offers nothing until hovered');
 await grey.hover({ force: true });
-record((await shownAt()) === '1', 'hovering it shows the offer');
+record((await offerOf()) === '1', 'hovering it shows the offer');
+const why = await page.getByTestId('function-autocomplete-why').innerText();
+record(why.includes('No completion model'), `with a sentence on what is wrong (${why})`);
+const look = await offerButton.evaluate((one) => {
+  const style = getComputedStyle(one);
+  const card = getComputedStyle(one.parentElement);
+  return { fill: style.backgroundColor, card: card.backgroundColor, border: style.borderTopWidth, text: style.color };
+});
+record(look.fill !== look.card && look.fill !== 'rgba(0, 0, 0, 0)' && look.fill !== look.text, `and a filled button, set apart from the card (${JSON.stringify(look)})`);
 record((await offerButton.innerText()) === 'Set workspace completion model', `which says what it does (${await offerButton.innerText()})`);
 await offerButton.click();
 const confirmButton = page.getByTestId('function-autocomplete-confirm');
 record(await confirmButton.isDisabled(), 'confirming is refused until a model is chosen');
+const pickerLook = await page.locator('#function-autocomplete-model').evaluate((one) => {
+  const style = getComputedStyle(one);
+  const name = getComputedStyle(one.querySelector('span') ?? one);
+  return { size: parseFloat(name.fontSize), fill: style.backgroundColor, panel: getComputedStyle(one.closest('[role="dialog"]')).backgroundColor };
+});
+record(pickerLook.size <= 14, `the selector's text is small (${pickerLook.size}px)`);
+const [r, g, b] = pickerLook.fill.match(/[\d.]+/g).map(Number);
+record(r < 16 && g < 16 && b < 16, `and its background is black (${pickerLook.fill})`);
 const pickIt = async () => {
   await page.locator('#function-autocomplete-model').click();
   await page.locator(`[data-model-menu="function-autocomplete-model"] li[data-value="${chat.id}"]`).click();
