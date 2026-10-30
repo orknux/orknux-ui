@@ -14,6 +14,7 @@ import botIcon from '../assets/bot.svg';
 import helpIcon from '../assets/circle-help.svg';
 import scanIcon from '../assets/scan-search.svg';
 import { Markdown } from './Markdown';
+import { CopyButton } from './CopyButton';
 import { PAGES } from '../navigation';
 import styles from './QuickChat.module.css';
 import { t, tf } from '../i18n';
@@ -407,12 +408,14 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
             )}
             {said.map((turn, index) =>
               turn.role === 'user' ? (
-                <p key={index} className={styles.asked}>
-                  {turn.content}
-                </p>
+                <div key={index} className={styles.asked}>
+                  <p className={styles.askedText}>{turn.content}</p>
+                  <CopyButton text={turn.content} label={t('Copy this message')} testId="quick-chat-message-copy" />
+                </div>
               ) : (
                 <div key={index} className={styles.answered}>
                   <Markdown pictureLinks>{turn.content}</Markdown>
+                  <CopyButton text={turn.content} label={t('Copy this message')} testId="quick-chat-message-copy" />
                   {/* Under the answer that offered it, where it was explained. */}
                   {offers[index] !== undefined &&
                     (offers[index].inEditor ? (

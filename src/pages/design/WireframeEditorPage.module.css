@@ -277,6 +277,18 @@
 }
 
 /* A reply - the working row or the answer - stands off the question it follows: the list's own gap left "Drawing…" hard under the bubble. */
+/* Copying one message of a chat, under it and out of the way of its words. */
+.turnActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+  white-space: normal;
+}
+
+.theirs .turnActions {
+  justify-content: flex-start;
+}
+
 .mine + .theirs {
   margin-top: var(--space-8);
 }

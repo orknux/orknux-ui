@@ -27,6 +27,18 @@ if (chat === undefined) await finish(browser);
 
 const had = (await graphql(`query($w: ID!) { workspace(id: $w) { quickChatModelId completionModelId } }`, { w: WORKSPACE })).workspace;
 await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceQuickChatModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: chat.id });
+// With no completion model the switch is a place to choose one, and choosing turns it on.
+await graphql(`mutation($w: ID!) { setWorkspaceCompletionModel(workspaceId: $w, modelId: null) { id } }`, { w: WORKSPACE });
+await page.goto(`${BASE}/workspace/${WORKSPACE}/functions/new`, { waitUntil: 'domcontentloaded' });
+const chooser = page.locator('#function-autocomplete-model');
+await chooser.waitFor({ timeout: 20_000 });
+record((await chooser.innerText()).includes('choose a model'), 'with no completion model the switch offers to choose one');
+await chooser.click();
+await page.locator(`[data-model-menu="function-autocomplete-model"] li[data-value="${chat.id}"]`).click();
+await page.locator('[data-testid="function-autocomplete"][aria-pressed="true"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+record((await page.locator('[data-testid="function-autocomplete"]').getAttribute('aria-pressed').catch(() => null)) === 'true', 'and choosing one turns it on');
+const chosen = (await graphql(`query($w: ID!) { workspace(id: $w) { completionModelId } }`, { w: WORKSPACE })).workspace.completionModelId;
+record(chosen === chat.id, `and sets the workspace's completion model (${chosen})`);
 await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceCompletionModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: chat.id });
 
 const REWRITE = 'export default function fresh(n: number): number {\n  return n * 2;\n}';
@@ -122,6 +134,10 @@ try {
   const taken = (await page.locator('.view-lines').first().innerText()).replace(/ /g, ' ');
   record(taken.includes('return n * 2;'), 'Accept takes it into the editor of a function not created yet');
   record((await page.getByText('I took the change into the editor. The function is not created yet.').count()) > 0, 'and the chat is told so');
+  const copies = page.locator('[data-testid$="-chat-message-copy"]');
+  record((await copies.count()) >= 2, `every message of the chat has a copy button (${await copies.count()})`);
+  await copies.first().click();
+  record((await page.getByText('Copied').count()) === 1, 'and pressing one says it copied');
 } finally {
   await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceQuickChatModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: had.quickChatModelId });
   await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceCompletionModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: had.completionModelId });

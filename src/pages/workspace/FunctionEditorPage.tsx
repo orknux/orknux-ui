@@ -31,6 +31,7 @@ import type { FunctionParam, ScriptImport, WorkspaceFunction } from '../../api/f
 import { askFunction, functionCompletion } from '../../api/functions';
 import type { EditorTurn } from '../../api/attachments';
 import { fetchWorkspace } from '../../api/workspaces';
+import { CompletionSwitch } from '../../components/CompletionSwitch';
 import bugIcon from '../../assets/bug.svg';
 import fileCodeIcon from '../../assets/file-code.svg';
 import listChecksIcon from '../../assets/list-checks.svg';
@@ -1688,20 +1689,16 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
                   Beside the wand, as the document editor has it: on unless
                   somebody switched it off, and remembered for them.
                 */}
-                <button
-                  type="button"
-                  className={`${styles.switch} ${completing ? styles.switchOn : ''}`}
-                  onClick={() => setAutocomplete(completing ? 'off' : '')}
-                  aria-pressed={completing}
-                  title={
-                    completionPause === null
-                      ? t('Auto-completion needs a completion model, chosen in the workspace settings')
-                      : t('Auto-completion')
-                  }
-                  data-testid="function-autocomplete"
-                >
-                  {t('Auto-completion')}
-                </button>
+                <CompletionSwitch
+                  workspaceId={workspaceId}
+                  completing={completing}
+                  pause={completionPause}
+                  onToggle={() => setAutocomplete(completing ? 'off' : '')}
+                  onChosen={setCompletionPause}
+                  className={styles.switch}
+                  onClassName={styles.switchOn}
+                  testId="function-autocomplete"
+                />
                 {!creating && returnType === 'BOOLEAN' && (
                   <button
                     type="button"

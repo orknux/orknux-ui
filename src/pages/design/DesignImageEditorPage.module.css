@@ -64,9 +64,10 @@
  * long name is cut short rather than pushing the buttons onto a second row -
  * and is never squeezed past those few letters, where it used to vanish.
  */
+/* As wide as the name and no wider: it grew to half the bar, leaving what follows it stranded mid-way. */
 .toolbarTitle {
-  flex: 1 1 6em;
-  min-width: 6em;
+  flex: 0 1 auto;
+  min-width: 3em;
   max-width: 50%;
   overflow: hidden;
   color: var(--color-text-primary);

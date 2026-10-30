@@ -9,6 +9,7 @@ import paperclipIcon from '../../assets/paperclip.svg';
 import sendIcon from '../../assets/send.svg';
 import { Loader } from '../../components/Loader';
 import { Markdown } from '../../components/Markdown';
+import { CopyButton } from '../../components/CopyButton';
 import { Select } from '../../components/Select';
 import form from '../../components/Dialog.module.css';
 import { t, tf } from '../../i18n';
@@ -167,6 +168,9 @@ export function DesignChat(props: DesignChatProps) {
             data-role={turn.role}
           >
             {turn.role === 'user' ? turn.content : <Markdown>{turn.content}</Markdown>}
+            <div className={styles.turnActions}>
+              <CopyButton text={turn.content} label={t('Copy this message')} testId={`${prefix}-chat-message-copy`} />
+            </div>
             {(turn.attachments ?? []).length > 0 && (
               <span className={styles.sentFiles}>
                 {(turn.attachments ?? []).map((file) => (

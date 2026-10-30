@@ -1234,11 +1234,6 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
                   </div>
                 </div>
                 <LivePointers pointers={live.pointers} place={(x, y) => ({ left: x - scroll.x + HEAD_WIDTH, top: y - scroll.y + HEAD_HEIGHT })} />
-                {answering && (
-                  <div className={styles.working} data-testid="sheet-working">
-                    <Loader label={t('Working…')} delay={0} size={20} />
-                  </div>
-                )}
               </>
             )}
           </div>

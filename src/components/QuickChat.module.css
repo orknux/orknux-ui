@@ -241,6 +241,19 @@
   color: var(--color-text-primary);
 }
 
+.asked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.askedText {
+  width: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .answered {
   max-width: 100%;
   font-size: var(--text-md);

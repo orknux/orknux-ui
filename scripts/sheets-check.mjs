@@ -43,6 +43,8 @@ try {
   record(made !== null, `New sheet opens its editor (${page.url()})`);
 
   const grid = page.getByTestId('sheet-grid');
+  const pencilGap = await page.getByTestId('sheet-title').evaluate((title) => title.nextElementSibling.getBoundingClientRect().left - title.getBoundingClientRect().right);
+  record(pencilGap <= 24, `the rename pencil sits beside the name (${Math.round(pencilGap)}px away)`);
   await page.getByTestId('sheet-cells').waitFor({ timeout: 15_000 });
 
   // An empty sheet still has columns: only a filled cell is drawn, and the lines across used to be its edge.

@@ -283,13 +283,6 @@
   color: var(--color-text-muted);
 }
 
-.working {
-  position: absolute;
-  top: var(--space-12);
-  right: var(--space-24);
-  z-index: 4;
-}
-
 /* The tabs along the bottom, as a spreadsheet keeps them. */
 .tabs {
   display: flex;

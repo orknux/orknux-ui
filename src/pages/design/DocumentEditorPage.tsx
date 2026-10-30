@@ -23,6 +23,7 @@ import type { DesignDocument, DocumentReference, DocumentSettings, DocumentTurn,
 import { restoreComponentRevision } from '../../api/revisions';
 import type { SessionUser } from '../../api/session';
 import { fetchWorkspace } from '../../api/workspaces';
+import { CompletionSwitch } from '../../components/CompletionSwitch';
 import { refuseOversized } from '../../api/uploads';
 import boldIcon from '../../assets/bold.svg';
 import codeIcon from '../../assets/code.svg';
@@ -888,16 +889,16 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
             </Link>
           </div>
           <span className={shell.toolbarGap} aria-hidden="true" />
-          <button
-            type="button"
-            className={`${styles.switch} ${completing ? styles.switchOn : ''}`}
-            onClick={() => setAutocomplete(completing ? 'off' : '')}
-            aria-pressed={completing}
-            title={t('Auto-completion')}
-            data-testid="document-autocomplete"
-          >
-            {t('Auto-completion')}
-          </button>
+          <CompletionSwitch
+            workspaceId={workspaceId}
+            completing={completing}
+            pause={completionPause}
+            onToggle={() => setAutocomplete(completing ? 'off' : '')}
+            onChosen={setCompletionPause}
+            className={styles.switch}
+            onClassName={styles.switchOn}
+            testId="document-autocomplete"
+          />
           <button
             type="button"
             className={`${styles.switch} ${grammarOn ? styles.switchOn : ''}`}
