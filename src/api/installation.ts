@@ -102,6 +102,8 @@ export interface InstallationSettings {
   chatCompletionPauseMillis: number;
   chatCompletionPauseMillisConfigured: number;
   /** How many replies are suggested under a chat's latest answer; 0 suggests none. */
+  /** The completion model of every workspace set to Default. */
+  chatCompletionModelId: string | null;
   chatReplySuggestions: number;
   chatReplySuggestionsConfigured: number;
   /** The most tokens an answer's suggested replies together may be. */
@@ -404,7 +406,7 @@ const FIELDS =
   'executionRetentionDays executionRetentionDaysConfigured ' +
   'taskSweepMinutes taskSweepMinutesConfigured taskSweepConfigurable ' +
   'pluginMaxSourceKb pluginMaxSourceKbConfigured pluginTimeoutSeconds pluginTimeoutSecondsConfigured ' +
-  'chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured chatTitleSeconds chatTitleSecondsConfigured chatCompletionContextTurns chatCompletionContextTurnsConfigured chatCompletionMaxTokens chatCompletionMaxTokensConfigured chatCompletionTimeoutMillis chatCompletionTimeoutMillisConfigured chatCompletionPauseMillis chatCompletionPauseMillisConfigured chatReplySuggestions chatReplySuggestionsConfigured chatReplySuggestionsMaxTokens chatReplySuggestionsMaxTokensConfigured chatReplySuggestionsTimeoutMillis chatReplySuggestionsTimeoutMillisConfigured chatVideoMaxMb chatVideoMaxMbConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
+  'chatCompletionModelId chatMaxRounds chatMaxRoundsConfigured chatRetitleEvery chatRetitleEveryConfigured chatTitleSeconds chatTitleSecondsConfigured chatCompletionContextTurns chatCompletionContextTurnsConfigured chatCompletionMaxTokens chatCompletionMaxTokensConfigured chatCompletionTimeoutMillis chatCompletionTimeoutMillisConfigured chatCompletionPauseMillis chatCompletionPauseMillisConfigured chatReplySuggestions chatReplySuggestionsConfigured chatReplySuggestionsMaxTokens chatReplySuggestionsMaxTokensConfigured chatReplySuggestionsTimeoutMillis chatReplySuggestionsTimeoutMillisConfigured chatVideoMaxMb chatVideoMaxMbConfigured objectMaxDepth objectMaxDepthConfigured imageMaxPrompt imageMaxPromptConfigured imageDrawsAtOnce imageDrawsAtOnceConfigured imageHarmonizeStrength imageHarmonizeStrengthConfigured imageHarmonizeSize imageHarmonizeSizeConfigured ' +
   'agentSleepSeconds agentSleepSecondsConfigured agentSleepTimes agentSleepTimesConfigured ' +
   'agentMaxSubagents agentMaxSubagentsConfigured agentMaxSubagentsAtOnce agentMaxSubagentsAtOnceConfigured workflowStepsAtOnce workflowStepsAtOnceConfigured workflowCallCheckSeconds workflowCallCheckSecondsConfigured workflowStepHeartbeatSeconds workflowStepHeartbeatSecondsConfigured workflowRestartAttempts workflowRestartAttemptsConfigured clusterLeaseSeconds clusterLeaseSecondsConfigured maxRepeatedToolCalls maxRepeatedToolCallsConfigured repeatedToolCallsWindowSeconds repeatedToolCallsWindowSecondsConfigured repeatedToolCallWarnings repeatedToolCallWarningsConfigured maxToolCallsAtOnce maxToolCallsAtOnceConfigured longestStoredValue longestStoredValueConfigured drawingScale drawingScaleConfigured sessionCompactAfterTokens sessionCompactAfterTokensConfigured sessionCompactionKeepTurns sessionCompactionKeepTurnsConfigured sessionCompactionSummaryTokens sessionCompactionSummaryTokensConfigured sessionCompactionAttempts sessionCompactionAttemptsConfigured scratchpadBudgetBytes scratchpadBudgetBytesConfigured commandMarker commandMarkerConfigured ' +
   'toolsNamedInSearch toolsNamedInSearchConfigured scratchpadFileBudgetBytes scratchpadFileBudgetBytesConfigured ' +
@@ -646,6 +648,15 @@ export async function setChatCompletionPauseMillis(millis: number): Promise<Inst
     { millis },
   );
   return data.setChatCompletionPauseMillis;
+}
+
+/** The completion model of every workspace set to Default; null is none. */
+export async function setChatCompletionModel(modelId: string | null): Promise<InstallationSettings> {
+  const data = await graphql<{ setChatCompletionModel: InstallationSettings }>(
+    `mutation SetChatCompletionModel($modelId: ID) { setChatCompletionModel(modelId: $modelId) { ${FIELDS} } }`,
+    { modelId },
+  );
+  return data.setChatCompletionModel;
 }
 
 export async function setChatReplySuggestions(count: number): Promise<InstallationSettings> {

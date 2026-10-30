@@ -71,6 +71,10 @@ export interface Workspace {
    * nothing is suggested. Issue #649.
    */
   completionModelId: string | null;
+  /** Whether having none of its own means the installation's, rather than none. */
+  completionModelDefault: boolean;
+  /** Whether anything will be suggested here, by its own model or the installation's. */
+  completionAvailable: boolean;
   /** How long a chat waits after the last keystroke before asking for a suggestion; the installation's. */
   completionPauseMillis: number;
   /**
@@ -232,7 +236,7 @@ export interface Workspace {
 const WORKSPACE_FIELDS =
   'id name description roles { id name } adminRoles { id name } administered readsSecrets adminWorkspace ' +
   'companionModelId transcriptionModelId speechModelId imageModelId quickChatModelId quickChatMayWrite ' +
-  'completionModelId completionPauseMillis ' +
+  'completionModelId completionModelDefault completionAvailable completionPauseMillis ' +
   'compactAfterTokens compactionSummaryTokens compactionModelId ' +
   'defaultMemoryShare taskMaxTurns taskMaxTurnsDefault agentMaxSubagents agentMaxSubagentsDefault chatMaxRounds chatMaxRoundsDefault researchReviewRounds researchReviewRoundsDefault researchFollowUps researchFollowUpsDefault maxToolCallsAtOnce maxToolCallsAtOnceDefault sessionCompactAfterTokens sessionCompactAfterTokensDefault sessionCompactionKeepTurns sessionCompactionKeepTurnsDefault sessionCompactionSummaryTokens sessionCompactionSummaryTokensDefault sessionCompactionAttempts sessionCompactionAttemptsDefault sessionCompactionModelId unsafeBuiltInTools commandMarker commandMarkerDefault ' +
   'functionTimeoutSeconds functionTimeoutSecondsDefault toolTimeoutSeconds toolTimeoutSecondsDefault ' +
@@ -370,12 +374,13 @@ export async function setWorkspaceQuickChatModel(
 export async function setWorkspaceCompletionModel(
   workspaceId: string,
   modelId: string | null,
+  useDefault = false,
 ): Promise<Workspace> {
   const data = await graphql<{ setWorkspaceCompletionModel: Workspace }>(
-    `mutation SetWorkspaceCompletionModel($workspaceId: ID!, $modelId: ID) {
-       setWorkspaceCompletionModel(workspaceId: $workspaceId, modelId: $modelId) { ${WORKSPACE_FIELDS} }
+    `mutation SetWorkspaceCompletionModel($workspaceId: ID!, $modelId: ID, $useDefault: Boolean) {
+       setWorkspaceCompletionModel(workspaceId: $workspaceId, modelId: $modelId, useDefault: $useDefault) { ${WORKSPACE_FIELDS} }
      }`,
-    { workspaceId, modelId },
+    { workspaceId, modelId, useDefault },
   );
   return data.setWorkspaceCompletionModel;
 }

@@ -462,7 +462,7 @@ export function FunctionEditorPage({ session, onSignOut }: FunctionEditorPagePro
   useEffect(() => {
     if (workspaceId === '') return;
     fetchWorkspace(workspaceId)
-      .then((found) => setCompletionPause(found?.completionModelId == null ? null : found.completionPauseMillis))
+      .then((found) => setCompletionPause(found?.completionAvailable !== true ? null : found.completionPauseMillis))
       .catch(() => setCompletionPause(null));
   }, [workspaceId]);
 

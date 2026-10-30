@@ -72,7 +72,7 @@ import { shellUser } from '../../session/user';
 import { forgetWorkspaces } from '../../session/workspaces';
 import styles from './WorkspaceSettingsPage.module.css';
 import { SearchSettings, useSearchSettings } from '../workspace-settings/SearchSettings';
-import { ModelPicker } from '../../components/ModelPicker';
+import { INHERITED_MODEL, ModelPicker } from '../../components/ModelPicker';
 import { t } from '../../i18n';
 import { Select } from '../../components/Select';
 
@@ -232,6 +232,12 @@ function Figures({ budget }: { budget: SessionMemoryBudget }) {
  * greyed-out field for a permission somebody will never hold is a permanent
  * advertisement for something they cannot have.
  */
+/** What the Completion Model field shows for a workspace: its own model, Default, or none. */
+function completionChoice(held: Workspace | null | undefined): string {
+  if (held?.completionModelId != null) return held.completionModelId;
+  return held?.completionModelDefault === true ? INHERITED_MODEL : '';
+}
+
 export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsPageProps) {
   const { workspaceId = '' } = useParams();
 
@@ -550,7 +556,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         setBargeThinking(found?.voiceBargeInWhileThinking ?? false);
         setChunking(found?.voiceSpeechChunking ?? CHUNKING_DEFAULT);
         setCompanion(found?.companionModelId ?? '');
-        setCompletion(found?.completionModelId ?? '');
+        setCompletion(completionChoice(found));
         setTranscription(found?.transcriptionModelId ?? '');
         setSpeech(found?.speechModelId ?? '');
         setImage(found?.imageModelId ?? '');
@@ -778,7 +784,9 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
         latest = await setWorkspaceCompanionModel(workspaceId, asNull(companion));
       }
       if (touched.has('completion')) {
-        latest = await setWorkspaceCompletionModel(workspaceId, asNull(completion));
+        latest = completion === INHERITED_MODEL
+          ? await setWorkspaceCompletionModel(workspaceId, null, true)
+          : await setWorkspaceCompletionModel(workspaceId, asNull(completion));
       }
       if (touched.has('transcription')) {
         latest = await setWorkspaceTranscriptionModel(workspaceId, asNull(transcription));
@@ -901,7 +909,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
     setFunctionTimeout(held.functionTimeoutSeconds === null ? '' : String(held.functionTimeoutSeconds));
     setToolTimeout(held.toolTimeoutSeconds === null ? '' : String(held.toolTimeoutSeconds));
     setCompanion(held.companionModelId ?? '');
-    setCompletion(held.completionModelId ?? '');
+    setCompletion(completionChoice(held));
     setTranscription(held.transcriptionModelId ?? '');
     setSpeech(held.speechModelId ?? '');
     setImage(held.imageModelId ?? '');
@@ -2055,6 +2063,7 @@ export function WorkspaceSettingsPage({ session, onSignOut }: WorkspaceSettingsP
               models={models.filter((model) => model.kind === 'CHAT')}
               onChange={(next) => { touch('completion'); setCompletion(next); }}
               none={t('None — nothing is suggested')}
+              inherited={t('Default — the model set for the whole installation')}
               disabled={workspace === null}
             />
           </div>

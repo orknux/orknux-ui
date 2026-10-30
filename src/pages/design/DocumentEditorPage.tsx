@@ -346,7 +346,7 @@ export function DocumentEditorPage({ session, onSignOut }: DocumentEditorPagePro
   useEffect(() => {
     if (workspaceId === '') return;
     fetchWorkspace(workspaceId)
-      .then((found) => setCompletionPause(found?.completionModelId == null ? null : found.completionPauseMillis))
+      .then((found) => setCompletionPause(found?.completionAvailable !== true ? null : found.completionPauseMillis))
       .catch(() => setCompletionPause(null));
     fetchGrammarSettings().then(setGrammar).catch(() => setGrammar(null));
   }, [workspaceId]);

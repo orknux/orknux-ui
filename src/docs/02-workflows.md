@@ -520,7 +520,8 @@ you. The wand beside Validate asks the chat for help in one click.
 caret goes on, from the workspace's completion model - a line or a few, drawn
 grey after the caret for **Tab** to take. It is on until you switch it off, and
 stays the way you left it. It needs a completion model chosen in the
-workspace's settings; without one nothing is suggested.
+workspace's settings, or the workspace set to **Default** and one chosen under
+Admin → Settings; without one nothing is suggested.
 
 ![The objects a workspace has declared](/screens/objects.png)
 

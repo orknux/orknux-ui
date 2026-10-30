@@ -82,6 +82,7 @@ await page.route('**/graphql', async (route) => {
     const held = await response.json();
     if (held.data?.workspace) {
       held.data.workspace.completionModelId = completing ? '1' : null;
+      held.data.workspace.completionAvailable = completing;
       held.data.workspace.completionPauseMillis = 300;
     }
     await route.fulfill({ response, body: JSON.stringify(held) });

@@ -1583,7 +1583,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
         setVoiceHidden(held?.voiceButtonHidden ?? false);
         setVoiceKnown(true);
         setShowTimestamps(held?.chatShowTimestamps ?? true);
-        setCompletionPause(held?.completionModelId == null ? null : held.completionPauseMillis);
+        setCompletionPause(held?.completionAvailable !== true ? null : held.completionPauseMillis);
         setTimerSound(held?.widgetTimerSound ?? true);
         setWorkspaceMarker(held === null ? null : (held.commandMarker ?? held.commandMarkerDefault));
         setChunking(held?.voiceSpeechChunking ?? CHUNKING_DEFAULT);

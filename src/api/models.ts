@@ -302,6 +302,14 @@ export async function fetchModels(workspaceId: string): Promise<Model[]> {
   return data.models;
 }
 
+/** Every workspace's chat models, for an administrator choosing the installation's completion model. */
+export async function fetchInstallationChatModels(): Promise<Model[]> {
+  const data = await graphql<{ installationChatModels: Model[] }>(
+    `query InstallationChatModels { installationChatModels { ${MODEL_FIELDS} } }`,
+  );
+  return data.installationChatModels;
+}
+
 export async function fetchModel(id: string): Promise<Model | null> {
   const data = await graphql<{ model: Model | null }>(
     `query Model($id: ID!) { model(id: $id) { ${MODEL_FIELDS} } }`,

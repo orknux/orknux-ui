@@ -1110,6 +1110,11 @@ export const TESTS = [
     needs: [],
   },
   {
+    name: 'completion-default-check',
+    what: 'a Completion Model set to Default takes the administrator\'s, and one set to None does not',
+    needs: ['workspace'],
+  },
+  {
     name: 'admin-settings-sections-check',
     what: 'the installation settings page is in sections, each one reachable from Quick actions',
     needs: [],

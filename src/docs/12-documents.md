@@ -162,7 +162,8 @@ pauses, the words a model would write next appear **in grey after the caret**.
 The suggestion comes from the workspace's **Completion Model**, chosen under
 **Workspace Settings → Chat** - the same model that suggests words in the chat
 composer. It is asked on every pause, so a small, fast model is the right
-choice, and while the workspace has none chosen nothing is suggested. The model
+choice, and while the workspace has none chosen nothing is suggested. Set to
+**Default**, it uses the one chosen under Admin → Settings. The model
 is shown the document's title, the page you are on and the text around the
 caret - how much is a limit under Admin → Settings → Limits.
 

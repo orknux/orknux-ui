@@ -10,6 +10,9 @@ import styles from './ModelPicker.module.css';
 /** From this many models the list opens with a box to narrow it by typing. */
 const FILTER_FROM = 8;
 
+/** The value of the `inherited` row. */
+export const INHERITED_MODEL = 'default';
+
 export interface ModelPickerProps {
   /** The trigger's id, so the field's `<label htmlFor>` still names it. */
   id: string;
@@ -20,6 +23,8 @@ export interface ModelPickerProps {
   onChange: (value: string) => void;
   /** What the empty choice says, e.g. "None — this agent cannot run"; with `required`, what shows while nothing is chosen. */
   none: string;
+  /** Where set, what a row above the empty one says, choosing somebody else's choice: value [INHERITED_MODEL]. */
+  inherited?: string;
   /** No empty row: a model has to be chosen. */
   required?: boolean;
   /** Where set, a model from another workspace is marked as shared. */
@@ -44,7 +49,7 @@ export interface ModelPickerProps {
  * with a box that narrows the list as one types. Drawn into the body at a fixed
  * position, so a dialog or a card that clips its overflow cannot cut it short.
  */
-export function ModelPicker({ id, value, models, onChange, none, required = false, workspaceId, disabled, className }: ModelPickerProps) {
+export function ModelPicker({ id, value, models, onChange, none, inherited, required = false, workspaceId, disabled, className }: ModelPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [at, setAt] = useState(0);
@@ -63,7 +68,9 @@ export function ModelPicker({ id, value, models, onChange, none, required = fals
     ? models
     : models.filter((one) => one.name.toLowerCase().includes(needle) || one.providerName.toLowerCase().includes(needle));
   // The "none" row first, and only while nothing is typed: nobody types to find it. None at all where a model is required.
-  const rows: Array<Model | null> = needle === '' && !required ? [null, ...shown] : shown;
+  const blanks: Array<Model | null | typeof INHERITED_MODEL> = inherited === undefined ? [null] : [INHERITED_MODEL, null];
+  const rows: Array<Model | null | typeof INHERITED_MODEL> = needle === '' && !required ? [...blanks, ...shown] : shown;
+  const valueOf = (row: Model | null | typeof INHERITED_MODEL) => (row === null ? '' : row === INHERITED_MODEL ? INHERITED_MODEL : row.id);
   const chosen = models.find((one) => one.id === value);
 
   const nameOf = (model: Model) =>
@@ -97,8 +104,9 @@ export function ModelPicker({ id, value, models, onChange, none, required = fals
   useEffect(() => {
     if (!open) return;
     setQuery('');
-    const current = models.findIndex((one) => one.id === value);
-    setAt(current === -1 ? 0 : current + (required ? 0 : 1));
+    // Off the whole list: the filter is cleared above, and this render's rows may still be narrowed by it.
+    const whole = required ? models : [...blanks, ...models];
+    setAt(Math.max(0, whole.findIndex((row) => valueOf(row) === value)));
     window.requestAnimationFrame(() => (filter.current ?? list.current)?.focus());
     const away = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -130,8 +138,8 @@ export function ModelPicker({ id, value, models, onChange, none, required = fals
     button.current?.focus();
   }
 
-  function choose(row: Model | null) {
-    onChange(row === null ? '' : row.id);
+  function choose(row: Model | null | typeof INHERITED_MODEL) {
+    onChange(valueOf(row));
     close();
   }
 
@@ -140,7 +148,7 @@ export function ModelPicker({ id, value, models, onChange, none, required = fals
     const now = Date.now();
     typed.current = { text: now - typed.current.at > 700 ? key : typed.current.text + key, at: now };
     const prefix = typed.current.text.toLowerCase();
-    const found = rows.findIndex((row) => row !== null && row.name.toLowerCase().startsWith(prefix));
+    const found = rows.findIndex((row) => row !== null && row !== INHERITED_MODEL && row.name.toLowerCase().startsWith(prefix));
     if (found !== -1) setAt(found);
   }
 
@@ -193,8 +201,8 @@ export function ModelPicker({ id, value, models, onChange, none, required = fals
           }
         }}
       >
-        {value === '' ? (
-          <span className={styles.name}>{none}</span>
+        {value === '' || value === INHERITED_MODEL ? (
+          <span className={styles.name}>{value === '' ? none : inherited}</span>
         ) : (
           <>
             <span className={styles.name}>{chosen === undefined ? '' : nameOf(chosen)}</span>
@@ -235,22 +243,22 @@ export function ModelPicker({ id, value, models, onChange, none, required = fals
               aria-activedescendant={active}
             >
               {rows.map((row, index) => {
-                const current = (row === null ? '' : row.id) === value;
+                const current = valueOf(row) === value;
                 return (
                   <li
-                    key={row === null ? '' : row.id}
+                    key={valueOf(row)}
                     id={`${listId}-${index}`}
                     role="option"
                     aria-selected={current}
                     data-index={index}
-                    data-value={row === null ? '' : row.id}
+                    data-value={valueOf(row)}
                     data-at={index === at ? '' : undefined}
                     className={`${styles.option}${index === at ? ` ${styles.optionAt}` : ''}${current ? ` ${styles.optionCurrent}` : ''}`}
                     onPointerMove={() => setAt(index)}
                     onClick={() => choose(row)}
                   >
-                    {row === null ? (
-                      <span className={styles.name}>{none}</span>
+                    {row === null || row === INHERITED_MODEL ? (
+                      <span className={styles.name}>{row === null ? none : inherited}</span>
                     ) : (
                       <>
                         <span className={styles.name} data-model-name="">{nameOf(row)}</span>

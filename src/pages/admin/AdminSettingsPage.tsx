@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { fetchInstallationChatModels } from '../../api/models';
+import type { Model } from '../../api/models';
+import { ModelPicker } from '../../components/ModelPicker';
+
 import {
   fetchInstallationSettings,
   setAgentSleepSeconds,
@@ -62,6 +66,7 @@ import {
   setChatCompletionMaxTokens,
   setChatCompletionTimeoutMillis,
   setChatCompletionPauseMillis,
+  setChatCompletionModel,
   setChatReplySuggestions,
   setChatReplySuggestionsMaxTokens,
   setChatReplySuggestionsTimeoutMillis,
@@ -147,6 +152,11 @@ export interface AdminSettingsPageProps {
  */
 function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageProps & { onDiscard: () => void }) {
   const [settings, setSettings] = useState<InstallationSettings | null>(null);
+  /** What the default completion model may be; empty until read, and for good if it cannot be. */
+  const [chatModels, setChatModels] = useState<Model[]>([]);
+  useEffect(() => {
+    fetchInstallationChatModels().then(setChatModels).catch(() => setChatModels([]));
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -878,6 +888,31 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
               workspace that chose a Completion model. Four numbers, because each
               is paid for on every pause in somebody's typing.
             */}
+            <div className={styles.setting}>
+              <div className={styles.settingText}>
+                <span className={styles.labelWithHint}>
+                  <label className={styles.settingLabel} htmlFor="default-completion-model">{t('Default Completion Model')}</label>
+                  <FieldHint label={t('Default Completion Model')}>
+                    {t('The Completion Model of every workspace set to Default; a workspace set to None or to a model of its own is left alone. What is typed in those workspaces goes to the provider of the workspace this model belongs to.')}
+                  </FieldHint>
+                </span>
+              </div>
+              <div className={styles.retention}>
+                <ModelPicker
+                  id="default-completion-model"
+                  value={settings.chatCompletionModelId ?? ''}
+                  models={chatModels}
+                  onChange={(next) => {
+                    setChatCompletionModel(next === '' ? null : next)
+                      .then(setSettings)
+                      .catch((failure: unknown) => setError(failure instanceof Error ? failure.message : String(failure)));
+                  }}
+                  none={t('None — nothing is suggested')}
+                  disabled={busy}
+                />
+              </div>
+            </div>
+
             <div className={styles.setting}>
               <div className={styles.settingText}>
                 <span className={styles.labelWithHint}>
