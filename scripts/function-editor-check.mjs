@@ -27,16 +27,40 @@ if (chat === undefined) await finish(browser);
 
 const had = (await graphql(`query($w: ID!) { workspace(id: $w) { quickChatModelId completionModelId } }`, { w: WORKSPACE })).workspace;
 await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceQuickChatModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: chat.id });
-// With no completion model the switch is a place to choose one, and choosing turns it on.
+// With no completion model the switch is greyed out; hovering offers to set the workspace's, which asks to confirm.
 await graphql(`mutation($w: ID!) { setWorkspaceCompletionModel(workspaceId: $w, modelId: null) { id } }`, { w: WORKSPACE });
 await page.goto(`${BASE}/workspace/${WORKSPACE}/functions/new`, { waitUntil: 'domcontentloaded' });
-const chooser = page.locator('#function-autocomplete-model');
-await chooser.waitFor({ timeout: 20_000 });
-record((await chooser.innerText()).includes('choose a model'), 'with no completion model the switch offers to choose one');
-await chooser.click();
-await page.locator(`[data-model-menu="function-autocomplete-model"] li[data-value="${chat.id}"]`).click();
+const grey = page.locator('[data-testid="function-autocomplete"]:disabled');
+await grey.waitFor({ timeout: 20_000 });
+const offerButton = page.getByTestId('function-autocomplete-set');
+await offerButton.waitFor({ state: 'attached', timeout: 10_000 });
+const shownAt = () => offerButton.evaluate((one) => getComputedStyle(one.parentElement).opacity);
+const greyLook = await grey.evaluate((one) => Number(getComputedStyle(one).opacity));
+record(greyLook < 1, `with no completion model the switch is greyed out (opacity ${greyLook})`);
+await page.mouse.move(0, 0);
+record((await shownAt()) === '0', 'and offers nothing until hovered');
+await grey.hover({ force: true });
+record((await shownAt()) === '1', 'hovering it shows the offer');
+record((await offerButton.innerText()) === 'Set workspace completion model', `which says what it does (${await offerButton.innerText()})`);
+await offerButton.click();
+const confirmButton = page.getByTestId('function-autocomplete-confirm');
+record(await confirmButton.isDisabled(), 'confirming is refused until a model is chosen');
+const pickIt = async () => {
+  await page.locator('#function-autocomplete-model').click();
+  await page.locator(`[data-model-menu="function-autocomplete-model"] li[data-value="${chat.id}"]`).click();
+};
+await pickIt();
+await page.getByTestId('function-autocomplete-cancel').click();
+const afterCancel = (await graphql(`query($w: ID!) { workspace(id: $w) { completionModelId } }`, { w: WORKSPACE })).workspace.completionModelId;
+record(afterCancel === null && (await page.getByTestId('function-autocomplete-dialog').count()) === 0, 'Cancel closes it and sets nothing');
+await grey.hover({ force: true });
+await offerButton.click();
+await pickIt();
+const notYet = (await graphql(`query($w: ID!) { workspace(id: $w) { completionModelId } }`, { w: WORKSPACE })).workspace.completionModelId;
+record(notYet === null, 'choosing alone sets nothing');
+await confirmButton.click();
 await page.locator('[data-testid="function-autocomplete"][aria-pressed="true"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
-record((await page.locator('[data-testid="function-autocomplete"]').getAttribute('aria-pressed').catch(() => null)) === 'true', 'and choosing one turns it on');
+record((await page.locator('[data-testid="function-autocomplete"]').getAttribute('aria-pressed').catch(() => null)) === 'true', 'confirming turns it on');
 const chosen = (await graphql(`query($w: ID!) { workspace(id: $w) { completionModelId } }`, { w: WORKSPACE })).workspace.completionModelId;
 record(chosen === chat.id, `and sets the workspace's completion model (${chosen})`);
 await graphql(`mutation($w: ID!, $id: ID) { setWorkspaceCompletionModel(workspaceId: $w, modelId: $id) { id } }`, { w: WORKSPACE, id: chat.id });

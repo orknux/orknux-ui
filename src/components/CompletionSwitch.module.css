@@ -1,21 +1,98 @@
-/* No model to ask: a slight amber, so it reads as something to see to rather than as on or off. */
+.wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+/* Greyed out: there is no model to ask, so it is neither on nor off. */
 .missing {
-  background: color-mix(in srgb, var(--color-amber) 10%, transparent);
-  border-color: color-mix(in srgb, var(--color-amber) 45%, var(--color-border));
-  color: var(--color-text-muted);
+  opacity: 0.5;
 }
 
 .missing:disabled {
   cursor: not-allowed;
 }
 
-/* The list opens as wide as the box it sits in. */
-.choosing {
-  display: inline-block;
-  flex: none;
-  width: 240px;
+/* Below the switch and out of the layout, so nothing moves when it shows. The padding bridges the gap for the pointer. */
+.offer {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  padding-top: var(--space-4);
+  opacity: 0;
+  pointer-events: none;
 }
 
-.chooser {
-  width: 100%;
+.wrap:hover .offer,
+.wrap:focus-within .offer {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.set,
+.cancel,
+.confirm {
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.set:hover,
+.cancel:hover {
+  background: var(--color-surface-hover);
+}
+
+.confirm {
+  background: var(--color-accent-brand);
+  border-color: var(--color-accent-brand);
+  color: var(--color-bg);
+}
+
+.confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  margin-top: var(--space-4);
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+.explain,
+.refusal {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.refusal {
+  color: var(--color-danger);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
 }

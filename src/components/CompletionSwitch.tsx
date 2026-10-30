@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 
 import { fetchModels } from '../api/models';
 import type { Model } from '../api/models';
@@ -23,16 +24,22 @@ export interface CompletionSwitchProps {
 }
 
 /**
- * The Auto-completion switch of an editor's toolbar, and with no completion
- * model the place to choose one: a tinted dropdown of the workspace's chat
- * models rather than a switch drawn on that could suggest nothing. Where there
- * is nothing to choose, or this person may not choose, it is disabled and says
- * so, as the setting belongs to whoever administers the workspace.
+ * The Auto-completion switch of an editor's toolbar. With no completion model it
+ * is greyed out, and hovering it offers to set one.
+ *
+ * Said in full and confirmed, because the choice is not this editor's: it is the
+ * workspace's Completion Model, the one everybody there gets suggestions from,
+ * and a dropdown on a toolbar reads as a setting of the page it is on. Refused
+ * for somebody who does not administer the workspace, and the refusal is shown
+ * where they were choosing.
  */
 export function CompletionSwitch({
   workspaceId, completing, pause, onToggle, onChosen, className, onClassName, testId,
 }: CompletionSwitchProps) {
-  const [models, setModels] = useState<Model[] | null>(null);
+  const [models, setModels] = useState<Model[]>([]);
+  const [setting, setSetting] = useState(false);
+  const [chosen, setChosen] = useState('');
+  const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,36 +64,78 @@ export function CompletionSwitch({
     );
   }
 
-  if (models === null || models.length === 0 || refusal !== null) {
-    return (
+  function cancel() {
+    setSetting(false);
+    setChosen('');
+    setRefusal(null);
+  }
+
+  function confirm() {
+    if (chosen === '' || saving) return;
+    setSaving(true);
+    setRefusal(null);
+    setWorkspaceCompletionModel(workspaceId, chosen)
+      .then((workspace) => onChosen(workspace.completionPauseMillis))
+      .catch((failure: unknown) => setRefusal(failure instanceof Error ? failure.message : String(failure)))
+      .finally(() => setSaving(false));
+  }
+
+  function keys(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      cancel();
+    }
+  }
+
+  return (
+    <span className={styles.wrap} data-setting={setting ? '' : undefined}>
       <button
         type="button"
         className={`${className} ${styles.missing}`}
         disabled
         aria-pressed={false}
-        title={refusal ?? t('Auto-completion needs a completion model, chosen in the workspace settings')}
+        title={t('Auto-completion needs a completion model, chosen in the workspace settings')}
         data-testid={testId}
       >
         {t('Auto-completion')}
       </button>
-    );
-  }
-
-  return (
-    <span className={styles.choosing} title={t('Auto-completion needs a completion model, chosen in the workspace settings')}>
-      <ModelPicker
-        id={`${testId}-model`}
-        className={`${className} ${styles.missing} ${styles.chooser}`}
-        value=""
-        models={models}
-        required
-        none={t('Auto-completion: choose a model')}
-        onChange={(modelId) => {
-          setWorkspaceCompletionModel(workspaceId, modelId)
-            .then((workspace) => onChosen(workspace.completionPauseMillis))
-            .catch((failure: unknown) => setRefusal(failure instanceof Error ? failure.message : String(failure)));
-        }}
-      />
+      {!setting && models.length > 0 && (
+        <span className={styles.offer}>
+          <button type="button" className={styles.set} onClick={() => setSetting(true)} data-testid={`${testId}-set`}>
+            {t('Set workspace completion model')}
+          </button>
+        </span>
+      )}
+      {setting && (
+        <div className={styles.dialog} role="dialog" aria-label={t('Set workspace completion model')} onKeyDown={keys} data-testid={`${testId}-dialog`}>
+          <p className={styles.explain}>
+            {t('This sets the Completion Model of the whole workspace: everybody in it gets suggestions from this model, in every editor and in chats.')}
+          </p>
+          <ModelPicker
+            id={`${testId}-model`}
+            value={chosen}
+            models={models}
+            required
+            none={t('Choose a model')}
+            onChange={setChosen}
+          />
+          {refusal !== null && <p className={styles.refusal} role="alert">{refusal}</p>}
+          <div className={styles.actions}>
+            <button type="button" className={styles.cancel} onClick={cancel} data-testid={`${testId}-cancel`}>
+              {t('Cancel')}
+            </button>
+            <button
+              type="button"
+              className={styles.confirm}
+              disabled={chosen === '' || saving}
+              onClick={confirm}
+              data-testid={`${testId}-confirm`}
+            >
+              {t('Set for the workspace')}
+            </button>
+          </div>
+        </div>
+      )}
     </span>
   );
 }
