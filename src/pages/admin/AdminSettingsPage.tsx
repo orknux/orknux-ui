@@ -900,6 +900,7 @@ function AdminSettingsView({ session, onSignOut, onDiscard }: AdminSettingsPageP
               <div className={styles.retention}>
                 <ModelPicker
                   id="default-completion-model"
+                  className={`${styles.input} ${styles.wideInput}`}
                   value={settings.chatCompletionModelId ?? ''}
                   models={chatModels}
                   onChange={(next) => {

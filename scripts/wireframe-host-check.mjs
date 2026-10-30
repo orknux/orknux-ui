@@ -46,6 +46,8 @@ try {
   await page.locator('[data-testid="wireframe-host"][data-hosted="true"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
   const artifact = await host.getAttribute('data-artifact');
   await host.click();
+  const lookOf = () => host.evaluate((one) => { const style = getComputedStyle(one); return `${style.color}|${style.backgroundColor}`; });
+  const hostedLook = await lookOf();
   const address = ((await page.getByTestId('wireframe-hosted-link').innerText().catch(() => '')) ?? '').trim();
   record(
     artifact?.startsWith('SAVED-') === true && address.endsWith(`/api/artifacts/${artifact?.replace('SAVED-', '')}/preview`),
@@ -81,6 +83,10 @@ try {
   await host.click();
   await page.getByTestId('wireframe-host-stop').click();
   await page.locator('[data-testid="wireframe-host"][data-hosted="false"]').waitFor({ timeout: 10_000 }).catch(() => undefined);
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(300);
+  const plainLook = await lookOf();
+  record(hostedLook !== plainLook, `the button is coloured while hosted, and not after (${hostedLook} / ${plainLook})`);
   const gone = await served(address);
   const still = (await graphql('query ($id: ID!) { wireframe(id: $id) { id elementCount hostedAs } }', { id })).wireframe;
   record(gone.status === 404 && still?.elementCount === 1 && still?.hostedAs === null,

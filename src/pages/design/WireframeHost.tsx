@@ -55,7 +55,7 @@ export function WireframeHost({ wireframe, onChanged }: { wireframe: Wireframe |
     <div className={shell.exportMenu}>
       <button
         type="button"
-        className={`${form.ghost} ${shell.toolbarButton}`}
+        className={`${form.ghost} ${shell.toolbarButton} ${hostedAs === null ? '' : styles.hosted}`}
         onClick={() => {
           setError(null);
           setOpen((held) => !held);

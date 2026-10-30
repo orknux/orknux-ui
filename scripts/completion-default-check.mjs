@@ -34,6 +34,13 @@ const SAVE = 'button:has-text("Save Changes")';
 try {
   await page.goto(`${BASE}/admin/settings`);
   await page.waitForLoadState('networkidle');
+  // Drawn as the page's fields are, rather than as the browser's bare button.
+  const field = await page.locator('#default-completion-model').evaluate((one) => {
+    const style = getComputedStyle(one);
+    return { width: one.getBoundingClientRect().width, fill: style.backgroundColor, radius: parseFloat(style.borderTopLeftRadius), pad: parseFloat(style.paddingLeft) };
+  });
+  const channels = field.fill.match(/[\d.]+/g).map(Number);
+  record(field.width >= 240 && channels.slice(0, 3).every((one) => one < 40) && field.radius > 0 && field.pad > 4, `the administrator's field is drawn as a field (${JSON.stringify(field)})`);
   await pick('default-completion-model', model.id);
   await page.waitForLoadState('networkidle');
   await page.reload();

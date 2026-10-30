@@ -33,3 +33,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Coloured while the page is live: an address is out there, showing every save. Doubled to outrank the button's own. */
+.hosted.hosted {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
