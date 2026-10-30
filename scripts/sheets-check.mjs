@@ -2,7 +2,9 @@
  * Sheets in Design: the list lists Sheets after Documents, a new sheet opens
  * in the editor, numbers typed into cells and a formula over them draw the
  * value the server worked out, that value is still drawn after a reload, and
- * dragging a column's edge makes the column drawn wider.
+ * dragging a column's edge makes the column drawn wider. An empty sheet draws
+ * its column lines too. While typing, an arrow goes to the next cell, a formula's
+ * cells are outlined, and function names are offered.
  *
  * Read off the DOM: the text of the cell drawn at A3, and the width
  * getBoundingClientRect gives column B's letter and the cell under it. Makes
@@ -42,6 +44,29 @@ try {
 
   const grid = page.getByTestId('sheet-grid');
   await page.getByTestId('sheet-cells').waitFor({ timeout: 15_000 });
+
+  // An empty sheet still has columns: only a filled cell is drawn, and the lines across used to be its edge.
+  const drawnLines = await page.evaluate(() => {
+    const box = document.querySelector('[data-testid="sheet-cells"]').getBoundingClientRect();
+    const heads = [...document.querySelectorAll('[data-testid="sheet-column-head"]')]
+      .map((head) => head.getBoundingClientRect().right)
+      .filter((right) => right > box.left && right < box.right);
+    const lines = [...document.querySelectorAll('[data-testid="sheet-column-line"]')].map((line) => {
+      const at = line.getBoundingClientRect();
+      return { right: at.right, height: at.height, colour: getComputedStyle(line).backgroundColor };
+    });
+    return { box: box.height, heads, lines };
+  });
+  record(drawnLines.heads.length > 3, `the empty sheet shows several columns (${drawnLines.heads.length})`);
+  record(
+    drawnLines.heads.every((right) => drawnLines.lines.some((line) => Math.abs(line.right - right) <= 1)),
+    `an empty sheet draws a line at each column's right edge (${drawnLines.lines.length} lines, ${drawnLines.heads.length} columns)`,
+  );
+  record(
+    drawnLines.lines.length > 0 && drawnLines.lines.every((line) => line.height >= drawnLines.box && line.colour !== 'rgba(0, 0, 0, 0)'),
+    'and each line runs the height of the grid in a colour that shows',
+  );
+
   // Clicked at A1: the first cell, just inside the grid's corner.
   const cells = await page.getByTestId('sheet-cells').boundingBox();
   await page.mouse.click(cells.x + 20, cells.y + 12);
@@ -89,6 +114,57 @@ try {
   const cellWidened = (await cell('B1').boundingBox())?.width ?? 0;
   record(Math.abs(widened - before - 80) <= 2, `column B's letter is drawn 80px wider (${Math.round(before)} -> ${Math.round(widened)})`);
   record(Math.abs(cellWidened - cellBefore - 80) <= 2, `and so is the cell under it (${Math.round(cellBefore)} -> ${Math.round(cellWidened)})`);
+  const lineMoved = await page.evaluate(() => {
+    const right = document.querySelector('[data-testid="sheet-column-head"][data-column="B"]').getBoundingClientRect().right;
+    return [...document.querySelectorAll('[data-testid="sheet-column-line"]')].some((line) => Math.abs(line.getBoundingClientRect().right - right) <= 1);
+  });
+  record(lineMoved, "and the line at column B's edge moved with it");
+
+  // Typing in a cell: arrows, the blocks a formula reads, and the functions offered.
+  const box = await page.getByTestId('sheet-cells').boundingBox();
+  const clickCell = async (column, row) => {
+    const head = await page.locator(`[data-testid="sheet-column-head"][data-column="${column}"]`).boundingBox();
+    await page.mouse.click(head.x + head.width / 2, box.y + 24 * (row - 1) + 12);
+    await grid.focus();
+  };
+  const address = () => page.getByTestId('sheet-address').innerText();
+  const field = page.getByTestId('sheet-cell-input');
+
+  await clickCell('D', 5);
+  await page.keyboard.type('x');
+  await page.keyboard.press('ArrowRight');
+  record((await address()) === 'E5', `an arrow while typing in a cell goes to the next cell (${await address()})`);
+  record((await reads('D5', 'x')) === 'x', 'and writes what was typed');
+  await clickCell('D', 5);
+  await page.keyboard.press('F2');
+  await page.keyboard.press('ArrowLeft');
+  record((await field.count()) === 1 && (await address()) === 'D5', 'after F2 left and right stay the caret\'s');
+  await page.keyboard.press('Escape');
+
+  await clickCell('D', 7);
+  await page.keyboard.type('=sum(a1:a2');
+  const block = page.getByTestId('sheet-formula-block');
+  const blocks = await block.count();
+  const blockBox = blocks === 1 ? await block.boundingBox() : null;
+  record(
+    blockBox !== null && Math.abs(blockBox.y - box.y) <= 1 && Math.abs(blockBox.height - 48) <= 1 && Math.abs(blockBox.x - box.x) <= 1,
+    `=sum(a1:a2 draws one block over A1:A2 (${JSON.stringify(blockBox)})`,
+  );
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  record((await block.count()) === 0, 'and it goes when the typing is left');
+
+  await clickCell('D', 7);
+  await page.keyboard.type('=su');
+  const offered = await page.getByTestId('sheet-function-hint').allInnerTexts();
+  record(offered.includes('SUM'), `=su offers SUM (${offered.join(', ')})`);
+  for (let i = 0; i < offered.indexOf('SUM'); i++) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Tab');
+  record((await field.inputValue()) === '=SUM(', `Tab takes it, bracket opened (${await field.inputValue()})`);
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  record((await field.inputValue()) === '=SUM(D5', `arrows after the bracket choose a cell and write its name (${await field.inputValue()})`);
+  await page.keyboard.press('Escape');
   await page.screenshot({ path: shot('sheets-editor.png') });
 } finally {
   if (made !== null) await graphql('mutation ($id: ID!) { deleteSheet(id: $id) }', { id: made }).catch(() => undefined);

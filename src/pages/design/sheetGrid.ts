@@ -1,4 +1,4 @@
-import { cellAt, cellName } from '../../api/sheets';
+import { cellAt, cellName, columnIndex } from '../../api/sheets';
 import type { SheetTab, Workbook } from '../../api/sheets';
 
 /** A cell, by its column and row, both from 0. */
@@ -152,4 +152,49 @@ export function freshTabName(workbook: Workbook): string {
 /** Whether what was typed reads as a number, so it is drawn to the right before the server has said. */
 export function looksNumeric(text: string): boolean {
   return /^[-+]?(\d+([.,]\d*)?|[.,]\d+)([eE][-+]?\d+)?%?$/.test(text.trim());
+}
+
+/** A block of this tab a formula reads, in the order it names them. */
+export type FormulaRef = { left: number; top: number; right: number; bottom: number };
+
+const REFERENCE =
+  /"[^"]*"|(?<![A-Za-z0-9_.$])((?:'[^']+'|[A-Za-z0-9_.]+)!)?\$?([A-Za-z]{1,3})\$?(\d+)(?::\$?([A-Za-z]{1,3})\$?(\d+))?(?![A-Za-z0-9_(.])/g;
+
+/**
+ * What a formula being typed reads on this tab. Text in quotes is passed over, a
+ * name followed by a bracket is a function (LOG10), and one naming another tab
+ * is left out, as it is not on the grid in front of the person.
+ */
+export function formulaRefs(text: string): FormulaRef[] {
+  if (!text.startsWith('=')) return [];
+  const found: FormulaRef[] = [];
+  for (const match of text.matchAll(REFERENCE)) {
+    if (match[2] === undefined || match[1] !== undefined || Number(match[3]) < 1) continue;
+    const first = { column: columnIndex(match[2].toUpperCase()), row: Number(match[3]) - 1 };
+    const last = match[4] === undefined
+      ? first
+      : { column: columnIndex(match[4].toUpperCase()), row: Number(match[5]) - 1 };
+    found.push(boundsOf({ anchor: first, focus: last }));
+  }
+  return found;
+}
+
+function inQuotes(before: string): boolean {
+  return (before.match(/"/g)?.length ?? 0) % 2 === 1;
+}
+
+/** The start of a function's name being typed at the caret, and what is typed so far. */
+export function functionWordAt(text: string, caret: number): { start: number; word: string } | null {
+  if (!text.startsWith('=')) return null;
+  const before = text.slice(0, caret);
+  if (inQuotes(before)) return null;
+  const match = /(?<![A-Za-z0-9_.$!'])[A-Za-z][A-Za-z0-9_.]*$/.exec(before);
+  return match === null ? null : { start: match.index, word: match[0] };
+}
+
+/** Whether the caret is where a formula expects a value, so an arrow key picks a cell. */
+export function expectsReference(text: string, caret: number): boolean {
+  if (!text.startsWith('=')) return false;
+  const before = text.slice(0, caret);
+  return !inQuotes(before) && /[=(,;+\-*/^&<>:]\s*$/.test(before);
 }

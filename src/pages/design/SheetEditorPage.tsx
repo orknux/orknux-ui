@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -7,6 +8,7 @@ import type { SessionUser } from '../../api/session';
 import {
   askSheet,
   cellName,
+  fetchSheetFunctions,
   columnName,
   fetchSheet,
   renameSheet,
@@ -42,6 +44,9 @@ import styles from './SheetEditorPage.module.css';
 import {
   blockOf,
   boundsOf,
+  expectsReference,
+  formulaRefs,
+  functionWordAt,
   COLUMN_LEAST,
   COLUMN_MOST,
   COLUMN_WIDTH,
@@ -63,6 +68,8 @@ export interface SheetEditorPageProps {
 
 /** The row of column letters, and the column of row numbers, in pixels. */
 const HEAD_HEIGHT = 24;
+/** The colours of the blocks a formula reads; the same on either theme, as each is only an outline and a tint. */
+const BLOCK_COLOURS = ['#4c9be8', '#e8734c', '#a06be0', '#3fb37f', '#d9a227', '#e05c9a'];
 const HEAD_WIDTH = 48;
 /** How far past the last filled cell, and past the selection, the grid goes on. */
 const ROWS_LEAST = 100;
@@ -137,7 +144,22 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
   const [tab, setTab] = useState(0);
   const [range, setRange] = useState<Range>({ anchor: { column: 0, row: 0 }, focus: { column: 0, row: 0 } });
   /** What is being typed into the selected cell, and where: in the cell or in the formula bar. */
-  const [editing, setEditing] = useState<{ text: string; inBar: boolean } | null>(null);
+  /** `typed` is an edit begun by typing on a cell, where the arrows mean the next cell rather than the caret. */
+  const [editing, setEditing] = useState<{ text: string; inBar: boolean; typed?: boolean } | null>(null);
+  const [caret, setCaret] = useState<number | null>(null);
+  const [functions, setFunctions] = useState<string[]>([]);
+  const [hinted, setHinted] = useState(0);
+  const [hintsOff, setHintsOff] = useState(false);
+  /** The reference the arrow keys are moving through a formula, and where it sits in the text. */
+  const picking = useRef<{ start: number; end: number; cell: Cell } | null>(null);
+  const caretAt = caret ?? editing?.text.length ?? 0;
+  const word = editing === null || hintsOff ? null : functionWordAt(editing.text, caretAt);
+  const hints = word === null
+    ? []
+    : functions.filter((name) => name.startsWith(word.word.toUpperCase()) && name !== word.word.toUpperCase()).slice(0, 8);
+  useEffect(() => {
+    fetchSheetFunctions(workspaceId).then(setFunctions).catch(() => setFunctions([]));
+  }, [workspaceId]);
   const editingNow = useRef(editing);
   editingNow.current = editing;
   const [naming, setNaming] = useState<string | null>(null);
@@ -444,9 +466,39 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     grid.current?.focus();
   }
 
-  function startEditing(text: string, inBar = false) {
+  function startEditing(text: string, inBar = false, typed = false) {
     if (answering) return;
-    setEditing({ text, inBar });
+    picking.current = null;
+    setCaret(null);
+    setHintsOff(false);
+    setHinted(0);
+    setEditing({ text, inBar, typed });
+  }
+
+  function retype(text: string, inBar: boolean, at: number | null) {
+    picking.current = null;
+    setCaret(at);
+    setHintsOff(false);
+    setHinted(0);
+    setEditing({ text, inBar, typed: editing?.typed });
+  }
+
+  /** Sets the text and puts the caret where it belongs, once the field has been given the text. */
+  function placeText(field: HTMLInputElement, text: string, at: number) {
+    setEditing({ text, inBar: editing?.inBar ?? false, typed: editing?.typed });
+    setCaret(at);
+    window.requestAnimationFrame(() => field.setSelectionRange(at, at));
+  }
+
+  function takeFunction(field: HTMLInputElement, name: string) {
+    if (word === null || editing === null) return;
+    const after = editing.text.slice(caretAt);
+    const opened = after.startsWith('(') ? name : `${name}(`;
+    const at = word.start + name.length + 1;
+    placeText(field, editing.text.slice(0, word.start) + opened + after, at);
+    picking.current = null;
+    setHintsOff(false);
+    setHinted(0);
   }
 
   function clearSelection() {
@@ -525,7 +577,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     } else if (!command && !event.altKey && event.key.length === 1) {
       // A letter typed on a selected cell starts writing over it, as in every spreadsheet.
       event.preventDefault();
-      startEditing(event.key);
+      startEditing(event.key, false, true);
     }
   }
 
@@ -554,6 +606,49 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
   }, [undoKey, redoKey, saveKey]);
 
   function editorKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (hints.length > 0) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setHinted((was) => (was + (event.key === 'ArrowDown' ? 1 : -1) + hints.length) % hints.length);
+        return;
+      }
+      if (event.key === 'Tab' || event.key === 'Enter') {
+        event.preventDefault();
+        takeFunction(event.currentTarget, hints[Math.min(hinted, hints.length - 1)]);
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setHintsOff(true);
+        return;
+      }
+    }
+    const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+    if (step !== undefined && editing !== null) {
+      const at = event.currentTarget.selectionStart ?? editing.text.length;
+      const held = picking.current !== null && picking.current.end === at ? picking.current : null;
+      // Where a formula expects a value, an arrow chooses a cell and writes its name, as in every spreadsheet.
+      if (held !== null || expectsReference(editing.text, at)) {
+        event.preventDefault();
+        const from = held?.cell ?? range.focus;
+        const cell = {
+          column: Math.max(0, Math.min(columnCount - 1, from.column + step[0])),
+          row: Math.max(0, Math.min(rowCount - 1, from.row + step[1])),
+        };
+        const start = held?.start ?? at;
+        const name = cellName(cell.column, cell.row);
+        placeText(event.currentTarget, editing.text.slice(0, start) + name + editing.text.slice(held?.end ?? at), start + name.length);
+        picking.current = { start, end: start + name.length, cell };
+        return;
+      }
+      // Typing on a cell, an arrow goes to the next cell. Up and down have no line to move to anywhere.
+      // Left and right stay the caret's in the formula bar and after F2 or a double click, which are for correcting.
+      if (step[1] !== 0 || (editing.typed === true && !editing.inBar)) {
+        event.preventDefault();
+        commit({ columns: step[0], rows: step[1] });
+      }
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
       commit({ columns: 0, rows: event.shiftKey ? -1 : 1 });
@@ -743,6 +838,14 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     }
   }
 
+  // One per column on show rather than an edge of each cell: only a filled cell is drawn, so an empty sheet had none.
+  const columnLines: ReactNode[] = [];
+  for (let column = firstColumn; column <= lastColumn; column++) {
+    columnLines.push(
+      <div key={column} className={styles.columnLine} style={{ left: lefts[column + 1] - 1 }} data-testid="sheet-column-line" />,
+    );
+  }
+
   const columnHeads: ReactNode[] = [];
   for (let column = firstColumn; column <= lastColumn; column++) {
     const chosen = column >= block.left && column <= block.right;
@@ -796,6 +899,50 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
       >
         {row + 1}
       </div>,
+    );
+  }
+
+  // The cells the formula being typed reads, each block in a colour of its own.
+  const formulaBlocks = formulaRefs(editing?.text ?? '')
+    .filter((one) => one.right < columnCount && one.bottom < rowCount)
+    .map((one, index) => (
+      <div
+        key={index}
+        className={styles.formulaBlock}
+        style={{
+          left: lefts[one.left],
+          top: one.top * ROW_HEIGHT,
+          width: lefts[one.right + 1] - lefts[one.left],
+          height: (one.bottom - one.top + 1) * ROW_HEIGHT,
+          '--block': BLOCK_COLOURS[index % BLOCK_COLOURS.length],
+        } as CSSProperties}
+        aria-hidden="true"
+        data-testid="sheet-formula-block"
+      />
+    ));
+
+  function functionHints(place: { left: number | string; top: number | string }) {
+    if (hints.length === 0) return null;
+    return (
+      <ul className={styles.hints} style={place} data-testid="sheet-function-hints" role="listbox" aria-label={t('Functions')}>
+        {hints.map((name, index) => (
+          <li
+            key={name}
+            role="option"
+            aria-selected={index === hinted}
+            className={index === hinted ? styles.hintOn : undefined}
+            data-testid="sheet-function-hint"
+            onPointerDown={(event) => {
+              // Taken without leaving the field, whose blur would write the cell half typed.
+              event.preventDefault();
+              event.stopPropagation();
+              takeFunction(document.activeElement as HTMLInputElement, name);
+            }}
+          >
+            {name}
+          </li>
+        ))}
+      </ul>
     );
   }
 
@@ -932,7 +1079,8 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
               onFocus={() => {
                 if (editing === null) startEditing(focusRaw, true);
               }}
-              onChange={(event) => setEditing({ text: event.target.value, inBar: true })}
+              onChange={(event) => retype(event.target.value, true, event.target.selectionStart)}
+              onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
               onKeyDown={editorKeyDown}
               onBlur={() => {
                 if (editing?.inBar === true) commit();
@@ -942,6 +1090,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
               aria-label={t('What the selected cell holds')}
               data-testid="sheet-formula"
             />
+            {editing?.inBar === true && functionHints({ left: 96, top: '100%' })}
           </div>
 
           <div
@@ -997,15 +1146,19 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
                 >
                   <div className={styles.paper} style={{ width: totalWidth, height: totalHeight }}>
                     <div className={styles.lines} />
+                    {columnLines}
                     {cells}
                     <div className={styles.selection} style={selection} aria-hidden="true" data-testid="sheet-selection" />
                     <div className={styles.focus} style={focusBox} aria-hidden="true" />
+                    {formulaBlocks}
+                    {editing !== null && !editing.inBar && functionHints({ left: focusBox.left, top: focusBox.top + focusBox.height })}
                     {editing !== null && !editing.inBar && (
                       <input
                         className={styles.inPlace}
                         style={{ left: focusBox.left, top: focusBox.top, minWidth: focusBox.width, height: focusBox.height }}
                         value={editing.text}
-                        onChange={(event) => setEditing({ text: event.target.value, inBar: false })}
+                        onChange={(event) => retype(event.target.value, false, event.target.selectionStart)}
+                        onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
                         onKeyDown={editorKeyDown}
                         onBlur={() => commit()}
                         onPointerDown={(event) => event.stopPropagation()}

@@ -9,6 +9,8 @@
 }
 
 .formulaBar {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -145,7 +147,7 @@
   position: relative;
 }
 
-/* The grid's lines, one cell apart down; across, each cell draws its own right edge. */
+/* The grid's lines, one cell apart down; across, a line per column, as columns differ in width. */
 .lines {
   position: absolute;
   inset: 0;
@@ -155,12 +157,20 @@
   pointer-events: none;
 }
 
+.columnLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+
 .cell {
   position: absolute;
   box-sizing: border-box;
   padding: 0 var(--space-6);
   overflow: hidden;
-  border-right: 1px solid var(--color-border);
   color: var(--color-text-primary);
   font-size: var(--text-sm);
   line-height: 23px;
@@ -195,6 +205,41 @@
   box-sizing: border-box;
   border: 2px solid var(--color-accent-brand);
   pointer-events: none;
+}
+
+/* A block the formula being typed reads: its colour as an outline and a faint fill. */
+.formulaBlock {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--block);
+  background: color-mix(in srgb, var(--block) 14%, transparent);
+  pointer-events: none;
+}
+
+/* The functions whose names begin with what is typed. */
+.hints {
+  position: absolute;
+  z-index: 4;
+  min-width: 180px;
+  margin: 2px 0 0;
+  padding: var(--space-4) 0;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.hints li {
+  padding: 2px var(--space-8);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.hints li.hintOn,
+.hints li:hover {
+  background: var(--color-border);
 }
 
 .inPlace {

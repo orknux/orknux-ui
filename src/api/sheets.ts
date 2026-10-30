@@ -189,6 +189,15 @@ export const SHEET_FILES = '.xlsx,.xls,.ods,.csv,text/csv,application/vnd.openxm
 // -- Addresses ----------------------------------------------------------------
 
 /** A column's letters from its index from 0: 0 is A, 25 is Z, 26 is AA. */
+/** The functions a formula may call, as the server's engine names them. */
+export async function fetchSheetFunctions(workspaceId: string): Promise<string[]> {
+  const data = await graphql<{ sheetFunctions: string[] }>(
+    'query SheetFunctions($workspaceId: ID!) { sheetFunctions(workspaceId: $workspaceId) }',
+    { workspaceId },
+  );
+  return data.sheetFunctions;
+}
+
 export function columnName(index: number): string {
   let name = '';
   let at = index + 1;
