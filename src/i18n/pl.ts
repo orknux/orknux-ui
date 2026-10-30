@@ -384,6 +384,7 @@ export const PL: Record<string, string> = {
   "Slack reply": "Odpowiedź na Slacku",
   "Function": "Funkcja",
   "Functions": "Funkcje",
+  "Drag to continue or copy; hold Ctrl for the other": "Przeciągnij, aby kontynuować lub skopiować; przytrzymaj Ctrl, aby zrobić odwrotnie",
   "Function source": "Źródło funkcji",
   "Tool": "Narzędzie",
   "Tools": "Narzędzia",

@@ -1,4 +1,4 @@
-import { cellAt, cellName, columnIndex } from '../../api/sheets';
+import { cellAt, cellName, columnIndex, columnName } from '../../api/sheets';
 import type { SheetTab, Workbook } from '../../api/sheets';
 
 /** A cell, by its column and row, both from 0. */
@@ -197,4 +197,102 @@ export function expectsReference(text: string, caret: number): boolean {
   if (!text.startsWith('=')) return false;
   const before = text.slice(0, caret);
   return !inQuotes(before) && /[=(,;+\-*/^&<>:]\s*$/.test(before);
+}
+
+const CELL_IN_FORMULA = /"[^"]*"|(?<![A-Za-z0-9_.$])(\$?)([A-Za-z]{1,3})(\$?)(\d+)(?![A-Za-z0-9_(.])/g;
+
+/**
+ * A formula moved by so many columns and rows, as a spreadsheet moves one: a
+ * name follows, a part held with $ stays, and one pushed off the sheet is #REF!.
+ */
+export function shiftFormula(text: string, columns: number, rows: number): string {
+  if (!text.startsWith('=')) return text;
+  return text.replace(CELL_IN_FORMULA, (whole, heldColumn, letters, heldRow, digits) => {
+    if (letters === undefined) return whole;
+    const column = columnIndex(letters) + (heldColumn === '$' ? 0 : columns);
+    const row = Number(digits) + (heldRow === '$' ? 0 : rows);
+    if (column < 0 || row < 1) return '#REF!';
+    return `${heldColumn}${columnName(column)}${heldRow}${row}`;
+  });
+}
+
+const PLAIN_NUMBER = /^[-+]?(\d+\.?\d*|\.\d+)$/;
+const NUMBERED_TEXT = /^(.*?)(\d+)$/s;
+
+/** A number without the tail adding decimals leaves on it: 0.1 + 0.2 is written 0.3. */
+const tidy = (value: number) => String(Number(value.toPrecision(12)));
+
+/**
+ * What one lane of a dragged block holds [offset] cells from its first cell,
+ * going on past its end or back before its start.
+ *
+ * Two or more numbers go on by their step, and text ending in a number counts on
+ * from it; one lone number is copied, as in Excel. [flipped] is Ctrl held, and
+ * swaps the two: a lone number counts, and a series is copied. Anything else
+ * repeats, a formula moved along with it.
+ */
+function filled(lane: string[], offset: number, flipped: boolean, across: boolean): string {
+  const count = lane.length;
+  if (lane.every((one) => PLAIN_NUMBER.test(one.trim()))) {
+    const numbers = lane.map(Number);
+    if (count > 1 ? !flipped : flipped) {
+      const step = count === 1 ? 1 : (numbers[count - 1] - numbers[0]) / (count - 1);
+      return tidy(numbers[0] + step * offset);
+    }
+  } else if (!flipped) {
+    const parts = lane.map((one) => (one.startsWith('=') ? null : NUMBERED_TEXT.exec(one)));
+    if (parts.every((part) => part !== null && part[1] === parts[0]?.[1])) {
+      const values = parts.map((part) => Number(part?.[2]));
+      const step = count === 1 ? 1 : (values[count - 1] - values[0]) / (count - 1);
+      if (Number.isInteger(step)) {
+        const value = Math.max(0, values[0] + step * offset);
+        return `${parts[0]?.[1] ?? ''}${String(value).padStart(parts[0]?.[2].length ?? 0, '0')}`;
+      }
+    }
+  }
+  const at = ((offset % count) + count) % count;
+  const moved = offset - at;
+  return shiftFormula(lane[at], across ? moved : 0, across ? 0 : moved);
+}
+
+/**
+ * What dragging [source]'s corner out to [target] writes: every cell of the
+ * target outside the source, lane by lane along the way it was dragged. An empty
+ * source cell repeats as empty, so it clears what it is dragged over, as in Excel.
+ */
+export function fillCells(
+  read: (column: number, row: number) => string,
+  source: FormulaRef,
+  target: FormulaRef,
+  flipped: boolean,
+): Record<string, string> {
+  const written: Record<string, string> = {};
+  const across = target.left < source.left || target.right > source.right;
+  const lanes = across ? [source.top, source.bottom] : [source.left, source.right];
+  const along = across ? [source.left, source.right] : [source.top, source.bottom];
+  const reach = across ? [target.left, target.right] : [target.top, target.bottom];
+  for (let lane = lanes[0]; lane <= lanes[1]; lane++) {
+    const held: string[] = [];
+    for (let at = along[0]; at <= along[1]; at++) held.push(across ? read(at, lane) : read(lane, at));
+    for (let at = reach[0]; at <= reach[1]; at++) {
+      if (at >= along[0] && at <= along[1]) continue;
+      const value = filled(held, at - along[0], flipped, across);
+      written[across ? cellName(at, lane) : cellName(lane, at)] = value;
+    }
+  }
+  return written;
+}
+
+/** The block a drag of [source]'s corner to [cell] covers: out one way only, the longer. Null while still inside it. */
+export function fillTarget(source: FormulaRef, cell: Cell): FormulaRef | null {
+  const down = cell.row - source.bottom;
+  const up = source.top - cell.row;
+  const right = cell.column - source.right;
+  const left = source.left - cell.column;
+  const most = Math.max(down, up, right, left);
+  if (most <= 0) return null;
+  if (most === down) return { ...source, bottom: cell.row };
+  if (most === up) return { ...source, top: cell.row };
+  if (most === right) return { ...source, right: cell.column };
+  return { ...source, left: cell.column };
 }

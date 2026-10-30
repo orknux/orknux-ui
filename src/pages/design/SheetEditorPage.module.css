@@ -207,6 +207,26 @@
   pointer-events: none;
 }
 
+/* The corner of the selection, dragged to continue or copy it. */
+.fillHandle {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  background: var(--color-accent-brand);
+  border: 1px solid var(--color-bg);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.fillPreview {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--color-accent-brand);
+  pointer-events: none;
+}
+
 /* A block the formula being typed reads: its colour as an outline and a faint fill. */
 .formulaBlock {
   position: absolute;

@@ -155,6 +155,14 @@ try {
   record((await block.count()) === 0, 'and it goes when the typing is left');
 
   await clickCell('D', 7);
+  await page.keyboard.type('=sum');
+  const whole = await page.getByTestId('sheet-function-hint').allInnerTexts();
+  record(whole[0] === 'SUM', `a name typed in full is still offered, first (${whole.join(', ')})`);
+  await page.keyboard.press('Enter');
+  record((await field.inputValue()) === '=SUM(', `and Enter takes it (${await field.inputValue()})`);
+  await page.keyboard.press('Escape');
+
+  await clickCell('D', 7);
   await page.keyboard.type('=su');
   const offered = await page.getByTestId('sheet-function-hint').allInnerTexts();
   record(offered.includes('SUM'), `=su offers SUM (${offered.join(', ')})`);
@@ -165,6 +173,67 @@ try {
   await page.keyboard.press('ArrowUp');
   record((await field.inputValue()) === '=SUM(D5', `arrows after the bracket choose a cell and write its name (${await field.inputValue()})`);
   await page.keyboard.press('Escape');
+
+  // Dragging the selection's corner: a series goes on, one number and text copy, a formula moves.
+  const put = async (column, row, text) => {
+    await clickCell(column, row);
+    await page.keyboard.type(text);
+    await page.keyboard.press('Enter');
+  };
+  const centre = async (column, row) => {
+    const head = await page.locator(`[data-testid="sheet-column-head"][data-column="${column}"]`).boundingBox();
+    return { x: head.x + head.width / 2, y: box.y + 24 * (row - 1) + 12 };
+  };
+  const dragCorner = async (toColumn, toRow, ctrl = false) => {
+    const handle = await page.getByTestId('sheet-fill-handle').boundingBox();
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    const to = await centre(toColumn, toRow);
+    await page.mouse.move(to.x, to.y, { steps: 4 });
+    const shown = await page.getByTestId('sheet-fill-preview').count();
+    if (ctrl) await page.keyboard.down('Control');
+    await page.mouse.move(to.x, to.y + 1);
+    await page.mouse.up();
+    if (ctrl) await page.keyboard.up('Control');
+    return shown;
+  };
+  await put('F', 1, '1');
+  await put('F', 2, '2');
+  const f1 = await centre('F', 1);
+  const f2 = await centre('F', 2);
+  await page.mouse.move(f1.x, f1.y);
+  await page.mouse.down();
+  await page.mouse.move(f2.x, f2.y, { steps: 3 });
+  await page.mouse.up();
+  const previewed = await dragCorner('F', 5);
+  record(previewed === 1, 'the block being dragged out to is outlined');
+  record((await reads('F3', '3')) === '3' && (await reads('F5', '5')) === '5', `1, 2 dragged goes on to 3, 4, 5 (F5 ${await drawnText('F5')})`);
+
+  await put('G', 1, '7');
+  await clickCell('G', 1);
+  await dragCorner('G', 3);
+  record((await reads('G3', '7')) === '7', 'one number dragged is copied');
+  await clickCell('G', 1);
+  await dragCorner('G', 3, true);
+  record((await reads('G3', '9')) === '9', 'and with Ctrl held it counts');
+
+  await put('H', 1, 'Item1');
+  await clickCell('H', 1);
+  await dragCorner('H', 3);
+  record((await reads('H3', 'Item3')) === 'Item3', 'text ending in a number counts on');
+
+  await put('I', 1, 'word');
+  await clickCell('I', 1);
+  await dragCorner('K', 1);
+  record((await reads('K1', 'word')) === 'word', 'plain text is copied, and across as well as down');
+
+  await put('E', 1, '=A1*2+$A$1');
+  await clickCell('E', 1);
+  await dragCorner('E', 2);
+  await clickCell('E', 2);
+  const moved = await page.getByTestId('sheet-formula').inputValue();
+  record(moved === '=A2*2+$A$1', `a formula moves with the drag and $ holds (${moved})`);
+  await grid.focus();
   await page.screenshot({ path: shot('sheets-editor.png') });
 } finally {
   if (made !== null) await graphql('mutation ($id: ID!) { deleteSheet(id: $id) }', { id: made }).catch(() => undefined);

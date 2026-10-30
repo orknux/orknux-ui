@@ -45,6 +45,8 @@ import {
   blockOf,
   boundsOf,
   expectsReference,
+  fillCells,
+  fillTarget,
   formulaRefs,
   functionWordAt,
   COLUMN_LEAST,
@@ -59,7 +61,7 @@ import {
   withCells,
   writeTsv,
 } from './sheetGrid';
-import type { Cell, Range } from './sheetGrid';
+import type { Cell, FormulaRef, Range } from './sheetGrid';
 
 export interface SheetEditorPageProps {
   session: SessionUser;
@@ -156,7 +158,7 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
   const word = editing === null || hintsOff ? null : functionWordAt(editing.text, caretAt);
   const hints = word === null
     ? []
-    : functions.filter((name) => name.startsWith(word.word.toUpperCase()) && name !== word.word.toUpperCase()).slice(0, 8);
+    : functions.filter((name) => name.startsWith(word.word.toUpperCase())).slice(0, 8);
   useEffect(() => {
     fetchSheetFunctions(workspaceId).then(setFunctions).catch(() => setFunctions([]));
   }, [workspaceId]);
@@ -172,6 +174,9 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
   const [area, setArea] = useState({ width: 800, height: 600 });
   const [resizing, setResizing] = useState<{ column: string; from: number; width: number; before: Workbook } | null>(null);
   const [dragging, setDragging] = useState(false);
+  /** Where the selection's corner is being dragged to, drawn until it is let go. */
+  const [fillTo, setFillTo] = useState<FormulaRef | null>(null);
+  const fillOn = useRef(false);
 
   const { models, modelId, choose } = useChatModels(workspaceId, modelKey);
   const [talk, setTalk] = useState<SheetTurn[]>([]);
@@ -685,6 +690,31 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
     if (cell.column !== range.focus.column || cell.row !== range.focus.row) setRange((held) => ({ anchor: held.anchor, focus: cell }));
   }
 
+  function fillDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    // Its own drag: the cells under it would take a press here as a new selection.
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    fillOn.current = true;
+  }
+
+  function fillMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (fillOn.current) setFillTo(fillTarget(block, cellAtPointer(event)));
+  }
+
+  function fillUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!fillOn.current) return;
+    fillOn.current = false;
+    const target = fillTarget(block, cellAtPointer(event));
+    setFillTo(null);
+    if (target === null) return;
+    const flipped = event.ctrlKey || event.metaKey;
+    write(fillCells((column, row) => current.cells[cellName(column, row)] ?? '', block, target, flipped));
+    setRange({ anchor: { column: target.left, row: target.top }, focus: { column: target.right, row: target.bottom } });
+    grid.current?.focus();
+  }
+
   function resizeDown(event: ReactPointerEvent<HTMLSpanElement>, column: number) {
     event.preventDefault();
     event.stopPropagation();
@@ -1151,6 +1181,35 @@ export function SheetEditorPage({ session, onSignOut }: SheetEditorPageProps) {
                     <div className={styles.selection} style={selection} aria-hidden="true" data-testid="sheet-selection" />
                     <div className={styles.focus} style={focusBox} aria-hidden="true" />
                     {formulaBlocks}
+                    {fillTo !== null && (
+                      <div
+                        className={styles.fillPreview}
+                        style={{
+                          left: lefts[fillTo.left],
+                          top: fillTo.top * ROW_HEIGHT,
+                          width: lefts[fillTo.right + 1] - lefts[fillTo.left],
+                          height: (fillTo.bottom - fillTo.top + 1) * ROW_HEIGHT,
+                        }}
+                        aria-hidden="true"
+                        data-testid="sheet-fill-preview"
+                      />
+                    )}
+                    {editing === null && !answering && (
+                      <div
+                        className={styles.fillHandle}
+                        style={{ left: selection.left + selection.width - 5, top: selection.top + selection.height - 5 }}
+                        onPointerDown={fillDown}
+                        onPointerMove={fillMove}
+                        onPointerUp={fillUp}
+                        onPointerCancel={() => {
+                          fillOn.current = false;
+                          setFillTo(null);
+                        }}
+                        onDoubleClick={(event) => event.stopPropagation()}
+                        title={t('Drag to continue or copy; hold Ctrl for the other')}
+                        data-testid="sheet-fill-handle"
+                      />
+                    )}
                     {editing !== null && !editing.inBar && functionHints({ left: focusBox.left, top: focusBox.top + focusBox.height })}
                     {editing !== null && !editing.inBar && (
                       <input
