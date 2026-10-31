@@ -29,6 +29,10 @@ const drawn = await page.evaluate(() => {
     washViolet: getComputedStyle(document.querySelector('main'), '::before').backgroundImage.includes('124, 58, 237'),
     wash: getComputedStyle(document.querySelector('main'), '::before').backgroundImage.includes('111, 152, 214'),
     wide: document.documentElement.scrollWidth > innerWidth,
+    headingAlign: getComputedStyle(document.querySelector('h1')).textAlign,
+    headingLeft: Math.round(document.querySelector('h1').getBoundingClientRect().left),
+    labelLeft: Math.round(document.querySelector('label').getBoundingClientRect().left),
+    versions: (document.querySelector('main').innerText.match(/\d+\.\d+\.\d+/g) ?? []).length,
   };
 });
 record(drawn.word !== null && drawn.word.font.includes('Geist'), `the wordmark is lower case, in the page's face (${JSON.stringify(drawn.word)})`);
@@ -36,6 +40,8 @@ record(drawn.layers.length === 3 && drawn.layers.every((one) => one >= 5), `thre
 record(drawn.wash && !drawn.washViolet, 'the wash is the site\'s blue, not violet');
 record(drawn.label.transform === 'none' && drawn.label.font.includes('Geist'), `field labels are in the page's face, not capitals (${JSON.stringify(drawn.label)})`);
 record(drawn.button.radius === '6px', `the button has the site's corners (${drawn.button.radius})`);
+record(drawn.versions === 1, `the version is said once, in the attribution (${drawn.versions})`);
+record(drawn.headingLeft === drawn.labelLeft, `the heading starts where the fields' labels do (${drawn.headingLeft}, ${drawn.labelLeft})`);
 record(!drawn.wide, 'nothing runs off the side');
 await page.screenshot({ path: shot('login-look.png') });
 await context.close();

@@ -9,10 +9,6 @@ import { LoginSky } from './LoginSky';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
 
-export interface ForgotPasswordPageProps {
-  version?: string;
-}
-
 /**
  * Asking for a reset link.
  *
@@ -25,7 +21,7 @@ export interface ForgotPasswordPageProps {
  * an account or to nobody, and a helpful "we could not find that" written here
  * would undo the whole point of the server having been careful.
  */
-export function ForgotPasswordPage({ version = `v${__APP_VERSION__}` }: ForgotPasswordPageProps) {
+export function ForgotPasswordPage() {
   const emailId = useId();
 
   const [email, setEmail] = useState('');
@@ -56,13 +52,10 @@ export function ForgotPasswordPage({ version = `v${__APP_VERSION__}` }: ForgotPa
       <div className={styles.card}>
         <header className={styles.header}>
           <div className={styles.logomark}>
-            <div className={styles.brand}>
-              <span className={styles.logoIcon}>
-                <OrknuxMark />
-              </span>
-              <p className={styles.wordmark}>orknux</p>
-            </div>
-            <span className={styles.versionBadge}>{version}</span>
+            <span className={styles.logoIcon}>
+              <OrknuxMark />
+            </span>
+            <p className={styles.wordmark}>orknux</p>
           </div>
 
           <div className={styles.headings}>

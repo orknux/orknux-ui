@@ -10,10 +10,6 @@ import { LoginSky } from './LoginSky';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
 
-export interface ResetPasswordPageProps {
-  version?: string;
-}
-
 /**
  * Setting a new password from a mailed link.
  *
@@ -26,7 +22,7 @@ export interface ResetPasswordPageProps {
  * a mistyped one here is a person locked out of the account they were in the
  * middle of getting back into.
  */
-export function ResetPasswordPage({ version = `v${__APP_VERSION__}` }: ResetPasswordPageProps) {
+export function ResetPasswordPage() {
   const passwordId = useId();
   const confirmId = useId();
   const [parameters] = useSearchParams();
@@ -78,13 +74,10 @@ export function ResetPasswordPage({ version = `v${__APP_VERSION__}` }: ResetPass
       <div className={styles.card}>
         <header className={styles.header}>
           <div className={styles.logomark}>
-            <div className={styles.brand}>
-              <span className={styles.logoIcon}>
-                <OrknuxMark />
-              </span>
-              <p className={styles.wordmark}>orknux</p>
-            </div>
-            <span className={styles.versionBadge}>{version}</span>
+            <span className={styles.logoIcon}>
+              <OrknuxMark />
+            </span>
+            <p className={styles.wordmark}>orknux</p>
           </div>
 
           <div className={styles.headings}>

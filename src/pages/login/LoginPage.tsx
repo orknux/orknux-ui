@@ -15,12 +15,6 @@ export interface LoginPageProps {
   onSubmit?: (credentials: Credentials) => Promise<void> | void;
   /** Called when the user clicks "Reset" next to the password label. */
   onResetPassword?: () => void;
-  /**
-   * Shown in the badge beside the wordmark. Defaults to the version this bundle
-   * was built at — the same one the monitoring screen reports, so the two cannot
-   * disagree.
-   */
-  version?: string;
 }
 
 /**
@@ -33,7 +27,7 @@ export interface LoginPageProps {
  */
 const ELSEWHERE = ['OIDC', 'GITHUB'];
 
-export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSION__}` }: LoginPageProps) {
+export function LoginPage({ onSubmit, onResetPassword }: LoginPageProps) {
   const usernameId = useId();
   const passwordId = useId();
 
@@ -82,13 +76,10 @@ export function LoginPage({ onSubmit, onResetPassword, version = `v${__APP_VERSI
       <div className={styles.card}>
         <header className={styles.header}>
           <div className={styles.logomark}>
-            <div className={styles.brand}>
-              <span className={styles.logoIcon}>
-                <OrknuxMark />
-              </span>
-              <p className={styles.wordmark}>orknux</p>
-            </div>
-            <span className={styles.versionBadge}>{version}</span>
+            <span className={styles.logoIcon}>
+              <OrknuxMark />
+            </span>
+            <p className={styles.wordmark}>orknux</p>
           </div>
 
           <div className={styles.headings}>
