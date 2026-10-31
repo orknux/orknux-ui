@@ -68,7 +68,10 @@ try {
   const reading = await page.locator('[data-chat-eval-speed]').first().innerText().catch(() => '');
   const readAt = Number(reading.replace(/[^0-9.]/g, ''));
   record(readAt > 1500 && readAt < 2500, `while the prompt is read its eval speed is near 2,000 (${reading})`);
-  await pour(5);
+  // Long enough to pass the moment the page attaches to the turn again, which used to wipe both.
+  await pour(16);
+  const held = await page.locator('[data-chat-eval-speed]').count();
+  record(held === 1, 'the eval speed is still there well into the turn');
   const fast = await said();
   record(fast !== null && fast.startsWith('~') && fast.endsWith('t/s'), `while it arrives it is an estimate, marked ~ (${fast})`);
   const rate = Number(fast?.replace(/[^0-9.]/g, ''));

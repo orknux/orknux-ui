@@ -357,6 +357,12 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   // Read twice a second during a turn, so it falls away when the model stops to run a tool.
   useEffect(() => {
     if (!sending) return undefined;
+    // Here and not where a stream's handlers are made: the page attaches to a turn again while it runs, and that is not a new turn.
+    speedMeter.current = new SpeedMeter();
+    speedSettled.current = false;
+    setSpeed(null);
+    promptMeter.current = new PromptMeter();
+    setEvalSpeed(null);
     const reading = window.setInterval(() => {
       // The turn's own figure is in; the turn only has to finish closing.
       if (speedSettled.current) return;
@@ -2111,11 +2117,6 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     ChatStreamHandlers,
     'onProduced' | 'onMeasured' | 'onPromptRead' | 'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
-    speedMeter.current = new SpeedMeter();
-    speedSettled.current = false;
-    setSpeed(null);
-    promptMeter.current = new PromptMeter();
-    setEvalSpeed(null);
     return {
       onProduced: (chars) => speedMeter.current.add(chars, Date.now()),
       onPromptRead: (processed) => {
