@@ -24,6 +24,7 @@ import { NotificationBell } from './NotificationBell';
 import { QuickChat } from './QuickChat';
 import styles from './AppShell.module.css';
 import { ResizeHandle, useDragSize } from './DragSize';
+import { connectedServer, disconnectFromServer } from '../session/desktop';
 import { t } from '../i18n';
 
 export interface AppShellUser {
@@ -661,6 +662,22 @@ function UserMenu({
             <img src={settingsIcon} alt="" width={14} height={14} />
             {t('Preferences')}
           </Link>
+          {connectedServer() !== null && (
+            <button
+              type="button"
+              className={styles.logOut}
+              role="menuitem"
+              data-testid="disconnect-from-server"
+              title={connectedServer() ?? undefined}
+              onClick={() => {
+                setOpen(false);
+                disconnectFromServer();
+              }}
+            >
+              <img src={doorOpenIcon} alt="" width={14} height={14} />
+              {t('Disconnect from server')}
+            </button>
+          )}
           {canSignOut && <span className={styles.menuRule} aria-hidden="true" />}
           {canSignOut && (
             <button

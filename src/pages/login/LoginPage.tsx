@@ -6,6 +6,7 @@ import type { AuthMethodInfo, Credentials } from '../../api/session';
 import eyeIcon from '../../assets/eye.svg';
 import { OrknuxMark } from '../../components/OrknuxMark';
 import { Attribution } from '../../components/Attribution';
+import { connectedServer, disconnectFromServer } from '../../session/desktop';
 import { LoginSky } from './LoginSky';
 import styles from './LoginPage.module.css';
 import { t } from '../../i18n';
@@ -208,6 +209,12 @@ export function LoginPage({ onSubmit, onResetPassword }: LoginPageProps) {
           anybody. Under the card rather than inside it, so it reads as belonging
           to the product and not to the sign-in form.
         */}
+        {connectedServer() !== null && (
+          <p className={styles.authNote} data-testid="login-server">
+            {connectedServer()}{' · '}
+            <button type="button" className={styles.resetLink} onClick={disconnectFromServer}>{t('Change server')}</button>
+          </p>
+        )}
         <Attribution />
       </div>
     </main>

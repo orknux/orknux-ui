@@ -15,6 +15,9 @@ interface DesktopBridge {
   /** Absent on an app older than this page: the server updates itself, and the app it runs in need not have. */
   windowShortcuts?(next: string, previous: string): void;
   recordingKeys(on: boolean): void;
+  /** Absent on an app older than this page, as `windowShortcuts` is. */
+  connectedServer?(): string | null;
+  disconnect?(): void;
 }
 
 function bridge(): DesktopBridge | null {
@@ -44,4 +47,14 @@ export function shareTabShortcuts(): void {
  */
 export function recordingKeys(on: boolean): void {
   bridge()?.recordingKeys(on);
+}
+
+/** The server this app is connected to, or null in a browser, in an older app, and where it runs its own. */
+export function connectedServer(): string | null {
+  return bridge()?.connectedServer?.() ?? null;
+}
+
+/** Asks the app to leave that server: it asks the person, then starts again at the question of where to connect. */
+export function disconnectFromServer(): void {
+  bridge()?.disconnect?.();
 }

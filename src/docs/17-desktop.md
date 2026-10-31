@@ -75,6 +75,7 @@ opened beside what you are doing.
   **Ctrl+PageDown** and **Ctrl+PageUp**, which go round from the last tab to the
   first. The last two are yours to change: **Next Tab Shortcut** and **Previous
   Tab Shortcut** on Preferences.
+- **Connecting to a server**: on a new installation the app asks whether to run Orknux on this computer or connect to a server, and remembers the answer. Connected, it runs nothing itself and shows that server's interface, where you sign in as usual. **Disconnect from server** in the user menu asks which server to use next; the same is on the tray icon and on a tab's right-click, and **Change server** is on the sign-in page. An app that already holds data here keeps running it, and **Connect to a server…** on the tray icon is how to change that. A server and an app work together within the same major version, so 1.9 works with an app from 1.2; across major versions they say so and which to update. An address that is not encrypted (`http://`) is warned about first, and a certificate your computer does not trust is refused.
 - **Splitting a window**: drag a tab to the edge of a pane to give it a pane of
   its own on that side, as often and in whichever directions you like; the part
   of the pane it would take lights up. Dropped on another pane's tabs or the
