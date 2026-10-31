@@ -529,7 +529,9 @@ export interface ChatStreamHandlers {
   /** Characters the model has just produced, of any kind: what the live speed is worked out from. */
   onProduced?: (chars: number) => void;
   /** The speed the provider itself measured, heard just before `onDone`; null where it said none. */
-  onMeasured?: (perSecond: number | null) => void;
+  onMeasured?: (perSecond: number | null, promptPerSecond: number | null) => void;
+  /** How many tokens of the prompt the server has read so far: what the live eval speed is worked out from. */
+  onPromptRead?: (processed: number) => void;
   onCall: (call: { at: number; tool: string; arguments: string }) => void;
   /** And what that lookup gave back. */
   onCalled: (answer: { at: number; result: string; failed: boolean; link: ItemLink | null }) => void;
@@ -895,6 +897,7 @@ async function read(
       inputTokens?: number;
       outputTokens?: number;
       generatedPerSecond?: number;
+      promptPerSecond?: number;
       cost?: number | null;
       reason?: string;
       title?: string;
@@ -956,6 +959,7 @@ async function read(
     else if (frame.event === 'titled' && payload.title !== undefined) handlers.onTitled?.(String(payload.title));
     else if (frame.event === 'session' && payload.id !== undefined) handlers.onSession?.(String(payload.id));
     else if (frame.event === 'reading' && payload.total !== undefined) {
+      handlers.onPromptRead?.(payload.processed ?? 0);
       handlers.onWriting?.({
         tool: null,
         chars: 0,
@@ -983,7 +987,7 @@ async function read(
         link: payload.link ?? null,
       });
     } else if (frame.event === 'done') {
-      handlers.onMeasured?.(payload.generatedPerSecond ?? null);
+      handlers.onMeasured?.(payload.generatedPerSecond ?? null, payload.promptPerSecond ?? null);
       handlers.onDone({
         millis: payload.millis ?? 0,
         thinkingMillis: payload.thinkingMillis ?? 0,

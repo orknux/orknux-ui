@@ -111,7 +111,7 @@ import { copyText } from '../../components/clipboard';
 import { OpenDefinitionIcon } from '../../components/OpenDefinitionIcon';
 import { ChatWidgets } from '../../components/ChatWidgets';
 import { actOnChatWidget, fetchChatWidgets, removeChatWidget, type ChatWidget } from '../../api/widgets';
-import { SpeedMeter, speedText } from './speedMeter';
+import { PromptMeter, SpeedMeter, speedText } from './speedMeter';
 import styles from './ChatPage.module.css';
 import { t, tf } from '../../i18n';
 import { ChatEffort } from './ChatEffort';
@@ -351,6 +351,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   const [speed, setSpeed] = useState<{ perSecond: number; measured: boolean } | null>(null);
   const speedMeter = useRef(new SpeedMeter());
   const speedSettled = useRef(false);
+  /** How fast the prompt was read: live from the reading frames, what the provider measured after a turn where it said. */
+  const [evalSpeed, setEvalSpeed] = useState<{ perSecond: number; measured: boolean } | null>(null);
+  const promptMeter = useRef(new PromptMeter());
   // Read twice a second during a turn, so it falls away when the model stops to run a tool.
   useEffect(() => {
     if (!sending) return undefined;
@@ -365,6 +368,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
   // Another chat's speed is not this one's.
   useEffect(() => {
     setSpeed(null);
+    setEvalSpeed(null);
   }, [currentId]);
 
   /*
@@ -2105,15 +2109,23 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    */
   function watchWorking(voiced?: VoicedTurn): Pick<
     ChatStreamHandlers,
-    'onProduced' | 'onMeasured' | 'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
+    'onProduced' | 'onMeasured' | 'onPromptRead' | 'onThinking' | 'onThought' | 'onDrew' | 'onFiled' | 'onWidgets' | 'onSaid' | 'onPersonRead' | 'onSession' | 'onTitleFailed' | 'onTitling' | 'onTitlingAbandoned' | 'onTitled' | 'onWriting' | 'onCall' | 'onCalled' | 'onCompacting' | 'onCompacted'
   > {
     speedMeter.current = new SpeedMeter();
     speedSettled.current = false;
     setSpeed(null);
+    promptMeter.current = new PromptMeter();
+    setEvalSpeed(null);
     return {
       onProduced: (chars) => speedMeter.current.add(chars, Date.now()),
-      onMeasured: (perSecond) => {
+      onPromptRead: (processed) => {
+        const perSecond = promptMeter.current.add(processed, Date.now());
+        if (perSecond !== null) setEvalSpeed({ perSecond, measured: false });
+      },
+      onMeasured: (perSecond, promptPerSecond) => {
         speedSettled.current = true;
+        // A cached prompt read next to nothing, so a live figure from before the cache answered goes too.
+        setEvalSpeed(promptPerSecond === null ? null : { perSecond: promptPerSecond, measured: true });
         const overall = perSecond ?? speedMeter.current.overall();
         setSpeed(overall === null ? null : { perSecond: overall, measured: perSecond !== null });
       },
@@ -3538,6 +3550,7 @@ ${named}`;
         : (spentPart ?? drawnPart);
 
   const speedShown = session.chatSpeedShown !== false ? speed : null;
+  const evalShown = session.chatSpeedShown !== false ? evalSpeed : null;
 
   /** Sent and not begun: the last turn is still empty and nothing has been looked up on the way. */
   const waitingNow = sending && messages[messages.length - 1]?.content === '' && !anyWorking(working);
@@ -4537,10 +4550,22 @@ ${named}`;
           {errorBanner}
           {passingBanner}
 
-          {(spent !== null || speedShown !== null) && (
+          {(spent !== null || speedShown !== null || evalShown !== null) && (
             <p className={styles.spent}>
               {spent !== null && <span title={t('What this chat has read and written, all of it')}>{spent}</span>}
-              {spent !== null && speedShown !== null && ' · '}
+              {evalShown !== null && (
+                <>
+                  {spent !== null && ' · '}
+                  {`${t('eval speed')} `}
+                  <span
+                    data-chat-eval-speed=""
+                    title={t('How fast the model read the prompt, leaving out what it had cached')}
+                  >
+                    {speedText(evalShown.perSecond, true)}
+                  </span>
+                </>
+              )}
+              {(spent !== null || evalShown !== null) && speedShown !== null && ' · '}
               {speedShown !== null && `${t('decode speed')} `}
               {speedShown !== null && (
                 <span

@@ -46,8 +46,27 @@ export class SpeedMeter {
   }
 }
 
+/**
+ * How fast a prompt is being read, from how far the server says it has got: tokens
+ * it really counted, so nothing here is estimated but the clock. Null until it has
+ * been reading long enough to say.
+ */
+export class PromptMeter {
+  private first: { at: number; processed: number } | null = null;
+
+  add(processed: number, now: number): number | null {
+    if (this.first === null || processed < this.first.processed) {
+      this.first = { at: now, processed };
+      return null;
+    }
+    const span = now - this.first.at;
+    if (span < SHORTEST_MILLIS || processed === this.first.processed) return null;
+    return (processed - this.first.processed) / (span / 1000);
+  }
+}
+
 /** "42 t/s", and "~42 t/s" where it is the estimate. */
 export function speedText(perSecond: number, measured: boolean): string {
-  const shown = perSecond < 10 ? perSecond.toFixed(1) : String(Math.round(perSecond));
+  const shown = perSecond < 10 ? perSecond.toFixed(1) : Math.round(perSecond).toLocaleString('en-US');
   return `${measured ? '' : '~'}${shown} t/s`;
 }

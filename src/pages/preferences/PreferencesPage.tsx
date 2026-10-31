@@ -850,7 +850,7 @@ function PreferencesView({ session, onSignOut, onDiscard }: PreferencesPageProps
               <span className={styles.labelWithHint}>
                 <span className={styles.settingLabel} id="chat-speed">{t('Speed in Chat')}</span>
                 <FieldHint label={t('Speed in Chat')}>
-                  <p>{t('Shows how fast the model is writing, in tokens a second, beside the tokens under a chat. Marked ~ while it is an estimate.')}</p>
+                  <p>{t('Shows eval speed, how fast the model reads the prompt, and decode speed, how fast it writes, in tokens a second, beside the tokens under a chat. Marked ~ while it is an estimate.')}</p>
                 </FieldHint>
               </span>
               <div className={styles.options} role="radiogroup" aria-labelledby="chat-speed">
