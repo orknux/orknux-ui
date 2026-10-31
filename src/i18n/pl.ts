@@ -2517,6 +2517,7 @@ export const PL: Record<string, string> = {
   "Answer Cost": "Koszt odpowiedzi",
   "Disconnect from server": "Rozłącz z serwerem",
   "Change server": "Zmień serwer",
+  "decode speed": "szybkość dekodowania",
   "Speed in Chat": "Szybkość w czacie",
   "Shows how fast the model is writing, in tokens a second, beside the tokens under a chat. Marked ~ while it is an estimate.": "Pokazuje, jak szybko model pisze, w tokenach na sekundę, obok tokenów pod czatem. Znak ~ oznacza wartość szacunkową.",
   "How fast the model wrote, as it measured it": "Jak szybko model pisał, według jego własnego pomiaru",

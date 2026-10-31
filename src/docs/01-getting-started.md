@@ -245,7 +245,7 @@ then the keystrokes.
   turn, every round an agent went through, not only its last call. It is **on**
   unless you turn it off; it used to start off, and an upgrade switched it on
   for everybody, so somebody who prefers it off sets it here once.
-- **Speed in Chat** shows how fast the model is writing, in tokens a second, beside the tokens under a chat. It is on until you turn it off. While an answer arrives it is an estimate, marked `~`; once done it is the provider's own figure where it gives one.
+- **Speed in Chat** shows the model's decode speed, how fast it is writing in tokens a second, beside the tokens under a chat, as `decode speed 42 t/s`. It is on until you turn it off. While an answer arrives it is an estimate, marked `~`; once done it is the provider's own figure where it gives one.
 - **Avatar in Chat** draws your initials beside each message of yours, at the
   top of the bubble, as the agent's mark is drawn beside its answers. On unless
   you turn it off.

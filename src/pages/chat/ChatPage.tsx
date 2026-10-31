@@ -4541,6 +4541,7 @@ ${named}`;
             <p className={styles.spent}>
               {spent !== null && <span title={t('What this chat has read and written, all of it')}>{spent}</span>}
               {spent !== null && speedShown !== null && ' · '}
+              {speedShown !== null && `${t('decode speed')} `}
               {speedShown !== null && (
                 <span
                   data-chat-speed=""

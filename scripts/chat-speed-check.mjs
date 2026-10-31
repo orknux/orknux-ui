@@ -70,6 +70,8 @@ try {
   await page.waitForTimeout(3_800);
   record((await said()) === null, 'and goes when the model has stopped');
   await pour(2);
+  const line = await speed.first().evaluate((shown) => shown.parentElement.innerText);
+  record(line.includes('decode speed'), `it says what it is (${line})`);
   const place = await page.evaluate(() => {
     const shown = document.querySelector('[data-chat-speed]');
     const before = shown?.previousElementSibling;
