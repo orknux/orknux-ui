@@ -71,6 +71,12 @@ export const TESTS = [
     needs: ['workspace'],
   },
   {
+    name: 'quick-chat-copy-check',
+    what: "the quick chat's copy button shows only while the pointer is on its message, and leaves no blank row in a one-word question",
+    needs: ['workspace'],
+    /* It sets the workspace's quick-chat model and puts it back; no model is asked. */
+  },
+  {
     name: 'quick-chat-stop-check',
     what: 'stopping the quick chat mid-request, with the answer held open so no model decides the timing',
     needs: ['workspace'],

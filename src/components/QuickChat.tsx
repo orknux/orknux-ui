@@ -410,12 +410,16 @@ export function QuickChat({ workspacePath, userName }: QuickChatProps) {
               turn.role === 'user' ? (
                 <div key={index} className={styles.asked}>
                   <p className={styles.askedText}>{turn.content}</p>
-                  <CopyButton text={turn.content} label={t('Copy this message')} testId="quick-chat-message-copy" />
+                  <span className={`${styles.messageCopy} ${styles.askedCopy}`}>
+                    <CopyButton text={turn.content} label={t('Copy this message')} testId="quick-chat-message-copy" />
+                  </span>
                 </div>
               ) : (
                 <div key={index} className={styles.answered}>
                   <Markdown pictureLinks>{turn.content}</Markdown>
-                  <CopyButton text={turn.content} label={t('Copy this message')} testId="quick-chat-message-copy" />
+                  <div className={styles.messageCopy}>
+                    <CopyButton text={turn.content} label={t('Copy this message')} testId="quick-chat-message-copy" />
+                  </div>
                   {/* Under the answer that offered it, where it was explained. */}
                   {offers[index] !== undefined &&
                     (offers[index].inEditor ? (

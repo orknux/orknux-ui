@@ -242,10 +242,7 @@
 }
 
 .asked {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-4);
+  position: relative;
 }
 
 .askedText {
@@ -258,6 +255,43 @@
   max-width: 100%;
   font-size: var(--text-md);
   color: var(--color-text-primary);
+}
+
+/*
+ * Copy, out of the way until the pointer is on its message, as in the full chat.
+ * Opacity rather than display, so nothing shifts as the pointer moves down them,
+ * and :focus-within for a keyboard. A screen with no pointer always shows it.
+ */
+.messageCopy {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.asked:hover .messageCopy,
+.asked:focus-within .messageCopy,
+.answered:hover .messageCopy,
+.answered:focus-within .messageCopy {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .messageCopy {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messageCopy {
+    transition: none;
+  }
+}
+
+/* Beside the bubble rather than in it: a blank row would make "hi" twice as tall. Padding, so the pointer can cross to it. */
+.askedCopy {
+  position: absolute;
+  right: 100%;
+  bottom: 0;
+  padding-right: var(--space-4);
 }
 
 /* The panel is narrow, so an answer's own margins would waste most of it. */
