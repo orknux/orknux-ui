@@ -14,6 +14,13 @@
  *   the queue      what is typed after is a turn as before - cancelling one
  *                  message does not break the queue for good
  *
+ * Send now is the other way out of the waiting box: the turn in flight is
+ * stopped, and only after the server has heard that does the message go.
+ *
+ *   send now       the waiting message leaves the box and is the next turn,
+ *                  sent once, after the stop and not alongside it
+ *   the turn       the first answer's stream is what was stopped
+ *
  * Typed rather than spoken, so the microphone is a file of silence: what is
  * measured is the queue, which spoken and typed messages share. The models and
  * the chat are this check's own and are removed afterwards.
@@ -28,6 +35,8 @@ const PREFIX = 'zzVoiceCancel';
 const FIRST = 'What is the plan for today';
 const ABANDONED = 'Hold on, the door';
 const LATER = 'And what about tomorrow';
+const LONG = 'Tell me everything about the weather';
+const INSTEAD = 'Actually, just the rain';
 /** How long the stubbed model takes over the first answer: long enough to queue behind it and cancel. */
 const THINKS_FOR = 4_000;
 
@@ -70,7 +79,7 @@ const { browser, context, page, graphql } = await open({
 
 await context.addInitScript(
   ({ thinksFor }) => {
-    window.__cancel = { sent: [] };
+    window.__cancel = { sent: [], order: [] };
 
     /** Half a second of silence, as the speech model's answer. */
     function clip() {
@@ -98,8 +107,10 @@ await context.addInitScript(
     window.fetch = async (input, init) => {
       const address = typeof input === 'string' ? input : input.url;
       if (/\/api\/chats\/[^/]+\/stream/.test(address)) {
-        const first = window.__cancel.sent.length === 0;
-        window.__cancel.sent.push(JSON.parse(String(init?.body ?? '{}')).text ?? '');
+        const said = JSON.parse(String(init?.body ?? '{}')).text ?? '';
+        const first = window.__cancel.sent.length === 0 || said.startsWith('Tell me everything');
+        window.__cancel.sent.push(said);
+        window.__cancel.order.push(`send:${said}`);
         const encode = new TextEncoder();
         const body = new ReadableStream({
           start(controller) {
@@ -114,6 +125,12 @@ await context.addInitScript(
           },
         });
         return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+      }
+      if (/\/api\/chats\/[^/]+\/interrupt/.test(address)) {
+        // Slow on purpose: a next turn that did not wait for the stop goes out first and is seen to.
+        await new Promise((done) => window.setTimeout(done, 400));
+        window.__cancel.order.push('stop');
+        return new Response(null, { status: 200 });
       }
       if (/\/api\/workspaces\/[^/]+\/speech/.test(address)) {
         return new Response(clip(), { status: 200, headers: { 'content-type': 'audio/wav' } });
@@ -220,6 +237,7 @@ const READ = () =>
       caption: captions.find((text) => ['Listening', 'Thinking', 'Speaking'].includes(text)) ?? null,
       waiting: panel.querySelector('[data-voice-waiting]')?.textContent ?? null,
       sent: [...window.__cancel.sent],
+      order: [...window.__cancel.order],
     };
   });
 
@@ -286,6 +304,44 @@ const later = await until((now) => now.sent.length >= 2, 'a later message', 8_00
 record(
   later !== null && later.sent[later.sent.length - 1] === LATER,
   `and a later message is a turn as before (${JSON.stringify(later?.sent ?? null)})`,
+);
+
+/* ------------------------------------------------------------- send now */
+
+await until((now) => now.caption === 'Listening', 'that turn to end', 20_000);
+const before = (await READ()).sent.length;
+await type(LONG);
+await until((now) => now.caption === 'Thinking' && now.sent.length === before + 1, 'a long turn', 8_000);
+await type(INSTEAD);
+const waits = await until((now) => (now.waiting ?? '').includes(INSTEAD), 'the message to wait', 3_000);
+record(waits !== null, 'a message typed during a long turn waits');
+const sendNow = page.locator('[data-voice-send-waiting]');
+record((await sendNow.count()) === 1, 'with a Send now beside the Cancel');
+const box = (selector) => page.locator(selector).boundingBox();
+const [nowBox, cancelBox, boxBox] = [
+  await box('[data-voice-send-waiting]'),
+  await box('[data-voice-cancel-waiting]'),
+  await box('[data-voice-waiting]'),
+];
+record(
+  nowBox !== null && cancelBox !== null && nowBox.x + nowBox.width <= cancelBox.x && nowBox.y === cancelBox.y && nowBox.x >= boxBox.x,
+  `the two sit side by side inside the box (${JSON.stringify({ nowBox, cancelBox })})`,
+);
+await page.screenshot({ path: shot('voice-send-now.png') });
+
+await sendNow.click({ timeout: 2_000 }).catch(() => undefined);
+const went = await until((now) => now.waiting === null && now.sent.at(-1) === INSTEAD, 'the message to go', 4_000);
+record(went !== null, `Send now sends it without waiting for the long answer (${JSON.stringify(went?.sent ?? null)})`);
+record(
+  went !== null && went.order.at(-2) === 'stop' && went.order.at(-1) === `send:${INSTEAD}`,
+  `after the stop reached the server (${JSON.stringify(went?.order ?? null)})`,
+);
+const answered = await until((now) => now.caption === 'Listening', 'its answer', 20_000);
+await page.waitForTimeout(1_000);
+const settled = await READ();
+record(
+  answered !== null && settled.sent.filter((one) => one === INSTEAD).length === 1 && settled.waiting === null,
+  'and it went once, the panel coming back to listening',
 );
 
 await clean();

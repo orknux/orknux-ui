@@ -4071,7 +4071,7 @@ export const TESTS = [
   },
   {
     name: 'voice-cancel-waiting-check',
-    what: 'In voice mode, Cancel takes back the message waiting for the next turn: it leaves the panel, is never sent, and the turn in flight goes on',
+    what: 'In voice mode, Cancel takes back the message waiting for the next turn and the turn in flight goes on; Send now stops that turn and sends the message after the stop',
     needs: ['workspace'],
     /* Makes two models and a chat and removes them; puts the turn-taking back. */
   },

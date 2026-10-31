@@ -1569,6 +1569,8 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
    * else's.
    */
   const voiceFiles = useRef<{ text: string; ids: string[] } | null>(null);
+  /** The spoken turns not yet finished here: one cut short for the next overlaps it for a moment. */
+  const voiceTurns = useRef(0);
   /**
    * What this workspace has decided about how a turn ends, or nothing.
    *
@@ -2042,6 +2044,7 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
     setWorking(NOTHING_YET);
     thinkingSoFar.current = '';
     setSending(true);
+    voiceTurns.current += 1;
 
     let answer = '';
     let failure: string | null = null;
@@ -2092,7 +2095,9 @@ export function ChatPage({ session, onSignOut }: ChatPageProps) {
       drewPicture.current = false;
       await loadSessions(currentId);
     } finally {
-      setSending(false);
+      // A turn cut short for the next one ends after that one began, and the next one is still going.
+      voiceTurns.current -= 1;
+      if (voiceTurns.current === 0) setSending(false);
     }
     return voiced.text();
   }
@@ -5100,9 +5105,7 @@ ${named}`;
             onSay={handleVoiceTurn}
             onAgain={handleVoiceAgain}
             onPhase={setVoicePhase}
-            onStop={() => {
-              if (currentId !== null) interruptChat(currentId).catch(() => undefined);
-            }}
+            onStop={() => (currentId !== null ? interruptChat(currentId).catch(() => undefined) : undefined)}
             onClose={() => setVoice(false)}
           />
         )}

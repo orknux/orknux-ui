@@ -637,6 +637,7 @@ export const PL: Record<string, string> = {
   "Starting…": "Rozpoczynanie…",
   "Finished": "Zakończono",
   "Waiting": "Oczekiwanie",
+  "Send now": "Wyślij teraz",
   "Working…": "Pracuję…",
   "Looking…": "Szukam…",
   "Checking…": "Sprawdzam…",

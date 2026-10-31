@@ -268,10 +268,15 @@
   position: relative;
 }
 
-.cancelWaiting {
+.waitingActions {
   position: absolute;
   top: var(--space-8);
   right: var(--space-8);
+  display: flex;
+  gap: var(--space-4);
+}
+
+.cancelWaiting {
   padding: 0 var(--space-8);
   background: none;
   border: 1px solid var(--color-border);

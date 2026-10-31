@@ -125,7 +125,7 @@ export interface VoiceModeProps {
    * stop any more - the server keeps a turn whose reader went, spoken or typed
    * - so cutting in says so, as the composer's Stop does.
    */
-  onStop?: () => void;
+  onStop?: () => Promise<unknown> | void;
   /** Cuts the answer short and goes back to listening, from outside this panel. */
   ref?: Ref<VoiceModeHandle>;
 }
@@ -963,25 +963,49 @@ export function VoiceMode({
    * would hear and went on charging for it — and the next thing said then raced
    * a turn that had never ended. Issue #299.
    *
-   * What happens next is the caller's: listening again, or another turn.
+   * What happens next is the caller's: listening again, or another turn. What
+   * it is handed is the stop reaching the server, for a caller about to send.
    */
-  function drop() {
+  function drop(): Promise<unknown> {
     turn.current += 1;
     reading.current?.stop();
     reading.current = null;
     // Cutting in is a stop, said to the server: closing the request alone no longer is (#615).
-    if (asking.current !== null) onStop?.();
+    const stopped = asking.current !== null ? onStop?.() : undefined;
     asking.current?.abort();
     asking.current = null;
     queued.current = null;
     setWaiting(null);
     busy.current = false;
+    return Promise.resolve(stopped);
   }
 
   /** Throws away what is waiting for the next turn, leaving the turn in flight alone. */
   function cancelWaiting() {
     queued.current = null;
     setWaiting(null);
+  }
+
+  /**
+   * Sends what is waiting now, instead of when the turn in flight ends.
+   *
+   * That turn is stopped, as cutting in stops it, and only then is the next one
+   * started: the server hangs up everything being answered on the chat when the
+   * stop arrives, so a turn that overtook its own stop would be stopped by it.
+   * Busy in between, so anything said in that moment waits behind this message.
+   */
+  function sendWaitingNow() {
+    const next = queued.current;
+    if (next === null) return;
+    const stopped = drop();
+    busy.current = true;
+    const mine = turn.current;
+    const go = () => {
+      // Cut in on or closed in the meantime, and whoever did that has decided what comes next.
+      if (!live.current || mine !== turn.current) return;
+      begin(next);
+    };
+    stopped.then(go, go);
   }
 
   /**
@@ -1138,14 +1162,25 @@ export function VoiceMode({
                 thought abandoned while the answer was still coming. Only the
                 waiting message - the turn in flight is the circle's to stop.
               */}
-              <button
-                type="button"
-                className={styles.cancelWaiting}
-                onClick={cancelWaiting}
-                data-voice-cancel-waiting=""
-              >
-                {t('Cancel')}
-              </button>
+              <span className={styles.waitingActions}>
+                {/* Stops the turn in flight, so the answer to this comes instead of after it. */}
+                <button
+                  type="button"
+                  className={styles.cancelWaiting}
+                  onClick={sendWaitingNow}
+                  data-voice-send-waiting=""
+                >
+                  {t('Send now')}
+                </button>
+                <button
+                  type="button"
+                  className={styles.cancelWaiting}
+                  onClick={cancelWaiting}
+                  data-voice-cancel-waiting=""
+                >
+                  {t('Cancel')}
+                </button>
+              </span>
             {waiting}
           </p>
         )}
