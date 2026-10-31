@@ -87,6 +87,27 @@ for (const editor of editors) {
   record(drawn.below !== null && drawn.below >= 16, `${editor.prefix}: the working row stands 16px or more under the question (${drawn.below}px)`);
   record(drawn.rowInset === drawn.questionInset, `${editor.prefix}: the same inset as the question has on the right (${drawn.questionInset}px)`);
 
+  // The copy button shows only while the pointer is on its message, and leaves no blank row in a short question.
+  const copy = page.getByTestId(`${editor.prefix}-chat-message-copy`).first();
+  const shown = () => copy.evaluate((button) => {
+    let seen = 1;
+    for (let at = button; at !== null; at = at.parentElement) seen *= Number(getComputedStyle(at).opacity);
+    return seen;
+  });
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(250);
+  record((await shown()) === 0, `${editor.prefix}: with the pointer elsewhere the copy button is not drawn (${await shown()})`);
+  const question = chat.locator('[data-role="user"]').first();
+  await question.hover();
+  await page.waitForTimeout(250);
+  record((await shown()) >= 0.5, `${editor.prefix}: on the message it is (${await shown()})`);
+  const tall = (await question.boundingBox()).height;
+  record(tall <= 44, `${editor.prefix}: a one-line question has no blank row under its words (${tall}px)`);
+  const button = await copy.boundingBox();
+  await page.mouse.move(button.x + button.width / 2, button.y + button.height / 2, { steps: 5 });
+  await page.waitForTimeout(250);
+  record((await shown()) >= 0.5, `${editor.prefix}: and it stays while the pointer crosses to it`);
+
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await page.goto('about:blank');
   await graphql(`mutation ($id: ID!) { delete${editor.kind}(id: $id) }`, { id });

@@ -259,6 +259,7 @@
 }
 
 .mine {
+  position: relative;
   align-self: flex-end;
   max-width: 85%;
   padding: var(--space-8) var(--space-12);
@@ -277,16 +278,46 @@
 }
 
 /* A reply - the working row or the answer - stands off the question it follows: the list's own gap left "Drawing…" hard under the bubble. */
-/* Copying one message of a chat, under it and out of the way of its words. */
+/*
+ * Copying one message of a chat, out of the way until the pointer is on it, as in
+ * the full chat. Opacity rather than display, so nothing shifts as the pointer
+ * moves down them, :focus-within for a keyboard, and always on a screen with no
+ * pointer.
+ */
 .turnActions {
   display: flex;
-  justify-content: flex-end;
   margin-top: var(--space-4);
   white-space: normal;
+  opacity: 0;
+  transition: opacity 120ms ease;
 }
 
-.theirs .turnActions {
-  justify-content: flex-start;
+.mine:hover .turnActions,
+.mine:focus-within .turnActions,
+.theirs:hover .turnActions,
+.theirs:focus-within .turnActions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .turnActions {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turnActions {
+    transition: none;
+  }
+}
+
+/* Beside the bubble rather than in it: a blank row would make a one-word question twice as tall. Padding, so the pointer can cross to it. */
+.mine .turnActions {
+  position: absolute;
+  right: 100%;
+  bottom: 0;
+  margin-top: 0;
+  padding-right: var(--space-4);
 }
 
 .mine + .theirs {
