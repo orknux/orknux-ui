@@ -176,7 +176,7 @@ try {
   record((await field.inputValue()) === '=SUM(D5', `arrows after the bracket choose a cell and write its name (${await field.inputValue()})`);
   await page.keyboard.press('Escape');
 
-  // Dragging the selection's corner: a series goes on, one number and text copy, a formula moves.
+  // Dragging the selection's corner: a series and one number go on, text copies, a formula moves.
   const put = async (column, row, text) => {
     await clickCell(column, row);
     await page.keyboard.type(text);
@@ -214,10 +214,10 @@ try {
   await put('G', 1, '7');
   await clickCell('G', 1);
   await dragCorner('G', 3);
-  record((await reads('G3', '7')) === '7', 'one number dragged is copied');
+  record((await reads('G3', '9')) === '9', 'one number dragged counts up');
   await clickCell('G', 1);
   await dragCorner('G', 3, true);
-  record((await reads('G3', '9')) === '9', 'and with Ctrl held it counts');
+  record((await reads('G3', '7')) === '7', 'and with Ctrl held it is copied');
 
   await put('H', 1, 'Item1');
   await clickCell('H', 1);

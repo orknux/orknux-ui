@@ -226,16 +226,17 @@ const tidy = (value: number) => String(Number(value.toPrecision(12)));
  * What one lane of a dragged block holds [offset] cells from its first cell,
  * going on past its end or back before its start.
  *
- * Two or more numbers go on by their step, and text ending in a number counts on
- * from it; one lone number is copied, as in Excel. [flipped] is Ctrl held, and
- * swaps the two: a lone number counts, and a series is copied. Anything else
- * repeats, a formula moved along with it.
+ * Two or more numbers go on by their step, one lone number counts up from itself,
+ * and text ending in a number counts on from it. Unlike Excel, whose lone number
+ * is copied: a column of the same number is rarely what a drag was for. [flipped]
+ * is Ctrl held, and copies instead. Anything else repeats, a formula moved along
+ * with it.
  */
 function filled(lane: string[], offset: number, flipped: boolean, across: boolean): string {
   const count = lane.length;
   if (lane.every((one) => PLAIN_NUMBER.test(one.trim()))) {
     const numbers = lane.map(Number);
-    if (count > 1 ? !flipped : flipped) {
+    if (!flipped) {
       const step = count === 1 ? 1 : (numbers[count - 1] - numbers[0]) / (count - 1);
       return tidy(numbers[0] + step * offset);
     }

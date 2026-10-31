@@ -39,6 +39,9 @@ The editor is a grid, with a formula bar above it and the tabs below.
   spreadsheets. What you copy within Orknux is pasted as it was typed, formulas
   and all; what you paste from elsewhere comes in as its text. A formula is
   pasted as written, without its addresses moved.
+- **Drag** the corner of the selection to carry on: one number counts up from
+  itself, two or more go on by their step, text ending in a number counts on,
+  and a formula moves with the drag. Hold **Ctrl** to copy the numbers instead.
 - **Drag** the edge of a column's letter to make it wider or narrower;
   double-click the edge for the usual width again.
 - The **tabs** along the bottom switch between the sheet's tabs. **+** adds one,
